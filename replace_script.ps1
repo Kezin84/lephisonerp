@@ -1,0 +1,10 @@
+$content = Get-Content -Raw "c:\chuSonProject\reminder-main\reminder-main\src\components\report.vue"
+$content = $content -replace '(?s)<a v-for="\(link, i\) in report\.link_excel_bao_gia\.split\(''\\n''\)\.filter\(Boolean\)" :key="''bg''\+i" href="#" @click\.prevent\.stop="downloadExcelFile\(link, getExcelFileName\(report, ''link_excel_bao_gia'', i, ''Báo giá''\)\)".*?{{ getExcelFileName\(report, ''link_excel_bao_gia'', i, ''Báo giá''\) }}\s*</a>', '<a v-for="(link, i) in report.link_excel_bao_gia.split(''\n'').filter(Boolean)" :key="''bg''+i" href="#" @click.prevent.stop="downloadExcelFile(link, getExcelFileName(report, ''link_excel_bao_gia'', i, ''Báo giá''))" class="file-attach-badge" :title="getExcelFileName(report, ''link_excel_bao_gia'', i, ''Báo giá'')">
+  <span v-html="getFileIconSvg(getExcelFileName(report, ''link_excel_bao_gia'', i, ''Báo giá''))" style="display:flex;align-items:center;"></span>
+  <span class="file-attach-text">{{ getExcelFileName(report, ''link_excel_bao_gia'', i, ''Báo giá'') }}</span>
+</a>'
+$content = $content -replace '(?s)<a v-for="\(link, i\) in report\.link_excel_mua_hang\.split\(''\\n''\)\.filter\(Boolean\)" :key="''mh''\+i" href="#" @click\.prevent\.stop="downloadExcelFile\(link, getExcelFileName\(report, ''link_excel_mua_hang'', i, ''Mua hàng''\)\)".*?{{ getExcelFileName\(report, ''link_excel_mua_hang'', i, ''Mua hàng''\) }}\s*</a>', '<a v-for="(link, i) in report.link_excel_mua_hang.split(''\n'').filter(Boolean)" :key="''mh''+i" href="#" @click.prevent.stop="downloadExcelFile(link, getExcelFileName(report, ''link_excel_mua_hang'', i, ''Mua hàng''))" class="file-attach-badge" :title="getExcelFileName(report, ''link_excel_mua_hang'', i, ''Mua hàng'')">
+  <span v-html="getFileIconSvg(getExcelFileName(report, ''link_excel_mua_hang'', i, ''Mua hàng''))" style="display:flex;align-items:center;"></span>
+  <span class="file-attach-text">{{ getExcelFileName(report, ''link_excel_mua_hang'', i, ''Mua hàng'') }}</span>
+</a>'
+Set-Content -Path "c:\chuSonProject\reminder-main\reminder-main\src\components\report.vue" -Value $content

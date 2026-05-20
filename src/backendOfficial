@@ -1,0 +1,2193 @@
+// ============================================================
+//  REPORT SHEET - APPSCRIPT BACKEND
+//  Columns: ID | PHAN_LOAI | THOI_GIAN | NOI_DUNG | GHI_CHU | TAG | TRANG_THAI
+//  Tối ưu tốc độ real-time: cache + batch write
+// ============================================================
+
+const SHEET_NAME = "REPORT";
+const CACHE_KEY  = "report_cache";
+const CACHE_TTL  = 25; // giây – dưới ngưỡng 30s của CacheService
+
+// ─────────────────────────────────────────────────────────────
+//  TELEGRAM CONFIG
+//  ⚠️  CHAT_IDS: chạy getChatIds() sau khi user nhắn bot ít nhất 1 lần
+//      để lấy chat_id, rồi điền vào mảng CHAT_IDS bên dưới
+// ─────────────────────────────────────────────────────────────
+const TG_TOKEN = "8611304071:AAHomVoR-atODyXz7j_ffxrYw6ugwlZ5aRI";
+const TG_API   = `https://api.telegram.org/bot${TG_TOKEN}`;
+const CHAT_IDS = [5588587730]; // ví dụ: [123456789, 987654321]
+
+// ─────────────────────────────────────────────────────────────
+//  HELPER: lấy sheet
+// ─────────────────────────────────────────────────────────────
+function getSheet() {
+  return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+}
+
+// ─────────────────────────────────────────────────────────────
+//  HELPER: format thời gian  →  "19:00 /4 /21/4/2026"
+//  (HH:MM /thứ /DD/MM/YYYY)
+// ─────────────────────────────────────────────────────────────
+function formatTime(date) {
+  const d = date || new Date();
+  const pad = n => String(n).padStart(2, "0");
+  const thu = d.getDay(); // 0=CN,1=T2,...
+  const thuLabel = thu === 0 ? 8 : thu + 1; // 2-8 (CN=8)
+  return `${pad(d.getHours())}:${pad(d.getMinutes())} /${thuLabel} /${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`;
+}
+
+// ─────────────────────────────────────────────────────────────
+//  HELPER: tạo ID tự động  →  RPT_YYYYMMDD_HHmmssSSS
+// ─────────────────────────────────────────────────────────────
+function genID() {
+  const d = new Date();
+  const pad = (n, l=2) => String(n).padStart(l, "0");
+  return `RPT_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}${pad(d.getMilliseconds(),3)}`;
+}
+
+// ─────────────────────────────────────────────────────────────
+//  INVALIDATE CACHE
+// ─────────────────────────────────────────────────────────────
+function invalidateCache() {
+  CacheService.getScriptCache().remove(CACHE_KEY);
+}
+
+// ─────────────────────────────────────────────────────────────
+//  GET: đọc toàn bộ data – ưu tiên cache
+// ─────────────────────────────────────────────────────────────
+function getData(params) {
+  const cache = CacheService.getScriptCache();
+
+  // --- filter params ---
+  const filterTag      = params.tag        || null;
+  const filterCategory = params.phan_loai  || null;
+  const filterDate     = params.date       || null; // "21/4/2026"
+  const filterStatus   = params.trang_thai || null;
+  const limit          = parseInt(params.limit) || 0;
+  const offset         = parseInt(params.offset) || 0;
+
+  // Nếu có filter → bỏ qua cache (cần fresh data hoặc cache riêng)
+  const useCache = !filterTag && !filterCategory && !filterDate && !filterStatus && !limit;
+
+  if (useCache) {
+    const cached = cache.get(CACHE_KEY);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+  }
+
+  // --- đọc sheet ---
+  const sheet = getSheet();
+  const lastRow = sheet.getLastRow();
+
+  if (lastRow < 2) {
+    const empty = { status: "success", total: 0, data: [] };
+    if (useCache) cache.put(CACHE_KEY, JSON.stringify(empty), CACHE_TTL);
+    return empty;
+  }
+
+  // Lấy tất cả dữ liệu 1 lần (tránh loop getRange từng row)
+  const range  = sheet.getRange(2, 1, lastRow - 1, 13);
+  const values = range.getValues();
+
+  let rows = values
+    .filter(r => r[0] !== "") // bỏ row rỗng
+    .map(r => ({
+      id          : r[0],
+      phan_loai   : r[1],
+      thoi_gian   : r[2],
+      noi_dung    : r[3],
+      ghi_chu     : r[4],
+      tag         : r[5],
+      trang_thai  : r[6],
+      created_time: r[7] || "",
+      img_save    : r[8] || "",
+      link_excel_bao_gia: r[9] || "",
+      link_excel_mua_hang: r[10] || "",
+      ten_file_bao_gia: r[11] || "",
+      ten_file_mua_hang: r[12] || ""
+    }));
+
+  // --- apply filters ---
+  if (filterTag)      rows = rows.filter(r => String(r.tag).toLowerCase().includes(filterTag.toLowerCase()));
+  if (filterCategory) rows = rows.filter(r => String(r.phan_loai).toLowerCase() === filterCategory.toLowerCase());
+  if (filterDate)     rows = rows.filter(r => String(r.thoi_gian).includes(filterDate));
+  if (filterStatus)   rows = rows.filter(r => String(r.trang_thai).toLowerCase() === filterStatus.toLowerCase());
+
+  // --- sort mới nhất lên trên ---
+  rows.reverse();
+
+  const total = rows.length;
+
+  // --- pagination ---
+  if (limit > 0) rows = rows.slice(offset, offset + limit);
+
+  const result = { status: "success", total, offset, limit, data: rows };
+
+  if (useCache) cache.put(CACHE_KEY, JSON.stringify(result), CACHE_TTL);
+  return result;
+}
+
+// ─────────────────────────────────────────────────────────────
+//  POST: thêm / sửa / xoá
+// ─────────────────────────────────────────────────────────────
+function postData(payload) {
+  const action = (payload.action || "add").toLowerCase();
+
+  if (action === "add")    return addRow(payload);
+  if (action === "update") return updateRow(payload);
+  if (action === "delete") return deleteRow(payload);
+
+  return { status: "error", message: "action không hợp lệ. Dùng: add | update | delete" };
+}
+
+// --- ADD ---
+function addRow(p) {
+  if (!p.noi_dung) return { status: "error", message: "noi_dung là bắt buộc" };
+
+  const sheet = getSheet();
+  const id    = p.id || genID();
+  const time  = p.thoi_gian || formatTime(new Date());
+
+  const now = new Date();
+  const pad = n => String(n).padStart(2, "0");
+  const createdTimeStr = `${pad(now.getHours())}:${pad(now.getMinutes())} ${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()}`;
+
+  sheet.appendRow([
+    id,
+    p.phan_loai  || "",
+    time,
+    p.noi_dung,
+    p.ghi_chu    || "",
+    p.tag        || "",
+    p.trang_thai || "",
+    createdTimeStr,
+    p.img_save || "",
+    p.link_excel_bao_gia || "",
+    p.link_excel_mua_hang || "",
+    p.ten_file_bao_gia || "",
+    p.ten_file_mua_hang || ""
+  ]);
+
+  invalidateCache();
+  return { status: "success", action: "add", id, thoi_gian: time };
+}
+
+// --- UPDATE ---
+function updateRow(p) {
+  if (!p.id) return { status: "error", message: "id là bắt buộc để update" };
+
+  const sheet   = getSheet();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { status: "error", message: "Sheet rỗng" };
+
+  const cell = sheet.getRange(2, 1, lastRow - 1, 1).createTextFinder(p.id).matchEntireCell(true).findNext();
+  if (!cell) return { status: "error", message: `Không tìm thấy ID: ${p.id}` };
+
+  const rowNum = cell.getRow();
+  const row    = sheet.getRange(rowNum, 1, 1, 13).getValues()[0];
+
+  sheet.getRange(rowNum, 1, 1, 13).setValues([[
+    row[0],
+    p.phan_loai  !== undefined ? p.phan_loai  : row[1],
+    p.thoi_gian  !== undefined ? p.thoi_gian  : row[2],
+    p.noi_dung   !== undefined ? p.noi_dung   : row[3],
+    p.ghi_chu    !== undefined ? p.ghi_chu    : row[4],
+    p.tag        !== undefined ? p.tag        : row[5],
+    p.trang_thai !== undefined ? p.trang_thai : row[6],
+    row[7],
+    p.img_save !== undefined ? p.img_save : (row[8] || ""),
+    p.link_excel_bao_gia !== undefined ? p.link_excel_bao_gia : (row[9] || ""),
+    p.link_excel_mua_hang !== undefined ? p.link_excel_mua_hang : (row[10] || ""),
+    p.ten_file_bao_gia !== undefined ? p.ten_file_bao_gia : (row[11] || ""),
+    p.ten_file_mua_hang !== undefined ? p.ten_file_mua_hang : (row[12] || "")
+  ]]);
+
+  invalidateCache();
+  return { status: "success", action: "update", id: p.id };
+}
+
+// --- DELETE ---
+function deleteRow(p) {
+  if (!p.id) return { status: "error", message: "id là bắt buộc để delete" };
+
+  const sheet   = getSheet();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { status: "error", message: "Sheet rỗng" };
+
+  const cell = sheet.getRange(2, 1, lastRow - 1, 1).createTextFinder(p.id).matchEntireCell(true).findNext();
+  if (!cell) return { status: "error", message: `Không tìm thấy ID: ${p.id}` };
+
+  sheet.deleteRow(cell.getRow());
+  invalidateCache();
+  return { status: "success", action: "delete", id: p.id };
+}
+
+// ─────────────────────────────────────────────────────────────
+//  TELEGRAM: lấy danh sách chat_id từ getUpdates
+//  Chạy hàm này 1 lần trong Apps Script Editor để tìm chat_id
+// ─────────────────────────────────────────────────────────────
+function getChatIds() {
+  const url  = `${TG_API}/getUpdates`;
+  const res  = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+  const json = JSON.parse(res.getContentText());
+
+  if (!json.ok || !json.result.length) {
+    Logger.log("Chưa có tin nhắn nào. Hãy nhắn bot trước rồi chạy lại.");
+    return;
+  }
+
+  const ids = [...new Set(json.result.map(u => u.message?.chat?.id).filter(Boolean))];
+  Logger.log("Danh sách chat_id: " + JSON.stringify(ids));
+  Logger.log("➡️  Copy vào CHAT_IDS = " + JSON.stringify(ids));
+}
+
+// ─────────────────────────────────────────────────────────────
+//  TELEGRAM: gửi message đến tất cả CHAT_IDS
+// ─────────────────────────────────────────────────────────────
+function sendTelegram(text) {
+  if (!CHAT_IDS.length) {
+    Logger.log("⚠️  CHAT_IDS rỗng. Chạy getChatIds() để lấy chat_id.");
+    return;
+  }
+
+  const options = {
+    method    : "post",
+    contentType: "application/json",
+    muteHttpExceptions: true
+  };
+
+  CHAT_IDS.forEach(chatId => {
+    options.payload = JSON.stringify({
+      chat_id    : chatId,
+      text       : text,
+      parse_mode : "HTML"
+    });
+    UrlFetchApp.fetch(`${TG_API}/sendMessage`, options);
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+//  BUILD báo cáo công việc hôm nay
+// ─────────────────────────────────────────────────────────────
+function buildReportMessage(label) {
+  const sheet   = getSheet();
+  const lastRow = sheet.getLastRow();
+
+  // Lấy ngày hôm nay dạng DD/M/YYYY hoặc DD/MM/YYYY để so khớp THOI_GIAN
+  const now  = new Date();
+  const pad  = n => String(n).padStart(2, "0");
+  const today = `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()}`;
+
+  if (lastRow < 2) {
+    return `${label}\n\n📭 Không có dữ liệu trong sheet.`;
+  }
+
+  const values = sheet.getRange(2, 1, lastRow - 1, 7).getValues();
+
+  const all = values.filter(r => r[0] !== "" && String(r[2]).includes(today));
+
+  const done    = all.filter(r => String(r[6]).trim().toLowerCase() === "hoàn thành");
+  const pending = all.filter(r => String(r[6]).trim().toLowerCase() !== "hoàn thành");
+
+  const fmt = rows => {
+    if (rows.length === 0) return "  <i>(không có)</i>";
+
+    const grouped = {};
+    rows.forEach(r => {
+      const pl = String(r[1]).trim() || "KHÔNG PHÂN LOẠI";
+      if (!grouped[pl]) grouped[pl] = [];
+      grouped[pl].push(r);
+    });
+
+    const lines = [];
+    for (const pl in grouped) {
+      lines.push(`🔸 <b>${pl}</b>`);
+      grouped[pl].forEach((r, idx) => {
+        const noiDung = r[3] || "";
+        const ghiChu = r[4] ? ` (${r[4]})` : "";
+        const uuTien = r[5] ? ` [${r[5]}]` : "";
+        lines.push(`    ${idx + 1}. ${noiDung}${ghiChu}`);
+      });
+    }
+    return lines.join("\n");
+  };
+
+  return [
+    `${label}`,
+    `📅 Ngày: <b>${today}</b>`,
+    ``,
+    `✅ <b>Hoàn thành (${done.length})</b>`,
+    fmt(done),
+    ``,
+    `🔄 <b>Chưa hoàn thành (${pending.length})</b>`,
+    fmt(pending),
+    ``,
+    `📊 Tổng: ${all.length} công việc`
+  ].join("\n");
+}
+
+// ─────────────────────────────────────────────────────────────
+//  TRIGGER: gửi lúc 12:00 trưa
+// ─────────────────────────────────────────────────────────────
+function sendReport_12h() {
+  const msg = buildReportMessage("🕛 <b>BÁO CÁO BUỔI TRƯA (12:00)</b>");
+  sendTelegram(msg);
+}
+
+// ─────────────────────────────────────────────────────────────
+//  TRIGGER: gửi lúc 17:00 chiều
+// ─────────────────────────────────────────────────────────────
+function sendReport_17h() {
+  const msg = buildReportMessage("🕔 <b>BÁO CÁO CUỐI NGÀY (17:00)</b>");
+  sendTelegram(msg);
+}
+
+// ─────────────────────────────────────────────────────────────
+//  SETUP TRIGGER: chạy 1 lần để đăng ký lịch tự động
+//  Sau khi chạy → vào Extensions > Apps Script > Triggers để kiểm tra
+// ─────────────────────────────────────────────────────────────
+function setupDailyTriggers() {
+  // Xoá trigger cũ tránh trùng
+  ScriptApp.getProjectTriggers().forEach(t => {
+    if (["sendReport_12h","sendReport_17h"].includes(t.getHandlerFunction())) {
+      ScriptApp.deleteTrigger(t);
+    }
+  });
+
+  // 12:00 trưa (múi giờ của Spreadsheet – set Vietnam UTC+7 trong Settings)
+  ScriptApp.newTrigger("sendReport_12h")
+    .timeBased()
+    .everyDays(1)
+    .atHour(12)
+    .nearMinute(0)
+    .create();
+
+  // 17:00 chiều
+  ScriptApp.newTrigger("sendReport_17h")
+    .timeBased()
+    .everyDays(1)
+    .atHour(17)
+    .nearMinute(0)
+    .create();
+
+  Logger.log("✅ Đã tạo 2 trigger: 12:00 và 17:00 mỗi ngày.");
+}
+
+// ─────────────────────────────────────────────────────────────
+//  TEST: gửi tin nhắn thử ngay lập tức
+// ─────────────────────────────────────────────────────────────
+function testSendNow() {
+  const msg = buildReportMessage("🧪 <b>TEST BÁO CÁO</b>");
+  sendTelegram(msg);
+  Logger.log("Đã gửi test:\n" + msg);
+}
+
+// ─────────────────────────────────────────────────────────────
+//  doGet  –  ?sheet=report|khach_hang  &action=get|delete  &...filters
+// ─────────────────────────────────────────────────────────────
+function doGet(e) {
+  const params = e.parameter || {};
+
+  // --- TÍCH HỢP BÁO GIÁ ---
+  const action = params.action || "";
+  const bgActions = ["all", "hang_hoa", "khach_hang", "hop_dong_tong_quat", "hop_dong_chi_tiet", "hop_dong_version", "hop_dong_active", "dieu_khoan", "po_dxmh", "chi_tiet_mua_hang", "deal_reg"];
+  if (bgActions.includes(action)) {
+    return bg_doGet(e);
+  }
+  // -------------------------
+
+  const sheet  = (params.sheet || "report").toLowerCase();
+  let result;
+
+  try {
+    if (sheet === "khach_hang") {
+      result = params.action === "delete" ? kh_deleteRow(params) : kh_getData(params);
+    } else if (sheet === "po_dxmh") {
+      result = params.action === "delete" ? po_deleteRow(params) : po_getData(params);
+    } else if (sheet === "chi_tiet_mua_hang") {
+      result = params.action === "delete" ? ctmh_deleteRow(params) : ctmh_getData(params);
+    } else if (sheet === "deal_reg") {
+      result = params.action === "delete" ? dr_deleteRow(params) : dr_getData(params);
+    } else if (sheet === "sale_report") {
+      result = params.action === "delete" ? sr_deleteRow(params) : sr_getData(params);
+    } else {
+      result = params.action === "delete" ? deleteRow(params) : getData(params);
+    }
+  } catch (err) {
+    result = { status: "error", message: err.message };
+  }
+
+  return ContentService
+    .createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ─────────────────────────────────────────────────────────────
+//  doPost  –  body JSON: { sheet, action, ...fields }
+// ─────────────────────────────────────────────────────────────
+function doPost(e) {
+  const lock = LockService.getScriptLock();
+  try {
+    // Chờ tối đa 10 giây để lấy lock
+    lock.waitLock(10000);
+  } catch (err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: "error", message: "Hệ thống đang xử lý, vui lòng thử lại sau vài giây." }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  try {
+    // --- TÍCH HỢP BÁO GIÁ ---
+    let action = (e.parameter && e.parameter.action) ? String(e.parameter.action).trim() : "";
+    
+    if (!action && e && e.postData && e.postData.contents) {
+      try {
+        const parsed = JSON.parse(e.postData.contents);
+        if (parsed.action) action = String(parsed.action).trim();
+      } catch (err) {}
+    }
+
+    if (
+      action === "save_contract_temp" || 
+      action === "save_contract_official" ||
+      action === "update_contract" ||
+      action === "create_dieu_khoan" ||
+      action === "update_dieu_khoan" ||
+      action === "delete_dieu_khoan" ||
+      action === "addHangHoa" ||
+      action === "addHangHoaBatch" ||
+      action === "editHangHoa" ||
+      action === "deleteHangHoa"
+    ) {
+      return bg_doPost(e);
+    }
+    // -------------------------
+
+    let result;
+
+    try {
+      const payload = JSON.parse(e.postData.contents || "{}");
+      const sheet   = (payload.sheet || "report").toLowerCase();
+
+      if (action === "upload_image" || payload.action === "upload_image") {
+        try {
+          var decodedData = Utilities.base64Decode(payload.data);
+          var blob = Utilities.newBlob(decodedData, payload.mimeType || 'image/png', payload.filename || 'upload.png');
+          var file = DriveApp.createFile(blob);
+          file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+          result = { status: "success", action: "upload_image", url: file.getUrl() };
+        } catch (uploadErr) {
+          result = { status: "error", action: "upload_image", message: uploadErr.message };
+        }
+      } else if (sheet === "khach_hang") {
+        result = kh_postData(payload);
+      } else if (sheet === "po_dxmh") {
+        result = po_postData(payload);
+      } else if (sheet === "chi_tiet_mua_hang") {
+        result = ctmh_postData(payload);
+      } else if (sheet === "deal_reg") {
+        result = dr_postData(payload);
+      } else if (sheet === "sale_report") {
+        result = sr_postData(payload);
+      } else {
+        result = postData(payload);
+      }
+    } catch (err) {
+      result = { status: "error", message: err.message };
+    }
+
+    return ContentService
+      .createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } finally {
+    // Luôn nhả lock dù thành công hay lỗi
+    lock.releaseLock();
+  }
+}
+
+
+// ╔═══════════════════════════════════════════════════════════╗
+// ║              KHACH_HANG MODULE                            ║
+// ║  Columns (16):                                            ║
+// ║  Ma_khach_hang | Ten_khach_hang | Email_ca_nhan          ║
+// ║  So_dien_thoai_ca_nhan | Ma_cong_ty | Ten_cong_ty        ║
+// ║  So_dien_thoai_cong_ty | So_fax_cong_ty | Dia_chi_cong_ty║
+// ║  Email_cong_ty | Website_cong_ty | Hoa_hong              ║
+// ║  Tong_chi_tieu | Cong_no_chua_thanh_toan                 ║
+// ║  Trang_thai | Ghi_chu                                     ║
+// ╚═══════════════════════════════════════════════════════════╝
+
+const KH_SHEET_NAME = "KHACH_HANG";
+const KH_CACHE_KEY  = "kh_cache";
+const KH_COLS       = 23;
+
+// Mapping index → field name
+const KH_FIELDS = [
+  "ma_khach_hang",          // 0
+  "ten_khach_hang",         // 1
+  "email_ca_nhan",          // 2
+  "so_dien_thoai_ca_nhan",  // 3
+  "ma_cong_ty",             // 4
+  "ten_cong_ty",            // 5
+  "so_dien_thoai_cong_ty",  // 6
+  "so_fax_cong_ty",         // 7
+  "dia_chi_cong_ty",        // 8
+  "email_cong_ty",          // 9
+  "website_cong_ty",        // 10
+  "hoa_hong",               // 11
+  "tong_chi_tieu",          // 12
+  "cong_no_chua_thanh_toan",// 13
+  "trang_thai",             // 14
+  "ghi_chu",                // 15
+  "ten_khach_hang_phu",     // 16
+  "so_dien_thoai_ca_nhan_phu", // 17
+  "email_ca_nhan_phu",      // 18
+  "mst",                    // 19
+  "company",                // 20
+  "address",                // 21
+  "tel"                     // 22
+];
+
+// ─────────────────────────────────────────────────────────────
+//  HELPER: lấy sheet KHACH_HANG
+// ─────────────────────────────────────────────────────────────
+function kh_getSheet() {
+  return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(KH_SHEET_NAME);
+}
+
+function kh_invalidateCache() {
+  CacheService.getScriptCache().remove(KH_CACHE_KEY);
+}
+
+// ─────────────────────────────────────────────────────────────
+//  HELPER: tạo mã khách hàng tự động  →  KH_YYYYMMDD_xxxxx
+// ─────────────────────────────────────────────────────────────
+function kh_genID() {
+  const d   = new Date();
+  const pad = (n, l=2) => String(n).padStart(l, "0");
+  return `KH_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+}
+
+// ─────────────────────────────────────────────────────────────
+//  HELPER: convert array row → object
+// ─────────────────────────────────────────────────────────────
+function kh_rowToObj(r) {
+  const obj = {};
+  KH_FIELDS.forEach((f, i) => { obj[f] = r[i] !== undefined ? r[i] : ""; });
+  return obj;
+}
+
+// ─────────────────────────────────────────────────────────────
+//  HELPER: convert object → array (đúng thứ tự cột)
+// ─────────────────────────────────────────────────────────────
+function kh_objToRow(p, existing) {
+  return KH_FIELDS.map((f, i) =>
+    p[f] !== undefined ? p[f] : (existing ? existing[i] : "")
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+//  GET khách hàng
+//  Params: ten, trang_thai, cong_ty, search, limit, offset
+// ─────────────────────────────────────────────────────────────
+function kh_getData(params) {
+  const cache = CacheService.getScriptCache();
+
+  const filterTen     = params.ten        || null; // tìm theo tên
+  const filterStatus  = params.trang_thai || null;
+  const filterCongTy  = params.cong_ty    || null;
+  const filterSearch  = params.search     || null; // tìm toàn text
+  const filterMa      = params.ma         || null; // lấy 1 KH theo mã
+  const limit         = parseInt(params.limit)  || 0;
+  const offset        = parseInt(params.offset) || 0;
+
+  const useCache = !filterTen && !filterStatus && !filterCongTy
+                && !filterSearch && !filterMa && !limit;
+
+  if (useCache) {
+    const cached = cache.get(KH_CACHE_KEY);
+    if (cached) return JSON.parse(cached);
+  }
+
+  const sheet   = kh_getSheet();
+  const lastRow = sheet.getLastRow();
+
+  if (lastRow < 2) {
+    const empty = { status: "success", total: 0, data: [] };
+    if (useCache) cache.put(KH_CACHE_KEY, JSON.stringify(empty), CACHE_TTL);
+    return empty;
+  }
+
+  const values = sheet.getRange(2, 1, lastRow - 1, KH_COLS).getValues();
+
+  let rows = values
+    .filter(r => r[0] !== "")
+    .map(r => kh_rowToObj(r));
+
+  // --- filters ---
+  if (filterMa)     rows = rows.filter(r => r.ma_khach_hang === filterMa);
+  if (filterTen)    rows = rows.filter(r => r.ten_khach_hang.toLowerCase().includes(filterTen.toLowerCase()));
+  if (filterStatus) rows = rows.filter(r => r.trang_thai.toLowerCase() === filterStatus.toLowerCase());
+  if (filterCongTy) rows = rows.filter(r => r.ten_cong_ty.toLowerCase().includes(filterCongTy.toLowerCase()));
+  if (filterSearch) {
+    const q = filterSearch.toLowerCase();
+    rows = rows.filter(r =>
+      Object.values(r).some(v => String(v).toLowerCase().includes(q))
+    );
+  }
+
+  const total = rows.length;
+  if (limit > 0) rows = rows.slice(offset, offset + limit);
+
+  const result = { status: "success", total, offset, limit, data: rows };
+  if (useCache) cache.put(KH_CACHE_KEY, JSON.stringify(result), CACHE_TTL);
+  return result;
+}
+
+// ─────────────────────────────────────────────────────────────
+//  POST router
+// ─────────────────────────────────────────────────────────────
+function kh_postData(payload) {
+  const action = (payload.action || "add").toLowerCase();
+  if (action === "add")    return kh_addRow(payload);
+  if (action === "update") return kh_updateRow(payload);
+  if (action === "delete") return kh_deleteRow(payload);
+  return { status: "error", message: "action không hợp lệ. Dùng: add | update | delete" };
+}
+
+// ─────────────────────────────────────────────────────────────
+//  ADD
+// ─────────────────────────────────────────────────────────────
+function kh_addRow(p) {
+  if (!p.ten_khach_hang) return { status: "error", message: "ten_khach_hang là bắt buộc" };
+
+  const sheet = kh_getSheet();
+  const id    = p.ma_khach_hang || kh_genID();
+  p.ma_khach_hang = id;
+
+  const row = kh_objToRow(p, null);
+  sheet.appendRow(row);
+  ensureTextCols_(sheet, sheet.getLastRow(), row, [3, 6, 17, 22]);
+  kh_invalidateCache();
+  return { status: "success", action: "add", ma_khach_hang: id };
+}
+
+// ─────────────────────────────────────────────────────────────
+//  UPDATE (partial – chỉ cần truyền field muốn đổi)
+// ─────────────────────────────────────────────────────────────
+function kh_updateRow(p) {
+  if (!p.ma_khach_hang) return { status: "error", message: "ma_khach_hang là bắt buộc để update" };
+
+  const sheet   = kh_getSheet();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { status: "error", message: "Sheet rỗng" };
+
+  const cell = sheet.getRange(2, 1, lastRow - 1, 1).createTextFinder(p.ma_khach_hang).matchEntireCell(true).findNext();
+  if (!cell) return { status: "error", message: `Không tìm thấy: ${p.ma_khach_hang}` };
+
+  const rowNum  = cell.getRow();
+  const existing = sheet.getRange(rowNum, 1, 1, KH_COLS).getValues()[0];
+  const row = kh_objToRow(p, existing);
+  sheet.getRange(rowNum, 1, 1, KH_COLS).setValues([row]);
+  ensureTextCols_(sheet, rowNum, row, [3, 6, 17, 22]);
+
+  kh_invalidateCache();
+  return { status: "success", action: "update", ma_khach_hang: p.ma_khach_hang };
+}
+
+// ─────────────────────────────────────────────────────────────
+//  DELETE
+// ─────────────────────────────────────────────────────────────
+function kh_deleteRow(p) {
+  const id = p.ma_khach_hang || p.id;
+  if (!id) return { status: "error", message: "ma_khach_hang là bắt buộc để delete" };
+
+  const sheet   = kh_getSheet();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { status: "error", message: "Sheet rỗng" };
+
+  const cell = sheet.getRange(2, 1, lastRow - 1, 1).createTextFinder(id).matchEntireCell(true).findNext();
+  if (!cell) return { status: "error", message: `Không tìm thấy: ${id}` };
+
+  sheet.deleteRow(cell.getRow());
+  kh_invalidateCache();
+  return { status: "success", action: "delete", ma_khach_hang: id };
+}
+
+// ==========================================
+// TÍCH HỢP LOGIC BÁO GIÁ TỪ backend_baogia
+// ==========================================
+
+/* =========================
+ * CONFIG
+ * ========================= */
+const SPREADSHEET_ID = '1VHq5MrsQeBMyzlvrtezUvp9J1_TH-k0elMfY6bnO9Qc'
+
+const BG_SHEETS = {
+    hang_hoa: 'hang_hoa',
+    khach_hang: 'khach_hang',
+    nha_cung_cap: 'nha_cung_cap',
+    hop_dong_tong_quat: 'hop_dong_tong_quat',
+    hop_dong_chi_tiet: 'hop_dong_chi_tiet',
+    Thong_tin_ca_nhan: 'Thong_tin_ca_nhan',
+    hop_dong_version: 'hop_dong_version',
+    dieu_khoan: 'dieu_khoan',
+    po_dxmh: 'PO_DXMH',
+    chi_tiet_mua_hang: 'chi_tiet_mua_hang',
+    deal_reg: 'deal_reg',
+    sale_report: 'sale_report'
+}
+
+/* =========================
+ * ENTRY POINT
+ * ========================= */
+function bg_doGet(e) {
+    try {
+        const action = e.parameter.action || 'all'
+
+        // GET ALL
+        if (action === 'all') {
+            return bg_json(getAllSheets(e.parameter.fresh))
+        }
+
+        // GET ONE SHEET
+        if (BG_SHEETS[action]) {
+            return bg_json(getOneSheet(BG_SHEETS[action]))
+        }
+        if (action === 'hop_dong_active') {
+            return bg_json(getActiveContracts_())
+        }
+
+        return bg_json({ error: 'INVALID_ACTION' })
+    } catch (err) {
+        return bg_json({ error: err.message })
+    }
+}
+
+/* =========================
+ * CORE GET FUNCTIONS
+ * ========================= */
+
+// GET ALL SHEETS (CACHED)
+function getAllSheets(fresh) {
+    const cache = CacheService.getScriptCache()
+    const ss = SpreadsheetApp.getActiveSpreadsheet()
+    const result = {}
+
+    for (const key in BG_SHEETS) {
+        const cacheKey = 'CACHE_SHEET_' + key;
+        
+        if (!fresh) {
+            const cached = cache.get(cacheKey);
+            if (cached) {
+                result[key] = JSON.parse(cached);
+                continue;
+            }
+        }
+
+        const sh = ss.getSheetByName(BG_SHEETS[key])
+        if (!sh) {
+            result[key] = []
+            continue
+        }
+
+        const values = sh.getDataRange().getValues()
+        const data = values.length > 1 ? values.slice(1) : [];
+        result[key] = data;
+
+        // Cố gắng cache, nếu quá 100KB bỏ qua
+        try {
+            cache.put(cacheKey, JSON.stringify(data), 300) // cache 5 phút
+        } catch (e) {
+            // Ignore if payload > 100KB
+        }
+    }
+
+    return result
+}
+
+// GET ONE SHEET
+function getOneSheet(sheetName) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet()
+    const sh = ss.getSheetByName(sheetName)
+    if (!sh) return []
+
+    const values = sh.getDataRange().getValues()
+    return values.length > 1 ? values.slice(1) : []
+}
+
+/* =========================
+ * RESPONSE
+ * ========================= */
+function bg_json(data) {
+    return ContentService
+        .createTextOutput(JSON.stringify(data))
+        .setMimeType(ContentService.MimeType.JSON)
+}
+/* =========================
+ * POST (no-cors friendly)
+ * ========================= */
+function bg_doPost(e) {
+    const lock = LockService.getScriptLock()
+    try {
+        lock.waitLock(30 * 1000)
+
+        const action = (e.parameter && e.parameter.action) ? String(e.parameter.action).trim() : ''
+        const payload = parsePayload_(e)
+
+        if (!action) return bg_json({ ok: false, error: 'MISSING_ACTION' })
+
+        if (action === 'save_contract_temp') {
+            const rs = saveContractTemp_(payload)
+            clearGetCache_()
+            return bg_json({ ok: true, action, ...rs })
+        }
+
+        if (action === 'save_contract_official') {
+            const rs = saveContractOfficial_(payload)
+            clearGetCache_()
+            return bg_json({ ok: true, action, ...rs })
+        }
+
+        if (action === 'update_contract') {
+            const rs = updateContract_(payload)
+            clearGetCache_()
+            return bg_json({ ok: true, action, ...rs })
+        }
+
+        if (action === 'create_dieu_khoan') {
+            const rs = createDieuKhoan_(payload)
+            clearGetCache_()
+            return bg_json({ ok: true, action, ...rs })
+        }
+        if (action === 'update_dieu_khoan') {
+            const rs = updateDieuKhoan_(payload)
+            clearGetCache_()
+            return bg_json({ ok: true, action, ...rs })
+        }
+        if (action === 'delete_dieu_khoan') {
+            const rs = deleteDieuKhoan_(payload)
+            clearGetCache_()
+            return bg_json({ ok: true, action, ...rs })
+        }
+        if (action === 'addHangHoa') {
+            const rs = createHangHoa_(payload)
+            clearGetCache_()
+            return bg_json({ ok: true, action, ...rs })
+        }
+        if (action === 'addHangHoaBatch') {
+            const rs = createHangHoaBatch_(payload)
+            clearGetCache_()
+            return bg_json({ ok: true, action, ...rs })
+        }
+        if (action === 'editHangHoa') {
+            const rs = updateHangHoa_(payload)
+            clearGetCache_()
+            return bg_json({ ok: true, action, ...rs })
+        }
+        if (action === 'deleteHangHoa') {
+            const rs = deleteHangHoa_(payload)
+            clearGetCache_()
+            return bg_json({ ok: true, action, ...rs })
+        }
+        return bg_json({ ok: false, error: 'INVALID_ACTION', action })
+    } catch (err) {
+        return bg_json({ ok: false, error: String(err && err.message ? err.message : err) })
+    } finally {
+        try { lock.releaseLock() } catch (e) { }
+    }
+}
+
+
+/* =========================
+ * HELPERS
+ * ========================= */
+function parsePayload_(e) {
+    // Ưu tiên payload từ form-url-encoded: payload=<json>
+    if (e && e.parameter && e.parameter.payload) {
+        try { return JSON.parse(e.parameter.payload) } catch (err) { return {} }
+    }
+
+    // fallback nếu gửi JSON body
+    if (e && e.postData && e.postData.contents) {
+        const ct = String(e.postData.type || '')
+        if (ct.indexOf('application/json') >= 0) {
+            try { return JSON.parse(e.postData.contents) } catch (err) { return {} }
+        }
+    }
+    return {}
+}
+function saveContractVersion_(maMoi, soHopDong, maCu) {
+    const shVer = getSheet_(BG_SHEETS.hop_dong_version)
+    const now = Utilities.formatDate(
+        new Date(),
+        'Asia/Ho_Chi_Minh',
+        'HH:mm:ss dd/MM/yyyy'
+    )
+
+
+    // 1️⃣ deactivate version cũ (nếu có)
+    if (maCu) {
+        const lastRow = shVer.getLastRow()
+        if (lastRow >= 2) {
+            const data = shVer.getRange(2, 1, lastRow - 1, 5).getValues()
+            for (let i = 0; i < data.length; i++) {
+                if (String(data[i][0]) === maCu) {
+                    shVer.getRange(i + 2, 5).setValue(false) // is_active = FALSE
+                    break
+                }
+            }
+        }
+    }
+
+    // 2️⃣ insert version mới
+    shVer.appendRow([
+        maMoi,
+        soHopDong,
+        maCu || '',
+        now,
+        true
+    ])
+}
+
+function toNum_(v, fallback) {
+    const n = Number(v)
+    return isFinite(n) ? n : (fallback || 0)
+}
+
+function getSheet_(name) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet()
+    const sh = ss.getSheetByName(name)
+    if (!sh) throw new Error('SHEET_NOT_FOUND: ' + name)
+    return sh
+}
+
+function appendRows_(sh, rows2d) {
+    if (!rows2d || !rows2d.length) return 0
+    const startRow = sh.getLastRow() + 1
+    const numRows = rows2d.length
+    const numCols = rows2d[0].length
+    sh.getRange(startRow, 1, numRows, numCols).setValues(rows2d)
+    return numRows
+}
+
+function clearGetCache_() {
+    try {
+        CacheService.getScriptCache().remove('GET_ALL_SHEETS')
+    } catch (e) { }
+}
+/* =========================
+ * CONST COL COUNT (SCHEMA)
+ * ========================= */
+const HD_TONG_COLS = 32
+const HD_CT_COLS = 23
+const HD_VER_COLS = 5 // ✅ version sheet cols
+
+function normalizeRow_(arr, cols) {
+    var row = Array.isArray(arr) ? arr.slice(0, cols) : []
+    while (row.length < cols) row.push('')
+    return row
+}
+
+function normalizeRows2D_(rows, cols) {
+    return (Array.isArray(rows) ? rows : []).map(function (r) {
+        return normalizeRow_(r, cols)
+    })
+}
+function getHangHoaTiGiaMap_() {
+    const cache = CacheService.getScriptCache()
+    const k = 'HH_TIGIA_MAP'
+    const cached = cache.get(k)
+    if (cached) return JSON.parse(cached)
+
+    const sh = getSheet_(BG_SHEETS.hang_hoa)
+    const lastRow = sh.getLastRow()
+    const map = {}
+
+    if (lastRow >= 2) {
+        // đọc từ A..P (16 cột) để lấy Ma_hang và Ti_gia
+        const values = sh.getRange(2, 1, lastRow - 1, 16).getValues()
+        for (let i = 0; i < values.length; i++) {
+            const ma = String(values[i][0] || '').trim()        // col A
+            const tg = toNum_(values[i][15], 1)                 // col P (index 15)
+            if (ma) map[ma] = tg
+        }
+    }
+
+    cache.put(k, JSON.stringify(map), 300)
+    return map
+}
+
+function getTiGiaByMaHang_(maHang, hhMap) {
+    const ma = String(maHang || '').trim()
+    if (!ma) return 25400
+    if (hhMap && typeof hhMap[ma] !== 'undefined') {
+        const val = toNum_(hhMap[ma], 25400)
+        return val > 1 ? val : 25400
+    }
+    // fallback
+    return 25400
+}
+function buildContractDetailRows_(ctRows, trangThaiHopDong) {
+    const hhMap = getHangHoaTiGiaMap_()
+
+    return (Array.isArray(ctRows) ? ctRows : []).map(function (r) {
+        let row = normalizeRow_(r, HD_CT_COLS)
+
+        // Ma_hang index 2
+        const maHang = row[2]
+
+        // Don_vi_tien_te index 15: giữ FE gửi gì thì giữ
+        const dvtien = String(row[15] || '').trim()
+        row[15] = dvtien
+
+        // ✅ IF: nếu FE đã chuyển sang VND thì giữ Ti_gia = 1 (không overwrite theo hang_hoa)
+        if (dvtien.toUpperCase() === 'VND') {
+            row[16] = 1
+        } else {
+            // Ti_gia ép theo hang_hoa
+            const tiGia = getTiGiaByMaHang_(maHang, hhMap)
+            row[16] = toNum_(tiGia, 1)
+        }
+
+        // Trang_thai_hop_dong ép theo nút (index 19)
+        row[19] = trangThaiHopDong || ''
+
+        // So_luong index 18
+        row[18] = Math.max(1, toNum_(row[18], 1))
+
+        // ép số cho sạch
+        row[13] = toNum_(row[13], 0) // Gia_tieu_chuan
+        row[14] = toNum_(row[14], 0) // Don_gia
+        row[17] = toNum_(row[17], 0) // Thue_VAT
+
+        return row
+    })
+}
+
+
+function patchTongQuatCurrencyTiGia_(hdRow, ctRows) {
+    hdRow = normalizeRow_(hdRow, HD_TONG_COLS)
+
+    let cur = ''
+    if (Array.isArray(ctRows) && ctRows.length) {
+        const first = ctRows[0]
+        if (Array.isArray(first)) cur = String(first[15] || '').trim()
+    }
+
+    const curUp = (cur || String(hdRow[17] || 'VND')).trim().toUpperCase()
+
+    // Nếu USD => nhân với tỉ giá để quy về VND
+    const tiGia = (curUp === 'VND') ? 1 : toNum_(getContractTiGiaFromCT_(ctRows), 1)
+    
+    if (curUp === 'USD') {
+        hdRow[5] = toNum_(hdRow[5], 0) * tiGia  // truoc_thue
+        hdRow[6] = toNum_(hdRow[6], 0) * tiGia  // vat
+        hdRow[7] = toNum_(hdRow[7], 0) * tiGia  // sau_thue
+        hdRow[9] = toNum_(hdRow[9], 0) * tiGia  // tong_cong
+        hdRow[20] = toNum_(hdRow[20], 0) * tiGia // tong_gia_thuc_te
+        
+        hdRow[25] = toNum_(hdRow[25], 0) * tiGia // chiet_khau_tong_truoc_thue
+        hdRow[27] = toNum_(hdRow[27], 0) * tiGia // thue_chenh_lech_gia
+        hdRow[29] = toNum_(hdRow[29], 0) * tiGia // chenh_lech_gia
+        hdRow[30] = toNum_(hdRow[30], 0) * tiGia // con_lai
+        hdRow[31] = toNum_(hdRow[31], 0) * tiGia // tong_chiet_khau
+    }
+
+    // Luôn lưu dưới dạng VND trong hop_dong_tong_quat
+    hdRow[17] = 'VND'
+    hdRow[18] = 1
+
+    return hdRow
+}
+
+/* =========================
+ * GET CONTRACT TIGIA (dùng update KH)
+ * - lấy Ti_gia theo Ma_hang của dòng CT đầu tiên
+ * ========================= */
+function getContractTiGiaFromCT_(ctRows) {
+    if (!Array.isArray(ctRows) || ctRows.length < 1) return 1
+    const first = ctRows[0]
+
+    const cur = Array.isArray(first) ? String(first[15] || '').trim().toUpperCase() : ''
+    if (cur === 'VND') return 1
+
+    const maHang = Array.isArray(first) ? first[2] : ''
+    const hhMap = getHangHoaTiGiaMap_()
+    return getTiGiaByMaHang_(maHang, hhMap)
+}
+/* =========================
+ * SAVE CONTRACT TEMP
+ * ========================= */
+function saveContractTemp_(payload) {
+    let hdRow = payload.hd_tong_quat_row
+    const ctRows = payload.hd_chi_tiet_rows
+
+    if (!Array.isArray(hdRow) || hdRow.length < 17) throw new Error('INVALID_hd_tong_quat_row')
+    if (!Array.isArray(ctRows) || ctRows.length < 1) throw new Error('INVALID_hd_chi_tiet_rows')
+
+    hdRow = normalizeRow_(hdRow, HD_TONG_COLS)
+    hdRow[14] = 'Chưa thanh toán đủ'
+    hdRow[15] = 'Tạm'
+
+    // ✅ set Don_vi_tien_te + Ti_gia cho tổng quát
+    hdRow = patchTongQuatCurrencyTiGia_(hdRow, ctRows)
+
+    // ✅ Cong_no_cu lấy từ KH (cột N) trước khi append
+    const maKH = String(hdRow[2] || '').trim()
+    if (!maKH) throw new Error('MISSING_ma_khach_hang')
+    const shKH = getSheet_(BG_SHEETS.khach_hang)
+    hdRow[13] = getCustomerCongNoVND_(shKH, maKH)
+
+    const shTong = getSheet_(BG_SHEETS.hop_dong_tong_quat)
+    const shCT = getSheet_(BG_SHEETS.hop_dong_chi_tiet)
+
+    shTong.appendRow(hdRow)
+
+    // ✅ VERSIONING
+    const maMoi = String(hdRow[0])
+    const soHD = String(hdRow[1])
+    const maCu = String(hdRow[19] || '')
+    saveContractVersion_(maMoi, soHD, maCu)
+
+
+    const fixedCT = buildContractDetailRows_(ctRows, 'Tạm')
+    appendRows_(shCT, fixedCT)
+
+    clearGetCache_()
+    return { appended_tong_quat: 1, appended_chi_tiet: fixedCT.length }
+}
+
+
+/* =========================
+ * SAVE CONTRACT OFFICIAL
+ * ========================= */
+function saveContractOfficial_(payload) {
+    let hdRow = payload.hd_tong_quat_row
+    const ctRows = payload.hd_chi_tiet_rows
+    const maKH = String(payload.ma_khach_hang || '').trim()
+    const tongSauThue = toNum_(payload.tong_sau_thue, 0)
+
+    if (!Array.isArray(hdRow) || hdRow.length < 17) throw new Error('INVALID_hd_tong_quat_row')
+    if (!Array.isArray(ctRows) || ctRows.length < 1) throw new Error('INVALID_hd_chi_tiet_rows')
+    if (!maKH) throw new Error('MISSING_ma_khach_hang')
+    if (tongSauThue <= 0) throw new Error('INVALID_tong_sau_thue')
+
+    hdRow = normalizeRow_(hdRow, HD_TONG_COLS)
+    hdRow[14] = 'Chưa thanh toán đủ'
+    hdRow[15] = 'Chính thức'
+
+    // ✅ set Don_vi_tien_te + Ti_gia cho tổng quát
+    hdRow = patchTongQuatCurrencyTiGia_(hdRow, ctRows)
+
+    const shTong = getSheet_(BG_SHEETS.hop_dong_tong_quat)
+    const shCT = getSheet_(BG_SHEETS.hop_dong_chi_tiet)
+    const shKH = getSheet_(BG_SHEETS.khach_hang)
+
+    // ✅ UPDATE KH: luôn quy về VND
+    const curUp = String(hdRow[17] || 'VND').trim().toUpperCase()
+    const tiGiaContract = (curUp === 'VND') ? 1 : toNum_(hdRow[18], 1)
+    const addValueVND = toNum_(hdRow[7], 0)
+
+    // 1) update KH trước
+    const updated = updateCustomerTotals_(shKH, maKH, addValueVND)
+
+    // 2) Cong_no_cu = công nợ mới (SAU KHI update)
+    hdRow[13] = toNum_(updated.Cong_no_chua_thanh_toan, 0)
+
+    // 3) rồi mới append hop_dong_tong_quat + chi_tiet
+    shTong.appendRow(hdRow)
+
+    // ✅ VERSIONING
+    const maMoi = String(hdRow[0])
+    const soHD = String(hdRow[1])
+    const maCu = String(hdRow[19] || '')
+    saveContractVersion_(maMoi, soHD, maCu)
+
+
+    const fixedCT = buildContractDetailRows_(ctRows, 'Chính thức')
+    appendRows_(shCT, fixedCT)
+
+    clearGetCache_()
+    return {
+        appended_tong_quat: 1,
+        appended_chi_tiet: fixedCT.length,
+        currency: curUp,
+        ti_gia_contract: tiGiaContract,
+        add_value_vnd: addValueVND,
+        customer_updated: updated,
+        cong_no_cu_saved: hdRow[13]
+    }
+}
+
+/* =========================
+ * UPDATE CONTRACT (in-place)
+ * - Update row cũ trong hop_dong_tong_quat theo ma_hop_dong
+ * - Xóa tất cả rows cũ trong hop_dong_chi_tiet theo ma_hop_dong, thay bằng rows mới
+ * - KHÔNG cộng dồn công nợ khách hàng (vì đã cộng lần đầu khi tạo)
+ * ========================= */
+function updateContract_(payload) {
+    var hdRow = payload.hd_tong_quat_row
+    var ctRows = payload.hd_chi_tiet_rows
+    var maHD = String(payload.ma_hop_dong || '').trim()
+
+    if (!maHD) throw new Error('MISSING_ma_hop_dong')
+    if (!Array.isArray(hdRow) || hdRow.length < 17) throw new Error('INVALID_hd_tong_quat_row')
+    if (!Array.isArray(ctRows) || ctRows.length < 1) throw new Error('INVALID_hd_chi_tiet_rows')
+
+    hdRow = normalizeRow_(hdRow, HD_TONG_COLS)
+    hdRow[14] = 'Chưa thanh toán đủ'
+    hdRow[15] = 'Chính thức'
+
+    // set Don_vi_tien_te + Ti_gia cho tổng quát
+    hdRow = patchTongQuatCurrencyTiGia_(hdRow, ctRows)
+
+    var shTong = getSheet_(BG_SHEETS.hop_dong_tong_quat)
+    var shCT = getSheet_(BG_SHEETS.hop_dong_chi_tiet)
+
+    // ── 1) UPDATE hop_dong_tong_quat: tìm row theo ma_hop_dong (cột A) ──
+    var tongLastRow = shTong.getLastRow()
+    var tongFoundRow = -1
+    if (tongLastRow >= 2) {
+        var tongData = shTong.getRange(2, 1, tongLastRow - 1, 1).getValues()
+        for (var i = 0; i < tongData.length; i++) {
+            if (String(tongData[i][0] || '').trim() === maHD) {
+                tongFoundRow = i + 2
+                // Không break, lấy row cuối cùng (mới nhất) nếu có duplicate
+            }
+        }
+    }
+
+    if (tongFoundRow === -1) {
+        // Nếu chưa có row cũ -> append mới (fallback cho trường hợp lần đầu)
+        shTong.appendRow(hdRow)
+    } else {
+        // Update in-place row cũ
+        shTong.getRange(tongFoundRow, 1, 1, HD_TONG_COLS).setValues([hdRow])
+    }
+
+    // ── 2) UPDATE hop_dong_chi_tiet: xóa rows cũ, thay bằng rows mới ──
+    var ctLastRow = shCT.getLastRow()
+    if (ctLastRow >= 2) {
+        var ctData = shCT.getRange(2, 1, ctLastRow - 1, 1).getValues()
+        // Xóa từ dưới lên để không bị lệch index
+        for (var j = ctData.length - 1; j >= 0; j--) {
+            if (String(ctData[j][0] || '').trim() === maHD) {
+                shCT.deleteRow(j + 2)
+            }
+        }
+    }
+
+    // Append chi tiết mới
+    var fixedCT = buildContractDetailRows_(ctRows, 'Chính thức')
+    appendRows_(shCT, fixedCT)
+
+    clearGetCache_()
+    return {
+        updated_tong_quat: tongFoundRow !== -1 ? 1 : 0,
+        appended_tong_quat: tongFoundRow === -1 ? 1 : 0,
+        replaced_chi_tiet: fixedCT.length,
+        ma_hop_dong: maHD
+    }
+}
+
+
+function updateCustomerTotals_(shKH, maKH, addValue) {
+    const lastRow = shKH.getLastRow()
+    if (lastRow < 2) throw new Error('KH_EMPTY')
+
+    const data = shKH.getRange(2, 1, lastRow - 1, 1).getValues() // cột A từ row2
+    let foundRow = -1
+    for (let i = 0; i < data.length; i++) {
+        if (String(data[i][0] || '').trim() === maKH) {
+            foundRow = i + 2
+            break
+        }
+    }
+    if (foundRow === -1) return {} // Gracefully handle unknown customers
+
+    // Tong_chi_tieu = col 13 (M), Cong_no_chua_thanh_toan = col 14 (N)
+    const curTongChiTieu = toNum_(shKH.getRange(foundRow, 13).getValue(), 0)
+    const curCongNo = toNum_(shKH.getRange(foundRow, 14).getValue(), 0)
+
+    shKH.getRange(foundRow, 13).setValue(curTongChiTieu + addValue)
+    shKH.getRange(foundRow, 14).setValue(curCongNo + addValue)
+
+    return { row: foundRow, Tong_chi_tieu: curTongChiTieu + addValue, Cong_no_chua_thanh_toan: curCongNo + addValue }
+}
+
+function findCustomerRow_(shKH, maKH) {
+    const lastRow = shKH.getLastRow()
+    if (lastRow < 2) throw new Error('KH_EMPTY')
+
+    const data = shKH.getRange(2, 1, lastRow - 1, 1).getValues() // col A
+    for (let i = 0; i < data.length; i++) {
+        if (String(data[i][0] || '').trim() === String(maKH || '').trim()) return i + 2
+    }
+    return -1
+}
+
+function getCustomerCongNoVND_(shKH, maKH) {
+    const r = findCustomerRow_(shKH, maKH)
+    if (r === -1) return 0 // Gracefully return 0 debt for unknown customers
+    // Cong_no_chua_thanh_toan = col N = 14
+    return toNum_(shKH.getRange(r, 14).getValue(), 0)
+}
+
+function getActiveContracts_() {
+    const shVer = getSheet_(BG_SHEETS.hop_dong_version)
+    const shHD = getSheet_(BG_SHEETS.hop_dong_tong_quat)
+
+    const verData = shVer.getDataRange().getValues().slice(1)
+    const activeSet = new Set(
+        verData
+            .filter(r => r[4] === true)
+            .map(r => String(r[0]))
+    )
+
+    const hdData = shHD.getDataRange().getValues().slice(1)
+    return hdData.filter(r => activeSet.has(String(r[0])))
+}
+
+/* =========================
+ * CRUD ĐIỀU KHOẢN
+ * ========================= */
+function createDieuKhoan_(payload) {
+    const sh = getSheet_(BG_SHEETS.dieu_khoan)
+    const id = Utilities.getUuid()
+    sh.appendRow([
+        id,
+        payload.Mau || '',
+        payload.Ma_khach_hang || '',
+        payload.Ten_khach_hang || '',
+        payload.Ma_cong_ty || '',
+        payload.Ten_cong_ty || '',
+        payload.Noi_dung || ''
+    ])
+    return { inserted_id: id }
+}
+
+function updateDieuKhoan_(payload) {
+    const sh = getSheet_(BG_SHEETS.dieu_khoan)
+    const id = payload.ID
+    if (!id) throw new Error('MISSING_ID')
+    const lastRow = sh.getLastRow()
+    if (lastRow < 2) throw new Error('NOT_FOUND')
+    const data = sh.getRange(2, 1, lastRow - 1, 1).getValues()
+    let foundRow = -1
+    for (let i = 0; i < data.length; i++) {
+        if (String(data[i][0]) === String(id)) {
+            foundRow = i + 2; break;
+        }
+    }
+    if (foundRow === -1) throw new Error('NOT_FOUND')
+    sh.getRange(foundRow, 2, 1, 6).setValues([[
+        payload.Mau || '',
+        payload.Ma_khach_hang || '',
+        payload.Ten_khach_hang || '',
+        payload.Ma_cong_ty || '',
+        payload.Ten_cong_ty || '',
+        payload.Noi_dung || ''
+    ]])
+    return { updated_id: id }
+}
+
+function deleteDieuKhoan_(payload) {
+    const sh = getSheet_(BG_SHEETS.dieu_khoan)
+    const id = payload.ID
+    if (!id) throw new Error('MISSING_ID')
+    const lastRow = sh.getLastRow()
+    if (lastRow < 2) throw new Error('NOT_FOUND')
+    const data = sh.getRange(2, 1, lastRow - 1, 1).getValues()
+    let foundRow = -1
+    for (let i = 0; i < data.length; i++) {
+        if (String(data[i][0]) === String(id)) {
+            foundRow = i + 2; break;
+        }
+    }
+    if (foundRow === -1) throw new Error('NOT_FOUND')
+    sh.deleteRow(foundRow)
+    return { deleted_id: id }
+}
+
+function createHangHoa_(payload) {
+    const sh = getSheet_(BG_SHEETS.hang_hoa)
+    sh.appendRow(payload)
+    
+    // Rebuild liên kết cho tất cả hàng cùng danh mục
+    // Column index: [0]Ma_hang, [1]Ten_hang, [8]Danh_muc, [17]Ma_hang_lien_ket, [18]Ten_hang_lien_ket
+    const danhMuc = String(payload[8] || '').trim().toUpperCase()
+    if (danhMuc) {
+        rebuildCategoryLinks_(sh, danhMuc)
+    }
+    
+    return { data: payload }
+}
+
+/**
+ * Rebuild Ma_hang_lien_ket + Ten_hang_lien_ket cho TẤT CẢ hàng
+ * cùng Danh_muc trong sheet hang_hoa.
+ * Mỗi hàng sẽ liên kết tới tất cả hàng khác cùng danh mục.
+ */
+function rebuildCategoryLinks_(sh, category) {
+    const cat = String(category).trim().toUpperCase()
+    if (!cat) return
+    
+    const lastRow = sh.getLastRow()
+    if (lastRow < 2) return
+    
+    // Đọc tất cả dữ liệu: Ma_hang(A), Ten_hang(B), Danh_muc(I)
+    const data = sh.getRange(2, 1, lastRow - 1, 19).getValues() // 19 cột (A-S)
+    
+    // Tìm tất cả hàng cùng danh mục
+    const sameCatIndices = []
+    for (let i = 0; i < data.length; i++) {
+        const rowCat = String(data[i][8] || '').trim().toUpperCase()
+        if (rowCat === cat) {
+            sameCatIndices.push(i)
+        }
+    }
+    
+    if (sameCatIndices.length < 2) return // Chỉ có 1 hoặc 0 hàng, không cần liên kết
+    
+    // Với mỗi hàng cùng danh mục, gán liên kết = tất cả hàng KHÁC cùng danh mục
+    sameCatIndices.forEach(idx => {
+        const myMa = String(data[idx][0] || '').trim()
+        const otherMas = []
+        const otherTens = []
+        
+        sameCatIndices.forEach(otherIdx => {
+            if (otherIdx !== idx) {
+                otherMas.push(String(data[otherIdx][0] || '').trim())
+                otherTens.push(String(data[otherIdx][1] || '').trim())
+            }
+        })
+        
+        const sheetRow = idx + 2 // 1-indexed, skip header
+        sh.getRange(sheetRow, 18).setValue(otherMas.join('\n'))   // Col R = Ma_hang_lien_ket
+        sh.getRange(sheetRow, 19).setValue(otherTens.join('\n'))  // Col S = Ten_hang_lien_ket
+    })
+}
+
+function createHangHoaBatch_(payloads) {
+    if (!Array.isArray(payloads) || payloads.length === 0) return { error: 'No data' };
+    const sh = getSheet_(BG_SHEETS.hang_hoa);
+    const numRows = payloads.length;
+    const numCols = payloads[0].length;
+    
+    // Ensure all payloads have the same length
+    const uniformPayloads = payloads.map(p => {
+       const row = new Array(numCols).fill('');
+       for(let i=0; i<Math.min(p.length, numCols); i++) {
+           row[i] = p[i] !== undefined ? p[i] : '';
+       }
+       return row;
+    });
+
+    const lastRow = sh.getLastRow();
+    let existingMap = {};
+    if (lastRow >= 2) {
+        const data = sh.getRange(2, 1, lastRow - 1, 1).getValues();
+        for (let i = 0; i < data.length; i++) {
+            const ma = String(data[i][0]).trim();
+            if (ma) {
+                existingMap[ma] = i + 2;
+            }
+        }
+    }
+
+    const newRows = [];
+    let updatedCount = 0;
+
+    uniformPayloads.forEach(row => {
+        const maHang = String(row[0]).trim();
+        if (maHang && existingMap[maHang]) {
+            const rowIdx = existingMap[maHang];
+            sh.getRange(rowIdx, 1, 1, numCols).setValues([row]);
+            updatedCount++;
+        } else {
+            newRows.push(row);
+        }
+    });
+
+    if (newRows.length > 0) {
+        sh.getRange(sh.getLastRow() + 1, 1, newRows.length, numCols).setValues(newRows);
+    }
+    return { count: newRows.length + updatedCount, updated: updatedCount, added: newRows.length };
+}
+
+function updateHangHoa_(payload) {
+    const sh = getSheet_(BG_SHEETS.hang_hoa)
+    const maHang = payload[0] // Ma_hang is at index 0
+    if (!maHang) throw new Error('MISSING_MA_HANG')
+    const lastRow = sh.getLastRow()
+    if (lastRow < 2) throw new Error('NOT_FOUND')
+    const data = sh.getRange(2, 1, lastRow - 1, 1).getValues()
+    let foundIdx = -1
+    for (let i = 0; i < data.length; i++) {
+        if (String(data[i][0]).trim() === String(maHang).trim()) {
+            foundIdx = i
+            break
+        }
+    }
+    if (foundIdx === -1) throw new Error('NOT_FOUND')
+    sh.getRange(foundIdx + 2, 1, 1, payload.length).setValues([payload])
+    return { updatedIndex: foundIdx + 2 }
+}
+
+function deleteHangHoa_(payload) {
+    const sh = getSheet_(BG_SHEETS.hang_hoa)
+    const maHang = payload.Ma_hang || payload[0]
+    if (!maHang) throw new Error('MISSING_MA_HANG')
+    const lastRow = sh.getLastRow()
+    if (lastRow < 2) throw new Error('NOT_FOUND')
+    const data = sh.getRange(2, 1, lastRow - 1, 1).getValues()
+    let foundIdx = -1
+    for (let i = 0; i < data.length; i++) {
+        if (String(data[i][0]).trim() === String(maHang).trim()) {
+            foundIdx = i
+            break
+        }
+    }
+    if (foundIdx === -1) throw new Error('NOT_FOUND')
+    sh.deleteRow(foundIdx + 2)
+    return { deletedIndex: foundIdx + 2 }
+}
+
+// ╔═══════════════════════════════════════════════════════════╗
+// ║         DATE FORMATTING HELPER                            ║
+// ╚═══════════════════════════════════════════════════════════╝
+function formatDateDDMMYYYY_(value) {
+  if (!value) return '';
+  if (value instanceof Date) {
+    const pad = n => String(n).padStart(2, '0');
+    return `${pad(value.getDate())}/${pad(value.getMonth()+1)}/${value.getFullYear()}`;
+  }
+  const num = Number(value);
+  if (isFinite(num) && num > 30000 && num < 60000) {
+    const d = new Date((num - 25569) * 86400 * 1000);
+    const pad = n => String(n).padStart(2, '0');
+    return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`;
+  }
+  return String(value);
+}
+
+function formatDateCols_(row, indices) {
+  indices.forEach(i => { if (i < row.length && row[i]) row[i] = formatDateDDMMYYYY_(row[i]); });
+  return row;
+}
+
+function generic_rowToObj_(r, fields) {
+  const obj = {};
+  fields.forEach((f, i) => { obj[f] = r[i] !== undefined ? r[i] : ''; });
+  return obj;
+}
+
+function generic_objToRow_(p, fields, existing) {
+  return fields.map((f, i) => p[f] !== undefined ? p[f] : (existing ? existing[i] : ''));
+}
+
+// Đảm bảo các cột phone/text giữ số 0 đầu (format text '@')
+function ensureTextCols_(sh, rowNum, row, colIndices) {
+  colIndices.forEach(ci => {
+    const cell = sh.getRange(rowNum, ci + 1); // 1-indexed
+    cell.setNumberFormat('@');
+    const val = row[ci];
+    if (val !== undefined && val !== '') cell.setValue(String(val));
+  });
+}
+
+// Bulk version: format text cols for multiple rows
+function ensureTextColsBulk_(sh, startRow, rows2d, colIndices) {
+  if (!rows2d.length || !colIndices.length) return;
+  colIndices.forEach(ci => {
+    const range = sh.getRange(startRow, ci + 1, rows2d.length, 1);
+    range.setNumberFormat('@');
+    const vals = rows2d.map(r => [String(r[ci] || '')]);
+    range.setValues(vals);
+  });
+}
+
+// ╔═══════════════════════════════════════════════════════════╗
+// ║              PO_DXMH MODULE (Đơn hàng PO)                ║
+// ║  34 cột — mỗi hàng = 1 PO                                ║
+// ╚═══════════════════════════════════════════════════════════╝
+const PO_SHEET = "PO_DXMH";
+const PO_CACHE = "po_dxmh_cache";
+const PO_COLS  = 35;
+const PO_DATE_IDX = [29, 32, 33]; // ngay_dat_coc, ngay_co_hang_du_kien, created_time
+
+const PO_FIELDS = [
+  "ma_hop_dong","so_hop_dong","so_po","ten_po",
+  "do_uu_tien","trang_thai_don_hang","ma_khach_hang",
+  "company","address","tel","fax","contact","email","mobile","website",
+  "cong_ty","dia_chi","mst","email_inv",
+  "thanh_ly","dn_thanh_toan","co_cq",
+  "giao_hang_hoa_don","giao_hang_ky_thuat","lien_he_kd_truoc",
+  "nguoi_nhan_hang","dia_chi_nhan","so_dien_thoai","nguoi_lien_he_trien_khai",
+  "ngay_dat_coc","ti_le_dat_coc","cong_no_ngay",
+  "ngay_co_hang_du_kien","created_time","content_of_contract_po"
+];
+
+function po_getSheet_() { return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(PO_SHEET); }
+function po_invalidate_() { CacheService.getScriptCache().remove(PO_CACHE); }
+
+function po_genID_() {
+  const d = new Date(), pad = (n,l=2) => String(n).padStart(l,'0');
+  return `PO_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}${pad(d.getMilliseconds(),3)}`;
+}
+
+function po_getData(params) {
+  const cache = CacheService.getScriptCache();
+  const filterMa = params.ma_hop_dong || params.ma || null;
+  const filterSoPO = params.so_po || null;
+  const filterSearch = params.search || null;
+  const filterStatus = params.trang_thai || null;
+  const limit = parseInt(params.limit) || 0;
+  const offset = parseInt(params.offset) || 0;
+  const useCache = !filterMa && !filterSoPO && !filterSearch && !filterStatus && !limit;
+
+  if (useCache) { const c = cache.get(PO_CACHE); if (c) return JSON.parse(c); }
+
+  const sh = po_getSheet_();
+  const lastRow = sh.getLastRow();
+  if (lastRow < 2) { const e = {status:"success",total:0,data:[]}; if(useCache) cache.put(PO_CACHE,JSON.stringify(e),CACHE_TTL); return e; }
+
+  const values = sh.getRange(2,1,lastRow-1,PO_COLS).getValues();
+  let rows = values.filter(r => r[0] !== '').map(r => generic_rowToObj_(r, PO_FIELDS));
+
+  if (filterMa) rows = rows.filter(r => r.ma_hop_dong === filterMa);
+  if (filterSoPO) rows = rows.filter(r => String(r.so_po).toLowerCase().includes(filterSoPO.toLowerCase()));
+  if (filterStatus) rows = rows.filter(r => String(r.trang_thai_don_hang).toLowerCase() === filterStatus.toLowerCase());
+  if (filterSearch) { const q = filterSearch.toLowerCase(); rows = rows.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes(q))); }
+
+  rows.reverse();
+  const total = rows.length;
+  if (limit > 0) rows = rows.slice(offset, offset + limit);
+  const result = {status:"success",total,offset,limit,data:rows};
+  if (useCache) cache.put(PO_CACHE, JSON.stringify(result), CACHE_TTL);
+  return result;
+}
+
+function po_postData(payload) {
+  const action = (payload.action || 'add').toLowerCase();
+  if (action === 'add') return po_addRow(payload);
+  if (action === 'update') return po_updateRow(payload);
+  if (action === 'delete') return po_deleteRow(payload);
+  return {status:"error",message:"action: add|update|delete"};
+}
+
+function po_addRow(p) {
+  const sh = po_getSheet_();
+  const id = p.ma_hop_dong || po_genID_();
+  p.ma_hop_dong = id;
+  if (!p.created_time) {
+    const now = new Date(), pad = n => String(n).padStart(2,'0');
+    p.created_time = `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()}`;
+  }
+  let row = generic_objToRow_(p, PO_FIELDS, null);
+  row = formatDateCols_(row, PO_DATE_IDX);
+  sh.appendRow(row);
+  ensureTextCols_(sh, sh.getLastRow(), row, [9, 13, 27]);
+  po_invalidate_(); clearGetCache_();
+  return {status:"success",action:"add",ma_hop_dong:id};
+}
+
+function po_updateRow(p) {
+  const id = p.ma_hop_dong;
+  if (!id) return {status:"error",message:"ma_hop_dong bắt buộc"};
+  const sh = po_getSheet_();
+  const lastRow = sh.getLastRow();
+  if (lastRow < 2) return {status:"error",message:"Sheet rỗng"};
+  const cell = sh.getRange(2, 1, lastRow - 1, 1).createTextFinder(id).matchEntireCell(true).findNext();
+  if (!cell) return {status:"error",message:"Không tìm: "+id};
+  const rowNum = cell.getRow();
+  const existing = sh.getRange(rowNum,1,1,PO_COLS).getValues()[0];
+  let row = generic_objToRow_(p, PO_FIELDS, existing);
+  row = formatDateCols_(row, PO_DATE_IDX);
+  sh.getRange(rowNum,1,1,PO_COLS).setValues([row]);
+  ensureTextCols_(sh, rowNum, row, [9, 13, 27]);
+  po_invalidate_(); clearGetCache_();
+  return {status:"success",action:"update",ma_hop_dong:id};
+}
+
+function po_deleteRow(p) {
+  const id = p.ma_hop_dong || p.id;
+  if (!id) return {status:"error",message:"ma_hop_dong bắt buộc"};
+  const sh = po_getSheet_();
+  const lastRow = sh.getLastRow();
+  if (lastRow < 2) return {status:"error",message:"Sheet rỗng"};
+  const cell = sh.getRange(2, 1, lastRow - 1, 1).createTextFinder(id).matchEntireCell(true).findNext();
+  if (!cell) return {status:"error",message:"Không tìm: "+id};
+  sh.deleteRow(cell.getRow());
+  po_invalidate_(); clearGetCache_();
+  return {status:"success",action:"delete",ma_hop_dong:id};
+}
+
+// ╔═══════════════════════════════════════════════════════════╗
+// ║         chi_tiet_mua_hang MODULE                          ║
+// ║  21 cột — mỗi hàng = 1 sản phẩm                          ║
+// ╚═══════════════════════════════════════════════════════════╝
+const CTMH_SHEET = "chi_tiet_mua_hang";
+const CTMH_CACHE = "ctmh_cache";
+const CTMH_COLS  = 22;
+const CTMH_DATE_IDX = [14, 18, 19]; // start_date_sophos, expiration_time_kaspersky, start_date_other
+
+const CTMH_FIELDS = [
+  "ma_hop_dong","so_hop_dong","so_po","ten_po",
+  "ma_hang_hoa","ma_sku","ten_hang_hoa",
+  "ma_nha_cung_cap","ten_nha_cung_cap",
+  "sl","list_price_usd","muc_off","don_gia","thanh_tien",
+  "start_date_sophos","serial_number_sophos","license_id_sophos",
+  "base_code_kaspersky","expiration_time_kaspersky",
+  "start_date_other","ghi_chu","content_of_contract_po"
+];
+
+function ctmh_getSheet_() { return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CTMH_SHEET); }
+function ctmh_invalidate_() { CacheService.getScriptCache().remove(CTMH_CACHE); }
+
+function ctmh_getData(params) {
+  const cache = CacheService.getScriptCache();
+  const filterMa = params.ma_hop_dong || params.ma || null;
+  const filterSoPO = params.so_po || null;
+  const filterSearch = params.search || null;
+  const limit = parseInt(params.limit) || 0;
+  const offset = parseInt(params.offset) || 0;
+  const useCache = !filterMa && !filterSoPO && !filterSearch && !limit;
+
+  if (useCache) { const c = cache.get(CTMH_CACHE); if (c) return JSON.parse(c); }
+
+  const sh = ctmh_getSheet_();
+  const lastRow = sh.getLastRow();
+  if (lastRow < 2) { const e = {status:"success",total:0,data:[]}; if(useCache) cache.put(CTMH_CACHE,JSON.stringify(e),CACHE_TTL); return e; }
+
+  const values = sh.getRange(2,1,lastRow-1,CTMH_COLS).getValues();
+  let rows = values.filter(r => r[0] !== '').map(r => generic_rowToObj_(r, CTMH_FIELDS));
+
+  if (filterMa) rows = rows.filter(r => r.ma_hop_dong === filterMa);
+  if (filterSoPO) rows = rows.filter(r => String(r.so_po).toLowerCase().includes(filterSoPO.toLowerCase()));
+  if (filterSearch) { const q = filterSearch.toLowerCase(); rows = rows.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes(q))); }
+
+  const total = rows.length;
+  if (limit > 0) rows = rows.slice(offset, offset + limit);
+  const result = {status:"success",total,offset,limit,data:rows};
+  if (useCache) cache.put(CTMH_CACHE, JSON.stringify(result), CACHE_TTL);
+  return result;
+}
+
+function ctmh_postData(payload) {
+  const action = (payload.action || 'add').toLowerCase();
+  if (action === 'add') return ctmh_addRow(payload);
+  if (action === 'add_bulk') return ctmh_addBulk(payload);
+  if (action === 'update') return ctmh_updateRow(payload);
+  if (action === 'delete') return ctmh_deleteRow(payload);
+  if (action === 'delete_by_contract') return ctmh_deleteByContract(payload);
+  return {status:"error",message:"action: add|add_bulk|update|delete|delete_by_contract"};
+}
+
+function ctmh_addRow(p) {
+  const sh = ctmh_getSheet_();
+  if (!p.ma_hop_dong) return {status:"error",message:"ma_hop_dong bắt buộc"};
+  let row = generic_objToRow_(p, CTMH_FIELDS, null);
+  row = formatDateCols_(row, CTMH_DATE_IDX);
+  sh.appendRow(row);
+  ctmh_invalidate_(); clearGetCache_();
+  return {status:"success",action:"add",ma_hop_dong:p.ma_hop_dong};
+}
+
+function ctmh_addBulk(p) {
+  const sh = ctmh_getSheet_();
+  const items = p.items;
+  if (!Array.isArray(items) || !items.length) return {status:"error",message:"items[] bắt buộc"};
+  const rows2d = items.map(item => {
+    let row = generic_objToRow_(item, CTMH_FIELDS, null);
+    return formatDateCols_(row, CTMH_DATE_IDX);
+  });
+  const startRow = sh.getLastRow() + 1;
+  sh.getRange(startRow, 1, rows2d.length, CTMH_COLS).setValues(rows2d);
+  ctmh_invalidate_(); clearGetCache_();
+  return {status:"success",action:"add_bulk",count:rows2d.length};
+}
+
+function ctmh_updateRow(p) {
+  if (!p.ma_hop_dong || !p.ma_hang_hoa) return {status:"error",message:"ma_hop_dong + ma_hang_hoa bắt buộc"};
+  const sh = ctmh_getSheet_();
+  const lastRow = sh.getLastRow();
+  if (lastRow < 2) return {status:"error",message:"Sheet rỗng"};
+  const data = sh.getRange(2,1,lastRow-1,CTMH_COLS).getValues();
+  let foundRow = -1;
+  for (let i = 0; i < data.length; i++) {
+    if (String(data[i][0]) === p.ma_hop_dong && String(data[i][4]) === p.ma_hang_hoa) {
+      foundRow = i + 2; break;
+    }
+  }
+  if (foundRow === -1) return {status:"error",message:"Không tìm thấy"};
+  const existing = sh.getRange(foundRow,1,1,CTMH_COLS).getValues()[0];
+  let row = generic_objToRow_(p, CTMH_FIELDS, existing);
+  row = formatDateCols_(row, CTMH_DATE_IDX);
+  sh.getRange(foundRow,1,1,CTMH_COLS).setValues([row]);
+  ctmh_invalidate_(); clearGetCache_();
+  return {status:"success",action:"update"};
+}
+
+function ctmh_deleteRow(p) {
+  if (!p.ma_hop_dong || !p.ma_hang_hoa) return {status:"error",message:"ma_hop_dong + ma_hang_hoa bắt buộc"};
+  const sh = ctmh_getSheet_();
+  const lastRow = sh.getLastRow();
+  if (lastRow < 2) return {status:"error",message:"Sheet rỗng"};
+  const data = sh.getRange(2,1,lastRow-1,CTMH_COLS).getValues();
+  for (let i = data.length - 1; i >= 0; i--) {
+    if (String(data[i][0]) === p.ma_hop_dong && String(data[i][4]) === p.ma_hang_hoa) {
+      sh.deleteRow(i + 2);
+      ctmh_invalidate_(); clearGetCache_();
+      return {status:"success",action:"delete"};
+    }
+  }
+  return {status:"error",message:"Không tìm thấy"};
+}
+
+function ctmh_deleteByContract(p) {
+  if (!p.ma_hop_dong) return {status:"error",message:"ma_hop_dong bắt buộc"};
+  const sh = ctmh_getSheet_();
+  const lastRow = sh.getLastRow();
+  if (lastRow < 2) return {status:"success",action:"delete_by_contract",deleted:0};
+  const data = sh.getRange(2,1,lastRow-1,1).getValues();
+  let deleted = 0;
+  for (let i = data.length - 1; i >= 0; i--) {
+    if (String(data[i][0]) === p.ma_hop_dong) {
+      sh.deleteRow(i + 2);
+      deleted++;
+    }
+  }
+  ctmh_invalidate_(); clearGetCache_();
+  return {status:"success",action:"delete_by_contract",deleted};
+}
+
+// ╔═══════════════════════════════════════════════════════════╗
+// ║         deal_reg MODULE                                   ║
+// ║  34 cột — mỗi hàng = 1 sản phẩm deal reg                ║
+// ╚═══════════════════════════════════════════════════════════╝
+const DR_SHEET = "deal_reg";
+const DR_CACHE = "deal_reg_cache";
+const DR_COLS  = 35;
+const DR_DATE_IDX = [17]; // estimated_closure_date
+
+const DR_FIELDS = [
+  "ma_hop_dong","so_hop_dong","so_po","ten_po",
+  "ma_nha_cung_cap","ten_nha_cung_cap",
+  "end_user_company_name","end_user_company_name_vietnamese",
+  "end_username","end_user_email",
+  "company_address","end_user_phone","end_user_website",
+  "country","is_existing_sophos_customer",
+  "company_size","estimated_customer_budget_usd",
+  "estimated_closure_date","competition","proposed_poc_schedule",
+  "partner_company_name","partner_address",
+  "account_manager_name","account_manager_email","account_manager_phone",
+  "remark",
+  "ma_hang_hoa","ma_sku","ten_hang_hoa",
+  "ma_nha_cung_cap_item","ten_nha_cung_cap_item",
+  "qty","estimated_value_usd","total","content_of_contract_po"
+];
+
+function dr_getSheet_() { return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(DR_SHEET); }
+function dr_invalidate_() { CacheService.getScriptCache().remove(DR_CACHE); }
+
+function dr_getData(params) {
+  const cache = CacheService.getScriptCache();
+  const filterMa = params.ma_hop_dong || params.ma || null;
+  const filterSoPO = params.so_po || null;
+  const filterSearch = params.search || null;
+  const filterSupplier = params.ma_nha_cung_cap || null;
+  const limit = parseInt(params.limit) || 0;
+  const offset = parseInt(params.offset) || 0;
+  const useCache = !filterMa && !filterSoPO && !filterSearch && !filterSupplier && !limit;
+
+  if (useCache) { const c = cache.get(DR_CACHE); if (c) return JSON.parse(c); }
+
+  const sh = dr_getSheet_();
+  const lastRow = sh.getLastRow();
+  if (lastRow < 2) { const e = {status:"success",total:0,data:[]}; if(useCache) cache.put(DR_CACHE,JSON.stringify(e),CACHE_TTL); return e; }
+
+  const values = sh.getRange(2,1,lastRow-1,DR_COLS).getValues();
+  let rows = values.filter(r => r[0] !== '').map(r => generic_rowToObj_(r, DR_FIELDS));
+
+  if (filterMa) rows = rows.filter(r => r.ma_hop_dong === filterMa);
+  if (filterSoPO) rows = rows.filter(r => String(r.so_po).toLowerCase().includes(filterSoPO.toLowerCase()));
+  if (filterSupplier) rows = rows.filter(r => r.ma_nha_cung_cap === filterSupplier);
+  if (filterSearch) { const q = filterSearch.toLowerCase(); rows = rows.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes(q))); }
+
+  const total = rows.length;
+  if (limit > 0) rows = rows.slice(offset, offset + limit);
+  const result = {status:"success",total,offset,limit,data:rows};
+  if (useCache) cache.put(DR_CACHE, JSON.stringify(result), CACHE_TTL);
+  return result;
+}
+
+function dr_postData(payload) {
+  const action = (payload.action || 'add').toLowerCase();
+  if (action === 'add') return dr_addRow(payload);
+  if (action === 'add_bulk') return dr_addBulk(payload);
+  if (action === 'update') return dr_updateRow(payload);
+  if (action === 'delete') return dr_deleteRow(payload);
+  if (action === 'delete_by_contract') return dr_deleteByContract(payload);
+  return {status:"error",message:"action: add|add_bulk|update|delete|delete_by_contract"};
+}
+
+function dr_addRow(p) {
+  const sh = dr_getSheet_();
+  if (!p.ma_hop_dong) return {status:"error",message:"ma_hop_dong bắt buộc"};
+  let row = generic_objToRow_(p, DR_FIELDS, null);
+  row = formatDateCols_(row, DR_DATE_IDX);
+  sh.appendRow(row);
+  ensureTextCols_(sh, sh.getLastRow(), row, [11, 24]);
+  dr_invalidate_(); clearGetCache_();
+  return {status:"success",action:"add",ma_hop_dong:p.ma_hop_dong};
+}
+
+function dr_addBulk(p) {
+  const sh = dr_getSheet_();
+  const items = p.items;
+  if (!Array.isArray(items) || !items.length) return {status:"error",message:"items[] bắt buộc"};
+  const rows2d = items.map(item => {
+    let row = generic_objToRow_(item, DR_FIELDS, null);
+    return formatDateCols_(row, DR_DATE_IDX);
+  });
+  const startRow = sh.getLastRow() + 1;
+  sh.getRange(startRow, 1, rows2d.length, DR_COLS).setValues(rows2d);
+  ensureTextColsBulk_(sh, startRow, rows2d, [11, 24]);
+  dr_invalidate_(); clearGetCache_();
+  return {status:"success",action:"add_bulk",count:rows2d.length};
+}
+
+function dr_updateRow(p) {
+  if (!p.ma_hop_dong || !p.ma_hang_hoa) return {status:"error",message:"ma_hop_dong + ma_hang_hoa bắt buộc"};
+  const sh = dr_getSheet_();
+  const lastRow = sh.getLastRow();
+  if (lastRow < 2) return {status:"error",message:"Sheet rỗng"};
+  const data = sh.getRange(2,1,lastRow-1,DR_COLS).getValues();
+  let foundRow = -1;
+  for (let i = 0; i < data.length; i++) {
+    if (String(data[i][0]) === p.ma_hop_dong && String(data[i][26]) === p.ma_hang_hoa) {
+      foundRow = i + 2; break;
+    }
+  }
+  if (foundRow === -1) return {status:"error",message:"Không tìm thấy"};
+  const existing = sh.getRange(foundRow,1,1,DR_COLS).getValues()[0];
+  let row = generic_objToRow_(p, DR_FIELDS, existing);
+  row = formatDateCols_(row, DR_DATE_IDX);
+  sh.getRange(foundRow,1,1,DR_COLS).setValues([row]);
+  dr_invalidate_(); clearGetCache_();
+  return {status:"success",action:"update"};
+}
+
+function dr_deleteRow(p) {
+  if (!p.ma_hop_dong || !p.ma_hang_hoa) return {status:"error",message:"ma_hop_dong + ma_hang_hoa bắt buộc"};
+  const sh = dr_getSheet_();
+  const lastRow = sh.getLastRow();
+  if (lastRow < 2) return {status:"error",message:"Sheet rỗng"};
+  const data = sh.getRange(2,1,lastRow-1,DR_COLS).getValues();
+  for (let i = data.length - 1; i >= 0; i--) {
+    if (String(data[i][0]) === p.ma_hop_dong && String(data[i][26]) === p.ma_hang_hoa) {
+      sh.deleteRow(i + 2);
+      dr_invalidate_(); clearGetCache_();
+      return {status:"success",action:"delete"};
+    }
+  }
+  return {status:"error",message:"Không tìm thấy"};
+}
+
+function dr_deleteByContract(p) {
+  if (!p.ma_hop_dong) return {status:"error",message:"ma_hop_dong bắt buộc"};
+  const sh = dr_getSheet_();
+  const lastRow = sh.getLastRow();
+  if (lastRow < 2) return {status:"success",action:"delete_by_contract",deleted:0};
+  const data = sh.getRange(2,1,lastRow-1,1).getValues();
+  let deleted = 0;
+  for (let i = data.length - 1; i >= 0; i--) {
+    if (String(data[i][0]) === p.ma_hop_dong) {
+      sh.deleteRow(i + 2);
+      deleted++;
+    }
+  }
+  dr_invalidate_(); clearGetCache_();
+  return {status:"success",action:"delete_by_contract",deleted};
+}
+
+// ╔═══════════════════════════════════════════════════════════╗
+// ║         sale_report MODULE                                ║
+// ║  25 cột — mỗi hàng = 1 báo cáo bán hàng                 ║
+// ╚═══════════════════════════════════════════════════════════╝
+const SR_SHEET = "sale_report";
+const SR_CACHE = "sale_report_cache";
+const SR_COLS  = 31;
+
+const SR_FIELDS = [
+  "ID",                                  // 0
+  "created_time",                         // 1
+  "ma_hop_dong",                          // 2
+  "so_hop_dong",                          // 3
+  "So_PO",                                // 4
+  "content_of_contract_PO",               // 5
+  "Ma_khach_hang",                        // 6
+  "Ten_khach_hang",                       // 7
+  "Ma_cong_ty",                           // 8
+  "Ten_cong_ty",                          // 9
+  "MST",                                  // 10
+  "Ma_nha_cung_cap",                      // 11
+  "Ten_nha_cung_cap",                     // 12
+  "Tong_tien_truoc_thueVAT",              // 13
+  "Tong_thueVAT",                         // 14
+  "Tong_tien_sau_thueVAT",               // 15
+  "chiet_khau_tong_truoc_thue",           // 16
+  "phan_tram_chiet_khau_tong_truoc_thue", // 17
+  "thue_chenh_lech_gia",                  // 18
+  "phan_tram_thue_chenh_lech_gia",        // 19
+  "chenh_lech_gia",                       // 20
+  "con_lai",                              // 21
+  "tong_chiet_khau",                      // 22
+  "Tong_thanh_tien_chua_VAT_mua_hang",    // 23
+  "Tong_CP_don_hang",                     // 24
+  "account_manager_name",                 // 25
+  "img_save",                             // 26
+  "link_excel_bao_gia",                   // 27
+  "link_excel_mua_hang",                  // 28
+  "ten_file_bao_gia",                     // 29
+  "ten_file_mua_hang"                     // 30
+];
+
+function sr_getSheet_() { return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SR_SHEET); }
+function sr_invalidate_() { CacheService.getScriptCache().remove(SR_CACHE); }
+
+function sr_genID_() {
+  const d = new Date(), pad = (n,l=2) => String(n).padStart(l,'0');
+  return `SR_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}${pad(d.getMilliseconds(),3)}`;
+}
+
+function sr_getData(params) {
+  const cache = CacheService.getScriptCache();
+  const filterMa = params.ma_hop_dong || params.ma || null;
+  const filterSoPO = params.so_po || null;
+  const filterKH = params.ma_khach_hang || null;
+  const filterSearch = params.search || null;
+  const limit = parseInt(params.limit) || 0;
+  const offset = parseInt(params.offset) || 0;
+  const useCache = !filterMa && !filterSoPO && !filterKH && !filterSearch && !limit;
+
+  if (useCache) { const c = cache.get(SR_CACHE); if (c) return JSON.parse(c); }
+
+  const sh = sr_getSheet_();
+  const lastRow = sh.getLastRow();
+  if (lastRow < 2) { const e = {status:"success",total:0,data:[]}; if(useCache) cache.put(SR_CACHE,JSON.stringify(e),CACHE_TTL); return e; }
+
+  const values = sh.getRange(2,1,lastRow-1,SR_COLS).getValues();
+  let rows = values.filter(r => r[0] !== '').map(r => {
+    const obj = {};
+    SR_FIELDS.forEach((f, i) => { obj[f] = r[i] !== undefined ? r[i] : ''; });
+    return obj;
+  });
+
+  if (filterMa) rows = rows.filter(r => r.ma_hop_dong === filterMa);
+  if (filterSoPO) rows = rows.filter(r => String(r.So_PO).toLowerCase().includes(filterSoPO.toLowerCase()));
+  if (filterKH) rows = rows.filter(r => r.Ma_khach_hang === filterKH);
+  if (filterSearch) { const q = filterSearch.toLowerCase(); rows = rows.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes(q))); }
+
+  rows.reverse();
+  const total = rows.length;
+  if (limit > 0) rows = rows.slice(offset, offset + limit);
+  const result = {status:"success",total,offset,limit,data:rows};
+  if (useCache) cache.put(SR_CACHE, JSON.stringify(result), CACHE_TTL);
+  return result;
+}
+
+function sr_postData(payload) {
+  const action = (payload.action || 'add').toLowerCase();
+  if (action === 'add') return sr_addRow(payload);
+  if (action === 'add_bulk') return sr_addBulk(payload);
+  if (action === 'update') return sr_updateRow(payload);
+  if (action === 'delete') return sr_deleteRow(payload);
+  if (action === 'delete_by_contract') return sr_deleteByContract(payload);
+  return {status:"error",message:"action: add|add_bulk|update|delete|delete_by_contract"};
+}
+
+function sr_addRow(p) {
+  const sh = sr_getSheet_();
+  const id = p.ID || sr_genID_();
+  p.ID = id;
+  if (!p.created_time) {
+    const now = new Date(), pad = n => String(n).padStart(2,'0');
+    p.created_time = `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  }
+  const row = SR_FIELDS.map(f => p[f] !== undefined ? p[f] : '');
+  sh.appendRow(row);
+  ensureTextCols_(sh, sh.getLastRow(), row, [10]);
+  sr_invalidate_(); clearGetCache_();
+  return {status:"success",action:"add",ID:id};
+}
+
+function sr_addBulk(p) {
+  const sh = sr_getSheet_();
+  const items = p.items;
+  if (!Array.isArray(items) || !items.length) return {status:"error",message:"items[] bắt buộc"};
+  const rows2d = items.map(item => {
+    if (!item.ID) item.ID = sr_genID_();
+    if (!item.created_time) {
+      const now = new Date(), pad = n => String(n).padStart(2,'0');
+      item.created_time = `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    }
+    return SR_FIELDS.map(f => item[f] !== undefined ? item[f] : '');
+  });
+  const startRow = sh.getLastRow() + 1;
+  sh.getRange(startRow, 1, rows2d.length, SR_COLS).setValues(rows2d);
+  ensureTextColsBulk_(sh, startRow, rows2d, [10]);
+  sr_invalidate_(); clearGetCache_();
+  return {status:"success",action:"add_bulk",count:rows2d.length};
+}
+
+function sr_updateRow(p) {
+  const id = p.ID;
+  if (!id) return {status:"error",message:"ID bắt buộc"};
+  const sh = sr_getSheet_();
+  const lastRow = sh.getLastRow();
+  if (lastRow < 2) return {status:"error",message:"Sheet rỗng"};
+  const cell = sh.getRange(2, 1, lastRow - 1, 1).createTextFinder(id).matchEntireCell(true).findNext();
+  if (!cell) return {status:"error",message:"Không tìm: "+id};
+  const rowNum = cell.getRow();
+  const existing = sh.getRange(rowNum,1,1,SR_COLS).getValues()[0];
+  const row = SR_FIELDS.map((f, i) => p[f] !== undefined ? p[f] : existing[i]);
+  sh.getRange(rowNum,1,1,SR_COLS).setValues([row]);
+  ensureTextCols_(sh, rowNum, row, [10]);
+  sr_invalidate_(); clearGetCache_();
+  return {status:"success",action:"update",ID:id};
+}
+
+function sr_deleteRow(p) {
+  const id = p.ID || p.id;
+  if (!id) return {status:"error",message:"ID bắt buộc"};
+  const sh = sr_getSheet_();
+  const lastRow = sh.getLastRow();
+  if (lastRow < 2) return {status:"error",message:"Sheet rỗng"};
+  const cell = sh.getRange(2, 1, lastRow - 1, 1).createTextFinder(id).matchEntireCell(true).findNext();
+  if (!cell) return {status:"error",message:"Không tìm: "+id};
+  sh.deleteRow(cell.getRow());
+  sr_invalidate_(); clearGetCache_();
+  return {status:"success",action:"delete",ID:id};
+}
+
+function sr_deleteByContract(p) {
+  if (!p.ma_hop_dong) return {status:"error",message:"ma_hop_dong bắt buộc"};
+  const sh = sr_getSheet_();
+  const lastRow = sh.getLastRow();
+  if (lastRow < 2) return {status:"success",action:"delete_by_contract",deleted:0};
+  const data = sh.getRange(2,1,lastRow-1,SR_COLS).getValues();
+  let deleted = 0;
+  for (let i = data.length - 1; i >= 0; i--) {
+    if (String(data[i][2]) === p.ma_hop_dong) {
+      sh.deleteRow(i + 2);
+      deleted++;
+    }
+  }
+  sr_invalidate_(); clearGetCache_();
+  return {status:"success",action:"delete_by_contract",deleted};
+}

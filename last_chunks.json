@@ -1,0 +1,1 @@
+"[{\"AllowMultiple\":false,\"EndLine\":6,\"ReplacementContent\":\"import Customer from '../components/Customer.vue'\\nimport BaoGia from '../components/BaoGia.vue'\\nimport QuanLyBaoGia from '../components/QuanLyBaoGia.vue'\\n\\nconst routes = [\",\"StartLine\":3,\"Target\n<truncated 473 bytes>"

@@ -1,0 +1,576 @@
+function myFunction() {
+
+}
+/* =========================
+ * CONFIG
+ * ========================= */
+const SPREADSHEET_ID = '1VHq5MrsQeBMyzlvrtezUvp9J1_TH-k0elMfY6bnO9Qc'
+
+const SHEETS = {
+    hang_hoa: 'hang_hoa',
+    khach_hang: 'khach_hang',
+    nha_cung_cap: 'nha_cung_cap',
+    hop_dong_tong_quat: 'hop_dong_tong_quat',
+    hop_dong_chi_tiet: 'hop_dong_chi_tiet',
+    Thong_tin_ca_nhan: 'Thong_tin_ca_nhan',
+    hop_dong_version: 'hop_dong_version',
+    dieu_khoan: 'dieu_khoan',
+    sale_report: 'sale_report'
+}
+
+/* =========================
+ * ENTRY POINT
+ * ========================= */
+function doGet(e) {
+    try {
+        const action = e.parameter.action || 'all'
+
+        // GET ALL
+        if (action === 'all') {
+            return json(getAllSheets())
+        }
+
+        // GET ONE SHEET
+        if (SHEETS[action]) {
+            return json(getOneSheet(SHEETS[action]))
+        }
+        if (action === 'hop_dong_active') {
+            return json(getActiveContracts_())
+        }
+
+        return json({ error: 'INVALID_ACTION' })
+    } catch (err) {
+        return json({ error: err.message })
+    }
+}
+
+/* =========================
+ * CORE GET FUNCTIONS
+ * ========================= */
+
+// GET ALL SHEETS (CACHED)
+function getAllSheets() {
+    const cache = CacheService.getScriptCache()
+    const cacheKey = 'GET_ALL_SHEETS'
+
+    const cached = cache.get(cacheKey)
+    if (cached) return JSON.parse(cached)
+
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID)
+    const result = {}
+
+    for (const key in SHEETS) {
+        const sh = ss.getSheetByName(SHEETS[key])
+        if (!sh) {
+            result[key] = []
+            continue
+        }
+
+        const values = sh.getDataRange().getValues()
+        result[key] = values.length > 1 ? values.slice(1) : []
+    }
+
+    cache.put(cacheKey, JSON.stringify(result), 300) // cache 5 phút
+    return result
+}
+
+// GET ONE SHEET
+function getOneSheet(sheetName) {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID)
+    const sh = ss.getSheetByName(sheetName)
+    if (!sh) return []
+
+    const values = sh.getDataRange().getValues()
+    return values.length > 1 ? values.slice(1) : []
+}
+
+/* =========================
+ * RESPONSE
+ * ========================= */
+function json(data) {
+    return ContentService
+        .createTextOutput(JSON.stringify(data))
+        .setMimeType(ContentService.MimeType.JSON)
+}
+/* =========================
+ * POST (no-cors friendly)
+ * ========================= */
+function doPost(e) {
+    const lock = LockService.getScriptLock()
+    try {
+        lock.waitLock(30 * 1000)
+
+        const action = (e.parameter && e.parameter.action) ? String(e.parameter.action).trim() : ''
+        const payload = parsePayload_(e)
+
+        if (!action) return json({ ok: false, error: 'MISSING_ACTION' })
+
+        if (action === 'save_contract_temp') {
+            const rs = saveContractTemp_(payload)
+            clearGetCache_()
+            return json({ ok: true, action, ...rs })
+        }
+
+        if (action === 'save_contract_official') {
+            const rs = saveContractOfficial_(payload)
+            clearGetCache_()
+            return json({ ok: true, action, ...rs })
+        }
+
+        if (action === 'create_dieu_khoan') {
+            const rs = createDieuKhoan_(payload)
+            clearGetCache_()
+            return json({ ok: true, action, ...rs })
+        }
+
+        if (action === 'update_dieu_khoan') {
+            const rs = updateDieuKhoan_(payload)
+            clearGetCache_()
+            return json({ ok: true, action, ...rs })
+        }
+
+        if (action === 'delete_dieu_khoan') {
+            const rs = deleteDieuKhoan_(payload)
+            clearGetCache_()
+            return json({ ok: true, action, ...rs })
+        }
+
+        return json({ ok: false, error: 'INVALID_ACTION', action })
+    } catch (err) {
+        return json({ ok: false, error: String(err && err.message ? err.message : err) })
+    } finally {
+        try { lock.releaseLock() } catch (e) { }
+    }
+}
+
+
+/* =========================
+ * HELPERS
+ * ========================= */
+function parsePayload_(e) {
+    // Ưu tiên payload từ form-url-encoded: payload=<json>
+    if (e && e.parameter && e.parameter.payload) {
+        try { return JSON.parse(e.parameter.payload) } catch (err) { return {} }
+    }
+
+    // fallback nếu gửi JSON body
+    if (e && e.postData && e.postData.contents) {
+        const ct = String(e.postData.type || '')
+        if (ct.indexOf('application/json') >= 0) {
+            try { return JSON.parse(e.postData.contents) } catch (err) { return {} }
+        }
+    }
+    return {}
+}
+function saveContractVersion_(maMoi, soHopDong, maCu) {
+    const shVer = getSheet_(SHEETS.hop_dong_version)
+    const now = Utilities.formatDate(
+        new Date(),
+        'Asia/Ho_Chi_Minh',
+        'HH:mm:ss dd/MM/yyyy'
+    )
+
+
+    // 1️⃣ deactivate version cũ (nếu có)
+    if (maCu) {
+        const lastRow = shVer.getLastRow()
+        if (lastRow >= 2) {
+            const data = shVer.getRange(2, 1, lastRow - 1, 5).getValues()
+            for (let i = 0; i < data.length; i++) {
+                if (String(data[i][0]) === maCu) {
+                    shVer.getRange(i + 2, 5).setValue(false) // is_active = FALSE
+                    break
+                }
+            }
+        }
+    }
+
+    // 2️⃣ insert version mới
+    shVer.appendRow([
+        maMoi,
+        soHopDong,
+        maCu || '',
+        now,
+        true
+    ])
+}
+
+function toNum_(v, fallback) {
+    const n = Number(v)
+    return isFinite(n) ? n : (fallback || 0)
+}
+
+function getSheet_(name) {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID)
+    const sh = ss.getSheetByName(name)
+    if (!sh) throw new Error('SHEET_NOT_FOUND: ' + name)
+    return sh
+}
+
+function appendRows_(sh, rows2d) {
+    if (!rows2d || !rows2d.length) return 0
+    const startRow = sh.getLastRow() + 1
+    const numRows = rows2d.length
+    const numCols = rows2d[0].length
+    sh.getRange(startRow, 1, numRows, numCols).setValues(rows2d)
+    return numRows
+}
+
+function clearGetCache_() {
+    try {
+        CacheService.getScriptCache().remove('GET_ALL_SHEETS')
+    } catch (e) { }
+}
+/* =========================
+ * CONST COL COUNT (SCHEMA)
+ * ========================= */
+const HD_TONG_COLS = 22
+const HD_CT_COLS = 23
+const HD_VER_COLS = 5 // ✅ version sheet cols
+
+function normalizeRow_(arr, cols) {
+    var row = Array.isArray(arr) ? arr.slice(0, cols) : []
+    while (row.length < cols) row.push('')
+    return row
+}
+
+function normalizeRows2D_(rows, cols) {
+    return (Array.isArray(rows) ? rows : []).map(function (r) {
+        return normalizeRow_(r, cols)
+    })
+}
+function getHangHoaTiGiaMap_() {
+    const cache = CacheService.getScriptCache()
+    const k = 'HH_TIGIA_MAP'
+    const cached = cache.get(k)
+    if (cached) return JSON.parse(cached)
+
+    const sh = getSheet_(SHEETS.hang_hoa)
+    const lastRow = sh.getLastRow()
+    const map = {}
+
+    if (lastRow >= 2) {
+        // đọc từ A..P (16 cột) để lấy Ma_hang và Ti_gia
+        const values = sh.getRange(2, 1, lastRow - 1, 16).getValues()
+        for (let i = 0; i < values.length; i++) {
+            const ma = String(values[i][0] || '').trim()        // col A
+            const tg = toNum_(values[i][15], 1)                 // col P (index 15)
+            if (ma) map[ma] = tg
+        }
+    }
+
+    cache.put(k, JSON.stringify(map), 300)
+    return map
+}
+
+function getTiGiaByMaHang_(maHang, hhMap) {
+    const ma = String(maHang || '').trim()
+    if (!ma) return 1
+    if (hhMap && typeof hhMap[ma] !== 'undefined') return toNum_(hhMap[ma], 1)
+    // fallback
+    return 1
+}
+function buildContractDetailRows_(ctRows, trangThaiHopDong) {
+    const hhMap = getHangHoaTiGiaMap_()
+
+    return (Array.isArray(ctRows) ? ctRows : []).map(function (r) {
+        let row = normalizeRow_(r, HD_CT_COLS)
+
+        // Ma_hang index 2
+        const maHang = row[2]
+
+        // Don_vi_tien_te index 15: giữ FE gửi gì thì giữ
+        const dvtien = String(row[15] || '').trim()
+        row[15] = dvtien
+
+        // ✅ IF: nếu FE đã chuyển sang VND thì giữ Ti_gia = 1 (không overwrite theo hang_hoa)
+        if (dvtien.toUpperCase() === 'VND') {
+            row[16] = 1
+        } else {
+            // Ti_gia ép theo hang_hoa
+            const tiGia = getTiGiaByMaHang_(maHang, hhMap)
+            row[16] = toNum_(tiGia, 1)
+        }
+
+        // Trang_thai_hop_dong ép theo nút (index 19)
+        row[19] = trangThaiHopDong || ''
+
+        // So_luong index 18
+        row[18] = Math.max(1, toNum_(row[18], 1))
+
+        // ép số cho sạch
+        row[13] = toNum_(row[13], 0) // Gia_tieu_chuan
+        row[14] = toNum_(row[14], 0) // Don_gia
+        row[17] = toNum_(row[17], 0) // Thue_VAT
+
+        return row
+    })
+}
+
+
+function patchTongQuatCurrencyTiGia_(hdRow, ctRows) {
+    hdRow = normalizeRow_(hdRow, HD_TONG_COLS)
+
+    let cur = ''
+    if (Array.isArray(ctRows) && ctRows.length) {
+        const first = ctRows[0]
+        if (Array.isArray(first)) cur = String(first[15] || '').trim()
+    }
+
+    const curUp = (cur || String(hdRow[17] || 'VND')).trim().toUpperCase()
+    hdRow[17] = curUp || 'VND'
+
+    // ✅ nếu VND => ti_gia = 1, không lấy theo hang_hoa
+    hdRow[18] = (curUp === 'VND') ? 1 : toNum_(getContractTiGiaFromCT_(ctRows), 1)
+
+    return hdRow
+}
+
+/* =========================
+ * GET CONTRACT TIGIA (dùng update KH)
+ * - lấy Ti_gia theo Ma_hang của dòng CT đầu tiên
+ * ========================= */
+function getContractTiGiaFromCT_(ctRows) {
+    if (!Array.isArray(ctRows) || ctRows.length < 1) return 1
+    const first = ctRows[0]
+
+    const cur = Array.isArray(first) ? String(first[15] || '').trim().toUpperCase() : ''
+    if (cur === 'VND') return 1
+
+    const maHang = Array.isArray(first) ? first[2] : ''
+    const hhMap = getHangHoaTiGiaMap_()
+    return getTiGiaByMaHang_(maHang, hhMap)
+}
+/* =========================
+ * SAVE CONTRACT TEMP
+ * ========================= */
+function saveContractTemp_(payload) {
+    let hdRow = payload.hd_tong_quat_row
+    const ctRows = payload.hd_chi_tiet_rows
+
+    if (!Array.isArray(hdRow) || hdRow.length < 17) throw new Error('INVALID_hd_tong_quat_row')
+    if (!Array.isArray(ctRows) || ctRows.length < 1) throw new Error('INVALID_hd_chi_tiet_rows')
+
+    hdRow = normalizeRow_(hdRow, HD_TONG_COLS)
+    hdRow[14] = 'Chưa thanh toán đủ'
+    hdRow[15] = 'Tạm'
+
+    // ✅ set Don_vi_tien_te + Ti_gia cho tổng quát
+    hdRow = patchTongQuatCurrencyTiGia_(hdRow, ctRows)
+
+    // ✅ Cong_no_cu lấy từ KH (cột N) trước khi append
+    const maKH = String(hdRow[2] || '').trim()
+    if (!maKH) throw new Error('MISSING_ma_khach_hang')
+    const shKH = getSheet_(SHEETS.khach_hang)
+    hdRow[13] = getCustomerCongNoVND_(shKH, maKH)
+
+    const shTong = getSheet_(SHEETS.hop_dong_tong_quat)
+    const shCT = getSheet_(SHEETS.hop_dong_chi_tiet)
+
+    shTong.appendRow(hdRow)
+
+    // ✅ VERSIONING
+    const maMoi = String(hdRow[0])
+    const soHD = String(hdRow[1])
+    const maCu = String(hdRow[19] || '')
+    saveContractVersion_(maMoi, soHD, maCu)
+
+
+    const fixedCT = buildContractDetailRows_(ctRows, 'Tạm')
+    appendRows_(shCT, fixedCT)
+
+    clearGetCache_()
+    return { appended_tong_quat: 1, appended_chi_tiet: fixedCT.length }
+}
+
+
+/* =========================
+ * SAVE CONTRACT OFFICIAL
+ * ========================= */
+function saveContractOfficial_(payload) {
+    let hdRow = payload.hd_tong_quat_row
+    const ctRows = payload.hd_chi_tiet_rows
+    const maKH = String(payload.ma_khach_hang || '').trim()
+    const tongSauThue = toNum_(payload.tong_sau_thue, 0)
+
+    if (!Array.isArray(hdRow) || hdRow.length < 17) throw new Error('INVALID_hd_tong_quat_row')
+    if (!Array.isArray(ctRows) || ctRows.length < 1) throw new Error('INVALID_hd_chi_tiet_rows')
+    if (!maKH) throw new Error('MISSING_ma_khach_hang')
+    if (tongSauThue <= 0) throw new Error('INVALID_tong_sau_thue')
+
+    hdRow = normalizeRow_(hdRow, HD_TONG_COLS)
+    hdRow[14] = 'Chưa thanh toán đủ'
+    hdRow[15] = 'Chính thức'
+
+    // ✅ set Don_vi_tien_te + Ti_gia cho tổng quát
+    hdRow = patchTongQuatCurrencyTiGia_(hdRow, ctRows)
+
+    const shTong = getSheet_(SHEETS.hop_dong_tong_quat)
+    const shCT = getSheet_(SHEETS.hop_dong_chi_tiet)
+    const shKH = getSheet_(SHEETS.khach_hang)
+
+    // ✅ UPDATE KH: luôn quy về VND
+    const curUp = String(hdRow[17] || 'VND').trim().toUpperCase()
+    const tiGiaContract = (curUp === 'VND') ? 1 : toNum_(hdRow[18], 1)
+    const addValueVND = (curUp === 'VND') ? tongSauThue : (tongSauThue * tiGiaContract)
+
+    // 1) update KH trước
+    const updated = updateCustomerTotals_(shKH, maKH, addValueVND)
+
+    // 2) Cong_no_cu = công nợ mới (SAU KHI update)
+    hdRow[13] = toNum_(updated.Cong_no_chua_thanh_toan, 0)
+
+    // 3) rồi mới append hop_dong_tong_quat + chi_tiet
+    shTong.appendRow(hdRow)
+
+    // ✅ VERSIONING
+    const maMoi = String(hdRow[0])
+    const soHD = String(hdRow[1])
+    const maCu = String(hdRow[19] || '')
+    saveContractVersion_(maMoi, soHD, maCu)
+
+
+    const fixedCT = buildContractDetailRows_(ctRows, 'Chính thức')
+    appendRows_(shCT, fixedCT)
+
+    clearGetCache_()
+    return {
+        appended_tong_quat: 1,
+        appended_chi_tiet: fixedCT.length,
+        currency: curUp,
+        ti_gia_contract: tiGiaContract,
+        add_value_vnd: addValueVND,
+        customer_updated: updated,
+        cong_no_cu_saved: hdRow[13]
+    }
+}
+
+
+
+
+function updateCustomerTotals_(shKH, maKH, addValue) {
+    const lastRow = shKH.getLastRow()
+    if (lastRow < 2) throw new Error('KH_EMPTY')
+
+    const data = shKH.getRange(2, 1, lastRow - 1, 1).getValues() // cột A từ row2
+    let foundRow = -1
+    for (let i = 0; i < data.length; i++) {
+        if (String(data[i][0] || '').trim() === maKH) {
+            foundRow = i + 2
+            break
+        }
+    }
+    if (foundRow === -1) throw new Error('KH_NOT_FOUND: ' + maKH)
+
+    // Tong_chi_tieu = col 13 (M), Cong_no_chua_thanh_toan = col 14 (N)
+    const curTongChiTieu = toNum_(shKH.getRange(foundRow, 13).getValue(), 0)
+    const curCongNo = toNum_(shKH.getRange(foundRow, 14).getValue(), 0)
+
+    shKH.getRange(foundRow, 13).setValue(curTongChiTieu + addValue)
+    shKH.getRange(foundRow, 14).setValue(curCongNo + addValue)
+
+    return { row: foundRow, Tong_chi_tieu: curTongChiTieu + addValue, Cong_no_chua_thanh_toan: curCongNo + addValue }
+}
+
+function findCustomerRow_(shKH, maKH) {
+    const lastRow = shKH.getLastRow()
+    if (lastRow < 2) throw new Error('KH_EMPTY')
+
+    const data = shKH.getRange(2, 1, lastRow - 1, 1).getValues() // col A
+    for (let i = 0; i < data.length; i++) {
+        if (String(data[i][0] || '').trim() === String(maKH || '').trim()) return i + 2
+    }
+    return -1
+}
+
+function getCustomerCongNoVND_(shKH, maKH) {
+    const r = findCustomerRow_(shKH, maKH)
+    if (r === -1) throw new Error('KH_NOT_FOUND: ' + maKH)
+    // Cong_no_chua_thanh_toan = col N = 14
+    return toNum_(shKH.getRange(r, 14).getValue(), 0)
+}
+
+function getActiveContracts_() {
+    const shVer = getSheet_(SHEETS.hop_dong_version)
+    const shHD = getSheet_(SHEETS.hop_dong_tong_quat)
+
+    const verData = shVer.getDataRange().getValues().slice(1)
+    const activeSet = new Set(
+        verData
+            .filter(r => r[4] === true)
+            .map(r => String(r[0]))
+    )
+
+    const hdData = shHD.getDataRange().getValues().slice(1)
+    return hdData.filter(r => activeSet.has(String(r[0])))
+}
+
+/* =========================
+ * CRUD ĐIỀU KHOẢN
+ * ========================= */
+function createDieuKhoan_(payload) {
+    const sh = getSheet_(SHEETS.dieu_khoan)
+    const id = Utilities.getUuid()
+    sh.appendRow([
+        id,
+        payload.Ma_khach_hang || '',
+        payload.Ten_khach_hang || '',
+        payload.Ma_cong_ty || '',
+        payload.Ten_cong_ty || '',
+        payload.Noi_dung || ''
+    ])
+    return { inserted_id: id }
+}
+
+function updateDieuKhoan_(payload) {
+    const sh = getSheet_(SHEETS.dieu_khoan)
+    const id = payload.ID
+    if (!id) throw new Error('MISSING_ID')
+
+    const lastRow = sh.getLastRow()
+    if (lastRow < 2) throw new Error('NOT_FOUND')
+
+    const data = sh.getRange(2, 1, lastRow - 1, 1).getValues()
+    let foundRow = -1
+    for (let i = 0; i < data.length; i++) {
+        if (String(data[i][0]) === String(id)) {
+            foundRow = i + 2
+            break
+        }
+    }
+
+    if (foundRow === -1) throw new Error('NOT_FOUND')
+
+    sh.getRange(foundRow, 2, 1, 5).setValues([[
+        payload.Ma_khach_hang || '',
+        payload.Ten_khach_hang || '',
+        payload.Ma_cong_ty || '',
+        payload.Ten_cong_ty || '',
+        payload.Noi_dung || ''
+    ]])
+
+    return { updated_id: id }
+}
+
+function deleteDieuKhoan_(payload) {
+    const sh = getSheet_(SHEETS.dieu_khoan)
+    const id = payload.ID
+    if (!id) throw new Error('MISSING_ID')
+
+    const lastRow = sh.getLastRow()
+    if (lastRow < 2) throw new Error('NOT_FOUND')
+
+    const data = sh.getRange(2, 1, lastRow - 1, 1).getValues()
+    let foundRow = -1
+    for (let i = 0; i < data.length; i++) {
+        if (String(data[i][0]) === String(id)) {
+            foundRow = i + 2
+            break
+        }
+    }
+
+    if (foundRow === -1) throw new Error('NOT_FOUND')
+
+    sh.deleteRow(foundRow)
+    return { deleted_id: id }
+}
