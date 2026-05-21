@@ -1,5 +1,10 @@
+<script lang="ts">
+export default {
+  name: 'BaoGia'
+}
+</script>
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import draggable from 'vuedraggable'
 import ExcelEditor from './ExcelEditor.vue'
@@ -204,6 +209,7 @@ const thueChenhLechPct = ref(0)
 const chietKhauTruocThuePct = ref(0)
 const ghiChuHopDong = ref('')
 const loadedMaHopDong = ref<string | null>(null)
+const loadedMaHopDongGoc = ref<string | null>(null)
 /* ======================
    MODAL CHỌN SỐ HĐ SO SÁNH
 ====================== */
@@ -874,6 +880,7 @@ const ma = String(row?.[0] ?? '').trim()
 const so = String(row?.[1] ?? '').trim()
 
 loadedMaHopDong.value = ma              // ✅ GHI NHỚ HỢP ĐỒNG CŨ
+loadedMaHopDongGoc.value = String(row?.[32] ?? '').trim() || ma  // ✅ GHI NHỚ MÃ GỐC
 soHopDong.value = so || soHopDong.value // số hợp đồng GIỮ NGUYÊN
 currentPO.value = String(row?.[22] ?? '').trim() // ✅ Lấy Số PO từ index 22
 
@@ -931,6 +938,7 @@ const loadingPipeline = ref(false)
 const loadPipelineMsg = ref('')
 const loadPipelineSearch = ref('')
 const ctmhList = ref<any[]>([])
+const hdChiTietList = ref<any[]>([])
 
 const loadedPipelineExtraData = ref<any>(null)
 
@@ -951,10 +959,9 @@ const filteredPoDxmhList = computed(() => {
     const so_hd = String(r?.[1] ?? '').trim()
     const maHD = String(r?.[0] ?? '').trim()
     
-    // Tìm chi tiết mua hàng tương ứng
+    // Tìm chi tiết mua hàng theo ma_hop_dong
     const items = ctmhList.value.filter((c: any[]) => 
-      String(c?.[2] ?? '').trim().toLowerCase() === so_po.toLowerCase() || 
-      (so_hd && String(c?.[1] ?? '').trim().toLowerCase() === so_hd.toLowerCase())
+      String(c?.[0] ?? '').trim() === maHD
     )
     
     // Map chi tiết: ten_hang_hoa[6], sl[9], list_price_usd[10]
@@ -989,12 +996,14 @@ async function openLoadPipelineModal() {
   pipelineListState.value = 'loading'
   try {
     const ts = Date.now()
-    const [poRows, ctmhRows] = await Promise.all([
+    const [poRows, ctmhRows, hdctRows] = await Promise.all([
       fetch(`${BASE_URL}?action=po_dxmh&t=${ts}`).then(r => r.json()),
-      fetch(`${BASE_URL}?action=chi_tiet_mua_hang&t=${ts}`).then(r => r.json())
+      fetch(`${BASE_URL}?action=chi_tiet_mua_hang&t=${ts}`).then(r => r.json()),
+      fetch(`${BASE_URL}?action=hop_dong_chi_tiet&t=${ts}`).then(r => r.json())
     ])
     poDxmhList.value = Array.isArray(poRows) ? poRows : []
     ctmhList.value = Array.isArray(ctmhRows) ? ctmhRows : []
+    hdChiTietList.value = Array.isArray(hdctRows) ? hdctRows : []
     markLoaded(pipelineListState)
   } catch (e) {
     console.error('Error fetching POs:', e)
@@ -1071,6 +1080,7 @@ async function loadPipelineToFE() {
     const so = String(contractRow?.[1] ?? '').trim()
 
     loadedMaHopDong.value = ma
+    loadedMaHopDongGoc.value = String(contractRow?.[32] ?? '').trim() || ma  // ✅ GHI NHỚ MÃ GỐC
     soHopDong.value = so || soHopDong.value
     maHopDong.value = `HD${Date.now()}`
     ghiChuHopDong.value = String(contractRow?.[16] ?? '').trim()
@@ -1352,7 +1362,8 @@ function buildHopDongTongQuatRow(
   statusHopDong: 'Tạm' | 'Chính thức',
   maHopDongCu: string | null,
   soPO: string = '',
-  tenPO: string = ''
+  tenPO: string = '',
+  maHopDongGoc: string | null = null
 ) {
   const ngay = formatDateTimeVN(new Date())
 
@@ -1376,6 +1387,9 @@ function buildHopDongTongQuatRow(
   const donVi = 'VND'
   const tiGia = 1
 
+  // ✅ ma_hop_dong_goc: lấy từ bản cũ hoặc chính nó nếu là bản đầu tiên
+  const goc = maHopDongGoc || maHopDong.value
+
   return [
     maHopDong.value,
     soHopDong.value,
@@ -1396,19 +1410,21 @@ function buildHopDongTongQuatRow(
     ghiChu,
     donVi,
     tiGia,
-      maHopDongCu || ''  ,   // ✅ CỘT MỚI
-      toNum(tongGiaThucTe.value, 0),  // ✅ CỘT MỚI (index 20) - lấy theo tổng thực tế trên FE
-      formatCreatedTimeVN(new Date()), // ✅ created_time (index 21)
-      soPO,                            // ✅ So_PO (index 22)
-      tenPO,                           // ✅ Ten_PO (index 23)
-      '',                              // ✅ content_of_contract_po (index 24)
+      maHopDongCu || ''  ,   // ✅ CỘT index 19
+      toNum(tongGiaThucTe.value, 0),  // ✅ index 20 - tong_gia_thuc_te
+      formatCreatedTimeVN(new Date()), // ✅ index 21 - created_time
+      soPO,                            // ✅ index 22 - So_PO
+      tenPO,                           // ✅ index 23 - Ten_PO
+      '',                              // ✅ index 24 - content_of_contract_po
       toNum(chietKhauTruocThue.value, 0),       // 25
       toNum(chietKhauTruocThuePct.value, 0),    // 26
       toNum(thueChenhLech.value, 0),            // 27
       toNum(thueChenhLechPct.value, 0),         // 28
       toNum(chenhLechGia.value, 0),             // 29
       toNum(conLai.value, 0),                   // 30
-      toNum(tongChietKhau.value, 0)             // 31
+      toNum(tongChietKhau.value, 0),            // 31
+      goc,                                      // ✅ index 32 - ma_hop_dong_goc
+      false                                     // ✅ index 33 - isCompleted
   ]
 }
 
@@ -1480,7 +1496,10 @@ async function saveContractTemp() {
   const payload = {
     hd_tong_quat_row: buildHopDongTongQuatRow(
       'Tạm',
-      loadedMaHopDong.value
+      loadedMaHopDong.value,
+      currentPO.value || '',
+      soHopDong.value || '',
+      loadedMaHopDongGoc.value
     ),
     hd_chi_tiet_rows: buildHopDongChiTietRows()
   }
@@ -1491,7 +1510,9 @@ async function saveContractTemp() {
   // Fire-and-forget POST
   postApi('save_contract_temp', payload)
     .then(() => {
+      isDataSaved.value = true
       showAsyncSuccess('Lưu tạm thành công', 'Dữ liệu đã được đồng bộ lên hệ thống.')
+      setTimeout(() => window.location.reload(), 1500)
     })
     .catch((e: any) => {
       showAsyncError('Lưu tạm thất bại', 'Lỗi: ' + String(e?.message || e) + '. Vui lòng thử lại.')
@@ -1533,7 +1554,8 @@ async function saveContractOfficialAndSaleReport() {
         'Chính thức',
         loadedMaHopDong.value,
         nextPO,
-        soHopDong.value
+        soHopDong.value,
+        loadedMaHopDongGoc.value
       ),
       hd_chi_tiet_rows: buildHopDongChiTietRows(),
       ma_khach_hang: (khach.value.Ma_khach_hang || '').trim(),
@@ -1602,8 +1624,10 @@ async function saveContractOfficialAndSaleReport() {
     }
 
     saveMsg.value = '✅ Đã lưu CHÍNH THỨC + SALE REPORT thành công!'
+    isDataSaved.value = true
     showAsyncSuccess('Lưu thành công', 'Hợp đồng + Sale Report đã được đồng bộ.')
     loadedMaHopDong.value = null
+    setTimeout(() => window.location.reload(), 1500)
   } catch (e: any) {
     saveMsg.value = '❌ Lỗi: ' + String(e?.message || e)
     showAsyncError('Lưu thất bại', String(e?.message || e))
@@ -3775,6 +3799,118 @@ trackHistory('vat', () => totals.value.vat)
 trackHistory('sau', () => totals.value.sau)
 trackHistory('loi', () => totals.value.loi)
 
+function resetToanBoBaoGia() {
+  selectedItems.value = [];
+  flatQuoteRows.value = [];
+
+  chietKhauTruocThuePct.value = 0;
+  thueChenhLechPct.value = 0;
+  ghiChuHopDong.value = '';
+  selectedTermId.value = '';
+  editableTermContent.value = '';
+
+  actionHistory.value = [];
+  for (const key in historyLogs.value) {
+    historyLogs.value[key] = [];
+  }
+
+  triggerToast('Đã xóa trắng thông tin báo giá');
+}
+
+const fabPos = ref({ x: 12, y: 90 });
+let isDraggingFab = false;
+let isFabMoved = false;
+let startMouseX = 0;
+let startMouseY = 0;
+let startX = 0;
+let startY = 0;
+
+function startDragFab(e: MouseEvent | TouchEvent) {
+  const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+  const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
+  
+  isDraggingFab = true;
+  isFabMoved = false;
+  startMouseX = clientX;
+  startMouseY = clientY;
+  startX = clientX - fabPos.value.x;
+  startY = clientY - fabPos.value.y;
+
+  document.addEventListener('mousemove', dragFab);
+  document.addEventListener('mouseup', stopDragFab);
+  document.addEventListener('touchmove', dragFab, { passive: false });
+  document.addEventListener('touchend', stopDragFab);
+}
+
+function dragFab(e: MouseEvent | TouchEvent) {
+  if (!isDraggingFab) return;
+  
+  const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+  const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
+  
+  if (Math.abs(clientX - startMouseX) > 5 || Math.abs(clientY - startMouseY) > 5) {
+    isFabMoved = true;
+    if (e.cancelable) e.preventDefault();
+  }
+
+  if (isFabMoved) {
+    let newX = clientX - startX;
+    let newY = clientY - startY;
+    
+    newX = Math.max(0, Math.min(newX, window.innerWidth - 76));
+    newY = Math.max(0, Math.min(newY, window.innerHeight - 76));
+    
+    fabPos.value.x = newX;
+    fabPos.value.y = newY;
+  }
+}
+
+function stopDragFab() {
+  isDraggingFab = false;
+  document.removeEventListener('mousemove', dragFab);
+  document.removeEventListener('mouseup', stopDragFab);
+  document.removeEventListener('touchmove', dragFab);
+  document.removeEventListener('touchend', stopDragFab);
+}
+
+function onFabClick() {
+  if (!isFabMoved) {
+    showProductSidebar.value = true;
+  }
+}
+
+// ===== CẢNH BÁO KHI ĐÓNG TRANG (TRÌNH DUYỆT) =====
+const isDataSaved = ref(false)
+
+watch([khach, selectedItems], () => {
+  isDataSaved.value = false
+}, { deep: true })
+
+const onPipelineSaved = () => {
+  isDataSaved.value = true
+  setTimeout(() => window.location.reload(), 1500)
+}
+
+const hasUnsavedChanges = () => {
+  if (isDataSaved.value) return false
+  return (flatQuoteRows.value?.length || 0) > 0 || (khach.value?.ten || '').trim() !== '' || (khach.value?.congTy || '').trim() !== ''
+}
+
+const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+  if (hasUnsavedChanges()) {
+    e.preventDefault()
+    e.returnValue = ''
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('beforeunload', handleBeforeUnload)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('beforeunload', handleBeforeUnload)
+})
+
 </script>
 
 <template>
@@ -3859,21 +3995,29 @@ trackHistory('loi', () => totals.value.loi)
           </template>
         </div>
       </aside>
-      <button v-if="!showProductSidebar" class="open-tab left" @click="showProductSidebar = true">
-        <i class="lucide-shopping-cart"></i> SP
+      <button v-if="!showProductSidebar" class="open-tab metallic-border-btn" @mousedown="startDragFab" @touchstart="startDragFab" @click.stop="onFabClick" :style="{ left: fabPos.x + 'px', top: fabPos.y + 'px', cursor: isDraggingFab ? 'grabbing' : 'grab' }">
+        <i class="lucide-shopping-cart" style="font-size: 20px; pointer-events: none; z-index: 2;"></i> 
+        <span style="font-size: 10px; font-weight: 700; line-height: 1.15; text-align: center; white-space: normal; pointer-events: none; z-index: 2;">KHO<br>SẢN PHẨM</span>
       </button>
 
       <!-- ================== CENTER: BẢNG BÁO GIÁ VÀ TỔNG TIỀN ================== -->
       <section class="box center quote-center">
         <div class="quote-table-container">
-          <div class="sidebar-head table-header-box">
-            <h3><i class="lucide-file-text"></i> Bảng báo giá chi tiết</h3>
-            <div class="header-contract-info">
-              <span class="contract-badge">Mã HĐ: <b>{{ maHopDong }}</b></span>
-              <span class="contract-badge">Số HĐ: <b>{{ soHopDong }}</b></span>
-              <span class="contract-badge">Số PO: <b>{{ currentPO }}</b></span>
+          <div class="sidebar-head table-header-box" style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap; width: 100%;">
+              <div style="display: flex; align-items: center; gap: 12px; flex-wrap: nowrap;">
+                <h3 style="margin: 0; white-space: nowrap; width: auto; flex-shrink: 0;"><i class="lucide-file-text"></i> Bảng báo giá chi tiết</h3>
+                <button @click="resetToanBoBaoGia" style="background: #ef4444; color: #ffffff; border: none; padding: 4px 10px; border-radius: 6px; font-weight: 700; display: flex; align-items: center; gap: 6px; transition: all 0.2s; box-shadow: 0 1px 3px rgba(239, 68, 68, 0.4); font-size: 12px; white-space: nowrap; flex-shrink: 0; width: max-content; cursor: pointer; height: fit-content;" title="Xóa toàn bộ hàng hóa trong báo giá" onmouseover="this.style.background='#dc2626'; this.style.boxShadow='0 2px 5px rgba(239,68,68,0.5)';" onmouseout="this.style.background='#ef4444'; this.style.boxShadow='0 1px 3px rgba(239,68,68,0.4)';">
+                  <i class="lucide-rotate-ccw" style="font-size: 13px; color: #ffffff;"></i> Làm mới
+                </button>
+              </div>
+              <div class="header-contract-info">
+                <span class="contract-badge">Mã HĐ: <b>{{ maHopDong }}</b></span>
+                <span class="contract-badge">Số HĐ: <b>{{ soHopDong }}</b></span>
+                <span class="contract-badge">Số PO: <b>{{ currentPO }}</b></span>
+              </div>
+              <span class="hint" style="margin-left: auto;">Click vào ô <b>SL / MỨC OFF / VAT</b> để sửa trực tiếp.</span>
             </div>
-            <span class="hint">Click vào ô <b>SL / MỨC OFF / VAT</b> để sửa trực tiếp.</span>
           </div>
           <div class="quote-table-wrap">
             <table>
@@ -4174,7 +4318,7 @@ trackHistory('loi', () => totals.value.loi)
               
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                 <button class="action-btn" @click="showPreviewRawModal = true" style="margin: 0; padding: 10px 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; flex-direction: row; justify-content: center; min-height: 38px; background: #2563eb; border: none; color: #ffffff;">
-                  <i class="lucide-eye" style="margin-right: 6px; font-size: 16px;"></i> Xem báo giá
+                  <i class="lucide-eye" style="margin-right: 6px; font-size: 16px;"></i> Xem báo giá gốc
                 </button>
                 <button class="action-btn" @click="openGlobalHistory" style="margin: 0; padding: 10px 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; flex-direction: row; justify-content: center; min-height: 38px; background: #9333ea; border: none; color: #ffffff;">
                   <i class="lucide-history" style="margin-right: 6px; font-size: 16px;"></i> Lịch sử
@@ -4183,10 +4327,10 @@ trackHistory('loi', () => totals.value.loi)
                   <i class="lucide-upload" style="margin-right: 6px; font-size: 16px;"></i> Xuất dữ liệu
                 </button>
                 <button class="action-btn" @click="showLoadInfoModal = true" style="margin: 0; padding: 10px 8px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; flex-direction: row; justify-content: center; min-height: 38px; background: #eab308; border: none; color: #1e3a8a;">
-                  <i class="lucide-download" style="margin-right: 6px; font-size: 16px;"></i> Load dữ liệu
+                  <i class="lucide-download" style="margin-right: 6px; font-size: 16px;"></i> Nạp dữ liệu
                 </button>
 
-                <button class="action-btn action-save" :disabled="saving" @click="showSaveModal = true" style="grid-column: 1 / -1; margin: 0; padding: 14px; font-size: 14px; font-weight: 800; flex-direction: row; justify-content: center; min-height: 46px; letter-spacing: 1px; text-transform: uppercase; background: #dc2626 !important; border: none; color: #ffffff !important; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);">
+                <button class="action-btn action-save" :disabled="saving || !hasUnsavedChanges()" @click="showSaveModal = true" style="grid-column: 1 / -1; margin: 0; padding: 14px; font-size: 14px; font-weight: 800; flex-direction: row; justify-content: center; min-height: 46px; letter-spacing: 1px; text-transform: uppercase; background: #dc2626 !important; border: none; color: #ffffff !important; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);">
                   <i class="lucide-save" style="margin-right: 8px; font-size: 18px;"></i> {{ saving ? 'Đang lưu...' : 'Lưu báo giá' }}
                 </button>
 
@@ -5270,9 +5414,26 @@ trackHistory('loi', () => totals.value.loi)
 
     <div class="load-invoice-grid" style="flex: 1; overflow-y: auto; padding: 0 16px 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 16px; align-content: start;">
       
-      <div v-if="pipelineListState === 'loading'" style="grid-column: 1 / -1; text-align: center; padding: 32px; color: #94a3b8;">
-        <i class="ri-loader-4-line ri-spin" style="font-size: 24px;"></i> Đang tải dữ liệu Pipeline...
-      </div>
+      <template v-if="pipelineListState === 'loading'">
+        <div class="skeleton-card" v-for="n in 6" :key="'sk-pl-'+n">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+            <div class="skeleton-line" style="width: 120px; height: 18px;"></div>
+            <div class="skeleton-line" style="width: 80px; height: 14px;"></div>
+          </div>
+          <div class="skeleton-line" style="width: 60%; height: 20px; margin-bottom: 12px;"></div>
+          <div class="skeleton-line" style="width: 100%; height: 1px; margin-bottom: 12px;"></div>
+          <div class="skeleton-line" style="width: 70%; height: 16px; margin-bottom: 8px;"></div>
+          <div class="skeleton-line" style="width: 50%; height: 16px; margin-bottom: 16px;"></div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+            <div class="skeleton-line" style="width: 40%; height: 14px;"></div>
+            <div class="skeleton-line" style="width: 20%; height: 14px;"></div>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <div class="skeleton-line" style="width: 30%; height: 14px;"></div>
+            <div class="skeleton-line" style="width: 25%; height: 14px;"></div>
+          </div>
+        </div>
+      </template>
 
       <template v-else>
         <div v-for="po in filteredPoDxmhList" :key="po.ma_hop_dong" 
@@ -5356,6 +5517,26 @@ trackHistory('loi', () => totals.value.loi)
     </div>
 
     <div class="load-invoice-grid" style="flex: 1; overflow-y: auto; padding: 0 16px 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 16px; align-content: start;">
+      <template v-if="invoiceListState === 'loading'">
+        <div class="skeleton-card" v-for="n in 6" :key="'sk-iv-'+n">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+            <div class="skeleton-line" style="width: 140px; height: 18px;"></div>
+            <div class="skeleton-line" style="width: 80px; height: 14px;"></div>
+          </div>
+          <div class="skeleton-line" style="width: 50%; height: 16px; margin-bottom: 8px;"></div>
+          <div class="skeleton-line" style="width: 70%; height: 16px; margin-bottom: 12px;"></div>
+          <div class="skeleton-line" style="width: 100%; height: 1px; margin-bottom: 12px;"></div>
+          <div class="skeleton-line" style="width: 80%; height: 16px; margin-bottom: 8px;"></div>
+          <div class="skeleton-line" style="width: 60%; height: 16px; margin-bottom: 16px;"></div>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div class="skeleton-line" style="width: 100%; height: 16px;"></div>
+            <div class="skeleton-line" style="width: 90%; height: 16px;"></div>
+            <div class="skeleton-line" style="width: 95%; height: 16px;"></div>
+          </div>
+        </div>
+      </template>
+
+      <template v-else>
       <div 
         v-for="r in contractCards" 
         :key="r.maHD" 
@@ -5391,6 +5572,7 @@ trackHistory('loi', () => totals.value.loi)
       <div v-if="contractCards.length === 0" class="no-results" style="grid-column: 1 / -1; text-align: center; padding: 32px; color: #94a3b8; font-style: italic;">
         Không tìm thấy hợp đồng/hóa đơn nào phù hợp.
       </div>
+      </template>
     </div>
 
     <p v-if="loadMsg" class="muted" style="text-align: center; margin: 8px 0;">{{ loadMsg }}</p>
@@ -5875,7 +6057,7 @@ trackHistory('loi', () => totals.value.loi)
           </div>
           <div class="history-stat">
             <span class="history-stat-label">Giá trị ban đầu</span>
-            <span class="history-stat-value" style="color: #64748b;">{{ formatVND(currentHistory[currentHistory.length - 1]?.oldVal ?? 0) }}</span>
+            <span class="history-stat-value" style="color: #ffffff;">{{ formatVND(currentHistory[currentHistory.length - 1]?.oldVal ?? 0) }}</span>
           </div>
         </div>
 
@@ -5899,7 +6081,7 @@ trackHistory('loi', () => totals.value.loi)
                 <td style="text-align: center;">
                   <span class="history-time-badge">{{ h.time }}</span>
                 </td>
-                <td style="text-align: left; font-size: 13px; color: #475569; line-height: 1.4;">
+                <td style="text-align: left; font-size: 13px; color: #ffffff; line-height: 1.4;">
                   <template v-if="isGlobalHistory && h.reason">
                     {{ h.reason }}
                   </template>
@@ -6064,10 +6246,13 @@ trackHistory('loi', () => totals.value.loi)
   <PipelinePreviewModal 
     v-if="showPipelineModal" 
     @close="showPipelineModal = false"
+    @saved="onPipelineSaved"
     :khach="selectedPipelineKhach || khach"
     :customers="customers"
     :soHopDong="soHopDong"
     :maHopDong="maHopDong"
+    :maHopDongCu="loadedMaHopDong || ''"
+    :maHopDongGoc="loadedMaHopDongGoc || ''"
     :selectedItems="selectedItems"
     :ghiChuHopDong="ghiChuHopDong"
     :exchangeRate="pipelineExchangeRate"
@@ -6150,6 +6335,63 @@ trackHistory('loi', () => totals.value.loi)
 </template>
 
 <style scoped>
+.metallic-border-btn {
+  border-radius: 50% !important;
+  width: 76px !important;
+  height: 76px !important;
+  color: #ffffff;
+  border: none !important;
+  box-shadow: 0 4px 16px -2px rgba(22, 163, 74, 0.4), 0 0 20px rgba(22, 163, 74, 0.1);
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 !important;
+  user-select: none;
+  transition: box-shadow 0.25s, transform 0.25s;
+  position: relative;
+  overflow: hidden;
+  background: transparent !important;
+}
+
+.metallic-border-btn:hover {
+  box-shadow: 0 8px 24px -2px rgba(22, 163, 74, 0.5), 0 0 30px rgba(22, 163, 74, 0.15);
+}
+
+.metallic-border-btn::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(
+    #ffffff 0%,
+    #ffffff 75%,
+    #fef08a 85%,
+    #eab308 90%,
+    #fef08a 95%,
+    #ffffff 100%
+  );
+  animation: rotate-metallic 2.5s linear infinite;
+  z-index: -2;
+}
+
+.metallic-border-btn::after {
+  content: '';
+  position: absolute;
+  inset: 1.5px;
+  background: #16a34a;
+  border-radius: 50%;
+  z-index: -1;
+}
+
+@keyframes rotate-metallic {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 /* ===== INPUT INLINE 3-STATE: loading → loaded → ready ===== */
 .input-loading,
 .input-loaded,
@@ -7825,7 +8067,7 @@ td.dvt { font-family: inherit; white-space: normal; }
 .history-modal-subtitle {
   margin: 3px 0 0;
   font-size: 13px;
-  color: #94a3b8;
+  color: #ffffff;
   font-weight: 500;
 }
 
@@ -7851,7 +8093,7 @@ td.dvt { font-family: inherit; white-space: normal; }
 .history-stat-label {
   font-size: 11px;
   font-weight: 600;
-  color: #64748b;
+  color: #ffffff;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -7881,7 +8123,7 @@ td.dvt { font-family: inherit; white-space: normal; }
   position: sticky;
   top: 0;
   background: #0f172a !important;
-  color: #94a3b8 !important;
+  color: #ffffff !important;
   font-weight: 700 !important;
   font-size: 11px !important;
   text-transform: uppercase;

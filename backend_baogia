@@ -224,7 +224,7 @@ function clearGetCache_() {
 /* =========================
  * CONST COL COUNT (SCHEMA)
  * ========================= */
-const HD_TONG_COLS = 22
+const HD_TONG_COLS = 31
 const HD_CT_COLS = 23
 const HD_VER_COLS = 5 // ✅ version sheet cols
 

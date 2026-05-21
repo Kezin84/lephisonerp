@@ -56,7 +56,11 @@
       </nav>
     </aside>
     <main class="main-content" ref="mainContentRef" @scroll="handleScroll">
-      <router-view />
+      <router-view v-slot="{ Component }">
+        <keep-alive include="BaoGia">
+          <component :is="Component" />
+        </keep-alive>
+      </router-view>
     </main>
 
     <!-- Scroll to Top Button -->

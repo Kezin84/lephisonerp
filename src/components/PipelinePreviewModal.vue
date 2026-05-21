@@ -289,6 +289,8 @@
 import { computed, ref, watch, onMounted } from 'vue'
 import FormattedInput from './FormattedInput.vue'
 
+const emit = defineEmits(['close', 'saved'])
+
 const BASE_URL = 'https://script.google.com/macros/s/AKfycbx1yDOQLxYgJb5w30KmxQHF8AYUZln_5q58HCKP4zlUmtJye6aJBiSt3oyT0j_3QaigdQ/exec'
 const pipelineStep = ref(0)
 const slideDirection = ref('slide-right')
@@ -501,13 +503,13 @@ const saveRecord = async () => {
       0,                           // 12 hh_ca_nhan
       0,                           // 13 cong_no_cu
       'Chưa thanh toán đủ',        // 14 trang_thai_thanh_toan
-      'Chính thức',                // 15 trang_thai_hop_dong
+      'Tạm',                       // 15 trang_thai_hop_dong
       props.ghiChuHopDong || '',   // 16 ghi_chu
       'VND',                       // 17 don_vi_tien_te
       1,                           // 18 ti_gia
-      '',                          // 19 ma_hop_dong_cu
+      props.maHopDongCu || '',      // 19 ma_hop_dong_cu
       props.quoteTongGiaThucTe ?? tongTruocThue,  // 20 tong_gia_thuc_te (lấy theo FE)
-      `${p(n.getDate())}/${p(n.getMonth()+1)}/${n.getFullYear()}`, // 21 created_time
+      `${p(n.getHours())}:${p(n.getMinutes())}, ${p(n.getDate())}/${p(n.getMonth()+1)}/${n.getFullYear()}`, // 21 created_time
       soPO,                        // 22 So_PO
       tenPO,                       // 23 Ten_PO
       '',                          // 24 content_of_contract_po
@@ -518,6 +520,8 @@ const saveRecord = async () => {
       props.quoteFinancials?.chenhLechGia ?? 0,             // 29 chenh_lech_gia
       props.quoteFinancials?.conLai ?? 0,                   // 30 con_lai
       props.quoteFinancials?.tongChietKhau ?? 0,            // 31 tong_chiet_khau
+      props.maHopDongGoc || maHD,                                  // 32 ma_hop_dong_goc
+      false                                                 // 33 isCompleted
     ]
 
     const hdChiTietRows: any[] = []
@@ -547,26 +551,24 @@ const saveRecord = async () => {
         1,                              // 16 Ti_gia
         item.Thue_VAT !== undefined ? item.Thue_VAT : 10, // 17 Thue_VAT
         item.So_luong || 1,             // 18 So_luong
-        'Chính thức',                   // 19 Trang_thai_hop_dong
+        'Tạm',                          // 19 Trang_thai_hop_dong
         0,                              // 20 gia_hardware
         0,                              // 21 gia_nhap
         item.muc_phan_tram_off || 0,    // 22 muc_phan_tram_off
       ])
     })
 
-    const resContract = await fetch(`${BASE_URL}?action=save_contract_official`, {
+    const resContract = await fetch(`${BASE_URL}?action=save_contract_temp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `payload=${encodeURIComponent(JSON.stringify({
         hd_tong_quat_row: hdTongRow,
         hd_chi_tiet_rows: hdChiTietRows,
-        ma_khach_hang: maKH,
-        tong_sau_thue: sau || 1,
       }))}`
     })
     const resContractJson = await resContract.json()
     if (!resContractJson.ok) {
-      throw new Error(resContractJson.error || 'Failed to save official contract')
+      throw new Error(resContractJson.error || 'Failed to save temp contract')
     }
 
     // 1c. POST chi_tiet_mua_hang (bulk)
@@ -681,9 +683,10 @@ const saveRecord = async () => {
     }
 
     saved.value = true
+    emit('saved')
     asyncResult.value = { show: true, type: 'success', title: 'Lưu Pipeline thành công', msg: `PO: ${soPO}\nKH: ${tenKhachHangSave || maKH}` }
-    if (asyncTimeout) clearTimeout(asyncTimeout)
-    asyncTimeout = setTimeout(() => { asyncResult.value.show = false }, 3000)
+    if (asyncTimeout) window.clearTimeout(asyncTimeout)
+    asyncTimeout = window.setTimeout(() => { asyncResult.value.show = false }, 3000)
   } catch (err: any) {
     console.error('Lỗi đẩy dữ liệu:', err)
     asyncResult.value = { show: true, type: 'error', title: 'Lưu Pipeline thất bại', msg: err.message }
@@ -697,6 +700,8 @@ const props = defineProps<{
   customers?: any[],
   soHopDong: string,
   maHopDong: string,
+  maHopDongCu?: string,
+  maHopDongGoc?: string,
   selectedItems: any[],
   ghiChuHopDong: string,
   exchangeRate: number,

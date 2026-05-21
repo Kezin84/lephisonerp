@@ -979,9 +979,53 @@ function clearGetCache_() {
     } catch (e) { }
 }
 /* =========================
+ * HELPERS: ma_hop_dong_goc & isCompleted
+ * ========================= */
+/**
+ * Tìm ma_hop_dong_goc của 1 hợp đồng cũ theo ma_hop_dong
+ * Quét cột A (ma_hop_dong) và cột AG (index 32 = ma_hop_dong_goc)
+ */
+function getMaHopDongGoc_(maHopDong) {
+    if (!maHopDong) return ''
+    const sh = getSheet_(BG_SHEETS.hop_dong_tong_quat)
+    const lastRow = sh.getLastRow()
+    if (lastRow < 2) return ''
+    const data = sh.getRange(2, 1, lastRow - 1, HD_TONG_COLS).getValues()
+    for (var i = data.length - 1; i >= 0; i--) {
+        if (String(data[i][0]).trim() === String(maHopDong).trim()) {
+            return String(data[i][32] || '').trim()
+        }
+    }
+    return ''
+}
+
+/**
+ * Quét tất cả rows có ma_hop_dong_goc = maGoc
+ * và isCompleted != true → set isCompleted = true
+ * NGOẠI TRỪ row có ma_hop_dong = excludeMaHD (bản chính thức vừa tạo)
+ */
+function markDraftsAsCompleted_(shTong, maGoc, excludeMaHD) {
+    if (!maGoc) return 0
+    const lastRow = shTong.getLastRow()
+    if (lastRow < 2) return 0
+    const data = shTong.getRange(2, 1, lastRow - 1, HD_TONG_COLS).getValues()
+    var count = 0
+    for (var i = 0; i < data.length; i++) {
+        var rowMaGoc = String(data[i][32] || '').trim()
+        var rowMaHD = String(data[i][0] || '').trim()
+        var rowCompleted = data[i][33]
+        if (rowMaGoc === maGoc && rowMaHD !== excludeMaHD && rowCompleted !== true && String(rowCompleted) !== 'true' && String(rowCompleted) !== 'TRUE') {
+            shTong.getRange(i + 2, 34).setValue(true) // cột AH = isCompleted
+            count++
+        }
+    }
+    return count
+}
+
+/* =========================
  * CONST COL COUNT (SCHEMA)
  * ========================= */
-const HD_TONG_COLS = 32
+const HD_TONG_COLS = 34
 const HD_CT_COLS = 23
 const HD_VER_COLS = 5 // ✅ version sheet cols
 
@@ -1132,6 +1176,17 @@ function saveContractTemp_(payload) {
     hdRow[14] = 'Chưa thanh toán đủ'
     hdRow[15] = 'Tạm'
 
+    // ✅ ma_hop_dong_goc: lấy từ bản cũ, nếu không có → chính nó
+    const maCu = String(hdRow[19] || '').trim()
+    if (maCu) {
+        const gocFromOld = getMaHopDongGoc_(maCu)
+        hdRow[32] = gocFromOld || String(hdRow[0])
+    } else {
+        hdRow[32] = String(hdRow[0]) // bản đầu tiên → gốc = chính nó
+    }
+    // ✅ isCompleted: bản tạm mới tạo luôn = false
+    hdRow[33] = false
+
     // ✅ set Don_vi_tien_te + Ti_gia cho tổng quát
     hdRow = patchTongQuatCurrencyTiGia_(hdRow, ctRows)
 
@@ -1149,9 +1204,7 @@ function saveContractTemp_(payload) {
     // ✅ VERSIONING
     const maMoi = String(hdRow[0])
     const soHD = String(hdRow[1])
-    const maCu = String(hdRow[19] || '')
     saveContractVersion_(maMoi, soHD, maCu)
-
 
     const fixedCT = buildContractDetailRows_(ctRows, 'Tạm')
     appendRows_(shCT, fixedCT)
@@ -1179,6 +1232,17 @@ function saveContractOfficial_(payload) {
     hdRow[14] = 'Chưa thanh toán đủ'
     hdRow[15] = 'Chính thức'
 
+    // ✅ ma_hop_dong_goc: lấy từ bản cũ, nếu không có → chính nó
+    const maCu = String(hdRow[19] || '').trim()
+    if (maCu) {
+        const gocFromOld = getMaHopDongGoc_(maCu)
+        hdRow[32] = gocFromOld || String(hdRow[0])
+    } else {
+        hdRow[32] = String(hdRow[0])
+    }
+    // ✅ isCompleted: bản chính thức luôn = false (đang "sống")
+    hdRow[33] = false
+
     // ✅ set Don_vi_tien_te + Ti_gia cho tổng quát
     hdRow = patchTongQuatCurrencyTiGia_(hdRow, ctRows)
 
@@ -1203,9 +1267,11 @@ function saveContractOfficial_(payload) {
     // ✅ VERSIONING
     const maMoi = String(hdRow[0])
     const soHD = String(hdRow[1])
-    const maCu = String(hdRow[19] || '')
     saveContractVersion_(maMoi, soHD, maCu)
 
+    // ✅ ẨN TẤT CẢ BẢN TẠM cùng ma_hop_dong_goc → isCompleted = true
+    const maGoc = String(hdRow[32])
+    markDraftsAsCompleted_(shTong, maGoc, maMoi)
 
     const fixedCT = buildContractDetailRows_(ctRows, 'Chính thức')
     appendRows_(shCT, fixedCT)
@@ -1218,7 +1284,8 @@ function saveContractOfficial_(payload) {
         ti_gia_contract: tiGiaContract,
         add_value_vnd: addValueVND,
         customer_updated: updated,
-        cong_no_cu_saved: hdRow[13]
+        cong_no_cu_saved: hdRow[13],
+        drafts_completed_for: maGoc
     }
 }
 
