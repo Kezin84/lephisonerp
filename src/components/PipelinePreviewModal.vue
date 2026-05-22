@@ -474,6 +474,7 @@ const saveRecord = async () => {
         so_dien_thoai: getEditable('DEL_SDT'), nguoi_lien_he_trien_khai: getEditable('DEL_NGUOI_LIEN_HE'),
         ngay_dat_coc: getEditable('PAY_NGAY_COC'), ti_le_dat_coc: getEditable('PAY_TI_LE_COC'),
         cong_no_ngay: getEditable('PAY_CONG_NO'), ngay_co_hang_du_kien: getEditable('PAY_NGAY_CO_HANG'),
+        content_of_contract_po: props.contentOfContractPO || '',
       })
     })
 
@@ -512,7 +513,7 @@ const saveRecord = async () => {
       `${p(n.getHours())}:${p(n.getMinutes())}, ${p(n.getDate())}/${p(n.getMonth()+1)}/${n.getFullYear()}`, // 21 created_time
       soPO,                        // 22 So_PO
       tenPO,                       // 23 Ten_PO
-      '',                          // 24 content_of_contract_po
+      props.contentOfContractPO || '',  // 24 content_of_contract_po
       props.quoteFinancials?.chietKhauTruocThue ?? 0,       // 25 chiet_khau_tong_truoc_thue
       props.quoteFinancials?.chietKhauTruocThuePct ?? 0,    // 26 phan_tram_chiet_khau_tong_truoc_thue
       props.quoteFinancials?.thueChenhLech ?? 0,            // 27 thue_chenh_lech_gia
@@ -588,6 +589,7 @@ const saveRecord = async () => {
         expiration_time_kaspersky: '',
         start_date_other: '',
         ghi_chu: '',
+        content_of_contract_po: props.contentOfContractPO || '',
       }))
       await fetch(BASE_URL, { method: 'POST', body: JSON.stringify({ sheet: 'chi_tiet_mua_hang', action: 'add_bulk', items: ctmhItems }) })
     }
@@ -598,7 +600,7 @@ const saveRecord = async () => {
       for (const dr of dealRegs.value) {
         for (const item of dr.items) {
           drItems.push({
-            ma_hop_dong: maHD, so_hop_dong: soHD, so_po: soPO, ten_po: tenPO,
+            ma_hop_dong: maHD, so_hop_dong: soHD, so_po: soPO, ten_po: tenPO, content_of_contract_po: props.contentOfContractPO || '',
             ma_nha_cung_cap: '', ten_nha_cung_cap: dr.brand,
             end_user_company_name: getEditable('CUS_COMPANY'),
             end_user_company_name_vietnamese: getEditable('INV_CONG_TY'),
@@ -656,7 +658,7 @@ const saveRecord = async () => {
         ma_hop_dong: maHD,
         so_hop_dong: soHD,
         So_PO: soPO,
-        content_of_contract_PO: tenPO,
+        content_of_contract_PO: props.contentOfContractPO || tenPO,
         Ma_khach_hang: maKH,
         Ten_khach_hang: tenKhachHangSave,
         Ma_cong_ty: props.khach?.Ma_cong_ty || maCT,
@@ -704,6 +706,7 @@ const props = defineProps<{
   maHopDongGoc?: string,
   selectedItems: any[],
   ghiChuHopDong: string,
+  contentOfContractPO?: string,
   exchangeRate: number,
   loadedData?: any,
   excelBlob?: Blob | null,

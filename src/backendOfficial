@@ -1240,8 +1240,8 @@ function saveContractOfficial_(payload) {
     } else {
         hdRow[32] = String(hdRow[0])
     }
-    // ✅ isCompleted: bản chính thức luôn = false (đang "sống")
-    hdRow[33] = false
+    // ✅ isCompleted: bản chính thức = true (đã hoàn thành)
+    hdRow[33] = true
 
     // ✅ set Don_vi_tien_te + Ti_gia cho tổng quát
     hdRow = patchTongQuatCurrencyTiGia_(hdRow, ctRows)

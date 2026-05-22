@@ -4,14 +4,15 @@ export default {
 }
 </script>
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, reactive, computed, onMounted, onUnmounted, onActivated, watch, nextTick } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import draggable from 'vuedraggable'
 import ExcelEditor from './ExcelEditor.vue'
 import FormattedInput from './FormattedInput.vue'
 import PipelinePreviewModal from './PipelinePreviewModal.vue'
 
 const route = useRoute()
+const router = useRouter()
 
 /* ======================
    CONFIG
@@ -208,8 +209,15 @@ const tongGiaThucTe = computed(() => {
 const thueChenhLechPct = ref(0)
 const chietKhauTruocThuePct = ref(0)
 const ghiChuHopDong = ref('')
+const contentOfContractPO = ref('')
 const loadedMaHopDong = ref<string | null>(null)
 const loadedMaHopDongGoc = ref<string | null>(null)
+/* ======================
+   MODAL XÁC NHẬN LƯU KHÁCH TRỐNG
+====================== */
+const showConfirmSaveEmptyCustomer = ref(false)
+const pendingSaveAction = ref<'temp' | 'official' | null>(null)
+
 /* ======================
    MODAL CHỌN SỐ HĐ SO SÁNH
 ====================== */
@@ -869,6 +877,7 @@ async function loadInvoiceToFE() {
   const row = findContractRow()
   if (!row) {
     loadMsg.value = '❌ Không tìm thấy hóa đơn/hợp đồng theo mã/số đã chọn.'
+    showAsyncError('Lỗi', 'Không tìm thấy hóa đơn/hợp đồng theo mã/số đã chọn.')
     return
   }
 
@@ -890,6 +899,7 @@ maHopDong.value = `HD${Date.now()}`
 
     // ghi chú (tolerant)
     ghiChuHopDong.value = String(row?.[16] ?? '').trim()
+    contentOfContractPO.value = String(row?.[24] ?? '').trim()
     
     chietKhauTruocThuePct.value = toNum(row?.[26], 0)
     thueChenhLechPct.value = toNum(row?.[28], 0)
@@ -925,6 +935,92 @@ maHopDong.value = `HD${Date.now()}`
   } catch (e: any) {
     loadMsg.value = '❌ Lỗi load: ' + String(e?.message || e)
     showAsyncError('Load thất bại', String(e?.message || e))
+  } finally {
+    loadingInvoice.value = false
+  }
+}
+
+async function generateNewQuoteIds() {
+  try {
+    const [hdRows, poData] = await Promise.all([
+      fetch(`${BASE_URL}?action=hop_dong_tong_quat`).then(r => r.json()),
+      fetch(`${BASE_URL}?action=po_dxmh`).then(r => r.json())
+    ])
+    
+    contractsRaw.value = Array.isArray(hdRows) ? hdRows : []
+    const hdLen = contractsRaw.value.length
+    soHopDong.value = `HD${hdLen + 1}`
+
+    let maxPO = 0
+    if (Array.isArray(poData)) {
+      poData.forEach((row: any) => {
+        const soPo = parseInt(String(row[2] || '').replace(/\D/g, ''))
+        if (!isNaN(soPo) && soPo > maxPO) maxPO = soPo
+      })
+    }
+    currentPO.value = String(maxPO + 1)
+  } catch (e) {
+    console.error('Lỗi khi tính toán số HĐ/PO mới:', e)
+  }
+}
+
+async function cloneInvoiceToFE() {
+  loadMsg.value = ''
+  const row = findContractRow()
+  if (!row) {
+    loadMsg.value = '❌ Không tìm thấy hóa đơn/hợp đồng theo mã/số đã chọn.'
+    showAsyncError('Lỗi', 'Không tìm thấy hóa đơn/hợp đồng theo mã/số đã chọn.')
+    return
+  }
+
+  try {
+    loadingInvoice.value = true
+    showAsyncLoading('Đang nhân bản hàng hóa...')
+
+    const ma = String(row?.[0] ?? '').trim()
+    maHopDong.value = `HD${Date.now()}` // only generate new ID, don't link old
+
+    // Generate new contract and PO numbers
+    await generateNewQuoteIds()
+
+    // Load percentages
+    chietKhauTruocThuePct.value = toNum(row?.[26], 0)
+    thueChenhLechPct.value = toNum(row?.[28], 0)
+
+    // clear customer info, notes, PO as requested
+    maKHInput.value = ''
+    tenKHInput.value = ''
+    isExistingCustomer.value = false
+    ghiChuHopDong.value = ''
+    contentOfContractPO.value = ''
+    loadedMaHopDong.value = ''
+    loadedMaHopDongGoc.value = ''
+    // do not clear currentPO because it was just generated
+
+    // load chi tiết
+    const ts = Date.now();
+    const detailRows = await fetch(`${BASE_URL}?action=hop_dong_chi_tiet&t=${ts}`).then(r => r.json())
+    const all = Array.isArray(detailRows) ? detailRows : []
+    const mine = all.filter((r: any[]) => String(r?.[0] ?? '').trim() === ma)
+
+    selectedItems.value = mine.map(mapHopDongChiTietRowToItem)
+
+    selectedItems.value.forEach(it => {
+      if (it.Ma_hang) qtyMap[it.Ma_hang] = Math.max(1, toNum(it.So_luong, 1))
+    })
+
+    showLoadInvoiceModal.value = false
+    loadKey.value = ''
+    loadMsg.value = '✅ Đã nhân bản hàng hóa.'
+    
+    // push route without id to clear URL
+    router.push('/baogia?clone=true')
+    
+    showAsyncSuccess('Thành công', 'Đã đổ dữ liệu hàng hóa sang báo giá mới')
+    triggerToast('Đã nhân bản hàng hóa thành công!')
+  } catch (e: any) {
+    loadMsg.value = '❌ Lỗi nhân bản: ' + String(e?.message || e)
+    showAsyncError('Nhân bản thất bại', String(e?.message || e))
   } finally {
     loadingInvoice.value = false
   }
@@ -1084,6 +1180,7 @@ async function loadPipelineToFE() {
     soHopDong.value = so || soHopDong.value
     maHopDong.value = `HD${Date.now()}`
     ghiChuHopDong.value = String(contractRow?.[16] ?? '').trim()
+    contentOfContractPO.value = String(contractRow?.[24] ?? '').trim()
     
     chietKhauTruocThuePct.value = toNum(contractRow?.[26], 0)
     thueChenhLechPct.value = toNum(contractRow?.[28], 0)
@@ -1272,6 +1369,30 @@ function lineLoiNhuanRaw(i: any) {
   return round2((unitPriceRaw(i) - standardPriceRaw(i)) * toNum(i.So_luong, 1))
 }
 
+/* Chênh lệch giá "hiệu dụng" trong modal chỉnh sửa:
+   Mô phỏng kết quả sau khi save (các trường gốc đã sync).
+   Chỉ Don_gia (khi đã adjust) mới tạo ra chênh lệch. */
+function itemChenhLechHieuDung(i: any) {
+  // Giá trị gốc "hiệu dụng" = giá trị sẽ lưu vào _goc sau khi save
+  const effDonGiaGoc = _adjustedFields.has('Don_gia')
+    ? getGocNumber(i, '_Don_gia_goc', toNum(i.Don_gia, 0))
+    : toNum(i.Don_gia, 0)
+  const effHWGoc = _adjustedFields.has('gia_hardware')
+    ? getGocNumber(i, '_gia_hardware_goc', toNum(i.gia_hardware, 0))
+    : toNum(i.gia_hardware, 0)
+  // Các trường khác luôn sync → dùng giá trị hiện tại
+  const effNhap = toNum(i.gia_nhap, 0)
+  const effOffPct = toNum(i.muc_phan_tram_off, 0)
+  const effTiGia = toNum(i.Ti_gia, 1)
+
+  const effLP = effHWGoc + effDonGiaGoc
+  const effDonGiaSauOff = effLP * (1 - effOffPct / 100) + effNhap
+  const effUnitPrice = round2(effDonGiaSauOff * effTiGia)
+  const effLineTruocThue = round2(effUnitPrice * toNum(i.So_luong, 1))
+
+  return round2(lineTruocThue(i) - effLineTruocThue)
+}
+
 const totalsContract = computed(() => {
   let truoc = 0, vat = 0, loi = 0, off = 0
   selectedItems.value.forEach(i => {
@@ -1415,7 +1536,7 @@ function buildHopDongTongQuatRow(
       formatCreatedTimeVN(new Date()), // ✅ index 21 - created_time
       soPO,                            // ✅ index 22 - So_PO
       tenPO,                           // ✅ index 23 - Ten_PO
-      '',                              // ✅ index 24 - content_of_contract_po
+      contentOfContractPO.value.trim(),    // ✅ index 24 - content_of_contract_po
       toNum(chietKhauTruocThue.value, 0),       // 25
       toNum(chietKhauTruocThuePct.value, 0),    // 26
       toNum(thueChenhLech.value, 0),            // 27
@@ -1424,7 +1545,7 @@ function buildHopDongTongQuatRow(
       toNum(conLai.value, 0),                   // 30
       toNum(tongChietKhau.value, 0),            // 31
       goc,                                      // ✅ index 32 - ma_hop_dong_goc
-      false                                     // ✅ index 33 - isCompleted
+      statusHopDong === 'Chính thức' ? 'TRUE' : 'FALSE' // ✅ index 33 - isCompleted
   ]
 }
 
@@ -1479,16 +1600,31 @@ function buildHopDongChiTietRows() {
 
 function canSaveContractBasic() {
   if (!selectedItems.value.length) return 'Chưa có hàng trong báo giá.'
-  if (!khach.value.Ma_khach_hang?.trim()) return 'Chưa chọn Mã khách hàng.'
-  if (!khach.value.Ten_khach_hang?.trim()) return 'Chưa có Tên khách hàng.'
   return ''
 }
-async function saveContractTemp() {
+
+function confirmSaveEmptyCustomer() {
+  showConfirmSaveEmptyCustomer.value = false
+  if (pendingSaveAction.value === 'temp') {
+    saveContractTemp(true)
+  } else if (pendingSaveAction.value === 'official') {
+    saveContractOfficialAndSaleReport(true)
+  }
+  pendingSaveAction.value = null
+}
+
+async function saveContractTemp(force = false) {
   saveMsg.value = ''
   const err = canSaveContractBasic()
   if (err) {
     saveMsg.value = err
-    showAsyncError('⚠️ Thiếu thông tin bắt buộc', err + '\nVui lòng nhập đầy đủ thông tin khách hàng trước khi lưu.')
+    showAsyncError('⚠️ Lỗi', err)
+    return
+  }
+
+  if (!force && (!khach.value.Ma_khach_hang?.trim() || !khach.value.Ten_khach_hang?.trim())) {
+    pendingSaveAction.value = 'temp'
+    showConfirmSaveEmptyCustomer.value = true
     return
   }
 
@@ -1512,7 +1648,7 @@ async function saveContractTemp() {
     .then(() => {
       isDataSaved.value = true
       showAsyncSuccess('Lưu tạm thành công', 'Dữ liệu đã được đồng bộ lên hệ thống.')
-      setTimeout(() => window.location.reload(), 1500)
+      setTimeout(() => { router.replace('/baogia'); setTimeout(() => window.location.reload(), 100) }, 1500)
     })
     .catch((e: any) => {
       showAsyncError('Lưu tạm thất bại', 'Lỗi: ' + String(e?.message || e) + '. Vui lòng thử lại.')
@@ -1521,12 +1657,18 @@ async function saveContractTemp() {
 
 
 
-async function saveContractOfficialAndSaleReport() {
+async function saveContractOfficialAndSaleReport(force = false) {
   saveMsg.value = ''
   const err = canSaveContractBasic()
   if (err) {
     saveMsg.value = err
-    showAsyncError('⚠️ Thiếu thông tin bắt buộc', err + '\nVui lòng nhập đầy đủ thông tin khách hàng trước khi lưu.')
+    showAsyncError('⚠️ Lỗi', err)
+    return
+  }
+
+  if (!force && (!khach.value.Ma_khach_hang?.trim() || !khach.value.Ten_khach_hang?.trim())) {
+    pendingSaveAction.value = 'official'
+    showConfirmSaveEmptyCustomer.value = true
     return
   }
 
@@ -1592,7 +1734,7 @@ async function saveContractOfficialAndSaleReport() {
       ma_hop_dong: maHopDong.value,
       so_hop_dong: soHopDong.value,
       So_PO: nextPO,
-      content_of_contract_PO: soHopDong.value,
+      content_of_contract_PO: contentOfContractPO.value.trim() || soHopDong.value,
       Ma_khach_hang: (khach.value.Ma_khach_hang || '').trim(),
       Ten_khach_hang: (khach.value.Ten_khach_hang || '').trim(),
       Ma_cong_ty: (khach.value.Ma_cong_ty || '').trim(),
@@ -1623,11 +1765,62 @@ async function saveContractOfficialAndSaleReport() {
       console.warn('Lỗi lưu sale_report:', e2)
     }
 
+    // 3) Lưu vào PO_DXMH
+    if (contentOfContractPO.value.trim()) {
+      const poPayload = {
+        sheet: 'po_dxmh',
+        action: 'add',
+        ma_hop_dong: maHopDong.value,
+        so_hop_dong: soHopDong.value,
+        so_po: nextPO,
+        content_of_contract_po: contentOfContractPO.value.trim(),
+        ma_khach_hang: (khach.value.Ma_khach_hang || '').trim(),
+        company: (khach.value.Ten_cong_ty || '').trim(),
+        mst: (khach.value.MST || '').trim(),
+        address: (khach.value.Dia_chi_cong_ty || khach.value.ADDRESS || '').trim(),
+        tel: (khach.value.So_dien_thoai_cong_ty || khach.value.TEL || '').trim(),
+        contact: (khach.value.Ten_khach_hang || '').trim(),
+        email: (khach.value.Email_cong_ty || '').trim()
+      }
+      try {
+        await fetch(BASE_URL, { method: 'POST', body: JSON.stringify(poPayload) })
+      } catch (e3) {
+        console.warn('Lỗi lưu PO_DXMH:', e3)
+      }
+
+      // 4) Lưu vào chi_tiet_mua_hang (mỗi item 1 row)
+      const ctmhItems = selectedItems.value.map(it => ({
+        ma_hop_dong: maHopDong.value,
+        so_hop_dong: soHopDong.value,
+        so_po: nextPO,
+        ten_po: contentOfContractPO.value.trim(),
+        ma_hang_hoa: it.Ma_hang || '',
+        ten_hang_hoa: it.Ten_hang || '',
+        ma_nha_cung_cap: it.Ma_nha_cung_cap || '',
+        ten_nha_cung_cap: it.Ten_nha_cung_cap || '',
+        sl: Number(it.So_luong) || 1,
+        don_gia: Number(it.Don_gia) || 0,
+        thanh_tien: (Number(it.So_luong) || 1) * (Number(it.Don_gia) || 0),
+        content_of_contract_po: contentOfContractPO.value.trim()
+      }))
+      if (ctmhItems.length) {
+        try {
+          await fetch(BASE_URL, { method: 'POST', body: JSON.stringify({
+            sheet: 'chi_tiet_mua_hang',
+            action: 'add_bulk',
+            items: ctmhItems
+          }) })
+        } catch (e4) {
+          console.warn('Lỗi lưu chi_tiet_mua_hang:', e4)
+        }
+      }
+    }
+
     saveMsg.value = '✅ Đã lưu CHÍNH THỨC + SALE REPORT thành công!'
     isDataSaved.value = true
     showAsyncSuccess('Lưu thành công', 'Hợp đồng + Sale Report đã được đồng bộ.')
     loadedMaHopDong.value = null
-    setTimeout(() => window.location.reload(), 1500)
+    setTimeout(() => { router.replace('/baogia'); setTimeout(() => window.location.reload(), 100) }, 1500)
   } catch (e: any) {
     saveMsg.value = '❌ Lỗi: ' + String(e?.message || e)
     showAsyncError('Lưu thất bại', String(e?.message || e))
@@ -1891,6 +2084,17 @@ onMounted(async () => {
     await loadInvoiceToFE()
   }
 
+  const cloneData = localStorage.getItem('cloneQuoteProducts')
+  if (cloneData) {
+    try {
+      selectedItems.value = JSON.parse(cloneData)
+      triggerToast('Đã nhân bản hàng hóa thành công!')
+    } catch (e) {
+      console.error(e)
+    }
+    localStorage.removeItem('cloneQuoteProducts')
+  }
+
   // Tự động load Số PO tiếp theo từ po_dxmh nếu chưa có
   if (!currentPO.value) {
     try {
@@ -1909,6 +2113,69 @@ onMounted(async () => {
   }
 })
 
+// ✅ Handle keep-alive reactivation with ?ma= query param (from QuanLyBaoGia)
+onActivated(async () => {
+  // Tránh đụng độ với onMounted trong lần tải trang đầu tiên
+  if (contractsState.value === 'loading') return
+
+  if (route.query.ma) {
+    const ma = String(route.query.ma)
+    // Nếu đã load đúng mã này rồi thì skip
+    if (loadedMaHopDong.value === ma) return
+
+    showAsyncLoading('Đang chuẩn bị dữ liệu...')
+
+    // Refresh contractsRaw trước khi load
+    try {
+      const hdRows = await fetch(`${BASE_URL}?action=hop_dong_tong_quat`).then(r => r.json())
+      contractsRaw.value = Array.isArray(hdRows) ? hdRows : []
+    } catch (e) { console.error(e) }
+
+    loadMode.value = 'MA'
+    loadKey.value = ma
+    await loadInvoiceToFE()
+  }
+
+  const cloneDataRaw = localStorage.getItem('cloneQuoteProductsRaw')
+  if (cloneDataRaw) {
+    try {
+      showAsyncLoading('Đang nhân bản hàng hóa...')
+      
+      // Đặt lại state như một báo giá mới
+      maHopDong.value = `HD${Date.now()}`
+      maKHInput.value = ''
+      tenKHInput.value = ''
+      isExistingCustomer.value = false
+      ghiChuHopDong.value = ''
+      contentOfContractPO.value = ''
+      loadedMaHopDong.value = ''
+      loadedMaHopDongGoc.value = ''
+      
+      // Tính toán Số HĐ và Số PO mới
+      await generateNewQuoteIds()
+
+      setTimeout(() => {
+        const parsedRaw = JSON.parse(cloneDataRaw)
+        selectedItems.value = parsedRaw.map(mapHopDongChiTietRowToItem)
+        
+        const metaRaw = localStorage.getItem('cloneQuoteMeta')
+        if (metaRaw) {
+          const meta = JSON.parse(metaRaw)
+          chietKhauTruocThuePct.value = meta.chietKhauTruocThuePct || 0
+          thueChenhLechPct.value = meta.thueChenhLechPct || 0
+          localStorage.removeItem('cloneQuoteMeta')
+        }
+
+        showAsyncSuccess('Thành công', 'Đã đổ dữ liệu hàng hóa sang báo giá mới')
+        triggerToast('Đã nhân bản hàng hóa thành công!')
+      }, 1200)
+    } catch (e: any) {
+      console.error(e)
+      showAsyncError('Lỗi', 'Không thể nhân bản: ' + String(e?.message || e))
+    }
+    localStorage.removeItem('cloneQuoteProductsRaw')
+  }
+})
 /* ======================
    AUTO FILL KHÁCH (theo mã hoặc tên)
 ====================== */
@@ -2598,15 +2865,13 @@ const totals = computed(() => {
 const chenhLechGia = computed(() => {
   const truoc = toNum(totals.value.truoc, 0)
   const thucTe = toNum(tongGiaThucTe.value, 0)
-  return Math.max(0, round2(truoc - thucTe))
+  return round2(truoc - thucTe)
 })
 const thueChenhLech = computed(() => {
-  if (chenhLechGia.value <= 0) return 0
   const pct = toNum(thueChenhLechPct.value, 0)
   return round2((chenhLechGia.value * pct) / 100)
 })
 const conLai = computed(() => {
-  if (chenhLechGia.value <= 0) return 0
   return round2(chenhLechGia.value - thueChenhLech.value)
 })
 
@@ -2615,7 +2880,7 @@ const chietKhauTruocThue = computed(() => {
   return round2((toNum(totals.value.truoc, 0) * pct) / 100)
 })
 const tongChietKhau = computed(() => {
-  return Math.max(0, round2(conLai.value + chietKhauTruocThue.value))
+  return round2(conLai.value + chietKhauTruocThue.value)
 })
 const chenhLechGiaRaw = computed(() => {
   const truoc = toNum(totalsContract.value.truoc, 0)
@@ -2744,6 +3009,17 @@ function openQuoteEdit(idx: number, focusField?: string) {
   quoteEdit.value = JSON.parse(JSON.stringify(it))
   quoteEditIdx.value = idx
   pendingQuoteEditFocusField.value = focusField || ''
+
+  // Phát hiện Don_gia / gia_hardware đã bị thay đổi trước đó (ví dụ: điều chỉnh tổng/nhóm/item)
+  // → giữ lại chênh lệch, không cho saveQuoteEdit sync _goc
+  _adjustedFields.clear()
+  if (toNum((it as any)._Don_gia_goc, 0) !== toNum(it.Don_gia, 0)) {
+    _adjustedFields.add('Don_gia')
+  }
+  if (toNum((it as any)._gia_hardware_goc, 0) !== toNum(it.gia_hardware, 0)) {
+    _adjustedFields.add('gia_hardware')
+  }
+
   showQuoteEditModal.value = true
 }
 
@@ -2870,8 +3146,19 @@ function saveQuoteEdit() {
   quoteEdit.value.Ti_gia = Math.max(0, toNum(quoteEdit.value.Ti_gia, 1))
   quoteEdit.value.Thue_VAT = Math.max(0, toNum(quoteEdit.value.Thue_VAT, 0))
 
-  // Đồng bộ _gia_nhap_goc = gia_nhap mới để thay đổi giá nhập không tính vào chênh lệch giá
+  // Đồng bộ các trường gốc = giá trị hiện tại
+  // → thay đổi trực tiếp (SL, mức off, giá nhập, VAT...) KHÔNG tạo chênh lệch giá
+  // → chỉ nút "Điều chỉnh" (applyAdjustPrice) mới tạo chênh lệch
+  if (!_adjustedFields.has('Don_gia')) {
+    quoteEdit.value._Don_gia_goc = toNum(quoteEdit.value.Don_gia, 0)
+  }
+  if (!_adjustedFields.has('gia_hardware')) {
+    quoteEdit.value._gia_hardware_goc = toNum(quoteEdit.value.gia_hardware, 0)
+  }
   quoteEdit.value._gia_nhap_goc = toNum(quoteEdit.value.gia_nhap, 0)
+  quoteEdit.value._muc_phan_tram_off_goc = toNum(quoteEdit.value.muc_phan_tram_off, 0)
+  quoteEdit.value._Ti_gia_goc = toNum(quoteEdit.value.Ti_gia, 1)
+  quoteEdit.value._Thue_VAT_goc = toNum(quoteEdit.value.Thue_VAT, 0)
 
   // replace item -> totals tự tính lại vì totals là computed
   const updatedItem = JSON.parse(JSON.stringify(quoteEdit.value))
@@ -3133,7 +3420,7 @@ function applyAdjustPrice() {
      const hw = toNum(it.gia_hardware, 0);
      const nhap = toNum(it.gia_nhap, 0);
      
-     it.Don_gia = Math.max(0, requiredDonGiaLP - hw - nhap);
+     it.Don_gia = requiredDonGiaLP - hw - nhap;
   };
 
   if (mode === 'item') {
@@ -3806,6 +4093,7 @@ function resetToanBoBaoGia() {
   chietKhauTruocThuePct.value = 0;
   thueChenhLechPct.value = 0;
   ghiChuHopDong.value = '';
+  contentOfContractPO.value = '';
   selectedTermId.value = '';
   editableTermContent.value = '';
 
@@ -3815,6 +4103,22 @@ function resetToanBoBaoGia() {
   }
 
   triggerToast('Đã xóa trắng thông tin báo giá');
+}
+
+async function createNewQuote() {
+  resetToanBoBaoGia()
+
+  loadedMaHopDong.value = ''
+  loadedMaHopDongGoc.value = ''
+  maHopDong.value = `HD${Date.now()}`
+
+  maKHInput.value = ''
+  tenKHInput.value = ''
+  isExistingCustomer.value = false
+
+  await generateNewQuoteIds()
+
+  triggerToast('Đã bắt đầu một báo giá mới!')
 }
 
 const fabPos = ref({ x: 12, y: 90 });
@@ -3888,7 +4192,7 @@ watch([khach, selectedItems], () => {
 
 const onPipelineSaved = () => {
   isDataSaved.value = true
-  setTimeout(() => window.location.reload(), 1500)
+  setTimeout(() => { router.replace('/baogia'); setTimeout(() => window.location.reload(), 100) }, 1500)
 }
 
 const hasUnsavedChanges = () => {
@@ -4010,9 +4314,14 @@ onUnmounted(() => {
                 <button @click="resetToanBoBaoGia" style="background: #ef4444; color: #ffffff; border: none; padding: 4px 10px; border-radius: 6px; font-weight: 700; display: flex; align-items: center; gap: 6px; transition: all 0.2s; box-shadow: 0 1px 3px rgba(239, 68, 68, 0.4); font-size: 12px; white-space: nowrap; flex-shrink: 0; width: max-content; cursor: pointer; height: fit-content;" title="Xóa toàn bộ hàng hóa trong báo giá" onmouseover="this.style.background='#dc2626'; this.style.boxShadow='0 2px 5px rgba(239,68,68,0.5)';" onmouseout="this.style.background='#ef4444'; this.style.boxShadow='0 1px 3px rgba(239,68,68,0.4)';">
                   <i class="lucide-rotate-ccw" style="font-size: 13px; color: #ffffff;"></i> Làm mới
                 </button>
+                <button v-if="loadedMaHopDong" @click="createNewQuote" style="background: #3b82f6; color: #ffffff; border: none; padding: 4px 10px; border-radius: 6px; font-weight: 700; display: flex; align-items: center; gap: 6px; transition: all 0.2s; box-shadow: 0 1px 3px rgba(59, 130, 246, 0.4); font-size: 12px; white-space: nowrap; flex-shrink: 0; width: max-content; cursor: pointer; height: fit-content;" title="Hủy bỏ hợp đồng đang sửa và tạo báo giá mới hoàn toàn" onmouseover="this.style.background='#2563eb'; this.style.boxShadow='0 2px 5px rgba(59,130,246,0.5)';" onmouseout="this.style.background='#3b82f6'; this.style.boxShadow='0 1px 3px rgba(59,130,246,0.4)';">
+                  <i class="lucide-plus-circle" style="font-size: 13px; color: #ffffff;"></i> Tạo báo giá mới
+                </button>
               </div>
               <div class="header-contract-info">
                 <span class="contract-badge">Mã HĐ: <b>{{ maHopDong }}</b></span>
+                <span class="contract-badge" v-if="loadedMaHopDong">Mã Cũ: <b>{{ loadedMaHopDong }}</b></span>
+                <span class="contract-badge" v-if="loadedMaHopDongGoc">Mã Gốc: <b>{{ loadedMaHopDongGoc }}</b></span>
                 <span class="contract-badge">Số HĐ: <b>{{ soHopDong }}</b></span>
                 <span class="contract-badge">Số PO: <b>{{ currentPO }}</b></span>
               </div>
@@ -4314,8 +4623,18 @@ onUnmounted(() => {
               <span style="font-weight: 700; color: #f8fafc; letter-spacing: 0.5px;">THAO TÁC</span>
             </div>
             <div class="totals-body" style="padding: 16px; display: flex; flex-direction: column; gap: 12px;">
-              <textarea v-model="ghiChuHopDong" placeholder="Nhập ghi chú cho hợp đồng..." style="width: 100%; min-height: 44px; padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); font-size: 12.5px; font-family: inherit; resize: vertical; background: rgba(0,0,0,0.2); color: #f8fafc; transition: all 0.2s;" onfocus="this.style.borderColor='#38bdf8'; this.style.boxShadow='0 0 0 3px rgba(56,189,248,0.1)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'; this.style.boxShadow='none'" />
-              
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <label style="font-size: 11px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px;">Content of Contract / PO</label>
+                  <textarea v-model="contentOfContractPO" placeholder="Nội dung Contract/PO..." style="width: 100%; min-height: 44px; padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); font-size: 12.5px; font-family: inherit; resize: vertical; background: rgba(0,0,0,0.2); color: #f8fafc; transition: all 0.2s;" onfocus="this.style.borderColor='#f59e0b'; this.style.boxShadow='0 0 0 3px rgba(245,158,11,0.1)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'; this.style.boxShadow='none'" />
+                </div>
+                
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <label style="font-size: 11px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px;">Ghi chú hợp đồng</label>
+                  <textarea v-model="ghiChuHopDong" placeholder="Nhập ghi chú..." style="width: 100%; min-height: 44px; padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); font-size: 12.5px; font-family: inherit; resize: vertical; background: rgba(0,0,0,0.2); color: #f8fafc; transition: all 0.2s;" onfocus="this.style.borderColor='#38bdf8'; this.style.boxShadow='0 0 0 3px rgba(56,189,248,0.1)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'; this.style.boxShadow='none'" />
+                </div>
+              </div>
+
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                 <button class="action-btn" @click="showPreviewRawModal = true" style="margin: 0; padding: 10px 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; flex-direction: row; justify-content: center; min-height: 38px; background: #2563eb; border: none; color: #ffffff;">
                   <i class="lucide-eye" style="margin-right: 6px; font-size: 16px;"></i> Xem báo giá gốc
@@ -5057,7 +5376,7 @@ onUnmounted(() => {
               </div>
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">ĐVT</label>
-                <input id="qe-DVT" v-model="quoteEdit.DVT" readonly style="width: 100%; padding: 10px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); color: #94a3b8;" />
+                <input id="qe-DVT" v-model="quoteEdit.DVT" style="width: 100%; padding: 10px 14px; border-radius: 8px; font-weight: 500;" />
               </div>
             </div>
 
@@ -5226,13 +5545,13 @@ onUnmounted(() => {
             <!-- CHÊNH LỆCH GIÁ -->
             <div v-if="quoteEdit._Don_gia_goc != null" style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-radius: 10px; border: 1px solid; margin-top: 4px;"
               :style="{
-                background: lineTruocThue(quoteEdit) - lineTruocThueRaw(quoteEdit) >= 0 ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
-                borderColor: lineTruocThue(quoteEdit) - lineTruocThueRaw(quoteEdit) >= 0 ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'
+                background: itemChenhLechHieuDung(quoteEdit) >= 0 ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
+                borderColor: itemChenhLechHieuDung(quoteEdit) >= 0 ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'
               }">
               <span style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;"
-                :style="{ color: lineTruocThue(quoteEdit) - lineTruocThueRaw(quoteEdit) >= 0 ? '#10b981' : '#ef4444' }">
+                :style="{ color: itemChenhLechHieuDung(quoteEdit) >= 0 ? '#10b981' : '#ef4444' }">
                 <div>
-                  <i class="lucide-trending-up" v-if="lineTruocThue(quoteEdit) - lineTruocThueRaw(quoteEdit) >= 0" style="margin-right: 4px;"></i>
+                  <i class="lucide-trending-up" v-if="itemChenhLechHieuDung(quoteEdit) >= 0" style="margin-right: 4px;"></i>
                   <i class="lucide-trending-down" v-else style="margin-right: 4px;"></i>
                   Chênh lệch giá
                 </div>
@@ -5241,8 +5560,8 @@ onUnmounted(() => {
                 </button>
               </span>
               <span style="font-size: 16px; font-weight: 800;"
-                :style="{ color: lineTruocThue(quoteEdit) - lineTruocThueRaw(quoteEdit) >= 0 ? '#10b981' : '#ef4444' }">
-                {{ lineTruocThue(quoteEdit) - lineTruocThueRaw(quoteEdit) >= 0 ? '+' : '' }}{{ formatVND(lineTruocThue(quoteEdit) - lineTruocThueRaw(quoteEdit)) }} ₫
+                :style="{ color: itemChenhLechHieuDung(quoteEdit) >= 0 ? '#10b981' : '#ef4444' }">
+                {{ itemChenhLechHieuDung(quoteEdit) >= 0 ? '+' : '' }}{{ formatVND(itemChenhLechHieuDung(quoteEdit)) }} ₫
               </span>
             </div>
 
@@ -5311,7 +5630,7 @@ onUnmounted(() => {
 
       <div>
         <label>Đơn vị (ĐVT)</label>
-        <input id="qeraw-DVT" v-model="quoteEditRaw.DVT" readonly />
+        <input id="qeraw-DVT" v-model="quoteEditRaw.DVT" />
       </div>
     </div>
 
@@ -5577,9 +5896,12 @@ onUnmounted(() => {
 
     <p v-if="loadMsg" class="muted" style="text-align: center; margin: 8px 0;">{{ loadMsg }}</p>
 
-    <div class="modal-actions" style="justify-content: center; padding: 16px; border-top: 1px solid #334155;">
-      <button @click="showLoadInvoiceModal = false" style="padding: 10px 32px;">Đóng</button>
-      <button class="btn-load-fe" :disabled="loadingInvoice || !loadKey" @click="loadInvoiceToFE">
+    <div class="modal-actions" style="justify-content: center; padding: 16px; border-top: 1px solid #334155; gap: 12px; display: flex;">
+      <button @click="showLoadInvoiceModal = false" style="padding: 10px 32px; background: rgba(255,255,255,0.05); color: #f1f5f9; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;">Đóng</button>
+      <button class="btn-load-fe" :disabled="loadingInvoice || !loadKey" @click="cloneInvoiceToFE" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+        {{ loadingInvoice ? 'Đang nhân bản...' : 'Nhân bản' }}
+      </button>
+      <button class="btn-load-fe" :disabled="loadingInvoice || !loadKey" @click="loadInvoiceToFE" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
         {{ loadingInvoice ? 'Đang load...' : 'Chỉnh sửa báo giá' }}
       </button>
     </div>
@@ -6255,6 +6577,7 @@ onUnmounted(() => {
     :maHopDongGoc="loadedMaHopDongGoc || ''"
     :selectedItems="selectedItems"
     :ghiChuHopDong="ghiChuHopDong"
+    :contentOfContractPO="contentOfContractPO"
     :exchangeRate="pipelineExchangeRate"
     :loadedData="loadedPipelineExtraData"
     :excelBlob="pipelineExcelBlob"
@@ -6328,6 +6651,25 @@ onUnmounted(() => {
       </div>
     </div>
   </Transition>
+
+  <!-- MODAL XÁC NHẬN LƯU KHÁCH TRỐNG -->
+  <div v-if="showConfirmSaveEmptyCustomer" class="modal modal-overlay" style="z-index: 10000; display: flex; align-items: center; justify-content: center;" @click.self="showConfirmSaveEmptyCustomer = false">
+    <div class="modal-card" style="width: min(400px, 90vw); text-align: center; padding: 24px; border-radius: 12px; background: #1e293b; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.3);">
+      <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(245, 158, 11, 0.1); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+        <i class="lucide-alert-triangle" style="width: 32px; height: 32px; color: #f59e0b;"></i>
+      </div>
+      <h3 style="margin-bottom: 12px; color: #f8fafc; font-size: 18px; font-weight: 700;">Thiếu thông tin khách hàng!</h3>
+      <p style="color: #94a3b8; font-size: 14.5px; margin-bottom: 24px; line-height: 1.5;">
+        Bạn chưa nhập thông tin khách hàng. Bạn có chắc chắn muốn tiếp tục lưu báo giá với thông tin khách hàng để trống không?
+      </p>
+      <div style="display: flex; gap: 12px; justify-content: center;">
+        <button style="flex: 1; padding: 10px 16px; border-radius: 8px; background: #334155; color: #f8fafc; border: none; font-weight: 600; cursor: pointer;" @click="showConfirmSaveEmptyCustomer = false">Huỷ</button>
+        <button style="flex: 1; padding: 10px 16px; border-radius: 8px; background: #f59e0b; color: #fff; border: none; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;" @click="confirmSaveEmptyCustomer()">
+          <i class="lucide-check" style="width: 16px; height: 16px;"></i> Tiếp tục lưu
+        </button>
+      </div>
+    </div>
+  </div>
 
   <datalist id="category-list">
     <option v-for="cat in existingCategories" :key="cat" :value="cat"></option>
