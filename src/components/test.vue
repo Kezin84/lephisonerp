@@ -1,4 +1,4 @@
-﻿<script lang="ts">
+<script lang="ts">
 export default {
   name: 'BaoGia'
 }
@@ -834,27 +834,6 @@ function mapHopDongChiTietRowToItem(row: any[]) {
     _Gia_tieu_chuan_goc: baseProduct ? toNum(baseProduct.Gia_tieu_chuan, 0) : toNum(row?.[13], 0),
     _Ti_gia_goc: baseProduct ? toNum(baseProduct.Ti_gia, 1) : toNum(row?.[16], 1),
     _Thue_VAT_goc: baseProduct ? toNum(baseProduct.Thue_VAT, 0) : toNum(row?.[17], 0)
-  } as any
-
-  // ✅ Preserve start_date / end_date from indices 28-29
-  item.start_date = String(row?.[28] ?? '')
-  item.end_date = String(row?.[29] ?? '')
-
-  // ✅ Restore USD-based values if available (saved as VND with Ti_gia=1, but original USD data at index 24-27)
-  const tiGiaUSD = toNum(row?.[24], 0)
-  if (tiGiaUSD > 1) {
-    item.Ti_gia = tiGiaUSD
-    item.Don_gia = toNum(row?.[26], 0)          // Don_giaUS (giá USD gốc)
-    item.Gia_tieu_chuan = toNum(row?.[25], 0)   // Gia_tieu_chuanUSD (giá USD gốc)
-    item.gia_nhap = toNum(row?.[27], 0)         // gia_nhapUSD (giá USD gốc)
-    item.Don_vi_tien_te = 'USD'
-    // Update _goc snapshots to match restored USD values
-    if (!baseProduct) {
-      item._Don_gia_goc = item.Don_gia
-      item._Gia_tieu_chuan_goc = item.Gia_tieu_chuan
-      item._Ti_gia_goc = item.Ti_gia
-      item._gia_nhap_goc = item.gia_nhap
-    }
   }
 
   return item
@@ -1616,26 +1595,17 @@ function buildHopDongChiTietRows() {
       it.Danh_muc || '',
       it.License_duration || '',
       it.DVT || '',
-      giaTCToSave,                 // [13] Gia_tieu_chuan (VND)
-      donGiaToSave,                // [14] Don_gia (VND)
-      'VND',                       // [15] Don_vi_tien_te
-      1,                           // [16] Ti_gia (lưu VND thì ti_gia=1)
-      toNum(it.Thue_VAT, 0),       // [17] Thue_VAT
-      Math.max(1, toNum((it as any).So_luong, 1)), // [18] So_luong
-      '',                          // [19] Trang_thai_hop_dong
-      // ✅ 3 CỘT MỚI
-      toNum(it.gia_hardware, 0),   // [20] gia_hardware
-      toNum(it.gia_nhap, 0),       // [21] gia_nhap
-      toNum(it.muc_phan_tram_off, 0), // [22] muc_%_off
-      // ✅ 5 CỘT USD
-      'USD',                              // [23] don_vi_tien_te_USD
-      tg,                                 // [24] Ti_giaUSD
-      toNum(it.Gia_tieu_chuan, 0),        // [25] Gia_tieu_chuanUSD (giá gốc USD)
-      toNum(it.Don_gia, 0),               // [26] Don_giaUS (giá gốc USD)
-      toNum(it.gia_nhap, 0),              // [27] gia_nhapUSD (giá gốc USD)
-      // ✅ 2 CỘT DATE
-      (it as any).start_date || '',       // [28] start_date
-      (it as any).end_date || ''          // [29] end_date
+      giaTCToSave,                 // ✅ Gia_tieu_chuan
+      donGiaToSave,                // ✅ Don_gia
+      'VND',
+      1, // ✅ lưu VND thì ti_gia=1
+      toNum(it.Thue_VAT, 0),
+      Math.max(1, toNum((it as any).So_luong, 1)),
+      '',
+            // ✅ 3 CỘT MỚI
+      toNum(it.gia_hardware, 0),
+      toNum(it.gia_nhap, 0),
+      toNum(it.muc_phan_tram_off, 0)
     ]
   })
 }
@@ -3205,7 +3175,7 @@ function saveQuoteEdit() {
       addAction(`Sửa ${label} của hàng "${cur.Ten_hang}" từ ${formatVND(oldV)} → ${formatVND(newV)}`, oldV, newV)
     }
   }
-  // ⚠️ KHÔNG clear _adjustedFields ở đây! Cần giữ lại để sync checks bên dưới
+  _adjustedFields.clear()
 
   // ép số an toàn
   quoteEdit.value.So_luong = Math.max(1, toNum(quoteEdit.value.So_luong, 1))
@@ -3227,9 +3197,6 @@ function saveQuoteEdit() {
   quoteEdit.value._muc_phan_tram_off_goc = toNum(quoteEdit.value.muc_phan_tram_off, 0)
   quoteEdit.value._Ti_gia_goc = toNum(quoteEdit.value.Ti_gia, 1)
   quoteEdit.value._Thue_VAT_goc = toNum(quoteEdit.value.Thue_VAT, 0)
-
-  // ✅ Clear adjustedFields SAU sync checks
-  _adjustedFields.clear()
 
   // replace item -> totals tự tính lại vì totals là computed
   const updatedItem = JSON.parse(JSON.stringify(quoteEdit.value))
@@ -3292,10 +3259,9 @@ const adjustPriceModal = ref({
   adjustType: 'percent' as 'percent' | 'number',
   percentValue: 0,
   numberValue: 0,
-  isNormalEdit: false, // true = sửa thường (cập nhật giá thực tế, không tạo chênh lệch)
 })
 
-function openAdjustPrice(mode: 'item'|'group'|'all'|'field', id: string, name: string, field?: string, isNormal?: boolean) {
+function openAdjustPrice(mode: 'item'|'group'|'all'|'field', id: string, name: string, field?: string) {
   let total = 0;
   if (mode === 'item') {
     const item = selectedItems.value[Number(id)];
@@ -3340,8 +3306,7 @@ function openAdjustPrice(mode: 'item'|'group'|'all'|'field', id: string, name: s
     currentTotal: total,
     adjustType: 'percent',
     percentValue: 0,
-    numberValue: total,
-    isNormalEdit: !!isNormal,
+    numberValue: total
   };
 }
 
@@ -3398,12 +3363,8 @@ function applyAdjustPrice() {
       let newValVnd = adjustType === 'percent' ? (oldValVnd * factor) : numberValue;
 
       const label = isUP ? 'Đơn giá (KH)' : (isCL ? 'Chênh lệch giá' : 'Thành tiền trước thuế');
-      const editTypeLabel = adjustPriceModal.value.isNormalEdit ? '[Sửa thường]' : '[Điều chỉnh]';
-      addAction(`${editTypeLabel} Sửa ${label} của hàng "${quoteEdit.value.Ten_hang}" từ ${formatVND(oldValVnd)} → ${formatVND(newValVnd)}`, oldValVnd, newValVnd);
+      addAction(`Sửa ${label} của hàng "${quoteEdit.value.Ten_hang}" từ ${formatVND(oldValVnd)} → ${formatVND(newValVnd)}`, oldValVnd, newValVnd);
       _adjustedFields.add('Don_gia');
-
-      // Ghi nhớ Don_gia cũ trước khi reverse calc thay đổi
-      const _oldDonGiaBeforeCalc = toNum(quoteEdit.value.Don_gia, 0);
 
       // Reverse: unitPrice = donGiaSauOff * Ti_gia, donGiaSauOff = LP*(1-%off/100) + gia_nhap, LP = Don_gia + gia_hardware
       let targetUPVnd = 0;
@@ -3424,12 +3385,6 @@ function applyAdjustPrice() {
       const hw = toNum(quoteEdit.value.gia_hardware, 0);
       if (offMul > 0) {
         quoteEdit.value.Don_gia = (newDonGiaSauOff - nhap) / offMul - hw;
-      }
-
-      // Sửa thường: cập nhật _goc theo cùng delta → giữ nguyên chênh lệch cũ
-      if (adjustPriceModal.value.isNormalEdit) {
-        const _deltaDG = toNum(quoteEdit.value.Don_gia, 0) - _oldDonGiaBeforeCalc;
-        quoteEdit.value._Don_gia_goc = (quoteEdit.value._Don_gia_goc ?? _oldDonGiaBeforeCalc) + _deltaDG;
       }
 
       quoteEdit.value = { ...quoteEdit.value };
@@ -3453,8 +3408,7 @@ function applyAdjustPrice() {
     newValVnd = round2(newValVnd);
     
     // Ghi lịch sử với giá trị cũ → mới
-    const editTypeLabelField = adjustPriceModal.value.isNormalEdit ? '[Sửa thường]' : '[Điều chỉnh]';
-    addAction(`${editTypeLabelField} Sửa ${fieldLabel} của hàng "${quoteEdit.value.Ten_hang}" từ ${formatVND(oldValVnd)} → ${formatVND(newValVnd)}`, oldValVnd, newValVnd)
+    addAction(`Sửa ${fieldLabel} của hàng "${quoteEdit.value.Ten_hang}" từ ${formatVND(oldValVnd)} → ${formatVND(newValVnd)}`, oldValVnd, newValVnd)
     _adjustedFields.add(targetField)
 
     const newValUSD = newValVnd / tg;
@@ -3464,16 +3418,6 @@ function applyAdjustPrice() {
     else if (targetField === 'gia_hardware') { quoteEdit.value.gia_hardware = newValUSD; }
     else if (targetField === 'gia_nhap') { quoteEdit.value.gia_nhap = newValUSD; }
     else { (quoteEdit.value as any)[targetField] = newValUSD; }
-
-    // Sửa thường: cập nhật _goc theo cùng delta → giữ nguyên chênh lệch cũ
-    if (adjustPriceModal.value.isNormalEdit) {
-      const deltaUSD = newValUSD - oldValUSD;
-      if (targetField === 'Don_gia') {
-        quoteEdit.value._Don_gia_goc = (quoteEdit.value._Don_gia_goc ?? oldValUSD) + deltaUSD;
-      } else if (targetField === 'gia_hardware') {
-        quoteEdit.value._gia_hardware_goc = (quoteEdit.value._gia_hardware_goc ?? oldValUSD) + deltaUSD;
-      }
-    }
     
     // Force Vue to detect changes
     quoteEdit.value = { ...quoteEdit.value };
@@ -3491,11 +3435,10 @@ function applyAdjustPrice() {
      
      if (targetField === 'total_chenh_lech') {
        let targetDiff = adjustType === 'percent' ? (oldTotal * factor) : numberValue;
-       const delta = targetDiff - oldTotal;
        if (initialTotalTruoc > 0) {
-         newLineTotal = currentLineTotal + delta * (currentLineTotal / initialTotalTruoc);
+         newLineTotal = currentLineTotal + targetDiff * (currentLineTotal / initialTotalTruoc);
        } else {
-         newLineTotal = currentLineTotal + delta / Math.max(1, initialCount);
+         newLineTotal = currentLineTotal + targetDiff / Math.max(1, initialCount);
        }
      } else {
        if (adjustType === 'number' && currentTotal === 0) {
@@ -3515,14 +3458,7 @@ function applyAdjustPrice() {
      const hw = toNum(it.gia_hardware, 0);
      const nhap = toNum(it.gia_nhap, 0);
      
-     const oldDonGia = toNum(it.Don_gia, 0);
      it.Don_gia = requiredDonGiaLP - hw - nhap;
-
-     // Sửa thường: cập nhật _goc theo cùng delta → giữ nguyên chênh lệch cũ
-     if (adjustPriceModal.value.isNormalEdit) {
-       const deltaDG = toNum(it.Don_gia, 0) - oldDonGia;
-       it._Don_gia_goc = (it._Don_gia_goc ?? oldDonGia) + deltaDG;
-     }
   };
 
   if (mode === 'item') {
@@ -3832,8 +3768,6 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value): Promise<B
   const contractName = contentOfContractPO.value.trim()
   if (contractName) ws.name = contractName
   
-  const isUsdExport = quoteCurrency.value === 'USD';
-
   let headerRowIdx = -1;
   let totalRowIdx = -1;
   let origTermStart = -1;
@@ -3894,22 +3828,6 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value): Promise<B
   for (let c = 1; c <= maxCol; c++) totalRowStyle[c] = ws.getRow(totalRowIdx).getCell(c).style;
   const totalRowHeight = ws.getRow(totalRowIdx).height;
 
-  // Nếu xuất USD, đổi header VNĐ -> USD và format số
-  if (isUsdExport) {
-    if (headerRowIdx !== -1) {
-      ws.getRow(headerRowIdx).eachCell(cell => {
-        if (typeof cell.value === 'string') {
-          cell.value = cell.value.replace(/VNĐ|VND/gi, 'USD');
-        }
-      });
-    }
-    const usdFormat = '#,##0.00';
-    [colMap.don_gia, colMap.truoc_thue, colMap.vat, colMap.sau_thue].filter(Boolean).forEach(c => {
-      if (dataRowStyle[c]) dataRowStyle[c] = { ...dataRowStyle[c], numFmt: usdFormat };
-      if (totalRowStyle[c]) totalRowStyle[c] = { ...totalRowStyle[c], numFmt: usdFormat };
-    });
-  }
-
   const footerMerges: any[] = [];
   const footerRowProps: any[] = [];
   const maxRow = ws.rowCount;
@@ -3961,16 +3879,17 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value): Promise<B
       const vat = lineVAT(i);
       const sau = lineSauThue(i);
       const tg = toNum(i.Ti_gia, 1) || 1;
+      const isUsd = quoteCurrency.value === 'USD';
 
       if (colMap.stt) row.getCell(colMap.stt).value = r.stt;
       if (colMap.ten_hang) row.getCell(colMap.ten_hang).value = i.Ten_hang;
       if (colMap.mo_ta) row.getCell(colMap.mo_ta).value = [i.Mo_ta_chung, i.Mo_ta_chi_tiet, i.Features].filter(Boolean).join('\n');
       if (colMap.dvt) row.getCell(colMap.dvt).value = i.DVT;
       if (colMap.so_luong) row.getCell(colMap.so_luong).value = Number(i.So_luong) || 0;
-      if (colMap.don_gia) row.getCell(colMap.don_gia).value = isUsdExport ? round2(donGiaVND / tg) : (Number(donGiaVND) || 0);
-      if (colMap.truoc_thue) row.getCell(colMap.truoc_thue).value = isUsdExport ? round2(truoc / tg) : (Number(truoc) || 0);
-      if (colMap.vat) row.getCell(colMap.vat).value = isUsdExport ? round2(vat / tg) : (Number(vat) || 0);
-      if (colMap.sau_thue) row.getCell(colMap.sau_thue).value = isUsdExport ? round2(sau / tg) : (Number(sau) || 0);
+      if (colMap.don_gia) row.getCell(colMap.don_gia).value = isUsd ? round2(donGiaVND / tg) : (Number(donGiaVND) || 0);
+      if (colMap.truoc_thue) row.getCell(colMap.truoc_thue).value = isUsd ? round2(truoc / tg) : (Number(truoc) || 0);
+      if (colMap.vat) row.getCell(colMap.vat).value = isUsd ? round2(vat / tg) : (Number(vat) || 0);
+      if (colMap.sau_thue) row.getCell(colMap.sau_thue).value = isUsd ? round2(sau / tg) : (Number(sau) || 0);
 
       for (let c = 1; c <= maxCol; c++) {
         const cell = row.getCell(c);
@@ -3985,6 +3904,7 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value): Promise<B
     insertIdx++;
   });
 
+  const isUsdExport = quoteCurrency.value === 'USD';
   ws.spliceRows(insertIdx, 0, []);
   const totRow = ws.getRow(insertIdx);
   totRow.getCell(1).value = 'TỔNG CỘNG + THUẾ';
@@ -4003,9 +3923,10 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value): Promise<B
     if (editableTermContent.value) {
       const currentTermStart = origTermStart + diff;
       const currentSigStart = origSigStart + diff;
-      const rowsToDelete = currentSigStart - currentTermStart; // xóa TOÀN BỘ rows cũ từ termStart đến sigStart
+      const rowsToDelete = currentSigStart - currentTermStart - 1; // leave 1 empty row
       
       const temp = document.createElement('div');
+      // To prevent double newlines from <p><br></p>, we handle them specifically
       let htmlStr = editableTermContent.value.replace(/<p><br\s*[\/]?>\s*<\/p>/gi, '\n');
       htmlStr = htmlStr.replace(/<div><br\s*[\/]?>\s*<\/div>/gi, '\n');
       htmlStr = htmlStr.replace(/<br\s*[\/]?>/gi, '\n');
@@ -4116,15 +4037,9 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value): Promise<B
         const row = ws.getRow(currentTermStart + i);
         const lineArr = cleanLinesRT[i];
         
-        // Clear tất cả cells trên row để không bị sót data cũ từ template
-        for (let c = 1; c <= maxCol; c++) {
-          row.getCell(c).value = null;
-          row.getCell(c).style = {};
-        }
-        
         let bulletNumber: number | null = null;
         if (lineArr.length > 0 && lineArr[0].text) {
-           const match = lineArr[0].text.match(/^(\s*\d+)[\.:\)\s]+(.*)/)  ;
+           const match = lineArr[0].text.match(/^(\s*\d+)[\.\s]+(.*)/);
            if (match) {
              bulletNumber = Number(match[1]);
              lineArr[0].text = match[2];
@@ -4145,14 +4060,13 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value): Promise<B
           row.getCell(2).value = '';
         }
         
-        // Merge from Col 2 to maxCol and style
+        // Merge from Col 2 to 9 and style
         ws.mergeCells(currentTermStart + i, 2, currentTermStart + i, maxCol);
         const cell2 = row.getCell(2);
         cell2.alignment = { wrapText: true, vertical: 'top', horizontal: 'left' };
       }
     }
   }
-
 
   footerMerges.forEach(m => {
     let mergeDiff = diff;
@@ -4775,10 +4689,7 @@ onUnmounted(() => {
                     <td :colspan="quoteCurrency === 'USD' ? 16 : 15" class="group-title">
                       <div style="display: flex; align-items: center;">
                         <span>{{ r.title }}</span>
-                        <button class="util-btn small inline-normal-edit" style="margin-left: 6px; padding: 2px 6px; font-size: 11px;" @click.stop="openAdjustPrice('group', r.key, r.title, undefined, true)" title="Sửa thường - cập nhật giá thực tế">
-                          <i class="ri-edit-line"></i>
-                        </button>
-                        <button class="util-btn small inline-adjust" style="margin-left: 4px; padding: 2px 6px; font-size: 11px;" @click.stop="openAdjustPrice('group', r.key, r.title)">
+                        <button class="util-btn small inline-adjust" style="margin-left: 10px; padding: 2px 6px; font-size: 11px;" @click.stop="openAdjustPrice('group', r.key, r.title)">
                           <i class="ri-arrow-up-down-fill"></i>
                         </button>
                       </div>
@@ -5838,14 +5749,9 @@ onUnmounted(() => {
             <div style="display: flex; flex-direction: column; gap: 6px;">
               <label style="display: flex; justify-content: space-between; align-items: center;">
                 <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">ĐƠN GIÁ BÁN (VND)</span>
-                <div style="display: flex; gap: 4px;">
-                  <button class="util-btn small inline-normal-edit" style="padding: 2px 8px; font-size: 11px; white-space: nowrap; border-radius: 4px;" @click="openAdjustPrice('field', '', 'Đơn giá', 'Don_gia', true)" title="Sửa thường - cập nhật giá thực tế">
-                    <i class="ri-edit-line"></i> Sửa thường
-                  </button>
-                  <button class="util-btn small inline-adjust" style="padding: 2px 8px; font-size: 11px; white-space: nowrap; border-radius: 4px; background: rgba(16,185,129,0.2); color: #10b981; border: 1px solid rgba(16,185,129,0.4);" @click="openAdjustPrice('field', '', 'Đơn giá', 'Don_gia')" title="Điều chỉnh - tạo chênh lệch giá">
-                    <i class="ri-arrow-up-down-fill"></i> Điều chỉnh
-                  </button>
-                </div>
+                <button class="util-btn small inline-adjust" style="padding: 2px 8px; font-size: 11px; white-space: nowrap; border-radius: 4px; background: rgba(16,185,129,0.2); color: #10b981; border: 1px solid rgba(16,185,129,0.4);" @click="openAdjustPrice('field', '', 'Đơn giá', 'Don_gia')" title="Giá kí hợp đồng Đơn giá">
+                  <i class="ri-arrow-up-down-fill"></i> Điều chỉnh
+                </button>
               </label>
               <div style="position: relative;">
                 <FormattedInput id="qe-Don_gia" :modelValue="(quoteEdit.Don_gia || 0) * (Number(quoteEdit.Ti_gia) || 1)" @update:modelValue="quoteEdit.Don_gia = $event / (Number(quoteEdit.Ti_gia) || 1)" @input="ensureNumberField(quoteEdit, 'Don_gia')" :readonly="true" style="width: 100%; padding: 12px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 16px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
@@ -5942,14 +5848,9 @@ onUnmounted(() => {
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="display: flex; justify-content: space-between; align-items: center;">
                   <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Đơn giá (KH)</span>
-                  <div style="display: flex; gap: 4px;">
-                    <button class="util-btn small inline-normal-edit" style="padding: 2px 8px; font-size: 11px; white-space: nowrap; border-radius: 4px;" @click="openAdjustPrice('field', '', 'Đơn giá (KH)', 'unit_price_kh', true)" title="Sửa thường - cập nhật giá thực tế">
-                      <i class="ri-edit-line"></i> Sửa thường
-                    </button>
-                    <button class="util-btn small inline-adjust" style="padding: 2px 8px; font-size: 11px; white-space: nowrap; border-radius: 4px; background: rgba(16,185,129,0.2); color: #10b981; border: 1px solid rgba(16,185,129,0.4);" @click="openAdjustPrice('field', '', 'Đơn giá (KH)', 'unit_price_kh')" title="Điều chỉnh - tạo chênh lệch giá">
-                      <i class="ri-arrow-up-down-fill"></i> Điều chỉnh
-                    </button>
-                  </div>
+                  <button class="util-btn small inline-adjust" style="padding: 2px 8px; font-size: 11px; white-space: nowrap; border-radius: 4px; background: rgba(16,185,129,0.2); color: #10b981; border: 1px solid rgba(16,185,129,0.4);" @click="openAdjustPrice('field', '', 'Đơn giá (KH)', 'unit_price_kh')" title="Điều chỉnh Đơn giá KH">
+                    <i class="ri-arrow-up-down-fill"></i> Điều chỉnh
+                  </button>
                 </label>
                 <div style="position: relative;">
                   <FormattedInput id="qe-unit_price_kh" :modelValue="unitPrice(quoteEdit)" :readonly="true" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
@@ -5960,14 +5861,9 @@ onUnmounted(() => {
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="display: flex; justify-content: space-between; align-items: center;">
                   <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">TT Trước thuế</span>
-                  <div style="display: flex; gap: 4px;">
-                    <button class="util-btn small inline-normal-edit" style="padding: 2px 8px; font-size: 11px; white-space: nowrap; border-radius: 4px;" @click="openAdjustPrice('field', '', 'Thành tiền trước thuế', 'line_truoc_thue', true)" title="Sửa thường - cập nhật giá thực tế">
-                      <i class="ri-edit-line"></i> Sửa thường
-                    </button>
-                    <button class="util-btn small inline-adjust" style="padding: 2px 8px; font-size: 11px; white-space: nowrap; border-radius: 4px; background: rgba(16,185,129,0.2); color: #10b981; border: 1px solid rgba(16,185,129,0.4);" @click="openAdjustPrice('field', '', 'Thành tiền trước thuế', 'line_truoc_thue')" title="Điều chỉnh - tạo chênh lệch giá">
-                      <i class="ri-arrow-up-down-fill"></i> Điều chỉnh
-                    </button>
-                  </div>
+                  <button class="util-btn small inline-adjust" style="padding: 2px 8px; font-size: 11px; white-space: nowrap; border-radius: 4px; background: rgba(16,185,129,0.2); color: #10b981; border: 1px solid rgba(16,185,129,0.4);" @click="openAdjustPrice('field', '', 'Thành tiền trước thuế', 'line_truoc_thue')" title="Điều chỉnh Thành tiền trước thuế">
+                    <i class="ri-arrow-up-down-fill"></i> Điều chỉnh
+                  </button>
                 </label>
                 <div style="position: relative;">
                   <FormattedInput id="qe-line_truoc_thue" :modelValue="lineTruocThue(quoteEdit)" :readonly="true" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
@@ -6696,29 +6592,20 @@ onUnmounted(() => {
 
     <!-- ================== MODAL: ĐIỀU CHỈNH GIÁ LIC (VIP) ================== -->
     <div v-if="adjustPriceModal.show" class="modal" @click.self="adjustPriceModal.show = false">
-      <div class="modal-card" :style="{ width: '460px', padding: '0', background: '#0f172a', border: '1px solid ' + (adjustPriceModal.isNormalEdit ? 'rgba(59,130,246,0.25)' : 'rgba(16,185,129,0.25)'), boxShadow: '0 25px 50px -12px rgba(0,0,0,0.7), 0 0 0 1px ' + (adjustPriceModal.isNormalEdit ? 'rgba(59,130,246,0.1)' : 'rgba(16,185,129,0.1)'), borderRadius: '20px', overflow: 'hidden', animation: 'popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }">
+      <div class="modal-card" style="width: 460px; padding: 0; background: #0f172a; border: 1px solid rgba(16,185,129,0.25); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.7), 0 0 0 1px rgba(16,185,129,0.1); border-radius: 20px; overflow: hidden; animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
         
         <!-- Header -->
-        <div class="modal-head" :style="{ background: 'linear-gradient(135deg, ' + (adjustPriceModal.isNormalEdit ? 'rgba(59,130,246,0.12)' : 'rgba(16,185,129,0.12)') + ' 0%, rgba(15,23,42,0.95) 100%)', padding: '20px 24px', borderBottom: '1px solid ' + (adjustPriceModal.isNormalEdit ? 'rgba(59,130,246,0.15)' : 'rgba(16,185,129,0.15)'), display: 'flex', justifyContent: 'space-between', alignItems: 'center' }">
+        <div class="modal-head" style="background: linear-gradient(135deg, rgba(16,185,129,0.12) 0%, rgba(15,23,42,0.95) 100%); padding: 20px 24px; border-bottom: 1px solid rgba(16,185,129,0.15); display: flex; justify-content: space-between; align-items: center;">
           <h3 style="color: #fff; font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 12px; margin: 0; letter-spacing: 0.3px;">
-            <div :style="{ width: '36px', height: '36px', borderRadius: '10px', background: adjustPriceModal.isNormalEdit ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 15px ' + (adjustPriceModal.isNormalEdit ? 'rgba(59,130,246,0.4)' : 'rgba(16,185,129,0.4)') }">
-              <i :class="adjustPriceModal.isNormalEdit ? 'ri-edit-line' : 'ri-arrow-up-down-fill'" style="color: #fff; font-size: 18px;"></i>
+            <div style="width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(16,185,129,0.4);">
+              <i class="ri-arrow-up-down-fill" style="color: #fff; font-size: 18px;"></i>
             </div>
-            {{ adjustPriceModal.isNormalEdit ? 'Sửa Thường' : 'Điều Chỉnh Giá' }}
+            Điều Chỉnh Giá
           </h3>
           <button class="x" @click="adjustPriceModal.show = false" style="background: rgba(255,255,255,0.05); color: #94a3b8; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; font-size: 16px;">✕</button>
         </div>
         
         <div style="padding: 24px;">
-          <!-- Note giải thích -->
-          <div v-if="adjustPriceModal.isNormalEdit" style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; margin-bottom: 16px; border-radius: 10px; background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.2);">
-            <i class="ri-information-line" style="color: #3b82f6; font-size: 16px; flex-shrink: 0;"></i>
-            <span style="font-size: 12px; color: #93c5fd; line-height: 1.5;">Sửa thường sẽ cập nhật <b>giá thực tế</b>, không tạo chênh lệch giá hay chiết khấu.</span>
-          </div>
-          <div v-else-if="adjustPriceModal.mode === 'field'" style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; margin-bottom: 16px; border-radius: 10px; background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.2);">
-            <i class="ri-information-line" style="color: #10b981; font-size: 16px; flex-shrink: 0;"></i>
-            <span style="font-size: 12px; color: #6ee7b7; line-height: 1.5;">Điều chỉnh sẽ tạo <b>chênh lệch giá</b> (giá bán thay đổi, giá thực tế giữ nguyên).</span>
-          </div>
           <!-- Target Info Card -->
           <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 16px; margin-bottom: 24px; position: relative; overflow: hidden;">
             <div style="position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, #10b981, transparent); opacity: 0.5;"></div>
@@ -6786,7 +6673,7 @@ onUnmounted(() => {
           <!-- Actions -->
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <button @click.prevent="adjustPriceModal.show = false" style="padding: 14px; border-radius: 12px; font-weight: 700; font-size: 14px; background: rgba(255,255,255,0.05); color: #94a3b8; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: all 0.2s;">Hủy Bỏ</button>
-            <button @click.prevent="applyAdjustPrice()" :style="{ padding: '14px', borderRadius: '12px', fontWeight: '700', fontSize: '15px', background: adjustPriceModal.isNormalEdit ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: '#fff', border: 'none', cursor: 'pointer', boxShadow: adjustPriceModal.isNormalEdit ? '0 4px 15px rgba(59,130,246,0.3)' : '0 4px 15px rgba(16,185,129,0.3)', transition: 'all 0.2s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }">
+            <button @click.prevent="applyAdjustPrice()" style="padding: 14px; border-radius: 12px; font-weight: 700; font-size: 15px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #fff; border: none; cursor: pointer; box-shadow: 0 4px 15px rgba(16,185,129,0.3); transition: all 0.2s; display: flex; justify-content: center; align-items: center; gap: 8px;">
               <i class="lucide-check"></i> Xác Nhận
             </button>
           </div>
@@ -7640,17 +7527,7 @@ h3 [class^="lucide-"] {
   font-weight: 700 !important;
   width: max-content !important;
 }
-.inline-normal-edit {
-  background-color: #3b82f6 !important;
-  color: #ffffff !important;
-  border-color: #2563eb !important;
-  font-weight: 700 !important;
-  width: max-content !important;
-}
 .inline-adjust [class^="lucide-"] {
-  color: #ffffff !important;
-}
-.inline-normal-edit [class^="lucide-"] {
   color: #ffffff !important;
 }
 .inline-adjust:hover {
@@ -7658,15 +7535,7 @@ h3 [class^="lucide-"] {
   border-color: #dc2626 !important;
   color: #ffffff !important;
 }
-.inline-normal-edit:hover {
-  background-color: #2563eb !important;
-  border-color: #1d4ed8 !important;
-  color: #ffffff !important;
-}
 .inline-adjust:hover [class^="lucide-"] {
-  color: #ffffff !important;
-}
-.inline-normal-edit:hover [class^="lucide-"] {
   color: #ffffff !important;
 }
 

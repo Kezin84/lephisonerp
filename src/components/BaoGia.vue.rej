@@ -1,0 +1,64 @@
+diff a/src/components/BaoGia.vue b/src/components/BaoGia.vue	(rejected hunks)
+@@ -806,11 +814,11 @@ function mapHopDongChiTietRowToItem(row: any[]) {
+     Danh_muc: String(row?.[10] ?? '').toUpperCase(),
+     License_duration: String(row?.[11] ?? ''),
+     DVT: String(row?.[12] ?? ''),
+-    Gia_tieu_chuan: toNum(row?.[13], 0),
+-    Don_gia: toNum(row?.[14], 0),
++    Gia_tieu_chuan: finalGiaTC,
++    Don_gia: finalDonGia,
+     Trang_thai: 'Hiß╗ân thß╗ï',
+     Don_vi_tien_te: String(row?.[15] ?? 'VND'),
+-    Ti_gia: toNum(row?.[16], 1),
++    Ti_gia: finalTiGia,
+     Thue_VAT: toNum(row?.[17], 0),
+     Ma_hang_lien_ket: '',
+     Ten_hang_lien_ket: '',
+@@ -1582,17 +1587,22 @@ function buildHopDongChiTietRows() {
+       it.Danh_muc || '',
+       it.License_duration || '',
+       it.DVT || '',
+-      giaTCToSave,                 // Γ£à Gia_tieu_chuan
+-      donGiaToSave,                // Γ£à Don_gia
+-      'VND',
+-      1, // Γ£à l╞░u VND th├¼ ti_gia=1
++      giaTCToSave,                           // 13: Gia_tieu_chuan (VND)
++      donGiaToSave,                          // 14: Don_gia (VND)
++      'VND',                                 // 15: Don_vi_tien_te
++      1,                                     // 16: Ti_gia = 1
+       toNum(it.Thue_VAT, 0),
+       Math.max(1, toNum((it as any).So_luong, 1)),
+-      '',
+-            // Γ£à 3 Cß╗ÿT Mß╗ÜI
+-      toNum(it.gia_hardware, 0),
+-      toNum(it.gia_nhap, 0),
+-      toNum(it.muc_phan_tram_off, 0)
++      '',                                    // 19: Trang_thai_hop_dong
++      toNum(it.gia_hardware, 0) * tg,        // 20: gia_hardware (VND)
++      toNum(it.gia_nhap, 0) * tg,            // 21: gia_nhap (VND)
++      toNum(it.muc_phan_tram_off, 0),        // 22: muc_%_off
++      // Γ£à 5 Cß╗ÿT USD Mß╗ÜI
++      'USD',                                 // 23: don_vi_tien_te_USD
++      toNum(it.Ti_gia, 1),                   // 24: Ti_giaUSD
++      toNum(it.Gia_tieu_chuan, 0),           // 25: Gia_tieu_chuanUSD
++      toNum(it.Don_gia, 0),                  // 26: Don_giaUS
++      toNum(it.gia_nhap, 0)                  // 27: gia_nhapUSD
+     ]
+   })
+ }
+@@ -2739,6 +2749,7 @@ function donGiaSauOff(i: any) {
+ /* Γ£à Hiß╗ân thß╗ï Gi├í Ti├¬u Chuß║⌐n (theo mode VND) */
+ function displayGiaTieuChuan(i: any) {
+   const tc = toNum(i.Gia_tieu_chuan, 0)
++  if (quoteCurrency.value === 'USD') return formatUSD(tc)
+   const tg = toNum(i.Ti_gia, 1)
+   return formatVND(tc * tg)
+ }
+@@ -2765,6 +2776,7 @@ function displayGiaTieuChuanPctRaw(i: any) {
+ /* Γ£à Hiß╗ân thß╗ï ─É╞ín gi├í LP (theo mode VND) */
+ function displayDonGiaLP(i: any) {
+   const lp = donGiaLP(i)
++  if (quoteCurrency.value === 'USD') return formatUSD(lp)
+   const tg = toNum(i.Ti_gia, 1)
+   return formatVND(lp * tg)
+ }

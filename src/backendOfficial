@@ -458,8 +458,12 @@ function doPost(e) {
       action === "addHangHoa" ||
       action === "addHangHoaBatch" ||
       action === "editHangHoa" ||
-      action === "deleteHangHoa"
+      action === "deleteHangHoa" ||
+      action === "update_chi_tiet_dates" ||
+      action === "update_contract_file"
     ) {
+      // Nhả lock trước khi gọi bg_doPost (vì bg_doPost sẽ tự lấy lock riêng)
+      try { lock.releaseLock() } catch (e2) {}
       return bg_doPost(e);
     }
     // -------------------------
@@ -892,6 +896,16 @@ function bg_doPost(e) {
             clearGetCache_()
             return bg_json({ ok: true, action, ...rs })
         }
+        if (action === 'update_chi_tiet_dates') {
+            const rs = updateChiTietDates_(payload)
+            clearGetCache_()
+            return bg_json({ ok: true, action, ...rs })
+        }
+        if (action === 'update_contract_file') {
+            const rs = updateContractFile_(payload)
+            clearGetCache_()
+            return bg_json({ ok: true, action, ...rs })
+        }
         return bg_json({ ok: false, error: 'INVALID_ACTION', action })
     } catch (err) {
         return bg_json({ ok: false, error: String(err && err.message ? err.message : err) })
@@ -1025,8 +1039,8 @@ function markDraftsAsCompleted_(shTong, maGoc, excludeMaHD) {
 /* =========================
  * CONST COL COUNT (SCHEMA)
  * ========================= */
-const HD_TONG_COLS = 34
-const HD_CT_COLS = 23
+const HD_TONG_COLS = 36 // +2 cols: [34]ten_file [35]link_file
+const HD_CT_COLS = 30 // +2 cols: [28]start_date [29]end_date
 const HD_VER_COLS = 5 // ✅ version sheet cols
 
 function normalizeRow_(arr, cols) {
@@ -1360,6 +1374,88 @@ function updateContract_(payload) {
     }
 }
 
+/* =========================
+ * UPDATE CHI TIET DATES (start_date, end_date)
+ * payload: { ma_hop_dong, ma_hang, start_date, end_date }
+ * ========================= */
+function updateChiTietDates_(payload) {
+    var maHD = String(payload.ma_hop_dong || '').trim()
+    if (!maHD) throw new Error('MISSING_ma_hop_dong')
+
+    var items = payload.items;
+    if (!items && payload.ma_hang) {
+        items = [{
+            ma_hang: payload.ma_hang,
+            start_date: payload.start_date,
+            end_date: payload.end_date
+        }];
+    }
+
+    if (!Array.isArray(items) || items.length === 0) {
+        return { updated: 0, ma_hop_dong: maHD }
+    }
+
+    var sh = getSheet_(BG_SHEETS.hop_dong_chi_tiet)
+    var lastRow = sh.getLastRow()
+    if (lastRow < 2) throw new Error('SHEET_EMPTY')
+
+    var data = sh.getRange(2, 1, lastRow - 1, HD_CT_COLS).getValues()
+    var updated = 0
+
+    var itemsMap = {}
+    for (var j = 0; j < items.length; j++) {
+        var mh = String(items[j].ma_hang || '').trim()
+        if (mh) {
+            itemsMap[mh] = items[j]
+        }
+    }
+
+    for (var i = 0; i < data.length; i++) {
+        var rowMaHD = String(data[i][0] || '').trim()
+        if (rowMaHD === maHD) {
+            var rowMaHang = String(data[i][2] || '').trim()
+            if (itemsMap[rowMaHang]) {
+                var itemUpdate = itemsMap[rowMaHang]
+                sh.getRange(i + 2, 29).setValue(itemUpdate.start_date || '')
+                sh.getRange(i + 2, 30).setValue(itemUpdate.end_date || '')
+                updated++
+            }
+        }
+    }
+
+    return { updated: updated, ma_hop_dong: maHD }
+}
+
+/* =========================
+ * UPDATE CONTRACT FILE (ten_file, link_file)
+ * payload: { ma_hop_dong, ten_file, link_file }
+ * ========================= */
+function updateContractFile_(payload) {
+    var maHD = String(payload.ma_hop_dong || '').trim()
+    var tenFile = String(payload.ten_file || '')
+    var linkFile = String(payload.link_file || '')
+
+    if (!maHD) throw new Error('MISSING_ma_hop_dong')
+
+    var sh = getSheet_(BG_SHEETS.hop_dong_tong_quat)
+    var lastRow = sh.getLastRow()
+    if (lastRow < 2) throw new Error('SHEET_EMPTY')
+
+    var data = sh.getRange(2, 1, lastRow - 1, 1).getValues()
+    var updated = 0
+
+    for (var i = data.length - 1; i >= 0; i--) {
+        if (String(data[i][0] || '').trim() === maHD) {
+            // col 35 = ten_file (index 34), col 36 = link_file (index 35)
+            sh.getRange(i + 2, 35).setValue(tenFile)
+            sh.getRange(i + 2, 36).setValue(linkFile)
+            updated++
+            break // chỉ update row mới nhất
+        }
+    }
+
+    return { updated: updated, ma_hop_dong: maHD }
+}
 
 function updateCustomerTotals_(shKH, maKH, addValue) {
     const lastRow = shKH.getLastRow()
