@@ -1,4 +1,4 @@
-﻿<script lang="ts">
+<script lang="ts">
 export default {
   name: 'BaoGia'
 }
@@ -511,10 +511,25 @@ const pipelineExchangeRate = ref(25400)
 const pipelineSearchStr = ref('')
 
 // Custom Excel template
-const customTemplateData = ref<string | null>(null)
-const customTemplateName = ref('')
+interface CustomTemplate {
+  id: string;
+  name: string;
+  data: string;
+}
+const customTemplates = ref<CustomTemplate[]>([])
+const _storedTpls = localStorage.getItem('custom_excel_templates')
+if (_storedTpls) { try { customTemplates.value = JSON.parse(_storedTpls) } catch(e) {} }
+
 const _storedTpl = localStorage.getItem('custom_excel_template')
-if (_storedTpl) { try { const p = JSON.parse(_storedTpl); customTemplateData.value = p.data; customTemplateName.value = p.name } catch(e) {} }
+if (_storedTpl && customTemplates.value.length === 0) {
+  try {
+    const p = JSON.parse(_storedTpl);
+    const newId = Date.now().toString();
+    customTemplates.value.push({ id: newId, name: p.name, data: p.data });
+    localStorage.setItem('custom_excel_templates', JSON.stringify(customTemplates.value));
+    localStorage.removeItem('custom_excel_template');
+  } catch(e) {}
+}
 const selectedPipelineKhach = ref<KhachHang | null>(null)
 
 const filteredPipelineCustomers = computed(() => {
@@ -595,7 +610,7 @@ const handleContinuePipeline = async () => {
   
   showAsyncLoading('Đang chuẩn bị dữ liệu Pipeline...');
   try {
-    pipelineExcelBlob.value = await generateQuoteExcelBlob(selectedPipelineKhach.value)
+    pipelineExcelBlob.value = await generateQuoteExcelBlob(selectedPipelineKhach.value, undefined, previewEditor.value?.getToolbarFont())
   } catch (e) {
     console.error('Không thể tạo file báo giá nền', e)
   }
@@ -608,7 +623,7 @@ async function openPipelineSelectCustomerModal() {
   selectedPipelineKhach.value = khach.value;
   showAsyncLoading('Đang chuẩn bị dữ liệu Pipeline...');
   try {
-    pipelineExcelBlob.value = await generateQuoteExcelBlob(selectedPipelineKhach.value);
+    pipelineExcelBlob.value = await generateQuoteExcelBlob(selectedPipelineKhach.value, undefined, previewEditor.value?.getToolbarFont());
   } catch (e) {
     console.error('Không thể tạo file báo giá nền', e);
   }
@@ -741,6 +756,7 @@ const contractTerms = computed(() => {
 })
 const selectedTermId = ref('')
 const editableTermContent = ref('')
+const previewEditor = ref<any>(null)
 
 watch(selectedTermId, (newId) => {
   if (newId) {
@@ -1758,7 +1774,7 @@ async function saveContractOfficialAndSaleReport(force = false) {
     let linkBaoGia = ''
     const tenFileBaoGia = `BaoGia_${soHopDong.value || maHopDong.value}.xlsx`
     try {
-      const blob = await generateQuoteExcelBlob()
+      const blob = await generateQuoteExcelBlob(undefined, undefined, previewEditor.value?.getToolbarFont())
       const formData = new FormData()
       formData.append('upload_preset', 'upload_file')
       formData.append('file', blob, tenFileBaoGia)
@@ -2967,8 +2983,15 @@ const chietKhauTruocThueRaw = computed(() => {
   return round2((toNum(tongGiaThucTe.value, 0) * pct) / 100)
 })
 /* ======================
-   PRICE DISPLAY
+  PRICE DISPLAY
 ====================== */
+function highlightText(text: string, query: string) {
+  if (!query || !text) return text;
+  const safeQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(${safeQuery})`, 'gi');
+  return text.replace(regex, '<span style="background-color: #eab308; color: #0f172a; font-weight: bold; padding: 0 2px; border-radius: 2px;">$1</span>');
+}
+
 function displayPrice(p: HangHoa) {
   const vnd = donGiaLP(p) * toNum(p.Ti_gia, 1)
   return formatVND(vnd)
@@ -3813,12 +3836,45 @@ function excelCellText(v: any): string {
   return String(v)
 }
 
-async function generateQuoteExcelBlob(targetKhach: any = khach.value): Promise<Blob> {
+function toDescriptionRichText(text: string, baseFont: any): any {
+  if (!text) return '';
+  const lines = text.split('\n').map(l => l.replace(/\r/g, '').trim());
+  
+  const firstNonEmptyIdx = lines.findIndex(l => l.length > 0);
+  if (firstNonEmptyIdx === -1) return '';
+  
+  const firstLine = lines[firstNonEmptyIdx];
+  const remainingLines = lines.slice(firstNonEmptyIdx + 1);
+  
+  // Remove any leading empty lines in the remaining array to avoid blank line gaps
+  while (remainingLines.length > 0 && remainingLines[0].length === 0) {
+    remainingLines.shift();
+  }
+  
+  const richText: any[] = [];
+  richText.push({
+    text: firstLine,
+    font: Object.assign({}, baseFont, { bold: true })
+  });
+  
+  if (remainingLines.length > 0) {
+    richText.push({
+      text: '\n' + remainingLines.join('\n'),
+      font: Object.assign({}, baseFont, { bold: false })
+    });
+  }
+  
+  return { richText };
+}
+
+async function generateQuoteExcelBlob(targetKhach: any = khach.value, specificTemplateData?: string, customDefaultFont?: { name: string, size: number }): Promise<Blob> {
   const workbook = new ExcelJS.Workbook()
   
+  let dataToUse = specificTemplateData
+
   // Load template (custom or default)
-  if (customTemplateData.value) {
-    const binary = atob(customTemplateData.value)
+  if (dataToUse) {
+    const binary = atob(dataToUse)
     const bytes = new Uint8Array(binary.length)
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
     await workbook.xlsx.load(bytes.buffer)
@@ -3869,14 +3925,51 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value): Promise<B
     }
     
     if (totalRowIdx !== -1 && rowNumber > totalRowIdx) {
-      if (rowText.includes('Thuế VAT') && origTermStart === -1) {
-        origTermStart = rowNumber;
+      const rtLower = rowText.toLowerCase();
+      if ((rtLower.includes('thuế vat') || rtLower.includes('điều khoản') || rtLower.includes('điều kiện')) && origTermStart === -1) {
+        if (rtLower.includes('điều khoản thương mại') || rtLower.includes('các điều khoản') || rtLower.includes('điều kiện thương mại')) {
+          origTermStart = rowNumber + 1;
+        } else {
+          origTermStart = rowNumber;
+        }
       }
-      if ((rowText.includes('Xác nhận') || rowText.includes('Người lập') || rowText.includes('ĐẠI DIỆN')) && origTermStart !== -1 && origSigStart === -1) {
-        origSigStart = rowNumber;
+      // Detect signature section: check each cell individually
+      // Only match short text (< 50 chars) to avoid false positives from long term sentences
+      // that happen to contain keywords like "Xác nhận" in the middle
+      if (origSigStart === -1) {
+        const sigKeywords = ['Người lập', 'ĐẠI DIỆN', 'Trân Trọng', 'Trân trọng', 'TRÂN TRỌNG', 'BÊN MUA', 'BÊN BÁN'];
+        // Check cells 1..maxCol for signature markers
+        const cellTexts: string[] = [];
+        for (let cc = 1; cc <= Math.min(maxCol, 10); cc++) {
+          cellTexts.push(excelCellText(row.getCell(cc).value).trim());
+        }
+        
+        const isSigRow = sigKeywords.some(kw => 
+          cellTexts.some(ct => ct.includes(kw))
+        ) || (
+          // "Xác nhận" chỉ match khi nằm ở đầu cell hoặc cell ngắn (header chữ ký)
+          cellTexts.some(ct => ct.startsWith('Xác nhận') || (ct.includes('Xác nhận') && ct.length < 50))
+        );
+        
+        // Chỉ nhận signature nếu nó nằm sau origTermStart (nếu đã tìm thấy origTermStart)
+        if (isSigRow && (origTermStart === -1 || rowNumber > origTermStart)) {
+          origSigStart = rowNumber;
+        }
       }
     }
   });
+
+  // Fallback logic cho custom template
+  if (origTermStart !== -1 && origSigStart === -1) {
+    origSigStart = ws.rowCount + 1;
+  } else if (origTermStart === -1) {
+    if (origSigStart !== -1) {
+      origTermStart = origSigStart; // Chèn ngay trước chữ ký
+    } else {
+      origTermStart = totalRowIdx !== -1 ? totalRowIdx + 1 : ws.rowCount + 1;
+      origSigStart = origTermStart; // Chèn ngay sau tổng cộng nếu ko có chữ ký
+    }
+  }
 
   // Fallback to default mapping if detection failed
   if (Object.keys(colMap).length < 3) {
@@ -3964,7 +4057,11 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value): Promise<B
 
       if (colMap.stt) row.getCell(colMap.stt).value = r.stt;
       if (colMap.ten_hang) row.getCell(colMap.ten_hang).value = i.Ten_hang;
-      if (colMap.mo_ta) row.getCell(colMap.mo_ta).value = [i.Mo_ta_chung, i.Mo_ta_chi_tiet, i.Features].filter(Boolean).join('\n');
+      if (colMap.mo_ta) {
+        const text = [i.Mo_ta_chung, i.Mo_ta_chi_tiet, i.Features].filter(Boolean).join('\n') || i.Ten_hang || '';
+        const baseFont = dataRowStyle[colMap.mo_ta]?.font || {};
+        row.getCell(colMap.mo_ta).value = toDescriptionRichText(text, baseFont);
+      }
       if (colMap.dvt) row.getCell(colMap.dvt).value = i.DVT;
       if (colMap.so_luong) row.getCell(colMap.so_luong).value = Number(i.So_luong) || 0;
       if (colMap.don_gia) row.getCell(colMap.don_gia).value = isUsdExport ? round2(donGiaVND / tg) : (Number(donGiaVND) || 0);
@@ -4005,13 +4102,9 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value): Promise<B
       const currentSigStart = origSigStart + diff;
       const rowsToDelete = currentSigStart - currentTermStart; // xóa TOÀN BỘ rows cũ từ termStart đến sigStart
       
+      // Parse original HTML DOM directly (no regex mangling that causes duplicates)
       const temp = document.createElement('div');
-      let htmlStr = editableTermContent.value.replace(/<p><br\s*[\/]?>\s*<\/p>/gi, '\n');
-      htmlStr = htmlStr.replace(/<div><br\s*[\/]?>\s*<\/div>/gi, '\n');
-      htmlStr = htmlStr.replace(/<br\s*[\/]?>/gi, '\n');
-      htmlStr = htmlStr.replace(/<\/p>|<\/div>|<\/li>/gi, '\n');
-      htmlStr = htmlStr.replace(/<li[^>]*>/gi, '- ');
-      temp.innerHTML = htmlStr;
+      temp.innerHTML = editableTermContent.value;
 
       const rgbToArgb = (rgbStr: string) => {
         if (!rgbStr) return undefined;
@@ -4030,6 +4123,9 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value): Promise<B
         return undefined;
       };
 
+      // Block-level tags that should cause a line break
+      const blockTags = new Set(['p', 'div', 'br', 'li', 'ul', 'ol', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'tr', 'blockquote', 'hr']);
+
       const allNodes: any[] = [];
       const traverse = (node: Node, currentFont: any) => {
         if (node.nodeType === Node.TEXT_NODE) {
@@ -4040,6 +4136,20 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value): Promise<B
           const el = node as HTMLElement;
           const newFont = { ...currentFont };
           const tag = el.tagName.toLowerCase();
+          
+          // Insert a line-break marker BEFORE block-level elements
+          if (blockTags.has(tag) && tag !== 'br') {
+            allNodes.push({ text: '\n', font: { ...currentFont } });
+          }
+          
+          if (tag === 'br') {
+            allNodes.push({ text: '\n', font: { ...currentFont } });
+            return; // <br> has no children
+          }
+          
+          if (tag === 'li') {
+            allNodes.push({ text: '- ', font: { ...currentFont } });
+          }
           
           if (tag === 'b' || tag === 'strong') newFont.bold = true;
           if (tag === 'i' || tag === 'em') newFont.italic = true;
@@ -4068,7 +4178,7 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value): Promise<B
               if (argb) newFont.color = { argb };
             }
             if (el.style.fontFamily) {
-              newFont.name = el.style.fontFamily.replace(/['"]/g, '');
+              newFont.name = el.style.fontFamily.split(',')[0].replace(/['"]/g, '').trim();
             }
             if (el.style.fontSize) {
               const pt = parseInt(el.style.fontSize);
@@ -4088,7 +4198,8 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value): Promise<B
         }
       };
       
-      traverse(temp, { name: 'Times New Roman', size: 11 });
+      const defaultExportFont = customDefaultFont || { name: 'Calibri', size: 12 };
+      traverse(temp, defaultExportFont);
 
       const linesRT: any[][] = [[]];
       allNodes.forEach(node => {
@@ -4135,15 +4246,18 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value): Promise<B
         
         if (bulletNumber !== null) {
           row.getCell(1).value = bulletNumber;
-          row.getCell(1).font = { name: 'Times New Roman', size: 11, bold: true };
+          const defaultExportFont = customDefaultFont || { name: 'Calibri', size: 12 };
+          row.getCell(1).font = { name: defaultExportFont.name, size: defaultExportFont.size, bold: true };
           row.getCell(1).alignment = { horizontal: 'center', vertical: 'top' };
         }
         
+        const defaultExportFont = customDefaultFont || { name: 'Calibri', size: 12 };
         if (finalArr.length > 0) {
           row.getCell(2).value = { richText: finalArr };
         } else {
           row.getCell(2).value = '';
         }
+        row.getCell(2).font = { name: defaultExportFont.name, size: defaultExportFont.size };
         
         // Merge from Col 2 to maxCol and style
         ws.mergeCells(currentTermStart + i, 2, currentTermStart + i, maxCol);
@@ -4223,59 +4337,84 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value): Promise<B
 }
 
 async function handleCustomTemplateUpload(event: Event) {
-  const file = (event.target as HTMLInputElement).files?.[0]
-  if (!file) return
+  const files = (event.target as HTMLInputElement).files
+  if (!files || files.length === 0) return
   try {
     showAsyncLoading('Đang phân tích template...')
-    const buffer = await file.arrayBuffer()
-    const wb = new ExcelJS.Workbook()
-    await wb.xlsx.load(buffer)
-    const ws0 = wb.worksheets[0]
-    let found = false
-    ws0.eachRow((row: any) => {
-      if (found) return
-      let mc = 0
-      for (let c = 1; c <= 20; c++) {
-        const v = row.getCell(c).value
-        if (v === null || v === undefined) continue
-        if (identifyExcelCol(excelCellText(v))) mc++
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      const buffer = await file.arrayBuffer()
+      const wb = new ExcelJS.Workbook()
+      await wb.xlsx.load(buffer)
+      const ws0 = wb.worksheets[0]
+      let found = false
+      ws0.eachRow((row: any) => {
+        if (found) return
+        let mc = 0
+        for (let c = 1; c <= 20; c++) {
+          const v = row.getCell(c).value
+          if (v === null || v === undefined) continue
+          if (identifyExcelCol(excelCellText(v))) mc++
+        }
+        if (mc >= 3) found = true
+      })
+      if (!found) {
+        showAsyncError('Không nhận diện được', `Không tìm thấy dòng tiêu đề bảng hàng hoá trong file "${file.name}".`)
+        return
       }
-      if (mc >= 3) found = true
-    })
-    if (!found) {
-      showAsyncError('Không nhận diện được', 'Không tìm thấy dòng tiêu đề bảng hàng hoá (STT, Tên hàng, Đơn giá...) trong file.')
-      return
+      const bytes = new Uint8Array(buffer)
+      let binary = ''
+      for (let j = 0; j < bytes.byteLength; j++) binary += String.fromCharCode(bytes[j])
+      const base64 = btoa(binary)
+      
+      const newId = Date.now().toString() + i
+      customTemplates.value.push({ id: newId, name: file.name, data: base64 })
     }
-    const bytes = new Uint8Array(buffer)
-    let binary = ''
-    for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
-    const base64 = btoa(binary)
-    customTemplateData.value = base64
-    customTemplateName.value = file.name
-    localStorage.setItem('custom_excel_template', JSON.stringify({ data: base64, name: file.name }))
-    showAsyncSuccess('Template đã được tải lên!', `File "${file.name}" sẽ được dùng cho các lần xuất Excel tiếp theo.`)
+    localStorage.setItem('custom_excel_templates', JSON.stringify(customTemplates.value))
+    showAsyncSuccess('Thành công!', `Đã tải lên các template mới.`)
   } catch(e: any) {
     showAsyncError('Lỗi đọc file', e.message || String(e))
   }
   (event.target as HTMLInputElement).value = ''
 }
 
-function removeCustomTemplate() {
-  customTemplateData.value = null
-  customTemplateName.value = ''
-  localStorage.removeItem('custom_excel_template')
+function removeCustomTemplate(id: string) {
+  customTemplates.value = customTemplates.value.filter(t => t.id !== id)
+  localStorage.setItem('custom_excel_templates', JSON.stringify(customTemplates.value))
 }
 
-function openExportExcelModal() {
+function downloadCustomTemplate(tpl: any) {
+  try {
+    const rawData = atob(tpl.data)
+    const array = new Uint8Array(rawData.length)
+    for (let i = 0; i < rawData.length; i++) {
+      array[i] = rawData.charCodeAt(i)
+    }
+    const blob = new Blob([array], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = tpl.name || 'template.xlsx'
+    a.click()
+    window.URL.revokeObjectURL(url)
+  } catch(e) {
+    console.error('Không thể tải file mẫu', e)
+  }
+}
+
+const pendingExportTemplateData = ref<string | null>(null);
+
+function openExportExcelModal(templateData?: string) {
   maKHInput.value = khach.value.Ma_khach_hang || '';
   tenKHInput.value = khach.value.Ten_khach_hang || '';
+  pendingExportTemplateData.value = templateData || null;
   showExportExcelModal.value = true;
 }
 
-async function exportQuoteExcel() {
+async function exportQuoteExcel(templateData?: string | null) {
   try {
     showAsyncLoading('Đang xuất file Excel...')
-    const blob = await generateQuoteExcelBlob();
+    const blob = await generateQuoteExcelBlob(khach.value, templateData || undefined, previewEditor.value?.getToolbarFont());
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -4369,7 +4508,7 @@ async function exportAgencyExcel() {
       
       row.getCell(1).value = stt++
       row.getCell(2).value = it.Ten_hang || ''
-      row.getCell(3).value = dienGiai
+      row.getCell(3).value = toDescriptionRichText(dienGiai, styleDataRow[3]?.font || {});
       row.getCell(4).value = qty
       row.getCell(5).value = nk
       row.getCell(6).value = lp
@@ -4656,7 +4795,7 @@ onUnmounted(() => {
                 <span class="card-ncc-badge" v-if="p.Ten_nha_cung_cap">{{ p.Ten_nha_cung_cap }}</span>
                 <span class="card-vat-badge-img" v-if="p.Thue_VAT">VAT {{ p.Thue_VAT }}%</span>
               </div>
-              <h4 class="clamp2">{{ p.Ten_hang }}</h4>
+              <h4 class="clamp2" v-html="highlightText(p.Ten_hang, keyword)"></h4>
               <p class="card-license clamp1" v-if="p.License_duration">{{ p.License_duration }}</p>
               <div class="card-price-row">
                 <span class="price">{{ displayPrice(p) }}</span>
@@ -4703,7 +4842,7 @@ onUnmounted(() => {
             <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap; width: 100%;">
               <div style="display: flex; align-items: center; gap: 12px; flex-wrap: nowrap;">
                 <h3 style="margin: 0; white-space: nowrap; width: auto; flex-shrink: 0;"><i class="lucide-file-text"></i> Bảng báo giá chi tiết</h3>
-                <button @click="resetToanBoBaoGia" style="background: #ef4444; color: #ffffff; border: none; padding: 4px 10px; border-radius: 6px; font-weight: 700; display: flex; align-items: center; gap: 6px; transition: all 0.2s; box-shadow: 0 1px 3px rgba(239, 68, 68, 0.4); font-size: 12px; white-space: nowrap; flex-shrink: 0; width: max-content; cursor: pointer; height: fit-content;" title="Xóa toàn bộ hàng hóa trong báo giá" onmouseover="this.style.background='#dc2626'; this.style.boxShadow='0 2px 5px rgba(239,68,68,0.5)';" onmouseout="this.style.background='#ef4444'; this.style.boxShadow='0 1px 3px rgba(239,68,68,0.4)';">
+                <button v-show="selectedItems.length > 0" @click="resetToanBoBaoGia" style="background: #ef4444; color: #ffffff; border: none; padding: 4px 10px; border-radius: 6px; font-weight: 700; display: flex; align-items: center; gap: 6px; transition: all 0.2s; box-shadow: 0 1px 3px rgba(239, 68, 68, 0.4); font-size: 12px; white-space: nowrap; flex-shrink: 0; width: max-content; cursor: pointer; height: fit-content;" title="Xóa toàn bộ hàng hóa trong báo giá" onmouseover="this.style.background='#dc2626'; this.style.boxShadow='0 2px 5px rgba(239,68,68,0.5)';" onmouseout="this.style.background='#ef4444'; this.style.boxShadow='0 1px 3px rgba(239,68,68,0.4)';">
                   <i class="lucide-rotate-ccw" style="font-size: 13px; color: #ffffff;"></i> Làm mới
                 </button>
                 <button v-if="loadedMaHopDong" @click="createNewQuote" style="background: #3b82f6; color: #ffffff; border: none; padding: 4px 10px; border-radius: 6px; font-weight: 700; display: flex; align-items: center; gap: 6px; transition: all 0.2s; box-shadow: 0 1px 3px rgba(59, 130, 246, 0.4); font-size: 12px; white-space: nowrap; flex-shrink: 0; width: max-content; cursor: pointer; height: fit-content;" title="Hủy bỏ hợp đồng đang sửa và tạo báo giá mới hoàn toàn" onmouseover="this.style.background='#2563eb'; this.style.boxShadow='0 2px 5px rgba(59,130,246,0.5)';" onmouseout="this.style.background='#3b82f6'; this.style.boxShadow='0 1px 3px rgba(59,130,246,0.4)';">
@@ -4737,8 +4876,8 @@ onUnmounted(() => {
                   <th class="col-dvt">ĐVT</th>
                   <th class="col-sl">SL</th>
                   <th v-if="quoteCurrency === 'USD'" class="col-dg" style="min-width: 70px;">TỈ GIÁ</th>
-                  <th class="col-dg">GIÁ TIÊU CHUẨN</th>
-                  <th class="col-dg">ĐƠN GIÁ (LP)</th> 
+                  <th class="col-dg">GIÁ OFF HÃNG</th>
+                  <th class="col-dg">LIST PRICE</th> 
                   <th class="col-dg">GIÁ NHẬP</th>
                   <th class="col-dg">MỨC OFF</th>
                   <th class="col-dg">ĐƠN GIÁ (KH)</th>
@@ -4772,7 +4911,7 @@ onUnmounted(() => {
                         <i class="lucide-grip-vertical" style="opacity: 0.5;"></i> {{ r.roman }}
                       </div>
                     </td>
-                    <td :colspan="quoteCurrency === 'USD' ? 16 : 15" class="group-title">
+                    <td :colspan="quoteCurrency === 'USD' ? 17 : 16" class="group-title">
                       <div style="display: flex; align-items: center;">
                         <span>{{ r.title }}</span>
                         <button class="util-btn small inline-normal-edit" style="margin-left: 6px; padding: 2px 6px; font-size: 11px;" @click.stop="openAdjustPrice('group', r.key, r.title, undefined, true)" title="Sửa thường - cập nhật giá thực tế">
@@ -4807,15 +4946,15 @@ onUnmounted(() => {
                       <div style="color: #fbbf24; font-weight: 800; font-size: 13px;">{{ formatVND(toNum(r.item.Ti_gia, 1)) }}</div>
                       <div style="font-size: 10px; color: #94a3b8; font-weight: 700;">USD</div>
                     </td>
-                    <td class="right" style="line-height: 1.3; font-weight: 700; color: #8b5cf6;" @click.stop="openQuoteEdit(r.idx, 'Gia_tieu_chuan')">
+                    <td class="right" style="line-height: 1.3; font-weight: 700; color: #10b981;" @click.stop="openQuoteEdit(r.idx, 'Gia_tieu_chuan')">
                       <div>{{ displayGiaTieuChuan(r.item) }}</div>
-                      <div class="muted" style="font-size: 11px; margin-top: 2px; color: #8b5cf6 !important;">({{ displayGiaTieuChuanPct(r.item) }}%)</div>
+                      <div class="muted" style="font-size: 11px; margin-top: 2px; color: #10b981 !important;">({{ displayGiaTieuChuanPct(r.item) }}%)</div>
                     </td>
-                    <td class="right" @click.stop="openQuoteEdit(r.idx, 'Don_gia')">{{ displayDonGiaLP(r.item) }}</td> 
-                    <td class="right" style="color: #fb923c; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'gia_nhap')">{{ fmtPrice(toNum(r.item.gia_nhap, 0) * toNum(r.item.Ti_gia, 1), toNum(r.item.Ti_gia, 1)) }}</td>
-                    <td class="right" style="line-height: 1.3; font-weight: 700; color: #f87171;" @click.stop="openQuoteEdit(r.idx, 'muc_phan_tram_off')">
+                    <td class="right" style="color: #10b981; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Don_gia')">{{ displayDonGiaLP(r.item) }}</td> 
+                    <td class="right" style="color: #ef4444; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'gia_nhap')">{{ fmtPrice(toNum(r.item.gia_nhap, 0) * toNum(r.item.Ti_gia, 1), toNum(r.item.Ti_gia, 1)) }}</td>
+                    <td class="right" style="line-height: 1.3; font-weight: 700; color: #ef4444;" @click.stop="openQuoteEdit(r.idx, 'muc_phan_tram_off')">
                       <div>{{ displayMucOffAmount(r.item) }}</div>
-                      <div class="muted" style="font-size: 11px; margin-top: 2px; color: #f87171 !important;">(-{{ toNum(r.item.muc_phan_tram_off, 0) }}%)</div>
+                      <div class="muted" style="font-size: 11px; margin-top: 2px; color: #ef4444 !important;">(-{{ toNum(r.item.muc_phan_tram_off, 0) }}%)</div>
                     </td>
                     <td class="right" style="color: #10b981; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'unit_price_kh')">{{ fmtPrice(unitPrice(r.item), toNum(r.item.Ti_gia, 1)) }}</td>
                     <td class="right" style="color: #10b981; font-weight: 800;" @click.stop="openQuoteEdit(r.idx, 'line_truoc_thue')">{{ fmtPrice(lineTruocThue(r.item), toNum(r.item.Ti_gia, 1)) }}</td>
@@ -5209,33 +5348,102 @@ onUnmounted(() => {
 
     <!-- ================== MODAL: XUẤT THÔNG TIN ================== -->
     <div v-if="showExportInfoModal" class="modal" @click.self="showExportInfoModal = false">
-      <div class="modal-card" style="max-width: 400px;">
-        <div class="modal-head">
-          <h3><i class="lucide-upload"></i> Chọn loại xuất dữ liệu</h3>
-          <button class="icon-btn" @click="showExportInfoModal = false">&times;</button>
-        </div>
-        <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px; padding: 24px;">
-          <!-- Custom Template Section -->
-          <div style="padding: 14px 16px; border-radius: 12px; background: rgba(99,102,241,0.06); border: 1px solid rgba(99,102,241,0.15);">
-            <div style="font-size: 11px; font-weight: 700; color: #818cf8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">📄 Template tùy chỉnh</div>
-            <div v-if="customTemplateName" style="display: flex; align-items: center; justify-content: space-between;">
-              <span style="color: #10b981; font-size: 13px; font-weight: 600;">✓ {{ customTemplateName }}</span>
-              <button @click="removeCustomTemplate()" style="padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(239,68,68,0.3); background: rgba(239,68,68,0.1); color: #f87171; font-size: 11px; cursor: pointer; font-weight: 600;">✕ Xoá</button>
-            </div>
-            <label v-else style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px 12px; border-radius: 8px; border: 1px dashed rgba(99,102,241,0.3); color: #a5b4fc; font-size: 13px; font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='rgba(99,102,241,0.1)'" onmouseout="this.style.background='transparent'">
-              <input type="file" accept=".xlsx" @change="handleCustomTemplateUpload" style="display: none;" />
-              📤 Tải lên file Excel đã chỉnh sửa
-            </label>
+      <div class="modal-card export-vip-modal">
+        <div class="export-vip-head">
+          <div class="export-vip-head-glow"></div>
+          <div class="export-vip-title">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m8 17 4 4 4-4"/></svg>
+            Xuất dữ liệu
           </div>
-          <button class="action-btn action-success" @click="showExportInfoModal = false; openExportExcelModal()" style="padding: 16px; font-size: 20px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; width: 100%; flex-direction: row; min-height: 64px;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 12px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M8 13h2"></path><path d="M8 17h2"></path><path d="M14 13h2"></path><path d="M14 17h2"></path></svg> XUẤT EXCEL
-          </button>
-          <button class="action-btn action-success" @click="showExportInfoModal = false; exportAgencyExcel()" style="padding: 16px; font-size: 20px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; width: 100%; flex-direction: row; min-height: 64px;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 12px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg> XUẤT EXCEL (ĐẠI LÝ)
-          </button>
-          <button class="action-btn action-pipeline" @click="showExportInfoModal = false; openPipelineSelectCustomerModal()" style="padding: 16px; font-size: 20px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; width: 100%; flex-direction: row; min-height: 64px;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 12px;"><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="12" r="3"></circle><line x1="9" y1="12" x2="15" y2="12"></line></svg> XUẤT PIPELINE
-          </button>
+          <button class="export-vip-close" @click="showExportInfoModal = false">&times;</button>
+        </div>
+
+        <div class="export-vip-body">
+          <!-- CỘT 1: Upload Template -->
+          <div class="export-vip-col export-vip-col-upload">
+            <div class="export-vip-col-label">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+              Template tùy chỉnh
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 12px;">
+              <!-- Danh sách các template đã upload -->
+              <div v-for="tpl in customTemplates" :key="tpl.id" class="export-tpl-loaded" style="margin-bottom: 0;">
+                <div class="export-tpl-loaded-icon">
+                  <img src="/excel-icon.png" alt="Excel" style="width: 32px; height: 32px;" />
+                </div>
+                <div class="export-tpl-loaded-name" style="text-align: center; text-decoration: underline; cursor: pointer;" @click="downloadCustomTemplate(tpl)">{{ tpl.name }}</div>
+
+                <div class="export-tpl-actions" style="margin-top: auto; width: 100%; display: flex; gap: 8px;">
+                  <button @click="showExportInfoModal = false; openExportExcelModal(tpl.data)" class="export-tpl-change-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <b>Tải về</b>
+                  </button>
+                  <button @click="removeCustomTemplate(tpl.id)" class="export-tpl-remove-btn" style="flex: 1; justify-content: center; padding: 8px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                    Xoá
+                  </button>
+                </div>
+              </div>
+
+              <!-- Upload thêm template mới -->
+              <label class="export-tpl-dropzone" style="margin-top: 0; padding: 20px 15px; height: 100%; min-height: 200px;">
+                <input type="file" multiple accept=".xlsx" @change="handleCustomTemplateUpload" style="display: none;" />
+                <div class="export-tpl-dropzone-icon" style="margin-bottom: 5px;">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                </div>
+                <div class="export-tpl-dropzone-text" style="font-size: 13px; text-align: center;">Tải lên template <b>.xlsx</b><br><span style="font-size: 11px; opacity: 0.7;">(Hỗ trợ chọn nhiều)</span></div>
+              </label>
+            </div>
+
+            <div class="export-tpl-note">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+              Template cần chứa header: STT, Tên hàng, Đơn giá...
+            </div>
+          </div>
+
+          <!-- CỘT 2: Các nút xuất -->
+          <div class="export-vip-col export-vip-col-actions">
+            <div class="export-vip-col-label">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M8 5H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-4"/></svg>
+              Xuất file
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+              <button class="export-vip-btn export-vip-btn-excel" @click="showExportInfoModal = false; openExportExcelModal()">
+                <div class="export-vip-btn-icon">
+                  <img src="/excel-icon.png" alt="Excel" style="width: 26px; height: 26px;" />
+                </div>
+                <div class="export-vip-btn-text">
+                  <span class="export-vip-btn-label">Xuất Excel</span>
+                  <span class="export-vip-btn-desc">Báo giá chuẩn</span>
+                </div>
+                <svg class="export-vip-btn-arrow" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              </button>
+
+              <button class="export-vip-btn export-vip-btn-agency" @click="showExportInfoModal = false; exportAgencyExcel()">
+                <div class="export-vip-btn-icon">
+                  <img src="/excel-icon.png" alt="Excel" style="width: 26px; height: 26px;" />
+                </div>
+                <div class="export-vip-btn-text">
+                  <span class="export-vip-btn-label">Excel Đại Lý</span>
+                  <span class="export-vip-btn-desc">Báo giá đại lý</span>
+                </div>
+                <svg class="export-vip-btn-arrow" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              </button>
+
+              <button class="export-vip-btn export-vip-btn-pipeline" @click="showExportInfoModal = false; openPipelineSelectCustomerModal()">
+                <div class="export-vip-btn-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="3"/><circle cx="18" cy="12" r="3"/><line x1="9" y1="12" x2="15" y2="12"/></svg>
+                </div>
+                <div class="export-vip-btn-text">
+                  <span class="export-vip-btn-label">Xuất Pipeline</span>
+                  <span class="export-vip-btn-desc">Gửi qua Pipeline</span>
+                </div>
+                <svg class="export-vip-btn-arrow" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -5314,7 +5522,7 @@ onUnmounted(() => {
               </div>
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">ĐVT</label>
-                <input v-model="itemForm.DVT" placeholder="Cái, Bộ, License..." style="width: 100%; padding: 10px 14px; border-radius: 8px;" />
+                <input v-model="itemForm.DVT" list="dvt-options" placeholder="CÁI, BỘ, BẢN QUYỀN..." style="width: 100%; padding: 10px 14px; border-radius: 8px;" @input="itemForm.DVT = $event.target.value.toUpperCase()" />
               </div>
             </div>
             
@@ -5398,8 +5606,8 @@ onUnmounted(() => {
               </div>
             </div>
             
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-              <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <div v-if="false" style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Mức % Off</label>
                 <div style="position: relative;">
                   <FormattedInput v-model="itemForm.muc_phan_tram_off" placeholder="0" style="width: 100%; padding: 10px 14px; padding-right: 30px; border-radius: 8px; color: #f59e0b;" />
@@ -5511,7 +5719,7 @@ onUnmounted(() => {
               </div>
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">ĐVT</label>
-                <input v-model="cardEdit.DVT" placeholder="Cái, Bộ, License..." style="width: 100%; padding: 10px 14px; border-radius: 8px;" />
+                <input v-model="cardEdit.DVT" list="dvt-options" placeholder="CÁI, BỘ, BẢN QUYỀN..." style="width: 100%; padding: 10px 14px; border-radius: 8px;" @input="cardEdit.DVT = $event.target.value.toUpperCase()" />
               </div>
             </div>
             
@@ -5655,8 +5863,8 @@ onUnmounted(() => {
                 <th class="col-desc">Diễn giải</th>
                 <th class="col-dvt">ĐVT</th>
                 <th class="col-sl">SL</th>
-                <th class="col-dg">GIÁ TIÊU CHUẨN</th>
-                <th class="col-dg">ĐƠN GIÁ (LP)</th>
+                <th class="col-dg">GIÁ OFF HÃNG</th>
+                <th class="col-dg">LIST PRICE</th>
                 <th class="col-dg">GIÁ NHẬP</th>
                 <th class="col-dg">MỨC OFF</th>
                 <th class="col-tt">TT trước thuế (VND)</th>
@@ -5670,7 +5878,7 @@ onUnmounted(() => {
               <template v-for="r in quoteRowsWithSTT" :key="r.key">
                 <tr v-if="r.type === 'group'" class="group-row">
                   <td class="group-stt">{{ r.roman }}</td>
-                  <td colspan="13" class="group-title">{{ r.title }}</td>
+                  <td colspan="14" class="group-title">{{ r.title }}</td>
                 </tr>
                 <tr v-else class="quote-item-row" @click="openQuoteEditRaw(r.idx)">
                   <td>{{ r.stt }}</td>
@@ -5685,15 +5893,15 @@ onUnmounted(() => {
                   </td>
                   <td class="col-dvt-cell" :title="r.item.DVT" @click.stop="openQuoteEditRaw(r.idx, 'DVT')">{{ r.item.DVT }}</td>
                   <td class="center" style="font-weight: 700;" @click.stop="openQuoteEditRaw(r.idx, 'So_luong')">{{ r.item.So_luong }}</td>
-                  <td class="right" style="line-height: 1.3; font-weight: 700; color: #8b5cf6;" @click.stop="openQuoteEditRaw(r.idx, 'Don_gia_goc')">
+                  <td class="right" style="line-height: 1.3; font-weight: 700; color: #10b981;" @click.stop="openQuoteEditRaw(r.idx, 'Don_gia_goc')">
                     <div>{{ displayGiaTieuChuanRaw(r.item) }}</div>
-                    <div class="muted" style="font-size: 11px; margin-top: 2px; color: #8b5cf6 !important;">({{ displayGiaTieuChuanPctRaw(r.item) }}%)</div>
+                    <div class="muted" style="font-size: 11px; margin-top: 2px; color: #10b981 !important;">({{ displayGiaTieuChuanPctRaw(r.item) }}%)</div>
                   </td>
-                  <td class="right">{{ displayDonGiaLPRaw(r.item) }}</td>
-                  <td class="right" style="color: #fb923c; font-weight: 700;" @click.stop="openQuoteEditRaw(r.idx, 'gia_nhap_goc')">{{ formatVND(getGocNumber(r.item, '_gia_nhap_goc', toNum(r.item.gia_nhap, 0)) * getGocNumber(r.item, '_Ti_gia_goc', toNum(r.item.Ti_gia, 1))) }}</td>
-                  <td class="right" style="line-height: 1.3; font-weight: 700; color: #f87171;" @click.stop="openQuoteEditRaw(r.idx, 'muc_off')">
+                  <td class="right" style="color: #10b981; font-weight: 700;">{{ displayDonGiaLPRaw(r.item) }}</td>
+                  <td class="right" style="color: #ef4444; font-weight: 700;" @click.stop="openQuoteEditRaw(r.idx, 'gia_nhap_goc')">{{ formatVND(getGocNumber(r.item, '_gia_nhap_goc', toNum(r.item.gia_nhap, 0)) * getGocNumber(r.item, '_Ti_gia_goc', toNum(r.item.Ti_gia, 1))) }}</td>
+                  <td class="right" style="line-height: 1.3; font-weight: 700; color: #ef4444;" @click.stop="openQuoteEditRaw(r.idx, 'muc_off')">
                     <div>{{ displayMucOffAmountRaw(r.item) }}</div>
-                    <div class="muted" style="font-size: 11px; margin-top: 2px; color: #f87171 !important;">(-{{ toNum(r.item.muc_phan_tram_off, 0) }}%)</div>
+                    <div class="muted" style="font-size: 11px; margin-top: 2px; color: #ef4444 !important;">(-{{ toNum(r.item.muc_phan_tram_off, 0) }}%)</div>
                   </td>
                   <td class="right" style="color: #10b981; font-weight: 800;">{{ formatVND(lineTruocThueRaw(r.item)) }}</td>
                   <td class="right" style="line-height: 1.3; color: #10b981; font-weight: 800;" @click.stop="openQuoteEditRaw(r.idx, 'Thue_VAT')">
@@ -5752,55 +5960,47 @@ onUnmounted(() => {
 
     <!-- ================== MODAL: CHỈNH SỬA ITEM BÁO GIÁ ================== -->
     <div v-if="showQuoteEditModal && quoteEdit" class="modal vip-modal-overlay" @click.self="closeQuoteEdit()">
-      <div class="modal-card modal-wide vip-modal-card" style="width: 1100px; max-width: 95vw;">
+      <div class="modal-card modal-wide vip-modal-card" style="width: 1350px; max-width: 95vw;">
         <div class="modal-head" style="background: linear-gradient(135deg, #34d399, #10b981) !important; justify-content: center; position: relative; padding: 18px 24px; border-bottom: none; border-radius: 12px 12px 0 0;">
           <div style="color: #ffffff; text-transform: uppercase; font-weight: 900; font-size: 18px; margin: 0; display: flex; align-items: center; gap: 10px; letter-spacing: 0.5px;"><i class="lucide-pencil" style="color: #fff; width: 24px; height: 24px;"></i> CHỈNH SỬA HÀNG TRONG BÁO GIÁ</div>
           <button class="x" @click="closeQuoteEdit()" style="color: #fff; transition: all 0.2s; position: absolute; right: 20px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.15); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;" onmouseover="this.style.background='rgba(0,0,0,0.3)'" onmouseout="this.style.background='rgba(0,0,0,0.15)'">✕</button>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px; padding: 24px; padding-bottom: 16px; overflow-y: auto; max-height: calc(95vh - 200px);">
-          <!-- COLUMN 1: THÔNG TIN CHUNG -->
-          <div class="modal-group" style="margin: 0; display: flex; flex-direction: column; gap: 20px;">
-            <h4 class="modal-group-title" style="display: flex; align-items: center; gap: 8px;">
-              Thông tin chung
-            </h4>
-            
-            <div v-if="false">
-              <input v-model="quoteEdit.Ma_nha_cung_cap" />
-              <input v-model="quoteEdit.Ma_hang_lien_ket" />
-              <input v-model="quoteEdit.Ten_hang_lien_ket" />
-              <textarea v-model="quoteEdit.Mo_ta_chung" />
-              <textarea v-model="quoteEdit.Mo_ta_chi_tiet" />
-            </div>
-            
-            <div style="display: flex; flex-direction: column; gap: 6px;">
-              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Mã hàng</label>
-              <div style="position: relative;">
-                <input id="qe-Ma_hang" v-model="quoteEdit.Ma_hang" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 500;" />
-                <i class="lucide-tag" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
+        <div style="display: flex; flex-direction: column; gap: 24px; padding: 24px; padding-bottom: 16px; overflow-y: auto; max-height: calc(95vh - 200px);">
+          <div v-if="false">
+            <input v-model="quoteEdit.Ma_nha_cung_cap" />
+            <input v-model="quoteEdit.Ma_hang_lien_ket" />
+            <input v-model="quoteEdit.Ten_hang_lien_ket" />
+            <textarea v-model="quoteEdit.Mo_ta_chung" />
+            <textarea v-model="quoteEdit.Mo_ta_chi_tiet" />
+          </div>
+          
+          <div style="display: grid; grid-template-columns: 1.1fr 1.1fr 1.7fr 1.2fr; gap: 24px;">
+            <!-- COLUMN 1 -->
+            <div style="display: flex; flex-direction: column; gap: 16px; background: rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+              <div style="padding-bottom: 12px; border-bottom: 1px dashed rgba(255,255,255,0.1); margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+                <i class="lucide-info" style="color: #10b981; width: 18px; height: 18px;"></i>
+                <span style="font-size: 13px; text-transform: uppercase; color: #fff; font-weight: 800; letter-spacing: 0.5px;">Thông tin chung</span>
               </div>
-            </div>
-
-            <div style="display: flex; flex-direction: column; gap: 6px;">
-              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Tên hàng <span style="color: #ef4444;">*</span></label>
-              <div style="position: relative;">
-                <input id="qe-Ten_hang" v-model="quoteEdit.Ten_hang" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 500;" />
-                <i class="lucide-package" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
-              </div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <!-- 1: Mã hàng -->
               <div style="display: flex; flex-direction: column; gap: 6px;">
-                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Danh mục</label>
-                <input id="qe-Danh_muc" v-model="quoteEdit.Danh_muc" list="category-list" placeholder="HW, SW, SVR..." style="width: 100%; padding: 10px 14px; border-radius: 8px;" />
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Mã hàng</label>
+                <div style="position: relative;">
+                  <input id="qe-Ma_hang" v-model="quoteEdit.Ma_hang" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 500;" />
+                  <i class="lucide-tag" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
+                </div>
               </div>
-              <div style="display: flex; flex-direction: column; gap: 6px;">
-                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">ĐVT</label>
-                <input id="qe-DVT" v-model="quoteEdit.DVT" style="width: 100%; padding: 10px 14px; border-radius: 8px; font-weight: 500;" />
-              </div>
-            </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <!-- 2: Tên hàng -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Tên hàng <span style="color: #ef4444;">*</span></label>
+                <div style="position: relative;">
+                  <input id="qe-Ten_hang" v-model="quoteEdit.Ten_hang" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 500;" />
+                  <i class="lucide-package" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
+                </div>
+              </div>
+
+              <!-- 3: Hãng -->
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Hãng</label>
                 <div style="position: relative;">
@@ -5809,6 +6009,41 @@ onUnmounted(() => {
                 </div>
               </div>
 
+              <!-- 4: Danh mục -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Danh mục</label>
+                <input id="qe-Danh_muc" v-model="quoteEdit.Danh_muc" list="category-list" placeholder="HW, SW, SVR..." style="width: 100%; padding: 10px 14px; border-radius: 8px;" />
+              </div>
+
+              <!-- 9 & 10: Đơn vị tiền tệ, Tỉ giá -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                  <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Đơn vị tiền tệ</label>
+                  <div style="position: relative;">
+                    <input v-model="quoteEdit.Don_vi_tien_te" readonly style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; background: rgba(255,255,255,0.05); color: #94a3b8;" />
+                    <i class="lucide-coins" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
+                  </div>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                  <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Tỉ giá</label>
+                  <FormattedInput v-model="quoteEdit.Ti_gia" @input="ensureNumberField(quoteEdit, 'Ti_gia')" style="width: 100%; padding: 10px 14px; border-radius: 8px;" />
+                </div>
+              </div>
+            </div>
+
+            <!-- COLUMN 2 -->
+            <div style="display: flex; flex-direction: column; gap: 16px; background: rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+              <div style="padding-bottom: 12px; border-bottom: 1px dashed rgba(255,255,255,0.1); margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+                <i class="lucide-file-text" style="color: #10b981; width: 18px; height: 18px;"></i>
+                <span style="font-size: 13px; text-transform: uppercase; color: #fff; font-weight: 800; letter-spacing: 0.5px;">Chi tiết kỹ thuật</span>
+              </div>
+              <!-- 5: ĐVT -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">ĐVT</label>
+                <input id="qe-DVT" v-model="quoteEdit.DVT" list="dvt-options" style="width: 100%; padding: 10px 14px; border-radius: 8px; font-weight: 500;" @input="quoteEdit.DVT = $event.target.value.toUpperCase()" />
+              </div>
+
+              <!-- 6: License duration -->
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">License duration</label>
                 <div style="position: relative;">
@@ -5816,138 +6051,160 @@ onUnmounted(() => {
                   <i class="lucide-clock" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                 </div>
               </div>
-            </div>
-            
-            <div style="display: flex; flex-direction: column; gap: 6px;">
-              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Tính năng / Features</label>
-              <textarea id="qe-Features" v-model="quoteEdit.Features" rows="3" style="width: 100%; padding: 10px 14px; border-radius: 8px; resize: vertical;" />
-            </div>
-            
-            <div style="display: flex; flex-direction: column; gap: 6px;">
-              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Ghi chú</label>
-              <textarea id="qe-Ghi_chu" v-model="quoteEdit.Ghi_chu" rows="2" style="width: 100%; padding: 10px 14px; border-radius: 8px; resize: vertical;" />
-            </div>
-          </div>
 
-          <!-- COLUMN 2: TÀI CHÍNH & GIÁ CẢ -->
-          <div class="modal-group" style="margin: 0; display: flex; flex-direction: column; gap: 20px;">
-            <h4 class="modal-group-title" style="display: flex; align-items: center; gap: 8px; color: #10b981 !important;">
-              <span style="color: #10b981;">Tài chính & Giá cả</span>
-            </h4>
-            
-            <div style="display: flex; flex-direction: column; gap: 6px;">
-              <label style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">ĐƠN GIÁ BÁN (VND)</span>
-                <div style="display: flex; gap: 4px;">
-                  <button class="util-btn small inline-normal-edit" style="padding: 2px 8px; font-size: 11px; white-space: nowrap; border-radius: 4px;" @click="openAdjustPrice('field', '', 'Đơn giá', 'Don_gia', true)" title="Sửa thường - cập nhật giá thực tế">
-                    <i class="ri-edit-line"></i> Sửa thường
-                  </button>
-                  <button class="util-btn small inline-adjust" style="padding: 2px 8px; font-size: 11px; white-space: nowrap; border-radius: 4px; background: rgba(16,185,129,0.2); color: #10b981; border: 1px solid rgba(16,185,129,0.4);" @click="openAdjustPrice('field', '', 'Đơn giá', 'Don_gia')" title="Điều chỉnh - tạo chênh lệch giá">
-                    <i class="ri-arrow-up-down-fill"></i> Điều chỉnh
-                  </button>
-                </div>
-              </label>
-              <div style="position: relative;">
-                <FormattedInput id="qe-Don_gia" :modelValue="(quoteEdit.Don_gia || 0) * (Number(quoteEdit.Ti_gia) || 1)" @update:modelValue="quoteEdit.Don_gia = $event / (Number(quoteEdit.Ti_gia) || 1)" @input="ensureNumberField(quoteEdit, 'Don_gia')" :readonly="true" style="width: 100%; padding: 12px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 16px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
-                <i class="lucide-tag" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
-                <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #10b981; pointer-events: none;">₫</span>
+              <!-- 7: Tính năng / Features -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Tính năng / Features</label>
+                <textarea id="qe-Features" v-model="quoteEdit.Features" rows="3" style="width: 100%; padding: 10px 14px; border-radius: 8px; resize: vertical;" />
               </div>
-              <div v-if="quoteEdit.Don_vi_tien_te && quoteEdit.Don_vi_tien_te.toUpperCase() !== 'VND' && quoteEdit.Ti_gia > 1" style="font-size: 11px; color: #10b981; margin-top: 2px;">
-                ≈ {{ Number(quoteEdit.Don_gia || 0).toLocaleString('vi-VN') }} {{ quoteEdit.Don_vi_tien_te }}
+              
+              <!-- 8: Ghi chú -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Ghi chú</label>
+                <textarea id="qe-Ghi_chu" v-model="quoteEdit.Ghi_chu" rows="2" style="width: 100%; padding: 10px 14px; border-radius: 8px; resize: vertical;" />
               </div>
             </div>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+
+            <!-- COLUMN 3 -->
+            <div style="display: flex; flex-direction: column; gap: 16px; background: rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+              <div style="padding-bottom: 12px; border-bottom: 1px dashed rgba(255,255,255,0.1); margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+                <i class="lucide-coins" style="color: #10b981; width: 18px; height: 18px;"></i>
+                <span style="font-size: 13px; text-transform: uppercase; color: #fff; font-weight: 800; letter-spacing: 0.5px;">Giá & Chi phí</span>
+              </div>
+
+              <!-- 11: Đơn giá bán (VND) -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">List Price</span>
+                  <div style="display: flex; gap: 4px;">
+                    <button class="util-btn small inline-normal-edit" style="padding: 2px 6px; font-size: 10px; white-space: nowrap; border-radius: 4px;" @click="openAdjustPrice('field', '', 'Đơn giá', 'Don_gia', true)" title="Sửa thường - cập nhật giá thực tế">
+                      <i class="ri-edit-line"></i>
+                    </button>
+                    <button class="util-btn small inline-adjust" style="padding: 2px 6px; font-size: 10px; white-space: nowrap; border-radius: 4px; background: rgba(16,185,129,0.2); color: #10b981; border: 1px solid rgba(16,185,129,0.4);" @click="openAdjustPrice('field', '', 'Đơn giá', 'Don_gia')" title="Điều chỉnh - tạo chênh lệch giá">
+                      <i class="ri-arrow-up-down-fill"></i>
+                    </button>
+                  </div>
+                </label>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="position: relative; flex: 1;">
+                    <FormattedInput id="qe-Don_gia" :modelValue="(quoteEdit.Don_gia || 0) * (Number(quoteEdit.Ti_gia) || 1)" @update:modelValue="quoteEdit.Don_gia = $event / (Number(quoteEdit.Ti_gia) || 1)" @input="ensureNumberField(quoteEdit, 'Don_gia')" :readonly="true" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
+                    <i class="lucide-tag" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
+                    <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #10b981; pointer-events: none;">₫</span>
+                  </div>
+                  <template v-if="quoteEdit.Don_vi_tien_te && quoteEdit.Don_vi_tien_te.toUpperCase() !== 'VND' && quoteEdit.Ti_gia > 1">
+                    <span style="font-size: 12px; color: #10b981; font-weight: 600;">≈</span>
+                    <div style="position: relative; width: 110px;">
+                      <FormattedInput id="qe-Don_gia_usd" v-model="quoteEdit.Don_gia" @input="ensureNumberField(quoteEdit, 'Don_gia')" style="width: 100%; padding: 10px 10px; padding-right: 32px; border-radius: 8px; font-weight: 600; font-size: 13px; border: 1px dashed rgba(16,185,129,0.3); background: rgba(16,185,129,0.05); color: #10b981;" />
+                      <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #10b981; pointer-events: none;">{{ quoteEdit.Don_vi_tien_te }}</span>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              <!-- 12: Giá nhập VND -->
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="display: flex; justify-content: space-between; align-items: center;">
                   <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Giá Nhập (VND)</span>
                 </label>
-                <div style="position: relative;">
-                  <FormattedInput id="qe-gia_nhap" :modelValue="(quoteEdit.gia_nhap || 0) * (Number(quoteEdit.Ti_gia) || 1)" @update:modelValue="quoteEdit.gia_nhap = $event / (Number(quoteEdit.Ti_gia) || 1)" @input="ensureNumberField(quoteEdit, 'gia_nhap')" style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px; font-weight: 500;" />
-                  <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #94a3b8; pointer-events: none;">₫</span>
-                </div>
-                <div v-if="quoteEdit.Don_vi_tien_te && quoteEdit.Don_vi_tien_te.toUpperCase() !== 'VND' && quoteEdit.Ti_gia > 1" style="font-size: 11px; color: #64748b; margin-top: 2px;">
-                  ≈ {{ Number(quoteEdit.gia_nhap || 0).toLocaleString('vi-VN') }} {{ quoteEdit.Don_vi_tien_te }}
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="position: relative; flex: 1;">
+                    <FormattedInput id="qe-gia_nhap" :modelValue="(quoteEdit.gia_nhap || 0) * (Number(quoteEdit.Ti_gia) || 1)" @update:modelValue="quoteEdit.gia_nhap = $event / (Number(quoteEdit.Ti_gia) || 1)" @input="ensureNumberField(quoteEdit, 'gia_nhap')" style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px; font-weight: 500;" />
+                    <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #94a3b8; pointer-events: none;">₫</span>
+                  </div>
+                  <template v-if="quoteEdit.Don_vi_tien_te && quoteEdit.Don_vi_tien_te.toUpperCase() !== 'VND' && quoteEdit.Ti_gia > 1">
+                    <span style="font-size: 12px; color: #64748b; font-weight: 600;">≈</span>
+                    <div style="position: relative; width: 110px;">
+                      <FormattedInput id="qe-gia_nhap_usd" v-model="quoteEdit.gia_nhap" @input="ensureNumberField(quoteEdit, 'gia_nhap')" style="width: 100%; padding: 10px 10px; padding-right: 32px; border-radius: 8px; font-weight: 600; font-size: 13px; border: 1px dashed rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); color: #e2e8f0;" />
+                      <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #94a3b8; pointer-events: none;">{{ quoteEdit.Don_vi_tien_te }}</span>
+                    </div>
+                  </template>
                 </div>
               </div>
 
-              <div style="display: flex; flex-direction: column; gap: 6px;">
+              <div v-if="false" style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="display: flex; justify-content: space-between; align-items: center;">
-                  <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Giá tiêu chuẩn (VND)</span>
-                  <div style="display: flex; align-items: center; gap: 4px;">
-                    <span style="font-size: 11px; color: #94a3b8; font-weight: 600;">% LP:</span>
-                    <FormattedInput :modelValue="quoteEditTieuChuanPct" @update:modelValue="updateTieuChuanPct" style="width: 54px; padding: 4px 6px; font-size: 12px; text-align: center; border-radius: 4px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2);" />
-                  </div>
+                  <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Giá Hardware (VND)</span>
                 </label>
                 <div style="position: relative;">
-                  <FormattedInput id="qe-Gia_tieu_chuan" :modelValue="(quoteEdit.Gia_tieu_chuan || 0) * (Number(quoteEdit.Ti_gia) || 1)" @update:modelValue="quoteEdit.Gia_tieu_chuan = $event / (Number(quoteEdit.Ti_gia) || 1)" @input="ensureNumberField(quoteEdit, 'Gia_tieu_chuan')" style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px; font-weight: 500; color: #8b5cf6;" />
-                  <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #8b5cf6; pointer-events: none;">₫</span>
+                  <FormattedInput :modelValue="(quoteEdit.gia_hardware || 0) * (Number(quoteEdit.Ti_gia) || 1)" @update:modelValue="quoteEdit.gia_hardware = $event / (Number(quoteEdit.Ti_gia) || 1)" @input="ensureNumberField(quoteEdit, 'gia_hardware')" :readonly="true" style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px; background: rgba(255,255,255,0.05); color: #94a3b8;" />
+                  <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #64748b; pointer-events: none;">₫</span>
                 </div>
-                <div v-if="quoteEdit.Don_vi_tien_te && quoteEdit.Don_vi_tien_te.toUpperCase() !== 'VND' && quoteEdit.Ti_gia > 1" style="font-size: 11px; color: #64748b; margin-top: 2px;">
-                  ≈ {{ Number(quoteEdit.Gia_tieu_chuan || 0).toLocaleString('vi-VN') }} {{ quoteEdit.Don_vi_tien_te }}
+              </div>
+
+              <!-- 13: Giá tiêu chuẩn VND, %LP -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="display: flex; align-items: center; gap: 12px;">
+                  <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Giá Off Hãng (VND)</span>
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 12px; color: #a78bfa; font-weight: 700;">% OFF:</span>
+                    <FormattedInput :modelValue="quoteEditTieuChuanPct" @update:modelValue="updateTieuChuanPct" style="width: 56px; padding: 4px 6px; font-size: 13px; font-weight: 800; text-align: center; border-radius: 6px; background: rgba(139,92,246,0.2); color: #ffffff; border: 1px solid rgba(139,92,246,0.5);" />
+                  </div>
+                </label>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="position: relative; flex: 1;">
+                    <FormattedInput id="qe-Gia_tieu_chuan" :modelValue="(quoteEdit.Gia_tieu_chuan || 0) * (Number(quoteEdit.Ti_gia) || 1)" @update:modelValue="quoteEdit.Gia_tieu_chuan = $event / (Number(quoteEdit.Ti_gia) || 1)" @input="ensureNumberField(quoteEdit, 'Gia_tieu_chuan')" style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px; font-weight: 500; color: #8b5cf6;" />
+                    <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #8b5cf6; pointer-events: none;">₫</span>
+                  </div>
+                  <template v-if="quoteEdit.Don_vi_tien_te && quoteEdit.Don_vi_tien_te.toUpperCase() !== 'VND' && quoteEdit.Ti_gia > 1">
+                    <span style="font-size: 12px; color: #8b5cf6; font-weight: 600;">≈</span>
+                    <div style="position: relative; width: 110px;">
+                      <FormattedInput id="qe-Gia_tieu_chuan_usd" v-model="quoteEdit.Gia_tieu_chuan" @input="ensureNumberField(quoteEdit, 'Gia_tieu_chuan')" style="width: 100%; padding: 10px 10px; padding-right: 32px; border-radius: 8px; font-weight: 600; font-size: 13px; border: 1px dashed rgba(139,92,246,0.3); background: rgba(139,92,246,0.05); color: #a78bfa;" />
+                      <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #8b5cf6; pointer-events: none;">{{ quoteEdit.Don_vi_tien_te }}</span>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              <!-- 19: Số lượng -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.25); border-radius: 8px; padding: 6px 10px;">
+                  <span style="font-size: 13px; font-weight: 700; color: #10b981;"><i class="lucide-layers" style="width: 16px; height: 16px; margin-right: 4px; vertical-align: text-bottom;"></i> QTY</span>
+                  <div class="qty" style="margin: 0; transform-origin: right;">
+                    <button type="button" @click="quoteEdit.So_luong = Math.max(1, toNum(quoteEdit.So_luong, 1) - 1)">&#x2212;</button>
+                    <FormattedInput id="qe-So_luong" v-model="quoteEdit.So_luong" @input="ensureNumberField(quoteEdit, 'So_luong')" style="width: 36px; background: transparent !important; border: none !important; text-align: center; border-radius: 0; font-weight: 800; font-size: 14px; padding: 0; color: #fff; box-shadow: none;" />
+                    <button type="button" @click="quoteEdit.So_luong = toNum(quoteEdit.So_luong, 1) + 1">+</button>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div v-if="false" style="display: flex; flex-direction: column; gap: 6px;">
-              <label style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Giá Hardware (VND)</span>
-                <button class="util-btn small inline-adjust" style="padding: 2px 8px; font-size: 11px; white-space: nowrap; border-radius: 4px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2);" @click="openAdjustPrice('field', '', 'Giá Hardware', 'gia_hardware')" title="Tăng khống Giá Hardware">
-                  <i class="ri-arrow-up-down-fill"></i> Điều chỉnh
-                </button>
-              </label>
-              <div style="position: relative;">
-                <FormattedInput :modelValue="(quoteEdit.gia_hardware || 0) * (Number(quoteEdit.Ti_gia) || 1)" @update:modelValue="quoteEdit.gia_hardware = $event / (Number(quoteEdit.Ti_gia) || 1)" @input="ensureNumberField(quoteEdit, 'gia_hardware')" :readonly="true" style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px; background: rgba(255,255,255,0.05); color: #94a3b8;" />
-                <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #64748b; pointer-events: none;">₫</span>
+            <!-- COLUMN 4 -->
+            <div style="display: flex; flex-direction: column; gap: 16px; background: rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+              <div style="padding-bottom: 12px; border-bottom: 1px dashed rgba(255,255,255,0.1); margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+                <i class="lucide-pie-chart" style="color: #10b981; width: 18px; height: 18px;"></i>
+                <span style="font-size: 13px; text-transform: uppercase; color: #fff; font-weight: 800; letter-spacing: 0.5px;">Bán hàng & Lợi nhuận</span>
               </div>
-              <div v-if="quoteEdit.Don_vi_tien_te && quoteEdit.Don_vi_tien_te.toUpperCase() !== 'VND' && quoteEdit.Ti_gia > 1" style="font-size: 11px; color: #64748b; margin-top: 2px;">
-                ≈ {{ Number(quoteEdit.gia_hardware || 0).toLocaleString('vi-VN') }} {{ quoteEdit.Don_vi_tien_te }}
-              </div>
-            </div>
+              <!-- 14 & 15: Mức % OFF & Thuế VAT -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <!-- 14: Mức % OFF -->
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                  <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Mức % Off</label>
+                  <div style="position: relative;">
+                    <FormattedInput id="qe-muc_phan_tram_off" v-model="quoteEdit.muc_phan_tram_off" @input="ensureNumberField(quoteEdit, 'muc_phan_tram_off')" style="width: 100%; padding: 10px 14px; padding-right: 30px; border-radius: 8px; color: #f59e0b;" />
+                    <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 600; color: #f59e0b; pointer-events: none;">%</span>
+                  </div>
+                </div>
 
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-              <div style="display: flex; flex-direction: column; gap: 6px;">
-                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Đơn vị tiền tệ</label>
-                <div style="position: relative;">
-                  <input v-model="quoteEdit.Don_vi_tien_te" readonly style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; background: rgba(255,255,255,0.05); color: #94a3b8;" />
-                  <i class="lucide-coins" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
+                <!-- 15: Thuế VAT -->
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                  <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Thuế VAT</label>
+                  <div style="position: relative;">
+                    <FormattedInput id="qe-Thue_VAT" v-model="quoteEdit.Thue_VAT" @input="ensureNumberField(quoteEdit, 'Thue_VAT')" style="width: 100%; padding: 10px 14px; padding-right: 30px; border-radius: 8px; color: #3b82f6;" />
+                    <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 600; color: #3b82f6; pointer-events: none;">%</span>
+                  </div>
                 </div>
               </div>
-              <div style="display: flex; flex-direction: column; gap: 6px;">
-                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Tỉ giá</label>
-                <FormattedInput v-model="quoteEdit.Ti_gia" @input="ensureNumberField(quoteEdit, 'Ti_gia')" style="width: 100%; padding: 10px 14px; border-radius: 8px;" />
-              </div>
-            </div>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-              <div style="display: flex; flex-direction: column; gap: 6px;">
-                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Mức % Off</label>
-                <div style="position: relative;">
-                  <FormattedInput id="qe-muc_phan_tram_off" v-model="quoteEdit.muc_phan_tram_off" @input="ensureNumberField(quoteEdit, 'muc_phan_tram_off')" style="width: 100%; padding: 10px 14px; padding-right: 30px; border-radius: 8px; color: #f59e0b;" />
-                  <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 600; color: #f59e0b; pointer-events: none;">%</span>
-                </div>
-              </div>
-              <div style="display: flex; flex-direction: column; gap: 6px;">
-                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Thuế VAT</label>
-                <div style="position: relative;">
-                  <FormattedInput id="qe-Thue_VAT" v-model="quoteEdit.Thue_VAT" @input="ensureNumberField(quoteEdit, 'Thue_VAT')" style="width: 100%; padding: 10px 14px; padding-right: 30px; border-radius: 8px; color: #3b82f6;" />
-                  <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 600; color: #3b82f6; pointer-events: none;">%</span>
-                </div>
-              </div>
-            </div>
 
-            <!-- ĐƠN GIÁ (KH) + THÀNH TIỀN TRƯỚC THUẾ -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <!-- 16: Đơn giá KH -->
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="display: flex; justify-content: space-between; align-items: center;">
                   <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Đơn giá (KH)</span>
                   <div style="display: flex; gap: 4px;">
-                    <button class="util-btn small inline-normal-edit" style="padding: 2px 8px; font-size: 11px; white-space: nowrap; border-radius: 4px;" @click="openAdjustPrice('field', '', 'Đơn giá (KH)', 'unit_price_kh', true)" title="Sửa thường - cập nhật giá thực tế">
-                      <i class="ri-edit-line"></i> Sửa thường
+                    <button class="util-btn small inline-normal-edit" style="padding: 2px 6px; font-size: 10px; white-space: nowrap; border-radius: 4px;" @click="openAdjustPrice('field', '', 'Đơn giá (KH)', 'unit_price_kh', true)" title="Sửa thường">
+                      <i class="ri-edit-line"></i>
                     </button>
-                    <button class="util-btn small inline-adjust" style="padding: 2px 8px; font-size: 11px; white-space: nowrap; border-radius: 4px; background: rgba(16,185,129,0.2); color: #10b981; border: 1px solid rgba(16,185,129,0.4);" @click="openAdjustPrice('field', '', 'Đơn giá (KH)', 'unit_price_kh')" title="Điều chỉnh - tạo chênh lệch giá">
-                      <i class="ri-arrow-up-down-fill"></i> Điều chỉnh
+                    <button class="util-btn small inline-adjust" style="padding: 2px 6px; font-size: 10px; white-space: nowrap; border-radius: 4px; background: rgba(16,185,129,0.2); color: #10b981; border: 1px solid rgba(16,185,129,0.4);" @click="openAdjustPrice('field', '', 'Đơn giá (KH)', 'unit_price_kh')" title="Điều chỉnh">
+                      <i class="ri-arrow-up-down-fill"></i>
                     </button>
                   </div>
                 </label>
@@ -5957,15 +6214,17 @@ onUnmounted(() => {
                   <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #10b981; pointer-events: none;">₫</span>
                 </div>
               </div>
+
+              <!-- 17: TT trước thuế -->
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="display: flex; justify-content: space-between; align-items: center;">
                   <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">TT Trước thuế</span>
                   <div style="display: flex; gap: 4px;">
-                    <button class="util-btn small inline-normal-edit" style="padding: 2px 8px; font-size: 11px; white-space: nowrap; border-radius: 4px;" @click="openAdjustPrice('field', '', 'Thành tiền trước thuế', 'line_truoc_thue', true)" title="Sửa thường - cập nhật giá thực tế">
-                      <i class="ri-edit-line"></i> Sửa thường
+                    <button class="util-btn small inline-normal-edit" style="padding: 2px 6px; font-size: 10px; white-space: nowrap; border-radius: 4px;" @click="openAdjustPrice('field', '', 'Thành tiền trước thuế', 'line_truoc_thue', true)" title="Sửa thường">
+                      <i class="ri-edit-line"></i>
                     </button>
-                    <button class="util-btn small inline-adjust" style="padding: 2px 8px; font-size: 11px; white-space: nowrap; border-radius: 4px; background: rgba(16,185,129,0.2); color: #10b981; border: 1px solid rgba(16,185,129,0.4);" @click="openAdjustPrice('field', '', 'Thành tiền trước thuế', 'line_truoc_thue')" title="Điều chỉnh - tạo chênh lệch giá">
-                      <i class="ri-arrow-up-down-fill"></i> Điều chỉnh
+                    <button class="util-btn small inline-adjust" style="padding: 2px 6px; font-size: 10px; white-space: nowrap; border-radius: 4px; background: rgba(16,185,129,0.2); color: #10b981; border: 1px solid rgba(16,185,129,0.4);" @click="openAdjustPrice('field', '', 'Thành tiền trước thuế', 'line_truoc_thue')" title="Điều chỉnh">
+                      <i class="ri-arrow-up-down-fill"></i>
                     </button>
                   </div>
                 </label>
@@ -5975,41 +6234,27 @@ onUnmounted(() => {
                   <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #10b981; pointer-events: none;">₫</span>
                 </div>
               </div>
-            </div>
 
-            <!-- CHÊNH LỆCH GIÁ -->
-            <div v-if="quoteEdit._Don_gia_goc != null" style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-radius: 10px; border: 1px solid; margin-top: 4px;"
-              :style="{
-                background: itemChenhLechHieuDung(quoteEdit) >= 0 ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
-                borderColor: itemChenhLechHieuDung(quoteEdit) >= 0 ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'
-              }">
-              <span style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;"
-                :style="{ color: itemChenhLechHieuDung(quoteEdit) >= 0 ? '#10b981' : '#ef4444' }">
-                <div>
-                  <i class="lucide-trending-up" v-if="itemChenhLechHieuDung(quoteEdit) >= 0" style="margin-right: 4px;"></i>
-                  <i class="lucide-trending-down" v-else style="margin-right: 4px;"></i>
-                  Chênh lệch giá
+              <!-- 18: Chênh lệch giá -->
+              <div v-if="quoteEdit._Don_gia_goc != null" style="display: flex; flex-direction: column; gap: 6px; margin-top: auto;">
+                <label style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Chênh lệch</span>
+                  <div style="display: flex; gap: 4px;">
+                    <button class="util-btn small inline-adjust" style="padding: 2px 6px; font-size: 10px; white-space: nowrap; border-radius: 4px; background: rgba(16,185,129,0.2); color: #10b981; border: 1px solid rgba(16,185,129,0.4);" @click="openAdjustPrice('field', '', 'Chênh lệch giá', 'item_chenh_lech')" title="Điều chỉnh">
+                      <i class="ri-arrow-up-down-fill"></i>
+                    </button>
+                  </div>
+                </label>
+                <div style="position: relative;">
+                  <input readonly :value="(itemChenhLechHieuDung(quoteEdit) >= 0 ? '+' : '') + formatVND(itemChenhLechHieuDung(quoteEdit))" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #10b981 !important; border: 1px solid rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important; outline: none;" />
+                  <i class="lucide-trending-up" v-if="itemChenhLechHieuDung(quoteEdit) >= 0" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
+                  <i class="lucide-trending-down" v-else style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
+                  <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #10b981; pointer-events: none;">₫</span>
                 </div>
-                <button class="util-btn small inline-adjust" style="padding: 2px 8px; font-size: 11px; white-space: nowrap; border-radius: 4px; background: rgba(16,185,129,0.2); color: #10b981; border: 1px solid rgba(16,185,129,0.4);" @click="openAdjustPrice('field', '', 'Chênh lệch giá', 'item_chenh_lech')" title="Điều chỉnh mức chênh lệch">
-                  <i class="ri-arrow-up-down-fill"></i> Điều chỉnh
-                </button>
-              </span>
-              <span style="font-size: 16px; font-weight: 800;"
-                :style="{ color: itemChenhLechHieuDung(quoteEdit) >= 0 ? '#10b981' : '#ef4444' }">
-                {{ itemChenhLechHieuDung(quoteEdit) >= 0 ? '+' : '' }}{{ formatVND(itemChenhLechHieuDung(quoteEdit)) }} ₫
-              </span>
-            </div>
-
-            <!-- SUMMARY BOX INSIDE COL 2 -->
-            <div style="margin-top: auto; display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.3); border: 1px dashed rgba(16,185,129,0.3); border-radius: 12px; padding: 16px;">
-              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px; margin: 0;">Số lượng</label>
-              <div class="qty" style="transform: scale(1.1); transform-origin: right center;">
-                <button type="button" @click="quoteEdit.So_luong = Math.max(1, toNum(quoteEdit.So_luong, 1) - 1)">&#x2212;</button>
-                <FormattedInput id="qe-So_luong" v-model="quoteEdit.So_luong" @input="ensureNumberField(quoteEdit, 'So_luong')" style="width: 36px; background: transparent !important; border: none !important; text-align: center; border-radius: 0; font-weight: 800; font-size: 14px; padding: 0; color: #fff; box-shadow: none;" />
-                <button type="button" @click="quoteEdit.So_luong = toNum(quoteEdit.So_luong, 1) + 1">+</button>
               </div>
             </div>
           </div>
+
         </div>
         
 
@@ -6065,7 +6310,7 @@ onUnmounted(() => {
 
       <div>
         <label>Đơn vị (ĐVT)</label>
-        <input id="qeraw-DVT" v-model="quoteEditRaw.DVT" />
+        <input id="qeraw-DVT" v-model="quoteEditRaw.DVT" list="dvt-options" @input="quoteEditRaw.DVT = $event.target.value.toUpperCase()" />
       </div>
     </div>
 
@@ -6682,11 +6927,11 @@ onUnmounted(() => {
 
         <div v-if="selectedTermId" class="term-preview" style="margin-top: 16px;">
           <label>Chỉnh sửa nội dung điều khoản (chỉ cho báo giá này):</label>
-          <ExcelEditor v-model="editableTermContent" class="preview-editor" style="margin-top: 8px;" />
+          <ExcelEditor ref="previewEditor" v-model="editableTermContent" class="preview-editor" style="margin-top: 8px;" />
         </div>
 
         <div class="modal-actions">
-          <button class="primary action-success" @click="exportQuoteExcel(); showExportExcelModal = false">
+          <button class="primary action-success" @click="exportQuoteExcel(pendingExportTemplateData); showExportExcelModal = false">
             <i class="lucide-file-spreadsheet"></i> Xác nhận Xuất Excel
           </button>
           <button @click="showExportExcelModal = false">Hủy</button>
@@ -7117,6 +7362,14 @@ onUnmounted(() => {
 
   <datalist id="category-list">
     <option v-for="cat in existingCategories" :key="cat" :value="cat"></option>
+  </datalist>
+
+  <datalist id="dvt-options">
+    <option value="CÁI"></option>
+    <option value="BẢN QUYỀN"></option>
+    <option value="BỘ"></option>
+    <option value="GÓI"></option>
+    <option value="CHIẾC"></option>
   </datalist>
 </template>
 
@@ -8388,6 +8641,7 @@ td.dvt { font-family: inherit; white-space: normal; }
   background: #172554;
   border-bottom: 1px solid rgba(56,189,248,0.3);
   font-weight: 800; color: #ffffff; font-size: 15px;
+  vertical-align: middle;
 }
 .group-stt { text-align: center; }
 .group-title { padding-left: 12px; text-align: left; }
@@ -8779,33 +9033,7 @@ td.dvt { font-family: inherit; white-space: normal; }
   display: block;
 }
 
-.term-preview :deep(.preview-editor .editor-content) {
-  background: #ffffff;
-  color: #000000;
-  font-family: 'Times New Roman', Times, serif;
-  font-size: 11pt;
-  line-height: 1.5;
-  border: 1px solid #cbd5e1;
-  border-top: none;
-  min-height: 150px;
-}
-.term-preview :deep(.preview-editor .editor-content:focus) {
-  background: #ffffff;
-  outline: 2px solid #38bdf8;
-  outline-offset: -2px;
-}
 
-.term-preview :deep(.preview-editor .editor-content table) {
-  width: 100% !important;
-  border-collapse: collapse;
-  margin-top: 8px;
-}
-
-.term-preview :deep(.preview-editor .editor-content table th),
-.term-preview :deep(.preview-editor .editor-content table td) {
-  border: 1px solid #cbd5e1;
-  padding: 6px;
-}
 
 .history-icon {
   margin-left: 6px;
@@ -9715,6 +9943,491 @@ td.dvt { font-family: inherit; white-space: normal; }
 .btn-load-fe:disabled {
   opacity: 0.5 !important;
   cursor: not-allowed !important;
+}
+
+/* ======================================================
+   EXPORT VIP MODAL — Premium 2-Column Layout
+====================================================== */
+.modal .modal-card.export-vip-modal {
+  width: 1350px !important;
+  max-width: 98vw !important;
+  border-radius: 20px !important;
+  overflow: hidden;
+  border: 1px solid rgba(56, 189, 248, 0.3) !important;
+  background: rgba(15, 23, 42, 0.85) !important;
+  backdrop-filter: blur(25px) !important;
+  -webkit-backdrop-filter: blur(25px) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 0 40px rgba(56, 189, 248, 0.05) !important;
+  animation: exportVipIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes exportVipIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.export-vip-head {
+  position: relative;
+  padding: 20px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, rgba(16,185,129,0.12) 0%, rgba(5,150,105,0.06) 100%);
+  border-bottom: 1px solid rgba(16,185,129,0.15);
+  overflow: hidden;
+}
+
+.export-vip-head-glow {
+  position: absolute;
+  top: -30px; right: -30px;
+  width: 120px; height: 120px;
+  background: radial-gradient(circle, rgba(16,185,129,0.2) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.export-vip-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  position: relative;
+  z-index: 1;
+}
+.export-vip-title svg {
+  color: #10b981;
+  filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.4));
+  animation: vipIconPulse 2s infinite ease-in-out;
+}
+@keyframes vipIconPulse {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.1); opacity: 1; }
+}
+
+.export-vip-close {
+  background: rgba(255,255,255,0.04) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  color: #94a3b8 !important;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  max-width: 32px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 50% !important;
+  font-size: 18px !important;
+  cursor: pointer !important;
+  transition: all 0.25s cubic-bezier(0.16,1,0.3,1) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
+  z-index: 1 !important;
+  line-height: 1 !important;
+}
+.export-vip-close:hover {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #fca5a5 !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+  transform: rotate(90deg) scale(1.05) !important;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.25);
+}
+
+.export-vip-body {
+  display: grid;
+  grid-template-columns: 1.8fr 1fr;
+  gap: 0;
+  min-height: 360px;
+}
+
+.export-vip-col {
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+}
+
+.export-vip-col-upload {
+  background: transparent;
+  border-right: 1px solid rgba(16,185,129,0.15);
+}
+
+.export-vip-col-actions {
+  background: transparent;
+}
+
+.export-vip-col-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: #ffffff;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.export-vip-col-label svg { opacity: 0.6; }
+
+/* ── Dropzone (empty state) ── */
+.export-tpl-dropzone {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  border: 2px dashed rgba(16,185,129,0.25);
+  border-radius: 14px;
+  padding: 32px 20px;
+  transition: all 0.3s ease;
+  background: rgba(16,185,129,0.03);
+  position: relative;
+  overflow: hidden;
+}
+.export-tpl-dropzone::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  background: radial-gradient(ellipse at center, rgba(16,185,129,0.08) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.export-tpl-dropzone:hover {
+  border-color: rgba(16,185,129,0.5);
+  background: rgba(16,185,129,0.08);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(16,185,129,0.12);
+}
+.export-tpl-dropzone:hover::before { opacity: 1; }
+
+.export-tpl-dropzone-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #10b981;
+  transition: all 0.3s;
+  animation: floatUpDown 3s ease-in-out infinite;
+  margin-bottom: 4px;
+}
+.export-tpl-dropzone:hover .export-tpl-dropzone-icon {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  transform: scale(1.1);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+}
+
+@keyframes floatUpDown {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+.export-tpl-dropzone-text {
+  color: #a7f3d0;
+  font-size: 14px;
+  font-weight: 600;
+  position: relative;
+}
+.export-tpl-dropzone-text b { color: #34d399; }
+
+.export-tpl-dropzone-hint {
+  color: #475569;
+  font-size: 11px;
+  font-weight: 500;
+  position: relative;
+}
+
+/* ── Loaded template state ── */
+.export-tpl-loaded {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(16, 185, 129, 0.01) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  box-shadow: inset 0 0 12px rgba(16, 185, 129, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.export-tpl-loaded-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  background: rgba(16, 185, 129, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+  animation: floatUpDown 3s ease-in-out infinite;
+  box-shadow: 0 8px 16px rgba(16, 185, 129, 0.1);
+}
+
+.export-tpl-loaded-name {
+  color: #e2e8f0;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  word-break: break-all;
+  line-height: 1.3;
+}
+
+.export-tpl-loaded-status {
+  color: #34d399;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  background: rgba(16,185,129,0.1);
+  padding: 2px 10px;
+  border-radius: 100px;
+}
+
+.export-tpl-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.export-tpl-change-btn,
+.export-tpl-remove-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  padding: 8px 16px !important;
+  border-radius: 10px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  transition: all 0.25s cubic-bezier(0.16,1,0.3,1) !important;
+  border: 1px solid transparent !important;
+  width: auto !important;
+  margin: 0 !important;
+  line-height: 1.2 !important;
+  box-sizing: border-box !important;
+}
+
+.export-tpl-change-btn {
+  background: #ffffff !important;
+  color: #10b981 !important;
+  border: 1px solid #10b981 !important;
+  flex: 1 !important;
+}
+.export-tpl-change-btn:hover {
+  background: #f0fdf4 !important;
+  color: #059669 !important;
+  border-color: #059669 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+}
+
+.export-tpl-remove-btn {
+  background: rgba(244, 63, 94, 0.1) !important;
+  color: #fb7185 !important;
+  border: 1px solid rgba(244, 63, 94, 0.2) !important;
+}
+.export-tpl-remove-btn:hover {
+  background: rgba(244, 63, 94, 0.2) !important;
+  color: #ffffff !important;
+  border-color: rgba(244, 63, 94, 0.5) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(244, 63, 94, 0.15);
+}
+
+.export-tpl-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.02);
+  color: #475569;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.export-tpl-note svg { flex-shrink: 0; opacity: 0.5; }
+
+/* ── Export Buttons (right column) ── */
+.export-vip-btn {
+  display: flex !important;
+  align-items: center !important;
+  gap: 20px !important;
+  padding: 22px 24px !important;
+  border-radius: 16px !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  background: rgba(30, 41, 59, 0.2) !important;
+  cursor: pointer !important;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  text-align: left !important;
+  position: relative !important;
+  overflow: hidden !important;
+  margin-bottom: 12px !important;
+  width: 100% !important;
+}
+.export-vip-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: 0;
+}
+.export-vip-btn:hover {
+  transform: translateY(-2px) scale(1.01) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+.export-vip-btn:hover::before { opacity: 1; }
+.export-vip-btn:active { transform: translateY(0) scale(0.99) !important; }
+
+.export-vip-btn-icon {
+  width: 56px !important;
+  height: 56px !important;
+  border-radius: 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  transition: all 0.3s !important;
+  position: relative !important;
+  z-index: 1 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.export-vip-btn-text {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 3px !important;
+  position: relative !important;
+  z-index: 1 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.export-vip-btn-label {
+  font-size: 17px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.3px !important;
+}
+
+.export-vip-btn-desc {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  opacity: 0.6 !important;
+}
+
+.export-vip-btn-arrow {
+  opacity: 0.3;
+  transform: translateX(-4px);
+  transition: all 0.3s;
+  position: relative;
+  z-index: 1;
+}
+.export-vip-btn:hover .export-vip-btn-arrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* -- Excel Button -- */
+.export-vip-btn-excel {
+  border-color: rgba(16,185,129,0.15) !important;
+}
+.export-vip-btn-excel::before {
+  background: linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(52,211,153,0.02) 100%);
+}
+.export-vip-btn-excel .export-vip-btn-icon {
+  background: rgba(16,185,129,0.1) !important;
+  color: #34d399 !important;
+}
+.export-vip-btn-excel .export-vip-btn-label { color: #34d399 !important; }
+.export-vip-btn-excel .export-vip-btn-desc { color: #a7f3d0 !important; }
+.export-vip-btn-excel .export-vip-btn-arrow { color: #34d399 !important; }
+.export-vip-btn-excel:hover {
+  border-color: rgba(16,185,129,0.4) !important;
+  box-shadow: 0 12px 30px rgba(16,185,129,0.15) !important;
+}
+.export-vip-btn-excel:hover .export-vip-btn-icon {
+  background: rgba(16,185,129,0.2) !important;
+  transform: scale(1.05) rotate(-5deg) !important;
+}
+
+/* -- Agency Button -- */
+.export-vip-btn-agency {
+  border-color: rgba(234,179,8,0.15) !important;
+}
+.export-vip-btn-agency::before {
+  background: linear-gradient(135deg, rgba(234,179,8,0.08) 0%, rgba(250,204,21,0.02) 100%);
+}
+.export-vip-btn-agency .export-vip-btn-icon {
+  background: rgba(234,179,8,0.1) !important;
+  color: #fbbf24 !important;
+}
+.export-vip-btn-agency .export-vip-btn-label { color: #fbbf24 !important; }
+.export-vip-btn-agency .export-vip-btn-desc { color: #fde047 !important; }
+.export-vip-btn-agency .export-vip-btn-arrow { color: #fbbf24 !important; }
+.export-vip-btn-agency:hover {
+  border-color: rgba(234,179,8,0.4) !important;
+  box-shadow: 0 12px 30px rgba(234,179,8,0.12) !important;
+}
+.export-vip-btn-agency:hover .export-vip-btn-icon {
+  background: rgba(234,179,8,0.2) !important;
+  transform: scale(1.05) rotate(5deg) !important;
+}
+
+/* -- Pipeline Button -- */
+.export-vip-btn-pipeline {
+  border-color: rgba(59,130,246,0.15) !important;
+}
+.export-vip-btn-pipeline::before {
+  background: linear-gradient(135deg, rgba(59,130,246,0.08) 0%, rgba(96,165,250,0.02) 100%);
+}
+.export-vip-btn-pipeline .export-vip-btn-icon {
+  background: rgba(59,130,246,0.1) !important;
+  color: #60a5fa !important;
+}
+.export-vip-btn-pipeline .export-vip-btn-label { color: #60a5fa !important; }
+.export-vip-btn-pipeline .export-vip-btn-desc { color: #93c5fd !important; }
+.export-vip-btn-pipeline .export-vip-btn-arrow { color: #60a5fa !important; }
+.export-vip-btn-pipeline:hover {
+  border-color: rgba(59,130,246,0.4) !important;
+  box-shadow: 0 12px 30px rgba(59,130,246,0.12) !important;
+}
+.export-vip-btn-pipeline:hover .export-vip-btn-icon {
+  background: rgba(59,130,246,0.2) !important;
+  transform: scale(1.05) translateY(-2px) !important;
+}
+
+/* ── Responsive: Stack columns on small screens ── */
+@media (max-width: 580px) {
+  .export-vip-body {
+    grid-template-columns: 1fr;
+  }
+  .export-vip-col-upload {
+    border-right: none;
+    border-bottom: 1px solid rgba(16, 185, 129, 0.15);
+  }
+  .export-tpl-dropzone {
+    padding: 20px 14px;
+  }
 }
 </style>
 

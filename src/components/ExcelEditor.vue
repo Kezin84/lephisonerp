@@ -4,12 +4,7 @@
       <!-- Font Family -->
       <div class="toolbar-group">
         <select v-model="fontFamily" @change="execCmd('fontName', fontFamily)" class="toolbar-select font-select">
-          <option value="Arial">Arial</option>
-          <option value="Calibri">Calibri</option>
-          <option value="Times New Roman">Times New Roman</option>
-          <option value="Plus Jakarta Sans">Plus Jakarta Sans</option>
-          <option value="Tahoma">Tahoma</option>
-          <option value="Verdana">Verdana</option>
+          <option v-for="f in availableFonts" :key="f" :value="f">{{ f }}</option>
         </select>
         
         <!-- Font Size -->
@@ -196,6 +191,14 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 const editor = ref<HTMLElement | null>(null)
+const availableFonts = ref([
+  'Arial',
+  'Calibri',
+  'Times New Roman',
+  'Plus Jakarta Sans',
+  'Tahoma',
+  'Verdana'
+])
 const fontFamily = ref('Calibri')
 const fontSizeDisplay = ref('12')
 const textColor = ref('#000000')
@@ -266,10 +269,35 @@ function restoreSelection() {
   }
 }
 
+function syncToolbarToFirstElement() {
+  if (editor.value && editor.value.firstElementChild) {
+    const computedStyle = window.getComputedStyle(editor.value.firstElementChild);
+    let ff = computedStyle.fontFamily;
+    if (ff) {
+      ff = ff.split(',')[0].replace(/['"]/g, '').trim();
+      if (ff) {
+        const exactMatch = availableFonts.value.find(f => f.toLowerCase() === ff.toLowerCase());
+        if (exactMatch) {
+          fontFamily.value = exactMatch;
+        } else if (!availableFonts.value.includes(ff)) {
+          availableFonts.value.push(ff);
+          fontFamily.value = ff;
+        }
+      }
+    }
+    const fs = computedStyle.fontSize;
+    if (fs && fs.endsWith('px')) {
+      const pt = Math.round(parseFloat(fs) * 0.75);
+      if (pt > 0) fontSizeDisplay.value = pt.toString();
+    }
+  }
+}
+
 watch(() => props.modelValue, (newVal) => {
   if (editor.value && !isTyping) {
     if (editor.value.innerHTML !== newVal) {
       editor.value.innerHTML = newVal || ''
+      setTimeout(syncToolbarToFirstElement, 0)
     }
   }
 })
@@ -277,6 +305,7 @@ watch(() => props.modelValue, (newVal) => {
 onMounted(() => {
   if (editor.value) {
     editor.value.innerHTML = props.modelValue || ''
+    setTimeout(syncToolbarToFirstElement, 0)
   }
   document.addEventListener('selectionchange', handleSelectionChange)
   document.addEventListener('mousedown', closePickers)
@@ -301,9 +330,40 @@ function closePickers(e: MouseEvent) {
   }
 }
 
+function updateToolbarFromSelection() {
+  const fontName = document.queryCommandValue('fontName');
+  if (fontName) {
+    let cleanFont = fontName.replace(/['"]/g, '').trim();
+    if (cleanFont) {
+      const exactMatch = availableFonts.value.find(f => f.toLowerCase() === cleanFont.toLowerCase());
+      if (exactMatch) {
+        fontFamily.value = exactMatch;
+      } else if (!availableFonts.value.includes(cleanFont)) {
+        availableFonts.value.push(cleanFont);
+        fontFamily.value = cleanFont;
+      }
+    }
+  }
+
+  const sel = window.getSelection();
+  if (sel && sel.rangeCount > 0) {
+    let node = sel.getRangeAt(0).commonAncestorContainer;
+    if (node.nodeType === 3) node = node.parentNode as Node;
+    if (node && node.nodeType === 1) {
+      const computedStyle = window.getComputedStyle(node as Element);
+      const fs = computedStyle.fontSize;
+      if (fs && fs.endsWith('px')) {
+        const pt = Math.round(parseFloat(fs) * 0.75);
+        if (pt > 0) fontSizeDisplay.value = pt.toString();
+      }
+    }
+  }
+}
+
 function handleSelectionChange() {
   if (document.activeElement === editor.value) {
     saveSelection()
+    updateToolbarFromSelection()
   }
 }
 
@@ -432,6 +492,13 @@ function applyCustomFontSize() {
     emit('update:modelValue', editor.value.innerHTML)
   }
 }
+
+defineExpose({
+  getToolbarFont: () => ({
+    name: fontFamily.value,
+    size: parseInt(fontSizeDisplay.value) || 12
+  })
+})
 </script>
 
 <style scoped>
