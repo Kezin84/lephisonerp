@@ -108,7 +108,7 @@
               <th>Website Công Ty</th>
               <th>Hoa Hồng</th>
               <th>Tổng Chi Tiêu</th>
-              <th>Công Nợ</th>
+              <th>Tổng Lợi Nhuận</th>
               <th>Trạng Thái</th>
               <th>Ghi Chú</th>
               <th class="text-right sticky-col-right">Hành Động</th>
@@ -137,8 +137,8 @@
               <td>{{ formatCurrency(kh.hoa_hong) }}</td>
               <td>{{ formatCurrency(kh.tong_chi_tieu) }}</td>
               <td>
-                <span :class="{'text-danger': kh.cong_no_chua_thanh_toan > 0}">
-                  {{ formatCurrency(kh.cong_no_chua_thanh_toan) }}
+                <span :class="{'text-success': kh.tong_loi_nhuan > 0}">
+                  {{ formatCurrency(kh.tong_loi_nhuan) }}
                 </span>
               </td>
               <td>
@@ -193,9 +193,9 @@
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path><path d="M8 6h.01"></path><path d="M16 6h.01"></path><path d="M12 6h.01"></path><path d="M12 10h.01"></path><path d="M12 14h.01"></path><path d="M16 10h.01"></path><path d="M16 14h.01"></path><path d="M8 10h.01"></path><path d="M8 14h.01"></path></svg>
               <span>{{ kh.ten_cong_ty }}</span>
             </div>
-            <div v-if="kh.cong_no_chua_thanh_toan" class="info-line text-danger">
+            <div v-if="kh.tong_loi_nhuan" class="info-line text-success">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-              <span>Nợ: {{ formatCurrency(kh.cong_no_chua_thanh_toan) }}</span>
+              <span>Tổng lợi nhuận: {{ formatCurrency(kh.tong_loi_nhuan) }}</span>
             </div>
           </div>
         </div>
@@ -310,8 +310,8 @@
               </div>
 
               <div class="form-group">
-                <label>Công Nợ Chưa Thanh Toán</label>
-                <input type="number" v-model="formData.cong_no_chua_thanh_toan" class="form-input" />
+                <label>Tổng Lợi Nhuận</label>
+                <input type="number" v-model="formData.tong_loi_nhuan" class="form-input" />
               </div>
 
               <div class="form-group">
@@ -434,7 +434,7 @@ const initFormData = () => ({
   website_cong_ty: '',
   hoa_hong: '',
   tong_chi_tieu: '',
-  cong_no_chua_thanh_toan: '',
+  tong_loi_nhuan: '',
   trang_thai: 'Mới',
   ghi_chu: '',
   ten_khach_hang_phu: '',

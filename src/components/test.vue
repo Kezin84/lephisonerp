@@ -74,7 +74,7 @@ type KhachHang = {
   Hoa_hong: string
   Tong_chi_tieu: string
   Trang_thai: string
-  Cong_no_chua_thanh_toan: string
+  Tong_loi_nhuan: string
   Ghi_chu: string
   Ten_khach_hang_phu: string
   So_dien_thoai_ca_nhan_phu: string
@@ -103,7 +103,7 @@ const khach = ref<KhachHang>({
   Hoa_hong: '',
   Tong_chi_tieu: '',
   Trang_thai: '',
-  Cong_no_chua_thanh_toan: '',
+  Tong_loi_nhuan: '',
   Ghi_chu: '',
   Ten_khach_hang_phu: '',
   So_dien_thoai_ca_nhan_phu: '',
@@ -149,7 +149,7 @@ const showSaveToDBBtn = computed(() => {
     (k.Email_cong_ty || '') !== (o.Email_cong_ty || '') ||
     (k.Website_cong_ty || '') !== (o.Website_cong_ty || '') ||
     (k.Trang_thai || '') !== (o.Trang_thai || '') ||
-    (k.Cong_no_chua_thanh_toan || '') !== (o.Cong_no_chua_thanh_toan || '') ||
+    (k.Tong_loi_nhuan || '') !== (o.Tong_loi_nhuan || '') ||
     (k.Ghi_chu || '') !== (o.Ghi_chu || '') ||
     (k.Ten_khach_hang_phu || '') !== (o.Ten_khach_hang_phu || '') ||
     (k.So_dien_thoai_ca_nhan_phu || '') !== (o.So_dien_thoai_ca_nhan_phu || '') ||
@@ -1534,7 +1534,7 @@ function buildHopDongTongQuatRow(
   const tongThanhToan = 0
   const hhKhach = 0
   const hhCaNhan = 0
-  const congNoCu = toNum(khach.value.Cong_no_chua_thanh_toan, 0)
+  const tongLoiNhuanCu = toNum(khach.value.Tong_loi_nhuan, 0)
   const trangThaiThanhToan = 'Chưa thanh toán đủ'
   const ghiChu = (ghiChuHopDong.value || '').trim()
 
@@ -1559,7 +1559,7 @@ function buildHopDongTongQuatRow(
     tongThanhToan,
     hhKhach,
     hhCaNhan,
-    congNoCu,
+    tongLoiNhuanCu,
     trangThaiThanhToan,
     statusHopDong,
     ghiChu,
@@ -1579,7 +1579,8 @@ function buildHopDongTongQuatRow(
       toNum(conLai.value, 0),                   // 30
       toNum(tongChietKhau.value, 0),            // 31
       goc,                                      // ✅ index 32 - ma_hop_dong_goc
-      statusHopDong === 'Chính thức' ? 'TRUE' : 'FALSE' // ✅ index 33 - isCompleted
+      statusHopDong === 'Chính thức' ? 'TRUE' : 'FALSE', // ✅ index 33 - isCompleted
+      round2(totalsContract.value.loi)          // ✅ index 34 - net margin (báo giá gốc)
   ]
 }
 
@@ -2071,7 +2072,7 @@ function mapKhachRow(row: any[]): KhachHang {
     Website_cong_ty: String(row[10] ?? ''),
     Hoa_hong: String(row[11] ?? ''),
     Tong_chi_tieu: String(row[12] ?? ''),
-    Cong_no_chua_thanh_toan: String(row[13] ?? ''),
+    Tong_loi_nhuan: String(row[13] ?? ''),
     Trang_thai: String(row[14] ?? ''),
     Ghi_chu: String(row[15] ?? ''),
     Ten_khach_hang_phu: String(row[16] ?? ''),
@@ -2612,7 +2613,7 @@ function resetCustomer() {
     Email_cong_ty: '',
     Website_cong_ty: '',
     Trang_thai: '',
-    Cong_no_chua_thanh_toan: '',
+    Tong_loi_nhuan: '',
     Ghi_chu: ''
   }
   maKHInput.value = ''
@@ -2646,7 +2647,7 @@ async function saveCustomerToDB() {
     website_cong_ty: k.Website_cong_ty || '',
     hoa_hong: k.Hoa_hong || '',
     tong_chi_tieu: k.Tong_chi_tieu || 0,
-    cong_no_chua_thanh_toan: k.Cong_no_chua_thanh_toan || 0,
+    tong_loi_nhuan: k.Tong_loi_nhuan || 0,
     trang_thai: k.Trang_thai || '',
     ghi_chu: k.Ghi_chu || '',
     ten_khach_hang_phu: k.Ten_khach_hang_phu || '',
@@ -2692,7 +2693,7 @@ async function saveCustomerToDB() {
               Website_cong_ty: String(row[10] ?? ''),
               Hoa_hong: String(row[11] ?? ''),
               Tong_chi_tieu: String(row[12] ?? ''),
-              Cong_no_chua_thanh_toan: String(row[13] ?? ''),
+              Tong_loi_nhuan: String(row[13] ?? ''),
               Trang_thai: String(row[14] ?? ''),
               Ghi_chu: String(row[15] ?? ''),
               Ten_khach_hang_phu: String(row[16] ?? ''),
@@ -5185,8 +5186,8 @@ onUnmounted(() => {
                 <input v-model="khach.Trang_thai" placeholder="Trạng thái" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
               </div>
               <div style="display: flex; flex-direction: column; gap: 3px;">
-                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Công nợ</label>
-                <input v-model="khach.Cong_no_chua_thanh_toan" placeholder="Công nợ" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Lợi nhuận</label>
+                <input v-model="khach.Tong_loi_nhuan" placeholder="Lợi nhuận" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
               </div>
             </div>
             <div style="display: flex; flex-direction: column; gap: 3px;">
@@ -6667,8 +6668,8 @@ onUnmounted(() => {
                 <input v-model="khach.Trang_thai" placeholder="Trạng thái" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
               </div>
               <div style="display: flex; flex-direction: column; gap: 3px;">
-                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Công nợ</label>
-                <input v-model="khach.Cong_no_chua_thanh_toan" placeholder="Công nợ" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Lợi nhuận</label>
+                <input v-model="khach.Tong_loi_nhuan" placeholder="Lợi nhuận" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
               </div>
             </div>
             <div style="display: flex; flex-direction: column; gap: 3px;">

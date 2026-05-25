@@ -59,7 +59,7 @@ type KhachHang = {
   Email_cong_ty: string
   Website_cong_ty: string
   Trang_thai: string
-  Cong_no_chua_thanh_toan: string
+  Tong_loi_nhuan: string
   Ghi_chu: string
 }
 
@@ -79,7 +79,7 @@ const khach = ref<KhachHang>({
   Email_cong_ty: '',
   Website_cong_ty: '',
   Trang_thai: '',
-  Cong_no_chua_thanh_toan: '',
+  Tong_loi_nhuan: '',
   Ghi_chu: ''
 })
 
@@ -529,7 +529,7 @@ function buildHopDongTongQuatRow(
   const tongThanhToan = 0
   const hhKhach = 0
   const hhCaNhan = 0
-  const congNoCu = toNum(khach.value.Cong_no_chua_thanh_toan, 0)
+  const tongLoiNhuanCu = toNum(khach.value.Tong_loi_nhuan, 0)
   const trangThaiThanhToan = 'Chưa thanh toán đủ'
   const ghiChu = (ghiChuHopDong.value || '').trim()
 
@@ -556,7 +556,7 @@ function buildHopDongTongQuatRow(
     tongThanhToan,
     hhKhach,
     hhCaNhan,
-    congNoCu,
+    tongLoiNhuanCu,
     trangThaiThanhToan,
     statusHopDong,
     ghiChu,
@@ -772,7 +772,7 @@ function mapKhachRow(row: any[]): KhachHang {
     Email_cong_ty: String(row[9] ?? ''),
     Website_cong_ty: String(row[10] ?? ''),
     Trang_thai: String(row[14] ?? ''),
-    Cong_no_chua_thanh_toan: String(row[13] ?? ''),
+    Tong_loi_nhuan: String(row[13] ?? ''),
     Ghi_chu: String(row[15] ?? '')
   }
 }
@@ -959,7 +959,7 @@ function resetCustomer() {
     Email_cong_ty: '',
     Website_cong_ty: '',
     Trang_thai: '',
-    Cong_no_chua_thanh_toan: '',
+    Tong_loi_nhuan: '',
     Ghi_chu: ''
   }
   maKHInput.value = ''
@@ -2684,7 +2684,7 @@ const quoteRowsWithSTT = computed(() => {
             <input v-model="khach.Trang_thai" placeholder="Trạng thái" />
 
             <label>Công nợ chưa thanh toán</label>
-            <input v-model="khach.Cong_no_chua_thanh_toan" placeholder="Công nợ" />
+            <input v-model="khach.Tong_loi_nhuan" placeholder="Lợi nhuận" />
 
             <label>Ghi chú</label>
             <textarea v-model="khach.Ghi_chu" placeholder="Ghi chú" />

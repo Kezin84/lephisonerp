@@ -441,7 +441,7 @@ const saveRecord = async () => {
           so_dien_thoai_ca_nhan_phu: getEditable('CUS_MOBILE') || props.khach?.So_dien_thoai_ca_nhan_phu || '',
           trang_thai: props.khach?.Trang_thai || 'Hoạt động',
           tong_chi_tieu: props.khach?.Tong_chi_tieu || 0,
-          cong_no_chua_thanh_toan: props.khach?.Cong_no_chua_thanh_toan || 0,
+          tong_loi_nhuan: props.khach?.Tong_loi_nhuan || 0,
           hoa_hong: props.khach?.Hoa_hong || ''
         })
       })

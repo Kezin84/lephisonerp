@@ -755,7 +755,7 @@ const saveRecord = async (rec, index) => {
           website_cong_ty: rec.CUS_WEBSITE || '',
           hoa_hong: '',
           tong_chi_tieu: 0,
-          cong_no_chua_thanh_toan: 0,
+          tong_loi_nhuan: 0,
           trang_thai: 'Hoạt động',
           ghi_chu: '',
           ten_khach_hang_phu: tenKHPhu,

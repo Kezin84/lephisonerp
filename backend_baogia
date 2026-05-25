@@ -415,10 +415,15 @@ function saveContractOfficial_(payload) {
     const addValueVND = (curUp === 'VND') ? tongSauThue : (tongSauThue * tiGiaContract)
 
     // 1) update KH trước
-    const updated = updateCustomerTotals_(shKH, maKH, addValueVND)
+    const addHoaHong = toNum_(hdRow[31] || 0, 0) // tong_chiet_khau
+    const tongGiaThucTe = toNum_(hdRow[20] || 0, 0) // tong_gia_thuc_te
+    const tongLoiNhuan = toNum_(hdRow[34] || 0, 0) // net_margin
+    const addTongChiTieu = (curUp === 'VND') ? tongGiaThucTe : (tongGiaThucTe * tiGiaContract)
+    const addTongLoiNhuan = (curUp === 'VND') ? tongLoiNhuan : (tongLoiNhuan * tiGiaContract)
+    const updated = updateCustomerTotals_(shKH, maKH, addTongLoiNhuan, addHoaHong, addTongChiTieu)
 
-    // 2) Cong_no_cu = công nợ mới (SAU KHI update)
-    hdRow[13] = toNum_(updated.Cong_no_chua_thanh_toan, 0)
+    // 2) Cong_no_cu = tổng lợi nhuận mới (SAU KHI update)
+    hdRow[13] = toNum_(updated.Tong_loi_nhuan, 0)
 
     // 3) rồi mới append hop_dong_tong_quat + chi_tiet
     shTong.appendRow(hdRow)
@@ -448,7 +453,7 @@ function saveContractOfficial_(payload) {
 
 
 
-function updateCustomerTotals_(shKH, maKH, addValue) {
+function updateCustomerTotals_(shKH, maKH, addTongLoiNhuan, addHoaHong, addTongChiTieu) {
     const lastRow = shKH.getLastRow()
     if (lastRow < 2) throw new Error('KH_EMPTY')
 
@@ -462,14 +467,20 @@ function updateCustomerTotals_(shKH, maKH, addValue) {
     }
     if (foundRow === -1) throw new Error('KH_NOT_FOUND: ' + maKH)
 
-    // Tong_chi_tieu = col 13 (M), Cong_no_chua_thanh_toan = col 14 (N)
+    // Hoa_hong = col 12 (L), Tong_chi_tieu = col 13 (M), Tong_loi_nhuan = col 14 (N)
+    const curHoaHong = toNum_(shKH.getRange(foundRow, 12).getValue(), 0)
     const curTongChiTieu = toNum_(shKH.getRange(foundRow, 13).getValue(), 0)
-    const curCongNo = toNum_(shKH.getRange(foundRow, 14).getValue(), 0)
+    const curTongLoiNhuan = toNum_(shKH.getRange(foundRow, 14).getValue(), 0)
 
-    shKH.getRange(foundRow, 13).setValue(curTongChiTieu + addValue)
-    shKH.getRange(foundRow, 14).setValue(curCongNo + addValue)
+    const newHoaHong = curHoaHong + (addHoaHong || 0)
+    const newTongChiTieu = curTongChiTieu + (addTongChiTieu || 0)
+    const newTongLoiNhuan = curTongLoiNhuan + (addTongLoiNhuan || 0)
+    
+    shKH.getRange(foundRow, 12).setValue(newHoaHong)
+    shKH.getRange(foundRow, 13).setValue(newTongChiTieu)
+    shKH.getRange(foundRow, 14).setValue(newTongLoiNhuan)
 
-    return { row: foundRow, Tong_chi_tieu: curTongChiTieu + addValue, Cong_no_chua_thanh_toan: curCongNo + addValue }
+    return { row: foundRow, Hoa_hong: newHoaHong, Tong_chi_tieu: newTongChiTieu, Tong_loi_nhuan: newTongLoiNhuan }
 }
 
 function findCustomerRow_(shKH, maKH) {
@@ -486,7 +497,7 @@ function findCustomerRow_(shKH, maKH) {
 function getCustomerCongNoVND_(shKH, maKH) {
     const r = findCustomerRow_(shKH, maKH)
     if (r === -1) throw new Error('KH_NOT_FOUND: ' + maKH)
-    // Cong_no_chua_thanh_toan = col N = 14
+    // Tong_loi_nhuan = col N = 14
     return toNum_(shKH.getRange(r, 14).getValue(), 0)
 }
 
