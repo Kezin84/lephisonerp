@@ -93,7 +93,12 @@
 
           <div class="color-picker-wrapper">
             <button type="button" class="color-btn" @mousedown.prevent="showBgColorPicker = !showBgColorPicker; showTextColorPicker = false" title="Highlight Color">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 2px;"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path><path d="M2 2l7.586 7.586"></path><circle cx="11" cy="11" r="2"></circle></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 2px;">
+                <path d="m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0L19 11Z"/>
+                <path d="m5 2 5 5"/>
+                <path d="M2 13h15"/>
+                <path d="M22 20a2 2 0 1 1-4 0c0-1.6 1.7-2.4 2-4 .3 1.6 2 2.4 2 4Z"/>
+              </svg>
               <div class="color-indicator" :style="{ backgroundColor: bgColor }"></div>
             </button>
             <div v-if="showBgColorPicker" class="color-palette-modern">
@@ -140,15 +145,15 @@
         <button type="button" class="toolbar-btn" @mousedown.prevent="execCmd('justifyCenter')" title="Center">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="7" y1="12" x2="17" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
         </button>
+        <!-- Alignment buttons -->
         <button type="button" class="toolbar-btn" @mousedown.prevent="execCmd('justifyRight')" title="Align Right">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="9" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
         </button>
         <div style="width: 4px;"></div>
-        <button type="button" class="toolbar-btn" @mousedown.prevent="execCmd('insertUnorderedList')" title="Bullet List">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="9" y1="6" x2="21" y2="6"></line><line x1="9" y1="12" x2="21" y2="12"></line><line x1="9" y1="18" x2="21" y2="18"></line><circle cx="4" cy="6" r="1"></circle><circle cx="4" cy="12" r="1"></circle><circle cx="4" cy="18" r="1"></circle></svg>
-        </button>
-        <button type="button" class="toolbar-btn" @mousedown.prevent="execCmd('insertOrderedList')" title="Numbered List">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="10" y1="6" x2="21" y2="6"></line><line x1="10" y1="12" x2="21" y2="12"></line><line x1="10" y1="18" x2="21" y2="18"></line><path d="M4 6h1v4"></path><path d="M4 10h2"></path><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"></path></svg>
+        <!-- STT button -->
+        <button type="button" class="toolbar-btn" style="width: auto; padding: 0 8px; font-weight: bold; font-size: 13px; letter-spacing: 0.5px; border: 1px solid rgba(255,255,255,0.1);" @mousedown.prevent="insertSTTBlock" title="Đánh Số Thứ Tự (STT)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><path d="M4 6h1v4"></path><path d="M4 10h2"></path><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"></path><line x1="12" y1="6" x2="21" y2="6"></line><line x1="12" y1="12" x2="21" y2="12"></line><line x1="12" y1="18" x2="21" y2="18"></line></svg>
+          STT
         </button>
       </div>
       
@@ -430,6 +435,45 @@ function execCmd(command: string, value: string = '') {
   document.execCommand(command, false, value)
   if (editor.value) {
     editor.value.focus()
+    emit('update:modelValue', editor.value.innerHTML)
+  }
+}
+
+function insertSTTBlock() {
+  restoreSelection()
+  
+  const sel = window.getSelection()
+  let content = 'Nội dung...'
+  if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+    const range = sel.getRangeAt(0)
+    const frag = range.cloneContents()
+    const div = document.createElement('div')
+    div.appendChild(frag)
+    content = div.innerHTML
+  }
+  
+  let nextNum = 1
+  if (editor.value) {
+    const sttElements = editor.value.querySelectorAll('.stt-number')
+    if (sttElements.length > 0) {
+      const lastText = sttElements[sttElements.length - 1].textContent || ''
+      const lastNum = parseInt(lastText.replace(/\D/g, ''))
+      if (!isNaN(lastNum)) {
+        nextNum = lastNum + 1
+      }
+    }
+  }
+  
+  const html = `
+    <div class="stt-block" style="display: flex; gap: 8px; margin-bottom: 6px; align-items: flex-start;">
+      <div class="stt-number" style="font-weight: bold; min-width: 16px; flex-shrink: 0; white-space: nowrap;">${nextNum}</div>
+      <div class="stt-content" style="flex-grow: 1;">${content}</div>
+    </div>
+    <div><br></div>
+  `
+  
+  document.execCommand('insertHTML', false, html)
+  if (editor.value) {
     emit('update:modelValue', editor.value.innerHTML)
   }
 }
@@ -745,6 +789,7 @@ defineExpose({
 }
 
 .editor-content {
+  flex: 1;
   padding: 16px;
   min-height: 200px;
   color: #f1f5f9;

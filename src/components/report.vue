@@ -782,7 +782,7 @@
 
     <!-- Elite Modal Form -->
     <div class="elite-modal-overlay" v-if="isModalOpen" @click.self="closeModal">
-      <div class="elite-modal" :class="{'dark-mode-modal': isAfternoon}">
+      <div class="elite-modal report-form-modal" :class="{'dark-mode-modal': isAfternoon}">
         <div class="elite-modal-header">
           <div class="elite-modal-title-wrapper" style="display: flex; flex-direction: column; gap: 0.25rem;">
             <div class="elite-modal-title">
@@ -790,7 +790,7 @@
               <svg v-else xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
               <h2>{{ isEditing ? 'Chỉnh Sửa Báo Cáo' : 'Thêm Báo Cáo Mới' }}</h2>
             </div>
-            <div v-if="isEditing && formData.created_time" class="mobile-only" style="font-size: 0.75rem; color: #64748b; font-style: italic; margin-left: 1.8rem;">
+            <div v-if="isEditing && formData.created_time" class="mobile-only" style="font-size: 0.75rem; color: rgba(255,255,255,0.8); font-style: italic; margin-left: 1.8rem;">
               Được tạo lúc: {{ formData.created_time }}
             </div>
           </div>
@@ -799,41 +799,48 @@
           </button>
         </div>
         
-        <form @submit.prevent="saveReport" class="elite-modal-body">
-          <div class="elite-form-row">
+        <form @submit.prevent="saveReport" class="elite-modal-body pc-grid-layout">
+          <div class="pc-col pc-col-1">
+          <div class="elite-form-row" style="flex-direction: column; gap: 1rem;">
             <div class="elite-form-group">
               <label>Phân Loại</label>
-              <select v-model="formData.phan_loai" class="elite-select">
-                <option value="CÔNG VIỆC">CÔNG VIỆC</option>
-                <option value="ĐỜI SỐNG">ĐỜI SỐNG</option>
-              </select>
-            </div>
-            <div class="elite-form-group">
-              <label>Độ quan trọng</label>
-              <select v-model="formData.tag" class="elite-select">
-                <option value="BÌNH THƯỜNG">BÌNH THƯỜNG</option>
-                <option value="ƯU TIÊN">ƯU TIÊN</option>
-              </select>
-            </div>
-            <div class="elite-form-group" v-if="isEditing">
-              <label>Trạng Thái</label>
               <div class="elite-status-toggle">
                 <button 
                   type="button" 
-                  :class="['toggle-btn', formData.trang_thai === 'Hoàn thành' ? 'active-success' : '']"
-                  @click="formData.trang_thai = 'Hoàn thành'"
+                  :class="['toggle-btn', formData.phan_loai === 'CÔNG VIỆC' ? 'active-success' : '']"
+                  @click="formData.phan_loai = 'CÔNG VIỆC'"
                 >
-                  Hoàn thành
+                  CÔNG VIỆC
                 </button>
                 <button 
                   type="button" 
-                  :class="['toggle-btn', formData.trang_thai === 'Chưa xử lý' ? 'active-warning' : '']"
-                  @click="formData.trang_thai = 'Chưa xử lý'"
+                  :class="['toggle-btn', formData.phan_loai === 'ĐỜI SỐNG' ? 'active-primary' : '']"
+                  @click="formData.phan_loai = 'ĐỜI SỐNG'"
                 >
-                  Chưa xử lý
+                  ĐỜI SỐNG
                 </button>
               </div>
             </div>
+            <div class="elite-form-group">
+              <label>Độ quan trọng</label>
+              <div class="elite-status-toggle">
+                <button 
+                  type="button" 
+                  :class="['toggle-btn', formData.tag === 'BÌNH THƯỜNG' ? 'active-success' : '']"
+                  @click="formData.tag = 'BÌNH THƯỜNG'"
+                >
+                  BÌNH THƯỜNG
+                </button>
+                <button 
+                  type="button" 
+                  :class="['toggle-btn', formData.tag === 'ƯU TIÊN' ? 'active-danger' : '']"
+                  @click="formData.tag = 'ƯU TIÊN'"
+                >
+                  ƯU TIÊN
+                </button>
+              </div>
+            </div>
+
           </div>
 
           <div class="elite-form-group">
@@ -902,9 +909,11 @@
               </div>
             </div>
           </div>
+          </div>
           
-          <div class="elite-form-row" style="flex-direction: column;">
-            <div class="elite-form-group">
+          <div class="pc-col pc-col-2">
+          <div class="elite-form-row" style="flex-direction: column; height: 100%;">
+            <div class="elite-form-group" style="flex: 2; display: flex; flex-direction: column;">
               <div class="form-group-header">
                 <label>Nội Dung <span class="required">*</span></label>
                 <div class="header-actions-group">
@@ -917,10 +926,10 @@
                   </button>
                 </div>
               </div>
-              <textarea v-model="formData.noi_dung" required placeholder="Mô tả chi tiết nội dung báo cáo..." rows="3" class="elite-input"></textarea>
+              <textarea v-model="formData.noi_dung" @paste="handlePasteImage" required placeholder="Mô tả chi tiết nội dung báo cáo..." class="elite-input" style="flex: 1; resize: vertical; min-height: 120px;"></textarea>
             </div>
 
-            <div class="elite-form-group">
+            <div class="elite-form-group" style="flex: 1; display: flex; flex-direction: column;">
               <div class="form-group-header">
                 <label style="color: #ef4444 !important; font-weight: 700 !important;">Ghi Chú</label>
                 <button type="button" class="elite-voice-btn" @click="startVoiceRecognition('ghi_chu')" :class="{ 'is-recording': isRecordingVoice === 'ghi_chu' }" title="Nhập liệu bằng giọng nói">
@@ -928,10 +937,12 @@
                   <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12"></rect></svg>
                 </button>
               </div>
-              <textarea v-model="formData.ghi_chu" placeholder="Các ghi chú bổ sung nếu có..." rows="1" class="elite-input" style="color: #ef4444 !important; font-weight: 700 !important;"></textarea>
+              <textarea v-model="formData.ghi_chu" placeholder="Các ghi chú bổ sung nếu có..." class="elite-input" style="color: #ef4444 !important; font-weight: 700 !important; flex: 1; resize: vertical; min-height: 60px;"></textarea>
+            </div>
             </div>
           </div>
 
+          <div class="pc-col pc-col-3">
           <!-- Upload Files -->
           <div class="elite-form-group">
             <label style="display: flex; justify-content: space-between;">
@@ -988,29 +999,43 @@
                     <button type="button" @click="removeLink('link_excel_mua_hang', i)" style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 2px;">✕</button>
                   </div>
                 </div>
+                </div>
               </div>
             </div>
           </div>
+          </div>
+
+        <!-- Layout cho Edit Mode (Cùng 1 hàng) -->
+        <div v-if="isEditing" class="elite-modal-actions" style="display: flex; gap: 0.75rem; width: 100%; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 1.25rem; grid-column: 1 / -1;">
+          <button type="button" class="elite-btn-cancel" style="flex: 1; justify-content: center;" @click="closeModal" :disabled="saving">Huỷ Bỏ</button>
+          <button v-if="formData.trang_thai === 'Chưa xử lý'" type="button" class="elite-btn-primary" style="flex: 1; justify-content: center; background: #10b981; border-color: #10b981; box-shadow: 0 4px 15px -3px rgba(16,185,129,0.4);" @click="formData.trang_thai = 'Hoàn thành'; saveReport()" :disabled="saving">
+            HOÀN THÀNH
+          </button>
+          <button v-if="hasChanges" type="submit" class="elite-btn-primary btn-add-primary" style="flex: 1; justify-content: center;" :disabled="saving">
+            <span v-if="saving" class="spinner-small"></span>
+            {{ saving ? 'Đang Lưu...' : 'LƯU' }}
+          </button>
         </div>
 
-          <div class="elite-modal-actions form-actions-grid">
-            <button type="button" class="elite-btn-cancel" @click="closeModal" :disabled="saving">Huỷ Bỏ</button>
-            <button v-if="!isEditing" type="button" class="btn-add-empty" @click="saveReport({ openEmpty: true })" :disabled="saving">
-              THÊM & LÀM TIẾP MỤC TRỐNG
-            </button>
-            <button v-if="!isEditing" type="button" class="btn-add-continue" @click="saveReport({ continue: true })" :disabled="saving">
-              <span v-if="saving" class="spinner-small"></span>
-              THÊM & LÀM TIẾP
-            </button>
-            <button v-if="!isEditing || hasChanges" type="submit" class="elite-btn-primary btn-add-primary" :disabled="saving">
-              <span v-if="saving" class="spinner-small"></span>
-              <template v-if="saving">
-                {{ isEditing ? 'Đang Lưu...' : 'Đang Thêm...' }}
-              </template>
-              <template v-else>
-                {{ isEditing ? 'Lưu Báo Cáo' : 'THÊM & XONG' }}
-              </template>
-            </button>
+        <!-- Layout cho Add Mode (Lưới 2 cột như cũ) -->
+        <div v-else class="elite-modal-actions form-actions-grid pc-actions-grid">
+            <div class="pc-action-col">
+              <button type="button" class="btn-add-continue" @click="saveReport({ continue: true })" :disabled="saving">
+                <span v-if="saving" class="spinner-small"></span>
+                THÊM & LÀM TIẾP
+              </button>
+              <button type="button" class="elite-btn-cancel" @click="closeModal" :disabled="saving">Huỷ Bỏ</button>
+            </div>
+            
+            <div class="pc-action-col">
+              <button type="button" class="btn-add-empty" @click="saveReport({ openEmpty: true })" :disabled="saving">
+                THÊM & LÀM TIẾP MỤC TRỐNG
+              </button>
+              <button type="submit" class="elite-btn-primary btn-add-primary" :disabled="saving">
+                <span v-if="saving" class="spinner-small"></span>
+                {{ saving ? 'Đang Thêm...' : 'THÊM & XONG' }}
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -2500,7 +2525,44 @@ const insertCustomerQuote = (customer) => {
   const quoteText = `Báo giá ${nameToUse}`;
   formData.value.noi_dung = quoteText;
   showCustomerModal.value = false;
+  showCustomerModal.value = false;
   customerSearch.value = '';
+}
+
+const handlePasteImage = async (e) => {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  const files = [];
+  for (let i = 0; i < items.length; i++) {
+    if (items[i].type.indexOf('image') !== -1) {
+      files.push(items[i].getAsFile());
+    }
+  }
+  if (files.length === 0) return;
+  
+  e.preventDefault();
+  
+  isUploadingFiles.value = 'img';
+  try {
+    for (const file of files) {
+      if (!file) continue;
+      const fd = new FormData();
+      fd.append('key', 'b202a4bdc79bf1dc72f6f6ded6b74501');
+      fd.append('image', file);
+      const res = await fetch('https://api.imgbb.com/1/upload', { method: 'POST', body: fd }).then(r => r.json());
+      
+      if (res.success) {
+        formData.value.img_save = formData.value.img_save ? formData.value.img_save + '\n' + res.data.url : res.data.url;
+      } else {
+        alert('Lỗi tải ảnh: ' + (res.error?.message || 'Không rõ'));
+      }
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Lỗi khi tải ảnh dán!');
+  } finally {
+    isUploadingFiles.value = false;
+  }
 }
 
 const handleImgUpload = async (e) => {
@@ -2510,14 +2572,9 @@ const handleImgUpload = async (e) => {
   isUploadingFiles.value = 'img'
   try {
     for (const file of files) {
-      const reader = new FileReader()
-      reader.readAsDataURL(file)
-      await new Promise(r => reader.onload = r)
-      const base64 = String(reader.result).split(',')[1]
-      
       const fd = new FormData()
       fd.append('key', 'b202a4bdc79bf1dc72f6f6ded6b74501')
-      fd.append('image', base64)
+      fd.append('image', file)
       const res = await fetch('https://api.imgbb.com/1/upload', { method: 'POST', body: fd }).then(r => r.json())
       
       if (res.success) {
@@ -4438,7 +4495,8 @@ button {
   align-items: center;
   padding: 1.5rem 1.75rem 1.25rem;
   border-bottom: 1px solid rgba(0,0,0,0.05);
-  background: linear-gradient(180deg, rgba(248,250,252,0.6) 0%, white 100%);
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-radius: 24px 24px 0 0;
 }
 
 .elite-modal-title {
@@ -4448,20 +4506,20 @@ button {
 }
 
 .elite-modal-title svg {
-  color: #4f46e5;
+  color: #ffffff;
 }
 
 .elite-modal-title h2 {
   margin: 0;
-  color: #0f172a;
+  color: #ffffff;
   font-size: 1.35rem;
   font-weight: 700;
   letter-spacing: -0.02em;
 }
 
 .elite-btn-close {
-  background: #f1f5f9;
-  color: #64748b;
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
   padding: 0.5rem;
   border-radius: 50%;
   border: none;
@@ -4473,8 +4531,8 @@ button {
 }
 
 .elite-btn-close:hover {
-  background: #e2e8f0;
-  color: #0f172a;
+  background: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
   transform: rotate(90deg);
 }
 
@@ -4494,6 +4552,51 @@ button {
 .elite-form-row {
   display: flex;
   gap: 1.25rem;
+}
+
+@media (min-width: 1024px) {
+  .elite-modal.report-form-modal {
+    max-width: 1300px !important;
+    width: 95vw !important;
+  }
+  .pc-grid-layout {
+    display: grid !important;
+    grid-template-columns: 300px 1fr 340px;
+    gap: 1.5rem 2rem !important;
+    align-items: stretch;
+  }
+  .pc-col {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  .pc-actions-grid {
+    grid-column: 1 / -1;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+  }
+  .pc-action-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+}
+@media (max-width: 1023px) {
+  .pc-grid-layout {
+    display: flex !important;
+    flex-direction: column;
+  }
+  .pc-actions-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .pc-action-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
 }
 
 /* Filter Expand Toggle */
@@ -4718,6 +4821,20 @@ button {
   color: white !important;
   font-weight: 700 !important;
   box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+}
+
+.toggle-btn.active-primary {
+  background: #3b82f6 !important;
+  color: white !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.toggle-btn.active-danger {
+  background: #ef4444 !important;
+  color: white !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
 }
 
 /* Modal Actions */
@@ -5618,9 +5735,10 @@ button {
   border-bottom: 2px dashed rgba(245, 158, 11, 0.25);
 }
 .kb-col-pending .kanban-badge {
-  background: rgba(245, 158, 11, 0.15);
-  color: #d97706;
-  border: 1px solid rgba(245, 158, 11, 0.25);
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  border: 1px solid #dc2626 !important;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3) !important;
 }
 
 /* VIP Pro styling cho cột Hoàn thành */
@@ -5636,9 +5754,10 @@ button {
   border-bottom: 2px dashed rgba(16, 185, 129, 0.25);
 }
 .kb-col-done .kanban-badge {
-  background: rgba(16, 185, 129, 0.15);
-  color: #059669;
-  border: 1px solid rgba(16, 185, 129, 0.25);
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  border: 1px solid #dc2626 !important;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3) !important;
 }
 
 /* ===== DRAG-OVER ANIMATION ===== */
@@ -6812,11 +6931,15 @@ button {
   box-sizing: border-box;
   font-weight: 500;
 }
+textarea.elite-input {
+  border-radius: 12px;
+  padding: 1rem 1.2rem;
+}
 .elite-input:focus {
-  border-color: #34d399;
+  border-color: #10b981;
   background: white;
   outline: none;
-  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.08), 0 2px 8px -2px rgba(16, 185, 129, 0.12);
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2), 0 2px 8px -2px rgba(16, 185, 129, 0.3);
 }
 .elite-range-sep {
   display: flex;
@@ -7352,8 +7475,8 @@ button {
 .elite-modal.dark-mode-modal .elite-input:focus,
 .elite-modal.dark-mode-modal .elite-select:focus,
 .elite-modal.dark-mode-modal .elite-textarea:focus {
-  border-color: #a855f7 !important;
-  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.15) !important;
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.25) !important;
 }
 .elite-modal.dark-mode-modal .elite-btn-save {
   background: linear-gradient(135deg, #a855f7, #7e22ce) !important;
@@ -7371,11 +7494,11 @@ button {
   border-color: #a855f7 !important;
 }
 .elite-modal.dark-mode-modal .elite-modal-title svg {
-  color: #a855f7 !important;
+  color: #ffffff !important;
 }
 .elite-modal.dark-mode-modal .elite-modal-header {
   border-bottom-color: rgba(255, 255, 255, 0.08) !important;
-  background: rgba(15, 23, 42, 0.4) !important;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
 }
 
 .elite-modal.dark-mode-modal .elite-btn-cancel {
@@ -7388,11 +7511,12 @@ button {
   color: #f8fafc !important;
 }
 .elite-modal.dark-mode-modal .elite-btn-close {
-  color: #94a3b8 !important;
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.2) !important;
 }
 .elite-modal.dark-mode-modal .elite-btn-close:hover {
-  background: rgba(255, 255, 255, 0.1) !important;
-  color: #f8fafc !important;
+  background: rgba(255, 255, 255, 0.3) !important;
+  color: #ffffff !important;
 }
 
 .elite-modal .elite-modal-title h2,
@@ -7506,9 +7630,10 @@ button {
 }
 
 .kanban-badge {
-  background: rgba(255, 255, 255, 0.1) !important;
-  color: #cbd5e1 !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  border-color: #dc2626 !important;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4) !important;
 }
 
 .tl-stt, .tl-date, .tl-time, .tl-thu-period, .elite-form-group label {

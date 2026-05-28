@@ -1310,7 +1310,13 @@ async function loadData() {
   loading.value = true
   try {
     const res = await fetch(`${BASE_URL}?sheet=sale_report&t=${Date.now()}`).then(r => r.json())
-    rows.value = res.data || res || []
+    if (res && res.status === 'success' && Array.isArray(res.data)) {
+      rows.value = res.data
+    } else {
+      console.error('Lỗi API sale_report:', res)
+      rows.value = Array.isArray(res) ? res : []
+    }
+    
     try {
       const chiTietRes = await fetch(`${BASE_URL}?action=hop_dong_chi_tiet`).then(r => r.json())
       hdChiTietData.value = Array.isArray(chiTietRes) ? chiTietRes : []

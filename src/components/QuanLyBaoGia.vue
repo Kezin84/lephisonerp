@@ -191,101 +191,107 @@
         class="group-section"
         :style="{ animationDelay: gi * 80 + 'ms' }"
       >
-        <!-- GROUP HEADER BAR (VIP PRO DESIGN - CUSTOM LAYOUT) -->
-        <div class="group-bar premium-row custom-grid" @click="toggleGroup(group.goc)" @mousemove="handleMouseMove">
+        <!-- GROUP HEADER BAR (VIP PRO DESIGN - FOLDER STYLE) -->
+        <div class="folder-header" style="cursor: pointer;" @click="toggleGroup(group.goc)" @mousemove="handleMouseMove">
+          <div class="folder-tab" :style="group.latest.is_completed ? 'border-color: #fde047; box-shadow: 0 0 10px rgba(253,224,71,0.3);' : 'background: linear-gradient(135deg, #fde047, #eab308); border-color: #2563eb; color: #1e40af; box-shadow: 0 0 10px rgba(37,99,235,0.3);'">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <!-- 1. Trạng thái -->
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                <span>{{ group.latest.is_completed ? 'ĐÃ XONG' : 'ĐANG XỬ LÝ' }} - SỐ PHIÊN BẢN: {{ group.versions.length }}</span>
+              </div>
+              
+              <div style="width: 1px; height: 14px; background: rgba(255,255,255,0.3);" :style="group.latest.is_completed ? '' : 'background: rgba(30, 64, 175, 0.3);'"></div>
+              
+              <!-- 2. Thời gian -->
+              <div style="display: flex; align-items: center; gap: 6px; font-weight: 600;">
+                <span class="badge-dot status-live" style="margin-right: 0;" :style="group.latest.is_completed ? '' : 'background: #1e40af; box-shadow: 0 0 8px rgba(30,64,175,0.6);'"></span>
+                <span>{{ group.latest.ngay_tao }}</span>
+              </div>
+            </div>
+          </div>
           
-          <!-- Card Status Header Banner -->
-          <div :style="{
-            margin: '-16px -22px 16px -22px',
-            padding: '8px 16px',
-            textAlign: 'center',
-            fontFamily: '\'Times New Roman\', Times, serif',
-            fontSize: '16px',
-            fontWeight: '900',
-            letterSpacing: '1.5px',
-            borderRadius: '15px 15px 0 0',
-            background: group.latest.is_completed ? 'linear-gradient(135deg, #10b981, #059669)' : 'linear-gradient(135deg, #fde047, #eab308)',
-            color: group.latest.is_completed ? '#ffffff' : '#1e40af',
-            borderBottom: 'none'
-          }">
-            {{ group.latest.is_completed ? 'ĐÃ XONG' : 'ĐANG XỬ LÝ' }}
-          </div>
-
-          <div class="cg-top">
-            <div class="cg-1">
-              <span class="modern-badge outline-badge" style="padding: 6px 14px; font-size: 12px; background: rgba(15,23,42,0.6); border: 1px solid rgba(255,255,255,0.1); box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);">
-                <span class="badge-dot status-live"></span>
-                <span style="letter-spacing: 0.5px; font-weight: 700; color: #e2e8f0;">{{ group.latest.ngay_tao }}</span>
-              </span>
-            </div>
-            <div class="cg-2" style="display: flex; align-items: center; gap: 12px;">
-              <div class="version-badge" title="Số phiên bản">
-                {{ group.versions.length }} báo giá
-              </div>
-              <div class="vip-magoc">
-                <span class="meta-label" style="color: #6ee7b7; font-size: 12px;">Mã Gốc:</span>
-                <span class="meta-value text-white" style="font-weight: 800; font-size: 14px; letter-spacing: 0.5px;">{{ group.goc }}</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="cg-middle" style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-            <div class="cg-3" style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
-              <h3 class="row-title large-title">{{ group.latest.content_of_contract_po || 'Báo giá không có tiêu đề' }}</h3>
-            </div>
-            <div class="cg-4" v-if="group.latest.ghi_chu">
-              <span class="full-width-note" :title="group.latest.ghi_chu">
-                {{ group.latest.ghi_chu }}
-              </span>
-            </div>
-          </div>
-
-          <div class="cg-bottom" style="flex-direction: column; gap: 14px;">
-            <div class="customer-info-row" style="display: flex; gap: 12px; width: 100%;">
-              <div class="vip-info-box" v-if="getCustomerInfo(group.latest.ma_khach_hang).mst" style="flex: 0 1 auto; min-width: 120px;">
-                <div class="vip-info-label">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                  Mã số thuế
-                </div>
-                <div class="vip-info-value">{{ getCustomerInfo(group.latest.ma_khach_hang).mst }}</div>
-              </div>
-              
-              <div class="vip-info-box" style="flex: 1; min-width: 0;">
-                <div class="vip-info-label">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                  Khách hàng
-                </div>
-                <div class="vip-info-value">{{ group.latest.ten_khach_hang || 'Không rõ KH' }}</div>
-              </div>
-              
-              <div class="vip-info-box" v-if="getCustomerInfo(group.latest.ma_khach_hang).tenCongTy" style="flex: 2; min-width: 0;">
-                <div class="vip-info-label">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-                  Công ty
-                </div>
-                <div class="vip-info-value" style="color: #cbd5e1;">{{ getCustomerInfo(group.latest.ma_khach_hang).tenCongTy }}</div>
-              </div>
-            </div>
+          <div class="folder-body" style="display: flex; flex-direction: column; padding: 24px; transition: all 0.3s; position: relative;" :style="group.latest.is_completed ? 'border-color: #fde047; box-shadow: 0 8px 20px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2), 0 0 15px rgba(253,224,71,0.2);' : 'background: linear-gradient(135deg, #fde047, #eab308); border-color: #2563eb; box-shadow: 0 8px 20px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2), 0 0 15px rgba(37,99,235,0.2);'">
             
-            <div style="display: flex; justify-content: space-between; align-items: flex-end; width: 100%;">
-              <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-start;">
-                <div class="cg-8 row-amount-wrap" v-if="group.versions.length > 1" style="display: flex; flex-direction: row !important; align-items: center; gap: 8px;">
-                  <span class="amount-label" style="font-size: 11px; color: #cbd5e1; font-weight: 700; margin-bottom: 0;">Tổng trước thuế đơn trước:</span>
-                  <div class="amount-old" style="line-height: 1; display: flex; align-items: center; gap: 4px;">
-                    {{ formatVND(group.versions[1].tong_truoc_thue) }} <span style="font-size: 13px;">₫</span>
+            <!-- Expand Button (Top Right) -->
+            <button class="cg-expand-btn row-expand" :class="{ 'expanded': !collapsedGroups[group.goc] }" style="position: absolute; top: 24px; right: 24px; background: rgba(255,255,255,0.15); border: none; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.3s; z-index: 10;" :style="group.latest.is_completed ? 'color: #fff;' : 'color: #1e40af; background: rgba(0,0,0,0.1);'">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+
+            <!-- Two Column Grid -->
+            <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 30px; width: 100%; padding-right: 48px;">
+              
+              <!-- LEFT COLUMN -->
+              <div style="display: flex; flex-direction: column; justify-content: flex-start; gap: 28px;">
+                
+                <!-- 3. Mã hợp đồng (Mã Gốc) -->
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                  <span class="meta-label" style="font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; opacity: 0.7;" :style="group.latest.is_completed ? 'color: #fff;' : 'color: #1e40af;'">Mã Hợp Đồng / Mã Gốc</span>
+                  <div class="vip-magoc" style="display: inline-flex; align-items: center; padding: 10px 16px; background: rgba(0,0,0,0.15); border-radius: 10px; width: fit-content; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);" :style="group.latest.is_completed ? 'border: 1px solid rgba(255,255,255,0.1);' : 'background: rgba(255,255,255,0.6); border: 1px solid rgba(30,64,175,0.1); box-shadow: 0 2px 8px rgba(30,64,175,0.05);'">
+                    <span class="meta-value" style="font-weight: 800; font-size: 16px; letter-spacing: 0.5px;" :style="group.latest.is_completed ? 'color: #fff;' : 'color: #1e40af;'">{{ group.goc }}</span>
                   </div>
                 </div>
-                <div class="cg-7 row-amount-wrap" style="display: flex; flex-direction: row !important; align-items: center; gap: 8px;">
-                  <span class="amount-label" style="color: #ffffff; font-weight: 800; margin-bottom: 0;">Tổng trước thuế mới nhất:</span>
-                  <div class="amount-value amount-vip" style="line-height: 1; align-items: center; gap: 4px;">
-                    {{ formatVND(group.latest.tong_truoc_thue) }}<span class="amount-currency">₫</span>
+
+                <!-- 5. Content of contract / PO -->
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                  <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;" :style="group.latest.is_completed ? 'color: #fff;' : 'color: #1e40af;'">Nội dung Hợp đồng / PO</span>
+                  <div style="display: flex; flex-direction: column; gap: 8px; background: rgba(0,0,0,0.1); padding: 16px 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);" :style="group.latest.is_completed ? 'border: 1px solid rgba(255,255,255,0.1);' : 'background: rgba(255,255,255,0.4); border: 1px solid rgba(30, 64, 175, 0.1);'">
+                    <h3 class="folder-title" style="font-size: 16px; margin: 0; line-height: 1.5; display: flex; align-items: flex-start; gap: 10px;" :style="group.latest.is_completed ? '' : 'color: #1e40af; text-shadow: none;'">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.8; margin-top: 3px; flex-shrink: 0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                      <span style="word-break: break-word; font-weight: 700;">{{ group.latest.content_of_contract_po || 'Báo giá không có tiêu đề' }}</span>
+                    </h3>
+                    <div v-if="group.latest.ghi_chu" style="display: flex; align-items: flex-start; gap: 8px; margin-top: 6px; padding-top: 10px; border-top: 1px dashed rgba(255,255,255,0.15);" :style="group.latest.is_completed ? '' : 'border-top-color: rgba(30, 64, 175, 0.15);'">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.6; margin-top: 2px; flex-shrink: 0;" :style="group.latest.is_completed ? 'color: #fff;' : 'color: #1e40af;'"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                      <span style="font-size: 13px; font-style: italic; line-height: 1.6; word-break: break-word; opacity: 0.9;" :style="group.latest.is_completed ? 'color: #fff;' : 'color: #1e40af;'">{{ group.latest.ghi_chu }}</span>
+                    </div>
                   </div>
                 </div>
+
               </div>
 
-              <button class="cg-expand-btn row-expand" :class="{ 'expanded': !collapsedGroups[group.goc] }">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-              </button>
+              <!-- RIGHT COLUMN -->
+              <div style="display: flex; flex-direction: column; justify-content: flex-start; gap: 28px;">
+                
+                <!-- 4. Thông tin khách hàng -->
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                  <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;" :style="group.latest.is_completed ? 'color: #fff;' : 'color: #1e40af;'">Thông tin khách hàng</span>
+                  <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                    <div v-if="getCustomerInfo(group.latest.ma_khach_hang).mst" style="display: flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; box-shadow: 0 2px 6px rgba(0,0,0,0.05); backdrop-filter: blur(4px);" :style="group.latest.is_completed ? 'color: #fff; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.1);' : 'color: #1e40af; background: rgba(255,255,255,0.5); border: 1px solid rgba(30,64,175,0.1);'">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.7;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                      {{ getCustomerInfo(group.latest.ma_khach_hang).mst }}
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; box-shadow: 0 2px 6px rgba(0,0,0,0.05); backdrop-filter: blur(4px);" :style="group.latest.is_completed ? 'color: #fff; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.1);' : 'color: #1e40af; background: rgba(255,255,255,0.5); border: 1px solid rgba(30,64,175,0.1);'">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.7;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                      <span style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ group.latest.ten_khach_hang || 'Không rõ KH' }}</span>
+                    </div>
+                    <div v-if="getCustomerInfo(group.latest.ma_khach_hang).tenCongTy" style="display: flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; width: fit-content; max-width: 100%; box-shadow: 0 2px 6px rgba(0,0,0,0.05); backdrop-filter: blur(4px);" :style="group.latest.is_completed ? 'color: #fff; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.1);' : 'color: #1e40af; background: rgba(255,255,255,0.5); border: 1px solid rgba(30,64,175,0.1);'">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.7;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                      <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ getCustomerInfo(group.latest.ma_khach_hang).tenCongTy }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 6. Giá trị -->
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                  <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;" :style="group.latest.is_completed ? 'color: #fff;' : 'color: #1e40af;'">Giá Trị</span>
+                  <div style="display: flex; flex-direction: column; gap: 6px; padding: 16px 20px; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.1);" :style="group.latest.is_completed ? 'background: linear-gradient(135deg, rgba(0,0,0,0.15), rgba(0,0,0,0.05)); border: 1px solid rgba(255,255,255,0.15);' : 'background: linear-gradient(135deg, rgba(255,255,255,0.5), rgba(255,255,255,0.3)); border: 1px solid rgba(30, 64, 175, 0.15);'">
+                    <div v-if="group.versions.length > 1" style="display: flex; align-items: center; gap: 8px;">
+                      <span style="font-size: 12px; font-weight: 600; opacity: 0.8;" :style="group.latest.is_completed ? 'color: #fff;' : 'color: #1e40af;'">Bản trước:</span>
+                      <span style="font-size: 14px; font-weight: 700; text-decoration: line-through; opacity: 0.6;" :style="group.latest.is_completed ? 'color: #fff;' : 'color: #1e40af;'">
+                        {{ formatVND(group.versions[1].tong_truoc_thue) }} ₫
+                      </span>
+                    </div>
+                    <div style="display: flex; align-items: baseline; gap: 6px;">
+                      <span style="font-size: 26px; font-weight: 900; letter-spacing: 0.5px; text-shadow: 0 2px 8px rgba(0,0,0,0.1);" :style="group.latest.is_completed ? 'color: #fde047;' : 'color: #b45309;'">
+                        {{ formatVND(group.latest.tong_truoc_thue) }}
+                      </span>
+                      <span style="font-size: 18px; font-weight: 800;" :style="group.latest.is_completed ? 'color: #fde047;' : 'color: #b45309;'">₫</span>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
             </div>
           </div>
         </div>
@@ -491,7 +497,7 @@
           <input 
             type="text" 
             v-model="durationItemSearch" 
-            placeholder="Tìm kiếm tên hàng..." 
+            placeholder="Tìm kiếm tên hàng, khách hàng, MST..." 
             style="width: 100%; padding: 12px 20px 12px 40px; border-radius: 24px; border: 1px solid rgba(16,185,129,0.3); background: rgba(15,23,42,0.6); color: #e2e8f0; font-size: 14px; outline: none; font-weight: 500; transition: all 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"
             onfocus="this.style.borderColor='#10b981'; this.style.boxShadow='0 0 0 2px rgba(16,185,129,0.2)'"
             onblur="this.style.borderColor='rgba(16,185,129,0.3)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'"
@@ -571,44 +577,107 @@
           </div>
         </div>
       </Teleport>
-      <div style="overflow-x: auto; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); background: rgba(15,23,42,0.5);">
-        <table style="width: 100%; border-collapse: collapse; min-width: 1000px;">
-          <thead>
-            <tr>
-              <th style="padding: 14px 12px; text-align: center; font-size: 12px; font-weight: 800; color: #ffffff; background: linear-gradient(135deg, #10b981, #059669); width: 50px; text-transform: uppercase; border-top-left-radius: 12px;">STT</th>
-              <th style="padding: 14px 12px; text-align: left; font-size: 12px; font-weight: 800; color: #ffffff; background: linear-gradient(135deg, #10b981, #059669); width: 140px; text-transform: uppercase;">Mã HĐ</th>
-              <th style="padding: 14px 12px; text-align: left; font-size: 12px; font-weight: 800; color: #ffffff; background: linear-gradient(135deg, #10b981, #059669); min-width: 160px; text-transform: uppercase;">Tên khách hàng</th>
-              <th style="padding: 14px 12px; text-align: left; font-size: 12px; font-weight: 800; color: #ffffff; background: linear-gradient(135deg, #10b981, #059669); min-width: 200px; text-transform: uppercase;">Tên hàng</th>
-              <th style="padding: 14px 12px; text-align: left; font-size: 12px; font-weight: 800; color: #ffffff; background: linear-gradient(135deg, #10b981, #059669); width: 120px; text-transform: uppercase;">Hãng</th>
-              <th style="padding: 14px 12px; text-align: center; font-size: 12px; font-weight: 800; color: #ffffff; background: linear-gradient(135deg, #10b981, #059669); width: 120px; text-transform: uppercase;">Start Date</th>
-              <th style="padding: 14px 12px; text-align: center; font-size: 12px; font-weight: 800; color: #ffffff; background: linear-gradient(135deg, #10b981, #059669); width: 120px; text-transform: uppercase;">End Date</th>
-              <th style="padding: 14px 12px; text-align: center; font-size: 12px; font-weight: 800; color: #ffffff; background: linear-gradient(135deg, #10b981, #059669); width: 180px; text-transform: uppercase;">Thời hạn</th>
-              <th style="padding: 14px 12px; text-align: center; font-size: 12px; font-weight: 800; color: #ffffff; background: linear-gradient(135deg, #10b981, #059669); width: 140px; text-transform: uppercase;">Ghi chú</th>
-              <th style="padding: 14px 12px; text-align: center; font-size: 12px; font-weight: 800; color: #ffffff; background: linear-gradient(135deg, #10b981, #059669); width: 90px; text-transform: uppercase; border-top-right-radius: 12px;">Gia hạn</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(row, ri) in filteredDurationRows" :key="ri" style="transition: background 0.2s; cursor: pointer;" @mouseover="($event.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'" @mouseout="($event.currentTarget as HTMLElement).style.background = 'transparent'" @click="viewDetails(row._contract)">
-              <td style="padding: 12px; text-align: center; color: #94a3b8; font-weight: 700; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05);">{{ ri + 1 }}</td>
-              <td style="padding: 12px; color: #38bdf8; font-weight: 700; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05); line-height: 1.4;"><div>{{ row.ma_hop_dong }}</div><div v-if="row.so_po" style="font-size: 11px; color: #94a3b8; font-weight: 500; margin-top: 2px;">PO: {{ row.so_po }}</div><div v-if="row.ngay_tao" style="font-size: 10px; color: #64748b; font-weight: 500; margin-top: 2px;">{{ row.ngay_tao }}</div></td>
-              <td @click.stop="openCustomerInfoModal(row._contract.ma_khach_hang)" style="padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: all 0.2s; line-height: 1.4;" onmouseover="this.querySelector('.cust-main').style.color='#6ee7b7'" onmouseout="this.querySelector('.cust-main').style.color='#34d399'"><div class="cust-main" style="color: #34d399; font-weight: 600; font-size: 11px; text-decoration: underline; text-underline-offset: 3px;">{{ row.ten_cong_ty || row.ten_khach_hang }}</div><div v-if="row.ten_cong_ty && row.ten_khach_hang" style="font-size: 12.5px; color: #e2e8f0; font-weight: 600; margin-top: 2px;">{{ row.ten_khach_hang }}</div></td>
-              <td style="padding: 12px; color: #f8fafc; font-weight: 600; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05); line-height: 1.4;">{{ row.ten_hang }}</td>
-              <td style="padding: 12px; color: #cbd5e1; font-weight: 600; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05);">{{ row.ten_ncc }}</td>
-              <td style="padding: 12px; text-align: center; color: #e2e8f0; font-weight: 600; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05);">{{ row.start_date || '-' }}</td>
-              <td style="padding: 12px; text-align: center; color: #e2e8f0; font-weight: 600; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05);">{{ row.end_date || '-' }}</td>
-              <td style="padding: 12px; text-align: center; font-weight: 700; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                <span v-if="row.start_date && row.end_date" :style="{ color: '#ffffff', background: calculateDaysDiff(row.start_date, row.end_date) < 90 ? '#dc2626' : '#059669', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', display: 'inline-block' }">{{ formatDuration(row.start_date, row.end_date) }}</span>
-                <span v-else style="color: #64748b;">-</span>
-              </td>
-              <td style="padding: 12px; text-align: center; font-weight: 600; font-size: 12px; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                <span v-if="row.start_date && row.end_date && calculateDaysDiff(row.start_date, row.end_date) < 90" style="color: #ef4444; background: rgba(239,68,68,0.1); padding: 4px 8px; border-radius: 4px;">sắp hết thời hạn</span>
-              </td>
-              <td style="padding: 12px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                <button @click.stop="openRenewModal(row)" style="padding: 6px 14px; border-radius: 6px; border: none; background: linear-gradient(135deg, #10b981, #059669); color: #fff; font-weight: 700; font-size: 11px; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 8px rgba(16,185,129,0.3); white-space: nowrap;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(16,185,129,0.3)'">Gia hạn</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <div class="groups-container">
+        <section v-for="(group, gi) in groupedDurationRows" :key="group.ma_hop_dong" class="group-section" :style="{ animationDelay: gi * 40 + 'ms', marginBottom: '24px' }">
+          
+          <!-- GROUP HEADER -->
+          <div class="folder-header" style="cursor: pointer;" @click="toggleGroup(group.ma_hop_dong)" @mousemove="handleMouseMove">
+            <div class="folder-tab" :style="group.contract.is_completed ? 'border-color: #10b981; box-shadow: 0 0 10px rgba(16,185,129,0.3);' : 'background: linear-gradient(135deg, #10b981, #059669); border-color: #10b981; color: #fff; box-shadow: 0 0 10px rgba(16,185,129,0.3);'">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                  <span style="font-weight: 700;">MÃ HĐ: {{ group.ma_hop_dong }}</span>
+                </div>
+                <div v-if="group.contract.so_po" style="display: flex; align-items: center; gap: 12px;">
+                  <div style="width: 1px; height: 14px; background: rgba(255,255,255,0.3);"></div>
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"></line><line x1="4" y1="15" x2="20" y2="15"></line><line x1="10" y1="3" x2="8" y2="21"></line><line x1="16" y1="3" x2="14" y2="21"></line></svg>
+                    <span style="font-weight: 700;">PO: {{ group.contract.so_po }}</span>
+                  </div>
+                </div>
+                <div style="width: 1px; height: 14px; background: rgba(255,255,255,0.3);"></div>
+                <div style="display: flex; align-items: center; gap: 6px; font-weight: 600;">
+                  <span>{{ group.contract.ngay_tao }}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="folder-body" style="display: flex; flex-direction: column; padding: 20px; transition: all 0.3s; position: relative; background: rgba(16,185,129,0.05); border-color: #10b981; box-shadow: 0 8px 20px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2), 0 0 15px rgba(16,185,129,0.1);">
+              
+              <button class="cg-expand-btn row-expand" :class="{ 'expanded': !collapsedGroups[group.ma_hop_dong] }" style="position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.15); border: none; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.3s; z-index: 10; color: #fff;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+              </button>
+
+              <div style="display: flex; gap: 24px; padding-right: 48px;">
+                <!-- Khách hàng -->
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7; color: #fff;">Khách hàng:</span>
+                  <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center;">
+                    <!-- Tên khách hàng -->
+                    <div style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: #10b981; cursor: pointer; transition: all 0.2s;" @click.stop="openCustomerInfoModal(group.contract.ma_khach_hang)" onmouseover="this.style.color='#34d399'" onmouseout="this.style.color='#10b981'">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                      <span style="text-decoration: underline; text-underline-offset: 3px;" v-html="highlightText(group.contract.ten_khach_hang || 'Không rõ KH', durationItemSearch)"></span>
+                    </div>
+                    <!-- Phân cách (chỉ hiển thị nếu có Tên công ty) -->
+                    <div v-if="getCustomerInfo(group.contract.ma_khach_hang).tenCongTy" style="width: 4px; height: 4px; border-radius: 50%; background: rgba(16,185,129,0.4);"></div>
+                    <!-- Tên công ty -->
+                    <div v-if="getCustomerInfo(group.contract.ma_khach_hang).tenCongTy" style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: #10b981; cursor: pointer; transition: all 0.2s;" @click.stop="openCustomerInfoModal(group.contract.ma_khach_hang)" onmouseover="this.style.color='#34d399'" onmouseout="this.style.color='#10b981'">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                      <span style="text-decoration: underline; text-underline-offset: 3px;" v-html="highlightText(getCustomerInfo(group.contract.ma_khach_hang).tenCongTy, durationItemSearch)"></span>
+                    </div>
+                    <!-- Phân cách MST -->
+                    <div v-if="getCustomerInfo(group.contract.ma_khach_hang).mst" style="width: 4px; height: 4px; border-radius: 50%; background: rgba(16,185,129,0.4);"></div>
+                    <!-- MST -->
+                    <div v-if="getCustomerInfo(group.contract.ma_khach_hang).mst" style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: #10b981; cursor: pointer; transition: all 0.2s;" @click.stop="openCustomerInfoModal(group.contract.ma_khach_hang)" onmouseover="this.style.color='#34d399'" onmouseout="this.style.color='#10b981'">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                      <span style="text-decoration: underline; text-underline-offset: 3px;" v-html="highlightText('MST: ' + getCustomerInfo(group.contract.ma_khach_hang).mst, durationItemSearch)"></span>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          <!-- TABLE content -->
+          <div class="group-cards" :class="{ 'collapsed': collapsedGroups[group.ma_hop_dong] }">
+            <div style="overflow-x: auto; background: rgba(15,23,42,0.5); border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; border: 1px solid rgba(255,255,255,0.08); border-top: none;">
+              <table style="width: 100%; border-collapse: collapse; min-width: 900px;">
+                <thead>
+                  <tr>
+                    <th style="padding: 14px 12px; text-align: center; font-size: 12px; font-weight: 800; color: #ffffff; background: rgba(255,255,255,0.05); width: 50px; text-transform: uppercase;">STT</th>
+                    <th style="padding: 14px 12px; text-align: left; font-size: 12px; font-weight: 800; color: #ffffff; background: rgba(255,255,255,0.05); min-width: 200px; text-transform: uppercase;">Tên hàng</th>
+                    <th style="padding: 14px 12px; text-align: left; font-size: 12px; font-weight: 800; color: #ffffff; background: rgba(255,255,255,0.05); width: 120px; text-transform: uppercase;">Hãng</th>
+                    <th style="padding: 14px 12px; text-align: center; font-size: 12px; font-weight: 800; color: #ffffff; background: rgba(255,255,255,0.05); width: 120px; text-transform: uppercase;">Start Date</th>
+                    <th style="padding: 14px 12px; text-align: center; font-size: 12px; font-weight: 800; color: #ffffff; background: rgba(255,255,255,0.05); width: 120px; text-transform: uppercase;">End Date</th>
+                    <th style="padding: 14px 12px; text-align: center; font-size: 12px; font-weight: 800; color: #ffffff; background: rgba(255,255,255,0.05); width: 180px; text-transform: uppercase;">Thời hạn</th>
+                    <th style="padding: 14px 12px; text-align: center; font-size: 12px; font-weight: 800; color: #ffffff; background: rgba(255,255,255,0.05); width: 140px; text-transform: uppercase;">Ghi chú</th>
+                    <th style="padding: 14px 12px; text-align: center; font-size: 12px; font-weight: 800; color: #ffffff; background: rgba(255,255,255,0.05); width: 90px; text-transform: uppercase;">Gia hạn</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(row, ri) in group.rows" :key="ri" style="transition: background 0.2s; cursor: pointer;" @mouseover="($event.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'" @mouseout="($event.currentTarget as HTMLElement).style.background = 'transparent'" @click="viewDetails(row._contract)">
+                    <td style="padding: 12px; text-align: center; color: #94a3b8; font-weight: 700; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05);">{{ ri + 1 }}</td>
+                    <td style="padding: 12px; color: #f8fafc; font-weight: 600; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05); line-height: 1.4;">{{ row.ten_hang }}</td>
+                    <td style="padding: 12px; color: #cbd5e1; font-weight: 600; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05);">{{ row.ten_ncc }}</td>
+                    <td style="padding: 12px; text-align: center; color: #e2e8f0; font-weight: 600; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05);">{{ row.start_date || '-' }}</td>
+                    <td style="padding: 12px; text-align: center; color: #e2e8f0; font-weight: 600; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05);">{{ row.end_date || '-' }}</td>
+                    <td style="padding: 12px; text-align: center; font-weight: 700; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                      <span v-if="row.start_date && row.end_date" :style="{ color: '#ffffff', background: calculateDaysDiff(row.start_date, row.end_date) < 90 ? '#dc2626' : '#059669', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', display: 'inline-block' }">{{ formatDuration(row.start_date, row.end_date) }}</span>
+                      <span v-else style="color: #64748b;">-</span>
+                    </td>
+                    <td style="padding: 12px; text-align: center; font-weight: 600; font-size: 12px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                      <span v-if="row.start_date && row.end_date && calculateDaysDiff(row.start_date, row.end_date) < 90" style="color: #ef4444; background: rgba(239,68,68,0.1); padding: 4px 8px; border-radius: 4px;">sắp hết thời hạn</span>
+                    </td>
+                    <td style="padding: 12px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                      <button @click.stop="openRenewModal(row)" style="padding: 6px 14px; border-radius: 6px; border: none; background: linear-gradient(135deg, #10b981, #059669); color: #fff; font-weight: 700; font-size: 11px; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 8px rgba(16,185,129,0.3); white-space: nowrap;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(16,185,129,0.3)'">Gia hạn</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
       </div>
       </template>
     </div>
@@ -1697,14 +1766,30 @@ const filteredDurationRows = computed(() => {
   if (durationCustomerFilter.value) {
     rows = rows.filter(r => (r.ten_cong_ty || r.ten_khach_hang) === durationCustomerFilter.value)
   }
-  // Filter by item name (fuzzy: ignore spaces & special chars, all words must appear)
+  // Filter by search term (fuzzy: ignore spaces & special chars, all words must appear)
   if (durationItemSearch.value) {
     const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9\u00C0-\u024F\u1E00-\u1EFF]/gi, '')
     const words = durationItemSearch.value.toLowerCase().split(/\s+/).filter(Boolean)
     rows = rows.filter(r => {
-      const name = (r.ten_hang || '').toLowerCase()
-      const nameNorm = normalize(r.ten_hang || '')
-      return words.every(w => name.includes(w) || nameNorm.includes(normalize(w)))
+      const tenHang = (r.ten_hang || '').toLowerCase()
+      const tenKh = (r.ten_khach_hang || '').toLowerCase()
+      const tenCty = (r.ten_cong_ty || '').toLowerCase()
+      
+      const custInfo = r._contract && r._contract.ma_khach_hang ? getCustomerInfo(r._contract.ma_khach_hang) : null
+      const mst = (custInfo?.mst || '').toLowerCase()
+
+      const tenHangNorm = normalize(r.ten_hang || '')
+      const tenKhNorm = normalize(r.ten_khach_hang || '')
+      const tenCtyNorm = normalize(r.ten_cong_ty || '')
+      const mstNorm = normalize(mst)
+      
+      return words.every(w => {
+        const wNorm = normalize(w)
+        return tenHang.includes(w) || tenHangNorm.includes(wNorm) ||
+               tenKh.includes(w) || tenKhNorm.includes(wNorm) ||
+               tenCty.includes(w) || tenCtyNorm.includes(wNorm) ||
+               mst.includes(w) || mstNorm.includes(wNorm)
+      })
     })
   }
   // Filter by duration months
@@ -1727,8 +1812,66 @@ const filteredDurationRows = computed(() => {
   return rows
 })
 
+const groupedDurationRows = computed(() => {
+  const map = new Map<string, any[]>()
+  for (const row of filteredDurationRows.value) {
+    if (!map.has(row.ma_hop_dong)) map.set(row.ma_hop_dong, [])
+    map.get(row.ma_hop_dong)!.push(row)
+  }
+  const groups: { ma_hop_dong: string; rows: any[]; contract: Contract }[] = []
+  map.forEach((rows, ma_hop_dong) => {
+    groups.push({
+      ma_hop_dong,
+      rows,
+      contract: rows[0]._contract
+    })
+  })
+  return groups
+})
+
 function toggleGroup(goc: string) { collapsedGroups[goc] = !collapsedGroups[goc] }
 function truncate(s: string, len: number) { return !s ? '' : s.length > len ? s.substring(0, len) + '...' : s }
+
+function highlightText(text: string, search: string) {
+  if (!text) return '';
+  if (!search) return String(text);
+  const searchWords = search.toLowerCase().split(/\s+/).filter(Boolean);
+  if (searchWords.length === 0) return String(text);
+  
+  let result = String(text);
+  const map: Record<string, string> = {
+    'a': '[aáàảãạăắằẳẵặâấầẩẫậAÁÀẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬ]',
+    'e': '[eéèẻẽẹêếềểễệEÉÈẺẼẸÊẾỀỂỄỆ]',
+    'i': '[iíìỉĩịIÍÌỈĨỊ]',
+    'o': '[oóòỏõọôốồổỗộơớờởỡợOÓÒỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢ]',
+    'u': '[uúùủũụưứừửữựUÚÙỦŨỤƯỨỪỬỮỰ]',
+    'y': '[yýỳỷỹỵYÝỲỶỸỴ]',
+    'd': '[dđDĐ]',
+  };
+
+  for (const w of searchWords) {
+    let pattern = '';
+    for (const char of w) {
+      const c = char.toLowerCase();
+      pattern += map[c] ? map[c] : char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+    const regex = new RegExp(`(${pattern})`, 'gi');
+    
+    // Prevent nested matches by splitting on existing marks
+    result = result.split('___MARK_START___').map((part, index) => {
+      if (index === 0) return part.replace(regex, '___MARK_START___$1___MARK_END___');
+      const subParts = part.split('___MARK_END___');
+      if (subParts.length === 2) {
+        return subParts[0] + '___MARK_END___' + subParts[1].replace(regex, '___MARK_START___$1___MARK_END___');
+      }
+      return part;
+    }).join('___MARK_START___');
+  }
+  
+  return result
+    .replace(/___MARK_START___/g, '<span style="background-color: rgba(249,115,22,0.3); color: #fdba74; border-radius: 2px;">')
+    .replace(/___MARK_END___/g, '</span>');
+}
 
 const showDetailModal = ref(false); const activeDetailTab = ref('baogia'); const selectedContract = ref<Contract | null>(null); const loadingDetails = ref(false); const selectedContractDetails = ref<ContractDetail[]>([])
 
@@ -3878,5 +4021,50 @@ onMounted(async () => {
 @keyframes async-modal-out {
   0% { opacity: 1; transform: scale(1); }
   100% { opacity: 0; transform: scale(0.85) translateY(10px); }
+}
+
+/* ═══ FOLDER TAB CATEGORY GROUP ═══ */
+.folder-header {
+  grid-column: 1 / -1;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+}
+.folder-tab {
+  background: linear-gradient(135deg, #059669, #10b981);
+  border: 1px solid rgba(16, 185, 129, 0.5);
+  border-bottom: none;
+  border-radius: 10px 10px 0 0;
+  padding: 8px 24px;
+  width: max-content;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+}
+.folder-body {
+  background: linear-gradient(135deg, #059669, #10b981);
+  border: 1px solid rgba(16, 185, 129, 0.5);
+  border-radius: 0 12px 12px 12px;
+  padding: 16px 24px;
+  position: relative;
+  z-index: 2;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2);
+  margin-top: -1px;
+}
+.folder-title {
+  color: #f8fafc;
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.5;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
 }
 </style>

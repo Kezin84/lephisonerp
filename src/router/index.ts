@@ -8,11 +8,18 @@ import QuanLyBaoGia from '../components/QuanLyBaoGia.vue'
 import QuanLyDieuKhoan from '../components/QuanLyDieuKhoan.vue'
 import QuanLyHangHoa from '../components/QuanLyHangHoa.vue'
 import SaleReport from '../components/SaleReport.vue'
+import LicenseOldData from '../components/LicenseOldData.vue'
+import Dashboard from '../components/Dashboard.vue'
 
 const routes = [
   {
     path: '/',
-    redirect: '/report'
+    redirect: '/dashboard'
+  },
+  {
+    path: '/dashboard',
+    name: 'Dashboard',
+    component: Dashboard
   },
   {
     path: '/report',
@@ -58,6 +65,11 @@ const routes = [
     path: '/sale-report',
     name: 'SaleReport',
     component: SaleReport
+  },
+  {
+    path: '/license-old-data',
+    name: 'LicenseOldData',
+    component: LicenseOldData
   }
 ]
 

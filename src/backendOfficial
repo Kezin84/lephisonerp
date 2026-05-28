@@ -411,6 +411,8 @@ function doGet(e) {
       result = params.action === "delete" ? dr_deleteRow(params) : dr_getData(params);
     } else if (sheet === "sale_report") {
       result = params.action === "delete" ? sr_deleteRow(params) : sr_getData(params);
+    } else if (sheet === "license_old_data") {
+      result = licenseOldData_getData(params);
     } else {
       result = params.action === "delete" ? deleteRow(params) : getData(params);
     }
@@ -421,6 +423,22 @@ function doGet(e) {
   return ContentService
     .createTextOutput(JSON.stringify(result))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ─────────────────────────────────────────────────────────────
+//  GET license_old_data
+// ─────────────────────────────────────────────────────────────
+function licenseOldData_getData(params) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("license_old_data");
+  if (!sheet) return { status: "error", message: "Sheet license_old_data không tồn tại" };
+  
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { status: "success", data: [] };
+  
+  // 12 columns mapping: lICENSE_ID, CUSTOMER, PRODUCT_NAME, LOCALIZATION, LICENSE_VOLUME, LICENSE_DESCRIPTION, DATE_OF_LICENSE, EXPIRATION_TIME, LICENSE_TYPE, PRODUCT_CODE, LINK_FILE, NAME_FILE
+  const values = sheet.getRange(2, 1, lastRow - 1, 12).getValues();
+  
+  return { status: "success", total: values.length, data: values };
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -2269,7 +2287,9 @@ function sr_getData(params) {
   const total = rows.length;
   if (limit > 0) rows = rows.slice(offset, offset + limit);
   const result = {status:"success",total,offset,limit,data:rows};
-  if (useCache) cache.put(SR_CACHE, JSON.stringify(result), CACHE_TTL);
+  if (useCache) {
+    try { cache.put(SR_CACHE, JSON.stringify(result), CACHE_TTL); } catch(e) {}
+  }
   return result;
 }
 
