@@ -258,12 +258,35 @@ function sendTelegram(text) {
   };
 
   CHAT_IDS.forEach(chatId => {
-    options.payload = JSON.stringify({
-      chat_id    : chatId,
-      text       : text,
-      parse_mode : "HTML"
-    });
-    UrlFetchApp.fetch(`${TG_API}/sendMessage`, options);
+    // Telegram message length limit is 4096. We split if it's too long.
+    const MAX_LEN = 4000;
+    if (text.length > MAX_LEN) {
+      let chunks = [];
+      for (let i = 0; i < text.length; i += MAX_LEN) {
+        chunks.push(text.substring(i, i + MAX_LEN));
+      }
+      chunks.forEach((chunk, index) => {
+        let chunkText = chunk;
+        if (index > 0) chunkText = "<pre>" + chunkText;
+        if (index < chunks.length - 1) chunkText = chunkText + "</pre>";
+        
+        options.payload = JSON.stringify({
+          chat_id    : chatId,
+          text       : chunkText,
+          parse_mode : "HTML"
+        });
+        const res = UrlFetchApp.fetch(`${TG_API}/sendMessage`, options);
+        Logger.log(`Chunk ${index + 1}/${chunks.length}: ` + res.getContentText());
+      });
+    } else {
+      options.payload = JSON.stringify({
+        chat_id    : chatId,
+        text       : text,
+        parse_mode : "HTML"
+      });
+      const res = UrlFetchApp.fetch(`${TG_API}/sendMessage`, options);
+      Logger.log("Telegram response: " + res.getContentText());
+    }
   });
 }
 
@@ -328,6 +351,213 @@ function buildReportMessage(label) {
 }
 
 // ─────────────────────────────────────────────────────────────
+//  BUILD báo cáo TỔNG HỢP (Công việc, Báo giá, Gia hạn) giống Dashboard
+// ─────────────────────────────────────────────────────────────
+function buildFullDailyReport(targetDateObj) {
+  const pad = n => String(n).padStart(2, "0");
+  const targetDateStr2 = `${targetDateObj.getDate()}/${targetDateObj.getMonth()+1}/${targetDateObj.getFullYear()}`;
+  const targetDateStr1 = `${pad(targetDateObj.getDate())}/${pad(targetDateObj.getMonth()+1)}/${targetDateObj.getFullYear()}`;
+
+  // 1. Công việc (REPORT sheet)
+  const reportRows = getOneSheet("REPORT");
+  const todaysWork = reportRows.filter(r => {
+    const timeStr = String(r[2] || '');
+    return timeStr.includes(targetDateStr1) || timeStr.includes(targetDateStr2);
+  });
+  const workDone = todaysWork.filter(r => String(r[6]) === 'Hoàn thành');
+  const workPending = todaysWork.filter(r => String(r[6]) !== 'Hoàn thành');
+
+  let workText = [];
+  workText.push(`BÁO CÁO CÔNG VIỆC ${targetDateStr2}`);
+  workText.push(`🔰 TỔNG CỘNG : ${todaysWork.length} VIỆC`);
+  workText.push(`============================`);
+  
+  workText.push(`✅ HOÀN THÀNH ${workDone.length} VIỆC :`);
+  if (workDone.length === 0) workText.push(`(Không có)`);
+  workDone.forEach((r, idx) => {
+    workText.push(`${idx + 1}. ${r[3]}`);
+  });
+  
+  workText.push('');
+  workText.push(`⚠️ CHƯA HOÀN THÀNH ${workPending.length} VIỆC :`);
+  if (workPending.length === 0) workText.push(`(Không có)`);
+  workPending.forEach((r, idx) => {
+    workText.push(`${idx + 1}. ${r[3]}`);
+  });
+
+  // 2. Khách hàng 
+  const customerRows = getOneSheet("khach_hang");
+  const customers = customerRows.map(r => ({
+    ma_khach_hang: String(r[0] || ''),
+    ten_khach_hang: String(r[1] || ''),
+    ten_cong_ty: String(r[5] || '')
+  }));
+
+  // 3. Báo giá
+  const quoteRows = getOneSheet("hop_dong_tong_quat");
+  const quotes = quoteRows.map(r => ({
+    ma_hop_dong: String(r[0] || ''),
+    so_hop_dong: String(r[1] || ''),
+    ma_khach_hang: String(r[2] || ''),
+    ten_khach_hang: String(r[3] || ''),
+    ngay_tao: String(r[4] || ''),
+    content_of_contract_po: String(r[11] || ''),
+    ma_hop_dong_goc: String(r[14] || ''),
+    trang_thai_hop_dong: String(r[15] || ''),
+    trang_thai: String(r[15] || ''),
+    is_completed: Boolean(r[24])
+  }));
+
+  const todaysQuotes = quotes.filter(q => {
+    const created = q.ngay_tao || '';
+    return created.includes(targetDateStr1) || created.includes(targetDateStr2);
+  });
+
+  const groups = {};
+  todaysQuotes.forEach(q => {
+    const goc = q.ma_hop_dong_goc || q.ma_hop_dong || 'UNKNOWN';
+    if (!groups[goc]) groups[goc] = [];
+    groups[goc].push(q);
+  });
+
+  const processedGroups = Object.keys(groups).map(goc => {
+    const list = groups[goc].sort((a, b) => {
+      const vA = parseInt((a.ma_hop_dong || '').split('V')[1] || '1');
+      const vB = parseInt((b.ma_hop_dong || '').split('V')[1] || '1');
+      return vB - vA;
+    });
+    const latest = list[0];
+    const isCompleted = latest.trang_thai_hop_dong === 'Chính thức';
+    
+    let tenKh = 'Không rõ';
+    let tenCty = 'Không rõ';
+    if (latest.ma_khach_hang) {
+      const kh = customers.find(k => k.ma_khach_hang === latest.ma_khach_hang);
+      if (kh) {
+        tenKh = kh.ten_khach_hang || tenKh;
+        tenCty = kh.ten_cong_ty || tenCty;
+      }
+    }
+    return { latest, isCompleted, tenKh, tenCty };
+  });
+
+  const quoteCompleted = processedGroups.filter(g => g.isCompleted);
+  const quotePending = processedGroups.filter(g => !g.isCompleted);
+
+  let quoteText = [];
+  quoteText.push(`BÁO CÁO BÁO GIÁ ${targetDateStr2}`);
+  quoteText.push(`✅ TỔNG XỬ LÝ : ${processedGroups.length} báo giá`);
+  quoteText.push(`============================`);
+  
+  quoteText.push(`💵 ĐÃ CHỐT ${quoteCompleted.length} BÁO GIÁ`);
+  if (quoteCompleted.length === 0) quoteText.push(`(Không có)`);
+  quoteCompleted.forEach((g, idx) => {
+    quoteText.push(`${idx + 1}. Báo giá "${g.latest.content_of_contract_po || 'Không có tiêu đề'}"`);
+    quoteText.push(` - ${g.tenKh} - ${g.tenCty}`);
+  });
+  
+  quoteText.push('');
+  quoteText.push(`🛑 ĐANG XỬ LÝ ${quotePending.length} BÁO GIÁ :`);
+  if (quotePending.length === 0) quoteText.push(`(Không có)`);
+  quotePending.forEach((g, idx) => {
+    quoteText.push(`${idx + 1}. Báo giá "${g.latest.content_of_contract_po || 'Không có tiêu đề'}"`);
+    quoteText.push(` - ${g.tenKh} - ${g.tenCty}`);
+  });
+
+  // 4. Gia Hạn Sản Phẩm
+  const detailRows = getOneSheet("hop_dong_chi_tiet");
+  const quoteDetails = detailRows.map(r => {
+    let sd = r[28] ? String(r[28]) : '';
+    let ed = r[29] ? String(r[29]) : '';
+    if (sd && sd.includes('T')) {
+      const d = new Date(sd); sd = `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`;
+    } else if (r[28] instanceof Date) {
+      const d = r[28]; sd = `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`;
+    }
+    if (ed && ed.includes('T')) {
+      const d = new Date(ed); ed = `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`;
+    } else if (r[29] instanceof Date) {
+      const d = r[29]; ed = `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`;
+    }
+    return {
+      ma_hop_dong: String(r[0] || ''),
+      ten_hang: String(r[3] || ''),
+      start_date: sd,
+      end_date: ed,
+      is_giahan: String(r[30] ?? '').trim().toUpperCase()
+    };
+  });
+
+  // Lọc lấy các quote có trạng thái Chính thức / Completed
+  const validQuotes = quotes.filter(q => 
+    q.trang_thai_hop_dong === 'Chính thức' || q.trang_thai === 'Chính thức' || q.is_completed
+  );
+  const validQuoteIds = new Set();
+  validQuotes.forEach(q => validQuoteIds.add(q.ma_hop_dong));
+
+  const calculateDaysDiff = (start, end) => {
+    if (!end) return 9999;
+    const p2 = String(end).split('/');
+    if (p2.length !== 3) return 9999;
+    const d1 = new Date(targetDateObj);
+    d1.setHours(0, 0, 0, 0);
+    const d2 = new Date(+p2[2], +p2[1] - 1, +p2[0]);
+    d2.setHours(0, 0, 0, 0);
+    return Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 3600 * 24));
+  };
+
+  const renewalList = [];
+  quoteDetails.forEach(det => {
+    // Chỉ xử lý nếu chưa đánh dấu Đã gia hạn (TRUE) hoặc Khách Hủy (FALSE)
+    if (det.is_giahan !== 'TRUE' && det.is_giahan !== 'FALSE') {
+      if (det.start_date && det.end_date) {
+        if (validQuoteIds.has(det.ma_hop_dong)) {
+          const daysLeft = calculateDaysDiff(det.start_date, det.end_date);
+          if (daysLeft <= 90) {
+          const hd = validQuotes.find(q => q.ma_hop_dong === det.ma_hop_dong);
+          let tenKh = 'Không rõ';
+          let tenCty = 'Không rõ';
+          if (hd && hd.ma_khach_hang) {
+            const kh = customers.find(k => k.ma_khach_hang === hd.ma_khach_hang);
+            if (kh) {
+              tenKh = kh.ten_khach_hang || tenKh;
+              tenCty = kh.ten_cong_ty || tenCty;
+            }
+          }
+          renewalList.push(Object.assign({}, det, { daysLeft, ten_khach_hang: tenKh, ten_cong_ty: tenCty }));
+        }
+      }
+    }
+    }
+  });
+  
+  renewalList.sort((a, b) => a.daysLeft - b.daysLeft);
+
+  let renewalText = [];
+  renewalText.push(`BÁO CÁO GIA HẠN SẢN PHẨM ${targetDateStr2}`);
+  renewalText.push(`📛 Tổng SP gia hạn : ${renewalList.length} sản phẩm `);
+
+  let workFull = workText.join('\n').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  let quoteFull = quoteText.join('\n').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  let renewalFull = renewalText.join('\n').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  
+  return [workFull, quoteFull, renewalFull];
+}
+
+// ─────────────────────────────────────────────────────────────
+//  TRIGGER: gửi lúc 6:00 sáng (dữ liệu hôm trước)
+// ─────────────────────────────────────────────────────────────
+function sendReport_6am() {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const msgs = buildFullDailyReport(yesterday);
+  msgs.forEach(msg => {
+    sendTelegram(msg);
+    Utilities.sleep(1000); // Ngủ 1 giây để tránh bị Telegram chặn vì gửi liên tục
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
 //  TRIGGER: gửi lúc 12:00 trưa
 // ─────────────────────────────────────────────────────────────
 function sendReport_12h() {
@@ -345,17 +575,21 @@ function sendReport_17h() {
 
 // ─────────────────────────────────────────────────────────────
 //  SETUP TRIGGER: chạy 1 lần để đăng ký lịch tự động
-//  Sau khi chạy → vào Extensions > Apps Script > Triggers để kiểm tra
 // ─────────────────────────────────────────────────────────────
 function setupDailyTriggers() {
-  // Xoá trigger cũ tránh trùng
   ScriptApp.getProjectTriggers().forEach(t => {
-    if (["sendReport_12h","sendReport_17h"].includes(t.getHandlerFunction())) {
+    if (["sendReport_6am", "sendReport_12h","sendReport_17h"].includes(t.getHandlerFunction())) {
       ScriptApp.deleteTrigger(t);
     }
   });
 
-  // 12:00 trưa (múi giờ của Spreadsheet – set Vietnam UTC+7 trong Settings)
+  ScriptApp.newTrigger("sendReport_6am")
+    .timeBased()
+    .everyDays(1)
+    .atHour(6)
+    .nearMinute(0)
+    .create();
+
   ScriptApp.newTrigger("sendReport_12h")
     .timeBased()
     .everyDays(1)
@@ -363,7 +597,6 @@ function setupDailyTriggers() {
     .nearMinute(0)
     .create();
 
-  // 17:00 chiều
   ScriptApp.newTrigger("sendReport_17h")
     .timeBased()
     .everyDays(1)
@@ -371,12 +604,23 @@ function setupDailyTriggers() {
     .nearMinute(0)
     .create();
 
-  Logger.log("✅ Đã tạo 2 trigger: 12:00 và 17:00 mỗi ngày.");
+  Logger.log("✅ Đã tạo 3 trigger: 6:00, 12:00 và 17:00 mỗi ngày.");
 }
 
 // ─────────────────────────────────────────────────────────────
-//  TEST: gửi tin nhắn thử ngay lập tức
+//  TEST: gửi tin nhắn thử ngay lập tức (Test 6am report)
 // ─────────────────────────────────────────────────────────────
+function testSendReport_yesterday() {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const msgs = buildFullDailyReport(yesterday);
+  msgs.forEach((msg, idx) => {
+    sendTelegram(msg);
+    Logger.log("Đã gửi phần " + (idx + 1));
+    Utilities.sleep(1000); // Ngủ 1 giây để tránh rate limit
+  });
+}
+
 function testSendNow() {
   const msg = buildReportMessage("🧪 <b>TEST BÁO CÁO</b>");
   sendTelegram(msg);
@@ -478,7 +722,8 @@ function doPost(e) {
       action === "editHangHoa" ||
       action === "deleteHangHoa" ||
       action === "update_chi_tiet_dates" ||
-      action === "update_contract_file"
+      action === "update_contract_file" ||
+      action === "update_giahan_status"
     ) {
       // Nhả lock trước khi gọi bg_doPost (vì bg_doPost sẽ tự lấy lock riêng)
       try { lock.releaseLock() } catch (e2) {}
@@ -909,6 +1154,12 @@ function bg_doPost(e) {
             clearGetCache_()
             return bg_json({ ok: true, action, ...rs })
         }
+        if (action === 'update_giahan_status') {
+            const rs = updateGiaHanStatus_(payload)
+            clearGetCache_()
+            return bg_json({ ok: true, action, ...rs })
+        }
+
         if (action === 'deleteHangHoa') {
             const rs = deleteHangHoa_(payload)
             clearGetCache_()
@@ -1007,7 +1258,12 @@ function appendRows_(sh, rows2d) {
 
 function clearGetCache_() {
     try {
-        CacheService.getScriptCache().remove('GET_ALL_SHEETS')
+        const cache = CacheService.getScriptCache()
+        const keys = []
+        for (const key in BG_SHEETS) {
+            keys.push('CACHE_SHEET_' + key)
+        }
+        cache.removeAll(keys)
     } catch (e) { }
 }
 /* =========================
@@ -1058,7 +1314,7 @@ function markDraftsAsCompleted_(shTong, maGoc, excludeMaHD) {
  * CONST COL COUNT (SCHEMA)
  * ========================= */
 const HD_TONG_COLS = 36 // +2 cols: [34]ten_file [35]link_file
-const HD_CT_COLS = 30 // +2 cols: [28]start_date [29]end_date
+const HD_CT_COLS = 31 // +3 cols: [28]start_date [29]end_date [30]is_giahan
 const HD_VER_COLS = 5 // ✅ version sheet cols
 
 function normalizeRow_(arr, cols) {
@@ -1420,7 +1676,7 @@ function updateChiTietDates_(payload) {
     var lastRow = sh.getLastRow()
     if (lastRow < 2) throw new Error('SHEET_EMPTY')
 
-    var data = sh.getRange(2, 1, lastRow - 1, HD_CT_COLS).getValues()
+    var data = sh.getRange(2, 1, lastRow - 1, 31).getValues()
     var updated = 0
 
     var itemsMap = {}
@@ -1445,6 +1701,39 @@ function updateChiTietDates_(payload) {
     }
 
     return { updated: updated, ma_hop_dong: maHD }
+}
+
+/* =========================
+ * UPDATE TRANG THAI GIA HAN (is_giahan)
+ * payload: { ma_hop_dong, ma_hang, is_giahan: 'TRUE' | 'FALSE' | '' }
+ * ========================= */
+function updateGiaHanStatus_(payload) {
+    var maHD = String(payload.ma_hop_dong || '').trim()
+    var maHang = String(payload.ma_hang || '').trim()
+    var isGiaHan = String(payload.is_giahan || '').trim()
+
+    if (!maHD) throw new Error('MISSING_ma_hop_dong')
+    if (!maHang) throw new Error('MISSING_ma_hang')
+
+    var shCT = getSheet_(BG_SHEETS.hop_dong_chi_tiet)
+    var ctLastRow = shCT.getLastRow()
+    if (ctLastRow < 2) return { updated_rows: 0 }
+
+    var ctData = shCT.getRange(2, 1, ctLastRow - 1, 31).getValues()
+    var updated = 0
+
+    for (var i = 0; i < ctData.length; i++) {
+        var rowMaHD = String(ctData[i][0] || '').trim()
+        var rowMaHang = String(ctData[i][2] || '').trim()
+
+        if (rowMaHD === maHD && rowMaHang === maHang) {
+            shCT.getRange(i + 2, 31).setValue(isGiaHan)
+            updated++
+        }
+    }
+
+    clearGetCache_()
+    return { updated_rows: updated }
 }
 
 /* =========================

@@ -3792,7 +3792,7 @@ function identifyExcelCol(text: string): string | null {
   const t = String(text || '').toUpperCase().trim()
   if (!t) return null
   if (t === 'STT' || t === 'SỐ TT' || t === 'NO.' || t === 'TT') return 'stt'
-  if (t.includes('TÊN HÀNG') || t.includes('HÀNG HÓA') || t.includes('DỊCH VỤ')) return 'ten_hang'
+  if (t.includes('TÊN HÀNG') || t.includes('HÀNG HÓA') || t.includes('DỊCH VỤ') || t.includes('MODEL')) return 'ten_hang'
   if (t.includes('DIỄN GIẢI') || t.includes('DIEN GIAI') || t.includes('MÔ TẢ') || t.includes('ĐẶC TÍNH') || t.includes('THÔNG SỐ') || t.includes('NỘI DUNG') || t.includes('HẠNG MỤC') || t.includes('DESCRIPTION') || t.includes('SPEC')) return 'mo_ta'
   if (t === 'ĐVT' || t === 'DVT' || t.includes('ĐƠN VỊ TÍNH') || t.includes('DON VI') || t === 'UNIT') return 'dvt'
   if (t.includes('SỐ LƯỢNG') || t.includes('S.LƯỢNG') || t === 'SL' || t === 'S.L' || t === 'S.L.' || t.includes('SO LUONG') || t === 'QTY') return 'so_luong'
@@ -4261,21 +4261,55 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value): Promise<B
     currentFooterIdx++;
   });
   
-  ws.getCell('A7').value = `Kính gởi: ${targetKhach?.Ten_cong_ty || ''}`;
-  
-  const cellA8 = ws.getCell('A8');
-  cellA8.value = `Địa chỉ: ${targetKhach?.Dia_chi_cong_ty || targetKhach?.ADDRESS || ''}`;
-  cellA8.font = { ...cellA8.font, italic: true };
-  
-  const cellA9 = ws.getCell('A9');
-  cellA9.value = `Người nhận: ${targetKhach?.Ten_khach_hang || targetKhach?.CUS_CONTACT || ''}`;
-  cellA9.font = { ...cellA9.font, italic: true };
-  
   const now = new Date();
   const dd = now.getDate().toString().padStart(2, '0');
   const mm = (now.getMonth() + 1).toString().padStart(2, '0');
   const yyyy = now.getFullYear();
-  ws.getCell('G7').value = `Ngày : ${dd}/${mm}/${yyyy}`;
+
+  let foundKinhGoi = false;
+  let foundDiaChi = false;
+  let foundNguoiNhan = false;
+  let foundNgay = false;
+
+  for (let r = 1; r <= 30; r++) {
+    const row = ws.getRow(r);
+    row.eachCell((cell) => {
+      const val = typeof cell.value === 'string' ? cell.value : (cell.value?.richText ? cell.value.richText.map((rt: any) => rt.text).join('') : '');
+      if (val) {
+        const lower = val.toLowerCase().trim();
+        if (lower.startsWith('kính gởi') || lower.startsWith('kính gửi')) {
+          cell.value = `Kính gởi: ${targetKhach?.Ten_cong_ty || ''}`;
+          foundKinhGoi = true;
+        } else if (lower.startsWith('địa chỉ') && !lower.includes('giao hàng') && !lower.includes('công ty')) {
+          cell.value = `Địa chỉ: ${targetKhach?.Dia_chi_cong_ty || targetKhach?.ADDRESS || ''}`;
+          cell.font = { ...cell.font, italic: true };
+          foundDiaChi = true;
+        } else if (lower.startsWith('người nhận') && !lower.includes('hàng')) {
+          cell.value = `Người nhận: ${targetKhach?.Ten_khach_hang || targetKhach?.CUS_CONTACT || ''}`;
+          cell.font = { ...cell.font, italic: true };
+          foundNguoiNhan = true;
+        } else if (lower.startsWith('ngày :') || lower.startsWith('ngày:')) {
+          cell.value = `Ngày : ${dd}/${mm}/${yyyy}`;
+          foundNgay = true;
+        }
+      }
+    });
+  }
+
+  if (!specificTemplateData) {
+    if (!foundKinhGoi) ws.getCell('A7').value = `Kính gởi: ${targetKhach?.Ten_cong_ty || ''}`;
+    if (!foundDiaChi) {
+      const cellA8 = ws.getCell('A8');
+      cellA8.value = `Địa chỉ: ${targetKhach?.Dia_chi_cong_ty || targetKhach?.ADDRESS || ''}`;
+      cellA8.font = { ...cellA8.font, italic: true };
+    }
+    if (!foundNguoiNhan) {
+      const cellA9 = ws.getCell('A9');
+      cellA9.value = `Người nhận: ${targetKhach?.Ten_khach_hang || targetKhach?.CUS_CONTACT || ''}`;
+      cellA9.font = { ...cellA9.font, italic: true };
+    }
+    if (!foundNgay) ws.getCell('G7').value = `Ngày : ${dd}/${mm}/${yyyy}`;
+  }
   
   // The colored line above the footer is actually an Image in the Excel template.
   // ExcelJS spliceRows shifts cell values but DOES NOT shift images.

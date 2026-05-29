@@ -55,6 +55,81 @@
       </div>
     </div>
 
+    <!-- Date Filter Panel (Elite style) -->
+    <div v-show="pageTab === 'baogia'" class="elite-filter-panel" style="margin: 0 auto 24px auto; max-width: 900px; padding: 1.5rem; background: rgba(30,41,59,0.7); border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); position: relative; overflow: hidden; backdrop-filter: blur(10px);">
+      <div class="elite-filter-accent" style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #10b981 0%, #34d399 40%, #6ee7b7 70%, #a7f3d0 100%);"></div>
+      <div class="elite-filter-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+        <div class="elite-filter-title" style="display: flex; align-items: center; gap: 0.75rem; color: #f8fafc; font-size: 1.1rem; font-weight: 800; letter-spacing: -0.01em;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+          <span>Bộ lọc thời gian</span>
+        </div>
+        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: #94a3b8; font-size: 0.9rem; font-weight: 600;">
+          <input type="checkbox" v-model="enableDateFilter" style="cursor: pointer; accent-color: #10b981; width: 16px; height: 16px;" />
+          Kích hoạt bộ lọc
+        </label>
+      </div>
+
+      <div class="elite-filter-body" :style="{ opacity: enableDateFilter ? 1 : 0.5, pointerEvents: enableDateFilter ? 'auto' : 'none', display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }">
+        <div class="elite-date-group group-tabs" style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <label style="color: #94a3b8; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Chế độ</label>
+          <div class="elite-mode-tabs" style="display: inline-flex; background: rgba(0,0,0,0.2); padding: 4px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
+            <button type="button" :class="{ active: dateFilterMode === 'day' }" @click="dateFilterMode = 'day'" style="padding: 6px 14px; border: none; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s;" :style="dateFilterMode === 'day' ? 'background: #10b981; color: #fff; box-shadow: 0 2px 8px rgba(16,185,129,0.3);' : 'background: transparent; color: #94a3b8;'">Ngày</button>
+            <button type="button" :class="{ active: dateFilterMode === 'week' }" @click="dateFilterMode = 'week'" style="padding: 6px 14px; border: none; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s;" :style="dateFilterMode === 'week' ? 'background: #10b981; color: #fff; box-shadow: 0 2px 8px rgba(16,185,129,0.3);' : 'background: transparent; color: #94a3b8;'">Tuần</button>
+            <button type="button" :class="{ active: dateFilterMode === 'month' }" @click="dateFilterMode = 'month'" style="padding: 6px 14px; border: none; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s;" :style="dateFilterMode === 'month' ? 'background: #10b981; color: #fff; box-shadow: 0 2px 8px rgba(16,185,129,0.3);' : 'background: transparent; color: #94a3b8;'">Tháng</button>
+            <button type="button" :class="{ active: dateFilterMode === 'year' }" @click="dateFilterMode = 'year'" style="padding: 6px 14px; border: none; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s;" :style="dateFilterMode === 'year' ? 'background: #10b981; color: #fff; box-shadow: 0 2px 8px rgba(16,185,129,0.3);' : 'background: transparent; color: #94a3b8;'">Năm</button>
+          </div>
+        </div>
+
+        <template v-if="dateFilterMode === 'day'">
+          <div class="elite-date-group group-date" style="display: flex; flex-direction: column; gap: 0.5rem; flex: 1; min-width: 140px;">
+            <label style="color: #94a3b8; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Từ ngày</label>
+            <input type="date" v-model="fromDate" :max="toDate" class="elite-input" style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 10px; color: #f8fafc; font-size: 0.95rem; outline: none; transition: all 0.2s;" />
+          </div>
+          <span class="elite-range-sep" style="color: #64748b; font-weight: 600; padding: 0 0.5rem; margin-top: 1.5rem;">→</span>
+          <div class="elite-date-group group-date" style="display: flex; flex-direction: column; gap: 0.5rem; flex: 1; min-width: 140px;">
+            <label style="color: #94a3b8; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Đến ngày</label>
+            <input type="date" v-model="toDate" :min="fromDate" class="elite-input" style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 10px; color: #f8fafc; font-size: 0.95rem; outline: none; transition: all 0.2s;" />
+          </div>
+        </template>
+
+        <template v-if="dateFilterMode === 'week'">
+          <div class="elite-date-group group-date" style="display: flex; flex-direction: column; gap: 0.5rem; flex: 1; min-width: 140px;">
+            <label style="color: #94a3b8; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Từ tuần</label>
+            <input type="week" v-model="weekFrom" :max="weekTo" class="elite-input" style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 10px; color: #f8fafc; font-size: 0.95rem; outline: none; transition: all 0.2s;" />
+          </div>
+          <span class="elite-range-sep" style="color: #64748b; font-weight: 600; padding: 0 0.5rem; margin-top: 1.5rem;">→</span>
+          <div class="elite-date-group group-date" style="display: flex; flex-direction: column; gap: 0.5rem; flex: 1; min-width: 140px;">
+            <label style="color: #94a3b8; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Đến tuần</label>
+            <input type="week" v-model="weekTo" :min="weekFrom" class="elite-input" style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 10px; color: #f8fafc; font-size: 0.95rem; outline: none; transition: all 0.2s;" />
+          </div>
+        </template>
+
+        <template v-if="dateFilterMode === 'month'">
+          <div class="elite-date-group group-date" style="display: flex; flex-direction: column; gap: 0.5rem; flex: 1; min-width: 140px;">
+            <label style="color: #94a3b8; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Từ tháng</label>
+            <input type="month" v-model="monthFrom" :max="monthTo" class="elite-input" style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 10px; color: #f8fafc; font-size: 0.95rem; outline: none; transition: all 0.2s;" />
+          </div>
+          <span class="elite-range-sep" style="color: #64748b; font-weight: 600; padding: 0 0.5rem; margin-top: 1.5rem;">→</span>
+          <div class="elite-date-group group-date" style="display: flex; flex-direction: column; gap: 0.5rem; flex: 1; min-width: 140px;">
+            <label style="color: #94a3b8; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Đến tháng</label>
+            <input type="month" v-model="monthTo" :min="monthFrom" class="elite-input" style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 10px; color: #f8fafc; font-size: 0.95rem; outline: none; transition: all 0.2s;" />
+          </div>
+        </template>
+
+        <template v-if="dateFilterMode === 'year'">
+          <div class="elite-date-group group-date" style="display: flex; flex-direction: column; gap: 0.5rem; flex: 1; min-width: 140px;">
+            <label style="color: #94a3b8; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Từ năm</label>
+            <input type="number" v-model="yearFrom" :max="yearTo" placeholder="2024" class="elite-input" style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 10px; color: #f8fafc; font-size: 0.95rem; outline: none; transition: all 0.2s;" />
+          </div>
+          <span class="elite-range-sep" style="color: #64748b; font-weight: 600; padding: 0 0.5rem; margin-top: 1.5rem;">→</span>
+          <div class="elite-date-group group-date" style="display: flex; flex-direction: column; gap: 0.5rem; flex: 1; min-width: 140px;">
+            <label style="color: #94a3b8; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Đến năm</label>
+            <input type="number" v-model="yearTo" :min="yearFrom" placeholder="2025" class="elite-input" style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 10px; color: #f8fafc; font-size: 0.95rem; outline: none; transition: all 0.2s;" />
+          </div>
+        </template>
+      </div>
+    </div>
+
     <!-- TAB: Báo giá -->
     <div v-show="pageTab === 'baogia'">
 
@@ -143,17 +218,6 @@
             <option value="ASC">Cũ nhất ➔ Mới nhất</option>
           </select>
         </div>
-        <div style="display: flex; flex-direction: column; gap: 6px;">
-          <label style="color: #ffffff; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-left: 2px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
-            <input type="checkbox" v-model="enableDateFilter" style="cursor: pointer;" />
-            Thời gian
-          </label>
-          <div class="filter-date-group" :style="{ opacity: enableDateFilter ? 1 : 0.5 }">
-            <input type="date" v-model="fromDate" class="filter-date" :disabled="!enableDateFilter" />
-            <span class="date-separator">→</span>
-            <input type="date" v-model="toDate" class="filter-date" :disabled="!enableDateFilter" />
-          </div>
-        </div>
         <button v-if="hasActiveFilters" class="btn-clear-filters" @click="clearFilters">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           Xoá bộ lọc
@@ -228,7 +292,7 @@
                 <div style="display: flex; flex-direction: column; gap: 6px;">
                   <span class="meta-label" style="font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; opacity: 0.7;" :style="group.latest.is_completed ? 'color: #fff;' : 'color: #1e40af;'">Mã Hợp Đồng / Mã Gốc</span>
                   <div class="vip-magoc" style="display: inline-flex; align-items: center; padding: 10px 16px; background: rgba(0,0,0,0.15); border-radius: 10px; width: fit-content; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);" :style="group.latest.is_completed ? 'border: 1px solid rgba(255,255,255,0.1);' : 'background: rgba(255,255,255,0.6); border: 1px solid rgba(30,64,175,0.1); box-shadow: 0 2px 8px rgba(30,64,175,0.05);'">
-                    <span class="meta-value" style="font-weight: 800; font-size: 16px; letter-spacing: 0.5px;" :style="group.latest.is_completed ? 'color: #fff;' : 'color: #1e40af;'">{{ group.goc }}</span>
+                    <span class="meta-value" style="font-weight: 800; font-size: 16px; letter-spacing: 0.5px;" :style="group.latest.is_completed ? 'color: #fff;' : 'color: #1e40af;'" v-html="highlightText(group.goc, searchKeyword)"></span>
                   </div>
                 </div>
 
@@ -238,11 +302,11 @@
                   <div style="display: flex; flex-direction: column; gap: 8px; background: rgba(0,0,0,0.1); padding: 16px 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);" :style="group.latest.is_completed ? 'border: 1px solid rgba(255,255,255,0.1);' : 'background: rgba(255,255,255,0.4); border: 1px solid rgba(30, 64, 175, 0.1);'">
                     <h3 class="folder-title" style="font-size: 16px; margin: 0; line-height: 1.5; display: flex; align-items: flex-start; gap: 10px;" :style="group.latest.is_completed ? '' : 'color: #1e40af; text-shadow: none;'">
                       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.8; margin-top: 3px; flex-shrink: 0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                      <span style="word-break: break-word; font-weight: 700;">{{ group.latest.content_of_contract_po || 'Báo giá không có tiêu đề' }}</span>
+                      <span style="word-break: break-word; font-weight: 700;" v-html="highlightText(group.latest.content_of_contract_po || 'Báo giá không có tiêu đề', searchKeyword)"></span>
                     </h3>
                     <div v-if="group.latest.ghi_chu" style="display: flex; align-items: flex-start; gap: 8px; margin-top: 6px; padding-top: 10px; border-top: 1px dashed rgba(255,255,255,0.15);" :style="group.latest.is_completed ? '' : 'border-top-color: rgba(30, 64, 175, 0.15);'">
                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.6; margin-top: 2px; flex-shrink: 0;" :style="group.latest.is_completed ? 'color: #fff;' : 'color: #1e40af;'"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                      <span style="font-size: 13px; font-style: italic; line-height: 1.6; word-break: break-word; opacity: 0.9;" :style="group.latest.is_completed ? 'color: #fff;' : 'color: #1e40af;'">{{ group.latest.ghi_chu }}</span>
+                      <span style="font-size: 13px; font-style: italic; line-height: 1.6; word-break: break-word; opacity: 0.9;" :style="group.latest.is_completed ? 'color: #fff;' : 'color: #1e40af;'" v-html="highlightText(group.latest.ghi_chu, searchKeyword)"></span>
                     </div>
                   </div>
                 </div>
@@ -258,15 +322,15 @@
                   <div style="display: flex; flex-wrap: wrap; gap: 10px;">
                     <div v-if="getCustomerInfo(group.latest.ma_khach_hang).mst" style="display: flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; box-shadow: 0 2px 6px rgba(0,0,0,0.05); backdrop-filter: blur(4px);" :style="group.latest.is_completed ? 'color: #fff; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.1);' : 'color: #1e40af; background: rgba(255,255,255,0.5); border: 1px solid rgba(30,64,175,0.1);'">
                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.7;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                      {{ getCustomerInfo(group.latest.ma_khach_hang).mst }}
+                      <span v-html="highlightText(getCustomerInfo(group.latest.ma_khach_hang).mst, searchKeyword)"></span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; box-shadow: 0 2px 6px rgba(0,0,0,0.05); backdrop-filter: blur(4px);" :style="group.latest.is_completed ? 'color: #fff; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.1);' : 'color: #1e40af; background: rgba(255,255,255,0.5); border: 1px solid rgba(30,64,175,0.1);'">
                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.7;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                      <span style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ group.latest.ten_khach_hang || 'Không rõ KH' }}</span>
+                      <span style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" v-html="highlightText(group.latest.ten_khach_hang || 'Không rõ KH', searchKeyword)"></span>
                     </div>
                     <div v-if="getCustomerInfo(group.latest.ma_khach_hang).tenCongTy" style="display: flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; width: fit-content; max-width: 100%; box-shadow: 0 2px 6px rgba(0,0,0,0.05); backdrop-filter: blur(4px);" :style="group.latest.is_completed ? 'color: #fff; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.1);' : 'color: #1e40af; background: rgba(255,255,255,0.5); border: 1px solid rgba(30,64,175,0.1);'">
                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.7;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-                      <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ getCustomerInfo(group.latest.ma_khach_hang).tenCongTy }}</span>
+                      <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" v-html="highlightText(getCustomerInfo(group.latest.ma_khach_hang).tenCongTy, searchKeyword)"></span>
                     </div>
                   </div>
                 </div>
@@ -308,20 +372,20 @@
               @click="viewDetails(item)"
             >
               <div class="invoice-card-header">
-                <span class="invoice-ma-hd"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg> {{ item.ma_hop_dong }}</span>
+                <span class="invoice-ma-hd"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg> <span v-html="highlightText(item.ma_hop_dong, searchKeyword)"></span></span>
                 <span class="invoice-date">{{ item.ngay_tao }}</span>
               </div>
               <div class="invoice-card-body">
-                <p v-if="item.so_po" class="invoice-po invoice-icon-text"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"></line><line x1="4" y1="15" x2="20" y2="15"></line><line x1="10" y1="3" x2="8" y2="21"></line><line x1="16" y1="3" x2="14" y2="21"></line></svg>Số PO: {{ item.so_po }}</p>
-                <p v-if="item.content_of_contract_po" class="invoice-text invoice-icon-text" style="color: #f8fafc; font-weight: 600; margin-bottom: 6px;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>Content of contract / PO: {{ item.content_of_contract_po }}</p>
-                <p v-if="item.ghi_chu" class="invoice-text invoice-icon-text" style="color: #94a3b8; font-style: italic; margin-bottom: 6px;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>Ghi chú: {{ item.ghi_chu }}</p>
+                <p v-if="item.so_po" class="invoice-po invoice-icon-text"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"></line><line x1="4" y1="15" x2="20" y2="15"></line><line x1="10" y1="3" x2="8" y2="21"></line><line x1="16" y1="3" x2="14" y2="21"></line></svg>Số PO: <span v-html="highlightText(item.so_po, searchKeyword)"></span></p>
+                <p v-if="item.content_of_contract_po" class="invoice-text invoice-icon-text" style="color: #f8fafc; font-weight: 600; margin-bottom: 6px;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>Content of contract / PO: <span v-html="highlightText(item.content_of_contract_po, searchKeyword)"></span></p>
+                <p v-if="item.ghi_chu" class="invoice-text invoice-icon-text" style="color: #94a3b8; font-style: italic; margin-bottom: 6px;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>Ghi chú: <span v-html="highlightText(item.ghi_chu, searchKeyword)"></span></p>
                 <hr class="invoice-divider" />
                 <p class="invoice-status invoice-icon-text" style="align-items: center;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-top: 0;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>Trạng thái hợp đồng: <span class="status-badge" :class="{'badge-temp': item.trang_thai === 'Tạm', 'badge-official': item.trang_thai === 'Chính thức'}">{{ item.trang_thai }}</span></p>
                 <p class="invoice-status invoice-icon-text" style="align-items: center;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-top: 0;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>Trạng thái xử lý: <span class="status-badge" :class="item.is_completed ? 'badge-completed' : 'badge-processing'">{{ item.is_completed ? 'Đã hoàn thành' : 'Đang xử lý' }}</span></p>
                 <hr class="invoice-divider" />
-                <p v-if="getCustomerInfo(item.ma_khach_hang).mst" class="invoice-text invoice-icon-text"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>MST: {{ getCustomerInfo(item.ma_khach_hang).mst }}</p>
-                <p v-if="getCustomerInfo(item.ma_khach_hang).tenCongTy" class="invoice-text invoice-icon-text"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>Tên công ty: {{ getCustomerInfo(item.ma_khach_hang).tenCongTy }}</p>
-                <p class="invoice-customer invoice-icon-text"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>Tên khách hàng: {{ item.ten_khach_hang }}</p>
+                <p v-if="getCustomerInfo(item.ma_khach_hang).mst" class="invoice-text invoice-icon-text"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>MST: <span v-html="highlightText(getCustomerInfo(item.ma_khach_hang).mst, searchKeyword)"></span></p>
+                <p v-if="getCustomerInfo(item.ma_khach_hang).tenCongTy" class="invoice-text invoice-icon-text"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>Tên công ty: <span v-html="highlightText(getCustomerInfo(item.ma_khach_hang).tenCongTy, searchKeyword)"></span></p>
+                <p class="invoice-customer invoice-icon-text"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>Tên khách hàng: <span v-html="highlightText(item.ten_khach_hang, searchKeyword)"></span></p>
                 <div v-if="getContractFiles(item).length" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 8px;">
                   <div v-for="(f, fi) in getContractFiles(item)" :key="fi" style="display:flex; align-items:center; gap: 8px;">
                     <a :href="f.link" target="_blank" @click.stop style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#ffffff;text-decoration:none;font-weight:600; white-space: nowrap; transition: opacity 0.2s; max-width: 100%; overflow: hidden;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'" :title="f.name">
@@ -432,6 +496,31 @@
         <p style="color: #64748b; font-size: 14px; margin: 0;">Chưa có sản phẩm nào có Start Date / End Date.</p>
       </div>
       <template v-else>
+      <!-- Master Date Filter -->
+      <div style="display: flex; justify-content: center; margin-bottom: 24px;">
+        <div style="display: flex; align-items: center; gap: 16px; background: linear-gradient(145deg, rgba(30,41,59,0.8), rgba(15,23,42,0.9)); padding: 12px 24px; border-radius: 20px; border: 1px solid rgba(16,185,129,0.3); box-shadow: 0 8px 20px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1); backdrop-filter: blur(10px);">
+          <div style="display: flex; align-items: center; gap: 8px; color: #10b981;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            <span style="font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Mốc tính toán:</span>
+          </div>
+
+          <div style="display: flex; background: rgba(0,0,0,0.2); border-radius: 8px; overflow: hidden; border: 1px solid rgba(16,185,129,0.3);">
+            <button :style="{ padding: '8px 16px', border: 'none', background: durationTargetMode === 'day' ? '#10b981' : 'transparent', color: durationTargetMode === 'day' ? '#fff' : '#94a3b8', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }" @click="durationTargetMode = 'day'">Ngày</button>
+            <button :style="{ padding: '8px 16px', border: 'none', background: durationTargetMode === 'week' ? '#10b981' : 'transparent', color: durationTargetMode === 'week' ? '#fff' : '#94a3b8', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }" @click="durationTargetMode = 'week'">Tuần</button>
+            <button :style="{ padding: '8px 16px', border: 'none', background: durationTargetMode === 'month' ? '#10b981' : 'transparent', color: durationTargetMode === 'month' ? '#fff' : '#94a3b8', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }" @click="durationTargetMode = 'month'">Tháng</button>
+            <button :style="{ padding: '8px 16px', border: 'none', background: durationTargetMode === 'year' ? '#10b981' : 'transparent', color: durationTargetMode === 'year' ? '#fff' : '#94a3b8', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }" @click="durationTargetMode = 'year'">Năm</button>
+          </div>
+
+          <input v-if="durationTargetMode === 'day'" type="date" v-model="durationTargetDate" style="padding: 8px 16px; border-radius: 12px; border: 1px solid rgba(16,185,129,0.4); background: rgba(15,23,42,0.8); color: #f8fafc; font-size: 15px; font-weight: 700; cursor: pointer; outline: none; transition: all 0.2s; color-scheme: dark; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);" onmouseover="this.style.borderColor='#10b981'" onmouseout="this.style.borderColor='rgba(16,185,129,0.4)'" />
+          <input v-else-if="durationTargetMode === 'week'" type="week" v-model="durationTargetWeek" style="padding: 8px 16px; border-radius: 12px; border: 1px solid rgba(16,185,129,0.4); background: rgba(15,23,42,0.8); color: #f8fafc; font-size: 15px; font-weight: 700; cursor: pointer; outline: none; transition: all 0.2s; color-scheme: dark; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);" onmouseover="this.style.borderColor='#10b981'" onmouseout="this.style.borderColor='rgba(16,185,129,0.4)'" />
+          <input v-else-if="durationTargetMode === 'month'" type="month" v-model="durationTargetMonth" style="padding: 8px 16px; border-radius: 12px; border: 1px solid rgba(16,185,129,0.4); background: rgba(15,23,42,0.8); color: #f8fafc; font-size: 15px; font-weight: 700; cursor: pointer; outline: none; transition: all 0.2s; color-scheme: dark; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);" onmouseover="this.style.borderColor='#10b981'" onmouseout="this.style.borderColor='rgba(16,185,129,0.4)'" />
+          <div v-else-if="durationTargetMode === 'year'" style="display: flex; align-items: center; gap: 12px; padding: 4px 8px;">
+            <button @click="durationTargetYear--" style="background: rgba(16,185,129,0.2); border: 1px solid #10b981; color: #10b981; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer;" onmouseover="this.style.background='#10b981'; this.style.color='#fff'" onmouseout="this.style.background='rgba(16,185,129,0.2)'; this.style.color='#10b981'">&#9664;</button>
+            <span style="color: #f8fafc; font-weight: 700; font-size: 16px;">Năm {{ durationTargetYear }}</span>
+            <button @click="durationTargetYear++" style="background: rgba(16,185,129,0.2); border: 1px solid #10b981; color: #10b981; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer;" onmouseover="this.style.background='#10b981'; this.style.color='#fff'" onmouseout="this.style.background='rgba(16,185,129,0.2)'; this.style.color='#10b981'">&#9654;</button>
+          </div>
+        </div>
+      </div>
       <!-- Summary Cards -->
       <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 20px;">
         <!-- Card: Tất cả -->
@@ -468,26 +557,27 @@
           <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;" :style="durationCardFilter === 'long' ? 'color: #3b82f6;' : 'color: #64748b;'">Thời hạn dài</div>
         </div>
         <!-- Card: Cần gia hạn -->
-        <div @click="durationCardFilter = 'renew'" class="dur-card" :class="{ 'dur-card-active': durationCardFilter === 'renew' }" style="position: relative; padding: 20px; border-radius: 16px; cursor: pointer; overflow: hidden; background: linear-gradient(145deg, rgba(15,23,42,0.8), rgba(30,41,59,0.6)); backdrop-filter: blur(10px);" :style="durationCardFilter === 'renew' ? 'border: 1px solid #f59e0b; box-shadow: 0 0 20px rgba(245,158,11,0.5), inset 0 0 15px rgba(245,158,11,0.1);' : 'border: 1px solid rgba(245,158,11,0.12); box-shadow: none;'">
-          <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #f59e0b, #fbbf24); border-radius: 16px 16px 0 0;" :style="durationCardFilter === 'renew' ? 'opacity:1' : 'opacity:0.3'"></div>
+        <div @click="durationCardFilter = 'renew'" class="dur-card" :class="{ 'dur-card-active': durationCardFilter === 'renew' }" style="position: relative; padding: 20px; border-radius: 16px; cursor: pointer; overflow: hidden; background: linear-gradient(145deg, rgba(15,23,42,0.8), rgba(30,41,59,0.6)); backdrop-filter: blur(10px);" :style="durationCardFilter === 'renew' ? 'border: 1px solid #ef4444; box-shadow: 0 0 20px rgba(239,68,68,0.5), inset 0 0 15px rgba(239,68,68,0.1);' : 'border: 1px solid rgba(239,68,68,0.12); box-shadow: none;'">
+          <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #ef4444, #f87171); border-radius: 16px 16px 0 0;" :style="durationCardFilter === 'renew' ? 'opacity:1' : 'opacity:0.3'"></div>
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-            <div style="width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center;" :style="durationCardFilter === 'renew' ? 'background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 4px 12px rgba(245,158,11,0.4);' : 'background: rgba(245,158,11,0.1);'">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" :stroke="durationCardFilter === 'renew' ? '#fff' : '#f59e0b'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            <div style="width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center;" :style="durationCardFilter === 'renew' ? 'background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 4px 12px rgba(239,68,68,0.4);' : 'background: rgba(239,68,68,0.1);'">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" :stroke="durationCardFilter === 'renew' ? '#fff' : '#ef4444'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
             </div>
-            <div style="font-size: 32px; font-weight: 900; letter-spacing: -1px;" :style="durationCardFilter === 'renew' ? 'color: #f59e0b;' : 'color: #f8fafc;'">{{ durationCardCounts.renew }}</div>
+            <div style="font-size: 32px; font-weight: 900; letter-spacing: -1px;" :style="durationCardFilter === 'renew' ? 'color: #ef4444;' : 'color: #f8fafc;'">{{ durationCardCounts.renew }}</div>
           </div>
-          <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;" :style="durationCardFilter === 'renew' ? 'color: #f59e0b;' : 'color: #64748b;'">Cần gia hạn</div>
+          <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;" :style="durationCardFilter === 'renew' ? 'color: #ef4444;' : 'color: #64748b;'">Cần gia hạn</div>
         </div>
-        <!-- Card: Quá hạn -->
-        <div @click="durationCardFilter = 'expired'" class="dur-card" :class="{ 'dur-card-active': durationCardFilter === 'expired' }" style="position: relative; padding: 20px; border-radius: 16px; cursor: pointer; overflow: hidden; background: linear-gradient(145deg, rgba(15,23,42,0.8), rgba(30,41,59,0.6)); backdrop-filter: blur(10px);" :style="durationCardFilter === 'expired' ? 'border: 1px solid #ef4444; box-shadow: 0 0 20px rgba(239,68,68,0.5), inset 0 0 15px rgba(239,68,68,0.1);' : 'border: 1px solid rgba(239,68,68,0.12); box-shadow: none;'">
-          <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #ef4444, #f87171); border-radius: 16px 16px 0 0;" :style="durationCardFilter === 'expired' ? 'opacity:1' : 'opacity:0.3'"></div>
+
+        <!-- Card: Đã xử lý -->
+        <div @click="durationCardFilter = 'handled'" class="dur-card" :class="{ 'dur-card-active': durationCardFilter === 'handled' }" style="position: relative; padding: 20px; border-radius: 16px; cursor: pointer; overflow: hidden; background: linear-gradient(145deg, rgba(15,23,42,0.8), rgba(30,41,59,0.6)); backdrop-filter: blur(10px);" :style="durationCardFilter === 'handled' ? 'border: 1px solid #10b981; box-shadow: 0 0 20px rgba(16,185,129,0.5), inset 0 0 15px rgba(16,185,129,0.1);' : 'border: 1px solid rgba(16,185,129,0.12); box-shadow: none;'">
+          <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #10b981, #059669); border-radius: 16px 16px 0 0;" :style="durationCardFilter === 'handled' ? 'opacity:1' : 'opacity:0.3'"></div>
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-            <div style="width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center;" :style="durationCardFilter === 'expired' ? 'background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 4px 12px rgba(239,68,68,0.4);' : 'background: rgba(239,68,68,0.1);'">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" :stroke="durationCardFilter === 'expired' ? '#fff' : '#ef4444'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            <div style="width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center;" :style="durationCardFilter === 'handled' ? 'background: linear-gradient(135deg, #10b981, #047857); box-shadow: 0 4px 12px rgba(16,185,129,0.4);' : 'background: rgba(16,185,129,0.1);'">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" :stroke="durationCardFilter === 'handled' ? '#fff' : '#10b981'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
             </div>
-            <div style="font-size: 32px; font-weight: 900; letter-spacing: -1px;" :style="durationCardFilter === 'expired' ? 'color: #ef4444;' : 'color: #f8fafc;'">{{ durationCardCounts.expired }}</div>
+            <div style="font-size: 32px; font-weight: 900; letter-spacing: -1px;" :style="durationCardFilter === 'handled' ? 'color: #10b981;' : 'color: #f8fafc;'">{{ durationCardCounts.handled }}</div>
           </div>
-          <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;" :style="durationCardFilter === 'expired' ? 'color: #ef4444;' : 'color: #64748b;'">Quá hạn</div>
+          <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;" :style="durationCardFilter === 'handled' ? 'color: #10b981;' : 'color: #64748b;'">Đã xử lý</div>
         </div>
       </div>
 
@@ -653,24 +743,41 @@
                     <th style="padding: 14px 12px; text-align: center; font-size: 12px; font-weight: 800; color: #ffffff; background: rgba(255,255,255,0.05); width: 180px; text-transform: uppercase;">Thời hạn</th>
                     <th style="padding: 14px 12px; text-align: center; font-size: 12px; font-weight: 800; color: #ffffff; background: rgba(255,255,255,0.05); width: 140px; text-transform: uppercase;">Ghi chú</th>
                     <th style="padding: 14px 12px; text-align: center; font-size: 12px; font-weight: 800; color: #ffffff; background: rgba(255,255,255,0.05); width: 90px; text-transform: uppercase;">Gia hạn</th>
+                    <th style="padding: 14px 12px; text-align: center; font-size: 12px; font-weight: 800; color: #ffffff; background: rgba(255,255,255,0.05); width: 160px; text-transform: uppercase;">Trạng thái Gia hạn</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="(row, ri) in group.rows" :key="ri" style="transition: background 0.2s; cursor: pointer;" @mouseover="($event.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'" @mouseout="($event.currentTarget as HTMLElement).style.background = 'transparent'" @click="viewDetails(row._contract)">
+                  <tr v-for="(row, ri) in group.rows" :key="ri" 
+                    :class="{ 'highlighted-duration-row': isHighlighted(row.ten_hang) }"
+                    style="transition: all 0.3s; cursor: pointer;" 
+                    @mouseover="!isHighlighted(row.ten_hang) ? ($event.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)' : null" 
+                    @mouseout="!isHighlighted(row.ten_hang) ? ($event.currentTarget as HTMLElement).style.background = 'transparent' : null" 
+                    @click="viewDetails(row._contract)">
                     <td style="padding: 12px; text-align: center; color: #94a3b8; font-weight: 700; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05);">{{ ri + 1 }}</td>
                     <td style="padding: 12px; color: #f8fafc; font-weight: 600; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05); line-height: 1.4;">{{ row.ten_hang }}</td>
                     <td style="padding: 12px; color: #cbd5e1; font-weight: 600; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05);">{{ row.ten_ncc }}</td>
                     <td style="padding: 12px; text-align: center; color: #e2e8f0; font-weight: 600; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05);">{{ row.start_date || '-' }}</td>
                     <td style="padding: 12px; text-align: center; color: #e2e8f0; font-weight: 600; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05);">{{ row.end_date || '-' }}</td>
                     <td style="padding: 12px; text-align: center; font-weight: 700; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                      <span v-if="row.start_date && row.end_date" :style="{ color: '#ffffff', background: calculateDaysDiff(row.start_date, row.end_date) < 90 ? '#dc2626' : '#059669', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', display: 'inline-block' }">{{ formatDuration(row.start_date, row.end_date) }}</span>
+                      <span v-if="row.start_date && row.end_date && (!row.is_giahan || (row.is_giahan !== 'TRUE' && row.is_giahan !== 'FALSE'))" :style="{ color: '#ffffff', background: calculateDaysDiff(row.start_date, row.end_date) < 90 ? '#dc2626' : '#059669', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', display: 'inline-block' }">{{ formatDuration(row.start_date, row.end_date) }}</span>
                       <span v-else style="color: #64748b;">-</span>
                     </td>
                     <td style="padding: 12px; text-align: center; font-weight: 600; font-size: 12px; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                      <span v-if="row.start_date && row.end_date && calculateDaysDiff(row.start_date, row.end_date) < 90" style="color: #ef4444; background: rgba(239,68,68,0.1); padding: 4px 8px; border-radius: 4px;">sắp hết thời hạn</span>
+                      <span v-if="row.start_date && row.end_date && calculateDaysDiff(row.start_date, row.end_date) < 90 && (!row.is_giahan || (row.is_giahan !== 'TRUE' && row.is_giahan !== 'FALSE'))" style="color: #ef4444; background: rgba(239,68,68,0.1); padding: 4px 8px; border-radius: 4px;">sắp hết thời hạn</span>
+                      <span v-else style="color: #64748b;">-</span>
                     </td>
                     <td style="padding: 12px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                      <button @click.stop="openRenewModal(row)" style="padding: 6px 14px; border-radius: 6px; border: none; background: linear-gradient(135deg, #10b981, #059669); color: #fff; font-weight: 700; font-size: 11px; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 8px rgba(16,185,129,0.3); white-space: nowrap;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(16,185,129,0.3)'">Gia hạn</button>
+                      <button v-if="!row.is_giahan || (row.is_giahan !== 'TRUE' && row.is_giahan !== 'FALSE')" @click.stop="openRenewModal(row)" style="padding: 6px 14px; border-radius: 6px; border: none; background: linear-gradient(135deg, #10b981, #059669); color: #fff; font-weight: 700; font-size: 11px; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 8px rgba(16,185,129,0.3); white-space: nowrap;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(16,185,129,0.3)'">Gia hạn</button>
+                      <span v-else style="color: #64748b;">-</span>
+                    </td>
+                    <td style="padding: 12px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05);" @click.stop>
+                      <div style="display: flex; gap: 4px; justify-content: center;" v-if="row.start_date && row.end_date && (!row.is_giahan || (row.is_giahan !== 'TRUE' && row.is_giahan !== 'FALSE'))">
+                        <button @click="updateGiaHanStatus(row, 'TRUE')" :style="statusEffects[`${row.ma_hop_dong}_${row.ma_hang}`] === 'TRUE' ? 'background: #10b981; color: #fff; border: 1px solid #10b981;' : 'background: rgba(16,185,129,0.2); border: 1px solid #10b981; color: #10b981;'" style="padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.2s;" onmouseover="if(!this.disabled){this.style.background='#10b981'; this.style.color='#fff'}" onmouseout="if(!this.disabled){this.style.background='rgba(16,185,129,0.2)'; this.style.color='#10b981'}" :disabled="!!statusEffects[`${row.ma_hop_dong}_${row.ma_hang}`]">{{ statusEffects[`${row.ma_hop_dong}_${row.ma_hang}`] === 'TRUE' ? 'Thành công ✔' : 'Đã gia hạn' }}</button>
+                        <button @click="updateGiaHanStatus(row, 'FALSE')" :style="statusEffects[`${row.ma_hop_dong}_${row.ma_hang}`] === 'FALSE' ? 'background: #ef4444; color: #fff; border: 1px solid #ef4444;' : 'background: rgba(239,68,68,0.2); border: 1px solid #ef4444; color: #ef4444;'" style="padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.2s;" onmouseover="if(!this.disabled){this.style.background='#ef4444'; this.style.color='#fff'}" onmouseout="if(!this.disabled){this.style.background='rgba(239,68,68,0.2)'; this.style.color='#ef4444'}" :disabled="!!statusEffects[`${row.ma_hop_dong}_${row.ma_hang}`]">{{ statusEffects[`${row.ma_hop_dong}_${row.ma_hang}`] === 'FALSE' ? 'Thành công ✔' : 'Không gia hạn' }}</button>
+                      </div>
+                      <span v-else-if="row.start_date && row.end_date && row.is_giahan === 'TRUE'" style="color: #10b981; font-weight: 700; font-size: 12px;">Đã gia hạn ✔</span>
+                      <span v-else-if="row.start_date && row.end_date && row.is_giahan === 'FALSE'" style="color: #ef4444; font-weight: 700; font-size: 12px;">Không gia hạn ✖</span>
+                      <span v-else style="color: #64748b;">-</span>
                     </td>
                   </tr>
                 </tbody>
@@ -962,7 +1069,7 @@
                             <th style="padding: 14px 12px; text-align: center; font-size: 13px; font-weight: 800; color: #ffffff; background: #10b981; width: 150px; text-transform: uppercase;">End Date</th>
                             <th style="padding: 14px 12px; text-align: center; font-size: 13px; font-weight: 800; color: #ffffff; background: #10b981; width: 150px; text-transform: uppercase;">Thời hạn</th>
                             <th style="padding: 14px 12px; text-align: center; font-size: 13px; font-weight: 800; color: #ffffff; background: #10b981; width: 180px; text-transform: uppercase;">Ghi chú</th>
-                            <th style="padding: 14px 12px; background: #10b981; width: auto; border-top-right-radius: 8px; border-bottom-right-radius: 8px;"></th>
+                            <th style="padding: 14px 12px; text-align: center; font-size: 13px; font-weight: 800; color: #ffffff; background: #10b981; width: 180px; text-transform: uppercase; border-top-right-radius: 8px; border-bottom-right-radius: 8px;">Trạng thái Gia hạn</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -972,13 +1079,22 @@
                             <td style="padding: 14px 12px; text-align: center; color: #e2e8f0; font-weight: 600; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.05);">{{ item.start_date || '-' }}</td>
                             <td style="padding: 14px 12px; text-align: center; color: #e2e8f0; font-weight: 600; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.05);">{{ item.end_date || '-' }}</td>
                             <td style="padding: 14px 12px; text-align: center; font-weight: 700; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                              <span v-if="item.start_date && item.end_date" :style="{ color: '#ffffff', background: calculateDaysDiff(item.start_date, item.end_date) < 90 ? '#dc2626' : '#059669', padding: '4px 10px', borderRadius: '6px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }">{{ formatDuration(item.start_date, item.end_date) }}</span>
+                              <span v-if="item.start_date && item.end_date && item.is_giahan !== 'TRUE' && item.is_giahan !== 'FALSE'" :style="{ color: '#ffffff', background: calculateDaysDiff(item.start_date, item.end_date) < 90 ? '#dc2626' : '#059669', padding: '4px 10px', borderRadius: '6px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }">{{ formatDuration(item.start_date, item.end_date) }}</span>
                               <span v-else style="color: #64748b;">-</span>
                             </td>
                             <td style="padding: 14px 12px; text-align: center; font-weight: 600; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                              <span v-if="item.start_date && item.end_date && calculateDaysDiff(item.start_date, item.end_date) < 90" style="color: #ef4444; background: rgba(239,68,68,0.1); padding: 4px 8px; border-radius: 4px; display: inline-block;">sắp hết thời hạn</span>
+                              <span v-if="item.start_date && item.end_date && calculateDaysDiff(item.start_date, item.end_date) < 90 && item.is_giahan !== 'TRUE' && item.is_giahan !== 'FALSE'" style="color: #ef4444; background: rgba(239,68,68,0.1); padding: 4px 8px; border-radius: 4px; display: inline-block;">sắp hết thời hạn</span>
+                              <span v-else style="color: #64748b;">-</span>
                             </td>
-                            <td style="padding: 14px 12px; border-bottom: 1px solid rgba(255,255,255,0.05);"></td>
+                            <td style="padding: 14px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: center;">
+                              <div style="display: flex; gap: 8px; justify-content: center;" v-if="item.start_date && item.end_date && item.is_giahan !== 'TRUE' && item.is_giahan !== 'FALSE'">
+                                <button @click="updateGiaHanStatus(item, 'TRUE')" :style="statusEffects[`${item.ma_hop_dong || (item._contract ? item._contract.ma_hop_dong : '')}_${item.ma_hang}`] === 'TRUE' ? 'background: #10b981; color: #fff; border: 1px solid #10b981;' : 'background: rgba(16,185,129,0.2); border: 1px solid #10b981; color: #10b981;'" style="padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.2s;" onmouseover="if(!this.disabled){this.style.background='#10b981'; this.style.color='#fff'}" onmouseout="if(!this.disabled){this.style.background='rgba(16,185,129,0.2)'; this.style.color='#10b981'}" :disabled="!!statusEffects[`${item.ma_hop_dong || (item._contract ? item._contract.ma_hop_dong : '')}_${item.ma_hang}`]">{{ statusEffects[`${item.ma_hop_dong || (item._contract ? item._contract.ma_hop_dong : '')}_${item.ma_hang}`] === 'TRUE' ? 'Thành công ✔' : 'Đã gia hạn' }}</button>
+                                <button @click="updateGiaHanStatus(item, 'FALSE')" :style="statusEffects[`${item.ma_hop_dong || (item._contract ? item._contract.ma_hop_dong : '')}_${item.ma_hang}`] === 'FALSE' ? 'background: #ef4444; color: #fff; border: 1px solid #ef4444;' : 'background: rgba(239,68,68,0.2); border: 1px solid #ef4444; color: #ef4444;'" style="padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.2s;" onmouseover="if(!this.disabled){this.style.background='#ef4444'; this.style.color='#fff'}" onmouseout="if(!this.disabled){this.style.background='rgba(239,68,68,0.2)'; this.style.color='#ef4444'}" :disabled="!!statusEffects[`${item.ma_hop_dong || (item._contract ? item._contract.ma_hop_dong : '')}_${item.ma_hang}`]">{{ statusEffects[`${item.ma_hop_dong || (item._contract ? item._contract.ma_hop_dong : '')}_${item.ma_hang}`] === 'FALSE' ? 'Thành công ✔' : 'Không gia hạn' }}</button>
+                              </div>
+                              <span v-else-if="item.start_date && item.end_date && item.is_giahan === 'TRUE'" style="color: #10b981; font-weight: 700; font-size: 12px;">Đã gia hạn ✔</span>
+                              <span v-else-if="item.start_date && item.end_date && item.is_giahan === 'FALSE'" style="color: #ef4444; font-weight: 700; font-size: 12px;">Không gia hạn ✖</span>
+                              <span v-else style="color: #64748b;">-</span>
+                            </td>
                           </tr>
                         </tbody>
                       </table>
@@ -1449,6 +1565,8 @@ import ExcelJS from 'exceljs'
 const router = useRouter()
 const route = useRoute()
 const BASE_URL = 'https://script.google.com/macros/s/AKfycbx1yDOQLxYgJb5w30KmxQHF8AYUZln_5q58HCKP4zlUmtJye6aJBiSt3oyT0j_3QaigdQ/exec'
+const durationFilterMonths = ref(0)
+
 
 interface Contract {
   ma_hop_dong: string; so_hop_dong: string; ma_khach_hang: string; ten_khach_hang: string
@@ -1475,6 +1593,9 @@ interface ContractGroup { goc: string; latest: Contract; versions: Contract[] }
 
 const loading = ref(false)
 const contracts = ref<Contract[]>([])
+// removed duplicates
+
+// Moved down
 const allDetailsRaw = ref<any[][]>([])
 const allHdRaw = ref<any[][]>([])
 const customersRaw = ref<any[][]>([])
@@ -1511,11 +1632,89 @@ function showAsyncError(title: string, msg: string = '') {
 
 const collapsedGroups = reactive<Record<string, boolean>>({})
 
-const searchKeyword = ref(''); const statusFilter = ref('ALL'); const customerFilter = ref('ALL'); const fromDate = ref(''); const toDate = ref(''); const showCustomerModal = ref(false); const enableDateFilter = ref(false);
+const getTodayStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+const getThisWeekStr = () => {
+  const d = new Date();
+  const dObj = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = dObj.getUTCDay() || 7;
+  dObj.setUTCDate(dObj.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(dObj.getUTCFullYear(),0,1));
+  const weekNo = Math.ceil((((dObj.getTime() - yearStart.getTime()) / 86400000) + 1)/7);
+  return `${dObj.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+}
+const getThisMonthStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+const getThisYearStr = () => {
+  return new Date().getFullYear().toString();
+}
+
+const searchKeyword = ref(''); const statusFilter = ref('ALL'); const customerFilter = ref('ALL'); 
+const fromDate = ref(getTodayStr()); const toDate = ref(getTodayStr()); 
+const weekFrom = ref(getThisWeekStr()); const weekTo = ref(getThisWeekStr());
+const monthFrom = ref(getThisMonthStr()); const monthTo = ref(getThisMonthStr());
+const yearFrom = ref(getThisYearStr()); const yearTo = ref(getThisYearStr());
+const showCustomerModal = ref(false); 
+const enableDateFilter = ref(false);
+const dateFilterMode = ref('day');
+
+const getWeekDateRange = (weekStr: string) => {
+  const [year, week] = weekStr.split('-W').map(Number);
+  const d = new Date(year, 0, 4);
+  const day = d.getDay() || 7;
+  d.setDate(d.getDate() - day + 1 + (week - 1) * 7);
+  const from = new Date(d);
+  from.setHours(0, 0, 0, 0);
+  const to = new Date(d);
+  to.setDate(to.getDate() + 6);
+  to.setHours(23, 59, 59, 999);
+  return { from, to };
+};
+const durationTargetMode = ref<'day'|'week'|'month'|'year'>('day')
+const durationTargetDate = ref(getTodayStr())
+const durationTargetWeek = ref(getThisWeekStr())
+const durationTargetMonth = ref(getThisMonthStr())
+const durationTargetYear = ref(new Date().getFullYear())
+
+const getDurationFilterRange = () => {
+  if (durationTargetMode.value === 'day') {
+    const p = durationTargetDate.value.split('-');
+    const d = new Date(+p[0], +p[1] - 1, +p[2]);
+    d.setHours(0, 0, 0, 0);
+    const end = new Date(d);
+    end.setHours(23, 59, 59, 999);
+    return { start: d, end };
+  } else if (durationTargetMode.value === 'week') {
+    return { start: getWeekDateRange(durationTargetWeek.value).from, end: getWeekDateRange(durationTargetWeek.value).to };
+  } else if (durationTargetMode.value === 'month') {
+    const [y, m] = durationTargetMonth.value.split('-');
+    const start = new Date(+y, +m - 1, 1);
+    const end = new Date(+y, +m, 0, 23, 59, 59, 999);
+    return { start, end };
+  } else {
+    const y = durationTargetYear.value;
+    const start = new Date(y, 0, 1);
+    const end = new Date(y, 11, 31, 23, 59, 59, 999);
+    return { start, end };
+  }
+}
+
 const processingFilter = ref('ALL'); const dateSortOrder = ref('DESC');
 
-const hasActiveFilters = computed(() => searchKeyword.value || statusFilter.value !== 'ALL' || customerFilter.value !== 'ALL' || processingFilter.value !== 'ALL' || dateSortOrder.value !== 'DESC' || (enableDateFilter.value && (fromDate.value || toDate.value)))
-function clearFilters() { searchKeyword.value = ''; statusFilter.value = 'ALL'; customerFilter.value = 'ALL'; processingFilter.value = 'ALL'; dateSortOrder.value = 'DESC'; fromDate.value = ''; toDate.value = ''; enableDateFilter.value = false; }
+const hasActiveFilters = computed(() => searchKeyword.value || statusFilter.value !== 'ALL' || customerFilter.value !== 'ALL' || processingFilter.value !== 'ALL' || dateSortOrder.value !== 'DESC' || (enableDateFilter.value && (fromDate.value || toDate.value || weekFrom.value || weekTo.value || monthFrom.value || monthTo.value || yearFrom.value || yearTo.value)))
+function clearFilters() { 
+  searchKeyword.value = ''; statusFilter.value = 'ALL'; customerFilter.value = 'ALL'; 
+  processingFilter.value = 'ALL'; dateSortOrder.value = 'DESC'; 
+  fromDate.value = getTodayStr(); toDate.value = getTodayStr(); 
+  weekFrom.value = getThisWeekStr(); weekTo.value = getThisWeekStr(); 
+  monthFrom.value = getThisMonthStr(); monthTo.value = getThisMonthStr(); 
+  yearFrom.value = getThisYearStr(); yearTo.value = getThisYearStr(); 
+  enableDateFilter.value = false; dateFilterMode.value = 'day'; 
+}
 
 const uniqueCustomers = computed(() => {
   const map = new Map<string, string>()
@@ -1545,9 +1744,6 @@ function parseVietnameseDate(dateStr: string): Date | null {
 }
 
 const filteredContracts = computed(() => {
-  const from = (enableDateFilter.value && fromDate.value) ? new Date(fromDate.value) : null; 
-  const to = (enableDateFilter.value && toDate.value) ? new Date(toDate.value) : null;
-  if (from) from.setHours(0, 0, 0, 0); if (to) to.setHours(23, 59, 59, 999)
   const filtered = contracts.value.filter(c => {
     if (statusFilter.value !== 'ALL' && c.trang_thai !== statusFilter.value) return false
     if (processingFilter.value !== 'ALL') {
@@ -1555,8 +1751,35 @@ const filteredContracts = computed(() => {
       if (processingFilter.value === 'PROCESSING' && c.is_completed) return false;
     }
     if (customerFilter.value !== 'ALL' && c.ma_khach_hang !== customerFilter.value) return false
-    if (searchKeyword.value) { const kw = searchKeyword.value.toLowerCase(); if (!`${c.so_hop_dong} ${c.ten_khach_hang} ${c.ma_khach_hang} ${c.ma_hop_dong} ${c.ghi_chu} ${c.so_po}`.toLowerCase().includes(kw)) return false }
-    if (from || to) { const d = parseVietnameseDate(c.ngay_tao); if (d) { if (from && d < from) return false; if (to && d > to) return false } }
+    if (searchKeyword.value) { 
+      const regex = createFuzzyRegex(searchKeyword.value);
+      const textToSearch = `${c.so_hop_dong} ${c.ten_khach_hang} ${c.ma_khach_hang} ${c.ma_hop_dong} ${c.ghi_chu} ${c.so_po}`;
+      if (regex) {
+        if (!regex.test(textToSearch)) return false;
+      } else {
+        const kw = searchKeyword.value.toLowerCase(); 
+        if (!textToSearch.toLowerCase().includes(kw)) return false;
+      }
+    }
+    
+    if (enableDateFilter.value) {
+      const d = parseVietnameseDate(c.ngay_tao);
+      if (!d) return false;
+      if (dateFilterMode.value === 'day') {
+        if (fromDate.value) { const f = new Date(fromDate.value); f.setHours(0,0,0,0); if (d < f) return false; }
+        if (toDate.value) { const t = new Date(toDate.value); t.setHours(23,59,59,999); if (d > t) return false; }
+      } else if (dateFilterMode.value === 'week') {
+        if (weekFrom.value) { const { from } = getWeekDateRange(weekFrom.value); if (d < from) return false; }
+        if (weekTo.value) { const { to } = getWeekDateRange(weekTo.value); if (d > to) return false; }
+      } else if (dateFilterMode.value === 'month') {
+        if (monthFrom.value) { const [y,m] = monthFrom.value.split('-'); const f = new Date(Number(y), Number(m)-1, 1, 0,0,0,0); if (d < f) return false; }
+        if (monthTo.value) { const [y,m] = monthTo.value.split('-'); const t = new Date(Number(y), Number(m), 0, 23,59,59,999); if (d > t) return false; }
+      } else if (dateFilterMode.value === 'year') {
+        if (yearFrom.value) { const f = new Date(Number(yearFrom.value), 0, 1, 0,0,0,0); if (d < f) return false; }
+        if (yearTo.value) { const t = new Date(Number(yearTo.value), 11, 31, 23,59,59,999); if (d > t) return false; }
+      }
+    }
+    
     return true
   })
   
@@ -1631,48 +1854,52 @@ const displayedStandaloneContracts = computed(() => {
 })
 
 function calculateDaysDiff(startStr: string, endStr: string): number {
-  if (!startStr || !endStr) return 0;
-  const p1 = startStr.split('/');
+  if (!endStr) return 0;
   const p2 = endStr.split('/');
-  if (p1.length !== 3 || p2.length !== 3) return 0;
-  const d1 = new Date(+p1[2], +p1[1] - 1, +p1[0]);
+  if (p2.length !== 3) return 0;
+  
+  const range = getDurationFilterRange();
+  const d1 = new Date(range.end);
+  d1.setHours(0, 0, 0, 0);
   const d2 = new Date(+p2[2], +p2[1] - 1, +p2[0]);
+  d2.setHours(0, 0, 0, 0);
+  
   const diff = d2.getTime() - d1.getTime();
   const days = Math.ceil(diff / (1000 * 3600 * 24));
-  return days > 0 ? days : 0;
+  return days;
 }
 
 function formatDuration(startStr: string, endStr: string): string {
-  if (!startStr || !endStr) return '-'
-  const p1 = startStr.split('/')
-  const p2 = endStr.split('/')
-  if (p1.length !== 3 || p2.length !== 3) return '-'
-
-  const d1 = new Date(+p1[2], +p1[1] - 1, +p1[0])
-  const d2 = new Date(+p2[2], +p2[1] - 1, +p2[0])
-  if (d2 <= d1) return '-'
-
-  let years = d2.getFullYear() - d1.getFullYear()
-  let months = d2.getMonth() - d1.getMonth()
-  let days = d2.getDate() - d1.getDate()
-
-  if (days < 0) {
-    months--
-    const prevMonth = new Date(d2.getFullYear(), d2.getMonth(), 0)
-    days += prevMonth.getDate()
+  if (!endStr) return '-';
+  const p2 = endStr.split('/');
+  if (p2.length !== 3) return '-';
+  
+  const range = getDurationFilterRange();
+  const baseStart = new Date(range.start);
+  baseStart.setHours(0, 0, 0, 0);
+  const baseEnd = new Date(range.end);
+  baseEnd.setHours(0, 0, 0, 0);
+  
+  const endDate = new Date(+p2[2], +p2[1] - 1, +p2[0]);
+  endDate.setHours(0, 0, 0, 0);
+  
+  const diffStart = endDate.getTime() - baseStart.getTime();
+  const daysLeftStart = Math.ceil(diffStart / (1000 * 3600 * 24));
+  
+  const diffEnd = endDate.getTime() - baseEnd.getTime();
+  const daysLeftEnd = Math.ceil(diffEnd / (1000 * 3600 * 24));
+  
+  if (durationTargetMode.value === 'day') {
+    return daysLeftEnd < 0 ? `Quá hạn ${Math.abs(daysLeftEnd)} ngày` : (daysLeftEnd === 0 ? 'Hết hạn hôm nay' : `Còn ${daysLeftEnd} ngày`);
+  } else {
+    if (daysLeftStart < 0 && daysLeftEnd < 0) {
+      return `Quá hạn ${Math.abs(daysLeftStart)} - ${Math.abs(daysLeftEnd)} ngày`;
+    } else if (daysLeftStart >= 0 && daysLeftEnd >= 0) {
+      return `Còn ${daysLeftEnd} - ${daysLeftStart} ngày`;
+    } else {
+      return `Còn ${daysLeftStart} ngày -> Quá hạn ${Math.abs(daysLeftEnd)} ngày`;
+    }
   }
-
-  if (months < 0) {
-    years--
-    months += 12
-  }
-
-  const parts: string[] = []
-  if (years > 0) parts.push(`${years} năm`)
-  if (months > 0) parts.push(`${months} tháng`)
-  if (days > 0) parts.push(`${days} ngày`)
-
-  return parts.length > 0 ? parts.join(' ') : '0 ngày'
 }
 
 const hasAnyData = computed(() => displayedGroupedContracts.value.length > 0 || displayedStandaloneContracts.value.length > 0)
@@ -1694,6 +1921,8 @@ const allDurationRows = computed(() => {
         ten_ncc: String(r[6]||''),
         start_date: sd,
         end_date: ed,
+        ma_hang: String(r[2]||''),
+        is_giahan: String(r[30] ?? '').trim().toUpperCase(),
         _contract: c,
         _rawRow: r
       })
@@ -1702,7 +1931,7 @@ const allDurationRows = computed(() => {
   return rows
 })
 
-const durationFilterMonths = ref(0)
+// removed
 const durationCustomerFilter = ref('')
 const durationCustomerSearch = ref('')
 const durationItemSearch = ref('')
@@ -1710,17 +1939,27 @@ const showDurationCustomerModal = ref(false)
 const durationSortOrder = ref('')
 const durationCardFilter = ref('all')
 
+const highlightItem = computed(() => {
+  if (!route.query.highlight) return ''
+  return String(route.query.highlight).trim()
+})
+
+const isHighlighted = (tenHang: string | undefined | null) => {
+  if (!tenHang || !highlightItem.value) return false
+  return highlightItem.value === String(tenHang).trim()
+}
+
 const durationCardCounts = computed(() => {
   const rows = allDurationRows.value
-  let nodate = 0, long = 0, renew = 0, expired = 0
+  let nodate = 0, long = 0, renew = 0, handled = 0
   for (const r of rows) {
     if (!r.start_date || !r.end_date) { nodate++; continue }
+    if (r.is_giahan === 'TRUE' || r.is_giahan === 'FALSE') { handled++; continue }
     const days = calculateDaysDiff(r.start_date, r.end_date)
-    if (days < 0) expired++
-    else if (days < 90) renew++
+    if (days < 90) renew++
     else long++
   }
-  return { all: rows.length, nodate, long, renew, expired }
+  return { all: rows.length, nodate, long, renew, handled }
 })
 
 const filteredDurationCustomers = computed(() => {
@@ -1755,9 +1994,13 @@ const filteredDurationRows = computed(() => {
     rows = rows.filter(r => {
       if (durationCardFilter.value === 'nodate') return !r.start_date || !r.end_date
       if (!r.start_date || !r.end_date) return false
+      
+      if (durationCardFilter.value === 'handled') return r.is_giahan === 'TRUE' || r.is_giahan === 'FALSE'
+      
+      if (r.is_giahan === 'TRUE' || r.is_giahan === 'FALSE') return false
+      
       const days = calculateDaysDiff(r.start_date, r.end_date)
-      if (durationCardFilter.value === 'expired') return days < 0
-      if (durationCardFilter.value === 'renew') return days >= 0 && days < 90
+      if (durationCardFilter.value === 'renew') return days < 90
       if (durationCardFilter.value === 'long') return days >= 90
       return true
     })
@@ -1782,13 +2025,16 @@ const filteredDurationRows = computed(() => {
       const tenKhNorm = normalize(r.ten_khach_hang || '')
       const tenCtyNorm = normalize(r.ten_cong_ty || '')
       const mstNorm = normalize(mst)
+      const maHopDongNorm = normalize(r.ma_hop_dong || '')
+      const maHopDong = (r.ma_hop_dong || '').toLowerCase()
       
       return words.every(w => {
         const wNorm = normalize(w)
         return tenHang.includes(w) || tenHangNorm.includes(wNorm) ||
                tenKh.includes(w) || tenKhNorm.includes(wNorm) ||
                tenCty.includes(w) || tenCtyNorm.includes(wNorm) ||
-               mst.includes(w) || mstNorm.includes(wNorm)
+               mst.includes(w) || mstNorm.includes(wNorm) ||
+               maHopDong.includes(w) || maHopDongNorm.includes(wNorm)
       })
     })
   }
@@ -1832,13 +2078,50 @@ const groupedDurationRows = computed(() => {
 function toggleGroup(goc: string) { collapsedGroups[goc] = !collapsedGroups[goc] }
 function truncate(s: string, len: number) { return !s ? '' : s.length > len ? s.substring(0, len) + '...' : s }
 
+function createFuzzyRegex(search: string): RegExp | null {
+  if (!search) return null;
+  const searchNormalized = search.toLowerCase().replace(/[^a-z0-9]/gi, '');
+  if (!searchNormalized) return null;
+
+  let pattern = '';
+  const skip = '[^a-zA-Z0-9\\u00C0-\\u024F\\u1E00-\\u1EFF]*';
+  const map: Record<string, string> = {
+    'a': '[aáàảãạăắằẳẵặâấầẩẫậAÁÀẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬ]',
+    'e': '[eéèẻẽẹêếềểễệEÉÈẺẼẸÊẾỀỂỄỆ]',
+    'i': '[iíìỉĩịIÍÌỈĨỊ]',
+    'o': '[oóòỏõọôốồổỗộơớờởỡợOÓÒỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢ]',
+    'u': '[uúùủũụưứừửữựUÚÙỦŨỤƯỨỪỬỮỰ]',
+    'y': '[yýỳỷỹỵYÝỲỶỸỴ]',
+    'd': '[dđDĐ]',
+  };
+  
+  for (const char of searchNormalized) {
+    const p = map[char] || char;
+    pattern += p + skip;
+  }
+  pattern = pattern.substring(0, pattern.length - skip.length);
+  
+  try {
+    return new RegExp(`(${pattern})`, 'gi');
+  } catch (e) {
+    return null;
+  }
+}
+
 function highlightText(text: string, search: string) {
   if (!text) return '';
   if (!search) return String(text);
-  const searchWords = search.toLowerCase().split(/\s+/).filter(Boolean);
-  if (searchWords.length === 0) return String(text);
   
+  const regex = createFuzzyRegex(search);
   let result = String(text);
+
+  if (regex) {
+    return result.replace(regex, '<span style="background-color: #ef4444; color: #ffffff; border-radius: 2px; padding: 0 2px; font-weight: bold;">$1</span>');
+  }
+
+  const searchWords = search.toLowerCase().split(/\s+/).filter(Boolean);
+  if (searchWords.length === 0) return result;
+  
   const map: Record<string, string> = {
     'a': '[aáàảãạăắằẳẵặâấầẩẫậAÁÀẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬ]',
     'e': '[eéèẻẽẹêếềểễệEÉÈẺẼẸÊẾỀỂỄỆ]',
@@ -1855,21 +2138,20 @@ function highlightText(text: string, search: string) {
       const c = char.toLowerCase();
       pattern += map[c] ? map[c] : char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
-    const regex = new RegExp(`(${pattern})`, 'gi');
+    const rx = new RegExp(`(${pattern})`, 'gi');
     
-    // Prevent nested matches by splitting on existing marks
     result = result.split('___MARK_START___').map((part, index) => {
-      if (index === 0) return part.replace(regex, '___MARK_START___$1___MARK_END___');
+      if (index === 0) return part.replace(rx, '___MARK_START___$1___MARK_END___');
       const subParts = part.split('___MARK_END___');
       if (subParts.length === 2) {
-        return subParts[0] + '___MARK_END___' + subParts[1].replace(regex, '___MARK_START___$1___MARK_END___');
+        return subParts[0] + '___MARK_END___' + subParts[1].replace(rx, '___MARK_START___$1___MARK_END___');
       }
       return part;
     }).join('___MARK_START___');
   }
   
   return result
-    .replace(/___MARK_START___/g, '<span style="background-color: rgba(249,115,22,0.3); color: #fdba74; border-radius: 2px;">')
+    .replace(/___MARK_START___/g, '<span style="background-color: #ef4444; color: #ffffff; border-radius: 2px; padding: 0 2px; font-weight: bold;">')
     .replace(/___MARK_END___/g, '</span>');
 }
 
@@ -2026,7 +2308,8 @@ function viewDetails(contract: Contract) {
       don_vi_tien_te: String(r[15]||''), ti_gia: Number(r[16]||1),
       don_vi_tien_te_usd: String(r[23]||''), ti_gia_usd: Number(r[24]||1),
       gia_tieu_chuan_usd: Number(r[25]||0), don_gia_usd: Number(r[26]||0), gia_nhap_usd: Number(r[27]||0),
-      start_date: parseDateDDMMYYYY(r[28]), end_date: parseDateDDMMYYYY(r[29])
+      start_date: parseDateDDMMYYYY(r[28]), end_date: parseDateDDMMYYYY(r[29]),
+      is_giahan: String(r[30] ?? '').trim().toUpperCase()
     })); loadingDetails.value = false
   }, 100)
 }
@@ -2169,6 +2452,45 @@ function updateEndDateBasedOnDuration(item: any) {
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const yyyy = d.getFullYear();
   item.end_date = `${dd}/${mm}/${yyyy}`;
+}
+
+const statusEffects = ref<Record<string, string>>({});
+
+async function updateGiaHanStatus(item: any, status: string) {
+  const payload = {
+    ma_hop_dong: item._contract ? item._contract.ma_hop_dong : selectedContract.value?.ma_hop_dong,
+    ma_hang: item.ma_hang,
+    is_giahan: status
+  }
+  if (!payload.ma_hop_dong) return
+
+  // Optimistic UI Effect
+  const key = `${payload.ma_hop_dong}_${item.ma_hang}`;
+  statusEffects.value[key] = status;
+  setTimeout(() => {
+    delete statusEffects.value[key];
+    item.is_giahan = status;
+    // Cập nhật lại vào mảng gốc allDetailsRaw
+    if (item._rawRow) {
+      item._rawRow[30] = status;
+      // Kích hoạt reactivity
+      allDetailsRaw.value = [...allDetailsRaw.value]
+    } else {
+      const row = allDetailsRaw.value.find(r => 
+        String(r[0]||'') === payload.ma_hop_dong && String(r[2]||'') === item.ma_hang
+      )
+      if (row) {
+        while (row.length < 31) row.push('');
+        row[30] = status;
+        allDetailsRaw.value = [...allDetailsRaw.value]
+      }
+    }
+  }, 800);
+
+  // Gửi API ngầm bên dưới
+  postApi('update_giahan_status', payload).catch(e => {
+    console.error('Lỗi khi cập nhật trạng thái gia hạn', e);
+  });
 }
 function formatCurrencyDisplay(n: number) {
   if (quoteCurrency.value === 'USD') {
@@ -2489,6 +2811,8 @@ function formatDateTimeVN(d: Date) {
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${pad(d.getHours())}:${pad(d.getMinutes())}.${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`
 }
+
+
 
 function chotDealAndSaleReport(item: Contract) {
   if (item.is_completed) return
@@ -2870,6 +3194,9 @@ onMounted(async () => {
     if (route.query.customer) {
       durationCustomerFilter.value = String(route.query.customer)
     }
+    if (route.query.search) {
+      durationItemSearch.value = String(route.query.search)
+    }
     router.replace({ path: '/quanlybaogia' })
   } else if (qTab === 'baogia') {
     pageTab.value = 'baogia'
@@ -2882,12 +3209,29 @@ onMounted(async () => {
     if (route.query.sort) {
       dateSortOrder.value = String(route.query.sort)
     }
+    if (route.query.search) {
+      searchKeyword.value = String(route.query.search)
+    }
     router.replace({ path: '/quanlybaogia' })
   }
 })
 </script>
 
 <style scoped>
+.highlighted-duration-row {
+  background: rgba(239, 68, 68, 0.4) !important;
+  box-shadow: inset 0 0 15px rgba(239, 68, 68, 0.5) !important;
+  animation: pulse-red 2s infinite;
+}
+.highlighted-duration-row:hover {
+  background: rgba(239, 68, 68, 0.5) !important;
+}
+
+@keyframes pulse-red {
+  0% { box-shadow: inset 0 0 15px rgba(239, 68, 68, 0.5); }
+  50% { box-shadow: inset 0 0 25px rgba(239, 68, 68, 0.8); }
+  100% { box-shadow: inset 0 0 15px rgba(239, 68, 68, 0.5); }
+}
 .dur-cust-item { transition: all 0.15s; }
 .dur-cust-item:hover { background: rgba(255,255,255,0.03) !important; }
 .dur-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }

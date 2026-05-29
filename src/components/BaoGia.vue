@@ -515,6 +515,7 @@ interface CustomTemplate {
   id: string;
   name: string;
   data: string;
+  content?: string;
 }
 const customTemplates = ref<CustomTemplate[]>([])
 const _storedTpls = localStorage.getItem('custom_excel_templates')
@@ -3815,7 +3816,7 @@ function identifyExcelCol(text: string): string | null {
   const t = String(text || '').toUpperCase().trim()
   if (!t) return null
   if (t === 'STT' || t === 'SỐ TT' || t === 'NO.' || t === 'TT') return 'stt'
-  if (t.includes('TÊN HÀNG') || t.includes('HÀNG HÓA') || t.includes('DỊCH VỤ')) return 'ten_hang'
+  if (t.includes('TÊN HÀNG') || t.includes('HÀNG HÓA') || t.includes('DỊCH VỤ') || t.includes('MODEL')) return 'ten_hang'
   if (t.includes('DIỄN GIẢI') || t.includes('DIEN GIAI') || t.includes('MÔ TẢ') || t.includes('ĐẶC TÍNH') || t.includes('THÔNG SỐ') || t.includes('NỘI DUNG') || t.includes('HẠNG MỤC') || t.includes('DESCRIPTION') || t.includes('SPEC')) return 'mo_ta'
   if (t === 'ĐVT' || t === 'DVT' || t.includes('ĐƠN VỊ TÍNH') || t.includes('DON VI') || t === 'UNIT') return 'dvt'
   if (t.includes('SỐ LƯỢNG') || t.includes('S.LƯỢNG') || t === 'SL' || t === 'S.L' || t === 'S.L.' || t.includes('SO LUONG') || t === 'QTY') return 'so_luong'
@@ -4302,21 +4303,55 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value, specificTe
     currentFooterIdx++;
   });
   
-  ws.getCell('A7').value = `Kính gởi: ${targetKhach?.Ten_cong_ty || ''}`;
-  
-  const cellA8 = ws.getCell('A8');
-  cellA8.value = `Địa chỉ: ${targetKhach?.Dia_chi_cong_ty || targetKhach?.ADDRESS || ''}`;
-  cellA8.font = { ...cellA8.font, italic: true };
-  
-  const cellA9 = ws.getCell('A9');
-  cellA9.value = `Người nhận: ${targetKhach?.Ten_khach_hang || targetKhach?.CUS_CONTACT || ''}`;
-  cellA9.font = { ...cellA9.font, italic: true };
-  
   const now = new Date();
   const dd = now.getDate().toString().padStart(2, '0');
   const mm = (now.getMonth() + 1).toString().padStart(2, '0');
   const yyyy = now.getFullYear();
-  ws.getCell('G7').value = `Ngày : ${dd}/${mm}/${yyyy}`;
+
+  let foundKinhGoi = false;
+  let foundDiaChi = false;
+  let foundNguoiNhan = false;
+  let foundNgay = false;
+
+  for (let r = 1; r <= 30; r++) {
+    const row = ws.getRow(r);
+    row.eachCell((cell) => {
+      const val = typeof cell.value === 'string' ? cell.value : (cell.value?.richText ? cell.value.richText.map((rt: any) => rt.text).join('') : '');
+      if (val) {
+        const lower = val.toLowerCase().trim();
+        if (lower.startsWith('kính gởi') || lower.startsWith('kính gửi')) {
+          cell.value = `Kính gởi: ${targetKhach?.Ten_cong_ty || ''}`;
+          foundKinhGoi = true;
+        } else if (lower.startsWith('địa chỉ') && !lower.includes('giao hàng') && !lower.includes('công ty')) {
+          cell.value = `Địa chỉ: ${targetKhach?.Dia_chi_cong_ty || targetKhach?.ADDRESS || ''}`;
+          cell.font = { ...cell.font, italic: true };
+          foundDiaChi = true;
+        } else if (lower.startsWith('người nhận') && !lower.includes('hàng')) {
+          cell.value = `Người nhận: ${targetKhach?.Ten_khach_hang || targetKhach?.CUS_CONTACT || ''}`;
+          cell.font = { ...cell.font, italic: true };
+          foundNguoiNhan = true;
+        } else if (lower.startsWith('ngày :') || lower.startsWith('ngày:')) {
+          cell.value = `Ngày : ${dd}/${mm}/${yyyy}`;
+          foundNgay = true;
+        }
+      }
+    });
+  }
+
+  if (!specificTemplateData) {
+    if (!foundKinhGoi) ws.getCell('A7').value = `Kính gởi: ${targetKhach?.Ten_cong_ty || ''}`;
+    if (!foundDiaChi) {
+      const cellA8 = ws.getCell('A8');
+      cellA8.value = `Địa chỉ: ${targetKhach?.Dia_chi_cong_ty || targetKhach?.ADDRESS || ''}`;
+      cellA8.font = { ...cellA8.font, italic: true };
+    }
+    if (!foundNguoiNhan) {
+      const cellA9 = ws.getCell('A9');
+      cellA9.value = `Người nhận: ${targetKhach?.Ten_khach_hang || targetKhach?.CUS_CONTACT || ''}`;
+      cellA9.font = { ...cellA9.font, italic: true };
+    }
+    if (!foundNgay) ws.getCell('G7').value = `Ngày : ${dd}/${mm}/${yyyy}`;
+  }
   
   // The colored line above the footer is actually an Image in the Excel template.
   // ExcelJS spliceRows shifts cell values but DOES NOT shift images.
@@ -4377,6 +4412,10 @@ async function handleCustomTemplateUpload(event: Event) {
     showAsyncError('Lỗi đọc file', e.message || String(e))
   }
   (event.target as HTMLInputElement).value = ''
+}
+
+function saveCustomTemplates() {
+  localStorage.setItem('custom_excel_templates', JSON.stringify(customTemplates.value))
 }
 
 function removeCustomTemplate(id: string) {
@@ -5369,11 +5408,13 @@ onUnmounted(() => {
 
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 12px;">
               <!-- Danh sách các template đã upload -->
-              <div v-for="tpl in customTemplates" :key="tpl.id" class="export-tpl-loaded" style="margin-bottom: 0;">
+              <div v-for="tpl in customTemplates" :key="tpl.id" class="export-tpl-loaded" style="margin-bottom: 0; display: flex; flex-direction: column;">
                 <div class="export-tpl-loaded-icon">
                   <img src="/excel-icon.png" alt="Excel" style="width: 32px; height: 32px;" />
                 </div>
-                <div class="export-tpl-loaded-name" style="text-align: center; text-decoration: underline; cursor: pointer;" @click="downloadCustomTemplate(tpl)">{{ tpl.name }}</div>
+                <div class="export-tpl-loaded-name" style="text-align: center; text-decoration: underline; cursor: pointer; margin-bottom: 6px;" @click="downloadCustomTemplate(tpl)">{{ tpl.name }}</div>
+
+                <textarea v-model="tpl.content" @change="saveCustomTemplates" placeholder="Nội dung lưu kèm..." style="width: 100%; min-height: 50px; font-size: 11px; padding: 6px; border-radius: 6px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 8px; resize: vertical;"></textarea>
 
                 <div class="export-tpl-actions" style="margin-top: auto; width: 100%; display: flex; gap: 8px;">
                   <button @click="showExportInfoModal = false; openExportExcelModal(tpl.data)" class="export-tpl-change-btn">
@@ -5523,7 +5564,7 @@ onUnmounted(() => {
               </div>
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">ĐVT</label>
-                <input v-model="itemForm.DVT" list="dvt-options" placeholder="CÁI, BỘ, BẢN QUYỀN..." style="width: 100%; padding: 10px 14px; border-radius: 8px;" @input="itemForm.DVT = $event.target.value.toUpperCase()" />
+                <input v-model="itemForm.DVT" list="dvt-options" placeholder="CÁI, BỘ, BẢN QUYỀN..." style="width: 100%; padding: 10px 14px; border-radius: 8px;" />
               </div>
             </div>
             
@@ -5720,7 +5761,7 @@ onUnmounted(() => {
               </div>
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">ĐVT</label>
-                <input v-model="cardEdit.DVT" list="dvt-options" placeholder="CÁI, BỘ, BẢN QUYỀN..." style="width: 100%; padding: 10px 14px; border-radius: 8px;" @input="cardEdit.DVT = $event.target.value.toUpperCase()" />
+                <input v-model="cardEdit.DVT" list="dvt-options" placeholder="CÁI, BỘ, BẢN QUYỀN..." style="width: 100%; padding: 10px 14px; border-radius: 8px;" />
               </div>
             </div>
             
@@ -6041,7 +6082,7 @@ onUnmounted(() => {
               <!-- 5: ĐVT -->
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">ĐVT</label>
-                <input id="qe-DVT" v-model="quoteEdit.DVT" list="dvt-options" style="width: 100%; padding: 10px 14px; border-radius: 8px; font-weight: 500;" @input="quoteEdit.DVT = $event.target.value.toUpperCase()" />
+                <input id="qe-DVT" v-model="quoteEdit.DVT" list="dvt-options" style="width: 100%; padding: 10px 14px; border-radius: 8px; font-weight: 500;" />
               </div>
 
               <!-- 6: License duration -->
@@ -6311,7 +6352,7 @@ onUnmounted(() => {
 
       <div>
         <label>Đơn vị (ĐVT)</label>
-        <input id="qeraw-DVT" v-model="quoteEditRaw.DVT" list="dvt-options" @input="quoteEditRaw.DVT = $event.target.value.toUpperCase()" />
+        <input id="qeraw-DVT" v-model="quoteEditRaw.DVT" list="dvt-options" />
       </div>
     </div>
 

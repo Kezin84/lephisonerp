@@ -37,6 +37,7 @@
             <label style="opacity: 0; user-select: none;" class="mobile-hidden-label">Chế độ</label>
             <div class="elite-mode-tabs">
               <button type="button" :class="{ active: filters.filterMode === 'day' }" @click="filters.filterMode = 'day'">Ngày</button>
+              <button type="button" :class="{ active: filters.filterMode === 'week' }" @click="filters.filterMode = 'week'">Tuần</button>
               <button type="button" :class="{ active: filters.filterMode === 'month' }" @click="filters.filterMode = 'month'">Tháng</button>
               <button type="button" :class="{ active: filters.filterMode === 'year' }" @click="filters.filterMode = 'year'">Năm</button>
             </div>
@@ -56,6 +57,18 @@
             <div class="elite-date-group group-date">
               <label>Đến ngày</label>
               <input type="date" v-model="filters.dateTo" :min="filters.dateFrom" @change="fetchReports" @click="e => e.target.showPicker && e.target.showPicker()" class="elite-input" />
+            </div>
+          </template>
+
+          <template v-if="filters.filterMode === 'week'">
+            <div class="elite-date-group group-date">
+              <label>Từ tuần</label>
+              <input type="week" v-model="filters.weekFrom" :max="filters.weekTo" @change="() => { filters.weekTo = filters.weekFrom; fetchReports() }" @click="e => e.target.showPicker && e.target.showPicker()" class="elite-input" />
+            </div>
+            <span class="elite-range-sep">→</span>
+            <div class="elite-date-group group-date">
+              <label>Đến tuần</label>
+              <input type="week" v-model="filters.weekTo" :min="filters.weekFrom" @change="fetchReports" @click="e => e.target.showPicker && e.target.showPicker()" class="elite-input" />
             </div>
           </template>
 
@@ -1724,8 +1737,11 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { useRoute } from 'vue-router'
 import * as XLSX from 'xlsx-js-style'
 import CustomSelect from './CustomSelect.vue'
+
+const route = useRoute()
 
 const isMobile = ref(window.innerWidth <= 768)
 const onResize = () => { isMobile.value = window.innerWidth <= 768 }
@@ -1797,6 +1813,28 @@ const getThisYearStr = () => {
   return new Date().getFullYear().toString();
 }
 
+const getWeekDateRange = (weekStr) => {
+  const [year, week] = weekStr.split('-W').map(Number);
+  const d = new Date(year, 0, 4);
+  const day = d.getDay() || 7;
+  d.setDate(d.getDate() - day + 1 + (week - 1) * 7);
+  const from = new Date(d);
+  from.setHours(0, 0, 0, 0);
+  const to = new Date(d);
+  to.setDate(to.getDate() + 6);
+  to.setHours(23, 59, 59, 999);
+  return { from, to };
+};
+
+function getWeekString(d) {
+  const date = new Date(d.getTime());
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+  const week1 = new Date(date.getFullYear(), 0, 4);
+  const week = 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+  return `${date.getFullYear()}-W${String(week).padStart(2, '0')}`;
+}
+
 const filters = ref({
   tag: '',
   phan_loai: '',
@@ -1804,6 +1842,8 @@ const filters = ref({
   filterMode: 'day',
   dateFrom: getTodayStr(),
   dateTo: getTodayStr(),
+  weekFrom: getWeekString(new Date()),
+  weekTo: getWeekString(new Date()),
   monthFrom: getThisMonthStr(),
   monthTo: getThisMonthStr(),
   yearFrom: getThisYearStr(),
@@ -1965,7 +2005,18 @@ const baseFilteredReports = computed(() => {
       if (displayTime.period !== filters.value.period) return false;
     }
     
-    if (filters.value.filterMode === 'day' && (filters.value.dateFrom || filters.value.dateTo)) {
+    if (filters.value.filterMode === 'week' && (filters.value.weekFrom || filters.value.weekTo)) {
+      const reportDate = parseDateFromReport(r.thoi_gian);
+      if (!reportDate) return false;
+      if (filters.value.weekFrom) {
+        const { from } = getWeekDateRange(filters.value.weekFrom);
+        if (reportDate < from) return false;
+      }
+      if (filters.value.weekTo) {
+        const { to } = getWeekDateRange(filters.value.weekTo);
+        if (reportDate > to) return false;
+      }
+    } else if (filters.value.filterMode === 'day' && (filters.value.dateFrom || filters.value.dateTo)) {
       const reportDate = parseDateFromReport(r.thoi_gian);
       if (!reportDate) return false;
       if (filters.value.dateFrom) {
@@ -2054,6 +2105,62 @@ const desktopViewMode = ref('detail');
 
 const dailyColumns = computed(() => {
   const grouped = {};
+  
+  // 1. Tạo sẵn các ngày trống trong phạm vi bộ lọc
+  let startDate = null;
+  let endDate = null;
+  
+  try {
+    if (filters.value.filterMode === 'week') {
+      if (filters.value.weekFrom) startDate = getWeekDateRange(filters.value.weekFrom).from;
+      if (filters.value.weekTo) endDate = getWeekDateRange(filters.value.weekTo).to;
+    } else if (filters.value.filterMode === 'day') {
+      if (filters.value.dateFrom) startDate = new Date(filters.value.dateFrom);
+      if (filters.value.dateTo) endDate = new Date(filters.value.dateTo);
+    } else if (filters.value.filterMode === 'month') {
+      if (filters.value.monthFrom) {
+        const [y, m] = filters.value.monthFrom.split('-');
+        startDate = new Date(y, parseInt(m)-1, 1);
+      }
+      if (filters.value.monthTo) {
+        const [y, m] = filters.value.monthTo.split('-');
+        endDate = new Date(y, parseInt(m), 0);
+      }
+    } else if (filters.value.filterMode === 'year') {
+      if (filters.value.yearFrom) startDate = new Date(filters.value.yearFrom, 0, 1);
+      if (filters.value.yearTo) endDate = new Date(filters.value.yearTo, 11, 31);
+    }
+    
+    if (startDate && endDate && !isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
+      startDate.setHours(0,0,0,0);
+      endDate.setHours(0,0,0,0);
+      let d = new Date(startDate);
+      let count = 0;
+      while (d <= endDate && count < 366) {
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        const dateKey = `${yyyy}-${mm}-${dd}`;
+        
+        const dayOfWeek = d.getDay() + 1;
+        const thuLabel = dayOfWeek === 1 ? 'CN' : `Thứ ${dayOfWeek}`;
+        
+        grouped[dateKey] = {
+          dateKey,
+          dateObj: new Date(d),
+          dateLabel: `${dd} / ${mm} / ${yyyy}`,
+          thuLabel,
+          morning: [],
+          afternoon: []
+        };
+        
+        d.setDate(d.getDate() + 1);
+        count++;
+      }
+    }
+  } catch(e) { console.error("Lỗi tạo ngày trống", e); }
+  
+  // 2. Điền dữ liệu thật vào
   filteredReports.value.forEach(r => {
     const parsed = parseDateFromReport(r.thoi_gian);
     if (!parsed) return;
@@ -3086,7 +3193,10 @@ const recalcDistributeTasks = () => {
 const openDistributeModal = () => {
   let startDate, endDate;
   
-  if (filters.value.filterMode === 'day') {
+  if (filters.value.filterMode === 'week') {
+    startDate = getWeekDateRange(filters.value.weekFrom).from;
+    endDate = getWeekDateRange(filters.value.weekTo).to;
+  } else if (filters.value.filterMode === 'day') {
     startDate = new Date(filters.value.dateFrom);
     endDate = new Date(filters.value.dateTo);
   } else if (filters.value.filterMode === 'month') {
@@ -3402,7 +3512,12 @@ const openMoveModal = () => {
 
 const moveDaysCalendar = computed(() => {
   let startStr, endStr;
-  if (filters.value.filterMode === 'day') {
+  if (filters.value.filterMode === 'week') {
+    const fromR = getWeekDateRange(filters.value.weekFrom).from;
+    const toR = getWeekDateRange(filters.value.weekTo).to;
+    startStr = formatToYYYYMMDD(fromR);
+    endStr = formatToYYYYMMDD(toR);
+  } else if (filters.value.filterMode === 'day') {
     startStr = filters.value.dateFrom;
     endStr = filters.value.dateTo;
   } else if (filters.value.filterMode === 'month') {
@@ -3628,7 +3743,10 @@ const formatToYYYYMMDD = (d) => {
 const showEmptyDays = () => {
   let startDate, endDate;
   
-  if (filters.value.filterMode === 'day') {
+  if (filters.value.filterMode === 'week') {
+    startDate = getWeekDateRange(filters.value.weekFrom).from;
+    endDate = getWeekDateRange(filters.value.weekTo).to;
+  } else if (filters.value.filterMode === 'day') {
     startDate = new Date(filters.value.dateFrom);
     endDate = new Date(filters.value.dateTo);
   } else if (filters.value.filterMode === 'month') {
@@ -3855,6 +3973,11 @@ const doExportExcel = () => {
 }
 
 onMounted(() => {
+  if (route.query.date) {
+    filters.value.filterMode = 'day'
+    filters.value.dateFrom = String(route.query.date)
+    filters.value.dateTo = String(route.query.date)
+  }
   fetchReports()
   window.addEventListener('resize', onResize)
 })
@@ -7971,6 +8094,142 @@ span[style*="color: #334155"] {
 .empty-add-btn-simple:hover {
   transform: scale(1.1) translateY(-2px);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+}
+
+@media (min-width: 1024px) {
+  /* Biến khối toàn bộ tab "Theo ngày" thành 1 trục timeline dọc duy nhất nối liền các ngày */
+  .daily-view-container {
+    position: relative;
+    padding-left: 0;
+  }
+  
+  /* Trục dọc chính xuyên suốt nối các ngày với nhau */
+  .daily-view-container::before {
+    content: '';
+    position: absolute;
+    top: 25px; /* Bắt đầu từ trống đầu tiên */
+    bottom: 0;
+    left: 240px; /* Dịch line sang phải đủ xa để chứa thẻ VIP */
+    width: 2px;
+    background-color: rgba(255, 255, 255, 0.08); /* Line mỏng tinh tế cho nền tối */
+    z-index: 1;
+  }
+  
+  /* Bỏ nền dạng thẻ card của khối từng ngày */
+  .daily-day-block {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-start !important;
+    position: relative;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    margin-bottom: 3.5rem !important; /* Tăng khoảng cách các ngày */
+    overflow: visible !important; /* Chống cắt bóng hoặc cắt góc chữ */
+  }
+  .daily-day-block::before {
+    display: none !important; /* Xoá dải gradient màu ở trên cùng */
+  }
+  
+  /* Phần Header (chứa Ngày/Tháng) biến thành cột bên trái đường line */
+  .daily-day-header {
+    width: 240px !important; /* Tăng width lên 240px để chữ không bao giờ bị cắt */
+    box-sizing: border-box !important;
+    flex-shrink: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-end !important;
+    justify-content: flex-start !important;
+    padding: 0 40px 0 20px !important; /* Có padding trái 20px để tránh cấn lề, padding phải 40px để tách xa đường line */
+    background: transparent !important;
+    border: none !important;
+    position: relative;
+    z-index: 2;
+  }
+  
+  /* Bỏ hoàn toàn dấu chấm mốc thời gian của Ngày theo yêu cầu */
+  .daily-day-header::after {
+    display: none !important;
+  }
+  
+  /* Tạo phong cách VIP CARD tách biệt cho Ngày/Tháng */
+  .daily-day-badge {
+    flex-direction: column !important;
+    gap: 10px !important;
+    align-items: center !important;
+    background: linear-gradient(145deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.9) 100%) !important;
+    border-radius: 16px !important;
+    padding: 1.25rem 1rem !important;
+    width: 100% !important; /* 240 - 40 - 20 = 180px -> chữ hoàn toàn vừa vặn */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    backdrop-filter: blur(8px) !important;
+  }
+  
+  .daily-day-badge:hover {
+    transform: translateY(-4px) scale(1.02) !important;
+  }
+  
+  
+  /* Thay đổi màu đồng nhất (Xanh Lá/Emerald) cho thẻ Card và nút Thứ theo yêu cầu */
+  .daily-day-badge {
+    border: 1px solid rgba(16, 185, 129, 0.4) !important;
+    box-shadow: 0 8px 25px -8px rgba(16, 185, 129, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.05) !important;
+  }
+  .daily-day-badge:hover {
+    box-shadow: 0 12px 35px -8px rgba(16, 185, 129, 0.7), inset 0 2px 4px rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(16, 185, 129, 0.8) !important;
+  }
+  
+  .daily-badge-thu {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important; /* Xanh lá */
+    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4) !important;
+  }
+  
+  .daily-badge-date {
+    font-size: 1.15rem !important;
+    font-weight: 800 !important;
+    color: #f8fafc !important; /* Chữ TRẮNG tinh */
+    background: transparent !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+    line-height: 1.2;
+    text-align: center !important;
+    width: 100% !important;
+    white-space: nowrap !important; /* Chữ luôn nguyên hàng */
+    letter-spacing: 0.5px !important;
+  }
+  
+  .daily-badge-thu {
+    font-size: 0.85rem !important;
+    color: #ffffff !important;
+    font-weight: 800 !important;
+    padding: 0.35rem 1rem !important;
+    border-radius: 20px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+    line-height: 1.2;
+    text-align: center !important;
+    width: fit-content !important;
+  }
+  
+  /* Ẩn cục tổng số việc để giao diện bên trái thoáng đãng và sạch sẽ nhất */
+  .daily-count-badge {
+    display: none !important;
+  }
+  
+  /* Cột nội dung (Các thẻ công việc Sáng/Chiều) dạt qua phải đường line */
+  .daily-periods {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding-left: 45px !important; /* Khoảng cách từ trục dọc tới nội dung */
+    padding-top: 0 !important;
+    padding-right: 0 !important;
+    padding-bottom: 0 !important;
+    gap: 2rem !important;
+  }
 }
 </style>
 
