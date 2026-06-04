@@ -521,8 +521,11 @@ const saveRecord = async () => {
       props.quoteFinancials?.chenhLechGia ?? 0,             // 29 chenh_lech_gia
       props.quoteFinancials?.conLai ?? 0,                   // 30 con_lai
       props.quoteFinancials?.tongChietKhau ?? 0,            // 31 tong_chiet_khau
-      props.maHopDongGoc || maHD,                                  // 32 ma_hop_dong_goc
-      false                                                 // 33 isCompleted
+      props.maHopDongGoc || maHD,                           // 32 ma_hop_dong_goc
+      false,                                                // 33 isCompleted
+      '',                                                   // 34 ten_file
+      '',                                                   // 35 link_file
+      JSON.stringify(props.excelMappingConfig || [])        // 36 structure
     ]
 
     const hdChiTietRows: any[] = []
@@ -700,6 +703,7 @@ const saveRecord = async () => {
 const props = defineProps<{
   khach: any,
   customers?: any[],
+  excelMappingConfig?: any[],
   soHopDong: string,
   maHopDong: string,
   maHopDongCu?: string,

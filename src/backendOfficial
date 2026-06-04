@@ -314,7 +314,7 @@ function buildReportMessage(label) {
   const pending = all.filter(r => String(r[6]).trim().toLowerCase() !== "hoàn thành");
 
   const fmt = rows => {
-    if (rows.length === 0) return "  <i>(không có)</i>";
+    if (rows.length === 0) return "  (không có)";
 
     const grouped = {};
     rows.forEach(r => {
@@ -337,16 +337,16 @@ function buildReportMessage(label) {
   };
 
   return [
-    `${label}`,
-    `📅 Ngày: <b>${today}</b>`,
-    ``,
-    `✅ <b>Hoàn thành (${done.length})</b>`,
+    `${label} ( ${today} )`,
+    `🔰 TỔNG CỘNG : ${all.length} VIỆC`,
+    `============================`,
+    `✅ Hoàn thành (${done.length})`,
     fmt(done),
     ``,
-    `🔄 <b>Chưa hoàn thành (${pending.length})</b>`,
+    `⚠️ Chưa hoàn thành (${pending.length})`,
     fmt(pending),
     ``,
-    `📊 Tổng: ${all.length} công việc`
+    `👉 <a href="https://sonaierp.vercel.app/report">Truy cập Trang Báo Cáo</a>`
   ].join("\n");
 }
 
@@ -367,8 +367,10 @@ function buildFullDailyReport(targetDateObj) {
   const workDone = todaysWork.filter(r => String(r[6]) === 'Hoàn thành');
   const workPending = todaysWork.filter(r => String(r[6]) !== 'Hoàn thành');
 
+  let tin1 = `<b>🔴 BÁO CÁO CÔNG VIỆC HÔM QUA ( ${targetDateStr2} )🔴</b>`;
+
   let workText = [];
-  workText.push(`BÁO CÁO CÔNG VIỆC ${targetDateStr2}`);
+  workText.push(`1. CÔNG VIỆC ${targetDateStr2}`);
   workText.push(`🔰 TỔNG CỘNG : ${todaysWork.length} VIỆC`);
   workText.push(`============================`);
   
@@ -445,7 +447,7 @@ function buildFullDailyReport(targetDateObj) {
   const quotePending = processedGroups.filter(g => !g.isCompleted);
 
   let quoteText = [];
-  quoteText.push(`BÁO CÁO BÁO GIÁ ${targetDateStr2}`);
+  quoteText.push(`2. BÁO GIÁ ${targetDateStr2}`);
   quoteText.push(`✅ TỔNG XỬ LÝ : ${processedGroups.length} báo giá`);
   quoteText.push(`============================`);
   
@@ -534,20 +536,25 @@ function buildFullDailyReport(targetDateObj) {
   renewalList.sort((a, b) => a.daysLeft - b.daysLeft);
 
   let renewalText = [];
-  renewalText.push(`BÁO CÁO GIA HẠN SẢN PHẨM ${targetDateStr2}`);
+  renewalText.push(`3. GIA HẠN SẢN PHẨM `);
   renewalText.push(`📛 Tổng SP gia hạn : ${renewalList.length} sản phẩm `);
 
   let workFull = workText.join('\n').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  workFull += `\n\n👉 <a href="https://sonaierp.vercel.app/report">Truy cập Trang Báo Cáo</a>`;
+
   let quoteFull = quoteText.join('\n').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  quoteFull += `\n\n👉 <a href="https://sonaierp.vercel.app/quanlybaogia">Truy cập Quản Lý Báo Giá</a>`;
+
   let renewalFull = renewalText.join('\n').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  renewalFull += `\n\n👉 <a href="https://sonaierp.vercel.app/quanlybaogia">Truy cập Quản Lý Báo Giá</a>`;
   
-  return [workFull, quoteFull, renewalFull];
+  return [tin1, workFull, quoteFull, renewalFull];
 }
 
 // ─────────────────────────────────────────────────────────────
-//  TRIGGER: gửi lúc 6:00 sáng (dữ liệu hôm trước)
+//  TRIGGER: gửi lúc 7:00 sáng (dữ liệu hôm trước)
 // ─────────────────────────────────────────────────────────────
-function sendReport_6am() {
+function sendReport_7am() {
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
   const msgs = buildFullDailyReport(yesterday);
@@ -558,18 +565,25 @@ function sendReport_6am() {
 }
 
 // ─────────────────────────────────────────────────────────────
-//  TRIGGER: gửi lúc 12:00 trưa
+//  TRIGGER: gửi lúc 11:00 trưa
 // ─────────────────────────────────────────────────────────────
-function sendReport_12h() {
-  const msg = buildReportMessage("🕛 <b>BÁO CÁO BUỔI TRƯA (12:00)</b>");
+function sendReport_11h() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2, "0");
+  const todayStr = `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()}`;
+  
+  sendTelegram(`<b>🟢 BÁO CÁO CÔNG VIỆC HÔM NAY ( ${todayStr} )🟢</b>`);
+  Utilities.sleep(1000);
+
+  const msg = buildReportMessage("🕛 <b>BÁO CÁO BUỔI TRƯA</b>");
   sendTelegram(msg);
 }
 
 // ─────────────────────────────────────────────────────────────
-//  TRIGGER: gửi lúc 17:00 chiều
+//  TRIGGER: gửi lúc 16:00 chiều
 // ─────────────────────────────────────────────────────────────
-function sendReport_17h() {
-  const msg = buildReportMessage("🕔 <b>BÁO CÁO CUỐI NGÀY (17:00)</b>");
+function sendReport_16h() {
+  const msg = buildReportMessage("🕔 <b>BÁO CÁO CUỐI NGÀY</b>");
   sendTelegram(msg);
 }
 
@@ -578,33 +592,33 @@ function sendReport_17h() {
 // ─────────────────────────────────────────────────────────────
 function setupDailyTriggers() {
   ScriptApp.getProjectTriggers().forEach(t => {
-    if (["sendReport_6am", "sendReport_12h","sendReport_17h"].includes(t.getHandlerFunction())) {
+    if (["sendReport_7am", "sendReport_11h","sendReport_16h"].includes(t.getHandlerFunction())) {
       ScriptApp.deleteTrigger(t);
     }
   });
 
-  ScriptApp.newTrigger("sendReport_6am")
+  ScriptApp.newTrigger("sendReport_7am")
     .timeBased()
     .everyDays(1)
-    .atHour(6)
+    .atHour(7)
     .nearMinute(0)
     .create();
 
-  ScriptApp.newTrigger("sendReport_12h")
+  ScriptApp.newTrigger("sendReport_11h")
     .timeBased()
     .everyDays(1)
-    .atHour(12)
+    .atHour(11)
     .nearMinute(0)
     .create();
 
-  ScriptApp.newTrigger("sendReport_17h")
+  ScriptApp.newTrigger("sendReport_16h")
     .timeBased()
     .everyDays(1)
-    .atHour(17)
+    .atHour(16)
     .nearMinute(0)
     .create();
 
-  Logger.log("✅ Đã tạo 3 trigger: 6:00, 12:00 và 17:00 mỗi ngày.");
+  Logger.log("✅ Đã tạo 3 trigger: 7:00, 11:00 và 16:00 mỗi ngày.");
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -635,7 +649,7 @@ function doGet(e) {
 
   // --- TÍCH HỢP BÁO GIÁ ---
   const action = params.action || "";
-  const bgActions = ["all", "hang_hoa", "khach_hang", "hop_dong_tong_quat", "hop_dong_chi_tiet", "hop_dong_version", "hop_dong_active", "dieu_khoan", "po_dxmh", "chi_tiet_mua_hang", "deal_reg"];
+  const bgActions = ["all", "hang_hoa", "khach_hang", "hop_dong_tong_quat", "hop_dong_chi_tiet", "hop_dong_version", "hop_dong_active", "dieu_khoan", "po_dxmh", "chi_tiet_mua_hang", "deal_reg", "upload_file_mau"];
   if (bgActions.includes(action)) {
     return bg_doGet(e);
   }
@@ -757,6 +771,8 @@ function doPost(e) {
         result = dr_postData(payload);
       } else if (sheet === "sale_report") {
         result = sr_postData(payload);
+      } else if (sheet === "upload_file_mau") {
+        result = ufm_postData(payload);
       } else {
         result = postData(payload);
       }
@@ -1004,7 +1020,8 @@ const BG_SHEETS = {
     po_dxmh: 'PO_DXMH',
     chi_tiet_mua_hang: 'chi_tiet_mua_hang',
     deal_reg: 'deal_reg',
-    sale_report: 'sale_report'
+    sale_report: 'sale_report',
+    upload_file_mau: 'upload_file_mau'
 }
 
 /* =========================
@@ -1313,8 +1330,8 @@ function markDraftsAsCompleted_(shTong, maGoc, excludeMaHD) {
 /* =========================
  * CONST COL COUNT (SCHEMA)
  * ========================= */
-const HD_TONG_COLS = 36 // +2 cols: [34]ten_file [35]link_file
-const HD_CT_COLS = 31 // +3 cols: [28]start_date [29]end_date [30]is_giahan
+const HD_TONG_COLS = 37 // +3 cols: [34]ten_file [35]link_file [36]structure
+const HD_CT_COLS = 32 // +4 cols: [28]start_date [29]end_date [30]is_giahan [31]thoi_gian_bao_hanh
 const HD_VER_COLS = 5 // ✅ version sheet cols
 
 function normalizeRow_(arr, cols) {
@@ -2671,4 +2688,72 @@ function sr_deleteByContract(p) {
   }
   sr_invalidate_(); clearGetCache_();
   return {status:"success",action:"delete_by_contract",deleted};
+}
+
+/* =========================================
+ *  UPLOAD FILE MAU MODULE
+ * ========================================= */
+function ufm_getSheet_() {
+  return SpreadsheetApp.getActiveSpreadsheet().getSheetByName("upload_file_mau");
+}
+
+function ufm_postData(payload) {
+  const action = payload.action;
+  if (action === "add") {
+    return ufm_addRow(payload);
+  } else if (action === "update") {
+    return ufm_updateRow(payload);
+  } else if (action === "delete") {
+    return ufm_deleteRow(payload);
+  }
+  return { status: "error", message: "Invalid action for upload_file_mau" };
+}
+
+function ufm_addRow(p) {
+  const sh = ufm_getSheet_();
+  if (!sh) return { status: "error", message: "Khong tim thay sheet upload_file_mau" };
+  
+  sh.appendRow([
+    p.id || String(Date.now()),
+    p.ten_file || "",
+    p.link_file || "",
+    p.structure || "",
+    p.ghi_chu || ""
+  ]);
+  return { status: "success", action: "add", id: p.id };
+}
+
+function ufm_updateRow(p) {
+  const sh = ufm_getSheet_();
+  if (!sh) return { status: "error", message: "Khong tim thay sheet upload_file_mau" };
+  const id = String(p.id);
+  if (!id) return { status: "error", message: "id bat buoc" };
+  
+  const data = sh.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]) === id) {
+      if (p.ten_file !== undefined) sh.getRange(i + 1, 2).setValue(p.ten_file);
+      if (p.link_file !== undefined) sh.getRange(i + 1, 3).setValue(p.link_file);
+      if (p.structure !== undefined) sh.getRange(i + 1, 4).setValue(p.structure);
+      if (p.ghi_chu !== undefined) sh.getRange(i + 1, 5).setValue(p.ghi_chu);
+      return { status: "success", action: "update", id: id };
+    }
+  }
+  return { status: "error", message: "Khong tim thay id de update" };
+}
+
+function ufm_deleteRow(p) {
+  const sh = ufm_getSheet_();
+  if (!sh) return { status: "error", message: "Khong tim thay sheet upload_file_mau" };
+  const id = String(p.id);
+  if (!id) return { status: "error", message: "id bat buoc" };
+  
+  const data = sh.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]) === id) {
+      sh.deleteRow(i + 1);
+      return { status: "success", action: "delete", id: id };
+    }
+  }
+  return { status: "error", message: "Khong tim thay id de delete" };
 }

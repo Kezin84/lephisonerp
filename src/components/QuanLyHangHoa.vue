@@ -96,6 +96,7 @@
             <p class="product-desc text-muted" v-if="item.Mo_ta_chung" :title="item.Mo_ta_chung">{{ item.Mo_ta_chung }}</p>
             <div class="price-info-box">
               <p>License duration: <span>{{ item.License_duration || '-' }}</span></p>
+              <p>Thời hạn bảo hành: <span>{{ item.thoi_han_bao_hanh || '-' }}</span></p>
               <p>Đơn vị tiền tệ: <span>{{ item.Don_vi_tien_te || '-' }}</span></p>
               <p>Tỉ giá: <span>{{ item.Ti_gia ? formatCurrency(item.Ti_gia, 'VND') : '-' }}</span></p>
               
@@ -143,6 +144,10 @@
                 <div class="form-group">
                   <label>License duration</label>
                   <input v-model="formData.License_duration" type="text" />
+                </div>
+                <div class="form-group">
+                  <label>Thời hạn bảo hành</label>
+                  <input v-model="formData.thoi_han_bao_hanh" type="text" />
                 </div>
                 <div class="form-group">
                   <label>Danh mục</label>
@@ -335,6 +340,7 @@
                 <th style="min-width:80px">Tỉ giá</th>
                 <th style="min-width:80px">ĐVT</th>
                 <th style="min-width:90px">License</th>
+                <th style="min-width:110px">Bảo hành</th>
                 <th style="min-width:110px">NCC</th>
                 <th style="min-width:110px">Mã NCC</th>
                 <!-- <th style="min-width:130px">Mô tả chung</th> -->
@@ -363,6 +369,7 @@
                 <td><NumberInput v-model="row.Ti_gia" class="imp-input imp-input--num imp-input--green" /></td>
                 <td><input type="text" v-model="row.DVT" class="imp-input imp-input--sm" /></td>
                 <td><input type="text" v-model="row.License_duration" class="imp-input" /></td>
+                <td><input type="text" v-model="row.thoi_han_bao_hanh" class="imp-input" /></td>
                 <td><input type="text" v-model="row.Ten_nha_cung_cap" class="imp-input" /></td>
                 <td><input type="text" v-model="row.Ma_nha_cung_cap" class="imp-input" /></td>
                 <!-- <td><input type="text" v-model="row.Mo_ta_chung" class="imp-input" /></td> -->
@@ -656,7 +663,8 @@ const handleFileUpload = (e) => {
               gia_hardware: 0,
               gia_nhap: toNum(giaNhap, 0),
               muc_phan_tram_off: 0,
-              Type: String(typeVal || '').trim()
+              Type: String(typeVal || '').trim(),
+              thoi_han_bao_hanh: ''
             })
           } else {
             // Nếu dòng không có mô tả sản phẩm (moTa trống), thì có thể đây là dòng danh mục (hàng màu hồng/xanh)
@@ -706,7 +714,7 @@ const confirmImport = async () => {
       p.Mo_ta_chung || '', p.Mo_ta_chi_tiet || '', p.Features || '', p.Danh_muc || '', p.License_duration || '',
       p.DVT || '', p.Gia_tieu_chuan || 0, p.Don_gia || 0, p.Trang_thai || '', p.Don_vi_tien_te || '',
       p.Ti_gia || 1, p.Thue_VAT || 0, p.Ma_hang_lien_ket || '', p.Ten_hang_lien_ket || '', p.Ghi_chu || '',
-      p.gia_hardware || 0, p.gia_nhap || 0, p.muc_phan_tram_off || 0, p.Type || ''
+      p.gia_hardware || 0, p.gia_nhap || 0, p.muc_phan_tram_off || 0, p.Type || '', p.thoi_han_bao_hanh || ''
     ])
     
     const body = new URLSearchParams()
@@ -766,7 +774,8 @@ const defaultForm = {
   gia_hardware: '',
   gia_nhap: '',
   muc_phan_tram_off: '',
-  Type: ''
+  Type: '',
+  thoi_han_bao_hanh: ''
 }
 
 const formData = ref({ ...defaultForm })
@@ -908,7 +917,8 @@ const fetchData = async () => {
           gia_hardware: row[20],
           gia_nhap: row[21],
           muc_phan_tram_off: row[22],
-          Type: (row[23] || '').toString().trim()
+          Type: (row[23] || '').toString().trim(),
+          thoi_han_bao_hanh: row[24] || ''
         };
       })
     }
@@ -1005,7 +1015,8 @@ const saveItem = async () => {
       formData.value.gia_hardware || 0,
       formData.value.gia_nhap || 0,
       formData.value.muc_phan_tram_off || 0,
-      formData.value.Type || ''
+      formData.value.Type || '',
+      formData.value.thoi_han_bao_hanh || ''
     ]
 
     const body = new URLSearchParams()

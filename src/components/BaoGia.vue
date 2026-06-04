@@ -10,6 +10,7 @@ import draggable from 'vuedraggable'
 import ExcelEditor from './ExcelEditor.vue'
 import FormattedInput from './FormattedInput.vue'
 import PipelinePreviewModal from './PipelinePreviewModal.vue'
+import html2canvas from 'html2canvas'
 
 const route = useRoute()
 const router = useRouter()
@@ -35,6 +36,7 @@ type HangHoa = {
   Features: string
   Danh_muc: string
   License_duration: string
+  thoi_han_bao_hanh: string
   DVT: string
   Gia_tieu_chuan: number
   Don_gia: number
@@ -516,21 +518,423 @@ interface CustomTemplate {
   name: string;
   data: string;
   content?: string;
+  mappingConfig?: any[];
 }
 const customTemplates = ref<CustomTemplate[]>([])
-const _storedTpls = localStorage.getItem('custom_excel_templates')
-if (_storedTpls) { try { customTemplates.value = JSON.parse(_storedTpls) } catch(e) {} }
+const editingTemplateId = ref<string | null>(null)
+const tempMappingConfig = ref<any[]>([])
 
-const _storedTpl = localStorage.getItem('custom_excel_template')
-if (_storedTpl && customTemplates.value.length === 0) {
+// ---- EXCEL MAPPING CONFIG ----
+const showExcelConfigModal = ref(false)
+
+const availableExcelFields = [
+  { value: 'pn', label: 'MÃ HÀNG' },
+  { value: 'ten_hang', label: 'TÊN HÀNG' },
+  { value: 'hang', label: 'HÃNG' },
+  { value: 'danh_muc', label: 'DANH MỤC' },
+  { value: 'don_vi_tien_te', label: 'ĐƠN VỊ TIỀN TỆ' },
+  { value: 'ti_gia', label: 'TỈ GIÁ' },
+  { value: 'dvt', label: 'DVT' },
+  { value: 'license_duration', label: 'LICENSE DURATION' },
+  { value: 'thoi_gian_bao_hanh', label: 'THỜI GIAN BẢO HÀNH' },
+  { value: 'features', label: 'MÔ TẢ SẢN PHẨM' },
+  { value: 'ghi_chu', label: 'GHI CHÚ' },
+  { value: 'list_price', label: 'LIST PRICE' },
+  { value: 'don_gia_nhap', label: 'GIÁ NHẬP' },
+  { value: 'muc_off_hang', label: '% OFF HÃNG' },
+  { value: 'gia_tieu_chuan', label: 'GIÁ OFF HÃNG' },
+  { value: 'so_luong', label: 'SỐ LƯỢNG' },
+  { value: 'muc_off', label: '% OFF' },
+  { value: 'don_gia', label: 'GIÁ OFF' },
+  { value: 'thue_vat', label: '%VAT' },
+  { value: 'vat', label: 'GIÁ VAT' },
+  { value: 'don_gia_kh', label: 'ĐƠN GIÁ KH' },
+  { value: 'truoc_thue', label: 'TT TRƯỚC THUẾ' },
+  { value: 'sau_thue', label: 'TT SAU THUẾ' },
+  { value: 'stt', label: 'SỐ THỨ TỰ' },
+  { value: 'empty', label: '(BỎ TRỐNG)' }
+]
+
+const defaultExcelConfig = [
+  { header: 'STT', field: 'stt' },
+  { header: 'TÊN HÀNG HÓA', field: 'ten_hang' },
+  { header: 'MÔ TẢ SẢN PHẨM', field: 'features' },
+  { header: 'ĐVT', field: 'dvt' },
+  { header: 'SỐ LƯỢNG', field: 'so_luong' },
+  { header: 'ĐƠN GIÁ', field: 'don_gia_kh' },
+  { header: 'THÀNH TIỀN', field: 'truoc_thue' },
+  { header: 'VAT', field: 'vat' },
+  { header: 'SAU THUẾ', field: 'sau_thue' }
+]
+
+const excelMappingConfig = ref(JSON.parse(JSON.stringify(defaultExcelConfig)))
+const useDynamicExcelMapping = ref(true)
+
+function loadExcelConfig() {
   try {
-    const p = JSON.parse(_storedTpl);
-    const newId = Date.now().toString();
-    customTemplates.value.push({ id: newId, name: p.name, data: p.data });
-    localStorage.setItem('custom_excel_templates', JSON.stringify(customTemplates.value));
-    localStorage.removeItem('custom_excel_template');
-  } catch(e) {}
+    const saved = localStorage.getItem('baogia_excelMappingConfig')
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      if (Array.isArray(parsed) && parsed.length >= 3) {
+        excelMappingConfig.value = parsed
+      }
+    }
+    const savedDynamic = localStorage.getItem('baogia_useDynamicExcelMapping')
+    if (savedDynamic !== null) {
+      useDynamicExcelMapping.value = savedDynamic === 'true'
+    }
+  } catch (e) {
+    console.error('Lỗi load cấu hình excel', e)
+  }
 }
+loadExcelConfig()
+
+function saveExcelConfig() {
+  localStorage.setItem('baogia_excelMappingConfig', JSON.stringify(excelMappingConfig.value))
+  localStorage.setItem('baogia_useDynamicExcelMapping', String(useDynamicExcelMapping.value))
+  showExcelConfigModal.value = false
+}
+
+function resetExcelConfig() {
+  if (editingTemplateId.value) {
+    tempMappingConfig.value = JSON.parse(JSON.stringify(defaultExcelConfig))
+  } else {
+    tempMappingConfig.value = JSON.parse(JSON.stringify(defaultExcelConfig))
+    excelMappingConfig.value = JSON.parse(JSON.stringify(defaultExcelConfig))
+  }
+}
+
+function applyCurrencyToHeaders(config: any[], targetCurrency?: string) {
+  const currency = (targetCurrency || quoteCurrency.value || 'VND').toUpperCase();
+  const currLabel = currency.includes('USD') ? 'USD' : 'VND';
+  config.forEach(col => {
+    if (['don_gia_kh', 'truoc_thue', 'sau_thue'].includes(col.field)) {
+      let baseHeader = col.header.replace(/\s*\(\s*(VND|VNĐ|USD)\s*\)/ig, '').trim();
+      col.header = `${baseHeader} (${currLabel})`;
+    }
+  });
+}
+
+async function openTemplateConfigModal(tpl: any) {
+  editingTemplateId.value = tpl.id
+  if (tpl.mappingConfig && tpl.mappingConfig.length > 0) {
+    tempMappingConfig.value = JSON.parse(JSON.stringify(tpl.mappingConfig))
+    applyCurrencyToHeaders(tempMappingConfig.value)
+    showExcelConfigModal.value = true
+  } else {
+    try {
+      showAsyncLoading('Đang phân tích cấu trúc file...')
+      const response = await fetch(tpl.data)
+      const buffer = await response.arrayBuffer()
+      const wb = new ExcelJS.Workbook()
+      await wb.xlsx.load(buffer)
+      const ws0 = wb.worksheets[0]
+      const extractedConfig = extractHeadersFromWorksheet(ws0)
+      if (extractedConfig.length > 0) {
+        tempMappingConfig.value = extractedConfig
+      } else {
+        tempMappingConfig.value = JSON.parse(JSON.stringify(excelMappingConfig.value))
+      }
+      applyCurrencyToHeaders(tempMappingConfig.value)
+      showAsyncSuccess('', '')
+      showExcelConfigModal.value = true
+    } catch (err) {
+      showAsyncError('Lỗi', 'Không thể đọc file mẫu.')
+      tempMappingConfig.value = JSON.parse(JSON.stringify(excelMappingConfig.value))
+      applyCurrencyToHeaders(tempMappingConfig.value)
+      showExcelConfigModal.value = true
+    }
+  }
+}
+
+function extractHeadersFromWorksheet(ws0: any): any[] {
+  let found = false
+  let extractedConfig: any[] = []
+  
+  ws0.eachRow((row: any, rowNumber: number) => {
+    if (found) return
+    
+    // Build set of secondary merged columns on this row
+    const mergedSecondary = new Set<number>()
+    try {
+      const mergesObj = (ws0 as any)._merges || {}
+      Object.values(mergesObj).forEach((m: any) => {
+        const model = m.model || m
+        if (model.top <= rowNumber && model.bottom >= rowNumber) {
+          for (let c = model.left + 1; c <= model.right; c++) {
+            mergedSecondary.add(c)
+          }
+        }
+      })
+    } catch (e) {}
+    
+    // Count non-empty, non-merged-secondary cells
+    let nonEmpty = 0
+    for (let c = 1; c <= 20; c++) {
+      if (mergedSecondary.has(c)) continue
+      const v = row.getCell(c).value
+      if (v !== null && v !== undefined && excelCellText(v).trim()) nonEmpty++
+    }
+    
+    if (nonEmpty >= 3) {
+      // Verify at least 1 recognized field
+      let recognized = 0
+      for (let c = 1; c <= 20; c++) {
+        if (mergedSecondary.has(c)) continue
+        const v = row.getCell(c).value
+        if (v !== null && v !== undefined && identifyExcelCol(excelCellText(v))) recognized++
+      }
+      if (recognized >= 1) {
+        found = true
+        // Find last non-empty, non-merged-secondary column
+        let lastCol = 1
+        for (let c = 50; c >= 1; c--) {
+          if (mergedSecondary.has(c)) continue
+          const v = row.getCell(c).value
+          if (v !== null && v !== undefined && excelCellText(v).trim()) {
+            lastCol = c
+            break
+          }
+          // Also check if this col is the end of a merge that started with content
+          if (mergedSecondary.has(c)) {
+            lastCol = c
+            break
+          }
+        }
+        // Also consider: the actual last column might be the right edge of a merge
+        try {
+          const mergesObj = (ws0 as any)._merges || {}
+          Object.values(mergesObj).forEach((m: any) => {
+            const model = m.model || m
+            if (model.top <= rowNumber && model.bottom >= rowNumber && model.right > lastCol) {
+              lastCol = model.right
+            }
+          })
+        } catch (e) {}
+        
+        // Extract columns, skipping secondary merged cells
+        for (let c = 1; c <= lastCol; c++) {
+          if (mergedSecondary.has(c)) continue
+          const v = row.getCell(c).value
+          const text = excelCellText(v).trim()
+          const field = text ? (identifyExcelCol(text) || 'empty') : 'empty'
+          extractedConfig.push({ header: text || `(Cột ${c})`, field: field, colIndex: c })
+        }
+      }
+    }
+  })
+  
+  return extractedConfig
+}
+
+function openDefaultConfigModal() {
+  editingTemplateId.value = null
+  tempMappingConfig.value = JSON.parse(JSON.stringify(excelMappingConfig.value))
+  applyCurrencyToHeaders(tempMappingConfig.value)
+  showExcelConfigModal.value = true
+}
+
+async function saveExcelConfigModal() {
+  if (editingTemplateId.value) {
+    const tpl = customTemplates.value.find(t => t.id === editingTemplateId.value)
+    if (tpl) {
+      tpl.mappingConfig = JSON.parse(JSON.stringify(tempMappingConfig.value))
+      
+      const payload = {
+        sheet: 'upload_file_mau',
+        action: 'update',
+        id: tpl.id,
+        structure: JSON.stringify(tpl.mappingConfig)
+      }
+      
+      try {
+        showAsyncLoading('Đang lưu cấu hình...')
+        await fetch(BASE_URL, {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        })
+        showAsyncSuccess('Thành công', 'Đã lưu cấu hình Data Mapping riêng cho template.')
+      } catch (err) {
+        showAsyncError('Lỗi', 'Không thể lưu cấu hình')
+      }
+    }
+  } else {
+    excelMappingConfig.value = JSON.parse(JSON.stringify(tempMappingConfig.value))
+    saveExcelConfig()
+  }
+  showExcelConfigModal.value = false
+}
+
+// ---- Native column drag-and-drop (professional animation) ----
+const colDragIdx = ref(-1)
+const colDragOverIdx = ref(-1)
+const colJustDropped = ref(-1)
+let _dragGhostEl: HTMLElement | null = null
+
+function colDragStart(idx: number, e: DragEvent) {
+  // Don't drag when interacting with form elements
+  const target = e.target as HTMLElement
+  if (target.closest('input, select, button, textarea')) {
+    e.preventDefault()
+    return
+  }
+  colDragIdx.value = idx
+
+  // Create custom drag ghost: clone the header cell
+  const cell = target.closest('th, td') as HTMLElement
+  if (cell && e.dataTransfer) {
+    const ghost = cell.cloneNode(true) as HTMLElement
+    ghost.style.cssText = `
+      position: fixed; top: -9999px; left: -9999px;
+      width: ${cell.offsetWidth}px;
+      opacity: 0.85;
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      border: 2px solid #10b981;
+      border-radius: 10px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.25), 0 0 0 1px rgba(16,185,129,0.3);
+      transform: rotate(2deg) scale(1.04);
+      pointer-events: none;
+      z-index: 99999;
+      overflow: hidden;
+    `
+    document.body.appendChild(ghost)
+    _dragGhostEl = ghost
+    e.dataTransfer.setDragImage(ghost, cell.offsetWidth / 2, 30)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', String(idx))
+  }
+}
+
+function colDragOver(idx: number, e: DragEvent) {
+  if (colDragIdx.value === -1) return
+  e.preventDefault()
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+  colDragOverIdx.value = idx
+}
+
+function colDrop(idx: number) {
+  if (colDragIdx.value === -1 || colDragIdx.value === idx) {
+    colDragIdx.value = -1
+    colDragOverIdx.value = -1
+    return
+  }
+  const item = tempMappingConfig.value.splice(colDragIdx.value, 1)[0]
+  tempMappingConfig.value.splice(idx, 0, item)
+  colDragIdx.value = -1
+  colDragOverIdx.value = -1
+  // Trigger drop animation
+  colJustDropped.value = idx
+  setTimeout(() => { colJustDropped.value = -1 }, 900)
+}
+
+function colDragEnd() {
+  colDragIdx.value = -1
+  colDragOverIdx.value = -1
+  // Clean up ghost element
+  if (_dragGhostEl) {
+    _dragGhostEl.remove()
+    _dragGhostEl = null
+  }
+}
+
+// Helper: get drag-over indicator CSS class for a cell at column index i
+function colDragCellClass(i: number) {
+  if (colJustDropped.value === i) return 'col-just-dropped'
+  if (colDragIdx.value === -1) return ''
+  if (colDragIdx.value === i) return 'col-dragging'
+  if (colDragOverIdx.value === i && colDragOverIdx.value !== colDragIdx.value) {
+    return colDragIdx.value < i ? 'col-drop-target col-drop-right' : 'col-drop-target col-drop-left'
+  }
+  return ''
+}
+
+function getPreviewCellValue(r: any, field: string) {
+  if (!r || r.type === 'group' || !r.item) return '';
+  const i = r.item;
+  const tg = toNum(i.Ti_gia, 1) || 1;
+  const isUsdExport = quoteCurrency.value === 'USD';
+  
+  switch (field) {
+    case 'stt': return r.stt;
+    case 'pn': return i.Ma_hang || '';
+    case 'ten_hang': return i.Ten_hang || '';
+    case 'hang': return i.Ten_nha_cung_cap || '';
+    case 'danh_muc': return i.Danh_muc || '';
+    case 'don_vi_tien_te': return i.Don_vi_tien_te || '';
+    case 'ti_gia': return formatCurrencyPreview(toNum(i.Ti_gia, 1), false);
+    case 'dvt': return i.DVT || '';
+    case 'license_duration': return i.License_duration || '';
+    case 'thoi_gian_bao_hanh': return i.thoi_han_bao_hanh || '';
+    case 'features': return i.Features || i.Ten_hang || '';
+    case 'ghi_chu': return i.Ghi_chu || '';
+    
+    case 'list_price': {
+      const lpVND = round2(donGiaLP(i) * tg);
+      const val = isUsdExport ? round2(lpVND / tg) : (Number(lpVND) || 0);
+      return formatCurrencyPreview(val, isUsdExport);
+    }
+    case 'don_gia_nhap': {
+      const nhapVND = round2(toNum(i.gia_nhap, 0) * tg);
+      const val = isUsdExport ? round2(nhapVND / tg) : (Number(nhapVND) || 0);
+      return formatCurrencyPreview(val, isUsdExport);
+    }
+    case 'muc_off_hang': return `${displayGiaTieuChuanPct(i)}%`;
+    case 'gia_tieu_chuan': {
+      const stdVND = standardPrice(i);
+      const val = isUsdExport ? round2(stdVND / tg) : (Number(stdVND) || 0);
+      return formatCurrencyPreview(val, isUsdExport);
+    }
+    case 'so_luong': return Number(i.So_luong) || 0;
+    case 'muc_off': return `${toNum(i.muc_phan_tram_off, 0)}%`;
+    case 'don_gia': {
+      const donGiaVND = unitPrice(i);
+      const val = isUsdExport ? round2(donGiaVND / tg) : (Number(donGiaVND) || 0);
+      return formatCurrencyPreview(val, isUsdExport);
+    }
+    case 'thue_vat': return `${toNum(i.Thue_VAT, 0)}%`;
+    case 'vat': {
+      const val = isUsdExport ? round2(lineVAT(i) / tg) : (Number(lineVAT(i)) || 0);
+      return formatCurrencyPreview(val, isUsdExport);
+    }
+    case 'don_gia_kh': {
+      const donGiaVND = unitPrice(i);
+      const val = isUsdExport ? round2(donGiaVND / tg) : (Number(donGiaVND) || 0);
+      return formatCurrencyPreview(val, isUsdExport);
+    }
+    case 'truoc_thue': {
+      const val = isUsdExport ? round2(lineTruocThue(i) / tg) : (Number(lineTruocThue(i)) || 0);
+      return formatCurrencyPreview(val, isUsdExport);
+    }
+    case 'sau_thue': {
+      const val = isUsdExport ? round2(lineSauThue(i) / tg) : (Number(lineSauThue(i)) || 0);
+      return formatCurrencyPreview(val, isUsdExport);
+    }
+    case 'empty': return '';
+    default: return '';
+  }
+}
+
+function formatCurrencyPreview(val: number, isUsd: boolean) {
+  if (isUsd) {
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(val);
+  }
+  return formatVND(val);
+}
+
+function getPreviewCellTotal(field: string) {
+  const isUsdExport = quoteCurrency.value === 'USD';
+  const t = isUsdExport ? totalsUSD.value : totals.value;
+  switch (field) {
+    case 'truoc_thue': return formatCurrencyPreview(Number(t.truoc) || 0, isUsdExport);
+    case 'vat': return formatCurrencyPreview(Number(t.vat) || 0, isUsdExport);
+    case 'sau_thue': return formatCurrencyPreview(Number(t.sau) || 0, isUsdExport);
+    default: return '';
+  }
+}
+
 const selectedPipelineKhach = ref<KhachHang | null>(null)
 
 const filteredPipelineCustomers = computed(() => {
@@ -632,7 +1036,140 @@ async function openPipelineSelectCustomerModal() {
   showPipelineModal.value = true;
 }
 
+const isExportingImage = ref(false)
+const exportImageContainer = ref<HTMLElement | null>(null)
 
+// ================= IMAGE KIT OPTIONS =================
+const showImageKitModal = ref(false)
+const kitOptions = reactive({
+  fontSize: 13,
+  padding: 40,
+  logoScale: 100,
+  tableMarginBottom: 25,
+  descWidth: 40 // percentage
+})
+
+const openImageKitModal = () => {
+  if (selectedItems.value.length === 0) {
+    triggerToast('Chưa có hàng trong báo giá.')
+    return
+  }
+  showImageKitModal.value = true
+}
+
+const exportToImage = async () => {
+  if (selectedItems.value.length === 0) {
+    triggerToast('Chưa có hàng trong báo giá.')
+    return
+  }
+  
+  // Open new tab immediately to prevent popup blocker
+  const newTab = window.open('', '_blank')
+  if (newTab) {
+    newTab.document.write('<html><body><h3 style="font-family:sans-serif;text-align:center;margin-top:50px;">Đang tạo ảnh Báo Giá, vui lòng đợi giây lát...</h3></body></html>')
+  } else {
+    triggerToast('Trình duyệt đã chặn tab mới. Vui lòng cho phép popup hiển thị!', 'error')
+    return
+  }
+
+  isExportingImage.value = true
+  try {
+    await nextTick()
+    await new Promise(r => setTimeout(r, 500))
+    if (!exportImageContainer.value) return
+    const canvas = await html2canvas(exportImageContainer.value, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff'
+    })
+    const dataUrl = canvas.toDataURL('image/png')
+    
+    if (newTab) {
+      newTab.document.open()
+      newTab.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Chỉnh Sửa Ảnh Báo Giá - ${soHopDong.value || maHopDong.value || 'Image'}</title>
+            <style>
+              body { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; font-family: 'Inter', sans-serif; background: #1e293b; }
+              #editor_container { width: 100%; height: 100%; }
+            </style>
+            <script src="https://scaleflex.cloudimg.io/v7/plugins/filerobot-image-editor/latest/filerobot-image-editor.min.js">${'</scr' + 'ipt>'}
+          </head>
+          <body>
+            <div id="editor_container"></div>
+            <script>
+              window.onload = () => {
+                const { TABS, TOOLS } = FilerobotImageEditor;
+                const config = {
+                  source: '${dataUrl}',
+                  onSave: (editedImageObject, designState) => {
+                    const link = document.createElement('a');
+                    link.download = editedImageObject.fullName || 'BaoGia_${soHopDong.value || maHopDong.value || 'Image'}.png';
+                    link.href = editedImageObject.imageBase64;
+                    link.click();
+                  },
+                  annotationsCommon: {
+                    fill: '#ff0000',
+                  },
+                  Text: { text: 'Ghi chú...' },
+                  translations: {
+                    profile: 'Profile',
+                    coverPhoto: 'Cover photo',
+                    facebook: 'Facebook',
+                    socialMedia: 'Social Media',
+                    fbProfileSize: '180x180',
+                    fbCoverPhotoSize: '820x312',
+                    name: 'Name',
+                    save: 'Lưu & Tải Về',
+                    saveAs: 'Lưu thành',
+                    extension: 'Định dạng',
+                    format: 'Format',
+                    quality: 'Chất lượng',
+                    imageDimensions: 'Kích thước',
+                    crop: 'Cắt ảnh',
+                    orientation: 'Xoay',
+                    finetune: 'Màu sắc',
+                    filter: 'Bộ lọc',
+                    watermark: 'Đóng dấu',
+                    annotate: 'Vẽ / Chữ',
+                    resize: 'Đổi cỡ',
+                    arrow: 'Mũi tên',
+                    line: 'Đường thẳng',
+                    polygon: 'Đa giác',
+                    text: 'Chữ',
+                    rectangle: 'Chữ nhật',
+                    ellipse: 'Hình elip',
+                    pen: 'Bút vẽ'
+                  }
+                };
+                const filerobotImageEditor = new FilerobotImageEditor(
+                  document.querySelector('#editor_container'),
+                  config
+                );
+                filerobotImageEditor.render({
+                  onClose: (closingReason) => {
+                    window.close();
+                  },
+                });
+              };
+            <\\/script>
+          </body>
+        </html>
+      `)
+      newTab.document.close()
+    }
+  } catch (err) {
+    console.error('Lỗi khi xuất ảnh', err)
+    if (newTab) newTab.close()
+    showAsyncError('Lỗi', 'Không thể tạo ảnh, vui lòng thử lại.')
+  } finally {
+    isExportingImage.value = false
+    showImageKitModal.value = false
+  }
+}
 
 const isMaHangEdited = ref(false)
 const isCardMaHangEdited = ref(false)
@@ -716,6 +1253,7 @@ const itemForm = ref<HangHoa & { So_luong: number }>({
   Features: '',
   Danh_muc: '',
   License_duration: '',
+  thoi_han_bao_hanh: '',
   DVT: '',
   Gia_tieu_chuan: 0,
   Don_gia: 0,
@@ -948,6 +1486,16 @@ maHopDong.value = `HD${Date.now()}`
     chietKhauTruocThuePct.value = toNum(row?.[26], 0)
     thueChenhLechPct.value = toNum(row?.[28], 0)
 
+    // ====== load data mapping structure ======
+    try {
+      const structStr = String(row?.[36] || '').trim()
+      if (structStr && structStr.startsWith('[')) {
+        excelMappingConfig.value = JSON.parse(structStr)
+      }
+    } catch (err) {
+      console.warn('Cannot parse structure JSON from hop_dong_tong_quat', err)
+    }
+
     // ====== load customer ======
     const maKH = String(row?.[2] ?? '').trim()
     if (maKH) {
@@ -1030,6 +1578,16 @@ async function cloneInvoiceToFE() {
     // Load percentages
     chietKhauTruocThuePct.value = toNum(row?.[26], 0)
     thueChenhLechPct.value = toNum(row?.[28], 0)
+
+    // ====== load data mapping structure ======
+    try {
+      const structStr = String(row?.[36] || '').trim()
+      if (structStr && structStr.startsWith('[')) {
+        excelMappingConfig.value = JSON.parse(structStr)
+      }
+    } catch (err) {
+      console.warn('Cannot parse structure JSON from hop_dong_tong_quat', err)
+    }
 
     // clear customer info, notes, PO as requested
     maKHInput.value = ''
@@ -1228,6 +1786,16 @@ async function loadPipelineToFE() {
     
     chietKhauTruocThuePct.value = toNum(contractRow?.[26], 0)
     thueChenhLechPct.value = toNum(contractRow?.[28], 0)
+
+    // ====== load data mapping structure ======
+    try {
+      const structStr = String(contractRow?.[36] || '').trim()
+      if (structStr && structStr.startsWith('[')) {
+        excelMappingConfig.value = JSON.parse(structStr)
+      }
+    } catch (err) {
+      console.warn('Cannot parse structure JSON from hop_dong_tong_quat', err)
+    }
 
     const maKH = String(contractRow?.[2] ?? '').trim()
     if (maKH) fillCustomerByMa(maKH)
@@ -1535,7 +2103,9 @@ function buildHopDongTongQuatRow(
   maHopDongCu: string | null,
   soPO: string = '',
   tenPO: string = '',
-  maHopDongGoc: string | null = null
+  maHopDongGoc: string | null = null,
+  tenFileBaoGia: string = '',
+  linkBaoGia: string = ''
 ) {
   const ngay = formatDateTimeVN(new Date())
 
@@ -1597,7 +2167,9 @@ function buildHopDongTongQuatRow(
       toNum(tongChietKhau.value, 0),            // 31
       goc,                                      // ✅ index 32 - ma_hop_dong_goc
       statusHopDong === 'Chính thức' ? 'TRUE' : 'FALSE', // ✅ index 33 - isCompleted
-      round2(totalsContract.value.loi)          // ✅ index 34 - net margin (báo giá gốc)
+      tenFileBaoGia,                            // ✅ index 34 - ten_file
+      linkBaoGia,                               // ✅ index 35 - link_file
+      JSON.stringify(excelMappingConfig.value)  // ✅ index 36 - structure
   ]
 }
 
@@ -1653,7 +2225,9 @@ function buildHopDongChiTietRows() {
       toNum(it.gia_nhap, 0),              // [27] gia_nhapUSD (giá gốc USD)
       // ✅ 2 CỘT DATE
       (it as any).start_date || '',       // [28] start_date
-      (it as any).end_date || ''          // [29] end_date
+      (it as any).end_date || '',         // [29] end_date
+      (it as any).is_giahan || '',        // [30] is_giahan
+      (it as any).thoi_han_bao_hanh || '' // [31] thoi_gian_bao_hanh
     ]
   })
 }
@@ -1690,13 +2264,16 @@ async function saveContractTemp(force = false) {
   }
 
   // Optimistic: show success immediately
+  const tenFileBaoGia = `BaoGia_${soHopDong.value || maHopDong.value}.xlsx`
   const payload = {
     hd_tong_quat_row: buildHopDongTongQuatRow(
       'Tạm',
       loadedMaHopDong.value,
       currentPO.value || '',
       soHopDong.value || '',
-      loadedMaHopDongGoc.value
+      loadedMaHopDongGoc.value,
+      tenFileBaoGia,
+      ''
     ),
     hd_chi_tiet_rows: buildHopDongChiTietRows()
   }
@@ -1752,27 +2329,7 @@ async function saveContractOfficialAndSaleReport(force = false) {
       nextPO = String(maxPO + 1)
     } catch {}
 
-    const payload = {
-      hd_tong_quat_row: buildHopDongTongQuatRow(
-        'Chính thức',
-        loadedMaHopDong.value,
-        nextPO,
-        soHopDong.value,
-        loadedMaHopDongGoc.value
-      ),
-      hd_chi_tiet_rows: buildHopDongChiTietRows(),
-      ma_khach_hang: (khach.value.Ma_khach_hang || '').trim(),
-      tong_sau_thue: tongSauThue
-    }
-
-    // 1) Lưu chính thức
-    await postApi('save_contract_official', payload)
-
-    // 2) Lưu vào sale_report (dùng format giống pipeline)
-    const t = totals.value
-    const firstItem = selectedItems.value[0] || {} as any
-
-    // Upload file báo giá lên Cloudinary
+    // Upload file báo giá lên Cloudinary trước khi lưu
     let linkBaoGia = ''
     const tenFileBaoGia = `BaoGia_${soHopDong.value || maHopDong.value}.xlsx`
     try {
@@ -1788,6 +2345,28 @@ async function saveContractOfficialAndSaleReport(force = false) {
     } catch (e) {
       console.error('Lỗi upload file báo giá lên Cloudinary:', e)
     }
+
+    const payload = {
+      hd_tong_quat_row: buildHopDongTongQuatRow(
+        'Chính thức',
+        loadedMaHopDong.value,
+        nextPO,
+        soHopDong.value,
+        loadedMaHopDongGoc.value,
+        tenFileBaoGia,
+        linkBaoGia
+      ),
+      hd_chi_tiet_rows: buildHopDongChiTietRows(),
+      ma_khach_hang: (khach.value.Ma_khach_hang || '').trim(),
+      tong_sau_thue: tongSauThue
+    }
+
+    // 1) Lưu chính thức
+    await postApi('save_contract_official', payload)
+
+    // 2) Lưu vào sale_report (dùng format giống pipeline)
+    const t = totals.value
+    const firstItem = selectedItems.value[0] || {} as any
 
     const srPayload = {
       sheet: 'sale_report',
@@ -1918,7 +2497,8 @@ function mapHangHoaRow(row: any[]): HangHoa {
       gia_hardware: toNum(row[20], 0),
       gia_nhap: toNum(row[21], 0),
       muc_phan_tram_off: toNum(row[22], 0),
-      Type: String(row[23] ?? '').trim()
+      Type: String(row[23] ?? '').trim(),
+      thoi_han_bao_hanh: String(row[24] ?? '')
     }
   }
 
@@ -1948,7 +2528,8 @@ function mapHangHoaRow(row: any[]): HangHoa {
     gia_hardware: 0,
     gia_nhap: 0,
     muc_phan_tram_off: 0,
-    Type: ''
+    Type: '',
+    thoi_han_bao_hanh: ''
   }
 }
 const IDX_TIME = 4
@@ -2139,6 +2720,20 @@ onMounted(async () => {
   termsRaw.value = Array.isArray(dkRows) ? dkRows : []
   markLoaded(termsState)
 
+  // upload_file_mau
+  try {
+    const ufmRows = await fetch(`${BASE_URL}?action=upload_file_mau`).then(r => r.json())
+    if (Array.isArray(ufmRows)) {
+      customTemplates.value = ufmRows.map(row => ({
+        id: String(row[0] || ''),
+        name: String(row[1] || ''),
+        data: String(row[2] || ''), // Cloudinary URL
+        mappingConfig: row[3] ? JSON.parse(row[3]) : [], // Structure
+        content: String(row[4] || '') // Ghi chú
+      }))
+    }
+  } catch (err) { console.error('Lỗi lấy template tùy chỉnh:', err) }
+
   if (route.query.ma) {
     loadMode.value = 'MA'
     loadKey.value = String(route.query.ma)
@@ -2224,6 +2819,15 @@ onActivated(async () => {
           const meta = JSON.parse(metaRaw)
           chietKhauTruocThuePct.value = meta.chietKhauTruocThuePct || 0
           thueChenhLechPct.value = meta.thueChenhLechPct || 0
+          
+          if (meta.structure && String(meta.structure).trim().startsWith('[')) {
+            try {
+              excelMappingConfig.value = JSON.parse(meta.structure)
+            } catch (err) {
+              console.warn('Cannot parse structure JSON from cloned quote', err)
+            }
+          }
+          
           localStorage.removeItem('cloneQuoteMeta')
         }
 
@@ -2560,7 +3164,8 @@ function confirmAddToDb() {
     toNum(addedItem.gia_hardware, 0),   // [20]
     toNum(addedItem.gia_nhap, 0),       // [21]
     toNum(addedItem.muc_phan_tram_off, 0), // [22] muc_%_off
-    addedItem.Type || ''                // [23] TYPE
+    addedItem.Type || '',               // [23] TYPE
+    addedItem.thoi_han_bao_hanh || ''   // [24] thoi_han_bao_hanh
   ];
 
   // Optimistic: show toast + loading immediately
@@ -3816,15 +4421,16 @@ function identifyExcelCol(text: string): string | null {
   const t = String(text || '').toUpperCase().trim()
   if (!t) return null
   if (t === 'STT' || t === 'SỐ TT' || t === 'NO.' || t === 'TT') return 'stt'
-  if (t.includes('TÊN HÀNG') || t.includes('HÀNG HÓA') || t.includes('DỊCH VỤ') || t.includes('MODEL')) return 'ten_hang'
+  if (t.includes('TÊN HÀNG') || t.includes('HÀNG HÓA') || t.includes('DỊCH VỤ') || t.includes('SẢN PHẨM') || t === 'MODEL') return 'ten_hang'
   if (t.includes('DIỄN GIẢI') || t.includes('DIEN GIAI') || t.includes('MÔ TẢ') || t.includes('ĐẶC TÍNH') || t.includes('THÔNG SỐ') || t.includes('NỘI DUNG') || t.includes('HẠNG MỤC') || t.includes('DESCRIPTION') || t.includes('SPEC')) return 'mo_ta'
-  if (t === 'ĐVT' || t === 'DVT' || t.includes('ĐƠN VỊ TÍNH') || t.includes('DON VI') || t === 'UNIT') return 'dvt'
+  if (t === 'ĐVT' || t === 'DVT' || t.includes('ĐƠN VỊ TÍNH') || t.includes('DON VI TINH') || t === 'UNIT') return 'dvt'
+  if (t.includes('THỜI HẠN') || t.includes('THOI HAN')) return 'license_duration'
   if (t.includes('SỐ LƯỢNG') || t.includes('S.LƯỢNG') || t === 'SL' || t === 'S.L' || t === 'S.L.' || t.includes('SO LUONG') || t === 'QTY') return 'so_luong'
   if (t.includes('ĐƠN GIÁ') || t.includes('DON GIA') || t.includes('UNIT PRICE')) return 'don_gia'
   if (t.includes('TRƯỚC THUẾ') || t.includes('TRUOC THUE')) return 'truoc_thue'
   if (t.includes('SAU THUẾ') || t.includes('SAU THUE')) return 'sau_thue'
-  if (t.includes('THÀNH TIỀN') || t.includes('THANH TIEN') || t.includes('AMOUNT')) return 'truoc_thue'
-  if (t.includes('VAT') || (t.includes('THUẾ') && !t.includes('TRƯỚC') && !t.includes('SAU'))) return 'vat'
+  if (t.includes('VAT') || (t.includes('THUẾ') && !t.includes('TRƯỚC') && !t.includes('SAU') && !t.includes('THÀNH TIỀN'))) return 'vat'
+  if (t.includes('THÀNH TIỀN') || t.includes('THANH TIEN') || t.includes('AMOUNT')) return 'sau_thue'
   return null
 }
 
@@ -3869,17 +4475,23 @@ function toDescriptionRichText(text: string, baseFont: any): any {
   return { richText };
 }
 
-async function generateQuoteExcelBlob(targetKhach: any = khach.value, specificTemplateData?: string, customDefaultFont?: { name: string, size: number }): Promise<Blob> {
+async function generateQuoteExcelBlob(targetKhach: any = khach.value, specificTemplateData?: string, customDefaultFont?: { name: string, size: number }, mappingConfig?: any[]): Promise<Blob> {
   const workbook = new ExcelJS.Workbook()
   
   let dataToUse = specificTemplateData
 
   // Load template (custom or default)
   if (dataToUse) {
-    const binary = atob(dataToUse)
-    const bytes = new Uint8Array(binary.length)
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-    await workbook.xlsx.load(bytes.buffer)
+    if (dataToUse.startsWith('http')) {
+      const response = await fetch(dataToUse)
+      const buffer = await response.arrayBuffer()
+      await workbook.xlsx.load(buffer)
+    } else {
+      const binary = atob(dataToUse)
+      const bytes = new Uint8Array(binary.length)
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+      await workbook.xlsx.load(bytes.buffer)
+    }
   } else {
     const response = await fetch('/template_goc.xlsx')
     const buffer = await response.arrayBuffer()
@@ -3890,6 +4502,11 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value, specificTe
   const contractName = contentOfContractPO.value.trim()
   if (contractName) ws.name = contractName
   
+  // Force all columns to fit within 1 page width (no horizontal page break)
+  ws.pageSetup.fitToPage = true
+  ws.pageSetup.fitToWidth = 1
+  ws.pageSetup.fitToHeight = 0
+
   const isUsdExport = quoteCurrency.value === 'USD';
 
   let headerRowIdx = -1;
@@ -3898,6 +4515,8 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value, specificTe
   let origSigStart = -1;
   const colMap: Record<string, number> = {}
   let maxCol = 9
+
+  const actualMappingConfig = mappingConfig || (useDynamicExcelMapping.value ? excelMappingConfig.value : [])
 
   ws.eachRow((row, rowNumber) => {
     // Flexible header detection: scan all cells for known column keywords
@@ -3910,10 +4529,65 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value, specificTe
         const f = identifyExcelCol(excelCellText(v))
         if (f && !rm[f]) { rm[f] = c; mc++ }
       }
-      if (mc >= 3 && rm.stt) {
+      if (mc >= 3) {
         headerRowIdx = rowNumber
-        Object.assign(colMap, rm)
-        maxCol = Math.max(...Object.values(rm))
+        if (actualMappingConfig.length > 0) {
+          const oldMaxCol = Math.max(...Object.values(rm));
+          const newColMap: Record<string, number> = {}
+          
+          const origWidths: Record<string, number> = {};
+          Object.keys(rm).forEach(k => {
+             origWidths[k] = ws.getColumn(rm[k]).width || 15;
+          });
+          origWidths['features'] = origWidths['mo_ta'] || 35;
+          origWidths['don_gia_kh'] = origWidths['don_gia'] || 15;
+          origWidths['gia_tieu_chuan'] = origWidths['don_gia'] || 15;
+          origWidths['list_price'] = origWidths['don_gia'] || 15;
+          origWidths['don_gia_nhap'] = origWidths['don_gia'] || 15;
+          origWidths['muc_off'] = 10;
+          origWidths['muc_off_hang'] = 10;
+          origWidths['thue_vat'] = 10;
+          origWidths['pn'] = 15;
+          origWidths['hang'] = 15;
+          origWidths['danh_muc'] = 15;
+          origWidths['don_vi_tien_te'] = 12;
+          origWidths['ti_gia'] = 12;
+          origWidths['license_duration'] = 15;
+          origWidths['thoi_gian_bao_hanh'] = 15;
+          origWidths['ghi_chu'] = 25;
+          
+          // Apply dynamic currency suffix to headers before rendering
+          applyCurrencyToHeaders(actualMappingConfig, targetKhach?.Don_vi_tien_te);
+          
+          if (!dataToUse) {
+            // Default template: Rebuild headers completely
+            actualMappingConfig.forEach((col: any, idx: number) => {
+              const colIndex = idx + 1;
+              newColMap[col.field] = colIndex;
+              row.getCell(colIndex).value = col.header;
+              if (!row.getCell(colIndex).style || Object.keys(row.getCell(colIndex).style).length === 0) {
+                row.getCell(colIndex).style = row.getCell(Math.min(colIndex, oldMaxCol)).style;
+              }
+              ws.getColumn(colIndex).width = origWidths[col.field] || 15;
+            });
+            Object.assign(colMap, newColMap)
+            maxCol = actualMappingConfig.length
+          } else {
+            // Custom template: Use colIndex from mapping config, DO NOT rebuild headers
+            let customMaxCol = oldMaxCol;
+            actualMappingConfig.forEach((col: any, idx: number) => {
+              if (col.field === 'empty') return; // Skip empty/unmapped columns
+              const cIdx = col.colIndex || (idx + 1);
+              newColMap[col.field] = cIdx;
+              if (cIdx > customMaxCol) customMaxCol = cIdx;
+            });
+            Object.assign(colMap, newColMap)
+            maxCol = customMaxCol
+          }
+        } else {
+          Object.assign(colMap, rm)
+          maxCol = Math.max(...Object.values(rm))
+        }
       }
       return
     }
@@ -3961,6 +4635,7 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value, specificTe
     }
   });
 
+
   // Fallback logic cho custom template
   if (origTermStart !== -1 && origSigStart === -1) {
     origSigStart = ws.rowCount + 1;
@@ -3979,6 +4654,40 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value, specificTe
     maxCol = 9
   }
 
+  if (!dataToUse && useDynamicExcelMapping.value && excelMappingConfig.value.length > 0) {
+    const baseCol = 9; // use last column of default template as style fallback
+    for (let c = 1; c <= maxCol; c++) {
+      if (!ws.getColumn(c).width) {
+        ws.getColumn(c).width = ws.getColumn(baseCol).width || 15;
+      }
+      const r1 = ws.getRow(headerRowIdx + 1);
+      if (!r1.getCell(c).style || Object.keys(r1.getCell(c).style).length === 0) r1.getCell(c).style = r1.getCell(baseCol).style;
+      
+      const r2 = ws.getRow(headerRowIdx + 2);
+      if (!r2.getCell(c).style || Object.keys(r2.getCell(c).style).length === 0) r2.getCell(c).style = r2.getCell(baseCol).style;
+      
+      if (totalRowIdx !== -1) {
+        const rt = ws.getRow(totalRowIdx);
+        if (!rt.getCell(c).style || Object.keys(rt.getCell(c).style).length === 0) rt.getCell(c).style = rt.getCell(baseCol).style;
+      }
+    }
+    
+    // Clear unused columns completely (no borders, no backgrounds, no values)
+    // We don't use ws.spliceColumns because it might break merged cells like "BẢNG BÁO GIÁ" at the top of the template.
+    for (let c = maxCol + 1; c <= 20; c++) {
+      ws.getRow(headerRowIdx).getCell(c).style = {};
+      ws.getRow(headerRowIdx).getCell(c).value = null;
+      ws.getRow(headerRowIdx + 1).getCell(c).style = {};
+      ws.getRow(headerRowIdx + 1).getCell(c).value = null;
+      ws.getRow(headerRowIdx + 2).getCell(c).style = {};
+      ws.getRow(headerRowIdx + 2).getCell(c).value = null;
+      if (totalRowIdx !== -1) {
+        ws.getRow(totalRowIdx).getCell(c).style = {};
+        ws.getRow(totalRowIdx).getCell(c).value = null;
+      }
+    }
+  }
+
   const groupStyle: any = {};
   for (let c = 1; c <= maxCol; c++) groupStyle[c] = ws.getRow(headerRowIdx + 1).getCell(c).style;
   const groupRowHeight = ws.getRow(headerRowIdx + 1).height;
@@ -3989,7 +4698,8 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value, specificTe
   for (let c = 1; c <= maxCol; c++) totalRowStyle[c] = ws.getRow(totalRowIdx).getCell(c).style;
   const totalRowHeight = ws.getRow(totalRowIdx).height;
 
-  // Nếu xuất USD, đổi header VNĐ -> USD và format số
+  // Format số cho các cột giá: VNĐ dùng #,##0 (không thập phân), USD dùng #,##0.00
+  const priceColumns = [colMap.don_gia, colMap.don_gia_kh, colMap.gia_tieu_chuan, colMap.don_gia_nhap, colMap.truoc_thue, colMap.vat, colMap.sau_thue, colMap.list_price, colMap.ti_gia].filter(Boolean);
   if (isUsdExport) {
     if (headerRowIdx !== -1) {
       ws.getRow(headerRowIdx).eachCell(cell => {
@@ -3999,9 +4709,15 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value, specificTe
       });
     }
     const usdFormat = '#,##0.00';
-    [colMap.don_gia, colMap.truoc_thue, colMap.vat, colMap.sau_thue].filter(Boolean).forEach(c => {
+    priceColumns.forEach(c => {
       if (dataRowStyle[c]) dataRowStyle[c] = { ...dataRowStyle[c], numFmt: usdFormat };
       if (totalRowStyle[c]) totalRowStyle[c] = { ...totalRowStyle[c], numFmt: usdFormat };
+    });
+  } else {
+    const vndFormat = '#,##0';
+    priceColumns.forEach(c => {
+      if (dataRowStyle[c]) dataRowStyle[c] = { ...dataRowStyle[c], numFmt: vndFormat };
+      if (totalRowStyle[c]) totalRowStyle[c] = { ...totalRowStyle[c], numFmt: vndFormat };
     });
   }
 
@@ -4026,7 +4742,18 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value, specificTe
     }
   });
 
-  const numRowsToRemove = totalRowIdx - headerRowIdx;
+  let numRowsToRemove = 0;
+  if (totalRowIdx !== -1) {
+    if (!dataToUse) {
+      numRowsToRemove = totalRowIdx - headerRowIdx;
+    } else {
+      numRowsToRemove = totalRowIdx - headerRowIdx - 1;
+    }
+  } else {
+    numRowsToRemove = 2; // assume 2 mock data rows to clear if no total row found
+  }
+  if (numRowsToRemove < 0) numRowsToRemove = 0;
+  
   ws.spliceRows(headerRowIdx + 1, numRowsToRemove);
 
   // Clear heights below header to prevent dirty inherited heights
@@ -4043,11 +4770,22 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value, specificTe
 
     if (r.type === 'group') {
       if (colMap.stt) row.getCell(colMap.stt).value = r.roman;
-      if (colMap.ten_hang) row.getCell(colMap.ten_hang).value = String(r.title).toUpperCase();
-      for (let c = 1; c <= maxCol; c++) row.getCell(c).style = groupStyle[c];
-      if (groupRowHeight) row.height = groupRowHeight;
-      if (colMap.ten_hang && colMap.mo_ta && colMap.mo_ta > colMap.ten_hang) {
-        ws.mergeCells(insertIdx, colMap.ten_hang, insertIdx, colMap.mo_ta);
+      for (let c = 1; c <= maxCol; c++) {
+        row.getCell(c).style = groupStyle[c];
+        row.getCell(c).alignment = Object.assign({}, row.getCell(c).alignment || {}, { vertical: 'middle' });
+      }
+      row.height = 30; // padding cho hàng danh mục
+      // Merge tất cả ô ngoại trừ cột STT
+      const sttCol = colMap.stt || 1;
+      const mergeStart = sttCol + 1;
+      if (mergeStart <= maxCol) {
+        row.getCell(mergeStart).value = String(r.title).toUpperCase();
+        ws.mergeCells(insertIdx, mergeStart, insertIdx, maxCol);
+        // Set full style after merge - ExcelJS requires this for merged cells
+        const mergedCell = row.getCell(mergeStart);
+        const baseStyle = JSON.parse(JSON.stringify(groupStyle[mergeStart] || {}));
+        baseStyle.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
+        mergedCell.style = baseStyle;
       }
     } else {
       const i = r.item;
@@ -4058,43 +4796,107 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value, specificTe
       const tg = toNum(i.Ti_gia, 1) || 1;
 
       if (colMap.stt) row.getCell(colMap.stt).value = r.stt;
-      if (colMap.ten_hang) row.getCell(colMap.ten_hang).value = i.Ten_hang;
-      if (colMap.mo_ta) {
-        const text = [i.Mo_ta_chung, i.Mo_ta_chi_tiet, i.Features].filter(Boolean).join('\n') || i.Ten_hang || '';
-        const baseFont = dataRowStyle[colMap.mo_ta]?.font || {};
-        row.getCell(colMap.mo_ta).value = toDescriptionRichText(text, baseFont);
+      if (colMap.pn) row.getCell(colMap.pn).value = i.Ma_hang || '';
+      if (colMap.ten_hang) row.getCell(colMap.ten_hang).value = i.Ten_hang || '';
+      if (colMap.danh_muc) row.getCell(colMap.danh_muc).value = i.Danh_muc || '';
+      if (colMap.don_vi_tien_te) row.getCell(colMap.don_vi_tien_te).value = i.Don_vi_tien_te || '';
+      if (colMap.ti_gia) row.getCell(colMap.ti_gia).value = toNum(i.Ti_gia, 1);
+      if (colMap.license_duration) row.getCell(colMap.license_duration).value = i.License_duration || '';
+      if (colMap.thoi_gian_bao_hanh) row.getCell(colMap.thoi_gian_bao_hanh).value = i.thoi_han_bao_hanh || '';
+      if (colMap.ghi_chu) row.getCell(colMap.ghi_chu).value = i.Ghi_chu || '';
+      
+      const featuresField = colMap.features || colMap.mo_ta;
+      if (featuresField) {
+        const text = i.Features || i.Ten_hang || '';
+        const baseFont = dataRowStyle[featuresField]?.font || {};
+        row.getCell(featuresField).value = toDescriptionRichText(text, baseFont);
       }
-      if (colMap.dvt) row.getCell(colMap.dvt).value = i.DVT;
+      
+      if (colMap.hang) row.getCell(colMap.hang).value = i.Ten_nha_cung_cap || '';
+      if (colMap.dvt) row.getCell(colMap.dvt).value = i.DVT || '';
       if (colMap.so_luong) row.getCell(colMap.so_luong).value = Number(i.So_luong) || 0;
+      
+      if (colMap.list_price) {
+        const lpVND = round2(donGiaLP(i) * tg);
+        row.getCell(colMap.list_price).value = isUsdExport ? round2(lpVND / tg) : (Number(lpVND) || 0);
+      }
+      if (colMap.gia_tieu_chuan) {
+        const stdVND = standardPrice(i);
+        row.getCell(colMap.gia_tieu_chuan).value = isUsdExport ? round2(stdVND / tg) : (Number(stdVND) || 0);
+      }
+      if (colMap.don_gia_nhap) {
+        const nhapVND = round2(toNum(i.gia_nhap, 0) * tg);
+        row.getCell(colMap.don_gia_nhap).value = isUsdExport ? round2(nhapVND / tg) : (Number(nhapVND) || 0);
+      }
       if (colMap.don_gia) row.getCell(colMap.don_gia).value = isUsdExport ? round2(donGiaVND / tg) : (Number(donGiaVND) || 0);
+      if (colMap.don_gia_kh) row.getCell(colMap.don_gia_kh).value = isUsdExport ? round2(donGiaVND / tg) : (Number(donGiaVND) || 0);
       if (colMap.truoc_thue) row.getCell(colMap.truoc_thue).value = isUsdExport ? round2(truoc / tg) : (Number(truoc) || 0);
       if (colMap.vat) row.getCell(colMap.vat).value = isUsdExport ? round2(vat / tg) : (Number(vat) || 0);
       if (colMap.sau_thue) row.getCell(colMap.sau_thue).value = isUsdExport ? round2(sau / tg) : (Number(sau) || 0);
 
+      if (colMap.muc_off_hang) row.getCell(colMap.muc_off_hang).value = `${displayGiaTieuChuanPct(i)}%`;
+      if (colMap.muc_off) row.getCell(colMap.muc_off).value = `${toNum(i.muc_phan_tram_off, 0)}%`;
+      if (colMap.thue_vat) row.getCell(colMap.thue_vat).value = `${toNum(i.Thue_VAT, 0)}%`;
+
       for (let c = 1; c <= maxCol; c++) {
         const cell = row.getCell(c);
         cell.style = dataRowStyle[c];
+        // Override vertical alignment to middle and enable wrapText for auto-fit height
+        cell.alignment = Object.assign({}, cell.alignment || {}, { vertical: 'middle', wrapText: true });
       }
-      const numCols = [colMap.so_luong, colMap.don_gia, colMap.truoc_thue, colMap.vat, colMap.sau_thue].filter(Boolean) as number[];
+      // Cột diễn giải (features/mo_ta) dùng top align
+      const descCol = colMap.features || colMap.mo_ta;
+      if (descCol) {
+        row.getCell(descCol).alignment = Object.assign({}, row.getCell(descCol).alignment || {}, { vertical: 'top', wrapText: true });
+      }
+      // Cột TÊN HÀNG HÓA luôn middle align (full style override)
+      if (colMap.ten_hang) {
+        const thCell = row.getCell(colMap.ten_hang);
+        const thStyle = JSON.parse(JSON.stringify(dataRowStyle[colMap.ten_hang] || {}));
+        thStyle.alignment = { vertical: 'middle', wrapText: true };
+        thCell.style = thStyle;
+      }
+      const numCols = [colMap.so_luong, colMap.don_gia, colMap.don_gia_kh, colMap.gia_tieu_chuan, colMap.don_gia_nhap, colMap.truoc_thue, colMap.vat, colMap.sau_thue, colMap.list_price, colMap.muc_off_hang, colMap.muc_off, colMap.thue_vat].filter(Boolean) as number[];
       numCols.forEach(nc => {
-        row.getCell(nc).font = Object.assign({}, row.getCell(nc).font || {}, { bold: true });
+        const cell = row.getCell(nc);
+        cell.font = Object.assign({}, cell.font || {}, { bold: true });
+        cell.alignment = Object.assign({}, cell.alignment || {}, { vertical: 'middle', horizontal: 'right' });
       });
-      if (dataRowHeight) row.height = dataRowHeight;
+      // Don't set fixed row height - let Excel auto-fit based on content
     }
     insertIdx++;
   });
 
-  ws.spliceRows(insertIdx, 0, []);
-  const totRow = ws.getRow(insertIdx);
-  totRow.getCell(1).value = 'TỔNG CỘNG + THUẾ';
-  if (colMap.truoc_thue) totRow.getCell(colMap.truoc_thue).value = isUsdExport ? Number(totalsUSD.value.truoc) || 0 : Number(totals.value.truoc) || 0;
-  if (colMap.vat) totRow.getCell(colMap.vat).value = isUsdExport ? Number(totalsUSD.value.vat) || 0 : Number(totals.value.vat) || 0;
-  if (colMap.sau_thue) totRow.getCell(colMap.sau_thue).value = isUsdExport ? Number(totalsUSD.value.sau) || 0 : Number(totals.value.sau) || 0;
-  
-  for (let c = 1; c <= maxCol; c++) totRow.getCell(c).style = totalRowStyle[c];
-  if (totalRowHeight) totRow.height = totalRowHeight;
-  const firstNumCol = Math.min(...([colMap.truoc_thue, colMap.vat, colMap.sau_thue].filter(Boolean) as number[]));
-  ws.mergeCells(insertIdx, 1, insertIdx, firstNumCol > 1 ? firstNumCol - 1 : maxCol);
+  if (!dataToUse) {
+    ws.spliceRows(insertIdx, 0, []);
+    const totRow = ws.getRow(insertIdx);
+    totRow.getCell(1).value = 'TỔNG CỘNG + THUẾ';
+    if (colMap.truoc_thue) totRow.getCell(colMap.truoc_thue).value = isUsdExport ? Number(totalsUSD.value.truoc) || 0 : Number(totals.value.truoc) || 0;
+    if (colMap.vat) totRow.getCell(colMap.vat).value = isUsdExport ? Number(totalsUSD.value.vat) || 0 : Number(totals.value.vat) || 0;
+    if (colMap.sau_thue) totRow.getCell(colMap.sau_thue).value = isUsdExport ? Number(totalsUSD.value.sau) || 0 : Number(totals.value.sau) || 0;
+    
+    const totalNumCols = new Set([colMap.don_gia, colMap.don_gia_kh, colMap.gia_tieu_chuan, colMap.don_gia_nhap, colMap.truoc_thue, colMap.vat, colMap.sau_thue, colMap.list_price, colMap.ti_gia, colMap.so_luong].filter(Boolean));
+    for (let c = 1; c <= maxCol; c++) {
+      totRow.getCell(c).style = totalRowStyle[c];
+      const hAlign = totalNumCols.has(c) ? 'right' : 'center';
+      totRow.getCell(c).alignment = Object.assign({}, totRow.getCell(c).alignment || {}, { vertical: 'middle', horizontal: hAlign });
+    }
+    totRow.height = 35; // padding cho hàng tổng cộng
+    const firstNumCol = Math.min(...([colMap.truoc_thue, colMap.vat, colMap.sau_thue].filter(Boolean) as number[]));
+    ws.mergeCells(insertIdx, 1, insertIdx, firstNumCol > 1 ? firstNumCol - 1 : maxCol);
+  } else if (totalRowIdx !== -1) {
+    // Custom templates: the total row was pushed down and is currently exactly at insertIdx!
+    const totRow = ws.getRow(insertIdx);
+    if (colMap.truoc_thue) totRow.getCell(colMap.truoc_thue).value = isUsdExport ? Number(totalsUSD.value.truoc) || 0 : Number(totals.value.truoc) || 0;
+    if (colMap.vat) totRow.getCell(colMap.vat).value = isUsdExport ? Number(totalsUSD.value.vat) || 0 : Number(totals.value.vat) || 0;
+    if (colMap.sau_thue) totRow.getCell(colMap.sau_thue).value = isUsdExport ? Number(totalsUSD.value.sau) || 0 : Number(totals.value.sau) || 0;
+    // Right-align cho các ô số trong hàng tổng cộng
+    const customTotalNumCols = [colMap.truoc_thue, colMap.vat, colMap.sau_thue, colMap.don_gia, colMap.don_gia_kh, colMap.gia_tieu_chuan, colMap.don_gia_nhap, colMap.list_price, colMap.ti_gia, colMap.so_luong].filter(Boolean);
+    customTotalNumCols.forEach(c => {
+      const cell = totRow.getCell(c);
+      cell.alignment = Object.assign({}, cell.alignment || {}, { horizontal: 'right' });
+    });
+  }
 
   const diff = insertIdx - totalRowIdx;
   let termsDiff = 0;
@@ -4376,67 +5178,109 @@ async function handleCustomTemplateUpload(event: Event) {
   const files = (event.target as HTMLInputElement).files
   if (!files || files.length === 0) return
   try {
-    showAsyncLoading('Đang phân tích template...')
+    showAsyncLoading('Đang tải lên Cloudinary...')
     for (let i = 0; i < files.length; i++) {
       const file = files[i]
+      
+      const formData = new FormData()
+      formData.append('upload_preset', 'upload_file')
+      formData.append('file', file)
+      
+      const uploadRes = await fetch('https://api.cloudinary.com/v1_1/db6fzs3rh/auto/upload', {
+        method: 'POST',
+        body: formData
+      }).then(r => r.json())
+      
+      if (!uploadRes.secure_url) throw new Error('Upload Cloudinary thất bại')
+      
+      // Extract structure from file
       const buffer = await file.arrayBuffer()
       const wb = new ExcelJS.Workbook()
       await wb.xlsx.load(buffer)
       const ws0 = wb.worksheets[0]
-      let found = false
-      ws0.eachRow((row: any) => {
-        if (found) return
-        let mc = 0
-        for (let c = 1; c <= 20; c++) {
-          const v = row.getCell(c).value
-          if (v === null || v === undefined) continue
-          if (identifyExcelCol(excelCellText(v))) mc++
-        }
-        if (mc >= 3) found = true
-      })
-      if (!found) {
-        showAsyncError('Không nhận diện được', `Không tìm thấy dòng tiêu đề bảng hàng hoá trong file "${file.name}".`)
-        return
-      }
-      const bytes = new Uint8Array(buffer)
-      let binary = ''
-      for (let j = 0; j < bytes.byteLength; j++) binary += String.fromCharCode(bytes[j])
-      const base64 = btoa(binary)
-      
+      const extractedConfig = extractHeadersFromWorksheet(ws0)
+
+
       const newId = Date.now().toString() + i
-      customTemplates.value.push({ id: newId, name: file.name, data: base64 })
+      
+      const payload = {
+        sheet: 'upload_file_mau',
+        action: 'add',
+        id: newId,
+        ten_file: file.name,
+        link_file: uploadRes.secure_url,
+        structure: JSON.stringify(extractedConfig),
+        ghi_chu: ''
+      }
+      
+      await fetch(BASE_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      })
+      
+      customTemplates.value.push({ 
+        id: newId, 
+        name: file.name, 
+        data: uploadRes.secure_url,
+        mappingConfig: extractedConfig,
+        content: ''
+      })
     }
-    localStorage.setItem('custom_excel_templates', JSON.stringify(customTemplates.value))
     showAsyncSuccess('Thành công!', `Đã tải lên các template mới.`)
   } catch(e: any) {
-    showAsyncError('Lỗi đọc file', e.message || String(e))
+    showAsyncError('Lỗi tải file', e.message || String(e))
   }
   (event.target as HTMLInputElement).value = ''
 }
 
-function saveCustomTemplates() {
-  localStorage.setItem('custom_excel_templates', JSON.stringify(customTemplates.value))
+async function saveCustomTemplates() {
+  for (const tpl of customTemplates.value) {
+    await fetch(BASE_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        sheet: 'upload_file_mau',
+        action: 'update',
+        id: tpl.id,
+        ghi_chu: tpl.content || ''
+      })
+    })
+  }
 }
 
-function removeCustomTemplate(id: string) {
+async function removeCustomTemplate(id: string) {
   customTemplates.value = customTemplates.value.filter(t => t.id !== id)
-  localStorage.setItem('custom_excel_templates', JSON.stringify(customTemplates.value))
+  await fetch(BASE_URL, {
+    method: 'POST',
+    body: JSON.stringify({
+      sheet: 'upload_file_mau',
+      action: 'delete',
+      id: id
+    })
+  })
 }
 
-function downloadCustomTemplate(tpl: any) {
+async function downloadCustomTemplate(tpl: any) {
   try {
-    const rawData = atob(tpl.data)
-    const array = new Uint8Array(rawData.length)
-    for (let i = 0; i < rawData.length; i++) {
-      array[i] = rawData.charCodeAt(i)
+    if (tpl.data && tpl.data.startsWith('http')) {
+      const a = document.createElement('a')
+      a.href = tpl.data
+      a.download = tpl.name || 'template.xlsx'
+      a.target = '_blank'
+      a.click()
+    } else {
+      const rawData = atob(tpl.data)
+      const array = new Uint8Array(rawData.length)
+      for (let i = 0; i < rawData.length; i++) {
+        array[i] = rawData.charCodeAt(i)
+      }
+      const blob = new Blob([array], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = tpl.name || 'template.xlsx'
+      a.click()
+      window.URL.revokeObjectURL(url)
     }
-    const blob = new Blob([array], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = tpl.name || 'template.xlsx'
-    a.click()
-    window.URL.revokeObjectURL(url)
   } catch(e) {
     console.error('Không thể tải file mẫu', e)
   }
@@ -4444,17 +5288,20 @@ function downloadCustomTemplate(tpl: any) {
 
 const pendingExportTemplateData = ref<string | null>(null);
 
-function openExportExcelModal(templateData?: string) {
+const pendingExportMappingConfig = ref<any[] | null>(null)
+
+function openExportExcelModal(templateData?: string, mappingConfig?: any[]) {
   maKHInput.value = khach.value.Ma_khach_hang || '';
   tenKHInput.value = khach.value.Ten_khach_hang || '';
   pendingExportTemplateData.value = templateData || null;
+  pendingExportMappingConfig.value = mappingConfig || null;
   showExportExcelModal.value = true;
 }
 
 async function exportQuoteExcel(templateData?: string | null) {
   try {
     showAsyncLoading('Đang xuất file Excel...')
-    const blob = await generateQuoteExcelBlob(khach.value, templateData || undefined, previewEditor.value?.getToolbarFont());
+    const blob = await generateQuoteExcelBlob(khach.value, templateData || undefined, previewEditor.value?.getToolbarFont(), pendingExportMappingConfig.value || undefined);
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -4837,6 +5684,7 @@ onUnmounted(() => {
               </div>
               <h4 class="clamp2" v-html="highlightText(p.Ten_hang, keyword)"></h4>
               <p class="card-license clamp1" v-if="p.License_duration">{{ p.License_duration }}</p>
+              <p class="card-license clamp1" v-if="p.thoi_han_bao_hanh" style="color: #10b981;">Bảo hành: {{ p.thoi_han_bao_hanh }}</p>
               <div class="card-price-row">
                 <span class="price">{{ displayPrice(p) }}</span>
                 <span class="price-unit">/ {{ p.DVT }}</span>
@@ -4911,7 +5759,7 @@ onUnmounted(() => {
                   <th class="col-stt" style="border-top-left-radius: 6px;">STT</th>
                   <th class="col-pn">P/N</th>
                   <th class="col-name">Tên hàng</th>
-                  <th class="col-desc">Diễn giải</th>
+                  <th class="col-desc">Mô tả sản phẩm</th>
                   <th class="col-hang">Hãng</th>
                   <th class="col-dvt">ĐVT</th>
                   <th class="col-sl">SL</th>
@@ -5417,9 +6265,13 @@ onUnmounted(() => {
                 <textarea v-model="tpl.content" @change="saveCustomTemplates" placeholder="Nội dung lưu kèm..." style="width: 100%; min-height: 50px; font-size: 11px; padding: 6px; border-radius: 6px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 8px; resize: vertical;"></textarea>
 
                 <div class="export-tpl-actions" style="margin-top: auto; width: 100%; display: flex; gap: 8px;">
-                  <button @click="showExportInfoModal = false; openExportExcelModal(tpl.data)" class="export-tpl-change-btn">
+                  <button @click="showExportInfoModal = false; openExportExcelModal(tpl.data, tpl.mappingConfig)" class="export-tpl-change-btn" style="flex: 1; padding: 6px;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                     <b>Tải về</b>
+                  </button>
+                  <button @click="openTemplateConfigModal(tpl)" class="export-tpl-change-btn" style="flex: 1; padding: 6px; border-color: #3b82f6; color: #3b82f6;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    <b>Cấu hình</b>
                   </button>
                   <button @click="removeCustomTemplate(tpl.id)" class="export-tpl-remove-btn" style="flex: 1; justify-content: center; padding: 8px;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
@@ -5452,16 +6304,21 @@ onUnmounted(() => {
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 14px;">
-              <button class="export-vip-btn export-vip-btn-excel" @click="showExportInfoModal = false; openExportExcelModal()">
-                <div class="export-vip-btn-icon">
-                  <img src="/excel-icon.png" alt="Excel" style="width: 26px; height: 26px;" />
-                </div>
-                <div class="export-vip-btn-text">
-                  <span class="export-vip-btn-label">Xuất Excel</span>
-                  <span class="export-vip-btn-desc">Báo giá chuẩn</span>
-                </div>
-                <svg class="export-vip-btn-arrow" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              </button>
+              <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                <button class="export-vip-btn export-vip-btn-excel" @click="showExportInfoModal = false; openExportExcelModal()" style="margin-bottom: 0 !important; flex: 1;">
+                  <div class="export-vip-btn-icon">
+                    <img src="/excel-icon.png" alt="Excel" style="width: 26px; height: 26px;" />
+                  </div>
+                  <div class="export-vip-btn-text">
+                    <span class="export-vip-btn-label">Xuất Excel</span>
+                    <span class="export-vip-btn-desc">Báo giá chuẩn</span>
+                  </div>
+                  <svg class="export-vip-btn-arrow" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </button>
+                <button @click="openDefaultConfigModal" class="export-vip-btn export-vip-btn-excel" style="margin-bottom: 0 !important; flex: 0 0 auto; width: 68px !important; padding: 0 !important; display: flex !important; justify-content: center !important; align-items: center !important; gap: 0 !important;" title="Cấu hình Data Mapping">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #34d399;"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
 
               <button class="export-vip-btn export-vip-btn-agency" @click="showExportInfoModal = false; exportAgencyExcel()">
                 <div class="export-vip-btn-icon">
@@ -5484,10 +6341,117 @@ onUnmounted(() => {
                 </div>
                 <svg class="export-vip-btn-arrow" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
               </button>
+
             </div>
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- ================== CONTAINER XUẤT ẢNH ================== -->
+    <div v-show="isExportingImage || showImageKitModal" ref="exportImageContainer" :style="{ position: 'absolute', top: '-10000px', left: '-10000px', background: '#fff', width: '1100px', padding: kitOptions.padding + 'px', zIndex: -9999, color: '#000', fontFamily: 'Arial, sans-serif' }">
+      
+      <!-- PHẦN 1: LOGO -->
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 5px;">
+        <div style="width: 70%; transform-origin: bottom left;" :style="{ transform: `scale(${kitOptions.logoScale / 100})` }"><img src="/logo1.png" style="max-width: 100%; height: auto;" /></div>
+        <div style="width: 25%; text-align: right; transform-origin: bottom right;" :style="{ transform: `scale(${kitOptions.logoScale / 100})` }"><img src="/logo2.png" style="max-width: 100%; height: auto;" /></div>
+      </div>
+      <div style="display: flex; height: 3px; width: 100%; margin-bottom: 20px;">
+        <div style="width: 15%; background: #0070c0;"></div>
+        <div style="width: 85%; background: #ed7d31;"></div>
+      </div>
+
+      <!-- PHẦN 2: THÔNG TIN KHÁCH HÀNG -->
+      <table style="width: 100%; border: none; margin-bottom: 25px; border-collapse: collapse; color: #000;" :style="{ fontSize: (kitOptions.fontSize + 2) + 'px' }">
+        <tr>
+          <td style="padding: 4px 0;"><strong>Kính gởi: <span style="text-transform: uppercase;">{{ khach.Ten_cong_ty }}</span></strong></td>
+          <td style="text-align: right; font-style: italic; padding: 4px 0;">Ngày : {{ new Date().toLocaleDateString('vi-VN', {day: '2-digit', month: '2-digit', year: 'numeric'}) }}</td>
+        </tr>
+        <tr>
+          <td colspan="2" style="font-style: italic; padding: 4px 0;">Địa chỉ: {{ khach.Dia_chi_cong_ty || khach.ADDRESS || '' }}</td>
+        </tr>
+        <tr>
+          <td colspan="2" style="font-style: italic; padding: 4px 0;">Người nhận: {{ khach.Ten_khach_hang }}</td>
+        </tr>
+      </table>
+
+      <!-- PHẦN 3: BẢNG BÁO GIÁ -->
+      <div style="text-align: center; margin-bottom: 8px;">
+        <h2 style="color: #0000ff; font-weight: bold; margin: 0;" :style="{ fontSize: (kitOptions.fontSize + 5) + 'px' }">BẢNG BÁO GIÁ</h2>
+      </div>
+      <div style="margin-bottom: 8px;" :style="{ fontSize: kitOptions.fontSize + 'px' }">
+        Công ty Nam Trường Sơn trân trọng gởi đến Quý khách hàng bảng báo giá như sau:
+      </div>
+      
+      <table style="width: 100%; border-collapse: collapse; table-layout: auto; color: #000;" :style="{ fontSize: kitOptions.fontSize + 'px', marginBottom: kitOptions.tableMarginBottom + 'px' }">
+        <tbody>
+          <!-- Tiêu đề bảng: Dùng td thay vì th, và đặt trong tbody để tránh lỗi html2canvas -->
+          <tr style="background: #c6e0b4; font-weight: bold; text-align: center;">
+            <td v-for="(col, i) in excelMappingConfig" :key="'img_h' + i" style="border: 1px solid #000; padding: 6px 4px; color: #000;">
+              {{ col.header }}
+            </td>
+          </tr>
+          <tr v-for="r in quoteRowsWithSTT" :key="'img' + r.idx" :style="r.type === 'group' ? 'background: #ffff00; font-weight: bold;' : 'background: #fff;'">
+            <td v-for="(col, i) in excelMappingConfig" :key="'img_c' + col.field + i" :style="{ border: '1px solid #000', padding: '6px 4px', textAlign: r.type === 'group' ? (col.field === 'stt' ? 'center' : 'left') : (['stt', 'so_luong'].includes(col.field) ? 'center' : (['don_gia', 'don_gia_kh', 'truoc_thue', 'vat', 'sau_thue', 'gia_tieu_chuan', 'don_gia_nhap'].includes(col.field) ? 'right' : 'left')), whiteSpace: 'pre-wrap' }">
+              <template v-if="r.type === 'group'">
+                <template v-if="col.field === 'stt'">{{ r.roman }}</template>
+                <template v-else-if="i === 1">{{ String(r.title).toUpperCase() }}</template>
+              </template>
+              <template v-else>
+                {{ getPreviewCellValue(r, col.field) }}
+              </template>
+            </td>
+          </tr>
+          <tr v-if="quoteRowsWithSTT.length > 0" style="background: #ffff00; font-weight: bold;">
+            <td v-for="(col, i) in excelMappingConfig" :key="'imgt'+i" :style="{ border: '1px solid #000', padding: '8px 4px', textAlign: ['truoc_thue', 'vat', 'sau_thue'].includes(col.field) ? 'right' : 'center' }">
+              <template v-if="['truoc_thue', 'vat', 'sau_thue'].includes(col.field)">
+                {{ getPreviewCellTotal(col.field) }}
+              </template>
+              <template v-else-if="excelMappingConfig.slice(i+1).findIndex(c => ['truoc_thue', 'vat', 'sau_thue'].includes(c.field)) === 0">
+                TỔNG CỘNG + THUẾ
+              </template>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- PHẦN 4: ĐIỀU KHOẢN -->
+      <div style="margin-bottom: 40px; font-size: 14px; line-height: 1.4;">
+        <div v-html="editableTermContent"></div>
+      </div>
+
+      <!-- PHẦN 5: CHỮ KÝ & THÔNG TIN NTS -->
+      <table style="width: 100%; border: none; font-size: 14px; border-collapse: collapse;">
+        <tr>
+          <td style="font-weight: bold; vertical-align: top;">Trân Trọng,</td>
+          <td style="font-weight: bold; text-align: center; width: 200px; vertical-align: top;">Xác nhận đặt hàng</td>
+        </tr>
+        <tr>
+          <td style="height: 120px;"></td>
+          <td style="height: 120px;"></td>
+        </tr>
+        <tr>
+          <td colspan="2" style="color: #0000ff; font-weight: bold; padding-bottom: 4px;">
+            Lê Phi Sơn - 090 813 7488
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2">
+            <div style="display: flex; height: 2px; width: 350px; margin-bottom: 4px;">
+              <div style="background: #4b88cf; width: 60%;"></div>
+              <div style="background: #f48a53; width: 40%;"></div>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2" style="color: #0056b3; font-size: 13px; line-height: 1.4;">
+            <strong>NTS System Integration Corp.</strong><br>
+            Add: 20 Tang Bat Ho Street, Ward 11, Binh Thanh District, Ho Chi Minh City, VN<br>
+            T: (028) 3841 8080 | F: (028) 3841 5555 | E: <u style="cursor:pointer; color:#0000ff;">info@ntssi.vn</u> | W: <u style="cursor:pointer; color:#0000ff;">www.ntssi.vn</u>
+          </td>
+        </tr>
+      </table>
+
     </div>
 
     <!-- ================== MODAL: LOAD THÔNG TIN ================== -->
@@ -5568,16 +6532,25 @@ onUnmounted(() => {
               </div>
             </div>
             
-            <div style="display: flex; flex-direction: column; gap: 6px;">
-              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Hãng</label>
-              <div style="position: relative;">
-                <input v-model="itemForm.Ten_nha_cung_cap" placeholder="Nhà cung cấp..." @input="updateMaNcc" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px;" />
-                <i class="lucide-truck" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Hãng</label>
+                <div style="position: relative;">
+                  <input v-model="itemForm.Ten_nha_cung_cap" placeholder="Nhà cung cấp..." @input="updateMaNcc" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px;" />
+                  <i class="lucide-truck" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
+                </div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Bảo hành</label>
+                <div style="position: relative;">
+                  <input v-model="itemForm.thoi_han_bao_hanh" placeholder="VD: 12 tháng..." style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px;" />
+                  <i class="lucide-shield-check" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
+                </div>
               </div>
             </div>
             
             <div style="display: flex; flex-direction: column; gap: 6px;">
-              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Diễn giải</label>
+              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Mô tả sản phẩm</label>
               <textarea v-model="itemForm.Features" rows="3" placeholder="Mô tả cấu hình, thông số nổi bật..." style="width: 100%; padding: 10px 14px; border-radius: 8px; resize: vertical; min-height: 70px;" />
             </div>
           </div>
@@ -5781,10 +6754,18 @@ onUnmounted(() => {
                   <i class="lucide-clock" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                 </div>
               </div>
+
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Thời gian bảo hành</label>
+                <div style="position: relative;">
+                  <input v-model="cardEdit.thoi_han_bao_hanh" placeholder="VD: 12 tháng, 24 tháng..." style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px;" />
+                  <i class="lucide-shield-check" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
+                </div>
+              </div>
             </div>
             
             <div style="display: flex; flex-direction: column; gap: 6px;">
-              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Diễn giải</label>
+              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Mô tả sản phẩm</label>
               <textarea v-model="cardEdit.Features" rows="3" placeholder="Mô tả cấu hình, thông số nổi bật..." style="width: 100%; padding: 10px 14px; border-radius: 8px; resize: vertical; min-height: 70px;" />
             </div>
 
@@ -5902,7 +6883,7 @@ onUnmounted(() => {
                 <th class="col-stt">STT</th>
                 <th class="col-pn">P/N</th>
                 <th class="col-name">Tên hàng</th>
-                <th class="col-desc">Diễn giải</th>
+                <th class="col-desc">Mô tả sản phẩm</th>
                 <th class="col-dvt">ĐVT</th>
                 <th class="col-sl">SL</th>
                 <th class="col-dg">GIÁ OFF HÃNG</th>
@@ -6094,9 +7075,18 @@ onUnmounted(() => {
                 </div>
               </div>
 
-              <!-- 7: Tính năng / Features -->
+              <!-- 6.5: Bảo hành -->
               <div style="display: flex; flex-direction: column; gap: 6px;">
-                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Tính năng / Features</label>
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Thời gian bảo hành</label>
+                <div style="position: relative;">
+                  <input id="qe-thoi_han_bao_hanh" v-model="quoteEdit.thoi_han_bao_hanh" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px;" />
+                  <i class="lucide-shield-check" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
+                </div>
+              </div>
+
+              <!-- 7: Tính năng / Features -->
+              <div class="modal-form-group" style="grid-column: 1 / -1;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Mô tả sản phẩm</label>
                 <textarea id="qe-Features" v-model="quoteEdit.Features" rows="3" style="width: 100%; padding: 10px 14px; border-radius: 8px; resize: vertical;" />
               </div>
               
@@ -6314,6 +7304,130 @@ onUnmounted(() => {
       </div>
     </div>
 
+    <!-- ================== MODAL: CẤU HÌNH EXCEL MAPPING ================== -->
+    <div v-if="showExcelConfigModal" class="modal" @click.self="showExcelConfigModal = false" style="align-items: center; justify-content: center; display: flex;">
+      <div class="modal-card modal-wide" style="width: 98vw; max-width: none; height: 98vh; display: flex; flex-direction: column; margin: 0;">
+        <div class="modal-head">
+          <h3><i class="lucide-settings"></i> Cấu hình Data Mapping (Xuất Excel)</h3>
+          <button class="x" @click="showExcelConfigModal = false">×</button>
+        </div>
+        
+        <!-- Fixed header area -->
+        <div style="padding: 20px 20px 0 20px; flex-shrink: 0;">
+          <p style="color: #94a3b8; font-size: 13px; margin-bottom: 20px; line-height: 1.5;">
+            Cấu hình các cột sẽ xuất ra file Excel. Bạn có thể thêm, xóa hoặc thay đổi thứ tự các cột.
+            <br/>Lưu ý: Template Excel tải lên cần có các Header khớp với "Tên cột trong Excel" bên dưới.
+          </p>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding: 16px; background: rgba(15, 23, 42, 0.4); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px;">
+            <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; color: #f8fafc;">
+              <div style="position: relative; width: 44px; height: 24px; background: rgba(0,0,0,0.3); border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; padding: 2px; transition: all 0.3s;" :style="useDynamicExcelMapping ? 'background: #10b981; border-color: #10b981;' : ''">
+                <input type="checkbox" v-model="useDynamicExcelMapping" style="opacity: 0; position: absolute; width: 100%; height: 100%; cursor: pointer; margin: 0;" />
+                <div style="width: 18px; height: 18px; background: #fff; border-radius: 50%; transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1); box-shadow: 0 2px 4px rgba(0,0,0,0.2);" :style="useDynamicExcelMapping ? 'transform: translateX(20px);' : 'transform: translateX(0);'"></div>
+              </div>
+              <span style="font-weight: 600; font-size: 14px; letter-spacing: 0.3px;" :style="useDynamicExcelMapping ? 'color: #10b981;' : 'color: #94a3b8;'">Kích hoạt Cấu hình Mapping Dữ liệu</span>
+            </label>
+            
+            <button class="action-secondary" @click="tempMappingConfig.push({ header: 'NEW_COLUMN', field: 'empty' })" style="padding: 10px 20px; font-size: 13px; font-weight: 600; border-radius: 8px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: #fff; border: none; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25); display: flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 16px rgba(59, 130, 246, 0.35)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.25)';">
+              <i class="lucide-plus" style="width: 16px; height: 16px;"></i> Thêm cột
+            </button>
+          </div>
+        </div>
+
+        <!-- Scrollable table area (kéo thả bất kỳ ô nào trong cột) -->
+        <div v-if="useDynamicExcelMapping" style="flex: 1; min-height: 0; overflow: hidden; margin: 0 20px; border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; background: #fff; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2); display: flex; flex-direction: column;">
+          <div style="flex: 1; min-height: 0; overflow: auto;">
+            <table style="width: 100%; border-collapse: separate; border-spacing: 0; font-family: 'Inter', Arial, sans-serif; font-size: 13px; color: #334155; white-space: nowrap; table-layout: fixed; min-width: 1200px;">
+              <thead style="position: sticky; top: 0; z-index: 2;">
+                <tr>
+                  <th v-for="(col, i) in tempMappingConfig" :key="'h' + col.field + i"
+                    draggable="true" @dragstart="colDragStart(i, $event)" @dragover="colDragOver(i, $event)" @drop="colDrop(i)" @dragend="colDragEnd"
+                    :class="colDragCellClass(i)"
+                    :style="{ borderRight: '1px solid #94a3b8', borderBottom: '2px solid #94a3b8', padding: 0, position: 'relative', backgroundColor: '#f8fafc', verticalAlign: 'top', width: '180px', cursor: 'grab' }"
+                    title="Kéo thả để di chuyển cột">
+                    <!-- Header Row 1 (Input & Delete) -->
+                    <div style="display: flex; align-items: center; justify-content: space-between; height: 50px; width: 100%; padding: 0 8px; background-color: #2ea255;">
+                      <input v-model="col.header" placeholder="Tên cột" style="flex: 1; height: 34px; min-width: 0; padding: 0 10px; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px; font-weight: 700; text-align: center; font-size: 13px; outline: none; background: #ffffff; color: #1e293b; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05); font-family: 'Inter', Arial, sans-serif;" />
+                      <button @click="tempMappingConfig.splice(i, 1)" style="height: 34px; width: 34px; min-width: 34px; margin-left: 8px; background: #ef4444; border: none; border-radius: 6px; color: #ffffff; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" title="Xóa cột">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                      </button>
+                    </div>
+                    <!-- Header Row 2 (Field Select) -->
+                    <div style="padding: 10px; height: 50px;">
+                      <select v-model="col.field" style="width: 100%; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; color: #334155; font-size: 12px; font-weight: 500; outline: none; cursor: pointer;">
+                        <option v-for="opt in availableExcelFields" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                      </select>
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Dynamic Rows -->
+                <tr v-for="r in quoteRowsWithSTT" :key="'mock' + r.idx" :style="r.type === 'group' ? 'background: #fef08a;' : 'background: #fff;'">
+                  <td v-for="(col, i) in tempMappingConfig" :key="col.field + i"
+                    draggable="true" @dragstart="colDragStart(i, $event)" @dragover="colDragOver(i, $event)" @drop="colDrop(i)" @dragend="colDragEnd"
+                    :class="colDragCellClass(i)"
+                    :style="{
+                    borderRight: '1px solid #cbd5e1',
+                    borderBottom: '1px solid #cbd5e1',
+                    padding: '12px 10px',
+                    textAlign: r.type === 'group'
+                      ? (col.field === 'stt' ? 'center' : 'left')
+                      : (['don_gia', 'don_gia_kh', 'truoc_thue', 'vat', 'sau_thue', 'gia_tieu_chuan', 'don_gia_nhap', 'list_price', 'ti_gia', 'muc_off_hang', 'muc_off', 'thue_vat'].includes(col.field) ? 'right' : (['stt', 'so_luong'].includes(col.field) ? 'center' : 'left')),
+                    verticalAlign: 'middle',
+                    whiteSpace: 'pre-wrap',
+                    fontWeight: r.type === 'group' || (r.type !== 'group' && ['so_luong', 'don_gia', 'don_gia_kh', 'truoc_thue', 'vat', 'sau_thue', 'gia_tieu_chuan', 'don_gia_nhap', 'list_price', 'muc_off_hang', 'muc_off', 'thue_vat'].includes(col.field)) ? '700' : 'normal',
+                    color: r.type === 'group' ? '#854d0e' : (r.type !== 'group' && ['don_gia', 'don_gia_kh', 'truoc_thue', 'vat', 'sau_thue', 'gia_tieu_chuan', 'don_gia_nhap', 'list_price', 'so_luong', 'muc_off_hang', 'muc_off', 'thue_vat'].includes(col.field) ? '#0f172a' : 'inherit'),
+                    cursor: 'grab'
+                  }">
+                    <template v-if="r.type === 'group'">
+                      <template v-if="col.field === 'stt'">{{ r.roman }}</template>
+                      <template v-else-if="i === 1">{{ String(r.title).toUpperCase() }}</template>
+                    </template>
+                    <template v-else>
+                      {{ getPreviewCellValue(r, col.field) }}
+                    </template>
+                  </td>
+                </tr>
+              </tbody>
+              <tfoot style="position: sticky; bottom: 0; z-index: 2;">
+                <!-- Total Row (giống Excel: merge ô bên trái, hiện số bên phải) -->
+                <tr v-if="quoteRowsWithSTT.length > 0" style="background: #fde047;">
+                  <!-- Merged label -->
+                  <td :colspan="Math.max(1, tempMappingConfig.findIndex(c => ['truoc_thue', 'vat', 'sau_thue'].includes(c.field)))"
+                    draggable="true" @dragstart="colDragStart(0, $event)" @dragover="colDragOver(0, $event)" @drop="colDrop(0)" @dragend="colDragEnd"
+                    :style="{ borderRight: '1px solid #cbd5e1', borderTop: '2px solid #94a3b8', padding: '12px 10px', textAlign: 'center', verticalAlign: 'middle', fontWeight: '700', color: '#854d0e', background: '#fde047', cursor: 'grab' }">
+                    TỔNG CỘNG + THUẾ
+                  </td>
+                  <!-- Remaining columns after merge -->
+                  <template v-for="(col, i) in tempMappingConfig" :key="'t'+i">
+                    <td v-if="i >= Math.max(1, tempMappingConfig.findIndex(c => ['truoc_thue', 'vat', 'sau_thue'].includes(c.field)))"
+                      draggable="true" @dragstart="colDragStart(i, $event)" @dragover="colDragOver(i, $event)" @drop="colDrop(i)" @dragend="colDragEnd"
+                      :class="colDragCellClass(i)"
+                      :style="{ borderRight: '1px solid #cbd5e1', borderTop: '2px solid #94a3b8', padding: '12px 10px', textAlign: 'right', verticalAlign: 'middle', fontWeight: '700', color: '#854d0e', background: '#fde047', cursor: 'grab' }">
+                      <template v-if="['truoc_thue', 'vat', 'sau_thue'].includes(col.field)">
+                        {{ getPreviewCellTotal(col.field) }}
+                      </template>
+                    </td>
+                  </template>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+        <!-- Fixed footer buttons -->
+        <div style="display: flex; gap: 12px; justify-content: flex-end; padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.1); flex-shrink: 0;">
+          <button @click="resetExcelConfig" style="padding: 10px 16px; border-radius: 8px; font-weight: 600; font-size: 14px; background: rgba(255,255,255,0.05); color: #94a3b8; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: all 0.2s;">
+            Khôi phục mặc định
+          </button>
+          <button @click="saveExcelConfigModal" style="padding: 10px 24px; border-radius: 8px; font-weight: 700; font-size: 14px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #fff; border: none; cursor: pointer; box-shadow: 0 4px 15px rgba(16,185,129,0.3); transition: all 0.2s;">
+            Lưu cấu hình
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- ================== MODAL: CHỈNH SỬA ITEM BÁO GIÁ GỐC ================== -->
 <div v-if="showQuoteEditRawModal && quoteEditRaw" class="modal" @click.self="closeQuoteEditRaw()">
   <div class="modal-card modal-wide">
@@ -6386,7 +7500,7 @@ onUnmounted(() => {
     </div> <!-- close modal-group for thong tin co ban -->
 
     <div class="modal-group">
-      <h4 class="modal-group-title"><i class="lucide-align-left"></i> Mô tả & Tính năng</h4>
+      <h4 class="modal-group-title"><i class="lucide-align-left"></i> Mô tả sản phẩm</h4>
       <div class="grid3">
         <div>
           <label>Mô tả chung</label>
@@ -6397,8 +7511,8 @@ onUnmounted(() => {
           <textarea v-model="quoteEditRaw.Mo_ta_chi_tiet" rows="2" placeholder="Nhập mô tả chi tiết..."></textarea>
         </div>
         <div>
-          <label>Tính năng / Features</label>
-          <textarea v-model="quoteEditRaw.Features" rows="2" placeholder="Nhập tính năng..."></textarea>
+          <label>Mô tả sản phẩm</label>
+          <textarea v-model="quoteEditRaw.Features" rows="2" placeholder="Nhập mô tả sản phẩm..."></textarea>
         </div>
       </div>
     </div>
@@ -7301,6 +8415,7 @@ onUnmounted(() => {
     @close="showPipelineModal = false"
     @saved="onPipelineSaved"
     :khach="selectedPipelineKhach || khach"
+    :excelMappingConfig="excelMappingConfig"
     :customers="customers"
     :soHopDong="soHopDong"
     :maHopDong="maHopDong"
@@ -7413,9 +8528,291 @@ onUnmounted(() => {
     <option value="GÓI"></option>
     <option value="CHIẾC"></option>
   </datalist>
+    <!-- ================== MODAL: IMAGE KIT ================== -->
+    <div v-if="showImageKitModal" class="modal-overlay" @click.self="showImageKitModal = false" style="z-index: 9999;">
+      <div class="modal-content" style="max-width: 1200px; width: 95vw; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; max-height: 90vh; background: #f8fafc;">
+        <div class="modal-header" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="color: #fff; margin: 0; font-size: 18px; font-weight: 600; font-family: 'Inter', sans-serif;">Bộ Kit Cấu Hình Báo Giá</h3>
+          <button class="modal-close" @click="showImageKitModal = false" style="background: rgba(255,255,255,0.1); border: none; border-radius: 50%; width: 32px; height: 32px; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+        
+        <div style="display: flex; flex: 1; overflow: hidden;">
+          <!-- Left: Controls -->
+          <div style="width: 350px; background: #ffffff; border-right: 1px solid #e2e8f0; padding: 24px; overflow-y: auto;">
+            <h4 style="margin: 0 0 20px 0; font-size: 16px; color: #334155;">Tùy chỉnh thông số</h4>
+            
+            <div style="margin-bottom: 20px;">
+              <label style="display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: 600; color: #475569; font-size: 14px;">
+                <span>Cỡ chữ bảng (px)</span>
+                <span style="color: #3b82f6;">{{ kitOptions.fontSize }}px</span>
+              </label>
+              <input type="range" v-model.number="kitOptions.fontSize" min="10" max="20" step="1" style="width: 100%; cursor: pointer;" />
+            </div>
+
+            <div style="margin-bottom: 20px;">
+              <label style="display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: 600; color: #475569; font-size: 14px;">
+                <span>Khoảng cách lề (px)</span>
+                <span style="color: #3b82f6;">{{ kitOptions.padding }}px</span>
+              </label>
+              <input type="range" v-model.number="kitOptions.padding" min="0" max="80" step="4" style="width: 100%; cursor: pointer;" />
+            </div>
+
+            <div style="margin-bottom: 20px;">
+              <label style="display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: 600; color: #475569; font-size: 14px;">
+                <span>Độ lớn Logo (%)</span>
+                <span style="color: #3b82f6;">{{ kitOptions.logoScale }}%</span>
+              </label>
+              <input type="range" v-model.number="kitOptions.logoScale" min="50" max="150" step="5" style="width: 100%; cursor: pointer;" />
+            </div>
+
+            <div style="margin-bottom: 20px;">
+              <label style="display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: 600; color: #475569; font-size: 14px;">
+                <span>Khoảng cách dưới bảng (px)</span>
+                <span style="color: #3b82f6;">{{ kitOptions.tableMarginBottom }}px</span>
+              </label>
+              <input type="range" v-model.number="kitOptions.tableMarginBottom" min="0" max="100" step="5" style="width: 100%; cursor: pointer;" />
+            </div>
+            
+            <div style="margin-top: 40px; padding: 15px; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe;">
+              <p style="margin: 0; font-size: 13px; color: #1e3a8a; line-height: 1.5;">
+                <strong style="display: block; margin-bottom: 4px;">Lưu ý:</strong>
+                Sau khi điều chỉnh cấu trúc ưng ý, bấm <strong>"Chụp & Sửa Ảnh"</strong> để chụp lại giao diện này và chuyển sang không gian vẽ, cắt xén, thêm chữ.
+              </p>
+            </div>
+          </div>
+          
+          <!-- Right: Preview Container -->
+          <div style="flex: 1; background: #e2e8f0; display: flex; justify-content: center; align-items: flex-start; padding: 20px; overflow: hidden; position: relative;">
+            <div style="width: 100%; height: 100%; overflow: auto; display: flex; justify-content: center;">
+              <!-- Mini Preview Wrapper -->
+              <div style="transform-origin: top center; transform: scale(0.65); transition: transform 0.2s;">
+                <!-- We duplicate the output visually, or we could just use a portal. 
+                     Since exportImageContainer is already v-show="showImageKitModal" but positioned off-screen,
+                     we can't easily show the real one here unless we move it. 
+                     Wait, actually moving it breaks html2canvas. Let's just mirror the HTML structure here. -->
+                <div style="background: #fff; width: 1100px; padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); color: #000; font-family: Arial, sans-serif;" :style="{ padding: kitOptions.padding + 'px' }">
+                  <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 5px;">
+                    <div style="width: 70%; transform-origin: bottom left;" :style="{ transform: `scale(${kitOptions.logoScale / 100})` }"><img src="/logo1.png" style="max-width: 100%; height: auto;" /></div>
+                    <div style="width: 25%; text-align: right; transform-origin: bottom right;" :style="{ transform: `scale(${kitOptions.logoScale / 100})` }"><img src="/logo2.png" style="max-width: 100%; height: auto;" /></div>
+                  </div>
+                  <div style="display: flex; height: 3px; width: 100%; margin-bottom: 20px;">
+                    <div style="width: 15%; background: #0070c0;"></div>
+                    <div style="width: 85%; background: #ed7d31;"></div>
+                  </div>
+                  <table style="width: 100%; border: none; margin-bottom: 25px; border-collapse: collapse; color: #000;" :style="{ fontSize: (kitOptions.fontSize + 2) + 'px' }">
+                    <tr><td style="padding: 4px 0;"><strong>Kính gởi: <span style="text-transform: uppercase;">{{ khach.Ten_cong_ty }}</span></strong></td><td style="text-align: right; font-style: italic; padding: 4px 0;">Ngày : {{ new Date().toLocaleDateString('vi-VN', {day: '2-digit', month: '2-digit', year: 'numeric'}) }}</td></tr>
+                    <tr><td colspan="2" style="font-style: italic; padding: 4px 0;">Địa chỉ: {{ khach.Dia_chi_cong_ty || khach.ADDRESS || '' }}</td></tr>
+                    <tr><td colspan="2" style="font-style: italic; padding: 4px 0;">Người nhận: {{ khach.Ten_khach_hang }}</td></tr>
+                  </table>
+                  <div style="text-align: center; margin-bottom: 8px;"><h2 style="color: #0000ff; font-weight: bold; margin: 0;" :style="{ fontSize: (kitOptions.fontSize + 5) + 'px' }">BẢNG BÁO GIÁ</h2></div>
+                  <div style="margin-bottom: 8px;" :style="{ fontSize: kitOptions.fontSize + 'px' }">Công ty Nam Trường Sơn trân trọng gởi đến Quý khách hàng bảng báo giá như sau:</div>
+                  <table style="width: 100%; border-collapse: collapse; table-layout: auto; color: #000;" :style="{ fontSize: kitOptions.fontSize + 'px', marginBottom: kitOptions.tableMarginBottom + 'px' }">
+                    <tbody>
+                      <tr style="background: #c6e0b4; font-weight: bold; text-align: center;">
+                        <td v-for="(col, i) in excelMappingConfig" :key="'pimg_h' + i" style="border: 1px solid #000; padding: 6px 4px; color: #000;">{{ col.header }}</td>
+                      </tr>
+                      <tr v-for="r in quoteRowsWithSTT.slice(0, 5)" :key="'pimg' + r.idx" :style="r.type === 'group' ? 'background: #ffff00; font-weight: bold;' : 'background: #fff;'">
+                        <td v-for="(col, i) in excelMappingConfig" :key="'pimg_c' + col.field + i" :style="{ border: '1px solid #000', padding: '6px 4px', textAlign: r.type === 'group' ? (col.field === 'stt' ? 'center' : 'left') : (['stt', 'so_luong'].includes(col.field) ? 'center' : (['don_gia', 'don_gia_kh', 'truoc_thue', 'vat', 'sau_thue', 'gia_tieu_chuan', 'don_gia_nhap'].includes(col.field) ? 'right' : 'left')), whiteSpace: 'pre-wrap' }">
+                          <template v-if="r.type === 'group'">
+                            <template v-if="col.field === 'stt'">{{ r.roman }}</template>
+                            <template v-else-if="i === 1">{{ String(r.title).toUpperCase() }}</template>
+                          </template>
+                          <template v-else>
+                            {{ getPreviewCellValue(r, col.field) }}
+                          </template>
+                        </td>
+                      </tr>
+                      <tr><td :colspan="excelMappingConfig.length" style="text-align: center; font-style: italic; border: 1px solid #000; padding: 10px;">(Hiển thị minh họa 5 dòng đầu...)</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div style="padding: 16px 24px; background: #fff; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px;">
+          <button @click="showImageKitModal = false" style="padding: 10px 20px; font-weight: 600; border-radius: 8px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#e2e8f0';" onmouseout="this.style.background='#f1f5f9';">Đóng</button>
+          
+          <button @click="exportToImage" style="padding: 10px 20px; font-weight: 600; border-radius: 8px; background: #10b981; color: #fff; border: none; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2); transition: all 0.2s;" onmouseover="this.style.background='#059669';" onmouseout="this.style.background='#10b981';">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
+            Chụp & Sửa Ảnh
+          </button>
+        </div>
+      </div>
+    </div>
 </template>
 
 <style scoped>
+.ghost-col-item {
+  opacity: 0.5;
+  background-color: #f1f5f9 !important;
+}
+.drag-col-item {
+  box-shadow: 0 15px 30px rgba(0,0,0,0.2) !important;
+  transform: scale(1.02);
+  z-index: 100;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #ffffff;
+}
+.chosen-col-item {
+  background-color: #f8fafc;
+  outline: 2px dashed #10b981;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Column Drag-and-Drop — Professional Animation System
+   ═══════════════════════════════════════════════════════ */
+
+/* — Source column: ghost-slot placeholder — */
+.col-dragging {
+  opacity: 0.25 !important;
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(148, 163, 184, 0.06),
+    rgba(148, 163, 184, 0.06) 6px,
+    rgba(148, 163, 184, 0.015) 6px,
+    rgba(148, 163, 184, 0.015) 12px
+  ) !important;
+  filter: grayscale(0.6);
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              filter 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* — Drop target: lift + glow + indicator — */
+.col-drop-target {
+  position: relative;
+  z-index: 3;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.25s ease,
+              background-color 0.2s ease;
+  transform: translateY(-2px);
+  background-color: rgba(99, 102, 241, 0.03) !important;
+}
+
+/* Indicator line: solid gradient bar on the insert side */
+.col-drop-left::before,
+.col-drop-right::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #818cf8 0%, #6366f1 40%, #4f46e5 100%);
+  z-index: 10;
+  animation: colIndicatorPulse 1.2s ease-in-out infinite;
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.5), 0 0 20px rgba(99, 102, 241, 0.2);
+}
+.col-drop-left::before { left: -2px; }
+.col-drop-right::before { right: -2px; }
+
+/* Shimmer sweep overlay */
+.col-drop-target::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(99, 102, 241, 0.06) 45%,
+    rgba(99, 102, 241, 0.10) 50%,
+    rgba(99, 102, 241, 0.06) 55%,
+    transparent 70%
+  );
+  background-size: 250% 100%;
+  animation: colShimmerSweep 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+  z-index: 1;
+  border-radius: inherit;
+}
+
+/* Direction-specific glow */
+.col-drop-left {
+  box-shadow: inset 3px 0 12px -4px rgba(99, 102, 241, 0.25),
+              0 4px 16px -4px rgba(99, 102, 241, 0.12) !important;
+}
+.col-drop-right {
+  box-shadow: inset -3px 0 12px -4px rgba(99, 102, 241, 0.25),
+              0 4px 16px -4px rgba(99, 102, 241, 0.12) !important;
+}
+
+/* — Drop success: radiate ring + flash — */
+.col-just-dropped {
+  position: relative;
+  z-index: 50;
+  animation: colDropFlash 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.col-just-dropped::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 4px;
+  border: 2px solid rgba(16, 185, 129, 0.7);
+  animation: colDropRing 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* ── Keyframes ── */
+@keyframes colIndicatorPulse {
+  0%, 100% { opacity: 1; transform: scaleY(1); }
+  50% { opacity: 0.6; transform: scaleY(0.96); }
+}
+
+@keyframes colShimmerSweep {
+  0% { background-position: 250% 0; }
+  100% { background-position: -250% 0; }
+}
+
+@keyframes colDropFlash {
+  0% {
+    background-color: rgba(16, 185, 129, 0.20) !important;
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
+  }
+  30% {
+    background-color: rgba(16, 185, 129, 0.12) !important;
+    transform: scale(1.025);
+    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+  }
+  60% {
+    transform: scale(0.995);
+  }
+  100% {
+    background-color: transparent !important;
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+@keyframes colDropRing {
+  0% {
+    border-color: rgba(16, 185, 129, 0.8);
+    outline: 0px solid rgba(16, 185, 129, 0.6);
+    outline-offset: 0px;
+    opacity: 1;
+  }
+  40% {
+    border-color: rgba(16, 185, 129, 0.5);
+    outline: 8px solid rgba(16, 185, 129, 0);
+    outline-offset: 8px;
+    opacity: 1;
+  }
+  100% {
+    border-color: transparent;
+    outline: 14px solid rgba(16, 185, 129, 0);
+    outline-offset: 14px;
+    opacity: 0;
+  }
+}
+.mapping-col:hover {
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  z-index: 10;
+}
 .metallic-border-btn {
   border-radius: 50% !important;
   width: 76px !important;
@@ -10455,6 +11852,29 @@ td.dvt { font-family: inherit; white-space: normal; }
 }
 .export-vip-btn-pipeline:hover .export-vip-btn-icon {
   background: rgba(59,130,246,0.2) !important;
+  transform: scale(1.05) translateY(-2px) !important;
+}
+
+/* -- Image Button -- */
+.export-vip-btn-image {
+  border-color: rgba(236,72,153,0.15) !important;
+}
+.export-vip-btn-image::before {
+  background: linear-gradient(135deg, rgba(236,72,153,0.08) 0%, rgba(244,114,182,0.02) 100%);
+}
+.export-vip-btn-image .export-vip-btn-icon {
+  background: rgba(236,72,153,0.1) !important;
+  color: #ec4899 !important;
+}
+.export-vip-btn-image .export-vip-btn-label { color: #ec4899 !important; }
+.export-vip-btn-image .export-vip-btn-desc { color: #f472b6 !important; }
+.export-vip-btn-image .export-vip-btn-arrow { color: #ec4899 !important; }
+.export-vip-btn-image:hover {
+  border-color: rgba(236,72,153,0.4) !important;
+  box-shadow: 0 12px 30px rgba(236,72,153,0.12) !important;
+}
+.export-vip-btn-image:hover .export-vip-btn-icon {
+  background: rgba(236,72,153,0.2) !important;
   transform: scale(1.05) translateY(-2px) !important;
 }
 

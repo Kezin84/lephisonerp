@@ -44,13 +44,15 @@
     <!-- Page-level Tabs (VIP) -->
     <div style="display: flex; justify-content: center; margin-bottom: 2rem;">
       <div style="display: inline-flex; gap: 6px; padding: 5px; background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; backdrop-filter: blur(12px); box-shadow: 0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04);">
-        <button @click="pageTab = 'baogia'" :style="{ padding: '10px 28px', border: 'none', background: pageTab === 'baogia' ? 'linear-gradient(135deg, #10b981, #059669)' : 'transparent', color: pageTab === 'baogia' ? '#ffffff' : '#94a3b8', fontWeight: 700, fontSize: '14px', cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', borderRadius: '10px', letterSpacing: '0.3px', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: pageTab === 'baogia' ? '0 4px 15px rgba(16,185,129,0.4)' : 'none' }">
+        <button @click="pageTab = 'baogia'" :style="{ padding: '10px 20px', border: 'none', background: pageTab === 'baogia' ? 'linear-gradient(135deg, #10b981, #059669)' : 'transparent', color: pageTab === 'baogia' ? '#ffffff' : '#94a3b8', fontWeight: 700, fontSize: '14px', cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', borderRadius: '10px', letterSpacing: '0.3px', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: pageTab === 'baogia' ? '0 4px 15px rgba(16,185,129,0.4)' : 'none', position: 'relative' }">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
           Báo giá
+          <span v-if="contracts?.length > 0" style="position: absolute; top: -8px; right: -8px; background: #ef4444; color: white; border-radius: 50%; width: 22px; height: 22px; font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.4);">{{ contracts?.length > 99 ? '99+' : contracts?.length }}</span>
         </button>
-        <button @click="pageTab = 'thoihan'" :style="{ padding: '10px 28px', border: 'none', background: pageTab === 'thoihan' ? 'linear-gradient(135deg, #10b981, #059669)' : 'transparent', color: pageTab === 'thoihan' ? '#ffffff' : '#94a3b8', fontWeight: 700, fontSize: '14px', cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', borderRadius: '10px', letterSpacing: '0.3px', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: pageTab === 'thoihan' ? '0 4px 15px rgba(16,185,129,0.4)' : 'none' }">
+        <button @click="pageTab = 'thoihan'" :style="{ padding: '10px 20px', border: 'none', background: pageTab === 'thoihan' ? 'linear-gradient(135deg, #10b981, #059669)' : 'transparent', color: pageTab === 'thoihan' ? '#ffffff' : '#94a3b8', fontWeight: 700, fontSize: '14px', cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', borderRadius: '10px', letterSpacing: '0.3px', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: pageTab === 'thoihan' ? '0 4px 15px rgba(16,185,129,0.4)' : 'none', position: 'relative' }">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
           Thời hạn
+          <span v-if="durationCardCounts?.renew > 0" style="position: absolute; top: -8px; right: -8px; background: #ef4444; color: white; border-radius: 50%; width: 22px; height: 22px; font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.4);">{{ durationCardCounts.renew > 99 ? '99+' : durationCardCounts.renew }}</span>
         </button>
       </div>
     </div>
@@ -1578,6 +1580,7 @@ interface Contract {
   chenh_lech_gia: number; con_lai: number; tong_chiet_khau: number
   is_completed: boolean
   ten_file: string; link_file: string
+  structure?: string
 }
 interface ContractDetail {
   ma_hang: string; ten_hang: string; dvt: string; so_luong: number
@@ -2247,7 +2250,8 @@ async function fetchData() {
       thue_chenh_lech: Number(r[27]||0), thue_chenh_lech_pct: Number(r[28]||0),
       chenh_lech_gia: Number(r[29]||0), con_lai: Number(r[30]||0), tong_chiet_khau: Number(r[31]||0),
       is_completed: r[33] === true || r[33] === 'true' || r[33] === 'TRUE' || String(r[15]||'') === 'Chính thức',
-      ten_file: String(r[34]||''), link_file: String(r[35]||'')
+      ten_file: String(r[34]||''), link_file: String(r[35]||''),
+      structure: String(r[36]||'')
     })).filter((c: Contract) => c.ma_hop_dong).reverse()
   } catch (err) { console.error(err); alert('Lỗi tải dữ liệu.') }
   finally { loading.value = false }
@@ -2351,7 +2355,8 @@ async function duplicateContract(c: Contract | null) {
   localStorage.setItem('cloneQuoteProductsRaw', JSON.stringify(rawDetails))
   localStorage.setItem('cloneQuoteMeta', JSON.stringify({
     chietKhauTruocThuePct: c.chiet_khau_truoc_thue_pct || 0,
-    thueChenhLechPct: c.thue_chenh_lech_pct || 0
+    thueChenhLechPct: c.thue_chenh_lech_pct || 0,
+    structure: c.structure
   }))
   
   navigating.value = true
