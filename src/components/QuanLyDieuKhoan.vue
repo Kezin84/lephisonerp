@@ -776,7 +776,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 10000;
   padding: 24px;
 }
 
@@ -800,6 +800,7 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .modal-header h2 {
@@ -907,6 +908,7 @@ select {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+  flex-shrink: 0;
 }
 
 /* Skeleton Loading */
@@ -1241,5 +1243,101 @@ select {
 @keyframes async-modal-out {
   0% { transform: scale(1); opacity: 1; }
   100% { transform: scale(0.9); opacity: 0; }
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .quan-ly-dieu-khoan {
+    padding: 12px !important;
+  }
+  
+  /* Header */
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  .actions {
+    width: 100%;
+    justify-content: center;
+  }
+  .actions .btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  /* Search */
+  .search-bar {
+    max-width: 100% !important;
+  }
+
+  /* Cards */
+  .terms-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .folder-header {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+  }
+  .folder-tab {
+    padding: 10px 14px;
+    max-width: 100%;
+    width: fit-content;
+  }
+  .folder-tab span {
+    word-break: break-all;
+    white-space: normal;
+    min-width: 0;
+    flex: 1;
+  }
+  .folder-body {
+    padding: 12px !important;
+    gap: 12px !important;
+  }
+  .info-row {
+    grid-template-columns: 1fr !important;
+    margin-right: 0 !important;
+    margin-top: 24px !important;
+    gap: 8px !important;
+  }
+  .card-actions {
+    top: 10px !important;
+    right: 10px !important;
+  }
+  .content-preview-container {
+    padding: 12px !important;
+  }
+  
+  /* Modal */
+  .modal-content {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0;
+    max-height: 100%;
+    border: none;
+    margin: 0;
+    min-height: 0;
+  }
+  .modal-overlay {
+    padding: 0;
+  }
+  .modal-header {
+    padding: 16px;
+  }
+  .modal-body {
+    padding: 16px;
+    padding-bottom: 80px !important;
+    min-height: 0;
+  }
+  .form-split {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+    min-height: auto;
+  }
+  .modal-footer {
+    padding: 16px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 16px));
+  }
 }
 </style>

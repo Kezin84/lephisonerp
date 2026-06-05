@@ -85,7 +85,7 @@
           </div>
         </div>
         
-        <div v-for="(item, index) in groupItems" :key="item.Ma_hang || index" class="product-card">
+        <div v-for="(item, index) in groupItems" :key="item.Ma_hang || index" class="product-card" @click="openEditModal(item)" style="cursor: pointer;">
           <div class="card-body">
             <div class="card-top">
               <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
@@ -97,10 +97,10 @@
                 </span>
               </div>
               <div class="card-actions">
-                <button class="btn-icon text-primary" title="Sửa" @click="openEditModal(item)">
+                <button class="btn-icon text-primary" title="Sửa" @click.stop="openEditModal(item)">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                 </button>
-                <button class="btn-icon text-danger" title="Xóa" @click="requestDelete(item)">
+                <button class="btn-icon text-danger" title="Xóa" @click.stop="requestDelete(item)">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                 </button>
               </div>
@@ -292,12 +292,17 @@
             </div>
           </form>
         </div>
-        <div class="modal-footer">
-          <button class="btn btn-secondary" @click="closeModal">Hủy</button>
-          <button class="btn btn-primary" @click="saveItem" :disabled="saving">
-            <span v-if="saving" class="spinner"></span>
-            {{ saving ? 'Đang lưu...' : 'Lưu lại' }}
-          </button>
+        <div class="modal-footer" style="display: flex; justify-content: space-between;">
+          <div>
+            <button v-if="isEditing" type="button" class="btn btn-danger" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.3);" @click="requestDelete(formData)">Xóa</button>
+          </div>
+          <div style="display: flex; gap: 12px;">
+            <button type="button" class="btn btn-secondary" @click="closeModal">Hủy</button>
+            <button v-if="isDirty" type="button" class="btn btn-primary" @click="saveItem" :disabled="saving">
+              <span v-if="saving" class="spinner"></span>
+              {{ saving ? 'Đang lưu...' : 'Lưu lại' }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -509,8 +514,14 @@ const loading = ref(false)
 const saving = ref(false)
 const showModal = ref(false)
 const isEditing = ref(false)
+const originalItem = ref(null)
 const searchQuery = ref('')
 const confirmDeleteModal = ref({ show: false, item: null })
+
+const isDirty = computed(() => {
+  if (!isEditing.value) return true
+  return JSON.stringify(formData.value) !== JSON.stringify(originalItem.value)
+})
 
 const asyncResultModal = ref({ show: false, type: 'loading', title: '', msg: '' })
 let asyncResultTimeout = null
@@ -1123,12 +1134,14 @@ const fetchData = async () => {
 
 const openAddModal = () => {
   formData.value = { ...defaultForm }
+  originalItem.value = null
   isEditing.value = false
   showModal.value = true
 }
 
 const openEditModal = (item) => {
   formData.value = { ...item }
+  originalItem.value = { ...item }
   isEditing.value = true
   showModal.value = true
 }
@@ -1381,6 +1394,7 @@ onMounted(() => {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 99px;
   font-size: 14px;
+  box-sizing: border-box;
   background: rgba(15, 23, 42, 0.6);
   color: #f8fafc;
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
@@ -2554,5 +2568,26 @@ onMounted(() => {
 .skeleton-price {
   height: 20px;
   width: 60%;
+}
+
+@media (max-width: 768px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+  .form-grid-2col, .panel-content {
+    grid-template-columns: 1fr;
+  }
+  .col-span-2 {
+    grid-column: 1 / -1;
+  }
+  .modal-content.large-modal {
+    padding-bottom: 80px;
+  }
 }
 </style>

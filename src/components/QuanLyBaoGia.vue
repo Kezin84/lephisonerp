@@ -183,7 +183,7 @@
       </div>
     </div>
 
-    <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px; margin-bottom: 24px;">
+    <div class="action-bar-mobile" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px; margin-bottom: 24px;">
       <button class="btn-primary" @click="router.push('/baogia')" style="background: #2563eb; color: white; padding: 0.85rem 1.75rem; box-shadow: 0 4px 15px -2px rgba(37, 99, 235, 0.4); border: none; border-radius: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.25s; cursor: pointer; font-family: inherit; font-size: 1rem; margin-bottom: 2px;" onmouseover="this.style.background='#1d4ed8'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(37, 99, 235, 0.6)'" onmouseout="this.style.background='#2563eb'; this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px -2px rgba(37, 99, 235, 0.4)'">
         <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
         <span>Tạo báo giá mới</span>
@@ -285,7 +285,7 @@
             </button>
 
             <!-- Two Column Grid -->
-            <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 30px; width: 100%; padding-right: 48px;">
+            <div class="group-grid-cols" style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 30px; width: 100%; padding-right: 48px;">
               
               <!-- LEFT COLUMN -->
               <div style="display: flex; flex-direction: column; justify-content: flex-start; gap: 28px;">
@@ -500,7 +500,7 @@
       <template v-else>
       <!-- Master Date Filter -->
       <div style="display: flex; justify-content: center; margin-bottom: 24px;">
-        <div style="display: flex; align-items: center; gap: 16px; background: linear-gradient(145deg, rgba(30,41,59,0.8), rgba(15,23,42,0.9)); padding: 12px 24px; border-radius: 20px; border: 1px solid rgba(16,185,129,0.3); box-shadow: 0 8px 20px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1); backdrop-filter: blur(10px);">
+        <div class="master-date-filter-box" style="display: flex; align-items: center; gap: 16px; background: linear-gradient(145deg, rgba(30,41,59,0.8), rgba(15,23,42,0.9)); padding: 12px 24px; border-radius: 20px; border: 1px solid rgba(16,185,129,0.3); box-shadow: 0 8px 20px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1); backdrop-filter: blur(10px);">
           <div style="display: flex; align-items: center; gap: 8px; color: #10b981;">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
             <span style="font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Mốc tính toán:</span>
@@ -524,7 +524,7 @@
         </div>
       </div>
       <!-- Summary Cards -->
-      <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 20px;">
+      <div class="duration-summary-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 20px;">
         <!-- Card: Tất cả -->
         <div @click="durationCardFilter = 'all'" class="dur-card" :class="{ 'dur-card-active': durationCardFilter === 'all' }" style="position: relative; padding: 20px; border-radius: 16px; cursor: pointer; overflow: hidden; background: linear-gradient(145deg, rgba(15,23,42,0.8), rgba(30,41,59,0.6)); backdrop-filter: blur(10px);" :style="durationCardFilter === 'all' ? 'border: 1px solid #10b981; box-shadow: 0 0 20px rgba(16,185,129,0.5), inset 0 0 15px rgba(16,185,129,0.1);' : 'border: 1px solid rgba(16,185,129,0.12); box-shadow: none;'">
           <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #10b981, #34d399); border-radius: 16px 16px 0 0;" :style="durationCardFilter === 'all' ? 'opacity:1' : 'opacity:0.3'"></div>
@@ -649,8 +649,7 @@
             <div style="padding: 16px 24px 0;">
               <input v-model="durationCustomerSearch" placeholder="Tìm kiếm MST, khách hàng, công ty..." style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(16,185,129,0.3); background: rgba(15,23,42,0.6); color: #e2e8f0; font-size: 14px; outline: none; box-sizing: border-box;" />
             </div>
-            <!-- Table header -->
-            <div style="display: grid; grid-template-columns: 1fr 1.5fr 1.5fr 36px; gap: 0; padding: 12px 32px 0; border-bottom: 1px solid rgba(255,255,255,0.06);">
+            <div class="dur-cust-header" style="display: grid; grid-template-columns: 1fr 1.5fr 1.5fr 36px; gap: 0; padding: 12px 32px 0; border-bottom: 1px solid rgba(255,255,255,0.06);">
               <span style="font-size: 11px; color: #10b981; font-weight: 700; text-transform: uppercase; padding: 8px 0;">MST</span>
               <span style="font-size: 11px; color: #10b981; font-weight: 700; text-transform: uppercase; padding: 8px 0;">Tên công ty</span>
               <span style="font-size: 11px; color: #10b981; font-weight: 700; text-transform: uppercase; padding: 8px 0;">Khách hàng</span>
@@ -734,7 +733,7 @@
           <!-- TABLE content -->
           <div class="group-cards" :class="{ 'collapsed': collapsedGroups[group.ma_hop_dong] }">
             <div style="overflow-x: auto; background: rgba(15,23,42,0.5); border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; border: 1px solid rgba(255,255,255,0.08); border-top: none;">
-              <table style="width: 100%; border-collapse: collapse; min-width: 900px;">
+              <table class="dm-table" style="width: 100%; border-collapse: collapse; min-width: 900px;">
                 <thead>
                   <tr>
                     <th style="padding: 14px 12px; text-align: center; font-size: 12px; font-weight: 800; color: #ffffff; background: rgba(255,255,255,0.05); width: 50px; text-transform: uppercase;">STT</th>
@@ -750,29 +749,30 @@
                 </thead>
                 <tbody>
                   <tr v-for="(row, ri) in group.rows" :key="ri" 
+                    class="dm-table-row"
                     :class="{ 'highlighted-duration-row': isHighlighted(row.ten_hang) }"
                     style="transition: all 0.3s; cursor: pointer;" 
                     @mouseover="!isHighlighted(row.ten_hang) ? ($event.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)' : null" 
                     @mouseout="!isHighlighted(row.ten_hang) ? ($event.currentTarget as HTMLElement).style.background = 'transparent' : null" 
                     @click="viewDetails(row._contract)">
-                    <td style="padding: 12px; text-align: center; color: #94a3b8; font-weight: 700; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05);">{{ ri + 1 }}</td>
-                    <td style="padding: 12px; color: #f8fafc; font-weight: 600; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05); line-height: 1.4;">{{ row.ten_hang }}</td>
-                    <td style="padding: 12px; color: #cbd5e1; font-weight: 600; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05);">{{ row.ten_ncc }}</td>
-                    <td style="padding: 12px; text-align: center; color: #e2e8f0; font-weight: 600; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05);">{{ row.start_date || '-' }}</td>
-                    <td style="padding: 12px; text-align: center; color: #e2e8f0; font-weight: 600; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05);">{{ row.end_date || '-' }}</td>
-                    <td style="padding: 12px; text-align: center; font-weight: 700; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <td data-label="STT" style="padding: 12px; text-align: center; color: #94a3b8; font-weight: 700; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05);">{{ ri + 1 }}</td>
+                    <td data-label="Tên hàng" style="padding: 12px; color: #f8fafc; font-weight: 600; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05); line-height: 1.4; text-align: left;">{{ row.ten_hang }}</td>
+                    <td data-label="Hãng" style="padding: 12px; color: #cbd5e1; font-weight: 600; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: left;">{{ row.ten_ncc }}</td>
+                    <td data-label="Start Date" style="padding: 12px; text-align: center; color: #e2e8f0; font-weight: 600; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05);">{{ row.start_date || '-' }}</td>
+                    <td data-label="End Date" style="padding: 12px; text-align: center; color: #e2e8f0; font-weight: 600; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05);">{{ row.end_date || '-' }}</td>
+                    <td data-label="Thời hạn" style="padding: 12px; text-align: center; font-weight: 700; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05);">
                       <span v-if="row.start_date && row.end_date && (!row.is_giahan || (row.is_giahan !== 'TRUE' && row.is_giahan !== 'FALSE'))" :style="{ color: '#ffffff', background: calculateDaysDiff(row.start_date, row.end_date) < 90 ? '#dc2626' : '#059669', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', display: 'inline-block' }">{{ formatDuration(row.start_date, row.end_date) }}</span>
                       <span v-else style="color: #64748b;">-</span>
                     </td>
-                    <td style="padding: 12px; text-align: center; font-weight: 600; font-size: 12px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <td data-label="Ghi chú" style="padding: 12px; text-align: center; font-weight: 600; font-size: 12px; border-bottom: 1px solid rgba(255,255,255,0.05);">
                       <span v-if="row.start_date && row.end_date && calculateDaysDiff(row.start_date, row.end_date) < 90 && (!row.is_giahan || (row.is_giahan !== 'TRUE' && row.is_giahan !== 'FALSE'))" style="color: #ef4444; background: rgba(239,68,68,0.1); padding: 4px 8px; border-radius: 4px;">sắp hết thời hạn</span>
                       <span v-else style="color: #64748b;">-</span>
                     </td>
-                    <td style="padding: 12px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <td data-label="Gia hạn" style="padding: 12px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05);">
                       <button v-if="!row.is_giahan || (row.is_giahan !== 'TRUE' && row.is_giahan !== 'FALSE')" @click.stop="openRenewModal(row)" style="padding: 6px 14px; border-radius: 6px; border: none; background: linear-gradient(135deg, #10b981, #059669); color: #fff; font-weight: 700; font-size: 11px; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 8px rgba(16,185,129,0.3); white-space: nowrap;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(16,185,129,0.3)'">Gia hạn</button>
                       <span v-else style="color: #64748b;">-</span>
                     </td>
-                    <td style="padding: 12px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05);" @click.stop>
+                    <td data-label="Trạng thái Gia hạn" style="padding: 12px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05);" @click.stop>
                       <div style="display: flex; gap: 4px; justify-content: center;" v-if="row.start_date && row.end_date && (!row.is_giahan || (row.is_giahan !== 'TRUE' && row.is_giahan !== 'FALSE'))">
                         <button @click="updateGiaHanStatus(row, 'TRUE')" :style="statusEffects[`${row.ma_hop_dong}_${row.ma_hang}`] === 'TRUE' ? 'background: #10b981; color: #fff; border: 1px solid #10b981;' : 'background: rgba(16,185,129,0.2); border: 1px solid #10b981; color: #10b981;'" style="padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.2s;" onmouseover="if(!this.disabled){this.style.background='#10b981'; this.style.color='#fff'}" onmouseout="if(!this.disabled){this.style.background='rgba(16,185,129,0.2)'; this.style.color='#10b981'}" :disabled="!!statusEffects[`${row.ma_hop_dong}_${row.ma_hang}`]">{{ statusEffects[`${row.ma_hop_dong}_${row.ma_hang}`] === 'TRUE' ? 'Thành công ✔' : 'Đã gia hạn' }}</button>
                         <button @click="updateGiaHanStatus(row, 'FALSE')" :style="statusEffects[`${row.ma_hop_dong}_${row.ma_hang}`] === 'FALSE' ? 'background: #ef4444; color: #fff; border: 1px solid #ef4444;' : 'background: rgba(239,68,68,0.2); border: 1px solid #ef4444; color: #ef4444;'" style="padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.2s;" onmouseover="if(!this.disabled){this.style.background='#ef4444'; this.style.color='#fff'}" onmouseout="if(!this.disabled){this.style.background='rgba(239,68,68,0.2)'; this.style.color='#ef4444'}" :disabled="!!statusEffects[`${row.ma_hop_dong}_${row.ma_hang}`]">{{ statusEffects[`${row.ma_hop_dong}_${row.ma_hang}`] === 'FALSE' ? 'Thành công ✔' : 'Không gia hạn' }}</button>
@@ -933,7 +933,7 @@
           <!-- Header -->
           <div class="dm-header">
             <div class="dm-header-info" style="flex-direction: column; align-items: flex-start; gap: 12px; width: 100%;">
-              <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+              <div class="dm-header-top" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
                 <div class="dm-title" style="margin-right: 20px;">
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
                   Bảng báo giá chi tiết
@@ -953,8 +953,8 @@
                   </div>
                 </div>
               </div>
-              <div style="display: flex; align-items: center; gap: 12px; margin-top: 8px;">
-                <div style="display: flex; gap: 8px;">
+              <div class="dm-tabs-container" style="display: flex; align-items: center; gap: 12px; margin-top: 8px;">
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                   <button :style="{ padding: '8px 20px', borderRadius: '8px', border: 'none', background: activeDetailTab === 'baogia' ? 'rgba(16,185,129,0.2)' : 'transparent', color: activeDetailTab === 'baogia' ? '#10b981' : '#94a3b8', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', borderBottom: activeDetailTab === 'baogia' ? '2px solid #10b981' : '2px solid transparent' }" @click="activeDetailTab = 'baogia'">Báo giá</button>
                   <button :style="{ padding: '8px 20px', borderRadius: '8px', border: 'none', background: activeDetailTab === 'thoihan' ? 'rgba(16,185,129,0.2)' : 'transparent', color: activeDetailTab === 'thoihan' ? '#10b981' : '#94a3b8', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', borderBottom: activeDetailTab === 'thoihan' ? '2px solid #10b981' : '2px solid transparent' }" @click="activeDetailTab = 'thoihan'">Thời hạn (Start / End Date)</button>
                 </div>
@@ -978,9 +978,13 @@
             <div v-if="loadingDetails" class="dm-loading"><div class="dm-spinner"></div>Đang tải chi tiết...</div>
             <div v-else-if="!selectedContractDetails.length" class="dm-empty">Không có sản phẩm nào trong báo giá này.</div>
             <template v-else>
-              <div style="display: flex; gap: 24px; align-items: flex-start; width: 100%; height: 100%;">
+              <div class="mobile-sub-tabs" v-if="activeDetailTab === 'baogia'" style="display: none; gap: 8px; margin-bottom: 16px; width: 100%;">
+                <button :class="{ 'sub-tab-active': activeMobileSubTab === 'chitiet' }" @click="activeMobileSubTab = 'chitiet'" style="flex: 1; padding: 10px; border-radius: 8px; border: none; font-weight: 700; cursor: pointer; transition: all 0.2s; font-size: 13px;">Chi tiết</button>
+                <button :class="{ 'sub-tab-active': activeMobileSubTab === 'tongket' }" @click="activeMobileSubTab = 'tongket'" style="flex: 1; padding: 10px; border-radius: 8px; border: none; font-weight: 700; cursor: pointer; transition: all 0.2s; font-size: 13px;">Tổng kết</button>
+              </div>
+              <div class="dm-panels-container" style="display: flex; gap: 24px; align-items: flex-start; width: 100%; height: 100%;">
                 <!-- Left Panel -->
-                <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; height: 100%;">
+                <div class="panel-chitiet" :class="{ 'mobile-hidden': activeMobileSubTab !== 'chitiet' && activeDetailTab === 'baogia' }" style="flex: 1; min-width: 0; display: flex; flex-direction: column; height: 100%;">
                   <!-- Quote Table -->
                   <div v-show="activeDetailTab === 'baogia'" class="dm-table-wrap" style="flex: 1; min-height: 0;">
                   <table class="dm-table">
@@ -1014,29 +1018,29 @@
                       </tr>
                       <!-- Item rows -->
                       <tr v-for="(d, di) in group.items" :key="di" class="dm-table-row">
-                        <td class="center" style="color:#fff; font-weight:700;">{{ di + 1 }}</td>
-                        <td v-show="false" class="col-pn-cell">{{ d.ma_hang }}</td>
-                        <td class="col-name-cell">
+                        <td class="center" data-label="STT" style="color:#fff; font-weight:700;">{{ di + 1 }}</td>
+                        <td v-show="false" class="col-pn-cell" data-label="P/N">{{ d.ma_hang }}</td>
+                        <td class="col-name-cell" data-label="TÊN HÀNG">
                           <div style="font-weight: 700;">{{ d.ten_hang }}</div>
                           <div v-if="d.start_date && d.end_date" :style="{ fontSize: '11.5px', color: '#ffffff', marginTop: '4px', fontWeight: 600, background: calculateDaysDiff(d.start_date, d.end_date) < 90 ? '#dc2626' : '#059669', padding: '2px 6px', borderRadius: '4px', display: 'inline-block' }">
                             <i class="lucide-calendar" style="font-size: 11px; margin-right: 3px;"></i>Thời hạn: {{ formatDuration(d.start_date, d.end_date) }}
                             <span v-if="calculateDaysDiff(d.start_date, d.end_date) < 90" style="margin-left: 4px; font-style: italic; color: #fca5a5;">(sắp hết)</span>
                           </div>
                         </td>
-                        <td class="col-desc-cell"><div class="desc-lines"><div v-if="d.mo_ta_chung">{{ d.mo_ta_chung }}</div><div v-if="d.mo_ta_chi_tiet">{{ d.mo_ta_chi_tiet }}</div><div v-if="d.features">{{ d.features }}</div></div></td>
-                        <td class="col-hang-cell">{{ d.ten_ncc }}</td>
-                        <td class="center" style="color:#fff; font-weight:700;">{{ d.dvt }}</td>
-                        <td class="center" style="color:#fff; font-weight:700;">{{ d.so_luong }}</td>
-                        <td v-if="quoteCurrency === 'USD'" class="center" style="font-weight: 700; color: #fb923c; width: 65px; padding: 4px 2px; white-space: nowrap;">{{ (Number(d.ti_gia_usd || d.ti_gia) || 1).toLocaleString('vi-VN') }}<br><span style="font-size: 9px; opacity: 0.7;">{{ d.don_vi_tien_te_usd || d.don_vi_tien_te || 'USD' }}</span></td>
-                        <td class="right tc-col"><div>{{ formatCurrencyDisplay(quoteCurrency === 'USD' ? d.gia_tieu_chuan_usd : d.gia_tieu_chuan) }}</div><div class="sub-pct">({{ giaTCPct(d) }}%)</div></td>
-                        <td class="right" style="color:#fff; font-weight:700;">{{ formatCurrencyDisplay(quoteCurrency === 'USD' ? d.don_gia_usd : d.don_gia) }}</td>
-                        <td class="right" style="color:#fb923c; font-weight:700;">{{ formatCurrencyDisplay(quoteCurrency === 'USD' ? d.gia_nhap_usd : d.gia_nhap) }}</td>
-                        <td class="right" style="color:#f87171; font-weight:700;"><div>{{ formatCurrencyDisplay(mucOffAmountDisplay(d)) }}</div><div class="sub-pct" style="color:#f87171 !important;">(-{{ d.muc_off }}%)</div></td>
-                        <td class="right dg-col">{{ formatCurrencyDisplay(unitPriceKHDisplay(d)) }}</td>
-                        <td class="right tt-col">{{ formatCurrencyDisplay(lineTruocThue(d)) }}</td>
-                        <td class="right" style="color:#10b981; font-weight:800;"><div>{{ formatCurrencyDisplay(lineVAT(d)) }}</div><div class="sub-pct" style="color:#34d399 !important;">({{ d.thue_vat }}%)</div></td>
-                        <td class="right sau-col">{{ formatCurrencyDisplay(lineSauThue(d)) }}</td>
-                        <td class="right" :style="{ color: lineNetMargin(d) >= 0 ? '#10b981' : '#ef4444', fontWeight: 800 }">
+                        <td class="col-desc-cell" data-label="DIỄN GIẢI"><div class="desc-lines"><div v-if="d.mo_ta_chung">{{ d.mo_ta_chung }}</div><div v-if="d.mo_ta_chi_tiet">{{ d.mo_ta_chi_tiet }}</div><div v-if="d.features">{{ d.features }}</div></div></td>
+                        <td class="col-hang-cell" data-label="HÃNG">{{ d.ten_ncc }}</td>
+                        <td class="center" data-label="ĐVT" style="color:#fff; font-weight:700;">{{ d.dvt }}</td>
+                        <td class="center" data-label="SL" style="color:#fff; font-weight:700;">{{ d.so_luong }}</td>
+                        <td v-if="quoteCurrency === 'USD'" class="center" data-label="Tỉ giá" style="font-weight: 700; color: #fb923c; width: 65px; padding: 4px 2px; white-space: nowrap;">{{ (Number(d.ti_gia_usd || d.ti_gia) || 1).toLocaleString('vi-VN') }}<br><span style="font-size: 9px; opacity: 0.7;">{{ d.don_vi_tien_te_usd || d.don_vi_tien_te || 'USD' }}</span></td>
+                        <td class="right tc-col" data-label="GIÁ TIÊU CHUẨN"><div>{{ formatCurrencyDisplay(quoteCurrency === 'USD' ? d.gia_tieu_chuan_usd : d.gia_tieu_chuan) }}</div><div class="sub-pct">({{ giaTCPct(d) }}%)</div></td>
+                        <td class="right" data-label="ĐƠN GIÁ (LP)" style="color:#fff; font-weight:700;">{{ formatCurrencyDisplay(quoteCurrency === 'USD' ? d.don_gia_usd : d.don_gia) }}</td>
+                        <td class="right" data-label="GIÁ NHẬP" style="color:#fb923c; font-weight:700;">{{ formatCurrencyDisplay(quoteCurrency === 'USD' ? d.gia_nhap_usd : d.gia_nhap) }}</td>
+                        <td class="right" data-label="MỨC OFF" style="color:#f87171; font-weight:700;"><div>{{ formatCurrencyDisplay(mucOffAmountDisplay(d)) }}</div><div class="sub-pct" style="color:#f87171 !important;">(-{{ d.muc_off }}%)</div></td>
+                        <td class="right dg-col" data-label="ĐƠN GIÁ (KH)">{{ formatCurrencyDisplay(unitPriceKHDisplay(d)) }}</td>
+                        <td class="right tt-col" :data-label="'TT TRƯỚC THUẾ (' + quoteCurrency + ')'">{{ formatCurrencyDisplay(lineTruocThue(d)) }}</td>
+                        <td class="right" data-label="VAT" style="color:#10b981; font-weight:800;"><div>{{ formatCurrencyDisplay(lineVAT(d)) }}</div><div class="sub-pct" style="color:#34d399 !important;">({{ d.thue_vat }}%)</div></td>
+                        <td class="right sau-col" :data-label="'TT SAU THUẾ (' + quoteCurrency + ')'">{{ formatCurrencyDisplay(lineSauThue(d)) }}</td>
+                        <td class="right" data-label="NET MARGIN" :style="{ color: lineNetMargin(d) >= 0 ? '#10b981' : '#ef4444', fontWeight: 800 }">
                           <div style="display:flex; align-items:center; justify-content:flex-end; gap:3px;">
                             <span style="font-size:11px;">{{ lineNetMargin(d) >= 0 ? '▲' : '▼' }}</span>
                             {{ formatCurrencyDisplay(Math.abs(lineNetMargin(d))) }}
@@ -1062,7 +1066,7 @@
                   <!-- Thoihan Table -->
                   <div v-show="activeDetailTab === 'thoihan'" style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
                     <div style="flex: 1; overflow-y: auto; padding: 20px 28px; background: rgba(15,23,42,0.4); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
-                      <table style="width: 100%; border-collapse: separate; border-spacing: 0;">
+                      <table style="width: 100%; border-collapse: separate; border-spacing: 0;" class="dm-table dm-table-thoihan">
                         <thead>
                           <tr>
                             <th style="padding: 14px 12px; text-align: center; font-size: 13px; font-weight: 800; color: #ffffff; background: #10b981; width: 60px; text-transform: uppercase; border-top-left-radius: 8px; border-bottom-left-radius: 8px;">STT</th>
@@ -1075,21 +1079,21 @@
                           </tr>
                         </thead>
                         <tbody>
-                          <tr v-for="(item, idx) in selectedContractDetails" :key="idx" style="transition: background 0.2s;" @mouseover="($event.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'" @mouseout="($event.currentTarget as HTMLElement).style.background = 'transparent'">
-                            <td style="padding: 14px 12px; text-align: center; color: #94a3b8; font-weight: 700; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.05);">{{ idx + 1 }}</td>
-                            <td style="padding: 14px 12px; color: #f8fafc; font-size: 14px; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.05); line-height: 1.5;">{{ item.ten_hang }}</td>
-                            <td style="padding: 14px 12px; text-align: center; color: #e2e8f0; font-weight: 600; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.05);">{{ item.start_date || '-' }}</td>
-                            <td style="padding: 14px 12px; text-align: center; color: #e2e8f0; font-weight: 600; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.05);">{{ item.end_date || '-' }}</td>
-                            <td style="padding: 14px 12px; text-align: center; font-weight: 700; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                          <tr v-for="(item, idx) in selectedContractDetails" :key="idx" class="dm-table-row" style="transition: background 0.2s;" @mouseover="($event.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'" @mouseout="($event.currentTarget as HTMLElement).style.background = 'transparent'">
+                            <td data-label="STT" style="padding: 14px 12px; text-align: center; color: #94a3b8; font-weight: 700; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.05);">{{ idx + 1 }}</td>
+                            <td data-label="Tên hàng" class="col-name-cell" style="padding: 14px 12px; color: #f8fafc; font-size: 14px; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.05); line-height: 1.5;">{{ item.ten_hang }}</td>
+                            <td data-label="Start Date" style="padding: 14px 12px; text-align: center; color: #e2e8f0; font-weight: 600; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.05);">{{ item.start_date || '-' }}</td>
+                            <td data-label="End Date" style="padding: 14px 12px; text-align: center; color: #e2e8f0; font-weight: 600; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.05);">{{ item.end_date || '-' }}</td>
+                            <td data-label="Thời hạn" style="padding: 14px 12px; text-align: center; font-weight: 700; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.05);">
                               <span v-if="item.start_date && item.end_date && item.is_giahan !== 'TRUE' && item.is_giahan !== 'FALSE'" :style="{ color: '#ffffff', background: calculateDaysDiff(item.start_date, item.end_date) < 90 ? '#dc2626' : '#059669', padding: '4px 10px', borderRadius: '6px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }">{{ formatDuration(item.start_date, item.end_date) }}</span>
                               <span v-else style="color: #64748b;">-</span>
                             </td>
-                            <td style="padding: 14px 12px; text-align: center; font-weight: 600; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            <td data-label="Ghi chú" style="padding: 14px 12px; text-align: center; font-weight: 600; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05);">
                               <span v-if="item.start_date && item.end_date && calculateDaysDiff(item.start_date, item.end_date) < 90 && item.is_giahan !== 'TRUE' && item.is_giahan !== 'FALSE'" style="color: #ef4444; background: rgba(239,68,68,0.1); padding: 4px 8px; border-radius: 4px; display: inline-block;">sắp hết thời hạn</span>
                               <span v-else style="color: #64748b;">-</span>
                             </td>
-                            <td style="padding: 14px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: center;">
-                              <div style="display: flex; gap: 8px; justify-content: center;" v-if="item.start_date && item.end_date && item.is_giahan !== 'TRUE' && item.is_giahan !== 'FALSE'">
+                            <td data-label="Trạng thái Gia hạn" style="padding: 14px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: center;">
+                              <div style="display: flex; gap: 8px; justify-content: flex-end;" v-if="item.start_date && item.end_date && item.is_giahan !== 'TRUE' && item.is_giahan !== 'FALSE'">
                                 <button @click="updateGiaHanStatus(item, 'TRUE')" :style="statusEffects[`${item.ma_hop_dong || (item._contract ? item._contract.ma_hop_dong : '')}_${item.ma_hang}`] === 'TRUE' ? 'background: #10b981; color: #fff; border: 1px solid #10b981;' : 'background: rgba(16,185,129,0.2); border: 1px solid #10b981; color: #10b981;'" style="padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.2s;" onmouseover="if(!this.disabled){this.style.background='#10b981'; this.style.color='#fff'}" onmouseout="if(!this.disabled){this.style.background='rgba(16,185,129,0.2)'; this.style.color='#10b981'}" :disabled="!!statusEffects[`${item.ma_hop_dong || (item._contract ? item._contract.ma_hop_dong : '')}_${item.ma_hang}`]">{{ statusEffects[`${item.ma_hop_dong || (item._contract ? item._contract.ma_hop_dong : '')}_${item.ma_hang}`] === 'TRUE' ? 'Thành công ✔' : 'Đã gia hạn' }}</button>
                                 <button @click="updateGiaHanStatus(item, 'FALSE')" :style="statusEffects[`${item.ma_hop_dong || (item._contract ? item._contract.ma_hop_dong : '')}_${item.ma_hang}`] === 'FALSE' ? 'background: #ef4444; color: #fff; border: 1px solid #ef4444;' : 'background: rgba(239,68,68,0.2); border: 1px solid #ef4444; color: #ef4444;'" style="padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.2s;" onmouseover="if(!this.disabled){this.style.background='#ef4444'; this.style.color='#fff'}" onmouseout="if(!this.disabled){this.style.background='rgba(239,68,68,0.2)'; this.style.color='#ef4444'}" :disabled="!!statusEffects[`${item.ma_hop_dong || (item._contract ? item._contract.ma_hop_dong : '')}_${item.ma_hang}`]">{{ statusEffects[`${item.ma_hop_dong || (item._contract ? item._contract.ma_hop_dong : '')}_${item.ma_hang}`] === 'FALSE' ? 'Thành công ✔' : 'Không gia hạn' }}</button>
                               </div>
@@ -1105,7 +1109,7 @@
                 </div>
 
               <!-- Right Sidebar Totals - Professional Layout -->
-              <div class="dm-totals-grid" style="display: flex; flex-direction: column; gap: 20px; width: 340px; flex-shrink: 0; overflow-y: auto;">
+              <div class="panel-tongket dm-totals-grid" :class="{ 'mobile-hidden': activeMobileSubTab !== 'tongket' && activeDetailTab === 'baogia' }" style="display: flex; flex-direction: column; gap: 20px; width: 340px; flex-shrink: 0; overflow-y: auto;">
                 <!-- Box 2: Tổng hợp tài chính -->
                 <div class="totals-box">
                   <div class="totals-header th-blue">
@@ -1212,7 +1216,7 @@
     <!-- SD/ED DATE MODAL -->
     <Teleport to="body">
       <div v-if="showDateModal" class="modal-overlay" @click.self="showDateModal = false" style="z-index: 10002;">
-        <div style="background: #1e293b; border-radius: 16px; width: 1200px; max-width: 95vw; max-height: 85vh; display: flex; flex-direction: column; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 25px 50px rgba(0,0,0,0.5); overflow: hidden;">
+        <div class="date-modal-box" style="background: #1e293b; border-radius: 16px; width: 1200px; max-width: 95vw; max-height: 85vh; display: flex; flex-direction: column; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 25px 50px rgba(0,0,0,0.5); overflow: hidden;">
           <div style="display: flex; align-items: center; justify-content: space-between; padding: 20px 28px; border-bottom: 1px solid rgba(255,255,255,0.08); background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(5,150,105,0.05));">
             <div style="display: flex; align-items: center; gap: 12px;">
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
@@ -1222,7 +1226,13 @@
           </div>
           <!-- Body -->
           <div style="flex: 1; overflow-y: auto; padding: 20px 28px;">
-            <table style="width: 100%; border-collapse: separate; border-spacing: 0;">
+            <div class="mobile-apply-all" style="display: none; justify-content: flex-end; margin-bottom: 12px;">
+              <button @click="openApplyAllModal" style="background: linear-gradient(135deg, #10b981, #059669); border: none; border-radius: 8px; padding: 8px 16px; cursor: pointer; color: #fff; display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; transition: all 0.2s; box-shadow: 0 4px 12px rgba(16,185,129,0.3);" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 16px rgba(16,185,129,0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.3)'">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                Áp dụng tất cả
+              </button>
+            </div>
+            <table class="dm-table" style="width: 100%; border-collapse: separate; border-spacing: 0;">
               <thead>
                 <tr>
                   <th style="padding: 14px 12px; text-align: center; font-size: 13px; font-weight: 800; color: #10b981; width: 60px; border-bottom: 2px solid rgba(16,185,129,0.3); text-transform: uppercase;">STT</th>
@@ -1241,11 +1251,11 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(item, idx) in dateEditItems" :key="idx" style="transition: background 0.2s;" @mouseover="($event.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'" @mouseout="($event.currentTarget as HTMLElement).style.background = 'transparent'">
-                  <td style="padding: 14px 12px; text-align: center; color: #94a3b8; font-weight: 700; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.05);">{{ idx + 1 }}</td>
-                  <td style="padding: 14px 12px; color: #f8fafc; font-size: 14px; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.05); line-height: 1.5;">{{ item.ten_hang }}</td>
-                  <td style="padding: 14px 12px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                    <div style="display: flex; align-items: stretch; border-radius: 8px; border: 1px solid rgba(16,185,129,0.3); background: rgba(15,23,42,0.6); overflow: hidden; width: 160px; margin: 0 auto; transition: all 0.2s;" onfocusin="this.style.borderColor='#10b981'; this.style.boxShadow='0 0 0 3px rgba(16,185,129,0.2)'; this.style.background='rgba(15,23,42,0.9)'" onfocusout="this.style.borderColor='rgba(16,185,129,0.3)'; this.style.boxShadow='none'; this.style.background='rgba(15,23,42,0.6)'">
+                <tr v-for="(item, idx) in dateEditItems" :key="idx" class="dm-table-row" style="transition: background 0.2s;" @mouseover="($event.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'" @mouseout="($event.currentTarget as HTMLElement).style.background = 'transparent'">
+                  <td data-label="STT" style="padding: 14px 12px; text-align: center; color: #94a3b8; font-weight: 700; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.05);">{{ idx + 1 }}</td>
+                  <td data-label="Tên hàng" style="padding: 14px 12px; color: #f8fafc; font-size: 14px; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.05); line-height: 1.5; text-align: left;">{{ item.ten_hang }}</td>
+                  <td data-label="Start Date" style="padding: 14px 12px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <div style="display: flex; align-items: stretch; border-radius: 8px; border: 1px solid rgba(16,185,129,0.3); background: rgba(15,23,42,0.6); overflow: hidden; width: 100%; max-width: 160px; margin: 0 auto; transition: all 0.2s;" onfocusin="this.style.borderColor='#10b981'; this.style.boxShadow='0 0 0 3px rgba(16,185,129,0.2)'; this.style.background='rgba(15,23,42,0.9)'" onfocusout="this.style.borderColor='rgba(16,185,129,0.3)'; this.style.boxShadow='none'; this.style.background='rgba(15,23,42,0.6)'">
                       <input :value="item.start_date" @input="formatDateInput(item, 'start_date', $event); updateDurationBasedOnDates(item)" type="text" placeholder="dd/mm/yyyy" 
                         style="flex: 1; min-width: 0; padding: 10px; border: none; background: transparent; color: #f8fafc; font-size: 14px; text-align: center; outline: none; font-weight: 600; letter-spacing: 0.5px;" />
                       <div @click="(($event.currentTarget as HTMLElement).querySelector('input') as any)?.showPicker()" style="position: relative; width: 40px; display: flex; align-items: center; justify-content: center; background: rgba(16,185,129,0.1); border-left: 1px solid rgba(16,185,129,0.3); cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(16,185,129,0.2)'" onmouseout="this.style.background='rgba(16,185,129,0.1)'">
@@ -1254,7 +1264,7 @@
                       </div>
                     </div>
                   </td>
-                  <td style="padding: 14px 12px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                  <td data-label="Thời hạn" style="padding: 14px 12px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05);">
                     <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
                       <input v-model.number="item.duration_value" @input="updateEndDateBasedOnDuration(item)" type="number" min="0" placeholder="0" style="width: 60px; padding: 8px; border-radius: 6px; border: 1px solid rgba(16,185,129,0.3); background: rgba(15,23,42,0.6); color: #fff; outline: none; text-align: center; font-size: 14px;" />
                       <select v-model="item.duration_unit" @change="updateEndDateBasedOnDuration(item)" style="padding: 8px; border-radius: 6px; border: 1px solid rgba(16,185,129,0.3); background: rgba(15,23,42,0.6); color: #fff; outline: none; font-size: 14px; cursor: pointer;">
@@ -1264,8 +1274,8 @@
                       </select>
                     </div>
                   </td>
-                  <td style="padding: 14px 12px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                    <div style="display: flex; align-items: stretch; border-radius: 8px; border: 1px solid rgba(16,185,129,0.3); background: rgba(15,23,42,0.6); overflow: hidden; width: 160px; margin: 0 auto; transition: all 0.2s;" onfocusin="this.style.borderColor='#10b981'; this.style.boxShadow='0 0 0 3px rgba(16,185,129,0.2)'; this.style.background='rgba(15,23,42,0.9)'" onfocusout="this.style.borderColor='rgba(16,185,129,0.3)'; this.style.boxShadow='none'; this.style.background='rgba(15,23,42,0.6)'">
+                  <td data-label="End Date" style="padding: 14px 12px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <div style="display: flex; align-items: stretch; border-radius: 8px; border: 1px solid rgba(16,185,129,0.3); background: rgba(15,23,42,0.6); overflow: hidden; width: 100%; max-width: 160px; margin: 0 auto; transition: all 0.2s;" onfocusin="this.style.borderColor='#10b981'; this.style.boxShadow='0 0 0 3px rgba(16,185,129,0.2)'; this.style.background='rgba(15,23,42,0.9)'" onfocusout="this.style.borderColor='rgba(16,185,129,0.3)'; this.style.boxShadow='none'; this.style.background='rgba(15,23,42,0.6)'">
                       <input :value="item.end_date" @input="formatDateInput(item, 'end_date', $event); updateDurationBasedOnDates(item)" type="text" placeholder="dd/mm/yyyy" 
                         style="flex: 1; min-width: 0; padding: 10px; border: none; background: transparent; color: #f8fafc; font-size: 14px; text-align: center; outline: none; font-weight: 600; letter-spacing: 0.5px;" />
                       <div @click="(($event.currentTarget as HTMLElement).querySelector('input') as any)?.showPicker()" style="position: relative; width: 40px; display: flex; align-items: center; justify-content: center; background: rgba(16,185,129,0.1); border-left: 1px solid rgba(16,185,129,0.3); cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(16,185,129,0.2)'" onmouseout="this.style.background='rgba(16,185,129,0.1)'">
@@ -1294,7 +1304,7 @@
     <!-- Apply All Modal -->
     <Teleport to="body">
       <div v-if="showApplyAllModal" class="modal-overlay" @click.self="showApplyAllModal = false" style="z-index: 10003;">
-        <div style="background: linear-gradient(145deg, #1e293b, #0f172a); border-radius: 16px; width: 1000px; max-width: 95vw; display: flex; flex-direction: column; border: 1px solid rgba(16,185,129,0.15); box-shadow: 0 25px 50px rgba(0,0,0,0.5); overflow: hidden; animation: dm-pop-in 0.3s ease-out;">
+        <div class="apply-all-modal-box" style="background: linear-gradient(145deg, #1e293b, #0f172a); border-radius: 16px; width: 1000px; max-width: 95vw; display: flex; flex-direction: column; border: 1px solid rgba(16,185,129,0.15); box-shadow: 0 25px 50px rgba(0,0,0,0.5); overflow: hidden; animation: dm-pop-in 0.3s ease-out;">
           <div style="background: linear-gradient(135deg, #34d399, #10b981); padding: 14px 24px; display: flex; align-items: center; justify-content: center; position: relative;">
             <div style="display: flex; align-items: center; gap: 10px;">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
@@ -1303,7 +1313,7 @@
             <button @click="showApplyAllModal = false" style="color: #fff; position: absolute; right: 18px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.15); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;" onmouseover="this.style.background='rgba(0,0,0,0.3)'" onmouseout="this.style.background='rgba(0,0,0,0.15)'">✕</button>
           </div>
           <div style="padding: 24px;">
-            <div style="display: grid; grid-template-columns: 1.2fr 1fr 1.2fr; gap: 16px; align-items: end; max-width: 700px; margin: 0 auto;">
+            <div class="dm-apply-grid" style="display: grid; grid-template-columns: 1.2fr 1fr 1.2fr; gap: 16px; align-items: end; max-width: 700px; margin: 0 auto;">
               <div>
                 <div style="font-size: 10px; text-transform: uppercase; color: #10b981; font-weight: 700; margin-bottom: 6px;">Start Date</div>
                 <div style="display: flex; align-items: stretch; border-radius: 8px; border: 1px solid rgba(16,185,129,0.3); background: rgba(15,23,42,0.6); overflow: hidden; height: 42px;" onfocusin="this.style.borderColor='#10b981'; this.style.boxShadow='0 0 0 3px rgba(16,185,129,0.15)'" onfocusout="this.style.borderColor='rgba(16,185,129,0.3)'; this.style.boxShadow='none'">
@@ -1318,7 +1328,7 @@
                 <div style="font-size: 10px; text-transform: uppercase; color: #10b981; font-weight: 700; margin-bottom: 6px;">Thời hạn</div>
                 <div style="display: flex; align-items: center; gap: 6px; height: 42px;">
                   <input v-model.number="applyAllItem.duration_value" @input="updateEndDateBasedOnDuration(applyAllItem)" type="number" min="0" placeholder="0" style="width: 65px; height: 100%; padding: 0 8px; border-radius: 8px; border: 1px solid rgba(16,185,129,0.3); background: rgba(15,23,42,0.6); color: #fff; outline: none; text-align: center; font-size: 14px; font-weight: 600; box-sizing: border-box;" />
-                  <select v-model="applyAllItem.duration_unit" @change="updateEndDateBasedOnDuration(applyAllItem)" style="height: 100%; padding: 0 8px; border-radius: 8px; border: 1px solid rgba(16,185,129,0.3); background: rgba(15,23,42,0.6); color: #fff; outline: none; font-size: 13px; cursor: pointer; box-sizing: border-box;">
+                  <select v-model="applyAllItem.duration_unit" @change="updateEndDateBasedOnDuration(applyAllItem)" style="flex: 1; height: 100%; padding: 0 8px; border-radius: 8px; border: 1px solid rgba(16,185,129,0.3); background: rgba(15,23,42,0.6); color: #fff; outline: none; font-size: 13px; cursor: pointer; box-sizing: border-box;">
                     <option value="ngày">ngày</option>
                     <option value="tháng">tháng</option>
                     <option value="năm">năm</option>
@@ -1336,7 +1346,7 @@
                 </div>
               </div>
             </div>
-            <div v-if="applySelectiveMode" style="margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div v-if="applySelectiveMode" class="dm-apply-panels" style="margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
               <!-- Left: Available -->
               <div style="border: 1px solid rgba(16,185,129,0.15); border-radius: 10px; background: rgba(15,23,42,0.4); overflow: hidden; display: flex; flex-direction: column;">
                 <div style="padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: space-between;">
@@ -1372,7 +1382,7 @@
               Thời gian này sẽ được áp dụng cho tất cả các hàng trong danh sách.
             </div>
           </div>
-          <div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 14px 24px; border-top: 1px solid rgba(255,255,255,0.08); background: rgba(15,23,42,0.5);">
+          <div class="dm-apply-actions" style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 14px 24px; border-top: 1px solid rgba(255,255,255,0.08); background: rgba(15,23,42,0.5);">
             <button @click="showApplyAllModal = false; applySelectiveMode = false" style="padding: 9px 18px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: #e2e8f0; font-weight: 600; font-size: 13px; cursor: pointer;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">Hủy</button>
             <button v-if="!applySelectiveMode" @click="applySelectiveMode = true; applySelectedItems = []" style="padding: 9px 18px; border-radius: 8px; border: 1px solid rgba(56,189,248,0.4); background: rgba(56,189,248,0.1); color: #38bdf8; font-weight: 700; font-size: 13px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(56,189,248,0.2)'" onmouseout="this.style.background='rgba(56,189,248,0.1)'">Áp dụng riêng</button>
             <button v-if="applySelectiveMode" @click="confirmApplySelective" style="padding: 9px 18px; border-radius: 8px; border: none; background: linear-gradient(135deg, #38bdf8, #0ea5e9); color: #fff; font-weight: 700; font-size: 13px; cursor: pointer; box-shadow: 0 4px 12px rgba(56,189,248,0.3); transition: all 0.2s;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">Áp dụng cho đã chọn</button>
@@ -2158,7 +2168,7 @@ function highlightText(text: string, search: string) {
     .replace(/___MARK_END___/g, '</span>');
 }
 
-const showDetailModal = ref(false); const activeDetailTab = ref('baogia'); const selectedContract = ref<Contract | null>(null); const loadingDetails = ref(false); const selectedContractDetails = ref<ContractDetail[]>([])
+const showDetailModal = ref(false); const activeDetailTab = ref('baogia'); const activeMobileSubTab = ref('chitiet'); const selectedContract = ref<Contract | null>(null); const loadingDetails = ref(false); const selectedContractDetails = ref<ContractDetail[]>([])
 
 const detailTotals = computed(() => {
   const rows = selectedContractDetails.value
@@ -3891,10 +3901,41 @@ onMounted(async () => {
 
 /* RESPONSIVE */
 @media (max-width: 900px) {
-  .dm-totals-grid { grid-template-columns: 1fr; }
+  .panel-tongket { width: 100% !important; padding-bottom: 20px; }
+  .totals-box { flex-shrink: 0 !important; }
+  .master-date-filter-box { flex-direction: column !important; align-items: stretch !important; gap: 12px !important; padding: 16px !important; }
+  .master-date-filter-box > div:first-child { justify-content: center; }
+  .master-date-filter-box > div:nth-child(2) { display: flex !important; width: 100%; }
+  .master-date-filter-box > div:nth-child(2) button { flex: 1; padding: 8px 4px !important; font-size: 12px !important; }
+  .master-date-filter-box > input { width: 100% !important; box-sizing: border-box; text-align: center; }
+  .master-date-filter-box > div:last-child { justify-content: center !important; }
+  .duration-summary-grid { grid-template-columns: 1fr !important; }
+  .mobile-sub-tabs { display: flex !important; }
+  .mobile-sub-tabs button { background: rgba(255,255,255,0.05); color: #94a3b8; }
+  .mobile-sub-tabs button.sub-tab-active { background: #10b981 !important; color: #ffffff !important; box-shadow: 0 4px 12px rgba(16,185,129,0.2); }
+  .mobile-hidden { display: none !important; }
+  .mobile-apply-all { display: flex !important; }
+  .dm-apply-grid, .dm-apply-panels { grid-template-columns: 1fr !important; }
+  .dm-apply-actions { flex-wrap: wrap; justify-content: center !important; }
+  .dm-apply-actions button { flex: 1 1 calc(50% - 10px); justify-content: center; text-align: center; }
+  .detail-modal, .apply-all-modal-box, .date-modal-box { max-height: 85dvh !important; }
+  .dm-table, .dm-table tbody, .dm-table tr, .dm-table td { display: block; width: 100%; box-sizing: border-box; }
+  .dm-table { min-width: 0 !important; }
+  .dm-table thead { display: none; }
+  .dm-table-row { background: rgba(255,255,255,0.05); margin-bottom: 16px; border-radius: 12px; padding: 12px; border: 1px solid rgba(255,255,255,0.1); }
+  .dm-table-row:hover { background: rgba(255,255,255,0.08); }
+  .dm-table-row td { display: flex; justify-content: space-between; align-items: center; padding: 8px 4px !important; border-bottom: 1px solid rgba(255,255,255,0.05) !important; text-align: right !important; color: #fff; }
+  .dm-table-row td.col-name-cell, .dm-table-row td.col-desc-cell { align-items: flex-start; }
+  .dm-table-row td.col-name-cell > div, .dm-table-row td.col-desc-cell > div { text-align: right; }
+  .dm-table-row td:last-child { border-bottom: none !important; }
+  .dm-table-row td::before { content: attr(data-label); font-weight: 700; color: #94a3b8; text-transform: uppercase; font-size: 11px; margin-right: 16px; text-align: left; flex-shrink: 0; align-self: flex-start; margin-top: 2px; }
+  .dm-group-row td { display: block; text-align: center !important; font-size: 14px; background: rgba(16,185,129,0.1); color: #10b981; border-radius: 8px; padding: 10px !important; margin-bottom: 12px; }
+  .dm-table tfoot { display: none; }
+  .dm-panels-container { flex-direction: column !important; }
+  .dm-totals-grid { width: 100% !important; flex-shrink: 1 !important; height: auto !important; }
   .detail-modal-wide { max-width: 100%; margin: 0 12px; }
   .page-header { flex-direction: column; }
-  .filter-chips { flex-direction: column; }
+  .filter-chips { flex-direction: column; align-items: stretch !important; }
   .filter-select { width: 100%; }
   .filter-date-group { width: 100%; }
   .group-bar { flex-direction: column; align-items: flex-start; gap: 16px; }
@@ -3905,11 +3946,64 @@ onMounted(async () => {
   .cg-bottom-right { align-items: flex-start; margin-top: 12px; width: 100%; }
   .cg-bottom-right .meta-item .meta-value { text-align: left; }
   .cg-expand-btn { align-self: flex-end; margin-top: 12px !important; }
+
+  /* Modal Mobile Override */
+  .detail-modal {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    border-radius: 0 !important;
+    border: none !important;
+    margin: 0 !important;
+    min-height: 0 !important;
+    animation: modalSlideLeftIn 0.3s cubic-bezier(0.34,1.56,0.64,1) !important;
+  }
+  .modal-overlay {
+    padding: 0 !important;
+  }
+  .dm-body {
+    padding-bottom: 80px !important; /* Safe space for browser navigation bar */
+    min-height: 0;
+  }
+  .dm-footer {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 16px)) !important;
+  }
 }
+
+@keyframes modalSlideLeftIn {
+  from { transform: translateX(-100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
 @media (max-width: 600px) {
-  .quan-ly-bao-gia { padding: 16px; }
+  .quan-ly-bao-gia { padding: 16px; overflow-x: hidden; max-width: 100vw; box-sizing: border-box; }
   .group-cards-grid { grid-template-columns: 1fr; }
   .page-title { font-size: 22px; }
+  .header { flex-direction: column; gap: 16px; }
+  .header-actions { position: static !important; width: 100%; justify-content: center; flex-wrap: wrap; }
+  .folder-tab { width: 100% !important; box-sizing: border-box; white-space: normal; height: auto !important; }
+  .folder-tab > div { flex-wrap: wrap; }
+  .dur-cust-item { grid-template-columns: 1fr !important; gap: 4px; }
+  .dur-cust-item span { padding: 0 !important; }
+  .dur-cust-item svg { justify-self: flex-start !important; }
+  .dur-cust-header { display: none !important; }
+  .group-grid-cols { grid-template-columns: 1fr !important; padding-right: 0 !important; gap: 16px !important; }
+  .dm-badges { flex-wrap: wrap; justify-content: flex-start; gap: 8px; width: 100%; }
+  .dm-contract-badge { white-space: nowrap !important; }
+  .dm-tabs-container { order: 3; flex-direction: column; align-items: flex-start !important; gap: 8px !important; margin-top: 4px !important; width: 100%; }
+  .dm-tabs-container > div { flex-wrap: wrap; }
+  .dm-tabs-container button { white-space: nowrap !important; }
+  .dm-header { display: flex; flex-direction: column; position: relative; padding: 16px !important; gap: 16px; }
+  .dm-header-info { display: contents; }
+  .dm-header-top { order: 1; flex-direction: column; align-items: flex-start !important; gap: 12px; padding-right: 36px; box-sizing: border-box; width: 100% !important; }
+  .dm-header > div:last-child { order: 2; width: 100%; justify-content: flex-start; }
+  .dm-close { position: absolute; top: 16px; right: 16px; }
+  .folder-body { padding: 16px !important; }
+  .folder-body span { white-space: normal !important; word-break: break-word !important; }
+  .vip-magoc { max-width: 100% !important; box-sizing: border-box; }
+  .action-bar-mobile { flex-direction: column !important; align-items: stretch !important; }
+  .action-bar-mobile .btn-primary { width: 100% !important; justify-content: center !important; }
 }
 
 /* ===== NAVIGATION LOADING OVERLAY ===== */

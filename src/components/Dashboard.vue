@@ -216,8 +216,8 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="2"></circle><path d="M6 12h.01M18 12h.01"></path></svg>
                   </span>
                   <div>
-                    <div style="color: #ffffff; font-weight: 600; font-size: 30px;">Báo giá "{{ item.latest.content_of_contract_po || 'Không có tiêu đề' }}"</div>
-                    <div style="color: #e2e8f0; font-size: 20px; margin-top: 4px; padding-left: 6px;">{{ item.tenKh }} — {{ item.tenCty }}</div>
+                    <div class="dash-detail__quote-title">Báo giá "{{ item.latest.content_of_contract_po || 'Không có tiêu đề' }}"</div>
+                    <div class="dash-detail__quote-subtitle">{{ item.tenKh }} — {{ item.tenCty }}</div>
                   </div>
                 </li>
               </ul>
@@ -233,8 +233,8 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
                   </span>
                   <div>
-                    <div style="color: #ffffff; font-weight: 600; font-size: 30px;">Báo giá "{{ item.latest.content_of_contract_po || 'Không có tiêu đề' }}"</div>
-                    <div style="color: #e2e8f0; font-size: 20px; margin-top: 4px; padding-left: 6px;">{{ item.tenKh }} — {{ item.tenCty }}</div>
+                    <div class="dash-detail__quote-title">Báo giá "{{ item.latest.content_of_contract_po || 'Không có tiêu đề' }}"</div>
+                    <div class="dash-detail__quote-subtitle">{{ item.tenKh }} — {{ item.tenCty }}</div>
                   </div>
                 </li>
               </ul>
@@ -286,11 +286,11 @@
                     </thead>
                     <tbody>
                       <tr v-for="(item, iIndex) in group.items" :key="iIndex" @click="goToRenewal(group, item)">
-                        <td style="text-align: center; color: #64748b; font-weight: 700;">{{ iIndex + 1 }}</td>
-                        <td style="color: #38bdf8; font-weight: 600;">{{ item.ten_hang }}</td>
-                        <td style="text-align: center; color: #94a3b8;">{{ item.start_date || '—' }}</td>
-                        <td style="text-align: center; color: #94a3b8;">{{ item.end_date || '—' }}</td>
-                        <td style="text-align: center;">
+                        <td data-label="STT" style="text-align: center; color: #64748b; font-weight: 700;">{{ iIndex + 1 }}</td>
+                        <td data-label="TÊN HÀNG" style="color: #38bdf8; font-weight: 600;">{{ item.ten_hang }}</td>
+                        <td data-label="START DATE" style="text-align: center; color: #94a3b8;">{{ item.start_date || '—' }}</td>
+                        <td data-label="END DATE" style="text-align: center; color: #94a3b8;">{{ item.end_date || '—' }}</td>
+                        <td data-label="THỜI HẠN" style="text-align: center;">
                           <span :style="{ color: '#fff', fontWeight: 700, background: item.daysLeft <= 0 ? '#ef4444' : (item.daysLeft <= 15 ? '#ef4444' : '#f59e0b'), padding: '4px 10px', borderRadius: '6px', display: 'inline-block', fontSize: '13px', whiteSpace: 'nowrap' }">
                             {{ item.timeText || (item.daysLeft < 0 ? `Quá hạn ${Math.abs(item.daysLeft)} ngày` : (item.daysLeft === 0 ? 'Hết hạn hôm nay' : `Còn ${item.daysLeft} ngày`)) }}
                           </span>
@@ -1808,10 +1808,32 @@ onMounted(() => {
   100% { transform: rotate(360deg); }
 }
 
+/* ── Quote Title & Subtitle ── */
+.dash-detail__quote-title {
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 30px;
+}
+.dash-detail__quote-subtitle {
+  color: #e2e8f0;
+  font-size: 20px;
+  margin-top: 4px;
+  padding-left: 6px;
+}
+
 /* ── Responsive ── */
 @media (max-width: 1024px) {
+  :global(.main-content) {
+    overflow: auto !important;
+  }
+  .dashboard-container {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
   .dash-grid {
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
   }
   .dash-sidebar {
     position: static;
@@ -1819,6 +1841,109 @@ onMounted(() => {
   .dash-detail {
     height: auto;
     min-height: 60vh;
+  }
+}
+
+@media (max-width: 768px) {
+  .dash-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  .dash-header__left {
+    align-items: flex-start;
+  }
+  .dash-header__title {
+    font-size: 22px;
+  }
+  .dash-header__refresh {
+    justify-content: center;
+  }
+
+  /* Date Picker */
+  .dash-date-tabs button {
+    font-size: 13px;
+  }
+  .dash-date-picker__btn {
+    font-size: 13px;
+  }
+
+  /* Detail Panel */
+  .dash-detail-col--expanded {
+    padding: 12px;
+  }
+  .dash-detail__banner {
+    flex-direction: column;
+    text-align: center;
+    padding: 16px;
+    gap: 12px;
+  }
+  .dash-detail__banner-title {
+    font-size: 16px;
+  }
+
+  .dash-detail__quote-title {
+    font-size: 16px;
+  }
+  .dash-detail__quote-subtitle {
+    font-size: 14px;
+    padding-left: 0;
+  }
+
+  .dash-detail__list-item {
+    font-size: 14px;
+    padding: 10px;
+    flex-direction: row;
+    align-items: center;
+  }
+  .dash-detail__list-item > div {
+    width: 100%;
+  }
+
+  .dash-detail__content {
+    padding: 16px;
+    grid-template-columns: 1fr !important;
+  }
+  .dash-detail__section-title {
+    font-size: 16px;
+  }
+
+  /* Table to Cards */
+  .dash-renewal-table,
+  .dash-renewal-table tbody,
+  .dash-renewal-table tr,
+  .dash-renewal-table td {
+    display: block;
+    width: 100%;
+  }
+  .dash-renewal-table thead {
+    display: none;
+  }
+  .dash-renewal-table tr {
+    margin-bottom: 12px;
+    background: rgba(15,23,42,0.4);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    padding: 12px;
+  }
+  .dash-renewal-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 8px 0 !important;
+    text-align: right !important;
+    border: none;
+    gap: 16px;
+    word-break: break-word;
+  }
+  .dash-renewal-table td::before {
+    content: attr(data-label);
+    font-size: 11px;
+    color: #64748b;
+    font-weight: 700;
+    text-transform: uppercase;
+    flex-shrink: 0;
+    margin-top: 3px;
   }
 }
 </style>
