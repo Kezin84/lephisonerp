@@ -51,6 +51,7 @@ type HangHoa = {
   gia_hardware: number
   gia_nhap: number
   muc_phan_tram_off: number
+  volume: string
   // ✅ GIÁ GỐC (snapshot)
   _gia_hardware_goc?: number
   _gia_nhap_goc?: number
@@ -544,6 +545,7 @@ const availableExcelFields = [
   { value: 'muc_off_hang', label: '% OFF HÃNG' },
   { value: 'gia_tieu_chuan', label: 'GIÁ OFF HÃNG' },
   { value: 'so_luong', label: 'SỐ LƯỢNG' },
+  { value: 'volume', label: 'VOLUME' },
   { value: 'muc_off', label: '% OFF' },
   { value: 'don_gia', label: 'GIÁ OFF' },
   { value: 'thue_vat', label: '%VAT' },
@@ -865,6 +867,7 @@ function getPreviewCellValue(r: any, field: string) {
     case 'dvt': return i.DVT || '';
     case 'license_duration': return i.License_duration || '';
     case 'thoi_gian_bao_hanh': return i.thoi_han_bao_hanh || '';
+    case 'volume': return (i as any).volume || '';
     case 'features': return i.Features || i.Ten_hang || '';
     case 'ghi_chu': return i.Ghi_chu || '';
     
@@ -1267,6 +1270,7 @@ const itemForm = ref<HangHoa & { So_luong: number }>({
     gia_hardware: 0,
   gia_nhap: 0,
   muc_phan_tram_off: 0,
+  volume: '',
   So_luong: 1
 })
 
@@ -1391,9 +1395,11 @@ function mapHopDongChiTietRowToItem(row: any[]) {
     _Thue_VAT_goc: baseProduct ? toNum(baseProduct.Thue_VAT, 0) : toNum(row?.[17], 0)
   } as any
 
-  // ✅ Preserve start_date / end_date from indices 28-29
+  // ✅ Preserve start_date / end_date / thoi_han_bao_hanh / volume from indices 28-32
   item.start_date = String(row?.[28] ?? '')
   item.end_date = String(row?.[29] ?? '')
+  ;(item as any).thoi_han_bao_hanh = String(row?.[31] ?? '')
+  ;(item as any).volume = String(row?.[32] ?? '')
 
   // ✅ Restore USD-based values if available (saved as VND with Ti_gia=1, but original USD data at index 24-27)
   const tiGiaUSD = toNum(row?.[24], 0)
@@ -2227,7 +2233,8 @@ function buildHopDongChiTietRows() {
       (it as any).start_date || '',       // [28] start_date
       (it as any).end_date || '',         // [29] end_date
       (it as any).is_giahan || '',        // [30] is_giahan
-      (it as any).thoi_han_bao_hanh || '' // [31] thoi_gian_bao_hanh
+      (it as any).thoi_han_bao_hanh || '', // [31] thoi_gian_bao_hanh
+      (it as any).volume || ''             // [32] volume
     ]
   })
 }
@@ -2498,7 +2505,8 @@ function mapHangHoaRow(row: any[]): HangHoa {
       gia_nhap: toNum(row[21], 0),
       muc_phan_tram_off: toNum(row[22], 0),
       Type: String(row[23] ?? '').trim(),
-      thoi_han_bao_hanh: String(row[24] ?? '')
+      thoi_han_bao_hanh: String(row[24] ?? ''),
+      volume: String(row[25] ?? '')
     }
   }
 
@@ -2529,7 +2537,8 @@ function mapHangHoaRow(row: any[]): HangHoa {
     gia_nhap: 0,
     muc_phan_tram_off: 0,
     Type: '',
-    thoi_han_bao_hanh: ''
+    thoi_han_bao_hanh: '',
+    volume: ''
   }
 }
 const IDX_TIME = 4
@@ -2908,14 +2917,33 @@ const supplierOptions = computed(() => {
   return Array.from(set).sort((a, b) => a.localeCompare(b))
 })
 
+const normalizeString = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9\u00C0-\u024F\u1E00-\u1EFF]/gi, '')
+
 const filteredProducts = computed(() => {
-  const kw = keyword.value.trim().toLowerCase()
+  const kw = keyword.value.trim()
+  if (!kw) {
+    return products.value.filter(p => {
+      return supplierFilter.value === 'ALL' || p.Ten_nha_cung_cap === supplierFilter.value || p.Ma_nha_cung_cap === supplierFilter.value
+    })
+  }
+  
+  const words = kw.toLowerCase().split(/\s+/).filter(Boolean)
+  
   return products.value.filter(p => {
-    const okKw =
-      !kw ||
-      p.Ma_hang?.toLowerCase().includes(kw) ||
-      p.Ten_hang?.toLowerCase().includes(kw) ||
-      p.Ten_nha_cung_cap?.toLowerCase().includes(kw)
+    const ma = (p.Ma_hang || '').toLowerCase()
+    const ten = (p.Ten_hang || '').toLowerCase()
+    const ncc = (p.Ten_nha_cung_cap || '').toLowerCase()
+    
+    const maN = normalizeString(ma)
+    const tenN = normalizeString(ten)
+    const nccN = normalizeString(ncc)
+    
+    const okKw = words.every(w => {
+      const wN = normalizeString(w)
+      return ma.includes(w) || maN.includes(wN) ||
+             ten.includes(w) || tenN.includes(wN) ||
+             ncc.includes(w) || nccN.includes(wN)
+    })
 
     const okSupplier =
       supplierFilter.value === 'ALL' ||
@@ -2925,6 +2953,20 @@ const filteredProducts = computed(() => {
     return okKw && okSupplier
   })
 })
+
+const displayLimit = ref(15)
+
+watch([keyword, supplierFilter], () => {
+  displayLimit.value = 15
+})
+
+const displayedProducts = computed(() => {
+  return filteredProducts.value.slice(0, displayLimit.value)
+})
+
+function loadMoreProducts() {
+  displayLimit.value += 15
+}
 
 /* ======================
    CARD QTY realtime
@@ -3165,7 +3207,8 @@ function confirmAddToDb() {
     toNum(addedItem.gia_nhap, 0),       // [21]
     toNum(addedItem.muc_phan_tram_off, 0), // [22] muc_%_off
     addedItem.Type || '',               // [23] TYPE
-    addedItem.thoi_han_bao_hanh || ''   // [24] thoi_han_bao_hanh
+    addedItem.thoi_han_bao_hanh || '',  // [24] thoi_han_bao_hanh
+    (addedItem as any).volume || ''     // [25] volume
   ];
 
   // Optimistic: show toast + loading immediately
@@ -3215,6 +3258,7 @@ function resetItem() {
        gia_hardware: 0,
     gia_nhap: 0,
     muc_phan_tram_off: 0,
+    volume: '',
     So_luong: 1
   }
 }
@@ -3594,8 +3638,11 @@ const chietKhauTruocThueRaw = computed(() => {
 ====================== */
 function highlightText(text: string, query: string) {
   if (!query || !text) return text;
-  const safeQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const regex = new RegExp(`(${safeQuery})`, 'gi');
+  const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.length) return text;
+  
+  const safeWords = words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const regex = new RegExp(`(${safeWords.join('|')})`, 'gi');
   return text.replace(regex, '<span style="background-color: #eab308; color: #0f172a; font-weight: bold; padding: 0 2px; border-radius: 2px;">$1</span>');
 }
 
@@ -5676,7 +5723,7 @@ onUnmounted(() => {
           </template>
           <!-- ACTUAL CARDS -->
           <template v-else>
-          <div class="card" v-for="p in filteredProducts" :key="p.Ma_hang" @click="openCardModal(p)">
+          <div class="card" v-for="p in displayedProducts" :key="p.Ma_hang" @click="openCardModal(p)">
             <div class="card-body">
               <div class="card-badges">
                 <span class="card-ncc-badge" v-if="p.Ten_nha_cung_cap">{{ p.Ten_nha_cung_cap }}</span>
@@ -5685,6 +5732,7 @@ onUnmounted(() => {
               <h4 class="clamp2" v-html="highlightText(p.Ten_hang, keyword)"></h4>
               <p class="card-license clamp1" v-if="p.License_duration">{{ p.License_duration }}</p>
               <p class="card-license clamp1" v-if="p.thoi_han_bao_hanh" style="color: #10b981;">Bảo hành: {{ p.thoi_han_bao_hanh }}</p>
+              <p class="card-license clamp1" v-if="p.volume" style="color: #38bdf8;">Volume: {{ p.volume }}</p>
               <div class="card-price-row">
                 <span class="price">{{ displayPrice(p) }}</span>
                 <span class="price-unit">/ {{ p.DVT }}</span>
@@ -5715,6 +5763,16 @@ onUnmounted(() => {
               </div>
             </div>
           </div>
+          
+          <button v-if="filteredProducts.length > displayLimit" 
+                  @click="loadMoreProducts" 
+                  style="width: 100%; margin-top: 10px; padding: 12px; background: rgba(56, 189, 248, 0.1); border: 1px dashed rgba(56, 189, 248, 0.4); color: #38bdf8; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s;"
+                  onmouseover="this.style.background='rgba(56, 189, 248, 0.2)';" 
+                  onmouseout="this.style.background='rgba(56, 189, 248, 0.1)';">
+            <i class="lucide-chevron-down" style="font-size: 14px; margin-right: 4px;"></i> 
+            Xem thêm (còn {{ filteredProducts.length - displayLimit }} sản phẩm)
+          </button>
+          
           </template>
         </div>
       </aside>
@@ -6547,6 +6605,13 @@ onUnmounted(() => {
                   <i class="lucide-shield-check" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                 </div>
               </div>
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Volume</label>
+                <div style="position: relative;">
+                  <input v-model="itemForm.volume" placeholder="VD: 1Dvc, 3Dvc, 10Dvc..." style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px;" />
+                  <i class="lucide-layers" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
+                </div>
+              </div>
             </div>
             
             <div style="display: flex; flex-direction: column; gap: 6px;">
@@ -6760,6 +6825,14 @@ onUnmounted(() => {
                 <div style="position: relative;">
                   <input v-model="cardEdit.thoi_han_bao_hanh" placeholder="VD: 12 tháng, 24 tháng..." style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px;" />
                   <i class="lucide-shield-check" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
+                </div>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Volume</label>
+                <div style="position: relative;">
+                  <input v-model="cardEdit.volume" placeholder="VD: 1Dvc, 3Dvc, 10Dvc..." style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px;" />
+                  <i class="lucide-layers" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                 </div>
               </div>
             </div>
@@ -7081,6 +7154,15 @@ onUnmounted(() => {
                 <div style="position: relative;">
                   <input id="qe-thoi_han_bao_hanh" v-model="quoteEdit.thoi_han_bao_hanh" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px;" />
                   <i class="lucide-shield-check" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
+                </div>
+              </div>
+
+              <!-- 6.6: Volume -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Volume</label>
+                <div style="position: relative;">
+                  <input id="qe-volume" v-model="quoteEdit.volume" placeholder="VD: 1Dvc, 3Dvc..." style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px;" />
+                  <i class="lucide-layers" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                 </div>
               </div>
 

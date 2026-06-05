@@ -3,10 +3,23 @@
     <div class="page-header">
       <h1 class="page-title">Quản lý Hàng Hóa</h1>
       <div class="actions">
-        <label class="btn btn-outline" style="cursor: pointer;">
+        <a href="/template_excel/SOPHOS_file_mau_import.xlsx" download class="btn btn-outline" style="border-color: rgba(59,130,246,0.3); color: #94a3b8; font-size: 12px; padding: 4px 8px;" title="Tải file mẫu Sophos">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          Mẫu Sophos
+        </a>
+        <label class="btn btn-outline" style="cursor: pointer; border-color: #3b82f6; color: #3b82f6;">
           <input type="file" accept=".xlsx" style="display:none" @change="handleFileUpload" />
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-          Import LP_HANGHOA
+          Import Sophos
+        </label>
+        <a href="/template_excel/KASPERSKY_file_mau_import.xlsx" download class="btn btn-outline" style="border-color: rgba(16,185,129,0.3); color: #94a3b8; font-size: 12px; padding: 4px 8px;" title="Tải file mẫu Kaspersky">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          Mẫu Kaspersky
+        </a>
+        <label class="btn btn-outline" style="cursor: pointer; border-color: #10b981; color: #10b981;">
+          <input type="file" accept=".xlsx" style="display:none" @change="handleKasperskyUpload" />
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          Import Kaspersky
         </label>
         <button class="btn btn-primary" @click="openAddModal">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -97,6 +110,7 @@
             <div class="price-info-box">
               <p>License duration: <span>{{ item.License_duration || '-' }}</span></p>
               <p>Thời hạn bảo hành: <span>{{ item.thoi_han_bao_hanh || '-' }}</span></p>
+              <p>Volume: <span>{{ item.volume || '-' }}</span></p>
               <p>Đơn vị tiền tệ: <span>{{ item.Don_vi_tien_te || '-' }}</span></p>
               <p>Tỉ giá: <span>{{ item.Ti_gia ? formatCurrency(item.Ti_gia, 'VND') : '-' }}</span></p>
               
@@ -115,6 +129,17 @@
           </div>
         </div>
       </template>
+      
+      <!-- NÚT XEM THÊM -->
+      <button v-if="totalGroupsCount > displayLimit" 
+              @click="displayLimit += 15" 
+              style="width: 100%; margin-top: 20px; padding: 14px; background: rgba(56, 189, 248, 0.1); border: 1px dashed rgba(56, 189, 248, 0.4); color: #38bdf8; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s;"
+              onmouseover="this.style.background='rgba(56, 189, 248, 0.2)';" 
+              onmouseout="this.style.background='rgba(56, 189, 248, 0.1)';">
+        <i class="lucide-chevron-down" style="font-size: 14px; margin-right: 4px;"></i> 
+        Xem thêm (còn {{ totalGroupsCount - displayLimit }} nhóm sản phẩm)
+      </button>
+
     </div>
 
     <!-- Modal Form -->
@@ -148,6 +173,10 @@
                 <div class="form-group">
                   <label>Thời hạn bảo hành</label>
                   <input v-model="formData.thoi_han_bao_hanh" type="text" />
+                </div>
+                <div class="form-group">
+                  <label>Volume</label>
+                  <input v-model="formData.volume" type="text" placeholder="VD: 1Dvc, 3Dvc, 10Dvc..." />
                 </div>
                 <div class="form-group">
                   <label>Danh mục</label>
@@ -341,6 +370,7 @@
                 <th style="min-width:80px">ĐVT</th>
                 <th style="min-width:90px">License</th>
                 <th style="min-width:110px">Bảo hành</th>
+                <th style="min-width:90px">Volume</th>
                 <th style="min-width:110px">NCC</th>
                 <th style="min-width:110px">Mã NCC</th>
                 <!-- <th style="min-width:130px">Mô tả chung</th> -->
@@ -370,6 +400,7 @@
                 <td><input type="text" v-model="row.DVT" class="imp-input imp-input--sm" /></td>
                 <td><input type="text" v-model="row.License_duration" class="imp-input" /></td>
                 <td><input type="text" v-model="row.thoi_han_bao_hanh" class="imp-input" /></td>
+                <td><input type="text" v-model="row.volume" class="imp-input" /></td>
                 <td><input type="text" v-model="row.Ten_nha_cung_cap" class="imp-input" /></td>
                 <td><input type="text" v-model="row.Ma_nha_cung_cap" class="imp-input" /></td>
                 <!-- <td><input type="text" v-model="row.Mo_ta_chung" class="imp-input" /></td> -->
@@ -664,7 +695,8 @@ const handleFileUpload = (e) => {
               gia_nhap: toNum(giaNhap, 0),
               muc_phan_tram_off: 0,
               Type: String(typeVal || '').trim(),
-              thoi_han_bao_hanh: ''
+              thoi_han_bao_hanh: '',
+              volume: ''
             })
           } else {
             // Nếu dòng không có mô tả sản phẩm (moTa trống), thì có thể đây là dòng danh mục (hàng màu hồng/xanh)
@@ -704,6 +736,151 @@ const handleFileUpload = (e) => {
   e.target.value = '' // reset
 }
 
+const handleKasperskyUpload = (e) => {
+  const file = e.target.files[0]
+  if (!file) return
+  
+  showAsyncLoading('Đang xử lý file Kaspersky...', 'Vui lòng chờ giây lát...')
+  
+  const reader = new FileReader()
+  reader.onload = (evt) => {
+    setTimeout(() => {
+      try {
+        const data = new Uint8Array(evt.target.result)
+        const wb = XLSX.read(data, { type: 'array' })
+        let targetSheetName = wb.SheetNames.find(name => name.trim() === 'SMB+Enterprise (License)')
+        if (!targetSheetName) {
+          showAsyncError('Import thất bại', 'Không tìm thấy sheet "SMB+Enterprise (License)".')
+          return
+        }
+        const ws = wb.Sheets[targetSheetName]
+        const json = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' })
+      
+      let products = []
+      
+      // Lấy danh sách các cột Band từ dòng 10 (index 9)
+      const headerRow = json[9] || []
+      const bands = []
+      for (let j = 9; j < headerRow.length; j++) {
+        const b = String(headerRow[j] || '').trim()
+        if (b && b !== 'Grand Total') {
+          bands.push({ index: j, name: b })
+        }
+      }
+      
+      if (bands.length === 0) {
+        alert('Không tìm thấy cột Band nào trong sheet.')
+        return
+      }
+      
+      let lastProduct = ''
+      let lastPkg = ''
+      let lastType = ''
+      
+      for (let i = 10; i < json.length; i++) {
+        const row = json[i]
+        if (!row || !row.length) continue
+        
+        const rawProduct = String(row[2] || '').trim()
+        const rawPkg = String(row[4] || '').trim()
+        const rawType = String(row[6] || '').trim()
+        
+        // Kế thừa giá trị từ dòng trên nếu dòng hiện tại bị trống (do tính chất của Pivot table gộp ô)
+        if (rawProduct) lastProduct = rawProduct
+        if (rawPkg) lastPkg = rawPkg
+        if (rawType) lastType = rawType
+        
+        const product = rawProduct || lastProduct
+        const pkg = rawPkg || lastPkg
+        const type = rawType || lastType
+        
+        const term = String(row[7] || '').trim()
+        const sku = String(row[8] || '').trim()
+        
+        if (!product) continue // Skip if no product name
+        if (product.toUpperCase().includes('MAX OF PRICE')) continue
+        
+        for (const band of bands) {
+          const priceStr = String(row[band.index] || '').trim()
+          const price = toNum(priceStr, 0)
+          
+          if (!priceStr || price === 0) continue; // Bỏ qua nếu Band này không có giá
+          
+          let id = ''
+          if (sku && sku !== '-') {
+             // Vì import full band, phải nối thêm band name vào SKU để tránh trùng lặp đè mất dữ liệu
+             id = `${sku} - ${band.name} - ${type} - ${term} - ${pkg}`
+          } else {
+             id = `${product} - ${type} - ${term} - ${band.name} - ${pkg}`
+          }
+          id = id.replace(/\s+/g, ' ').trim()
+        
+          const parts = [type, term, band.name].filter(Boolean).join(' - ')
+          let tenHang = product
+          if (parts) {
+            tenHang += ` (${parts})`
+          }
+        
+          products.push({
+          Sheet_name: targetSheetName,
+          Ma_hang: id,
+          Ten_hang: tenHang,
+          Main_img: '',
+          Ma_nha_cung_cap: 'KASPERSKY',
+          Ten_nha_cung_cap: 'KASPERSKY',
+          Mo_ta_chung: '',
+          Mo_ta_chi_tiet: '',
+          Features: '',
+          Danh_muc: product.toUpperCase(),
+          License_duration: term,
+          DVT: pkg,
+          Gia_tieu_chuan: 0,
+          Don_gia: price,
+          Trang_thai: 'Còn hàng',
+          Don_vi_tien_te: 'VND',
+          Ti_gia: 1,
+          Thue_VAT: 0,
+          Ma_hang_lien_ket: '',
+          Ten_hang_lien_ket: '',
+          Ghi_chu: '',
+          gia_hardware: 0,
+          gia_nhap: 0,
+          muc_phan_tram_off: 0,
+          Type: type,
+          thoi_han_bao_hanh: '',
+          volume: band.name
+        })
+      }
+    }
+      if (products.length > 0) {
+        // Liên kết các sản phẩm có cùng Danh_muc (cùng product gốc)
+        products.forEach(p => {
+           if (p.Danh_muc) {
+              const related = products.filter(r => r.Danh_muc === p.Danh_muc && r.Ma_hang !== p.Ma_hang)
+              if (related.length > 0) {
+                 p.Ma_hang_lien_ket = related.map(r => r.Ma_hang).join('\n')
+                 p.Ten_hang_lien_ket = related.map(r => r.Ten_hang).join('\n')
+              }
+           }
+        })
+        
+        importData.value = products
+        activeImportSheet.value = targetSheetName
+        asyncResultModal.value.show = false // Tắt overlay loading
+        showImportModal.value = true
+      } else {
+        showAsyncError('Import thất bại', 'Không tìm thấy dữ liệu hợp lệ trong sheet.')
+      }
+    } catch (err) {
+      console.error(err)
+      showAsyncError('Lỗi đọc file', 'Không thể xử lý file Kaspersky: ' + err.message)
+    }
+    }, 50) // Delay 50ms để browser kịp render loading overlay
+  }
+  reader.readAsArrayBuffer(file)
+  e.target.value = '' // reset
+}
+
 const confirmImport = async () => {
   if (!confirm(`Bạn chắc chắn muốn lưu ${importData.value.length} sản phẩm này vào sheet hang_hoa chứ?`)) return
   importing.value = true
@@ -714,7 +891,8 @@ const confirmImport = async () => {
       p.Mo_ta_chung || '', p.Mo_ta_chi_tiet || '', p.Features || '', p.Danh_muc || '', p.License_duration || '',
       p.DVT || '', p.Gia_tieu_chuan || 0, p.Don_gia || 0, p.Trang_thai || '', p.Don_vi_tien_te || '',
       p.Ti_gia || 1, p.Thue_VAT || 0, p.Ma_hang_lien_ket || '', p.Ten_hang_lien_ket || '', p.Ghi_chu || '',
-      p.gia_hardware || 0, p.gia_nhap || 0, p.muc_phan_tram_off || 0, p.Type || '', p.thoi_han_bao_hanh || ''
+      p.gia_hardware || 0, p.gia_nhap || 0, p.muc_phan_tram_off || 0, p.Type || '', p.thoi_han_bao_hanh || '',
+      p.volume || ''
     ])
     
     const body = new URLSearchParams()
@@ -775,7 +953,8 @@ const defaultForm = {
   gia_nhap: '',
   muc_phan_tram_off: '',
   Type: '',
-  thoi_han_bao_hanh: ''
+  thoi_han_bao_hanh: '',
+  volume: ''
 }
 
 const formData = ref({ ...defaultForm })
@@ -854,6 +1033,17 @@ function highlightText(text, query) {
   return text.replace(regex, '<span style="background-color: #eab308; color: #0f172a; font-weight: bold; padding: 0 2px; border-radius: 2px;">$1</span>')
 }
 
+const displayLimit = ref(15)
+
+watch(searchQuery, () => {
+  displayLimit.value = 15
+})
+
+const totalGroupsCount = computed(() => {
+  const categories = new Set(filteredItems.value.map(item => item.Danh_muc || 'CHƯA PHÂN LOẠI'))
+  return categories.size
+})
+
 const groupedItems = computed(() => {
   const groups = {}
   filteredItems.value.forEach(item => {
@@ -871,9 +1061,10 @@ const groupedItems = computed(() => {
     sortedKeys.splice(idx, 1)
     sortedKeys.push('CHƯA PHÂN LOẠI')
   }
+  const limitedKeys = sortedKeys.slice(0, displayLimit.value)
   
   const sortedGroups = {}
-  sortedKeys.forEach(k => {
+  limitedKeys.forEach(k => {
     sortedGroups[k] = groups[k]
   })
   return sortedGroups
@@ -918,7 +1109,8 @@ const fetchData = async () => {
           gia_nhap: row[21],
           muc_phan_tram_off: row[22],
           Type: (row[23] || '').toString().trim(),
-          thoi_han_bao_hanh: row[24] || ''
+          thoi_han_bao_hanh: row[24] || '',
+          volume: row[25] || ''
         };
       })
     }
@@ -1016,7 +1208,8 @@ const saveItem = async () => {
       formData.value.gia_nhap || 0,
       formData.value.muc_phan_tram_off || 0,
       formData.value.Type || '',
-      formData.value.thoi_han_bao_hanh || ''
+      formData.value.thoi_han_bao_hanh || '',
+      formData.value.volume || ''
     ]
 
     const body = new URLSearchParams()

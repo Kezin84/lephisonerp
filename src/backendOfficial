@@ -1913,7 +1913,7 @@ function createHangHoa_(payload) {
     sh.appendRow(payload)
     
     // Rebuild liên kết cho tất cả hàng cùng danh mục
-    // Column index: [0]Ma_hang, [1]Ten_hang, [8]Danh_muc, [17]Ma_hang_lien_ket, [18]Ten_hang_lien_ket
+    // Column index: [0]Ma_hang, [1]Ten_hang, [8]Danh_muc, [17]Ma_hang_lien_ket, [18]Ten_hang_lien_ket, [25]volume
     const danhMuc = String(payload[8] || '').trim().toUpperCase()
     if (danhMuc) {
         rebuildCategoryLinks_(sh, danhMuc)
