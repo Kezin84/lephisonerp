@@ -19,63 +19,63 @@
       <nav class="nav-menu">
         <router-link to="/dashboard" class="nav-item" title="Báo cáo tổng quát">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-          <span v-if="isSidebarOpen">Báo cáo tổng quát</span>
+          <span class="nav-text">Báo cáo tổng quát</span>
         </router-link>
         <router-link to="/report" class="nav-item" title="Báo cáo công việc">
           <div style="position: relative; display: inline-flex;">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
             <div v-if="incompleteTasksCount > 0" class="task-badge">{{ incompleteTasksCount > 99 ? '99+' : incompleteTasksCount }}</div>
           </div>
-          <div v-if="isSidebarOpen" class="nav-text-container" style="flex: 1; display: flex; align-items: center; justify-content: space-between;">
+          <div class="nav-text-container" style="flex: 1; display: flex; align-items: center; justify-content: space-between;">
             <span style="white-space: nowrap;">Báo cáo công việc</span>
             <div v-if="incompleteTasksCount > 0" class="task-badge-inline">{{ incompleteTasksCount > 99 ? '99+' : incompleteTasksCount }}</div>
           </div>
         </router-link>
         <router-link to="/customer" class="nav-item hide-on-mobile" title="Khách hàng">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-          <span v-if="isSidebarOpen">Khách hàng</span>
+          <span class="nav-text">Khách hàng</span>
         </router-link>
         <router-link to="/baogia" class="nav-item hide-on-mobile" title="Tạo Báo giá">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-          <span v-if="isSidebarOpen">Tạo Báo giá</span>
+          <span class="nav-text">Tạo Báo giá</span>
         </router-link>
         <router-link to="/quanlybaogia" class="nav-item hide-on-mobile" title="Quản lý báo giá">
           <div style="position: relative; display: inline-flex;">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
             <div class="task-badge" style="font-size: 12px; font-weight: 900;">!</div>
           </div>
-          <div v-if="isSidebarOpen" class="nav-text-container" style="flex: 1; display: flex; align-items: center; justify-content: space-between;">
+          <div class="nav-text-container" style="flex: 1; display: flex; align-items: center; justify-content: space-between;">
             <span style="white-space: nowrap;">Quản lý báo giá</span>
             <div class="task-badge-inline" style="font-size: 14px; font-weight: 900; background: #ef4444;">!</div>
           </div>
         </router-link>
         <router-link to="/quanlydieukhoan" class="nav-item hide-on-mobile" title="Quản lý Điều khoản">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><path d="M14 3v5h5M16 13H8M16 17H8M10 9H8"/></svg>
-          <span v-if="isSidebarOpen">Quản lý Điều khoản</span>
+          <span class="nav-text">Quản lý Điều khoản</span>
         </router-link>
         <router-link to="/quanlyhanghoa" class="nav-item hide-on-mobile" title="Quản lý hàng hóa">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
-          <span v-if="isSidebarOpen">Quản lý hàng hóa</span>
+          <span class="nav-text">Quản lý hàng hóa</span>
         </router-link>
         <router-link to="/po-preview" class="nav-item hide-on-mobile" title="Xem PO">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-          <span v-if="isSidebarOpen">Xem PO</span>
+          <span class="nav-text">Xem PO</span>
         </router-link>
         <router-link to="/tra-cuu-mst" class="nav-item hide-on-mobile" title="Tra cứu MST">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-          <span v-if="isSidebarOpen">Tra cứu MST</span>
+          <span class="nav-text">Tra cứu MST</span>
         </router-link>
         <router-link to="/sale-report" class="nav-item hide-on-mobile" title="Sale Report">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-          <span v-if="isSidebarOpen">Sale Report</span>
+          <span class="nav-text">Sale Report</span>
         </router-link>
         <router-link to="/license-old-data" class="nav-item hide-on-mobile" title="License Old Data">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-          <span v-if="isSidebarOpen">License Old Data</span>
+          <span class="nav-text">License Old Data</span>
         </router-link>
         <a href="#" class="nav-item mobile-only" title="Menu" @click.prevent="isMobileDrawerOpen = true">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-          <span v-if="isSidebarOpen">Menu</span>
+          <span class="nav-text">Menu</span>
         </a>
       </nav>
     </aside>

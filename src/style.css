@@ -241,6 +241,11 @@ code {
   flex-shrink: 0;
 }
 
+.app-layout.sidebar-collapsed .nav-text,
+.app-layout.sidebar-collapsed .nav-text-container {
+  display: none !important;
+}
+
 .nav-item:hover {
   background: rgba(255, 255, 255, 0.05);
   color: #ffffff;
@@ -331,10 +336,15 @@ code {
     font-size: 11px;
     color: #94a3b8;
   }
-  .nav-item span {
+  .nav-item span,
+  .app-layout.sidebar-collapsed .nav-text,
+  .app-layout.sidebar-collapsed .nav-text-container {
     display: inline !important;
     font-size: 11px;
     font-weight: 600;
+  }
+  .app-layout.sidebar-collapsed .nav-text-container {
+    display: flex !important;
   }
   .nav-item svg {
     width: 22px;

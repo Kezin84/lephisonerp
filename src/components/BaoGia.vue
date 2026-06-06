@@ -1281,6 +1281,10 @@ const cardEdit = ref<HangHoa & { So_luong: number } | null>(null)
 ====================== */
 const showProductSidebar = ref(true)
 const showContractSidebar = ref(true)
+const mobileStep = ref(1)
+const setMobileStep = (step) => {
+  mobileStep.value = step
+}
 
 /* ======================
    HELPERS
@@ -5116,6 +5120,15 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value, specificTe
         cell2.alignment = { wrapText: true, vertical: 'top', horizontal: 'left' };
       }
     }
+  } else if (!selectedTermId.value && origTermStart !== -1 && origSigStart !== -1) {
+    const currentTermStart = origTermStart + diff;
+    const currentSigStart = origSigStart + diff;
+    const rowsToDelete = currentSigStart - currentTermStart;
+    
+    if (rowsToDelete > 0) {
+      ws.spliceRows(currentTermStart, rowsToDelete);
+      termsDiff -= rowsToDelete;
+    }
   }
 
 
@@ -5684,10 +5697,36 @@ onUnmounted(() => {
 
 <template>
   <div class="page">
-    <div class="main-grid">
+    <!-- MOBILE PROGRESS BAR -->
+    <div class="mobile-progress-wrapper">
+      <div class="mobile-steps">
+        <button class="m-step" :class="{ active: mobileStep === 1, completed: mobileStep > 1 }" @click="setMobileStep(1)">
+          <div class="step-circle"><span v-if="mobileStep > 1">✓</span><span v-else>1</span></div>
+          <span class="step-label">Sản phẩm</span>
+        </button>
+        <button class="m-step" :class="{ active: mobileStep === 2, completed: mobileStep > 2 }" @click="setMobileStep(2)">
+          <div class="step-circle"><span v-if="mobileStep > 2">✓</span><span v-else>2</span></div>
+          <span class="step-label">Báo giá</span>
+        </button>
+        <button class="m-step" :class="{ active: mobileStep === 3, completed: mobileStep > 3 }" @click="setMobileStep(3)">
+          <div class="step-circle"><span v-if="mobileStep > 3">✓</span><span v-else>3</span></div>
+          <span class="step-label">Tổng kết</span>
+        </button>
+        <button class="m-step" :class="{ active: mobileStep === 4, completed: mobileStep > 4 }" @click="setMobileStep(4)">
+          <div class="step-circle"><span v-if="mobileStep > 4">✓</span><span v-else>4</span></div>
+          <span class="step-label">Khách hàng</span>
+        </button>
+        <button class="m-step" :class="{ active: mobileStep === 5, completed: mobileStep > 5 }" @click="setMobileStep(5)">
+          <div class="step-circle"><span v-if="mobileStep > 5">✓</span><span v-else>5</span></div>
+          <span class="step-label">Thao tác</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="main-grid" :class="'mobile-step-' + mobileStep">
 
       <!-- ================== LEFT SIDEBAR ================== -->
-      <aside class="sidebar sidebar-left" :class="{ closed: !showProductSidebar }">
+      <aside class="product-sidebar sidebar-left" :class="{ closed: !showProductSidebar }">
         <div class="sidebar-head sidebar-head-product">
           <div class="sidebar-title-row">
             <h3><i class="lucide-package"></i> Kho sản phẩm</h3>
@@ -5786,7 +5825,7 @@ onUnmounted(() => {
         <div class="quote-table-container">
           <div class="sidebar-head table-header-box" style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;">
             <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap; width: 100%;">
-              <div style="display: flex; align-items: center; gap: 12px; flex-wrap: nowrap;">
+              <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                 <h3 style="margin: 0; white-space: nowrap; width: auto; flex-shrink: 0;"><i class="lucide-file-text"></i> Bảng báo giá chi tiết</h3>
                 <button v-show="selectedItems.length > 0" @click="resetToanBoBaoGia" style="background: #ef4444; color: #ffffff; border: none; padding: 4px 10px; border-radius: 6px; font-weight: 700; display: flex; align-items: center; gap: 6px; transition: all 0.2s; box-shadow: 0 1px 3px rgba(239, 68, 68, 0.4); font-size: 12px; white-space: nowrap; flex-shrink: 0; width: max-content; cursor: pointer; height: fit-content;" title="Xóa toàn bộ hàng hóa trong báo giá" onmouseover="this.style.background='#dc2626'; this.style.boxShadow='0 2px 5px rgba(239,68,68,0.5)';" onmouseout="this.style.background='#ef4444'; this.style.boxShadow='0 1px 3px rgba(239,68,68,0.4)';">
                   <i class="lucide-rotate-ccw" style="font-size: 13px; color: #ffffff;"></i> Làm mới
@@ -5870,53 +5909,53 @@ onUnmounted(() => {
                     </td>
                   </tr>
                   <tr v-else-if="r.type === 'item'" v-show="!draggingGroupKey" class="quote-item-row drag-handle" style="cursor: grab;" title="Nhấn giữ để kéo thả sản phẩm" :id="'quote-row-' + r.idx" @click="openQuoteEdit(r.idx)">
-                    <td style="color: #ffffff; font-weight: 700;">
+                    <td data-label="STT" style="color: #ffffff; font-weight: 700;">
                       <div style="display: flex; justify-content: center; align-items: center; gap: 4px;">
                         <i class="lucide-grip-vertical" style="opacity: 0.3;"></i>
                         {{ r.stt }}
                       </div>
                     </td>
-                    <td class="col-pn-cell" :title="r.item.Ma_hang" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Ma_hang')">{{ r.item.Ma_hang }}</td>
-                    <td class="nowrap" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Ten_hang')">{{ r.item.Ten_hang }}</td>
-                    <td class="col-desc-cell" :title="[r.item.Mo_ta_chung, r.item.Mo_ta_chi_tiet, r.item.Features].filter(Boolean).join(' - ')" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Features')">
+                    <td data-label="P/N" class="col-pn-cell" :title="r.item.Ma_hang" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Ma_hang')">{{ r.item.Ma_hang }}</td>
+                    <td data-label="Tên hàng" class="nowrap" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Ten_hang')">{{ r.item.Ten_hang }}</td>
+                    <td data-label="Mô tả sản phẩm" class="col-desc-cell" :title="[r.item.Mo_ta_chung, r.item.Mo_ta_chi_tiet, r.item.Features].filter(Boolean).join(' - ')" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Features')">
                       <div class="preline">
                         <div v-if="r.item.Mo_ta_chung">{{ r.item.Mo_ta_chung }}</div>
                         <div v-if="r.item.Mo_ta_chi_tiet">{{ r.item.Mo_ta_chi_tiet }}</div>
                         <div v-if="r.item.Features">{{ r.item.Features }}</div>
                       </div>
                     </td>
-                    <td class="col-hang-cell" :title="r.item.Ten_nha_cung_cap" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Ten_nha_cung_cap')">{{ r.item.Ten_nha_cung_cap }}</td>
-                    <td class="col-dvt-cell" :title="r.item.DVT" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'DVT')">{{ r.item.DVT }}</td>
-                    <td class="center" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'So_luong')">{{ r.item.So_luong }}</td>
-                    <td v-if="quoteCurrency === 'USD'" class="center" style="line-height: 1.3;" @click.stop="openQuoteEdit(r.idx, 'Ti_gia')">
+                    <td data-label="Hãng" class="col-hang-cell" :title="r.item.Ten_nha_cung_cap" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Ten_nha_cung_cap')">{{ r.item.Ten_nha_cung_cap }}</td>
+                    <td data-label="ĐVT" class="col-dvt-cell" :title="r.item.DVT" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'DVT')">{{ r.item.DVT }}</td>
+                    <td data-label="Số lượng" class="center" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'So_luong')">{{ r.item.So_luong }}</td>
+                    <td data-label="Tỉ giá" v-if="quoteCurrency === 'USD'" class="center" style="line-height: 1.3;" @click.stop="openQuoteEdit(r.idx, 'Ti_gia')">
                       <div style="color: #fbbf24; font-weight: 800; font-size: 13px;">{{ formatVND(toNum(r.item.Ti_gia, 1)) }}</div>
                       <div style="font-size: 10px; color: #94a3b8; font-weight: 700;">USD</div>
                     </td>
-                    <td class="right" style="line-height: 1.3; font-weight: 700; color: #10b981;" @click.stop="openQuoteEdit(r.idx, 'Gia_tieu_chuan')">
+                    <td data-label="Giá off hãng" class="right" style="line-height: 1.3; font-weight: 700; color: #10b981;" @click.stop="openQuoteEdit(r.idx, 'Gia_tieu_chuan')">
                       <div>{{ displayGiaTieuChuan(r.item) }}</div>
                       <div class="muted" style="font-size: 11px; margin-top: 2px; color: #10b981 !important;">({{ displayGiaTieuChuanPct(r.item) }}%)</div>
                     </td>
-                    <td class="right" style="color: #10b981; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Don_gia')">{{ displayDonGiaLP(r.item) }}</td> 
-                    <td class="right" style="color: #ef4444; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'gia_nhap')">{{ fmtPrice(toNum(r.item.gia_nhap, 0) * toNum(r.item.Ti_gia, 1), toNum(r.item.Ti_gia, 1)) }}</td>
-                    <td class="right" style="line-height: 1.3; font-weight: 700; color: #ef4444;" @click.stop="openQuoteEdit(r.idx, 'muc_phan_tram_off')">
+                    <td data-label="List Price" class="right" style="color: #10b981; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Don_gia')">{{ displayDonGiaLP(r.item) }}</td> 
+                    <td data-label="Giá nhập" class="right" style="color: #ef4444; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'gia_nhap')">{{ fmtPrice(toNum(r.item.gia_nhap, 0) * toNum(r.item.Ti_gia, 1), toNum(r.item.Ti_gia, 1)) }}</td>
+                    <td data-label="Mức off" class="right" style="line-height: 1.3; font-weight: 700; color: #ef4444;" @click.stop="openQuoteEdit(r.idx, 'muc_phan_tram_off')">
                       <div>{{ displayMucOffAmount(r.item) }}</div>
                       <div class="muted" style="font-size: 11px; margin-top: 2px; color: #ef4444 !important;">(-{{ toNum(r.item.muc_phan_tram_off, 0) }}%)</div>
                     </td>
-                    <td class="right" style="color: #10b981; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'unit_price_kh')">{{ fmtPrice(unitPrice(r.item), toNum(r.item.Ti_gia, 1)) }}</td>
-                    <td class="right" style="color: #10b981; font-weight: 800;" @click.stop="openQuoteEdit(r.idx, 'line_truoc_thue')">{{ fmtPrice(lineTruocThue(r.item), toNum(r.item.Ti_gia, 1)) }}</td>
-                    <td class="right" style="line-height: 1.3; color: #10b981; font-weight: 800;" @click.stop="openQuoteEdit(r.idx, 'Thue_VAT')">
+                    <td data-label="Đơn giá (KH)" class="right" style="color: #10b981; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'unit_price_kh')">{{ fmtPrice(unitPrice(r.item), toNum(r.item.Ti_gia, 1)) }}</td>
+                    <td data-label="TT trước thuế" class="right" style="color: #10b981; font-weight: 800;" @click.stop="openQuoteEdit(r.idx, 'line_truoc_thue')">{{ fmtPrice(lineTruocThue(r.item), toNum(r.item.Ti_gia, 1)) }}</td>
+                    <td data-label="VAT" class="right" style="line-height: 1.3; color: #10b981; font-weight: 800;" @click.stop="openQuoteEdit(r.idx, 'Thue_VAT')">
                       <div>{{ fmtPrice(lineVAT(r.item), toNum(r.item.Ti_gia, 1)) }}</div>
                       <div class="muted" style="font-size: 11px; margin-top: 2px; color: #34d399 !important;">({{ toNum(r.item.Thue_VAT, 0) }}%)</div>
                     </td>
-                    <td class="right" style="color: #10b981; font-weight: 800;" @click.stop="openQuoteEdit(r.idx, 'Thue_VAT')">{{ fmtPrice(lineSauThue(r.item), toNum(r.item.Ti_gia, 1)) }}</td>
-                    <td class="right" :style="{ color: lineLoiNhuan(r.item) >= 0 ? '#10b981' : '#ef4444', fontWeight: 800 }">
+                    <td data-label="TT sau thuế" class="right" style="color: #10b981; font-weight: 800;" @click.stop="openQuoteEdit(r.idx, 'Thue_VAT')">{{ fmtPrice(lineSauThue(r.item), toNum(r.item.Ti_gia, 1)) }}</td>
+                    <td data-label="Net Margin" class="right" :style="{ color: lineLoiNhuan(r.item) >= 0 ? '#10b981' : '#ef4444', fontWeight: 800 }">
                       <div style="display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
                         <span v-if="lineLoiNhuan(r.item) >= 0" style="font-size: 12px; margin-right: 2px;">▲</span>
                         <span v-else style="font-size: 12px; margin-right: 2px;">▼</span>
                         {{ fmtPrice(Math.abs(lineLoiNhuan(r.item)), toNum(r.item.Ti_gia, 1)) }}
                       </div>
                     </td>
-                    <td class="center">
+                    <td data-label="Thao tác" class="center">
                       <div style="display: flex; gap: 4px; justify-content: center;">
                         <button class="btn-del" @click.stop="removeSelected(r.idx)" title="Xóa">✕</button>
                       </div>
@@ -5958,7 +5997,7 @@ onUnmounted(() => {
         </div>
         <div class="bottom-totals">
           <!-- KHỐI 0 : KHÁCH HÀNG -->
-          <div class="totals-box">
+          <div class="totals-box step-customer">
             <div class="totals-header" style="background: linear-gradient(135deg, #064e3b 0%, #065f46 100%); position: relative;">
               <span class="totals-icon"><i class="lucide-user"></i></span>
               <span style="display: flex; align-items: center; gap: 8px;">
@@ -6007,7 +6046,7 @@ onUnmounted(() => {
           </div>
 
           <!-- KHỐI 1 : CHIẾT KHẤU & CHÊNH LỆCH -->
-          <div class="totals-box">
+          <div class="totals-box step-summary">
             <div class="totals-header">
               <span class="totals-icon"><i class="lucide-trending-down"></i></span>
               <span>Chiết khấu & Chênh lệch</span>
@@ -6063,7 +6102,7 @@ onUnmounted(() => {
           </div>
 
           <!-- KHỐI 2 : TỔNG HỢP TÀI CHÍNH -->
-          <div class="totals-box">
+          <div class="totals-box step-summary">
             <div class="totals-header totals-header-primary">
               <span class="totals-icon"><i class="lucide-wallet"></i></span>
               <span>Tổng hợp tài chính</span>
@@ -6107,7 +6146,7 @@ onUnmounted(() => {
           </div>
 
           <!-- KHỐI 3 : THAO TÁC -->
-          <div class="totals-box" style="border: 1px solid rgba(255,255,255,0.08); background: rgba(15,23,42,0.6); box-shadow: 0 8px 32px rgba(0,0,0,0.2);">
+          <div class="totals-box step-actions" style="border: 1px solid rgba(255,255,255,0.08); background: rgba(15,23,42,0.6); box-shadow: 0 8px 32px rgba(0,0,0,0.2);">
             <div class="totals-header" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.05);">
               <span class="totals-icon" style="color: #38bdf8;"><i class="lucide-settings"></i></span>
               <span style="font-weight: 700; color: #f8fafc; letter-spacing: 0.5px;">THAO TÁC</span>
@@ -6989,18 +7028,18 @@ onUnmounted(() => {
                   </td>
                   <td class="col-dvt-cell" :title="r.item.DVT" @click.stop="openQuoteEditRaw(r.idx, 'DVT')">{{ r.item.DVT }}</td>
                   <td class="center" style="font-weight: 700;" @click.stop="openQuoteEditRaw(r.idx, 'So_luong')">{{ r.item.So_luong }}</td>
-                  <td class="right" style="line-height: 1.3; font-weight: 700; color: #10b981;" @click.stop="openQuoteEditRaw(r.idx, 'Don_gia_goc')">
+                  <td data-label="Giá off hãng" class="right" style="line-height: 1.3; font-weight: 700; color: #10b981;" @click.stop="openQuoteEditRaw(r.idx, 'Don_gia_goc')">
                     <div>{{ displayGiaTieuChuanRaw(r.item) }}</div>
                     <div class="muted" style="font-size: 11px; margin-top: 2px; color: #10b981 !important;">({{ displayGiaTieuChuanPctRaw(r.item) }}%)</div>
                   </td>
-                  <td class="right" style="color: #10b981; font-weight: 700;">{{ displayDonGiaLPRaw(r.item) }}</td>
-                  <td class="right" style="color: #ef4444; font-weight: 700;" @click.stop="openQuoteEditRaw(r.idx, 'gia_nhap_goc')">{{ formatVND(getGocNumber(r.item, '_gia_nhap_goc', toNum(r.item.gia_nhap, 0)) * getGocNumber(r.item, '_Ti_gia_goc', toNum(r.item.Ti_gia, 1))) }}</td>
-                  <td class="right" style="line-height: 1.3; font-weight: 700; color: #ef4444;" @click.stop="openQuoteEditRaw(r.idx, 'muc_off')">
+                  <td data-label="List Price" class="right" style="color: #10b981; font-weight: 700;">{{ displayDonGiaLPRaw(r.item) }}</td>
+                  <td data-label="Giá nhập" class="right" style="color: #ef4444; font-weight: 700;" @click.stop="openQuoteEditRaw(r.idx, 'gia_nhap_goc')">{{ formatVND(getGocNumber(r.item, '_gia_nhap_goc', toNum(r.item.gia_nhap, 0)) * getGocNumber(r.item, '_Ti_gia_goc', toNum(r.item.Ti_gia, 1))) }}</td>
+                  <td data-label="Mức off" class="right" style="line-height: 1.3; font-weight: 700; color: #ef4444;" @click.stop="openQuoteEditRaw(r.idx, 'muc_off')">
                     <div>{{ displayMucOffAmountRaw(r.item) }}</div>
                     <div class="muted" style="font-size: 11px; margin-top: 2px; color: #ef4444 !important;">(-{{ toNum(r.item.muc_phan_tram_off, 0) }}%)</div>
                   </td>
-                  <td class="right" style="color: #10b981; font-weight: 800;">{{ formatVND(lineTruocThueRaw(r.item)) }}</td>
-                  <td class="right" style="line-height: 1.3; color: #10b981; font-weight: 800;" @click.stop="openQuoteEditRaw(r.idx, 'Thue_VAT')">
+                  <td data-label="TT trước thuế" class="right" style="color: #10b981; font-weight: 800;">{{ formatVND(lineTruocThueRaw(r.item)) }}</td>
+                  <td data-label="VAT" class="right" style="line-height: 1.3; color: #10b981; font-weight: 800;" @click.stop="openQuoteEditRaw(r.idx, 'Thue_VAT')">
                     <div>{{ formatVND(lineVATRaw(r.item)) }}</div>
                     <div class="muted" style="font-size: 11px; margin-top: 2px; color: #34d399 !important;">({{ vatGoc(r.item) }}%)</div>
                   </td>
@@ -7419,7 +7458,7 @@ onUnmounted(() => {
         <!-- Scrollable table area (kéo thả bất kỳ ô nào trong cột) -->
         <div v-if="useDynamicExcelMapping" style="flex: 1; min-height: 0; overflow: hidden; margin: 0 20px; border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; background: #fff; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2); display: flex; flex-direction: column;">
           <div style="flex: 1; min-height: 0; overflow: auto;">
-            <table style="width: 100%; border-collapse: separate; border-spacing: 0; font-family: 'Inter', Arial, sans-serif; font-size: 13px; color: #334155; white-space: nowrap; table-layout: fixed; min-width: 1200px;">
+            <table class="mapping-config-table" style="width: 100%; border-collapse: separate; border-spacing: 0; font-family: 'Inter', Arial, sans-serif; font-size: 13px; color: #334155; white-space: nowrap; table-layout: fixed; min-width: 1200px;">
               <thead style="position: sticky; top: 0; z-index: 2;">
                 <tr>
                   <th v-for="(col, i) in tempMappingConfig" :key="'h' + col.field + i"
@@ -8095,7 +8134,7 @@ onUnmounted(() => {
           </div>
         </div>
         <!-- ACTIONS -->
-        <div style="padding: 16px 24px; border-top: 1px solid rgba(255,255,255,0.06); display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="save-modal-actions" style="padding: 16px 24px; border-top: 1px solid rgba(255,255,255,0.06); display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
           <button @click="() => { showSaveModal = false; saveContractTemp(); }" style="padding: 12px 20px; border-radius: 8px; font-weight: 700; font-size: 14px; color: #fff; background: linear-gradient(135deg, #3b82f6, #2563eb); border: none; cursor: pointer; transition: all 0.25s; letter-spacing: 0.3px; box-shadow: 0 2px 8px rgba(59,130,246,0.25);" onmouseover="this.style.boxShadow='0 4px 16px rgba(59,130,246,0.4)'; this.style.transform='translateY(-1px)'" onmouseout="this.style.boxShadow='0 2px 8px rgba(59,130,246,0.25)'; this.style.transform='translateY(0)'">Lưu tạm & chờ duyệt</button>
           <button @click="() => { showSaveModal = false; saveContractOfficialAndSaleReport(); }" style="padding: 12px 20px; border-radius: 8px; font-weight: 800; font-size: 14px; text-transform: uppercase; color: #fff; background: linear-gradient(135deg, #ef4444, #dc2626); border: none; cursor: pointer; transition: all 0.25s; letter-spacing: 0.5px; box-shadow: 0 2px 8px rgba(239,68,68,0.25);" onmouseover="this.style.boxShadow='0 4px 16px rgba(239,68,68,0.4)'; this.style.transform='translateY(-1px)'" onmouseout="this.style.boxShadow='0 2px 8px rgba(239,68,68,0.25)'; this.style.transform='translateY(0)'">CHỐT DEAL & CẬP NHẬT SALE REPORT</button>
         </div>
@@ -8137,7 +8176,7 @@ onUnmounted(() => {
             </datalist>
             <label style="margin-top: 16px; display: block;">Chọn Điều khoản thương mại</label>
             <select v-model="selectedTermId" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #cbd5e1; background: #f8fafc; color: #1e293b; margin-bottom: 12px;">
-              <option value="">-- Dùng điều khoản mặc định (trong mẫu Excel) --</option>
+              <option value="">-- Không chèn điều khoản (chỉ giữ tiêu đề) --</option>
               <option v-for="t in contractTerms" :key="t.id" :value="t.id">
                 {{ t.mau ? `[${t.mau}] ${t.tenCT || t.tenKH || 'Mẫu chung'}` : (t.tenCT || t.tenKH || 'Điều khoản chưa đặt tên') }}
               </option>
@@ -8610,6 +8649,9 @@ onUnmounted(() => {
     <option value="GÓI"></option>
     <option value="CHIẾC"></option>
   </datalist>
+
+
+
     <!-- ================== MODAL: IMAGE KIT ================== -->
     <div v-if="showImageKitModal" class="modal-overlay" @click.self="showImageKitModal = false" style="z-index: 9999;">
       <div class="modal-content" style="max-width: 1200px; width: 95vw; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; max-height: 90vh; background: #f8fafc;">
@@ -9115,7 +9157,7 @@ onUnmounted(() => {
 }
 
 /* ===== VIP SIDEBAR ===== */
-.sidebar {
+.product-sidebar {
   background: linear-gradient(160deg, rgba(15, 23, 42, 0.75) 0%, rgba(30, 41, 59, 0.85) 100%);
   border-radius: 20px;
   padding: 16px;
@@ -10438,11 +10480,23 @@ td.dvt { font-family: inherit; white-space: normal; }
 .modal-head h3 { margin: 0; font-size: 16px; font-weight: 700; color: #f8fafc; }
 .modal-head .x {
   width: 32px; height: 32px;
-  border-radius: 50%; background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.1); font-size: 14px; padding: 0;
-  color: #94a3b8;
+  border-radius: 50%; background: #ef4444 !important;
+  border: none !important; font-size: 14px; padding: 0;
+  color: #ffffff !important;
+  display: flex; align-items: center; justify-content: center;
 }
-.modal-head .x:hover { background: rgba(244,63,94,.15); color: #f8fafc; transform: rotate(90deg); border-color: rgba(244,63,94,.3); }
+.modal-head .x:hover { background: #dc2626 !important; color: #ffffff !important; transform: rotate(90deg); }
+
+/* Áp dụng chung cho tất cả các nút đóng modal khác (nếu có class khác) */
+.export-vip-close, .history-modal-header .x, .modal-close, button.x {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+.export-vip-close:hover, .history-modal-header .x:hover, .modal-close:hover, button.x:hover {
+  background: #dc2626 !important;
+  color: #ffffff !important;
+}
 
 .preview {
   width: 100%; height: 200px; object-fit: contain;
@@ -10463,7 +10517,7 @@ td.dvt { font-family: inherit; white-space: normal; }
 /* ===== RESPONSIVE ===== */
 @media (max-width: 1100px) {
   .main-grid { grid-template-columns: 1fr; }
-  .sidebar { position: relative; height: auto; top: 0; max-height: 50vh; }
+  .product-sidebar { position: relative; height: auto; top: 0; max-height: 50vh; }
   .quote-center { height: auto !important; }
   .sidebar-left.closed, .sidebar-right.closed { display: none; }
   .open-tab { top: auto; bottom: 20px; }
@@ -11256,7 +11310,7 @@ td.dvt { font-family: inherit; white-space: normal; }
 ============================================================== */
 @media print {
   /* Ẩn Sidebar của App.vue */
-  .sidebar, .scroll-to-top { display: none !important; }
+  .sidebar, .product-sidebar, .scroll-to-top { display: none !important; }
 
   /* Phá vỡ layout Flex/Scroll của App.vue để trình duyệt in đủ trang */
   .app-layout, .main-content, #app, body, html {
@@ -11973,6 +12027,650 @@ td.dvt { font-family: inherit; white-space: normal; }
     padding: 20px 14px;
   }
 }
-</style>
+/* ================== MOBILE PROGRESS STEPS ================== */
+.mobile-progress-wrapper {
+  display: none;
+}
 
+@media (max-width: 1100px) {
+  .mobile-progress-wrapper {
+    display: block;
+    position: sticky;
+    top: 0;
+    z-index: 990;
+    background: radial-gradient(circle at 80% 10%, #132a3e 0%, #0e1c2b 30%, #0a1520 100%) !important;
+    padding: 16px 16px 12px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    margin: -15px -15px 16px -15px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  }
+
+  .mobile-steps {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    position: relative;
+    max-width: 100%;
+    margin: 0 auto;
+  }
+
+  /* Đường line đứt khúc chìm ở dưới */
+  .mobile-steps::before {
+    content: '';
+    position: absolute;
+    top: 13px;
+    left: 10%;
+    right: 10%;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    z-index: 0;
+  }
+
+  .m-step {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    cursor: pointer;
+    position: relative;
+    z-index: 1;
+    padding: 0 !important;
+    min-width: 0 !important;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Đường line xanh nổi lên khi hoàn thành */
+  .m-step::after {
+    content: '';
+    position: absolute;
+    top: 13px;
+    left: 50%;
+    width: 100%;
+    height: 2px;
+    background: transparent;
+    z-index: -1;
+    transition: background 0.4s ease;
+  }
+  .m-step:last-child::after {
+    display: none;
+  }
+  .m-step.completed::after {
+    background: linear-gradient(90deg, #10b981 0%, rgba(16, 185, 129, 0.5) 100%);
+  }
+
+  .step-circle {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #1e293b;
+    border: 2px solid #334155;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: #94a3b8;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-sizing: border-box;
+    z-index: 2;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  }
+
+  .step-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748b;
+    white-space: nowrap;
+    text-align: center;
+    transition: all 0.4s ease;
+    letter-spacing: 0.2px;
+  }
+
+  @keyframes pulse-ring-mobile {
+    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
+    70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+  }
+
+  .m-step.active .step-circle {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    border-color: #059669;
+    color: #fff;
+    transform: scale(1.15);
+    animation: pulse-ring-mobile 2s infinite;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  }
+  .m-step.active .step-label {
+    color: #10b981;
+    font-weight: 800;
+    transform: translateY(1px);
+  }
+
+  .m-step.completed .step-circle {
+    background: #10b981;
+    border-color: #10b981;
+    color: #fff;
+  }
+  .m-step.completed .step-label {
+    color: #94a3b8;
+  }
+
+  /* LOGIC ẨN HIỆN THEO BƯỚC */
+  .main-grid.mobile-step-1 .quote-center,
+  .main-grid.mobile-step-1 .bottom-totals { display: none !important; }
+  .main-grid.mobile-step-1 .sidebar-left { display: flex !important; max-height: unset; margin-left: 0; opacity: 1; pointer-events: auto; }
+
+  .main-grid.mobile-step-2 .sidebar-left,
+  .main-grid.mobile-step-2 .bottom-totals { display: none !important; }
+  .main-grid.mobile-step-2 .quote-center { display: flex !important; }
+  .main-grid.mobile-step-2 .quote-table-container { display: block !important; }
+
+  .main-grid.mobile-step-3 .sidebar-left,
+  .main-grid.mobile-step-3 .quote-table-container { display: none !important; }
+  .main-grid.mobile-step-3 .quote-center { display: flex !important; }
+  .main-grid.mobile-step-3 .bottom-totals { display: flex !important; flex-direction: column !important; }
+  .main-grid.mobile-step-3 .bottom-totals .step-customer,
+  .main-grid.mobile-step-3 .bottom-totals .step-actions { display: none !important; }
+  .main-grid.mobile-step-3 .bottom-totals .step-summary { display: flex !important; flex-direction: column !important; }
+
+  .main-grid.mobile-step-4 .sidebar-left,
+  .main-grid.mobile-step-4 .quote-table-container { display: none !important; }
+  .main-grid.mobile-step-4 .quote-center { display: flex !important; }
+  .main-grid.mobile-step-4 .bottom-totals { display: flex !important; flex-direction: column !important; }
+  .main-grid.mobile-step-4 .bottom-totals .step-summary,
+  .main-grid.mobile-step-4 .bottom-totals .step-actions { display: none !important; }
+  .main-grid.mobile-step-4 .bottom-totals .step-customer { display: flex !important; flex-direction: column !important; }
+
+  .main-grid.mobile-step-5 .sidebar-left,
+  .main-grid.mobile-step-5 .quote-table-container { display: none !important; }
+  .main-grid.mobile-step-5 .quote-center { display: flex !important; }
+  .main-grid.mobile-step-5 .bottom-totals { display: flex !important; flex-direction: column !important; }
+  .main-grid.mobile-step-5 .bottom-totals .step-summary,
+  .main-grid.mobile-step-5 .bottom-totals .step-customer { display: none !important; }
+  .main-grid.mobile-step-5 .bottom-totals .step-actions { display: flex !important; flex-direction: column !important; }
+
+  /* ================= NATIVE APP MOBILE LAYOUT ================= */
+  html, body {
+    overflow-x: hidden !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  .page { 
+    padding: 0 !important; 
+    margin: 0 !important;
+    width: 100% !important;
+    min-height: 100vh !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Khôi phục lại lề của thanh tiến trình để không bị tràn màn hình */
+  .mobile-progress-wrapper {
+    margin: 0 0 16px 0 !important;
+    padding: 12px 2px 10px 2px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .step-label {
+    font-size: 9px !important;
+    letter-spacing: -0.2px !important;
+    white-space: nowrap !important;
+  }
+
+  .main-grid { 
+    gap: 0 !important; 
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    display: block !important;
+    box-sizing: border-box !important;
+  }
+
+  .sidebar-left, .quote-center, .bottom-totals, .totals-box {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    border-radius: 0 !important;
+  }
+
+  /* 1. KHO SẢN PHẨM */
+  .sidebar-left {
+    height: calc(100vh - 110px) !important; 
+    padding: 16px !important;
+    background: transparent !important;
+    overflow-y: auto !important;
+    padding-bottom: 80px !important; /* Space for system bottom navigation */
+  }
+
+  /* Cột sản phẩm 1 cột, card đẹp hơn */
+  .product-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+    padding-bottom: 40px !important;
+  }
+
+  /* 2. BÁO GIÁ TABLE */
+  .quote-table-container {
+    height: calc(100vh - 110px) !important;
+    border: none !important;
+    background: transparent !important;
+    overflow-y: auto !important;
+    padding: 16px !important;
+  }
+  .quote-table-container,
+  .quote-table-container *,
+  .bottom-totals,
+  .bottom-totals * {
+    box-sizing: border-box !important;
+  }
+  .header-contract-info {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    margin-top: 6px !important;
+    width: 100% !important;
+  }
+  .contract-badge {
+    margin-bottom: 2px !important;
+  }
+  .quote-table-wrap {
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow-x: hidden !important;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  /* RESPONSIVE TABLE CARDS */
+  .quote-table-wrap table, 
+  .quote-table-wrap tbody {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    background: transparent !important;
+  }
+  .quote-table-wrap thead {
+    display: none !important;
+  }
+  .quote-table-wrap tr.quote-item-row {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    background: rgba(30, 41, 59, 0.8) !important;
+    backdrop-filter: blur(16px);
+    border-radius: 16px !important;
+    margin-bottom: 16px !important;
+    padding: 16px !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.2) !important;
+    gap: 12px;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .quote-table-wrap tr.quote-item-row td {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    text-align: left !important;
+    padding: 10px 8px !important;
+    border: none !important;
+    border-bottom: 1px solid rgba(255,255,255,0.05) !important;
+    width: calc(50% - 6px) !important;
+    max-width: calc(50% - 6px) !important;
+    flex: 0 0 calc(50% - 6px) !important;
+    min-height: auto;
+    box-sizing: border-box !important;
+  }
+  .quote-table-wrap tr.quote-item-row td:last-child {
+    border-bottom: none !important;
+  }
+  
+  .quote-table-wrap tr.quote-item-row td[data-label="Thao tác"] {
+    align-items: flex-start !important;
+    padding-top: 16px !important;
+  }
+  
+  .quote-table-wrap tr.quote-item-row td::before {
+    content: attr(data-label);
+    font-size: 11px;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+    display: block;
+    white-space: normal;
+  }
+  
+  /* Các ô text dài và thao tác chiếm trọn 100% chiều ngang thẻ */
+  .quote-table-wrap tr.quote-item-row td.col-pn-cell,
+  .quote-table-wrap tr.quote-item-row td.col-desc-cell,
+  .quote-table-wrap tr.quote-item-row td.nowrap,
+  .quote-table-wrap tr.quote-item-row td[data-label="Giá off hãng"],
+  .quote-table-wrap tr.quote-item-row td[data-label="Giá nhập"],
+  .quote-table-wrap tr.quote-item-row td[data-label="VAT"],
+  .quote-table-wrap tr.quote-item-row td[data-label="Thao tác"],
+  .quote-table-wrap tr.quote-item-row td[data-label="STT"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 0 0 100% !important;
+    padding: 10px 0 !important;
+  }
+  
+  /* Căn lề text và bẻ dòng cho nội dung dài */
+  .col-pn-cell,
+  .col-desc-cell,
+  .col-hang-cell,
+  .col-dvt-cell {
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
+  
+  /* Các ô text dài chiếm trọn 100% chiều ngang thẻ */
+  .col-pn-cell,
+  .col-desc-cell {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  /* Bẻ dòng từng dòng mô tả sản phẩm */
+  .col-desc-cell .preline {
+    display: block !important;
+    white-space: normal !important;
+    width: 100% !important;
+  }
+  .col-desc-cell .preline div {
+    display: block !important;
+    white-space: normal !important;
+    width: 100% !important;
+    margin-bottom: 4px;
+  }
+  .col-desc-cell .preline div::after {
+    display: none !important;
+  }
+
+  /* Reset alignment cho các cột số */
+  .quote-table-wrap tr.quote-item-row td.right,
+  .quote-table-wrap tr.quote-item-row td.center {
+    align-items: flex-start !important;
+    text-align: left !important;
+  }
+  .quote-table-wrap tr.quote-item-row td.right::before,
+  .quote-table-wrap tr.quote-item-row td.center::before {
+    align-self: flex-start !important;
+  }
+  
+  /* Danh mục (Group Row) */
+  .quote-table-wrap tr.group-row {
+    display: flex !important;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%) !important;
+    border-radius: 12px !important;
+    margin-bottom: 16px !important;
+    padding: 12px 16px !important;
+    border: 1px dashed rgba(16, 185, 129, 0.4) !important;
+    align-items: center;
+  }
+  .quote-table-wrap tr.group-row td {
+    display: block !important;
+    border: none !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+  .quote-table-wrap tr.group-row td.group-stt {
+    width: auto !important;
+    margin-right: 12px;
+  }
+  .quote-table-wrap tr.group-row td.group-title {
+    flex: 1;
+    width: auto !important;
+  }
+
+  /* Table Footer (Tổng cộng) */
+  .quote-table-wrap tfoot {
+    display: block !important;
+    margin-top: 24px;
+    margin-bottom: 30px;
+  }
+  .quote-table-wrap tfoot tr {
+    display: flex !important;
+    flex-direction: column !important;
+    background: rgba(250, 204, 21, 0.95) !important;
+    border-radius: 16px !important;
+    padding: 16px !important;
+    gap: 12px;
+    box-shadow: 0 8px 30px rgba(250, 204, 21, 0.2);
+    box-sizing: border-box !important;
+    width: 100% !important;
+  }
+  .quote-table-wrap tfoot td {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+    border: none !important;
+    padding: 0 !important;
+    white-space: normal !important;
+    box-sizing: border-box !important;
+  }
+  .quote-table-wrap tfoot td:empty,
+  .quote-table-wrap tfoot td.center:first-child {
+    display: none !important;
+  }
+  /* Show only the fields with values */
+  .quote-table-wrap tfoot td:nth-child(2)::before { content: "Tiền OFF:"; font-weight: 800; color: #854d0e; font-size: 13px; }
+  .quote-table-wrap tfoot td:nth-child(4)::before { content: "Tổng trước thuế:"; font-weight: 800; color: #854d0e; font-size: 13px; }
+  .quote-table-wrap tfoot td:nth-child(5)::before { content: "Tiền VAT:"; font-weight: 800; color: #854d0e; font-size: 13px; }
+  .quote-table-wrap tfoot td:nth-child(6)::before { content: "TỔNG THANH TOÁN:"; font-weight: 900; color: #15803d; font-size: 15px; }
+  .quote-table-wrap tfoot td:nth-child(7)::before { content: "Net Margin:"; font-weight: 800; color: #854d0e; font-size: 13px; }
+  
+  /* 3, 4, 5. TỔNG KẾT, KHÁCH HÀNG, THAO TÁC */
+  .bottom-totals {
+    padding: 16px !important;
+    height: calc(100vh - 110px) !important;
+    overflow-y: auto !important;
+    display: block !important;
+    background: transparent !important;
+  }
+  
+  .totals-box {
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 0 !important;
+    border-radius: 20px !important; 
+    margin-bottom: 20px !important;
+    width: 100% !important;
+    background: rgba(30, 41, 59, 0.7) !important;
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    overflow: hidden !important;
+  }
+  
+  /* FORMS & INPUTS: Force 1 column */
+  .step-customer [style*="grid"],
+  .step-actions [style*="grid"],
+  .modal-card [style*="grid"],
+  .totals-body [style*="grid"],
+  .totals-body > div[style*="flex"] {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Ensure inputs take full width and look gorgeous */
+  .totals-body input, .modal-card input, .totals-body textarea, .modal-card textarea, .totals-body select, .modal-card select {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    height: 52px !important;
+    font-size: 15px !important;
+    border-radius: 12px !important;
+    background: rgba(15, 23, 42, 0.6) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    padding: 0 16px !important;
+    color: #f8fafc !important;
+    transition: all 0.3s ease !important;
+  }
+  .totals-body textarea, .modal-card textarea {
+    height: auto !important;
+    min-height: 100px !important;
+    padding: 16px !important;
+  }
+  .totals-body input:focus, .modal-card input:focus, .totals-body textarea:focus, .modal-card textarea:focus {
+    border-color: #38bdf8 !important;
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2) !important;
+    background: rgba(15, 23, 42, 0.9) !important;
+  }
+
+  /* Khôi phục kích thước gọn gàng cho các ô input nhập % inline */
+  .totals-body .totals-label input {
+    width: 64px !important;
+    height: 32px !important;
+    font-size: 14px !important;
+    padding: 0 8px !important;
+    border-radius: 8px !important;
+  }
+
+  /* Big tappable buttons */
+  .step-actions button, .modal-card button {
+    height: auto !important;
+    min-height: 56px !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    border-radius: 14px !important;
+    width: 100% !important;
+    margin-bottom: 12px !important;
+    letter-spacing: 0.3px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    white-space: normal !important;
+    line-height: 1.3 !important;
+    padding: 12px 16px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* Khôi phục padding và chiều cao cho các nút xuất file (tránh bị bóp méo do quy tắc ở trên) */
+  .modal-card .export-vip-btn {
+    height: auto !important;
+    min-height: 90px !important;
+    padding: 16px 20px !important;
+  }
+
+  /* Khôi phục kích thước cho nút đóng modal và mở rộng tiêu đề */
+  .modal-card .modal-head .x,
+  .modal-card .export-vip-close,
+  .modal-card .modal-close,
+  .history-modal-header .x {
+    width: 32px !important;
+    min-width: 32px !important;
+    height: 32px !important;
+    margin-bottom: 0 !important;
+    padding: 0 !important;
+    flex-shrink: 0 !important;
+  }
+  .modal-head h3, .export-vip-title, .modal-header h3 {
+    flex: 1 !important;
+    white-space: normal !important;
+    line-height: 1.4 !important;
+    padding-right: 12px !important;
+  }
+
+  /* Khôi phục kích thước cho các thành phần trong bảng cấu hình Data Mapping */
+  .mapping-config-table input,
+  .mapping-config-table select {
+    height: 34px !important;
+    font-size: 13px !important;
+    border-radius: 6px !important;
+    background: #ffffff !important;
+    color: #1e293b !important;
+    padding: 0 10px !important;
+  }
+  .mapping-config-table button {
+    width: 34px !important;
+    min-width: 34px !important;
+    height: 34px !important;
+    margin-bottom: 0 !important;
+    border-radius: 6px !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* Bỏ cuộn bên trong các modal, để modal tự cuộn toàn bộ nội dung (tránh lỗi cuộn ẩn nút) */
+  .modal-card > div[style*="overflow-y: auto"] {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* Cố định các nút dưới cùng của modal Lưu Báo Giá */
+  .save-modal-actions {
+    position: sticky !important;
+    bottom: calc(-16px - env(safe-area-inset-bottom, 24px)) !important;
+    background: #0f172a !important;
+    z-index: 20 !important;
+    margin: 0 -16px calc(-16px - env(safe-area-inset-bottom, 24px)) -16px !important;
+    padding: 16px !important;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 24px)) !important;
+    border-top: 1px solid rgba(255,255,255,0.1) !important;
+  }
+
+  /* Overlay không có padding để modal chạm viền */
+  .modal, .vip-modal-overlay, .load-invoice-modal-overlay, .modal-overlay {
+    padding: 0 !important;
+  }
+
+  /* Căn chỉnh lại modal: full màn hình và trượt từ trái sang */
+  .modal-card, .vip-modal-card, .load-invoice-modal, .modal-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    margin: 0 !important;
+    padding: 16px !important;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 24px)) !important;
+    box-sizing: border-box;
+    border-radius: 0 !important;
+    background: #0f172a !important; /* màu nền đặc để che toàn màn hình */
+    border: none !important;
+    animation: slideInLeftMobile 0.35s cubic-bezier(0.25, 0.8, 0.25, 1) forwards !important;
+    overflow-y: auto !important; /* Quan trọng để nội dung dài có thể cuộn */
+  }
+  @keyframes slideInLeftMobile {
+    from { transform: translateX(-100%); opacity: 0.5; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  .modal-card > div[style*="padding: 24px"] {
+    padding: 0 !important;
+  }
+
+  /* Hiệu ứng mượt mà khi cuộn */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+  }
+}
+</style>
 
