@@ -327,10 +327,10 @@
     </div>
 
     <!-- Toolbar: Buttons (Left) & Center (Khách Hàng) & Right (Filters) -->
-    <div class="sr-toolbar-bottom" style="display: grid; grid-template-columns: 1fr auto 1fr; align-items: flex-end; gap: 16px; margin-bottom: 24px; position: relative; width: 100%;">
+    <div class="sr-toolbar-bottom">
       
       <!-- Left side: Buttons -->
-      <div style="display: flex; gap: 12px; align-items: center; justify-self: start; padding-bottom: 2px;">
+      <div class="toolbar-left-buttons" style="display: flex; gap: 12px; align-items: center; padding-bottom: 2px;">
         <button class="sr-btn sr-btn-import bg-btn" style="background:#2563eb;color:#ffffff;border-color:#1d4ed8;font-weight:700;height:42px;" @click="triggerImport(null, 'bao_gia')">📄 Import Báo giá</button>
         <button class="sr-btn sr-btn-import bg-btn" style="background:#8b5cf6;color:#ffffff;border-color:#7c3aed;font-weight:700;height:42px;" @click="triggerReportImport()">📊 Import Report</button>
         <input type="file" ref="reportUploadInput" accept=".xlsx, .xls" style="display: none" @change="onReportSelected" />
@@ -341,7 +341,7 @@
       </div>
 
       <!-- Center: Khách hàng Filter -->
-      <div class="elite-select-group" style="width: 400px; justify-self: center; position: relative;">
+      <div class="elite-select-group center-filter" style="position: relative;">
         <label style="color: #10b981 !important; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 6px;">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
           Khách hàng Đối tác
@@ -364,7 +364,7 @@
       </div>
 
       <!-- Right side: Filters -->
-      <div style="display: flex; gap: 16px; align-items: flex-end; justify-self: end; flex-wrap: wrap;">
+      <div class="toolbar-right-filters" style="display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap;">
         <div class="elite-select-group" style="min-width: 180px;">
           <label style="color: #94a3b8 !important;">Sắp xếp theo số PO</label>
           <select v-model="sortPoOrder" class="elite-select" style="width: 100%;">
@@ -5800,5 +5800,44 @@ async function doExport() {
 .fintech-trend.down { color: #f87171; }
 .fintech-trend svg { width: 14px; height: 14px; }
 .fintech-trend span:last-child { color: #64748b; font-weight: 500; font-size: 12px; }
+
+/* Desktop Toolbar */
+.sr-toolbar-bottom {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 24px;
+  position: relative;
+  width: 100%;
+}
+.toolbar-left-buttons { justify-self: start; }
+.center-filter { width: 400px; justify-self: center; }
+.toolbar-right-filters { justify-self: end; }
+
+/* Mobile Toolbar */
+@media (max-width: 1100px) {
+  .sr-toolbar-bottom {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  .toolbar-left-buttons, .center-filter, .toolbar-right-filters {
+    justify-self: auto;
+  }
+  .center-filter { width: 100%; }
+  .toolbar-left-buttons {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .toolbar-left-buttons > button {
+    flex: 1 1 calc(33.333% - 8px);
+    min-width: 100px;
+    padding: 0 4px !important;
+    font-size: 12px !important;
+    justify-content: center;
+  }
+}
 
 </style>
