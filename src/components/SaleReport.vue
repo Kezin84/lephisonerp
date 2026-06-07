@@ -85,7 +85,7 @@
               <label style="color: #94a3b8 !important;">Từ ngày</label>
               <input type="date" v-model="dateFrom" :max="dateTo" @click="e => e.target.showPicker && e.target.showPicker()" class="elite-input" style="width: 100%;" />
             </div>
-            <span class="elite-range-sep" style="display: flex !important; margin-bottom: 0.5rem;">→</span>
+            <span class="elite-range-sep">→</span>
             <div class="elite-date-group group-date" style="flex: 1; max-width: 500px;">
               <label style="color: #94a3b8 !important;">Đến ngày</label>
               <input type="date" v-model="dateTo" :min="dateFrom" @click="e => e.target.showPicker && e.target.showPicker()" class="elite-input" style="width: 100%;" />
@@ -97,7 +97,7 @@
               <label style="color: #94a3b8 !important;">Từ tháng</label>
               <input type="month" v-model="monthFrom" :max="monthTo" @click="e => e.target.showPicker && e.target.showPicker()" class="elite-input" style="width: 100%;" />
             </div>
-            <span class="elite-range-sep" style="display: flex !important; margin-bottom: 0.5rem;">→</span>
+            <span class="elite-range-sep">→</span>
             <div class="elite-date-group group-date" style="flex: 1; max-width: 500px;">
               <label style="color: #94a3b8 !important;">Đến tháng</label>
               <input type="month" v-model="monthTo" :min="monthFrom" @click="e => e.target.showPicker && e.target.showPicker()" class="elite-input" style="width: 100%;" />
@@ -109,7 +109,7 @@
               <label style="color: #94a3b8 !important;">Từ năm</label>
               <input type="number" v-model="yearFrom" :max="yearTo" placeholder="2024" class="elite-input" style="width: 100%;" />
             </div>
-            <span class="elite-range-sep" style="display: flex !important; margin-bottom: 0.5rem;">→</span>
+            <span class="elite-range-sep">→</span>
             <div class="elite-date-group group-date" style="flex: 1; max-width: 500px;">
               <label style="color: #94a3b8 !important;">Đến năm</label>
               <input type="number" v-model="yearTo" :min="yearFrom" placeholder="2025" class="elite-input" style="width: 100%;" />
@@ -5416,6 +5416,7 @@ async function doExport() {
 
 .elite-date-group.group-tabs {
     flex: 1 1 65% !important;
+    grid-column: 1 / -1 !important;
   }
 
 .elite-date-group.group-period {
