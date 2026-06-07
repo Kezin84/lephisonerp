@@ -6095,18 +6095,18 @@ onUnmounted(() => {
                 </div>
               </div>
 
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <div class="action-buttons-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                 <button class="action-btn" @click="showPreviewRawModal = true" style="margin: 0; padding: 10px 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; flex-direction: row; justify-content: center; min-height: 38px; background: #2563eb; border: none; color: #ffffff;">
                   <i class="lucide-eye" style="margin-right: 6px; font-size: 16px;"></i> Xem báo giá gốc
                 </button>
                 <button class="action-btn" @click="openGlobalHistory" style="margin: 0; padding: 10px 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; flex-direction: row; justify-content: center; min-height: 38px; background: #9333ea; border: none; color: #ffffff;">
                   <i class="lucide-history" style="margin-right: 6px; font-size: 16px;"></i> Lịch sử
                 </button>
-                <button class="action-btn" @click="showExportInfoModal = true" style="margin: 0; padding: 10px 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; flex-direction: row; justify-content: center; min-height: 38px; background: #16a34a; border: none; color: #ffffff;">
-                  <i class="lucide-upload" style="margin-right: 6px; font-size: 16px;"></i> Xuất dữ liệu
-                </button>
                 <button class="action-btn" @click="showLoadInfoModal = true" style="margin: 0; padding: 10px 8px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; flex-direction: row; justify-content: center; min-height: 38px; background: #eab308; border: none; color: #1e3a8a;">
                   <i class="lucide-download" style="margin-right: 6px; font-size: 16px;"></i> Nạp dữ liệu
+                </button>
+                <button class="action-btn" @click="showExportInfoModal = true" style="margin: 0; padding: 10px 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; flex-direction: row; justify-content: center; min-height: 38px; background: #16a34a; border: none; color: #ffffff;">
+                  <i class="lucide-upload" style="margin-right: 6px; font-size: 16px;"></i> Xuất dữ liệu
                 </button>
 
                 <button class="action-btn action-save" :disabled="saving || !hasUnsavedChanges()" @click="showSaveModal = true" style="grid-column: 1 / -1; margin: 0; padding: 14px; font-size: 14px; font-weight: 800; flex-direction: row; justify-content: center; min-height: 46px; letter-spacing: 1px; text-transform: uppercase; background: #dc2626 !important; border: none; color: #ffffff !important; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);">
@@ -12612,6 +12612,14 @@ td.dvt { font-family: inherit; white-space: normal; }
   ::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.2);
     border-radius: 4px;
+  }
+
+  /* Override cho phần action buttons trong chế độ mobile */
+  .step-actions div.action-buttons-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    flex-direction: unset !important;
+    gap: 8px !important;
   }
 }
 </style>
