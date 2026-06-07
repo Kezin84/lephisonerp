@@ -70,7 +70,7 @@
       </div>
 
       <div class="elite-filter-body">
-        <div class="elite-filter-row" style="display: flex; flex-direction: row; flex-wrap: nowrap; align-items: flex-end; gap: 1rem; width: 100%;">
+        <div class="elite-filter-row" style="width: 100%;">
           <div class="elite-date-group group-tabs" style="flex: 0 0 auto; min-width: auto; max-width: none;">
             <label style="opacity: 0; user-select: none;" class="mobile-hidden-label">Chế độ</label>
             <div class="elite-mode-tabs" style="min-width: 180px; width: auto;">
