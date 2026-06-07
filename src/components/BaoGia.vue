@@ -538,7 +538,7 @@ const availableExcelFields = [
   { value: 'dvt', label: 'DVT' },
   { value: 'license_duration', label: 'LICENSE DURATION' },
   { value: 'thoi_gian_bao_hanh', label: 'THỜI GIAN BẢO HÀNH' },
-  { value: 'features', label: 'MÔ TẢ SẢN PHẨM' },
+  { value: 'features', label: 'DIỄN GIẢI' },
   { value: 'ghi_chu', label: 'GHI CHÚ' },
   { value: 'list_price', label: 'LIST PRICE' },
   { value: 'don_gia_nhap', label: 'GIÁ NHẬP' },
@@ -560,9 +560,9 @@ const availableExcelFields = [
 const defaultExcelConfig = [
   { header: 'STT', field: 'stt' },
   { header: 'TÊN HÀNG HÓA', field: 'ten_hang' },
-  { header: 'MÔ TẢ SẢN PHẨM', field: 'features' },
+  { header: 'DIỄN GIẢI', field: 'features' },
   { header: 'ĐVT', field: 'dvt' },
-  { header: 'SỐ LƯỢNG', field: 'so_luong' },
+  { header: 'SL', field: 'so_luong' },
   { header: 'ĐƠN GIÁ', field: 'don_gia_kh' },
   { header: 'THÀNH TIỀN', field: 'truoc_thue' },
   { header: 'VAT', field: 'vat' },
@@ -1066,20 +1066,15 @@ const exportToImage = async () => {
     return
   }
   
-  // Open new tab immediately to prevent popup blocker
-  const newTab = window.open('', '_blank')
-  if (newTab) {
-    newTab.document.write('<html><body><h3 style="font-family:sans-serif;text-align:center;margin-top:50px;">Đang tạo ảnh Báo Giá, vui lòng đợi giây lát...</h3></body></html>')
-  } else {
-    triggerToast('Trình duyệt đã chặn tab mới. Vui lòng cho phép popup hiển thị!', 'error')
-    return
-  }
-
   isExportingImage.value = true
+  showAsyncLoading('Đang xử lý ảnh, vui lòng đợi...')
   try {
     await nextTick()
-    await new Promise(r => setTimeout(r, 500))
-    if (!exportImageContainer.value) return
+    await new Promise(r => setTimeout(r, 800))
+    if (!exportImageContainer.value) {
+      showAsyncError('Lỗi', 'Không tìm thấy khung chứa ảnh.')
+      return
+    }
     const canvas = await html2canvas(exportImageContainer.value, {
       scale: 2,
       useCORS: true,
@@ -1087,86 +1082,14 @@ const exportToImage = async () => {
     })
     const dataUrl = canvas.toDataURL('image/png')
     
-    if (newTab) {
-      newTab.document.open()
-      newTab.document.write(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <title>Chỉnh Sửa Ảnh Báo Giá - ${soHopDong.value || maHopDong.value || 'Image'}</title>
-            <style>
-              body { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; font-family: 'Inter', sans-serif; background: #1e293b; }
-              #editor_container { width: 100%; height: 100%; }
-            </style>
-            <script src="https://scaleflex.cloudimg.io/v7/plugins/filerobot-image-editor/latest/filerobot-image-editor.min.js">${'</scr' + 'ipt>'}
-          </head>
-          <body>
-            <div id="editor_container"></div>
-            <script>
-              window.onload = () => {
-                const { TABS, TOOLS } = FilerobotImageEditor;
-                const config = {
-                  source: '${dataUrl}',
-                  onSave: (editedImageObject, designState) => {
-                    const link = document.createElement('a');
-                    link.download = editedImageObject.fullName || 'BaoGia_${soHopDong.value || maHopDong.value || 'Image'}.png';
-                    link.href = editedImageObject.imageBase64;
-                    link.click();
-                  },
-                  annotationsCommon: {
-                    fill: '#ff0000',
-                  },
-                  Text: { text: 'Ghi chú...' },
-                  translations: {
-                    profile: 'Profile',
-                    coverPhoto: 'Cover photo',
-                    facebook: 'Facebook',
-                    socialMedia: 'Social Media',
-                    fbProfileSize: '180x180',
-                    fbCoverPhotoSize: '820x312',
-                    name: 'Name',
-                    save: 'Lưu & Tải Về',
-                    saveAs: 'Lưu thành',
-                    extension: 'Định dạng',
-                    format: 'Format',
-                    quality: 'Chất lượng',
-                    imageDimensions: 'Kích thước',
-                    crop: 'Cắt ảnh',
-                    orientation: 'Xoay',
-                    finetune: 'Màu sắc',
-                    filter: 'Bộ lọc',
-                    watermark: 'Đóng dấu',
-                    annotate: 'Vẽ / Chữ',
-                    resize: 'Đổi cỡ',
-                    arrow: 'Mũi tên',
-                    line: 'Đường thẳng',
-                    polygon: 'Đa giác',
-                    text: 'Chữ',
-                    rectangle: 'Chữ nhật',
-                    ellipse: 'Hình elip',
-                    pen: 'Bút vẽ'
-                  }
-                };
-                const filerobotImageEditor = new FilerobotImageEditor(
-                  document.querySelector('#editor_container'),
-                  config
-                );
-                filerobotImageEditor.render({
-                  onClose: (closingReason) => {
-                    window.close();
-                  },
-                });
-              };
-            <\\/script>
-          </body>
-        </html>
-      `)
-      newTab.document.close()
-    }
+    const link = document.createElement('a')
+    link.download = `BaoGia_${soHopDong.value || maHopDong.value || 'Image'}.png`
+    link.href = dataUrl
+    link.click()
+
+    showAsyncSuccess('Thành công', 'Đã tải ảnh báo giá về máy.')
   } catch (err) {
     console.error('Lỗi khi xuất ảnh', err)
-    if (newTab) newTab.close()
     showAsyncError('Lỗi', 'Không thể tạo ảnh, vui lòng thử lại.')
   } finally {
     isExportingImage.value = false
@@ -4590,7 +4513,7 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value, specificTe
           Object.keys(rm).forEach(k => {
              origWidths[k] = ws.getColumn(rm[k]).width || 15;
           });
-          origWidths['features'] = origWidths['mo_ta'] || 35;
+          origWidths['features'] = Math.max(origWidths['mo_ta'] || 0, 45);
           origWidths['don_gia_kh'] = origWidths['don_gia'] || 15;
           origWidths['gia_tieu_chuan'] = origWidths['don_gia'] || 15;
           origWidths['list_price'] = origWidths['don_gia'] || 15;
@@ -4606,6 +4529,14 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value, specificTe
           origWidths['license_duration'] = 15;
           origWidths['thoi_gian_bao_hanh'] = 15;
           origWidths['ghi_chu'] = 25;
+          // Ensure monetary columns have enough width to avoid ########
+          origWidths['don_gia_kh'] = Math.max(origWidths['don_gia_kh'] || 0, 18);
+          origWidths['gia_tieu_chuan'] = Math.max(origWidths['gia_tieu_chuan'] || 0, 18);
+          origWidths['list_price'] = Math.max(origWidths['list_price'] || 0, 18);
+          origWidths['don_gia_nhap'] = Math.max(origWidths['don_gia_nhap'] || 0, 18);
+          origWidths['truoc_thue'] = Math.max(origWidths['truoc_thue'] || 0, 18);
+          origWidths['sau_thue'] = Math.max(origWidths['sau_thue'] || 0, 18);
+          origWidths['vat_amount'] = Math.max(origWidths['vat_amount'] || 0, 15);
           
           // Apply dynamic currency suffix to headers before rendering
           applyCurrencyToHeaders(actualMappingConfig, targetKhach?.Don_vi_tien_te);
@@ -5856,7 +5787,7 @@ onUnmounted(() => {
                   <th class="col-stt" style="border-top-left-radius: 6px;">STT</th>
                   <th class="col-pn">P/N</th>
                   <th class="col-name">Tên hàng</th>
-                  <th class="col-desc">Mô tả sản phẩm</th>
+                  <th class="col-desc">Diễn giải</th>
                   <th class="col-hang">Hãng</th>
                   <th class="col-dvt">ĐVT</th>
                   <th class="col-sl">SL</th>
@@ -5917,7 +5848,7 @@ onUnmounted(() => {
                     </td>
                     <td data-label="P/N" class="col-pn-cell" :title="r.item.Ma_hang" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Ma_hang')">{{ r.item.Ma_hang }}</td>
                     <td data-label="Tên hàng" class="nowrap" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Ten_hang')">{{ r.item.Ten_hang }}</td>
-                    <td data-label="Mô tả sản phẩm" class="col-desc-cell" :title="[r.item.Mo_ta_chung, r.item.Mo_ta_chi_tiet, r.item.Features].filter(Boolean).join(' - ')" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Features')">
+                    <td data-label="Diễn giải" class="col-desc-cell" :title="[r.item.Mo_ta_chung, r.item.Mo_ta_chi_tiet, r.item.Features].filter(Boolean).join(' - ')" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Features')">
                       <div class="preline">
                         <div v-if="r.item.Mo_ta_chung">{{ r.item.Mo_ta_chung }}</div>
                         <div v-if="r.item.Mo_ta_chi_tiet">{{ r.item.Mo_ta_chi_tiet }}</div>
@@ -5926,7 +5857,7 @@ onUnmounted(() => {
                     </td>
                     <td data-label="Hãng" class="col-hang-cell" :title="r.item.Ten_nha_cung_cap" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Ten_nha_cung_cap')">{{ r.item.Ten_nha_cung_cap }}</td>
                     <td data-label="ĐVT" class="col-dvt-cell" :title="r.item.DVT" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'DVT')">{{ r.item.DVT }}</td>
-                    <td data-label="Số lượng" class="center" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'So_luong')">{{ r.item.So_luong }}</td>
+                    <td data-label="SL" class="center" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'So_luong')">{{ r.item.So_luong }}</td>
                     <td data-label="Tỉ giá" v-if="quoteCurrency === 'USD'" class="center" style="line-height: 1.3;" @click.stop="openQuoteEdit(r.idx, 'Ti_gia')">
                       <div style="color: #fbbf24; font-weight: 800; font-size: 13px;">{{ formatVND(toNum(r.item.Ti_gia, 1)) }}</div>
                       <div style="font-size: 10px; color: #94a3b8; font-weight: 700;">USD</div>
@@ -6439,6 +6370,17 @@ onUnmounted(() => {
                 <svg class="export-vip-btn-arrow" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
               </button>
 
+              <button class="export-vip-btn export-vip-btn-image" @click="showExportInfoModal = false; openImageKitModal()">
+                <div class="export-vip-btn-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                </div>
+                <div class="export-vip-btn-text">
+                  <span class="export-vip-btn-label">Xuất Ảnh</span>
+                  <span class="export-vip-btn-desc">Ảnh bảng báo giá</span>
+                </div>
+                <svg class="export-vip-btn-arrow" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+              </button>
+
             </div>
           </div>
         </div>
@@ -6654,7 +6596,7 @@ onUnmounted(() => {
             </div>
             
             <div style="display: flex; flex-direction: column; gap: 6px;">
-              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Mô tả sản phẩm</label>
+              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Diễn giải</label>
               <textarea v-model="itemForm.Features" rows="3" placeholder="Mô tả cấu hình, thông số nổi bật..." style="width: 100%; padding: 10px 14px; border-radius: 8px; resize: vertical; min-height: 70px;" />
             </div>
           </div>
@@ -6877,7 +6819,7 @@ onUnmounted(() => {
             </div>
             
             <div style="display: flex; flex-direction: column; gap: 6px;">
-              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Mô tả sản phẩm</label>
+              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Diễn giải</label>
               <textarea v-model="cardEdit.Features" rows="3" placeholder="Mô tả cấu hình, thông số nổi bật..." style="width: 100%; padding: 10px 14px; border-radius: 8px; resize: vertical; min-height: 70px;" />
             </div>
 
@@ -6995,7 +6937,7 @@ onUnmounted(() => {
                 <th class="col-stt">STT</th>
                 <th class="col-pn">P/N</th>
                 <th class="col-name">Tên hàng</th>
-                <th class="col-desc">Mô tả sản phẩm</th>
+                <th class="col-desc">Diễn giải</th>
                 <th class="col-dvt">ĐVT</th>
                 <th class="col-sl">SL</th>
                 <th class="col-dg">GIÁ OFF HÃNG</th>
@@ -7207,7 +7149,7 @@ onUnmounted(() => {
 
               <!-- 7: Tính năng / Features -->
               <div class="modal-form-group" style="grid-column: 1 / -1;">
-                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Mô tả sản phẩm</label>
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Diễn giải</label>
                 <textarea id="qe-Features" v-model="quoteEdit.Features" rows="3" style="width: 100%; padding: 10px 14px; border-radius: 8px; resize: vertical;" />
               </div>
               
@@ -7470,7 +7412,7 @@ onUnmounted(() => {
                     <div style="display: flex; align-items: center; justify-content: space-between; height: 50px; width: 100%; padding: 0 8px; background-color: #2ea255;">
                       <input v-model="col.header" placeholder="Tên cột" style="flex: 1; height: 34px; min-width: 0; padding: 0 10px; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px; font-weight: 700; text-align: center; font-size: 13px; outline: none; background: #ffffff; color: #1e293b; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05); font-family: 'Inter', Arial, sans-serif;" />
                       <button @click="tempMappingConfig.splice(i, 1)" style="height: 34px; width: 34px; min-width: 34px; margin-left: 8px; background: #ef4444; border: none; border-radius: 6px; color: #ffffff; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" title="Xóa cột">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                        <span style="font-size: 16px; color: #ffffff; font-weight: bold; line-height: 1;">✖</span>
                       </button>
                     </div>
                     <!-- Header Row 2 (Field Select) -->
@@ -7572,7 +7514,7 @@ onUnmounted(() => {
 
     <div class="grid3">
       <div>
-        <label>Số lượng</label>
+        <label>SL</label>
         <input id="qeraw-So_luong" type="number" :value="quoteEditRaw.So_luong" readonly />
       </div>
 
@@ -7632,8 +7574,8 @@ onUnmounted(() => {
           <textarea v-model="quoteEditRaw.Mo_ta_chi_tiet" rows="2" placeholder="Nhập mô tả chi tiết..."></textarea>
         </div>
         <div>
-          <label>Mô tả sản phẩm</label>
-          <textarea v-model="quoteEditRaw.Features" rows="2" placeholder="Nhập mô tả sản phẩm..."></textarea>
+          <label>Diễn giải</label>
+          <textarea v-model="quoteEditRaw.Features" rows="2" placeholder="Nhập diễn giải..."></textarea>
         </div>
       </div>
     </div>
