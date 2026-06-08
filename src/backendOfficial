@@ -15,7 +15,7 @@ const CACHE_TTL  = 25; // giây – dưới ngưỡng 30s của CacheService
 // ─────────────────────────────────────────────────────────────
 const TG_TOKEN = "8611304071:AAHomVoR-atODyXz7j_ffxrYw6ugwlZ5aRI";
 const TG_API   = `https://api.telegram.org/bot${TG_TOKEN}`;
-const CHAT_IDS = [5588587730]; // ví dụ: [123456789, 987654321]
+const CHAT_IDS = [1022597193]; // ví dụ: [123456789, 987654321]
 
 // ─────────────────────────────────────────────────────────────
 //  HELPER: lấy sheet
@@ -649,7 +649,7 @@ function doGet(e) {
 
   // --- TÍCH HỢP BÁO GIÁ ---
   const action = params.action || "";
-  const bgActions = ["all", "hang_hoa", "khach_hang", "hop_dong_tong_quat", "hop_dong_chi_tiet", "hop_dong_version", "hop_dong_active", "dieu_khoan", "po_dxmh", "chi_tiet_mua_hang", "deal_reg", "upload_file_mau"];
+  const bgActions = ["all", "hang_hoa", "khach_hang", "hop_dong_tong_quat", "hop_dong_chi_tiet", "hop_dong_version", "hop_dong_active", "dieu_khoan", "po_dxmh", "chi_tiet_mua_hang", "deal_reg", "upload_file_mau", "file_gia_off"];
   if (bgActions.includes(action)) {
     return bg_doGet(e);
   }
@@ -737,7 +737,8 @@ function doPost(e) {
       action === "deleteHangHoa" ||
       action === "update_chi_tiet_dates" ||
       action === "update_contract_file" ||
-      action === "update_giahan_status"
+      action === "update_giahan_status" ||
+      action === "uploadFileGiaOff"
     ) {
       // Nhả lock trước khi gọi bg_doPost (vì bg_doPost sẽ tự lấy lock riêng)
       try { lock.releaseLock() } catch (e2) {}
@@ -1021,7 +1022,8 @@ const BG_SHEETS = {
     chi_tiet_mua_hang: 'chi_tiet_mua_hang',
     deal_reg: 'deal_reg',
     sale_report: 'sale_report',
-    upload_file_mau: 'upload_file_mau'
+    upload_file_mau: 'upload_file_mau',
+    file_gia_off: 'file_gia_off'
 }
 
 /* =========================
@@ -1143,6 +1145,11 @@ function bg_doPost(e) {
 
         if (action === 'create_dieu_khoan') {
             const rs = createDieuKhoan_(payload)
+            clearGetCache_()
+            return bg_json({ ok: true, action, ...rs })
+        }
+        if (action === 'uploadFileGiaOff') {
+            const rs = uploadFileGiaOff_(payload)
             clearGetCache_()
             return bg_json({ ok: true, action, ...rs })
         }
@@ -2756,4 +2763,23 @@ function ufm_deleteRow(p) {
     }
   }
   return { status: "error", message: "Khong tim thay id de delete" };
+}
+
+function uploadFileGiaOff_(payload) {
+  try {
+    var timestamp = payload.timeStr ? payload.timeStr : new Date();
+    var fileId = Utilities.getUuid(); // Generate random ID since we aren't saving to Drive
+    
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('file_gia_off');
+    if (!sheet) {
+      sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet('file_gia_off');
+      sheet.appendRow(['id', 'thoi_gian', 'ten_file', 'link_file']);
+    }
+    
+    sheet.appendRow([fileId, timestamp, payload.fileName, payload.url]);
+    
+    return { fileUrl: payload.url };
+  } catch (err) {
+    return { error: String(err) };
+  }
 }

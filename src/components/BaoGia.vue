@@ -308,6 +308,7 @@ function trackHistory(key: string, source: () => number) {
 ====================== */
 const products = ref<HangHoa[]>([])
 const keyword = ref('')
+const userVolumeFilter = ref('')
 const supplierFilter = ref('ALL')
 const selectedItems = ref<(HangHoa & { So_luong: number, uid?: string })[]>([])
 
@@ -429,6 +430,12 @@ function onFlatDragStart(event: any) {
   if (r && r.type === 'group') {
     draggingGroupKey.value = r.key;
   }
+}
+
+function hideDragImage(dataTransfer: any) {
+  const emptyImage = new Image();
+  emptyImage.src = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+  dataTransfer.setDragImage(emptyImage, 0, 0);
 }
 
 function onFlatDragEnd(event: any) {
@@ -2846,9 +2853,46 @@ const supplierOptions = computed(() => {
 
 const normalizeString = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9\u00C0-\u024F\u1E00-\u1EFF]/gi, '')
 
+function checkVolumeMatch(volumeStr: string, userCount: number): boolean {
+  if (!volumeStr) return false;
+  const str = volumeStr.toLowerCase();
+  
+  // 1. Range: A-B or A - B
+  const rangeMatch = str.match(/(\d+)\s*-\s*(\d+)/);
+  if (rangeMatch) {
+    const min = parseInt(rangeMatch[1], 10);
+    const max = parseInt(rangeMatch[2], 10);
+    return userCount >= min && userCount <= max;
+  }
+  
+  // 2. Less than: < 50
+  const lessMatch = str.match(/<\s*(\d+)/);
+  if (lessMatch) {
+    const val = parseInt(lessMatch[1], 10);
+    return userCount < val;
+  }
+  
+  // 3. Greater than: > 1000 or 1000+
+  const greaterMatch1 = str.match(/>\s*(\d+)/);
+  if (greaterMatch1) {
+    const val = parseInt(greaterMatch1[1], 10);
+    return userCount > val;
+  }
+  const greaterMatch2 = str.match(/(\d+)\s*\+/);
+  if (greaterMatch2) {
+    const val = parseInt(greaterMatch2[1], 10);
+    return userCount >= val;
+  }
+  
+  return false;
+}
+
 const filteredProducts = computed(() => {
   const kw = keyword.value.trim()
-  if (!kw) {
+  const uCount = parseInt(userVolumeFilter.value, 10)
+  const hasVolumeFilter = userVolumeFilter.value !== '' && !isNaN(uCount)
+
+  if (!kw && !hasVolumeFilter) {
     return products.value.filter(p => {
       return supplierFilter.value === 'ALL' || p.Ten_nha_cung_cap === supplierFilter.value || p.Ma_nha_cung_cap === supplierFilter.value
     })
@@ -2857,27 +2901,35 @@ const filteredProducts = computed(() => {
   const words = kw.toLowerCase().split(/\s+/).filter(Boolean)
   
   return products.value.filter(p => {
-    const ma = (p.Ma_hang || '').toLowerCase()
-    const ten = (p.Ten_hang || '').toLowerCase()
-    const ncc = (p.Ten_nha_cung_cap || '').toLowerCase()
-    
-    const maN = normalizeString(ma)
-    const tenN = normalizeString(ten)
-    const nccN = normalizeString(ncc)
-    
-    const okKw = words.every(w => {
-      const wN = normalizeString(w)
-      return ma.includes(w) || maN.includes(wN) ||
-             ten.includes(w) || tenN.includes(wN) ||
-             ncc.includes(w) || nccN.includes(wN)
-    })
+    let okKw = true;
+    if (words.length > 0) {
+      const ma = (p.Ma_hang || '').toLowerCase()
+      const ten = (p.Ten_hang || '').toLowerCase()
+      const ncc = (p.Ten_nha_cung_cap || '').toLowerCase()
+      
+      const maN = normalizeString(ma)
+      const tenN = normalizeString(ten)
+      const nccN = normalizeString(ncc)
+      
+      okKw = words.every(w => {
+        const wN = normalizeString(w)
+        return ma.includes(w) || maN.includes(wN) ||
+               ten.includes(w) || tenN.includes(wN) ||
+               ncc.includes(w) || nccN.includes(wN)
+      })
+    }
 
     const okSupplier =
       supplierFilter.value === 'ALL' ||
       p.Ten_nha_cung_cap === supplierFilter.value ||
       p.Ma_nha_cung_cap === supplierFilter.value
 
-    return okKw && okSupplier
+    let okVolume = true;
+    if (hasVolumeFilter) {
+      okVolume = checkVolumeMatch(p.volume || '', uCount);
+    }
+
+    return okKw && okSupplier && okVolume
   })
 })
 
@@ -3671,6 +3723,114 @@ function updateTieuChuanPct(val: number) {
   const lp = donGiaLP(quoteEdit.value);
   quoteEdit.value.Gia_tieu_chuan = lp * (1 - val / 100);
   quoteEdit.value = { ...quoteEdit.value };
+}
+
+// KASPERSKY CALCULATOR
+const showKasperskyCalculatorModal = ref(false)
+const showKasperskyImageFullscreen = ref(false)
+const listFileGiaOff = ref<any[]>([])
+const selectedFileGiaOffIndex = ref(-1)
+
+const previewImageLink = computed(() => {
+  if (selectedFileGiaOffIndex.value >= 0 && listFileGiaOff.value[selectedFileGiaOffIndex.value]) {
+    return listFileGiaOff.value[selectedFileGiaOffIndex.value][3] // link_file
+  }
+  return ''
+})
+
+const fetchFileGiaOffList = async () => {
+  if (listFileGiaOff.value.length > 0) return
+  try {
+    const ts = Date.now()
+    const res = await fetch(`${BASE_URL}?action=file_gia_off&t=${ts}`)
+    const data = await res.json()
+    if (Array.isArray(data)) {
+      listFileGiaOff.value = data
+      if (data.length > 0) {
+        selectedFileGiaOffIndex.value = data.length - 1
+      }
+    }
+  } catch (err) {
+    console.error('Lỗi khi fetch file_gia_off:', err)
+  }
+}
+
+watch(showKasperskyCalculatorModal, (val) => {
+  if (val) {
+    fetchFileGiaOffList()
+  }
+})
+
+const kaspProduct = ref('NEXT Foundations / EDR Optimum')
+const kaspLicenseType = ref('Base Plus')
+const kaspUsersStr = ref('')
+const kaspDuration = ref(1) // years
+
+const kaspCalculatedOff = computed(() => {
+  if (selectedFileGiaOffIndex.value === -1 || !kaspProduct.value || !kaspLicenseType.value || !kaspDuration.value || !kaspUsersStr.value || String(kaspUsersStr.value).trim() === '') {
+    return null;
+  }
+  let baseOff = 0;
+  
+  const uCount = parseInt(String(kaspUsersStr.value), 10);
+  const n = isNaN(uCount) ? 0 : uCount;
+  
+  let rangeStr = '';
+  if (n < 50) rangeStr = '< 50 users';
+  else if (n < 100) rangeStr = '50 - 99 users';
+  else if (n < 150) rangeStr = '100 - 149 users';
+  else if (n < 250) rangeStr = '150 - 249 users';
+  else if (n < 500) rangeStr = '250 - 499 users';
+  else rangeStr = '500 - 999 users';
+
+  if (kaspProduct.value === 'NEXT Foundations / EDR Optimum') {
+    if (kaspLicenseType.value === 'Base Plus') {
+      if (rangeStr === '< 50 users') baseOff = 56;
+      else if (rangeStr === '50 - 99 users') baseOff = 59;
+      else if (rangeStr === '100 - 149 users') baseOff = 60;
+      else if (rangeStr === '150 - 249 users') baseOff = 62;
+      else if (rangeStr === '250 - 499 users') baseOff = 63;
+      else if (rangeStr === '500 - 999 users') baseOff = 64;
+    } else if (kaspLicenseType.value === 'Renewal Plus') {
+      if (rangeStr === '< 50 users') baseOff = 55;
+      else if (rangeStr === '50 - 99 users') baseOff = 58;
+      else if (rangeStr === '100 - 149 users') baseOff = 59;
+      else if (rangeStr === '150 - 249 users') baseOff = 61;
+      else if (rangeStr === '250 - 499 users') baseOff = 62;
+      else if (rangeStr === '500 - 999 users') baseOff = 63;
+    }
+  } else if (kaspProduct.value === 'XDR Optimum') {
+    if (kaspLicenseType.value === 'Base Plus') {
+      if (rangeStr === '< 50 users') baseOff = 67;
+      else if (rangeStr === '50 - 99 users') baseOff = 70;
+      else if (rangeStr === '100 - 149 users') baseOff = 71;
+      else if (rangeStr === '150 - 249 users') baseOff = 72;
+      else if (rangeStr === '250 - 499 users') baseOff = 73;
+      else if (rangeStr === '500 - 999 users') baseOff = 74;
+    } else if (kaspLicenseType.value === 'Renewal Plus') {
+      if (rangeStr === '< 50 users') baseOff = 66;
+      else if (rangeStr === '50 - 99 users') baseOff = 69;
+      else if (rangeStr === '100 - 149 users') baseOff = 70;
+      else if (rangeStr === '150 - 249 users') baseOff = 71;
+      else if (rangeStr === '250 - 499 users') baseOff = 72;
+      else if (rangeStr === '500 - 999 users') baseOff = 73;
+    }
+  }
+
+  let durationBonus = 0;
+  if (kaspDuration.value === 2) {
+    durationBonus = 2;
+  } else if (kaspDuration.value >= 3 && kaspDuration.value <= 5) {
+    durationBonus = 3;
+  }
+  
+  return baseOff + durationBonus;
+})
+
+const applyKaspOff = () => {
+  if (kaspCalculatedOff.value === null) return;
+  updateTieuChuanPct(kaspCalculatedOff.value)
+  showKasperskyCalculatorModal.value = false
 }
 
 function openQuoteEdit(idx: number, focusField?: string) {
@@ -5616,11 +5776,18 @@ const handleBeforeUnload = (e: BeforeUnloadEvent) => {
   }
 }
 
+const isMobileDevice = ref(window.innerWidth <= 768)
+const handleResizeMobile = () => {
+  isMobileDevice.value = window.innerWidth <= 768
+}
+
 onMounted(() => {
+  window.addEventListener('resize', handleResizeMobile)
   window.addEventListener('beforeunload', handleBeforeUnload)
 })
 
 onUnmounted(() => {
+  window.removeEventListener('resize', handleResizeMobile)
   window.removeEventListener('beforeunload', handleBeforeUnload)
 })
 
@@ -5671,7 +5838,10 @@ onUnmounted(() => {
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
             <input v-model="keyword" placeholder="Tìm mã / tên hàng / NCC..." class="search-input" />
           </div>
-
+          <div class="search-wrap" style="margin-top: 8px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            <input type="number" v-model="userVolumeFilter" placeholder="Số lượng user (Volume)..." class="search-input" />
+          </div>
         </div>
 
         <div class="product-grid">
@@ -5816,12 +5986,14 @@ onUnmounted(() => {
                 easing="cubic-bezier(0.175, 0.885, 0.32, 1.15)"
                 filter="button, input, textarea, .btn-del"
                 :preventOnFilter="false"
+                :disabled="isMobileDevice"
+                :set-data="hideDragImage"
                 :move="checkMove"
                 @start="onFlatDragStart"
                 @end="onFlatDragEnd"
               >
                 <template #item="{ element: r }">
-                  <tr v-if="r.type === 'group'" class="group-row drag-handle" style="cursor: grab;" title="Kéo thả danh mục">
+                  <tr v-if="r.type === 'group'" :class="['group-row', isMobileDevice ? '' : 'drag-handle']" style="cursor: grab;" title="Kéo thả danh mục">
                     <td class="group-stt">
                       <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
                         <i class="lucide-grip-vertical" style="opacity: 0.5;"></i> {{ r.roman }}
@@ -5839,7 +6011,7 @@ onUnmounted(() => {
                       </div>
                     </td>
                   </tr>
-                  <tr v-else-if="r.type === 'item'" v-show="!draggingGroupKey" class="quote-item-row drag-handle" style="cursor: grab;" title="Nhấn giữ để kéo thả sản phẩm" :id="'quote-row-' + r.idx" @click="openQuoteEdit(r.idx)">
+                  <tr v-else-if="r.type === 'item'" v-show="!draggingGroupKey" :class="['quote-item-row', isMobileDevice ? '' : 'drag-handle']" style="cursor: grab;" title="Nhấn giữ để kéo thả sản phẩm" :id="'quote-row-' + r.idx" @click="openQuoteEdit(r.idx)">
                     <td data-label="STT" style="color: #ffffff; font-weight: 700;">
                       <div style="display: flex; justify-content: center; align-items: center; gap: 4px;">
                         <i class="lucide-grip-vertical" style="opacity: 0.3;"></i>
@@ -7167,6 +7339,61 @@ onUnmounted(() => {
                 <span style="font-size: 13px; text-transform: uppercase; color: #fff; font-weight: 800; letter-spacing: 0.5px;">Giá & Chi phí</span>
               </div>
 
+              <!-- 13: % OFF Hãng & Giá Vốn VND -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">% Off Hãng</span>
+                </label>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="position: relative; flex: 1; min-width: 0;">
+                    <FormattedInput :modelValue="quoteEditTieuChuanPct" @update:modelValue="updateTieuChuanPct" style="width: 100%; padding: 10px 14px; padding-right: 30px; border-radius: 8px; font-weight: 600; color: #a78bfa; border: 1px solid rgba(139,92,246,0.5); background: rgba(139,92,246,0.1);" />
+                    <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 600; color: #a78bfa; pointer-events: none;">%</span>
+                  </div>
+                  <button class="btn btn-sm btn-primary" style="width: auto !important; flex: none; padding: 6px 12px; font-size: 11px; background: #8b5cf6; border: none; border-radius: 6px; color: white; cursor: pointer; white-space: nowrap;" @click.prevent="showKasperskyCalculatorModal = true" title="Tính toán % off Kaspersky">
+                    <i class="fas fa-calculator"></i> Tính
+                  </button>
+                </div>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Giá Vốn (VND)</span>
+                </label>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="position: relative; flex: 1;">
+                    <FormattedInput id="qe-Gia_tieu_chuan" :modelValue="(quoteEdit.Gia_tieu_chuan || 0) * (Number(quoteEdit.Ti_gia) || 1)" @update:modelValue="quoteEdit.Gia_tieu_chuan = $event / (Number(quoteEdit.Ti_gia) || 1)" @input="ensureNumberField(quoteEdit, 'Gia_tieu_chuan')" style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px; font-weight: 500; color: #8b5cf6;" />
+                    <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #8b5cf6; pointer-events: none;">₫</span>
+                  </div>
+                  <template v-if="quoteEdit.Don_vi_tien_te && quoteEdit.Don_vi_tien_te.toUpperCase() !== 'VND' && quoteEdit.Ti_gia > 1">
+                    <span style="font-size: 12px; color: #8b5cf6; font-weight: 600;">≈</span>
+                    <div style="position: relative; width: 110px;">
+                      <FormattedInput id="qe-Gia_tieu_chuan_usd" v-model="quoteEdit.Gia_tieu_chuan" @input="ensureNumberField(quoteEdit, 'Gia_tieu_chuan')" style="width: 100%; padding: 10px 10px; padding-right: 32px; border-radius: 8px; font-weight: 600; font-size: 13px; border: 1px dashed rgba(139,92,246,0.3); background: rgba(139,92,246,0.05); color: #a78bfa;" />
+                      <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #8b5cf6; pointer-events: none;">{{ quoteEdit.Don_vi_tien_te }}</span>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              <!-- 12: Giá nhập VND -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Giá Nhập (VND)</span>
+                </label>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="position: relative; flex: 1;">
+                    <FormattedInput id="qe-gia_nhap" :modelValue="(quoteEdit.gia_nhap || 0) * (Number(quoteEdit.Ti_gia) || 1)" @update:modelValue="quoteEdit.gia_nhap = $event / (Number(quoteEdit.Ti_gia) || 1)" @input="ensureNumberField(quoteEdit, 'gia_nhap')" style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px; font-weight: 500;" />
+                    <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #94a3b8; pointer-events: none;">₫</span>
+                  </div>
+                  <template v-if="quoteEdit.Don_vi_tien_te && quoteEdit.Don_vi_tien_te.toUpperCase() !== 'VND' && quoteEdit.Ti_gia > 1">
+                    <span style="font-size: 12px; color: #64748b; font-weight: 600;">≈</span>
+                    <div style="position: relative; width: 110px;">
+                      <FormattedInput id="qe-gia_nhap_usd" v-model="quoteEdit.gia_nhap" @input="ensureNumberField(quoteEdit, 'gia_nhap')" style="width: 100%; padding: 10px 10px; padding-right: 32px; border-radius: 8px; font-weight: 600; font-size: 13px; border: 1px dashed rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); color: #e2e8f0;" />
+                      <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #94a3b8; pointer-events: none;">{{ quoteEdit.Don_vi_tien_te }}</span>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
               <!-- 11: Đơn giá bán (VND) -->
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="display: flex; justify-content: space-between; align-items: center;">
@@ -7196,26 +7423,6 @@ onUnmounted(() => {
                 </div>
               </div>
 
-              <!-- 12: Giá nhập VND -->
-              <div style="display: flex; flex-direction: column; gap: 6px;">
-                <label style="display: flex; justify-content: space-between; align-items: center;">
-                  <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Giá Nhập (VND)</span>
-                </label>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <div style="position: relative; flex: 1;">
-                    <FormattedInput id="qe-gia_nhap" :modelValue="(quoteEdit.gia_nhap || 0) * (Number(quoteEdit.Ti_gia) || 1)" @update:modelValue="quoteEdit.gia_nhap = $event / (Number(quoteEdit.Ti_gia) || 1)" @input="ensureNumberField(quoteEdit, 'gia_nhap')" style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px; font-weight: 500;" />
-                    <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #94a3b8; pointer-events: none;">₫</span>
-                  </div>
-                  <template v-if="quoteEdit.Don_vi_tien_te && quoteEdit.Don_vi_tien_te.toUpperCase() !== 'VND' && quoteEdit.Ti_gia > 1">
-                    <span style="font-size: 12px; color: #64748b; font-weight: 600;">≈</span>
-                    <div style="position: relative; width: 110px;">
-                      <FormattedInput id="qe-gia_nhap_usd" v-model="quoteEdit.gia_nhap" @input="ensureNumberField(quoteEdit, 'gia_nhap')" style="width: 100%; padding: 10px 10px; padding-right: 32px; border-radius: 8px; font-weight: 600; font-size: 13px; border: 1px dashed rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); color: #e2e8f0;" />
-                      <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #94a3b8; pointer-events: none;">{{ quoteEdit.Don_vi_tien_te }}</span>
-                    </div>
-                  </template>
-                </div>
-              </div>
-
               <div v-if="false" style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="display: flex; justify-content: space-between; align-items: center;">
                   <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Giá Hardware (VND)</span>
@@ -7223,30 +7430,6 @@ onUnmounted(() => {
                 <div style="position: relative;">
                   <FormattedInput :modelValue="(quoteEdit.gia_hardware || 0) * (Number(quoteEdit.Ti_gia) || 1)" @update:modelValue="quoteEdit.gia_hardware = $event / (Number(quoteEdit.Ti_gia) || 1)" @input="ensureNumberField(quoteEdit, 'gia_hardware')" :readonly="true" style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px; background: rgba(255,255,255,0.05); color: #94a3b8;" />
                   <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #64748b; pointer-events: none;">₫</span>
-                </div>
-              </div>
-
-              <!-- 13: Giá tiêu chuẩn VND, %LP -->
-              <div style="display: flex; flex-direction: column; gap: 6px;">
-                <label style="display: flex; align-items: center; gap: 12px;">
-                  <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Giá Off Hãng (VND)</span>
-                  <div style="display: flex; align-items: center; gap: 6px;">
-                    <span style="font-size: 12px; color: #a78bfa; font-weight: 700;">% OFF:</span>
-                    <FormattedInput :modelValue="quoteEditTieuChuanPct" @update:modelValue="updateTieuChuanPct" style="width: 56px; padding: 4px 6px; font-size: 13px; font-weight: 800; text-align: center; border-radius: 6px; background: rgba(139,92,246,0.2); color: #ffffff; border: 1px solid rgba(139,92,246,0.5);" />
-                  </div>
-                </label>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <div style="position: relative; flex: 1;">
-                    <FormattedInput id="qe-Gia_tieu_chuan" :modelValue="(quoteEdit.Gia_tieu_chuan || 0) * (Number(quoteEdit.Ti_gia) || 1)" @update:modelValue="quoteEdit.Gia_tieu_chuan = $event / (Number(quoteEdit.Ti_gia) || 1)" @input="ensureNumberField(quoteEdit, 'Gia_tieu_chuan')" style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px; font-weight: 500; color: #8b5cf6;" />
-                    <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #8b5cf6; pointer-events: none;">₫</span>
-                  </div>
-                  <template v-if="quoteEdit.Don_vi_tien_te && quoteEdit.Don_vi_tien_te.toUpperCase() !== 'VND' && quoteEdit.Ti_gia > 1">
-                    <span style="font-size: 12px; color: #8b5cf6; font-weight: 600;">≈</span>
-                    <div style="position: relative; width: 110px;">
-                      <FormattedInput id="qe-Gia_tieu_chuan_usd" v-model="quoteEdit.Gia_tieu_chuan" @input="ensureNumberField(quoteEdit, 'Gia_tieu_chuan')" style="width: 100%; padding: 10px 10px; padding-right: 32px; border-radius: 8px; font-weight: 600; font-size: 13px; border: 1px dashed rgba(139,92,246,0.3); background: rgba(139,92,246,0.05); color: #a78bfa;" />
-                      <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #8b5cf6; pointer-events: none;">{{ quoteEdit.Don_vi_tien_te }}</span>
-                    </div>
-                  </template>
                 </div>
               </div>
 
@@ -8709,9 +8892,107 @@ onUnmounted(() => {
         </div>
       </div>
     </div>
+
+    <!-- KASPERSKY CALCULATOR MODAL -->
+    <div v-if="showKasperskyCalculatorModal" class="modal-overlay" @click.self="showKasperskyCalculatorModal = false" style="z-index: 1000000; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; padding: 20px;">
+      <div class="modal-content" style="max-width: 1300px; max-height: 95vh; width: 100%; border-radius: 12px; padding: 0; display: flex; flex-direction: column; background: #1e293b; border: 1px solid #334155; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); overflow: hidden;">
+        <div style="padding: 16px 20px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; background: #0f172a;">
+          <h3 style="margin: 0; font-size: 16px; color: #fff; font-weight: 600;">Tra cứu & Tính toán % OFF Hãng</h3>
+          <button style="background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 16px;" @click="showKasperskyCalculatorModal = false"><i class="fas fa-times"></i></button>
+        </div>
+        
+        <div class="kasp-modal-body" style="display: flex; flex: 1; min-height: 450px;">
+          <!-- Cột 1: Options -->
+          <div class="kasp-modal-col-1" style="flex: 1; padding: 24px; border-right: 1px solid #334155; display: flex; flex-direction: column; gap: 16px; max-width: 400px; overflow-y: auto;">
+            <div>
+              <label style="display: block; color: #cbd5e1; font-size: 13px; margin-bottom: 8px; font-weight: 500;">Bảng giá / Option (Tên file)</label>
+              <select v-model="selectedFileGiaOffIndex" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #fff; outline: none; font-size: 14px;">
+                <option v-for="(file, idx) in listFileGiaOff" :key="idx" :value="idx">{{ file[2] }} ({{ String(file[1]).substring(0, 10) }})</option>
+              </select>
+            </div>
+            <div style="height: 1px; background: #334155; margin: 8px 0;"></div>
+            <div>
+              <label style="display: block; color: #cbd5e1; font-size: 13px; margin-bottom: 8px; font-weight: 500;">Product</label>
+              <select v-model="kaspProduct" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #fff; outline: none; font-size: 14px;">
+                <option value="NEXT Foundations / EDR Optimum">NEXT Foundations / EDR Optimum</option>
+                <option value="XDR Optimum">XDR Optimum</option>
+              </select>
+            </div>
+            <div>
+              <label style="display: block; color: #cbd5e1; font-size: 13px; margin-bottom: 8px; font-weight: 500;">License Type</label>
+              <select v-model="kaspLicenseType" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #fff; outline: none; font-size: 14px;">
+                <option value="Base Plus">Base Plus</option>
+                <option value="Renewal Plus">Renewal Plus</option>
+              </select>
+            </div>
+            <div>
+              <label style="display: block; color: #cbd5e1; font-size: 13px; margin-bottom: 8px; font-weight: 500;">User (Số lượng người dùng)</label>
+              <input type="number" v-model="kaspUsersStr" placeholder="Nhập số lượng user..." style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #fff; outline: none; font-size: 14px;" />
+            </div>
+            <div style="margin-bottom: auto;">
+              <label style="display: block; color: #cbd5e1; font-size: 13px; margin-bottom: 8px; font-weight: 500;">Thời hạn (Năm)</label>
+              <select v-model.number="kaspDuration" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #fff; outline: none; font-size: 14px;">
+                <option value="1">1 Năm (+0%)</option>
+                <option value="2">2 Năm (+2%)</option>
+                <option value="3">3 Năm (+3%)</option>
+                <option value="4">4 Năm (+3%)</option>
+                <option value="5">5 Năm (+3%)</option>
+              </select>
+            </div>
+            
+            <div style="padding: 16px; background: rgba(139,92,246,0.1); border-radius: 10px; border: 1px solid rgba(139,92,246,0.3); text-align: center;">
+              <div style="font-size: 13px; color: #a78bfa; margin-bottom: 6px; font-weight: 500;">Kết quả % Off Hãng:</div>
+              <div style="font-size: 32px; font-weight: 800; color: #fff;">{{ kaspCalculatedOff !== null ? kaspCalculatedOff + ' %' : '--' }}</div>
+            </div>
+          </div>
+          
+          <!-- Cột 2: Preview -->
+          <div class="kasp-modal-col-2" style="flex: 2; padding: 24px; background: #0f172a; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden;">
+            <div style="color: #94a3b8; margin-bottom: 12px; font-size: 14px; font-weight: 500; align-self: flex-start;">Ảnh minh họa bảng giá</div>
+            <div class="kasp-preview-box" style="width: 100%; height: 100%; min-height: 600px; border: 1px solid #334155; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #64748b; background: rgba(0,0,0,0.2); overflow: auto;">
+              <img v-if="previewImageLink" :src="previewImageLink" @click="showKasperskyImageFullscreen = true" style="max-width: 100%; display: block; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.02)';" onmouseout="this.style.transform='scale(1)';" alt="Preview" title="Nhấn để phóng to" />
+              <div v-else style="text-align: center;">
+                <i class="fas fa-image" style="font-size: 48px; opacity: 0.5; margin-bottom: 12px;"></i>
+                <div style="font-size: 13px; opacity: 0.7;">Vui lòng chọn bảng giá ở cột bên</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div style="padding: 16px 24px; border-top: 1px solid #334155; display: flex; justify-content: flex-end; gap: 12px; background: #0f172a;">
+          <button style="padding: 10px 20px; border-radius: 8px; border: 1px solid #334155; background: transparent; color: #cbd5e1; cursor: pointer; font-weight: 500; font-size: 14px;" @click="showKasperskyCalculatorModal = false">Hủy</button>
+          <button :disabled="kaspCalculatedOff === null" :style="{ opacity: kaspCalculatedOff === null ? 0.5 : 1, cursor: kaspCalculatedOff === null ? 'not-allowed' : 'pointer', padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#8b5cf6', color: '#fff', fontWeight: '600', fontSize: '14px' }" @click="applyKaspOff">Áp dụng ({{ kaspCalculatedOff !== null ? kaspCalculatedOff + '%' : '--' }})</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- KASPERSKY IMAGE FULLSCREEN MODAL -->
+    <div v-if="showKasperskyImageFullscreen && previewImageLink" class="modal-overlay" @click.self="showKasperskyImageFullscreen = false" style="z-index: 1000001; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; padding: 20px;">
+      <div style="position: relative; max-width: 95vw; max-height: 95vh; display: flex; justify-content: center; align-items: center;">
+        <button style="position: absolute; top: -40px; right: 0; background: none; border: none; color: #fff; cursor: pointer; font-size: 24px; z-index: 10;" @click="showKasperskyImageFullscreen = false" title="Đóng"><i class="fas fa-times"></i></button>
+        <img :src="previewImageLink" style="max-width: 100%; max-height: 90vh; border-radius: 8px; box-shadow: 0 0 40px rgba(0,0,0,0.5);" />
+      </div>
+    </div>
 </template>
 
 <style scoped>
+@media (max-width: 768px) {
+  .kasp-modal-body {
+    flex-direction: column-reverse !important;
+  }
+  .kasp-modal-col-1 {
+    max-width: 100% !important;
+    border-right: none !important;
+    border-top: 1px solid #334155 !important;
+  }
+  .kasp-modal-col-2 {
+    padding-bottom: 12px !important;
+  }
+  .kasp-preview-box {
+    min-height: 250px !important;
+  }
+}
+
 .ghost-col-item {
   opacity: 0.5;
   background-color: #f1f5f9 !important;
@@ -10859,12 +11140,16 @@ td.dvt { font-family: inherit; white-space: normal; }
   border-bottom-right-radius: 8px;
 }
 
+.hidden-drag-preview {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 .drag-item {
-  opacity: 1 !important;
-  background: linear-gradient(90deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.98)) !important;
-  backdrop-filter: blur(12px) !important;
+  opacity: 0 !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
   z-index: 9999 !important;
-  transform: scale(1.015) !important;
 }
 .drag-item td {
   border-top: 1px solid #38bdf8 !important;
@@ -10880,8 +11165,6 @@ td.dvt { font-family: inherit; white-space: normal; }
 
 .chosen-item {
   background-color: rgba(16, 185, 129, 0.15) !important;
-  transform: scale(0.99) !important;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .chosen-item td {
   border-top: 1px solid #10b981 !important;
@@ -12257,6 +12540,7 @@ td.dvt { font-family: inherit; white-space: normal; }
     gap: 12px;
     width: 100% !important;
     box-sizing: border-box !important;
+    touch-action: pan-y !important; /* Force allow vertical scrolling */
   }
   .quote-table-wrap tr.quote-item-row td {
     display: flex !important;
@@ -12363,6 +12647,7 @@ td.dvt { font-family: inherit; white-space: normal; }
     padding: 12px 16px !important;
     border: 1px dashed rgba(16, 185, 129, 0.4) !important;
     align-items: center;
+    touch-action: pan-y !important; /* Force allow vertical scrolling */
   }
   .quote-table-wrap tr.group-row td {
     display: block !important;

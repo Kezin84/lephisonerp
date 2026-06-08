@@ -16,11 +16,24 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
           Mẫu Kaspersky
         </a>
-        <label class="btn btn-outline" style="cursor: pointer; border-color: #10b981; color: #10b981;">
+        <label class="btn btn-outline" style="border-color: rgba(56, 189, 248, 0.4); color: #38bdf8; cursor: pointer;">
           <input type="file" accept=".xlsx" style="display:none" @change="handleKasperskyUpload" />
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
           Import Kaspersky
         </label>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <label class="btn btn-outline" style="border-color: rgba(167, 139, 250, 0.4); color: #a78bfa; cursor: pointer;">
+            <input type="file" accept="image/*,.pdf" style="display:none" @change="handleGiaOffUpload" />
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            Import Mức Off
+          </label>
+          <div v-if="latestFileGiaOff" style="display: flex; flex-direction: column; font-size: 11px; color: #94a3b8; max-width: 250px; line-height: 1.2;">
+            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" :title="latestFileGiaOff.ten_file">
+              File: <a :href="latestFileGiaOff.link_file" target="_blank" style="color: #a78bfa; text-decoration: underline; font-weight: bold;">{{ latestFileGiaOff.ten_file }}</a>
+            </span>
+            <span>Thời gian: {{ formatGiaOffDate(latestFileGiaOff.thoi_gian) }}</span>
+          </div>
+        </div>
         <button class="btn btn-primary" @click="openAddModal">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           Thêm mới
@@ -34,8 +47,15 @@
     </div>
 
     <!-- Filters -->
-    <div class="filters">
-      <input type="text" v-model="searchQuery" placeholder="Tìm mã / tên hàng / NCC..." class="search-input" />
+    <div class="filters" style="display: flex; gap: 12px;">
+      <div style="flex: 1; max-width: 400px; position: relative;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" v-model="searchQuery" placeholder="Tìm mã / tên hàng / NCC..." class="search-input" style="padding-left: 36px; max-width: 100%;" />
+      </div>
+      <div style="flex: 1; max-width: 300px; position: relative;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        <input type="number" v-model="userVolumeFilter" placeholder="Số lượng user (Volume)..." class="search-input" style="padding-left: 36px; max-width: 100%;" />
+      </div>
     </div>
 
     <!-- Main Grid -->
@@ -506,16 +526,19 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import * as XLSX from 'xlsx-js-style'
 import NumberInput from './NumberInput.vue'
+import Tesseract from 'tesseract.js'
 
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx1yDOQLxYgJb5w30KmxQHF8AYUZln_5q58HCKP4zlUmtJye6aJBiSt3oyT0j_3QaigdQ/exec'
 
 const items = ref([])
 const loading = ref(false)
 const saving = ref(false)
+const latestFileGiaOff = ref(null)
 const showModal = ref(false)
 const isEditing = ref(false)
-const originalItem = ref(null)
 const searchQuery = ref('')
+const userVolumeFilter = ref('')
+const originalItem = ref(null)
 const confirmDeleteModal = ref({ show: false, item: null })
 
 const isDirty = computed(() => {
@@ -892,6 +915,90 @@ const handleKasperskyUpload = (e) => {
   e.target.value = '' // reset
 }
 
+const handleGiaOffUpload = async (e) => {
+  const file = e.target.files[0]
+  if (!file) return
+
+  showAsyncLoading('Đang đọc nội dung ảnh...', 'AI đang quét dữ liệu, vui lòng đợi...')
+  try {
+    let extractedName = file.name
+    let extractedDate = ''
+    
+    // 1. OCR để lấy Tên và Tháng/Năm
+    if (file.type.startsWith('image/')) {
+      const worker = await Tesseract.createWorker('vie', 1)
+      const result = await worker.recognize(file)
+      await worker.terminate()
+      
+      const lines = result.data.text.split('\n').map(l => l.trim()).filter(Boolean)
+      if (lines.length > 0) {
+        extractedName = lines[0]
+      }
+      for (let i = 0; i < Math.min(lines.length, 10); i++) {
+        const line = lines[i]
+        // Tìm định dạng MM/YYYY (có thể có khoảng trắng)
+        const match = line.match(/(\d{1,2})\s*[\/\-]\s*(\d{4})/)
+        if (match) {
+          extractedDate = `${match[1]}/${match[2]}`
+          break
+        }
+      }
+      
+      // Fallback nếu OCR đọc quá mờ không ra được số
+      if (!extractedDate) {
+        extractedDate = '4/2026'
+      }
+    }
+
+    // 2. Upload lên Cloudinary
+    showAsyncLoading('Đang tải ảnh lên Cloudinary...', 'Sắp xong rồi...')
+    const formData = new FormData()
+    formData.append('upload_preset', 'upload_file')
+    formData.append('file', file)
+    
+    const uploadRes = await fetch('https://api.cloudinary.com/v1_1/db6fzs3rh/auto/upload', {
+      method: 'POST',
+      body: formData
+    }).then(r => r.json())
+    
+    if (!uploadRes.secure_url) {
+      throw new Error('Không lấy được link từ Cloudinary')
+    }
+    const secureUrl = uploadRes.secure_url
+
+    showAsyncLoading('Đang lưu vào Sheet file_gia_off...', 'Sắp xong rồi...')
+    
+    // 3. Gửi link URL cho Apps Script để lưu vào Sheet
+    const body = new URLSearchParams()
+    body.set('action', 'uploadFileGiaOff')
+    body.set('payload', JSON.stringify({
+      fileName: extractedName,
+      timeStr: extractedDate,
+      url: secureUrl
+    }))
+
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body
+    })
+    
+    const result = await res.json()
+    if (uploadRes.secure_url) {
+      showAsyncSuccess('Thành công', 'Đã lưu file giá off')
+      // Sau khi upload xong thì gọi lại API lấy file mới nhất để hiển thị
+      await fetchLatestGiaOff()
+    } else {
+      showAsyncError('Lỗi', result.error || 'Lỗi server')
+    }
+  } catch (err) {
+    console.error(err)
+    showAsyncError('Lỗi tải file', err.message)
+  } finally {
+    e.target.value = ''
+  }
+}
+
 const confirmImport = async () => {
   if (!confirm(`Bạn chắc chắn muốn lưu ${importData.value.length} sản phẩm này vào sheet hang_hoa chứ?`)) return
   importing.value = true
@@ -1012,25 +1119,72 @@ watch(() => formData.value.Don_vi_tien_te, (newVal) => {
 
 const normalizeString = (s) => (s || '').toLowerCase().replace(/[^a-z0-9\u00C0-\u024F\u1E00-\u1EFF]/gi, '')
 
+function checkVolumeMatch(volumeStr, userCount) {
+  if (!volumeStr) return false;
+  const str = volumeStr.toLowerCase();
+  
+  // 1. Range: A-B or A - B
+  const rangeMatch = str.match(/(\d+)\s*-\s*(\d+)/);
+  if (rangeMatch) {
+    const min = parseInt(rangeMatch[1], 10);
+    const max = parseInt(rangeMatch[2], 10);
+    return userCount >= min && userCount <= max;
+  }
+  
+  // 2. Less than: < 50
+  const lessMatch = str.match(/<\s*(\d+)/);
+  if (lessMatch) {
+    const val = parseInt(lessMatch[1], 10);
+    return userCount < val;
+  }
+  
+  // 3. Greater than: > 1000 or 1000+
+  const greaterMatch1 = str.match(/>\s*(\d+)/);
+  if (greaterMatch1) {
+    const val = parseInt(greaterMatch1[1], 10);
+    return userCount > val;
+  }
+  const greaterMatch2 = str.match(/(\d+)\s*\+/);
+  if (greaterMatch2) {
+    const val = parseInt(greaterMatch2[1], 10);
+    return userCount >= val;
+  }
+  
+  return false;
+}
+
 const filteredItems = computed(() => {
-  if (!searchQuery.value) return items.value
+  const uCount = parseInt(userVolumeFilter.value, 10)
+  const hasVolumeFilter = userVolumeFilter.value !== '' && !isNaN(uCount)
+
+  if (!searchQuery.value && !hasVolumeFilter) return items.value
   const words = searchQuery.value.toLowerCase().split(/\s+/).filter(Boolean)
   
   return items.value.filter(item => {
-    const ma = (item.Ma_hang || '').toLowerCase()
-    const ten = (item.Ten_hang || '').toLowerCase()
-    const ncc = (item.Ten_nha_cung_cap || '').toLowerCase()
-    
-    const maN = normalizeString(ma)
-    const tenN = normalizeString(ten)
-    const nccN = normalizeString(ncc)
-    
-    return words.every(w => {
-      const wN = normalizeString(w)
-      return ma.includes(w) || maN.includes(wN) ||
-             ten.includes(w) || tenN.includes(wN) ||
-             ncc.includes(w) || nccN.includes(wN)
-    })
+    let okKw = true;
+    if (words.length > 0) {
+      const ma = (item.Ma_hang || '').toLowerCase()
+      const ten = (item.Ten_hang || '').toLowerCase()
+      const ncc = (item.Ten_nha_cung_cap || '').toLowerCase()
+      
+      const maN = normalizeString(ma)
+      const tenN = normalizeString(ten)
+      const nccN = normalizeString(ncc)
+      
+      okKw = words.every(w => {
+        const wN = normalizeString(w)
+        return ma.includes(w) || maN.includes(wN) ||
+               ten.includes(w) || tenN.includes(wN) ||
+               ncc.includes(w) || nccN.includes(wN)
+      })
+    }
+
+    let okVolume = true;
+    if (hasVolumeFilter) {
+      okVolume = checkVolumeMatch(item.volume || '', uCount);
+    }
+
+    return okKw && okVolume;
   })
 })
 
@@ -1130,6 +1284,35 @@ const fetchData = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const fetchLatestGiaOff = async () => {
+  try {
+    const ts = Date.now()
+    const res = await fetch(`${SCRIPT_URL}?action=file_gia_off&t=${ts}`)
+    const data = await res.json()
+    if (Array.isArray(data) && data.length > 0) {
+      // Record mới nhất thường nằm ở cuối mảng data
+      const lastRow = data[data.length - 1]
+      latestFileGiaOff.value = {
+        id: lastRow[0],
+        thoi_gian: lastRow[1],
+        ten_file: lastRow[2],
+        link_file: lastRow[3]
+      }
+    }
+  } catch (err) {
+    console.error('Lỗi khi fetch file_gia_off:', err)
+  }
+}
+
+const formatGiaOffDate = (d) => {
+  if (!d) return ''
+  if (typeof d === 'string' && d.includes('T')) {
+    const dt = new Date(d)
+    return `${dt.getMonth() + 1}/${dt.getFullYear()}`
+  }
+  return d
 }
 
 const openAddModal = () => {
@@ -1255,6 +1438,7 @@ const saveItem = async () => {
 
 onMounted(() => {
   fetchData()
+  fetchLatestGiaOff()
 })
 </script>
 
