@@ -309,6 +309,40 @@ function trackHistory(key: string, source: () => number) {
 const products = ref<HangHoa[]>([])
 const keyword = ref('')
 const userVolumeFilter = ref('')
+
+const recentSearches = ref<string[]>([])
+const showRecentSearches = ref(false)
+
+onMounted(() => {
+  try {
+    const saved = localStorage.getItem('recentSearches')
+    if (saved) {
+      recentSearches.value = JSON.parse(saved)
+    }
+  } catch (e) {}
+})
+
+function saveRecentSearch(kw: string) {
+  const t = String(kw || '').trim();
+  if (!t) return;
+  const idx = recentSearches.value.indexOf(t);
+  if (idx > -1) {
+    recentSearches.value.splice(idx, 1);
+  }
+  recentSearches.value.unshift(t);
+  if (recentSearches.value.length > 4) {
+    recentSearches.value = recentSearches.value.slice(0, 4);
+  }
+  localStorage.setItem('recentSearches', JSON.stringify(recentSearches.value));
+}
+
+let searchTimeout: any;
+watch(keyword, (newVal) => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    saveRecentSearch(newVal);
+  }, 1500);
+})
 const supplierFilter = ref('ALL')
 const selectedItems = ref<(HangHoa & { So_luong: number, uid?: string })[]>([])
 
@@ -337,6 +371,7 @@ const showToast = ref(false)
 let toastTimeout: any = null
 
 function triggerToast(msg: string) {
+  if (window.innerWidth <= 768 && msg === 'Đã thêm sản phẩm thành công!') return;
   toastMsg.value = msg
   showToast.value = true
   if (toastTimeout) clearTimeout(toastTimeout)
@@ -504,6 +539,7 @@ function checkMove(evt: any) {
 
 /* qty realtime trong card */
 const qtyMap = reactive<Record<string, number>>({})
+const addedStatus = reactive<Record<string, boolean>>({})
 
 /* ======================
    MODAL - NHẬP TAY / CHI TIẾT CARD / XEM BÁO GIÁ
@@ -3022,6 +3058,8 @@ function addItemFromCard(p: HangHoa) {
   
   scrollToAndHighlightRow(highlightIdx);
   triggerToast('Đã thêm sản phẩm thành công!');
+  addedStatus[p.Ma_hang] = true;
+  setTimeout(() => { addedStatus[p.Ma_hang] = false; }, 1500);
 }
 
 function getLinkedItems(p: HangHoa) {
@@ -3095,6 +3133,8 @@ function addItem(item: HangHoa & { So_luong: number }) {
   
   scrollToAndHighlightRow(highlightIdx);
   triggerToast('Đã thêm sản phẩm thành công!');
+  addedStatus[code] = true;
+  setTimeout(() => { addedStatus[code] = false; }, 1500);
 }
 
 /**
@@ -3591,7 +3631,7 @@ const conLai = computed(() => {
 
 const chietKhauTruocThue = computed(() => {
   const pct = toNum(chietKhauTruocThuePct.value, 0)
-  return round2((toNum(totals.value.truoc, 0) * pct) / 100)
+  return round2((toNum(tongGiaThucTe.value, 0) * pct) / 100)
 })
 const tongChietKhau = computed(() => {
   return round2(conLai.value + chietKhauTruocThue.value)
@@ -3761,11 +3801,40 @@ watch(showKasperskyCalculatorModal, (val) => {
   }
 })
 
-const kaspProduct = ref('NEXT Foundations / EDR Optimum')
-const kaspLicenseType = ref('Base Plus')
+const kaspProduct = ref<string>('')
+const kaspLicenseType = ref<string>('')
 const kaspUsersStr = ref('')
-const kaspDuration = ref(1) // years
+const kaspDuration = ref<number | string>('') // years
 
+function openKasperskyCalculator() {
+  kaspProduct.value = '';
+  kaspUsersStr.value = '';
+  kaspLicenseType.value = '';
+  kaspDuration.value = '';
+
+  if (userVolumeFilter.value) {
+    kaspUsersStr.value = userVolumeFilter.value;
+  }
+
+  if (quoteEdit.value) {
+    const typeStr = (quoteEdit.value.Ten_hang || '').toLowerCase();
+    const moTa = (quoteEdit.value.Mo_ta_chung || '').toLowerCase();
+    
+    if (typeStr.includes('renewal') || moTa.includes('renewal')) {
+      kaspLicenseType.value = 'Renewal Plus';
+    } else if (typeStr.includes('base') || moTa.includes('base')) {
+      kaspLicenseType.value = 'Base Plus';
+    }
+    
+    const duration = quoteEdit.value.License_duration || '';
+    const match = String(duration).match(/(\d+)/);
+    if (match) {
+      kaspDuration.value = parseInt(match[1], 10);
+    }
+  }
+  
+  showKasperskyCalculatorModal.value = true;
+}
 const kaspCalculatedOff = computed(() => {
   if (selectedFileGiaOffIndex.value === -1 || !kaspProduct.value || !kaspLicenseType.value || !kaspDuration.value || !kaspUsersStr.value || String(kaspUsersStr.value).trim() === '') {
     return null;
@@ -5803,7 +5872,10 @@ onUnmounted(() => {
           <span class="step-label">Sản phẩm</span>
         </button>
         <button class="m-step" :class="{ active: mobileStep === 2, completed: mobileStep > 2 }" @click="setMobileStep(2)">
-          <div class="step-circle"><span v-if="mobileStep > 2">✓</span><span v-else>2</span></div>
+          <div class="step-circle" style="position: relative;">
+            <span v-if="mobileStep > 2">✓</span><span v-else>2</span>
+            <span v-if="selectedItems.length > 0" style="position: absolute; top: -6px; right: -6px; background: #ef4444; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid #0b1118; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">{{ selectedItems.length }}</span>
+          </div>
           <span class="step-label">Báo giá</span>
         </button>
         <button class="m-step" :class="{ active: mobileStep === 3, completed: mobileStep > 3 }" @click="setMobileStep(3)">
@@ -5834,13 +5906,25 @@ onUnmounted(() => {
           <button class="icon-btn" @click="showProductSidebar = false">✕</button>
         </div>
         <div class="top-bar">
-          <div class="search-wrap">
+          <div class="search-wrap" style="position: relative;">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            <input v-model="keyword" placeholder="Tìm mã / tên hàng / NCC..." class="search-input" />
+            <input v-model="keyword" placeholder="Tìm mã / tên hàng / NCC..." class="search-input" style="padding-right: 36px !important;" @focus="showRecentSearches = true" @blur="showRecentSearches = false" @keydown.enter="saveRecentSearch(keyword)" />
+            <button v-if="keyword" @mousedown.prevent="keyword = ''" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border: none; border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; font-size: 10px; cursor: pointer; padding: 0; z-index: 10; font-weight: bold;" title="Xóa">✕</button>
+            <div v-if="showRecentSearches && !keyword.trim() && recentSearches.length > 0" style="position: absolute; top: 100%; left: 0; right: 0; background: #1e293b; border: 1px solid #334155; border-radius: 8px; margin-top: 4px; z-index: 50; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); overflow: hidden;">
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid #334155;">
+                <span style="font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Lịch sử tìm kiếm</span>
+                <button @mousedown.prevent="showRecentSearches = false" style="background: transparent; border: none; color: #94a3b8; cursor: pointer; padding: 0; font-size: 14px; display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 4px;" onmouseover="this.style.color='#ef4444'; this.style.backgroundColor='rgba(239, 68, 68, 0.1)'" onmouseout="this.style.color='#94a3b8'; this.style.backgroundColor='transparent'" title="Đóng">✕</button>
+              </div>
+              <div v-for="(rs, idx) in recentSearches" :key="idx" @mousedown.prevent="keyword = rs; showRecentSearches = false; saveRecentSearch(rs)" style="padding: 10px 12px; cursor: pointer; color: #e2e8f0; font-size: 13px; display: flex; align-items: center; gap: 8px;" onmouseover="this.style.backgroundColor='#334155'" onmouseout="this.style.backgroundColor='transparent'">
+                <i class="fas fa-history" style="width: 14px; height: 14px; color: #64748b;"></i>
+                {{ rs }}
+              </div>
+            </div>
           </div>
-          <div class="search-wrap" style="margin-top: 8px;">
+          <div class="search-wrap" style="margin-top: 8px; position: relative;">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-            <input type="number" v-model="userVolumeFilter" placeholder="Số lượng user (Volume)..." class="search-input" />
+            <input type="text" inputmode="numeric" v-model="userVolumeFilter" placeholder="Số lượng user (Volume)..." class="search-input" style="padding-right: 36px !important;" />
+            <button v-if="userVolumeFilter" @mousedown.prevent="userVolumeFilter = ''" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border: none; border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; font-size: 10px; cursor: pointer; padding: 0; z-index: 10; font-weight: bold;" title="Xóa">✕</button>
           </div>
         </div>
 
@@ -5885,8 +5969,9 @@ onUnmounted(() => {
                 <span>{{ qtyMap[p.Ma_hang] || 1 }}</span>
                 <button @click="incQty(p.Ma_hang)">+</button>
               </div>
-              <button class="btn-add" @click="addItemFromCard(p)">
-                <span class="btn-add-icon">+</span> Thêm
+              <button class="btn-add" :class="{'added': addedStatus[p.Ma_hang]}" :style="addedStatus[p.Ma_hang] ? { background: '#10b981', color: 'white', transform: 'scale(0.96)' } : {}" @click="addItemFromCard(p)">
+                <span v-if="addedStatus[p.Ma_hang]" style="display: flex; align-items: center; justify-content: center; gap: 4px;"><i class="fas fa-check"></i> Đã thêm</span>
+                <template v-else><span class="btn-add-icon">+</span> Thêm</template>
               </button>
             </div>
             <!-- SUGGESTIONS -->
@@ -5899,7 +5984,10 @@ onUnmounted(() => {
                   <span>{{ qtyMap[link.code] || 1 }}</span>
                   <button @click.stop="incQty(link.code)">+</button>
                 </div>
-                <button @click.stop="addLinkedItem(link.code)" style="width: 100% !important; background: rgba(16,185,129,0.15); color: #10b981; border: 1px dashed rgba(16,185,129,0.4); padding: 6px; border-radius: 4px; font-size: 11.5px; font-weight: 700; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#10b981'; this.style.color='#fff';" onmouseout="this.style.background='rgba(16,185,129,0.15)'; this.style.color='#10b981';">+ THÊM VÀO BÁO GIÁ</button>
+                <button @click.stop="addLinkedItem(link.code)" style="width: 100% !important; padding: 6px; border-radius: 4px; font-size: 11.5px; font-weight: 700; cursor: pointer; transition: all 0.2s;" :style="addedStatus[link.code] ? { background: '#10b981', color: '#fff', border: '1px solid #10b981', transform: 'scale(0.96)' } : { background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px dashed rgba(16,185,129,0.4)' }" onmouseover="this.style.background='#10b981'; this.style.color='#fff';" onmouseout="if(this.innerText.includes('VÀO BÁO GIÁ')){this.style.background='rgba(16,185,129,0.15)'; this.style.color='#10b981';}">
+                  <span v-if="addedStatus[link.code]"><i class="fas fa-check"></i> ĐÃ THÊM</span>
+                  <span v-else>+ THÊM VÀO BÁO GIÁ</span>
+                </button>
               </div>
             </div>
           </div>
@@ -7249,6 +7337,15 @@ onUnmounted(() => {
                 </div>
               </div>
 
+              <!-- Type -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Type</label>
+                <div style="position: relative;">
+                  <input id="qe-Type" v-model="quoteEdit.Type" placeholder="Base, Renewal..." style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 500;" />
+                  <i class="lucide-layers" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
+                </div>
+              </div>
+
               <!-- 3: Hãng -->
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Hãng</label>
@@ -7349,7 +7446,7 @@ onUnmounted(() => {
                     <FormattedInput :modelValue="quoteEditTieuChuanPct" @update:modelValue="updateTieuChuanPct" style="width: 100%; padding: 10px 14px; padding-right: 30px; border-radius: 8px; font-weight: 600; color: #a78bfa; border: 1px solid rgba(139,92,246,0.5); background: rgba(139,92,246,0.1);" />
                     <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 600; color: #a78bfa; pointer-events: none;">%</span>
                   </div>
-                  <button class="btn btn-sm btn-primary" style="width: auto !important; flex: none; padding: 6px 12px; font-size: 11px; background: #8b5cf6; border: none; border-radius: 6px; color: white; cursor: pointer; white-space: nowrap;" @click.prevent="showKasperskyCalculatorModal = true" title="Tính toán % off Kaspersky">
+                  <button class="btn btn-sm btn-primary" style="width: auto !important; flex: none; padding: 6px 12px; font-size: 11px; background: #8b5cf6; border: none; border-radius: 6px; color: white; cursor: pointer; white-space: nowrap;" @click.prevent="openKasperskyCalculator" title="Tính toán % off Kaspersky">
                     <i class="fas fa-calculator"></i> Tính
                   </button>
                 </div>
@@ -7456,7 +7553,7 @@ onUnmounted(() => {
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                 <!-- 14: Mức % OFF -->
                 <div style="display: flex; flex-direction: column; gap: 6px;">
-                  <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Mức % Off</label>
+                  <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">% Off khách</label>
                   <div style="position: relative;">
                     <FormattedInput id="qe-muc_phan_tram_off" v-model="quoteEdit.muc_phan_tram_off" @input="ensureNumberField(quoteEdit, 'muc_phan_tram_off')" style="width: 100%; padding: 10px 14px; padding-right: 30px; border-radius: 8px; color: #f59e0b;" />
                     <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 600; color: #f59e0b; pointer-events: none;">%</span>
@@ -8914,6 +9011,7 @@ onUnmounted(() => {
             <div>
               <label style="display: block; color: #cbd5e1; font-size: 13px; margin-bottom: 8px; font-weight: 500;">Product</label>
               <select v-model="kaspProduct" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #fff; outline: none; font-size: 14px;">
+                <option value="" disabled>-- Chọn Product --</option>
                 <option value="NEXT Foundations / EDR Optimum">NEXT Foundations / EDR Optimum</option>
                 <option value="XDR Optimum">XDR Optimum</option>
               </select>
@@ -8921,6 +9019,7 @@ onUnmounted(() => {
             <div>
               <label style="display: block; color: #cbd5e1; font-size: 13px; margin-bottom: 8px; font-weight: 500;">License Type</label>
               <select v-model="kaspLicenseType" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #fff; outline: none; font-size: 14px;">
+                <option value="" disabled>-- Chọn License Type --</option>
                 <option value="Base Plus">Base Plus</option>
                 <option value="Renewal Plus">Renewal Plus</option>
               </select>
@@ -8932,6 +9031,7 @@ onUnmounted(() => {
             <div style="margin-bottom: auto;">
               <label style="display: block; color: #cbd5e1; font-size: 13px; margin-bottom: 8px; font-weight: 500;">Thời hạn (Năm)</label>
               <select v-model.number="kaspDuration" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #fff; outline: none; font-size: 14px;">
+                <option value="" disabled>-- Chọn thời hạn --</option>
                 <option value="1">1 Năm (+0%)</option>
                 <option value="2">2 Năm (+2%)</option>
                 <option value="3">3 Năm (+3%)</option>
@@ -12908,4 +13008,3 @@ td.dvt { font-family: inherit; white-space: normal; }
   }
 }
 </style>
-
