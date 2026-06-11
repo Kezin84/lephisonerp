@@ -670,8 +670,12 @@ function doGet(e) {
     } else if (sheet === "sale_report") {
       result = params.action === "delete" ? sr_deleteRow(params) : sr_getData(params);
     } else if (sheet === "license_old_data") {
-      result = licenseOldData_getData(params);
-    } else {
+        if (params.action === "add") {
+          result = licenseOldData_addRow(params);
+        } else {
+          result = licenseOldData_getData(params);
+        }
+      } else {
       result = params.action === "delete" ? deleteRow(params) : getData(params);
     }
   } catch (err) {
@@ -693,8 +697,8 @@ function licenseOldData_getData(params) {
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return { status: "success", data: [] };
   
-  // 12 columns mapping: lICENSE_ID, CUSTOMER, PRODUCT_NAME, LOCALIZATION, LICENSE_VOLUME, LICENSE_DESCRIPTION, DATE_OF_LICENSE, EXPIRATION_TIME, LICENSE_TYPE, PRODUCT_CODE, LINK_FILE, NAME_FILE
-  const values = sheet.getRange(2, 1, lastRow - 1, 12).getValues();
+  // 15 columns mapping: LICENSE_ID, CUSTOMER, PRODUCT_NAME, LOCALIZATION, LICENSE_VOLUME, LICENSE_DESCRIPTION, DATE_OF_LICENSE, EXPIRATION_TIME, LICENSE_TYPE, PRODUCT_CODE, LINK_FILE, NAME_FILE, IS_GIA_HAN, SO_NGAY_HIEU_LUC, NHA_SAN_XUAT
+  const values = sheet.getRange(2, 1, lastRow - 1, 15).getValues();
   
   return { status: "success", total: values.length, data: values };
 }
@@ -774,6 +778,8 @@ function doPost(e) {
         result = sr_postData(payload);
       } else if (sheet === "upload_file_mau") {
         result = ufm_postData(payload);
+      } else if (sheet === "license_old_data") {
+        result = licenseOldData_postData(payload);
       } else {
         result = postData(payload);
       }
@@ -2782,4 +2788,134 @@ function uploadFileGiaOff_(payload) {
   } catch (err) {
     return { error: String(err) };
   }
+}
+
+function licenseOldData_addRow(params) {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("license_old_data");
+    if (!sheet) return { status: "error", message: "Sheet license_old_data kh�ng t?n t?i" };
+    
+    const licenseId = params.LICENSE_ID || "";
+    if (licenseId) {
+        const data = sheet.getDataRange().getValues();
+        let foundIdx = -1;
+        for (let i = 1; i < data.length; i++) {
+            if (String(data[i][0]).trim() === String(licenseId).trim()) {
+                foundIdx = i;
+                break;
+            }
+        }
+        
+        if (foundIdx !== -1) {
+            const rowNum = foundIdx + 1;
+            const existingRow = data[foundIdx];
+            
+            const getNewVal = (newVal, oldVal) => {
+                if (newVal !== undefined && newVal !== null && String(newVal).trim() !== "") {
+                    return newVal;
+                }
+                return oldVal;
+            };
+            
+            const newRow = [
+                getNewVal(params.LICENSE_ID, existingRow[0]),
+                getNewVal(params.CUSTOMER, existingRow[1]),
+                getNewVal(params.PRODUCT_NAME, existingRow[2]),
+                getNewVal(params.LOCALIZATION, existingRow[3]),
+                getNewVal(params.LICENSE_VOLUME, existingRow[4]),
+                getNewVal(params.LICENSE_DESCRIPTION, existingRow[5]),
+                getNewVal(params.DATE_OF_LICENSE, existingRow[6]),
+                getNewVal(params.EXPIRATION_TIME, existingRow[7]),
+                getNewVal(params.LICENSE_TYPE, existingRow[8]),
+                getNewVal(params.PRODUCT_CODE, existingRow[9]),
+                getNewVal(params.LINK_FILE, existingRow[10]),
+                getNewVal(params.NAME_FILE, existingRow[11]),
+                getNewVal(params.IS_GIA_HAN, existingRow[12]),
+                getNewVal(params.SO_NGAY_HIEU_LUC, existingRow[13]),
+                getNewVal(params.NHA_SAN_XUAT, existingRow[14])
+            ];
+            
+            let hasChanges = false;
+            for(let j=0; j<15; j++) {
+                if (String(newRow[j]) !== String(existingRow[j])) {
+                    hasChanges = true;
+                    break;
+                }
+            }
+            
+            if (hasChanges) {
+                sheet.getRange(rowNum, 1, 1, 15).setValues([newRow]);
+                return { status: "success", message: "Cap nhat du lieu thanh cong", action: "update" };
+            } else {
+                return { status: "success", message: "Khong co thay doi", action: "skip" };
+            }
+        }
+    }
+    
+    sheet.appendRow([
+        params.LICENSE_ID || "",
+        params.CUSTOMER || "",
+        params.PRODUCT_NAME || "",
+        params.LOCALIZATION || "",
+        params.LICENSE_VOLUME || "",
+        params.LICENSE_DESCRIPTION || "",
+        params.DATE_OF_LICENSE || "",
+        params.EXPIRATION_TIME || "",
+        params.LICENSE_TYPE || "",
+        params.PRODUCT_CODE || "",
+        params.LINK_FILE || "",
+        params.NAME_FILE || "",
+        params.IS_GIA_HAN || "",
+        params.SO_NGAY_HIEU_LUC || "",
+        params.NHA_SAN_XUAT || ""
+      ]);
+    
+    return { status: "success", message: "�� th�m d? li?u th�nh c�ng" };
+}
+
+function licenseOldData_postData(payload) {
+    const action = (payload.action || "add").toLowerCase();
+    if (action === "add") return licenseOldData_addRow(payload);
+    if (action === "update") return licenseOldData_updateRow(payload);
+    if (action === "delete") return licenseOldData_deleteRow(payload);
+    return { status: "error", message: "Invalid action for license_old_data" };
+}
+
+function licenseOldData_updateRow(p) {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("license_old_data");
+    if (!sheet) return { status: "error", message: "Sheet license_old_data khong ton tai" };
+    
+    const rowIdx = p.ROW_INDEX;
+    if (rowIdx) {
+        sheet.getRange(rowIdx, 1, 1, 15).setValues([[
+            p.LICENSE_ID || "",
+            p.CUSTOMER || "",
+            p.PRODUCT_NAME || "",
+            p.LOCALIZATION || "",
+            p.LICENSE_VOLUME || "",
+            p.LICENSE_DESCRIPTION || "",
+            p.DATE_OF_LICENSE || "",
+            p.EXPIRATION_TIME || "",
+            p.LICENSE_TYPE || "",
+            p.PRODUCT_CODE || "",
+            p.LINK_FILE || "",
+            p.NAME_FILE || "",
+            p.IS_GIA_HAN || "",
+            p.SO_NGAY_HIEU_LUC || "",
+            p.NHA_SAN_XUAT || ""
+        ]]);
+        return { status: "success", action: "update" };
+    }
+    return { status: "error", message: "Missing ROW_INDEX" };
+}
+
+function licenseOldData_deleteRow(p) {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("license_old_data");
+    if (!sheet) return { status: "error", message: "Sheet license_old_data khong ton tai" };
+    
+    const rowIdx = p.ROW_INDEX;
+    if (rowIdx) {
+        sheet.deleteRow(rowIdx);
+        return { status: "success", action: "delete" };
+    }
+    return { status: "error", message: "Missing ROW_INDEX" };
 }

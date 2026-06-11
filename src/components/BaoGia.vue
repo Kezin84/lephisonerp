@@ -11,7 +11,7 @@ import ExcelEditor from './ExcelEditor.vue'
 import FormattedInput from './FormattedInput.vue'
 import PipelinePreviewModal from './PipelinePreviewModal.vue'
 import html2canvas from 'html2canvas'
-
+import * as XLSX from 'xlsx-js-style'
 const route = useRoute()
 const router = useRouter()
 
@@ -602,14 +602,15 @@ const availableExcelFields = [
 
 const defaultExcelConfig = [
   { header: 'STT', field: 'stt' },
-  { header: 'TÊN HÀNG HÓA', field: 'ten_hang' },
-  { header: 'DIỄN GIẢI', field: 'features' },
-  { header: 'ĐVT', field: 'dvt' },
-  { header: 'SL', field: 'so_luong' },
+  { header: 'TÊN HÀNG', field: 'ten_hang' },
+  { header: 'Diễn Giải', field: 'features' },
+  { header: 'Đơn vị tính', field: 'dvt' },
+  { header: 'Thời hạn', field: 'license_duration' },
+  { header: 'S.L', field: 'so_luong' },
   { header: 'ĐƠN GIÁ', field: 'don_gia_kh' },
   { header: 'THÀNH TIỀN', field: 'truoc_thue' },
   { header: 'VAT', field: 'vat' },
-  { header: 'SAU THUẾ', field: 'sau_thue' }
+  { header: 'THÀNH TIỀN + VAT', field: 'sau_thue' }
 ]
 
 const excelMappingConfig = ref(JSON.parse(JSON.stringify(defaultExcelConfig)))
@@ -653,7 +654,7 @@ function applyCurrencyToHeaders(config: any[], targetCurrency?: string) {
   const currency = (targetCurrency || quoteCurrency.value || 'VND').toUpperCase();
   const currLabel = currency.includes('USD') ? 'USD' : 'VND';
   config.forEach(col => {
-    if (['don_gia_kh', 'truoc_thue', 'sau_thue'].includes(col.field)) {
+    if (['don_gia_kh', 'truoc_thue', 'vat', 'sau_thue'].includes(col.field)) {
       let baseHeader = col.header.replace(/\s*\(\s*(VND|VNĐ|USD)\s*\)/ig, '').trim();
       col.header = `${baseHeader} (${currLabel})`;
     }
@@ -1267,12 +1268,15 @@ const contractTerms = computed(() => {
     noiDung: String(r[6] || '')
   })).filter(i => i.id)
 })
+const importedTermsHtml = ref('')
 const selectedTermId = ref('')
 const editableTermContent = ref('')
 const previewEditor = ref<any>(null)
 
 watch(selectedTermId, (newId) => {
-  if (newId) {
+  if (newId === 'custom_import') {
+    editableTermContent.value = importedTermsHtml.value
+  } else if (newId) {
     const term = contractTerms.value.find(t => t.id === newId)
     editableTermContent.value = term ? term.noiDung : ''
   } else {
@@ -1864,6 +1868,15 @@ function toNum(v: any, fallback = 0) {
 
 function round2(n: number) {
   return Math.round((n + Number.EPSILON) * 100) / 100
+}
+
+function roundPrice(n: number, item?: any) {
+  // If currency is VND or exchange rate > 100, round to nearest 1,000 like Excel ROUND(..., -3)
+  const isVND = !item || !item.Don_vi_tien_te || item.Don_vi_tien_te.toUpperCase() === 'VND' || toNum(item.Ti_gia, 1) > 100;
+  if (isVND) {
+    return Math.round(n / 1000) * 1000;
+  }
+  return round2(n);
 }
 
 function formatVND(n: number) {
@@ -3665,6 +3678,7 @@ function highlightText(text: string, query: string) {
   return text.replace(regex, '<span style="background-color: #eab308; color: #0f172a; font-weight: bold; padding: 0 2px; border-radius: 2px;">$1</span>');
 }
 
+
 function displayPrice(p: HangHoa) {
   const vnd = donGiaLP(p) * toNum(p.Ti_gia, 1)
   return formatVND(vnd)
@@ -3743,6 +3757,15 @@ const quoteRows = computed<QuoteRow[]>(() => {
    ✅ QUOTE EDIT MODAL (click row -> edit)
 ====================== */
 const showQuoteEditModal = ref(false)
+const hiddenCols = ref({ c1: false, c2: false, c3: false, c4: false })
+const quoteEditGridCols = computed(() => {
+  return [
+    hiddenCols.value.c1 ? 'auto' : '1.1fr',
+    hiddenCols.value.c2 ? 'auto' : '1.1fr',
+    hiddenCols.value.c3 ? 'auto' : '1.7fr',
+    hiddenCols.value.c4 ? 'auto' : '1.2fr'
+  ].join(' ')
+})
 const quoteEdit = ref<(HangHoa & { So_luong: number }) | null>(null)
 const quoteEditIdx = ref(-1)
 const pendingQuoteEditFocusField = ref('')
@@ -4057,7 +4080,9 @@ function saveQuoteEdit() {
     quoteEdit.value._gia_hardware_goc = toNum(quoteEdit.value.gia_hardware, 0)
   }
   quoteEdit.value._gia_nhap_goc = toNum(quoteEdit.value.gia_nhap, 0)
-  quoteEdit.value._muc_phan_tram_off_goc = toNum(quoteEdit.value.muc_phan_tram_off, 0)
+  if (!_adjustedFields.has('muc_phan_tram_off')) {
+    quoteEdit.value._muc_phan_tram_off_goc = toNum(quoteEdit.value.muc_phan_tram_off, 0)
+  }
   quoteEdit.value._Ti_gia_goc = toNum(quoteEdit.value.Ti_gia, 1)
   quoteEdit.value._Thue_VAT_goc = toNum(quoteEdit.value.Thue_VAT, 0)
 
@@ -4234,6 +4259,7 @@ function applyAdjustPrice() {
       const editTypeLabel = adjustPriceModal.value.isNormalEdit ? '[Sửa thường]' : '[Điều chỉnh]';
       addAction(`${editTypeLabel} Sửa ${label} của hàng "${quoteEdit.value.Ten_hang}" từ ${formatVND(oldValVnd)} → ${formatVND(newValVnd)}`, oldValVnd, newValVnd);
       _adjustedFields.add('Don_gia');
+      _adjustedFields.add('muc_phan_tram_off');
 
       // Ghi nhớ Don_gia cũ trước khi reverse calc thay đổi
       const _oldDonGiaBeforeCalc = toNum(quoteEdit.value.Don_gia, 0);
@@ -4253,16 +4279,40 @@ function applyAdjustPrice() {
       const tg = toNum(quoteEdit.value.Ti_gia, 1) || 1;
       const newDonGiaSauOff = targetUPVnd / tg;
       const nhap = toNum(quoteEdit.value.gia_nhap, 0);
-      const offMul = 1 - toNum(quoteEdit.value.muc_phan_tram_off, 0) / 100;
       const hw = toNum(quoteEdit.value.gia_hardware, 0);
-      if (offMul > 0) {
-        quoteEdit.value.Don_gia = (newDonGiaSauOff - nhap) / offMul - hw;
-      }
 
-      // Sửa thường: cập nhật _goc theo cùng delta → giữ nguyên chênh lệch cũ
       if (adjustPriceModal.value.isNormalEdit) {
-        const _deltaDG = toNum(quoteEdit.value.Don_gia, 0) - _oldDonGiaBeforeCalc;
-        quoteEdit.value._Don_gia_goc = (quoteEdit.value._Don_gia_goc ?? _oldDonGiaBeforeCalc) + _deltaDG;
+        // Sửa thường: Giữ List Price, tự tính lại % Off Khách
+        const lp = _oldDonGiaBeforeCalc + hw;
+        if (lp > 0) {
+          const oldPctOff = toNum(quoteEdit.value.muc_phan_tram_off, 0);
+          let newPctOff = (1 - (newDonGiaSauOff - nhap) / lp) * 100;
+          newPctOff = Number(newPctOff.toFixed(6));
+          quoteEdit.value.muc_phan_tram_off = newPctOff;
+          const _oldPctOffGoc = quoteEdit.value._muc_phan_tram_off_goc ?? oldPctOff;
+          quoteEdit.value._muc_phan_tram_off_goc = _oldPctOffGoc + (newPctOff - oldPctOff);
+        }
+        quoteEdit.value.Don_gia = _oldDonGiaBeforeCalc;
+      } else {
+        // Kê hợp đồng: Giữ Don_gia và % Off Khách nguyên
+        // Hạ _Don_gia_goc để tạo chênh lệch (lineTruocThue - lineTruocThueRaw)
+        const currentUP = unitPrice(quoteEdit.value);
+        const targetChenhLechPerUnit = targetUPVnd - currentUP;
+        const targetUPRaw = currentUP - targetChenhLechPerUnit;
+        
+        const tgGoc = getGocNumber(quoteEdit.value, '_Ti_gia_goc', tg);
+        const targetDonGiaSauOffGoc = targetUPRaw / tgGoc;
+        const nhapGoc = getGocNumber(quoteEdit.value, '_gia_nhap_goc', nhap);
+        const pctOffGoc = getGocNumber(quoteEdit.value, '_muc_phan_tram_off_goc', toNum(quoteEdit.value.muc_phan_tram_off, 0));
+        const hwGoc = getGocNumber(quoteEdit.value, '_gia_hardware_goc', hw);
+        const offMulGoc = 1 - pctOffGoc / 100;
+        
+        if (offMulGoc > 0) {
+          const targetLPGoc = (targetDonGiaSauOffGoc - nhapGoc) / offMulGoc;
+          quoteEdit.value._Don_gia_goc = targetLPGoc - hwGoc;
+        }
+        // Don_gia giữ nguyên, % off giữ nguyên, chỉ _Don_gia_goc thay đổi → chênh lệch xuất hiện
+        quoteEdit.value.Don_gia = _oldDonGiaBeforeCalc;
       }
 
       quoteEdit.value = { ...quoteEdit.value };
@@ -4338,23 +4388,44 @@ function applyAdjustPrice() {
      
      const qty = Math.max(1, toNum(it.So_luong, 1));
      const tg = toNum(it.Ti_gia, 1) || 1;
-     const offMultiplier = 1 - (toNum(it.muc_phan_tram_off, 0) / 100);
-     
-     if (offMultiplier <= 0) return; // không thể chia cho 0 hoặc âm
-     
      const requiredDonGiaSauOff = newLineTotal / (qty * tg);
-     const requiredDonGiaLP = requiredDonGiaSauOff / offMultiplier;
-     
      const hw = toNum(it.gia_hardware, 0);
      const nhap = toNum(it.gia_nhap, 0);
-     
      const oldDonGia = toNum(it.Don_gia, 0);
-     it.Don_gia = requiredDonGiaLP - hw - nhap;
 
-     // Sửa thường: cập nhật _goc theo cùng delta → giữ nguyên chênh lệch cũ
      if (adjustPriceModal.value.isNormalEdit) {
-       const deltaDG = toNum(it.Don_gia, 0) - oldDonGia;
-       it._Don_gia_goc = (it._Don_gia_goc ?? oldDonGia) + deltaDG;
+       // Sửa thường: Giữ List Price, tự tính lại % Off Khách
+       const lp = oldDonGia + hw;
+       if (lp > 0) {
+         const oldPctOff = toNum(it.muc_phan_tram_off, 0);
+         let newPctOff = (1 - (requiredDonGiaSauOff - nhap) / lp) * 100;
+         newPctOff = Number(newPctOff.toFixed(6));
+         it.muc_phan_tram_off = newPctOff;
+         const _oldPctOffGoc = it._muc_phan_tram_off_goc ?? oldPctOff;
+         it._muc_phan_tram_off_goc = _oldPctOffGoc + (newPctOff - oldPctOff);
+       }
+       it.Don_gia = oldDonGia;
+     } else {
+       // Kê hợp đồng: Giữ Don_gia và % Off Khách nguyên
+       // Hạ _Don_gia_goc để tạo chênh lệch
+       const currentLineTotal = lineTruocThue(it);
+       const targetChenhLech = newLineTotal - currentLineTotal;
+       const targetLineTruocThueRaw = currentLineTotal - targetChenhLech;
+       const targetUPRaw = targetLineTruocThueRaw / qty;
+       
+       const tgGoc = getGocNumber(it, '_Ti_gia_goc', tg);
+       const targetDonGiaSauOffGoc = targetUPRaw / tgGoc;
+       const nhapGoc = getGocNumber(it, '_gia_nhap_goc', nhap);
+       const pctOffGoc = getGocNumber(it, '_muc_phan_tram_off_goc', toNum(it.muc_phan_tram_off, 0));
+       const hwGoc = getGocNumber(it, '_gia_hardware_goc', hw);
+       const offMulGoc = 1 - pctOffGoc / 100;
+       
+       if (offMulGoc > 0) {
+         const targetLPGoc = (targetDonGiaSauOffGoc - nhapGoc) / offMulGoc;
+         it._Don_gia_goc = targetLPGoc - hwGoc;
+       }
+       // Don_gia giữ nguyên, % off giữ nguyên
+       it.Don_gia = oldDonGia;
      }
   };
 
@@ -5860,6 +5931,337 @@ onUnmounted(() => {
   window.removeEventListener('beforeunload', handleBeforeUnload)
 })
 
+// --- IMPORT THEO MẪU BÁO GIÁ ---
+const importTemplateFileInput = ref<HTMLInputElement | null>(null);
+const showImportConfirmModal = ref(false);
+const pendingImportItems = ref<any[]>([]);
+
+const importMuaHangFileInput = ref<HTMLInputElement | null>(null);
+
+function triggerImportMuaHangFile() {
+  if (importMuaHangFileInput.value) {
+    importMuaHangFileInput.value.click();
+  }
+}
+
+async function onImportMuaHangFileChange(event: Event) {
+  const target = event.target as HTMLInputElement;
+  if (!target.files || target.files.length === 0) return;
+  
+  const file = target.files[0];
+  showAsyncLoading('Đang đọc file mua hàng...');
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const data = new Uint8Array(arrayBuffer);
+    const workbook = XLSX.read(data, { type: 'array' });
+    const wsName = workbook.SheetNames[0];
+    const ws = workbook.Sheets[wsName];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+    
+    let headerRowIndex = -1;
+    let colMap: Record<string, number> = {};
+    const purchaseItems: any[] = [];
+    
+    for (let i = 0; i < Math.min(rows.length, 500); i++) {
+      const row = rows[i] as any[];
+      if (!row || row.length === 0) continue;
+      
+      if (headerRowIndex === -1) {
+        // Find header row
+        const rowStr = row.map(c => excelCellText(c).toUpperCase()).join('|');
+        if (rowStr.includes('MÔ TẢ') || rowStr.includes('PRICES LIST') || rowStr.includes('DISCOUNT') || rowStr.includes('ĐƠN GIÁ')) {
+          headerRowIndex = i;
+          // Map columns
+          row.forEach((cell, idx) => {
+            const header = excelCellText(cell).toUpperCase().trim();
+            if (header.includes('MÔ TẢ') || header.includes('TÊN HÀNG') || header.includes('DIỄN GIẢI')) colMap['mota'] = idx;
+            else if (header.includes('PS') || header.includes('MODEL') || header.includes('PART NUMBER') || header.includes('MÃ HÀNG')) colMap['ps'] = idx;
+            else if (header.includes('PRICES LIST') || header.includes('LIST PRICE')) colMap['listPrice'] = idx;
+            else if (header.includes('DISCOUNT') || header.includes('OFF HÃNG')) colMap['discount'] = idx;
+            else if (header.includes('ĐƠN GIÁ') || header.includes('GIÁ VỐN')) colMap['giaVon'] = idx;
+          });
+        }
+        continue;
+      }
+      
+      const motaVal = colMap['mota'] !== undefined ? excelCellText(row[colMap['mota']]).trim() : '';
+      const psVal = colMap['ps'] !== undefined ? excelCellText(row[colMap['ps']]).trim() : '';
+      const mota = (psVal + ' ' + motaVal).trim();
+      
+      if (!mota || mota.toUpperCase().includes('TỔNG CỘNG') || mota.toUpperCase().includes('ĐIỀU KHOẢN') || mota.toUpperCase() === 'STT') continue;
+      
+      const listPriceStr = colMap['listPrice'] !== undefined ? String(excelCellText(row[colMap['listPrice']])).replace(/,/g, '') : '0';
+      const listPrice = parseFloat(listPriceStr) || 0;
+      
+      const giaVonStr = colMap['giaVon'] !== undefined ? String(excelCellText(row[colMap['giaVon']])).replace(/,/g, '') : '0';
+      const giaVon = parseFloat(giaVonStr) || 0;
+      
+      if (listPrice === 0 && giaVon === 0) continue;
+
+      purchaseItems.push({ mota, listPrice, giaVon });
+    }
+    
+    if (purchaseItems.length === 0) {
+      showAsyncError('Lỗi', 'Không tìm thấy dữ liệu hợp lệ trong file mua hàng.');
+      return;
+    }
+    
+    let matchCount = 0;
+    
+    const tokenize = (str: string) => {
+      return removeDiacritics(str).toLowerCase().replace(/[^a-z0-9]/g, ' ').split(/\s+/).filter(w => w.length > 2);
+    };
+
+    selectedItems.value.forEach((quoteItem) => {
+      const qTokens = tokenize(quoteItem.Ten_hang + ' ' + (quoteItem.Features || ''));
+      
+      let bestMatch: any = null;
+      let maxScore = 0;
+      
+      purchaseItems.forEach(pItem => {
+        const pTokens = tokenize(pItem.mota);
+        let matches = 0;
+        pTokens.forEach((pt: string) => {
+          if (qTokens.includes(pt)) matches++;
+        });
+        
+        const score = matches / Math.max(pTokens.length, 1);
+        if (score > maxScore) {
+          maxScore = score;
+          bestMatch = pItem;
+        }
+      });
+      
+      if (bestMatch && maxScore > 0.3) {
+        const oldLP = (parseFloat(String(quoteItem.Don_gia)) || 0) + (parseFloat(String(quoteItem.gia_hardware)) || 0);
+        const oldPctOff = parseFloat(String(quoteItem.muc_phan_tram_off)) || 0;
+        const oldGiaNhap = parseFloat(String(quoteItem.gia_nhap)) || 0;
+        const oldSellingPrice = oldLP * (1 - oldPctOff / 100) + oldGiaNhap;
+
+        quoteItem.Don_gia = bestMatch.listPrice;
+        quoteItem.Gia_tieu_chuan = bestMatch.giaVon;
+        
+        const newLP = bestMatch.listPrice + (parseFloat(String(quoteItem.gia_hardware)) || 0);
+        if (newLP > 0) {
+          let newPctOff = (1 - (oldSellingPrice - oldGiaNhap) / newLP) * 100;
+          // Do not round to 2 decimals to prevent Đơn giá KH from deviating
+          quoteItem.muc_phan_tram_off = Number(newPctOff.toFixed(6));
+        }
+
+        matchCount++;
+      }
+    });
+    
+    asyncResultModal.value.show = false;
+    showAsyncSuccess('Thành công', `Đã cập nhật thành công giá cho ${matchCount}/${selectedItems.value.length} mặt hàng.`);
+    
+  } catch (err: any) {
+    console.error(err);
+    showAsyncError('Lỗi', 'Lỗi khi đọc file mua hàng: ' + String(err.message || err));
+  } finally {
+    target.value = '';
+  }
+}
+
+function triggerImportTemplateFile() {
+  if (importTemplateFileInput.value) {
+    importTemplateFileInput.value.click();
+  }
+}
+
+async function onImportTemplateFileChange(event: Event) {
+  const target = event.target as HTMLInputElement;
+  if (!target.files || target.files.length === 0) return;
+  
+  const file = target.files[0];
+  showAsyncLoading('Đang đọc file mẫu...');
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const data = new Uint8Array(arrayBuffer);
+    const workbook = XLSX.read(data, { type: 'array' });
+    const wsName = workbook.SheetNames[0];
+    const ws = workbook.Sheets[wsName];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+    
+    const newItems: any[] = [];
+    let readingTerms = false;
+    let termsHtml = '';
+    
+    let headerRowIndex = -1;
+    let colMap: Record<string, number> = {};
+    
+    for (let i = 0; i < Math.min(rows.length, 500); i++) {
+      const row = rows[i] as any[];
+      if (!row || row.length === 0) continue;
+      
+      if (headerRowIndex === -1) {
+        // Find header row
+        const rowStr = row.map(c => excelCellText(c).toUpperCase()).join('|');
+        if (rowStr.includes('STT') && (rowStr.includes('TÊN HÀNG') || rowStr.includes('MODEL'))) {
+          headerRowIndex = i;
+          // Map columns
+          row.forEach((cell, idx) => {
+            const header = excelCellText(cell).toUpperCase().trim();
+            if (header.includes('STT')) colMap['stt'] = idx;
+            else if (header.includes('TÊN HÀNG') || header.includes('MODEL')) colMap['tenHang'] = idx;
+            else if (header.includes('DIỄN GIẢI')) colMap['features'] = idx;
+            else if (header.includes('ĐƠN VỊ TÍNH') || header === 'DVT') colMap['dvt'] = idx;
+            else if (header.includes('THỜI HẠN')) colMap['license_duration'] = idx;
+            else if (header === 'S.L' || header.includes('SỐ LƯỢNG') || header === 'SL') colMap['sl'] = idx;
+            else if (header.includes('ĐƠN GIÁ')) colMap['donGia'] = idx;
+            else if (header.includes('THÀNH TIỀN') && !header.includes('VAT')) colMap['truocThue'] = idx;
+            else if (header === 'VAT' || header.includes('THUẾ')) colMap['vat'] = idx;
+          });
+        }
+        continue;
+      }
+      
+      // If we are reading data
+      const stt = colMap['stt'] !== undefined ? excelCellText(row[colMap['stt']]).trim().toUpperCase() : '';
+      const tenHang = colMap['tenHang'] !== undefined ? excelCellText(row[colMap['tenHang']]).trim() : '';
+      const features = colMap['features'] !== undefined ? excelCellText(row[colMap['features']]).trim() : '';
+      
+      if (!readingTerms && (stt.includes('TỔNG CỘNG') || tenHang.toUpperCase().includes('TỔNG CỘNG') || 
+          stt.includes('ĐIỀU KHOẢN') || tenHang.toUpperCase().includes('ĐIỀU KHOẢN') || features.toUpperCase().includes('ĐIỀU KHOẢN'))) {
+        readingTerms = true;
+      }
+      
+      if (readingTerms) {
+        const arr = [];
+        for (let c = 0; c < row.length; c++) {
+          const v = excelCellText(row[c]).trim();
+          if (v) arr.push(v);
+        }
+        if (arr.length > 0) {
+          const lineText = arr.join(' ');
+          if (!lineText.toUpperCase().includes('TỔNG CỘNG') && !lineText.toUpperCase().includes('VAT') && !lineText.toUpperCase().includes('THÀNH TIỀN') && !lineText.match(/^[\d\.\,]+$/)) {
+             termsHtml += `<p style="margin: 0; padding-bottom: 4px;">${lineText}</p>`;
+          }
+        }
+        continue;
+      }
+      
+      if (!tenHang) {
+        continue;
+      }
+      
+      const dvt = colMap['dvt'] !== undefined ? excelCellText(row[colMap['dvt']]).trim() : '';
+      const license_duration = colMap['license_duration'] !== undefined ? excelCellText(row[colMap['license_duration']]).trim() : '';
+      
+      const slStr = colMap['sl'] !== undefined ? excelCellText(row[colMap['sl']]).replace(/,/g, '') : '1';
+      const sl = parseFloat(slStr) || 1;
+      
+      const donGiaStr = colMap['donGia'] !== undefined ? excelCellText(row[colMap['donGia']]).replace(/,/g, '') : '0';
+      const donGia = parseFloat(donGiaStr) || 0;
+      
+      const truocThueStr = colMap['truocThue'] !== undefined ? excelCellText(row[colMap['truocThue']]).replace(/,/g, '') : '';
+      const truocThue = parseFloat(truocThueStr) || (sl * donGia);
+      
+      const vatStr = colMap['vat'] !== undefined ? excelCellText(row[colMap['vat']]).replace(/,/g, '') : '0';
+      const vatVal = parseFloat(vatStr) || 0;
+      
+      let vatPct = 0;
+      if (vatVal > 0 && truocThue > 0) {
+        vatPct = Math.round((vatVal / truocThue) * 100);
+      }
+      
+      const generatedMaHang = removeDiacritics(tenHang).toUpperCase().replace(/\s+/g, '').replace(/[^A-Z0-9]/g, '');
+
+      const item = {
+        uid: Math.random().toString(36).substr(2, 9),
+        Ten_hang: tenHang,
+        Features: features,
+        DVT: dvt || 'Bản quyền',
+        License_duration: license_duration || '1 Năm',
+        So_luong: sl,
+        Don_gia: donGia,
+        Gia_tieu_chuan: donGia,
+        Thue_VAT: vatPct,
+        Ma_hang: generatedMaHang, Main_img: '', Ma_nha_cung_cap: '', Ten_nha_cung_cap: '',
+        Mo_ta_chung: '', Mo_ta_chi_tiet: '', Danh_muc: '', thoi_han_bao_hanh: '',
+        Trang_thai: '', Don_vi_tien_te: quoteCurrency.value || 'VND', Ti_gia: 1,
+        Ma_hang_lien_ket: '', Ten_hang_lien_ket: '', Ghi_chu: '',
+        gia_hardware: 0, gia_nhap: 0, muc_phan_tram_off: 0, volume: ''
+      };
+      
+      newItems.push(item as any);
+    }
+    
+    if (termsHtml) {
+      importedTermsHtml.value = termsHtml;
+      selectedTermId.value = 'custom_import';
+      editableTermContent.value = termsHtml;
+    }
+    
+    if (newItems.length > 0) {
+      asyncResultModal.value.show = false;
+      pendingImportItems.value = newItems;
+      showImportConfirmModal.value = true;
+    } else {
+      showAsyncError('Lỗi', 'Không tìm thấy dữ liệu hợp lệ trong file mẫu.');
+    }
+    
+  } catch (err: any) {
+    console.error(err);
+    showAsyncError('Lỗi', 'Lỗi khi đọc file: ' + String(err.message || err));
+  } finally {
+    target.value = '';
+  }
+}
+
+
+async function confirmImport(saveToDb: boolean) {
+  showImportConfirmModal.value = false;
+  const items = pendingImportItems.value;
+  if (!items || items.length === 0) return;
+
+  if (saveToDb) {
+    showAsyncLoading('Đang lưu hàng hóa vào Database...');
+    try {
+      for (const addedItem of items) {
+        const payloadRow = [
+          addedItem.Ma_hang || '',           // [0]
+          addedItem.Ten_hang || '',           // [1]
+          addedItem.Main_img || '',           // [2]
+          addedItem.Ma_nha_cung_cap || '',    // [3]
+          addedItem.Ten_nha_cung_cap || '',   // [4]
+          addedItem.Mo_ta_chung || '',        // [5]
+          addedItem.Mo_ta_chi_tiet || '',     // [6]
+          addedItem.Features || '',           // [7]
+          addedItem.Danh_muc || '',           // [8]
+          addedItem.License_duration || '',   // [9]
+          addedItem.DVT || '',               // [10]
+          toNum(addedItem.Gia_tieu_chuan, 0), // [11]
+          toNum(addedItem.Don_gia, 0),        // [12]
+          addedItem.Trang_thai || '',         // [13]
+          addedItem.Don_vi_tien_te || 'VND',  // [14]
+          toNum(addedItem.Ti_gia, 1),         // [15]
+          toNum(addedItem.Thue_VAT, 0),       // [16]
+          addedItem.Ma_hang_lien_ket || '',   // [17]
+          addedItem.Ten_hang_lien_ket || '',  // [18]
+          addedItem.Ghi_chu || '',            // [19]
+          toNum(addedItem.gia_hardware, 0),   // [20]
+          toNum(addedItem.gia_nhap, 0),       // [21]
+          toNum(addedItem.muc_phan_tram_off, 0), // [22]
+          addedItem.Type || '',               // [23]
+          addedItem.thoi_han_bao_hanh || '',  // [24]
+          addedItem.volume || ''     // [25] volume
+        ];
+        await postApi('addHangHoa', payloadRow);
+      }
+      showAsyncSuccess('Thành công', `Đã lưu ${items.length} sản phẩm vào Database và thêm vào báo giá.`);
+    } catch (err: any) {
+      console.error(err);
+      showAsyncError('Lỗi', 'Có lỗi khi lưu vào Database: ' + err.message);
+    }
+  } else {
+    showAsyncSuccess('Thành công', `Đã thêm ${items.length} sản phẩm vào bảng báo giá.`);
+  }
+
+  selectedItems.value.push(...items);
+  pendingImportItems.value = [];
+}
+
 </script>
 
 <template>
@@ -6161,20 +6563,20 @@ onUnmounted(() => {
                 <tr class="table-footer-sticky" style="background: #fadb14; font-weight: 700; color: #000000; white-space: nowrap;">
                   <td :colspan="quoteCurrency === 'USD' ? 11 : 10" class="center" style="font-size: 14px; color: #15803d; font-weight: 900;">TỔNG CỘNG + THUẾ</td>
                   <td class="right">
-                    <span style="display: inline-block; padding: 2px 6px; border-radius: 12px; background: #dc2626; color: #fff; font-size: 12px; font-weight: 800; white-space: nowrap;">-{{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.off) : formatVND(totals.off) }}</span>
+                    <span class="fast-tooltip-container" data-tooltip="Tổng Mức OFF" style="display: inline-block; padding: 2px 6px; border-radius: 12px; background: #dc2626; color: #fff; font-size: 12px; font-weight: 800; white-space: nowrap;">-{{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.off) : formatVND(totals.off) }}</span>
                   </td>
                   <td></td>
                   <td class="right">
-                    <span style="display: inline-block; padding: 2px 6px; border-radius: 12px; background: #1d4ed8; color: #fff; font-size: 12px; font-weight: 800; white-space: nowrap;">{{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.truoc) : formatVND(totals.truoc) }}</span>
+                    <span class="fast-tooltip-container" data-tooltip="Tổng TT trước thuế" style="display: inline-block; padding: 2px 6px; border-radius: 12px; background: #1d4ed8; color: #fff; font-size: 12px; font-weight: 800; white-space: nowrap;">{{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.truoc) : formatVND(totals.truoc) }}</span>
                   </td>
                   <td class="center">
-                    <span style="display: inline-block; padding: 2px 6px; border-radius: 12px; background: #1d4ed8; color: #fff; font-size: 12px; font-weight: 800; white-space: nowrap;">{{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.vat) : formatVND(totals.vat) }}</span>
+                    <span class="fast-tooltip-container" data-tooltip="Tổng VAT" style="display: inline-block; padding: 2px 6px; border-radius: 12px; background: #1d4ed8; color: #fff; font-size: 12px; font-weight: 800; white-space: nowrap;">{{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.vat) : formatVND(totals.vat) }}</span>
                   </td>
                   <td class="right">
-                    <span style="display: inline-block; padding: 2px 6px; border-radius: 12px; background: #2563eb; color: #fff; font-size: 12px; font-weight: 800; white-space: nowrap;">{{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.sau) : formatVND(totals.sau) }}</span>
+                    <span class="fast-tooltip-container" data-tooltip="Tổng TT sau thuế" style="display: inline-block; padding: 2px 6px; border-radius: 12px; background: #2563eb; color: #fff; font-size: 12px; font-weight: 800; white-space: nowrap;">{{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.sau) : formatVND(totals.sau) }}</span>
                   </td>
                   <td class="right">
-                    <div :style="{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px', padding: '2px 6px', borderRadius: '12px', background: totals.loi >= 0 ? '#10b981' : '#ef4444', color: '#fff', fontSize: '12px', fontWeight: 800, whiteSpace: 'nowrap' }">
+                    <div class="fast-tooltip-container" data-tooltip="Tổng Net Margin" :style="{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px', padding: '2px 6px', borderRadius: '12px', background: totals.loi >= 0 ? '#10b981' : '#ef4444', color: '#fff', fontSize: '12px', fontWeight: 800, whiteSpace: 'nowrap' }">
                       <span v-if="totals.loi >= 0" style="font-size: 10px;">▲</span>
                       <span v-else style="font-size: 10px;">▼</span>
                       {{ quoteCurrency === 'USD' ? formatUSD(Math.abs(totalsUSD.loi)) : formatVND(Math.abs(totals.loi)) }}
@@ -6367,6 +6769,16 @@ onUnmounted(() => {
                 </button>
                 <button class="action-btn" @click="showExportInfoModal = true" style="margin: 0; padding: 10px 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; flex-direction: row; justify-content: center; min-height: 38px; background: #16a34a; border: none; color: #ffffff;">
                   <i class="lucide-upload" style="margin-right: 6px; font-size: 16px;"></i> Xuất dữ liệu
+                </button>
+
+                <input type="file" ref="importTemplateFileInput" accept=".xlsx, .xls, .csv" style="display: none" @change="onImportTemplateFileChange" />
+                <button class="action-btn" @click="triggerImportTemplateFile" style="grid-column: 1 / -1; margin: 0; padding: 10px 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; flex-direction: row; justify-content: center; min-height: 38px; background: #0ea5e9; border: none; color: #ffffff;">
+                  <i class="lucide-file-input" style="margin-right: 6px; font-size: 16px;"></i> Import Báo Giá
+                </button>
+
+                <input type="file" ref="importMuaHangFileInput" accept=".xlsx, .xls, .csv" style="display: none" @change="onImportMuaHangFileChange" />
+                <button class="action-btn" @click="triggerImportMuaHangFile" style="grid-column: 1 / -1; margin: 0; padding: 10px 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; flex-direction: row; justify-content: center; min-height: 38px; background: #f59e0b; border: none; color: #ffffff;">
+                  <i class="lucide-file-input" style="margin-right: 6px; font-size: 16px;"></i> Import Mua Hàng
                 </button>
 
                 <button class="action-btn action-save" :disabled="saving || !hasUnsavedChanges()" @click="showSaveModal = true" style="grid-column: 1 / -1; margin: 0; padding: 14px; font-size: 14px; font-weight: 800; flex-direction: row; justify-content: center; min-height: 46px; letter-spacing: 1px; text-transform: uppercase; background: #dc2626 !important; border: none; color: #ffffff !important; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);">
@@ -7299,7 +7711,9 @@ onUnmounted(() => {
     <div v-if="showQuoteEditModal && quoteEdit" class="modal vip-modal-overlay" @click.self="closeQuoteEdit()">
       <div class="modal-card modal-wide vip-modal-card" style="width: 1350px; max-width: 95vw;">
         <div class="modal-head" style="background: linear-gradient(135deg, #34d399, #10b981) !important; justify-content: center; position: relative; padding: 18px 24px; border-bottom: none; border-radius: 12px 12px 0 0;">
-          <div style="color: #ffffff; text-transform: uppercase; font-weight: 900; font-size: 18px; margin: 0; display: flex; align-items: center; gap: 10px; letter-spacing: 0.5px;"><i class="lucide-pencil" style="color: #fff; width: 24px; height: 24px;"></i> CHỈNH SỬA HÀNG TRONG BÁO GIÁ</div>
+          <div style="color: #ffffff; text-transform: uppercase; font-weight: 900; font-size: 18px; margin: 0; display: flex; align-items: center; gap: 10px; letter-spacing: 0.5px;">
+            <i class="lucide-pencil" style="color: #fff; width: 24px; height: 24px;"></i> CHỈNH SỬA HÀNG TRONG BÁO GIÁ
+          </div>
           <button class="x" @click="closeQuoteEdit()" style="color: #fff; transition: all 0.2s; position: absolute; right: 20px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.15); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;" onmouseover="this.style.background='rgba(0,0,0,0.3)'" onmouseout="this.style.background='rgba(0,0,0,0.15)'">✕</button>
         </div>
 
@@ -7312,13 +7726,17 @@ onUnmounted(() => {
             <textarea v-model="quoteEdit.Mo_ta_chi_tiet" />
           </div>
           
-          <div style="display: grid; grid-template-columns: 1.1fr 1.1fr 1.7fr 1.2fr; gap: 24px;">
+          <div :style="{ display: 'grid', gridTemplateColumns: quoteEditGridCols, gap: '24px' }">
             <!-- COLUMN 1 -->
-            <div style="display: flex; flex-direction: column; gap: 16px; background: rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
-              <div style="padding-bottom: 12px; border-bottom: 1px dashed rgba(255,255,255,0.1); margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
-                <i class="lucide-info" style="color: #10b981; width: 18px; height: 18px;"></i>
-                <span style="font-size: 13px; text-transform: uppercase; color: #fff; font-weight: 800; letter-spacing: 0.5px;">Thông tin chung</span>
+            <div :style="{ display: 'flex', flexDirection: 'column', gap: hiddenCols.c1 ? '0' : '16px', background: 'rgba(0,0,0,0.15)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '16px', padding: hiddenCols.c1 ? '16px 12px' : '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }">
+              <div :style="{ paddingBottom: hiddenCols.c1 ? '0' : '12px', borderBottom: hiddenCols.c1 ? 'none' : '1px dashed rgba(255,255,255,0.1)', marginBottom: hiddenCols.c1 ? '0' : '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <i class="ri-information-line" style="color: #10b981; font-size: 16px; flex-shrink: 0;"></i>
+                  <span v-show="!hiddenCols.c1" style="font-size: 13px; text-transform: uppercase; color: #fff; font-weight: 800; letter-spacing: 0.5px; white-space: nowrap;">Thông tin chung</span>
+                </div>
+                <i :class="hiddenCols.c1 ? 'ri-eye-line' : 'ri-eye-off-line'" @click="hiddenCols.c1 = !hiddenCols.c1" style="font-size: 16px; color: #94a3b8; cursor: pointer; flex-shrink: 0; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#94a3b8'" title="Ẩn/Hiện cột"></i>
               </div>
+              <div v-show="!hiddenCols.c1" style="display: flex; flex-direction: column; gap: 16px;">
               <!-- 1: Mã hàng -->
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Mã hàng</label>
@@ -7374,15 +7792,20 @@ onUnmounted(() => {
                   <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Tỉ giá</label>
                   <FormattedInput v-model="quoteEdit.Ti_gia" @input="ensureNumberField(quoteEdit, 'Ti_gia')" style="width: 100%; padding: 10px 14px; border-radius: 8px;" />
                 </div>
+                </div>
               </div>
             </div>
 
             <!-- COLUMN 2 -->
-            <div style="display: flex; flex-direction: column; gap: 16px; background: rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
-              <div style="padding-bottom: 12px; border-bottom: 1px dashed rgba(255,255,255,0.1); margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
-                <i class="lucide-file-text" style="color: #10b981; width: 18px; height: 18px;"></i>
-                <span style="font-size: 13px; text-transform: uppercase; color: #fff; font-weight: 800; letter-spacing: 0.5px;">Chi tiết kỹ thuật</span>
+            <div :style="{ display: 'flex', flexDirection: 'column', gap: hiddenCols.c2 ? '0' : '16px', background: 'rgba(0,0,0,0.15)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '16px', padding: hiddenCols.c2 ? '16px 12px' : '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }">
+              <div :style="{ paddingBottom: hiddenCols.c2 ? '0' : '12px', borderBottom: hiddenCols.c2 ? 'none' : '1px dashed rgba(255,255,255,0.1)', marginBottom: hiddenCols.c2 ? '0' : '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <i class="ri-file-list-3-line" style="color: #10b981; font-size: 16px; flex-shrink: 0;"></i>
+                  <span v-show="!hiddenCols.c2" style="font-size: 13px; text-transform: uppercase; color: #fff; font-weight: 800; letter-spacing: 0.5px; white-space: nowrap;">Chi tiết kỹ thuật</span>
+                </div>
+                <i :class="hiddenCols.c2 ? 'ri-eye-line' : 'ri-eye-off-line'" @click="hiddenCols.c2 = !hiddenCols.c2" style="font-size: 16px; color: #94a3b8; cursor: pointer; flex-shrink: 0; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#94a3b8'" title="Ẩn/Hiện cột"></i>
               </div>
+              <div v-show="!hiddenCols.c2" style="display: flex; flex-direction: column; gap: 16px;">
               <!-- 5: ĐVT -->
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">ĐVT</label>
@@ -7428,13 +7851,18 @@ onUnmounted(() => {
                 <textarea id="qe-Ghi_chu" v-model="quoteEdit.Ghi_chu" rows="2" style="width: 100%; padding: 10px 14px; border-radius: 8px; resize: vertical;" />
               </div>
             </div>
+          </div>
 
             <!-- COLUMN 3 -->
-            <div style="display: flex; flex-direction: column; gap: 16px; background: rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
-              <div style="padding-bottom: 12px; border-bottom: 1px dashed rgba(255,255,255,0.1); margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
-                <i class="lucide-coins" style="color: #10b981; width: 18px; height: 18px;"></i>
-                <span style="font-size: 13px; text-transform: uppercase; color: #fff; font-weight: 800; letter-spacing: 0.5px;">Giá & Chi phí</span>
+            <div :style="{ display: 'flex', flexDirection: 'column', gap: hiddenCols.c3 ? '0' : '16px', background: 'rgba(0,0,0,0.15)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '16px', padding: hiddenCols.c3 ? '0 0 16px 0' : '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }">
+              <div :style="{ background: 'linear-gradient(135deg, #fb7185, #e11d48)', padding: '14px 16px', borderRadius: hiddenCols.c3 ? '15px' : '15px 15px 0 0', margin: hiddenCols.c3 ? '0' : '-20px -20px 0 -20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', boxShadow: '0 2px 10px rgba(225,29,72,0.2)' }">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <i class="ri-coins-line" style="color: #fff; font-size: 16px; flex-shrink: 0;"></i>
+                  <span v-show="!hiddenCols.c3" style="font-size: 14px; text-transform: uppercase; color: #fff; font-weight: 800; letter-spacing: 0.5px; text-shadow: 0 1px 2px rgba(0,0,0,0.2); white-space: nowrap;">Giá mua & Chi phí</span>
+                </div>
+                <i :class="hiddenCols.c3 ? 'ri-eye-line' : 'ri-eye-off-line'" @click="hiddenCols.c3 = !hiddenCols.c3" style="font-size: 16px; color: rgba(255,255,255,0.7); cursor: pointer; flex-shrink: 0; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.7)'" title="Ẩn/Hiện cột"></i>
               </div>
+              <div v-show="!hiddenCols.c3" style="display: flex; flex-direction: column; gap: 16px;">
 
               <!-- 13: % OFF Hãng & Giá Vốn VND -->
               <div style="display: flex; flex-direction: column; gap: 6px;">
@@ -7542,13 +7970,18 @@ onUnmounted(() => {
                 </div>
               </div>
             </div>
+          </div>
 
             <!-- COLUMN 4 -->
-            <div style="display: flex; flex-direction: column; gap: 16px; background: rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
-              <div style="padding-bottom: 12px; border-bottom: 1px dashed rgba(255,255,255,0.1); margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
-                <i class="lucide-pie-chart" style="color: #10b981; width: 18px; height: 18px;"></i>
-                <span style="font-size: 13px; text-transform: uppercase; color: #fff; font-weight: 800; letter-spacing: 0.5px;">Bán hàng & Lợi nhuận</span>
+            <div :style="{ display: 'flex', flexDirection: 'column', gap: hiddenCols.c4 ? '0' : '16px', background: 'rgba(0,0,0,0.15)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '16px', padding: hiddenCols.c4 ? '0 0 16px 0' : '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }">
+              <div :style="{ background: 'linear-gradient(135deg, #34d399, #10b981)', padding: '14px 16px', borderRadius: hiddenCols.c4 ? '15px' : '15px 15px 0 0', margin: hiddenCols.c4 ? '0' : '-20px -20px 0 -20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', boxShadow: '0 2px 10px rgba(16,185,129,0.2)' }">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <i class="ri-pie-chart-line" style="color: #fff; font-size: 16px; flex-shrink: 0;"></i>
+                  <span v-show="!hiddenCols.c4" style="font-size: 14px; text-transform: uppercase; color: #fff; font-weight: 800; letter-spacing: 0.5px; text-shadow: 0 1px 2px rgba(0,0,0,0.2); white-space: nowrap;">Bán hàng & Lợi nhuận</span>
+                </div>
+                <i :class="hiddenCols.c4 ? 'ri-eye-line' : 'ri-eye-off-line'" @click="hiddenCols.c4 = !hiddenCols.c4" style="font-size: 16px; color: rgba(255,255,255,0.7); cursor: pointer; flex-shrink: 0; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.7)'" title="Ẩn/Hiện cột"></i>
               </div>
+              <div v-show="!hiddenCols.c4" style="display: flex; flex-direction: column; gap: 16px;">
               <!-- 14 & 15: Mức % OFF & Thuế VAT -->
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                 <!-- 14: Mức % OFF -->
@@ -7625,6 +8058,7 @@ onUnmounted(() => {
                   <i class="lucide-trending-up" v-if="itemChenhLechHieuDung(quoteEdit) >= 0" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
                   <i class="lucide-trending-down" v-else style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
                   <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #10b981; pointer-events: none;">₫</span>
+                </div>
                 </div>
               </div>
             </div>
@@ -8399,6 +8833,7 @@ onUnmounted(() => {
             <label style="margin-top: 16px; display: block;">Chọn Điều khoản thương mại</label>
             <select v-model="selectedTermId" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #cbd5e1; background: #f8fafc; color: #1e293b; margin-bottom: 12px;">
               <option value="">-- Không chèn điều khoản (chỉ giữ tiêu đề) --</option>
+              <option value="custom_import" v-if="importedTermsHtml">-- Điều khoản từ file Import --</option>
               <option v-for="t in contractTerms" :key="t.id" :value="t.id">
                 {{ t.mau ? `[${t.mau}] ${t.tenCT || t.tenKH || 'Mẫu chung'}` : (t.tenCT || t.tenKH || 'Điều khoản chưa đặt tên') }}
               </option>
@@ -9062,6 +9497,37 @@ onUnmounted(() => {
         <div style="padding: 16px 24px; border-top: 1px solid #334155; display: flex; justify-content: flex-end; gap: 12px; background: #0f172a;">
           <button style="padding: 10px 20px; border-radius: 8px; border: 1px solid #334155; background: transparent; color: #cbd5e1; cursor: pointer; font-weight: 500; font-size: 14px;" @click="showKasperskyCalculatorModal = false">Hủy</button>
           <button :disabled="kaspCalculatedOff === null" :style="{ opacity: kaspCalculatedOff === null ? 0.5 : 1, cursor: kaspCalculatedOff === null ? 'not-allowed' : 'pointer', padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#8b5cf6', color: '#fff', fontWeight: '600', fontSize: '14px' }" @click="applyKaspOff">Áp dụng ({{ kaspCalculatedOff !== null ? kaspCalculatedOff + '%' : '--' }})</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- IMPORT CONFIRM MODAL -->
+    <div class="modal" v-if="showImportConfirmModal" style="z-index: 10005;">
+      <div class="modal-card" style="max-width: 600px; padding: 24px;">
+        <h3 style="display: flex; align-items: center; gap: 8px; color: #10b981; margin-bottom: 16px;">
+          <i class="lucide-database"></i> Xác nhận lưu Database
+        </h3>
+        <p style="font-size: 14px; margin-bottom: 12px; color: #f8fafc;">
+          Bạn vừa đọc thành công <strong>{{ pendingImportItems.length }}</strong> sản phẩm từ file Excel mẫu.
+        </p>
+        <p style="font-size: 14px; margin-bottom: 16px; color: #94a3b8;">
+          Bạn có muốn lưu các sản phẩm này vào cơ sở dữ liệu (sheet hang_hoa) để tái sử dụng ở các báo giá sau không?
+        </p>
+        
+        <div style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; margin-bottom: 20px; padding: 8px;">
+          <div v-for="(it, idx) in pendingImportItems.slice(0, 5)" :key="idx" style="font-size: 12px; padding: 6px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #cbd5e1; display: flex; justify-content: space-between;">
+            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 70%;">{{ it.Ten_hang }}</span>
+            <span style="color: #38bdf8; font-weight: 600;">{{ formatVND(it.Don_gia) }}</span>
+          </div>
+          <div v-if="pendingImportItems.length > 5" style="font-size: 12px; padding: 6px; color: #64748b; text-align: center; font-style: italic;">
+            ...và {{ pendingImportItems.length - 5 }} sản phẩm khác
+          </div>
+        </div>
+
+        <div class="modal-actions" style="display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap;">
+          <button style="background: #475569; color: #fff; padding: 8px 16px; border: none; border-radius: 6px;" @click="showImportConfirmModal = false; pendingImportItems = []">Hủy bỏ</button>
+          <button style="background: #3b82f6; color: #fff; padding: 8px 16px; border: none; border-radius: 6px;" @click="confirmImport(false)">Chỉ thêm vào Báo giá</button>
+          <button class="primary action-success" style="padding: 8px 16px; border-radius: 6px;" @click="confirmImport(true)"><i class="lucide-save"></i> Có (Lưu Db & Báo giá)</button>
         </div>
       </div>
     </div>
@@ -11626,6 +12092,53 @@ td.dvt { font-family: inherit; white-space: normal; }
 @keyframes async-modal-out {
   0% { opacity: 1; transform: scale(1); }
   100% { opacity: 0; transform: scale(0.85) translateY(10px); }
+}
+
+/* Custom Tooltip cho hàng Tổng cộng */
+.fast-tooltip-container {
+  position: relative;
+  cursor: help;
+}
+.fast-tooltip-container::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(5px);
+  background: #1e293b;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: all 0.2s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  z-index: 9999;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.fast-tooltip-container::before {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%) translateY(5px);
+  border: 6px solid transparent;
+  border-top-color: #1e293b;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: all 0.2s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  z-index: 9999;
+}
+.fast-tooltip-container:hover::after,
+.fast-tooltip-container:hover::before {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
 }
 </style>
 

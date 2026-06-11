@@ -145,7 +145,13 @@
             <!-- ═══ SLIDE 3: DEAL REG ═══ -->
             <Transition :name="slideDirection" mode="out-in">
             <div v-if="pipelineStep === 2" key="slide-2" class="slide-panel">
-              <button class="slide-back-btn" @click="goToStep(1)">← Quay lại Chi tiết mua hàng</button>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <button class="slide-back-btn" style="margin-bottom: 0;" @click="goToStep(1)">← Quay lại Chi tiết mua hàng</button>
+                <button @click="downloadWord" style="background: #2563eb; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                  Tải Word
+                </button>
+              </div>
               <div class="dealreg-grid" v-if="dealRegs.length">
                 <div v-for="(dr, di) in dealRegs" :key="'dr-'+di" class="dealreg-card">
                   <table class="dr-table">
@@ -300,6 +306,93 @@ function goToStep(step: number) {
   pipelineStep.value = step
 }
 const nextPoNumber = ref('Đang lấy số...')
+
+const downloadWord = () => {
+  const dealregGrid = document.querySelector('.dealreg-grid');
+  if (!dealregGrid) return;
+  
+  const clonedGrid = dealregGrid.cloneNode(true) as HTMLElement;
+  
+  const editables = clonedGrid.querySelectorAll('.pipeline-editable');
+  editables.forEach(el => {
+    const text = (el as HTMLElement).innerText || '';
+    const textNode = document.createTextNode(text);
+    el.parentNode?.replaceChild(textNode, el);
+  });
+  
+  const textareas = clonedGrid.querySelectorAll('textarea');
+  textareas.forEach(el => {
+    const text = (el as HTMLTextAreaElement).value || '';
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = text.replace(/\n/g, '<br>');
+    el.parentNode?.replaceChild(wrapper, el);
+  });
+
+  const content = clonedGrid.innerHTML;
+
+  const html = `
+    <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+    <head>
+      <meta charset="utf-8">
+      <title>Deal Registration</title>
+      <style>
+        @page WordSection1 {
+          size: 612.0pt 792.0pt;
+          margin: 40.5pt 72.0pt 72.0pt 72.0pt;
+        }
+        div.WordSection1 { page: WordSection1; }
+        
+        .dr-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 11pt;
+          font-family: 'Calibri', 'Segoe UI', sans-serif;
+          border: 1.5px solid #2F5496;
+        }
+        .dr-table td {
+          border: 1px solid #2F5496;
+          padding: 4px 8px;
+          vertical-align: top;
+          line-height: 1.4;
+          font-size: 10pt;
+        }
+        .dr-title-row td { background: #FBE4D5; color: #000; font-size: 11pt; font-weight: bold; }
+        .bom-header-row td { background: #FBE4D5; font-size: 10pt; color: #000; font-weight: bold; text-align: center; }
+        .bom-total-row td { font-weight: bold; }
+        .bom-qty { text-align: center; }
+        .bom-val { text-align: right; }
+        .dr-label { background: #EDEDED; color: #2E74B5; width: 20%; font-size: 10pt; }
+        .dr-label-cyan { background: #EDEDED; color: #00B0F0; width: 20%; font-size: 10pt; font-weight: bold; }
+        .dr-label-navy { background: #EDEDED; color: #2F5496; width: 20%; font-size: 10pt; font-weight: bold; }
+        .dr-label-blue-italic { background: #EDEDED; color: #2E74B5; font-style: italic; width: 20%; font-size: 10pt; font-weight: bold; }
+        .dr-label-italic { background: #EDEDED; color: #0070C0; font-style: italic; width: 20%; font-size: 10pt; font-weight: bold; }
+        .dr-label-red { background: #EDEDED; color: #FF0000; width: 20%; font-size: 10pt; font-weight: bold; }
+        .dr-label-black { background: #EDEDED; color: #000; width: 20%; font-size: 10pt; font-weight: bold; }
+        .dr-value { color: #000; width: 30%; font-size: 10pt; background: #fff; }
+        .dealreg-card { margin-bottom: 20px; page-break-inside: avoid; }
+      </style>
+    </head>
+    <body>
+      <div class="WordSection1">
+        ${content}
+      </div>
+    </body>
+    </html>
+  `;
+  
+  const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  
+  const po = nextPoNumber.value !== 'Đang lấy số...' ? nextPoNumber.value : new Date().getTime().toString();
+  link.download = `DealReg_${po}.doc`;
+  
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
 
 onMounted(async () => {
   if (props.loadedData && props.loadedData.po && props.loadedData.po.length > 0) {
