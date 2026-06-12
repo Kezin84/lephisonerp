@@ -166,8 +166,8 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import * as pdfjsLib from 'pdfjs-dist'
-import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url'
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs'
+import pdfWorkerUrl from 'pdfjs-dist/legacy/build/pdf.worker.mjs?url'
 import AsyncConfirmModal from './AsyncConfirmModal.vue'
 
 const asyncModal = ref({ show: false, type: 'confirm', title: '', msg: '', confirmText: 'Đồng ý', cancelText: 'Hủy' })
@@ -269,7 +269,17 @@ const handleFiles = async (filesList) => {
     scanProgress.value = 0.1 + (0.8 * (idx / files.length))
     
     try {
-      const arrayBuffer = await file.arrayBuffer()
+      let arrayBuffer;
+      if (typeof file.arrayBuffer === 'function') {
+        arrayBuffer = await file.arrayBuffer()
+      } else {
+        arrayBuffer = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(reader.error);
+          reader.readAsArrayBuffer(file);
+        });
+      }
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
       
       let fullText = ''
