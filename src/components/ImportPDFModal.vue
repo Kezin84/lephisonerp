@@ -264,23 +264,40 @@ const handleFiles = async (filesList) => {
   scanning.value = true
   scanProgress.value = 0.1
   
-  for (let idx = 0; idx < files.length; idx++) {
-    const file = files[idx]
-    scanProgress.value = 0.1 + (0.8 * (idx / files.length))
+  // Đọc TẤT CẢ file vào bộ nhớ NGAY LẬP TỨC (Dùng DataURL để an toàn trên iOS Safari)
+  let fileDataArray = [];
+  try {
+    const promises = files.map(file => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64 = reader.result.split(',')[1];
+          const binaryString = atob(base64);
+          const len = binaryString.length;
+          const bytes = new Uint8Array(len);
+          for (let i = 0; i < len; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+          }
+          resolve({ file, typedarray: bytes });
+        };
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+      });
+    });
+    fileDataArray = await Promise.all(promises);
+  } catch (err) {
+    console.error('Lỗi khi tải file vào bộ nhớ:', err);
+    errorMsg.value = `Lỗi hệ thống khi tải file: ${err.message || String(err)}`;
+    scanning.value = false;
+    return;
+  }
+
+  for (let idx = 0; idx < fileDataArray.length; idx++) {
+    const { file, typedarray } = fileDataArray[idx]
+    scanProgress.value = 0.1 + (0.8 * (idx / fileDataArray.length))
     
     try {
-      let arrayBuffer;
-      if (typeof file.arrayBuffer === 'function') {
-        arrayBuffer = await file.arrayBuffer()
-      } else {
-        arrayBuffer = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = () => reject(reader.error);
-          reader.readAsArrayBuffer(file);
-        });
-      }
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+      const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise
       
       let fullText = ''
       for (let i = 1; i <= pdf.numPages; i++) {
