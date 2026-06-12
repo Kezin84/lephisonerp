@@ -172,111 +172,134 @@
         Không tìm thấy dữ liệu.
       </div>
       <div v-else class="license-grid">
-        <div class="license-card" v-for="(item, index) in filteredData" :key="index" @click="openEditModal(item)" :style="{ animationDelay: (index % 20) * 0.04 + 's' }">
-          <!-- Glow accent top -->
-          <div class="card-glow" :class="getRemainingTimeBadgeClass(item.EXPIRATION_TIME)"></div>
-          
-          <div class="card-inner">
-            <!-- Left: Image Preview -->
-            <div class="card-preview">
-              <a v-if="item.LINK_FILE" :href="item.LINK_FILE" target="_blank" class="card-img-link" :title="item.NAME_FILE" @click.stop>
-                <img :src="getPreviewUrl(item.LINK_FILE)" alt="License" class="card-img" />
-              </a>
-              <div v-else class="card-img-placeholder">
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-              </div>
+        <template v-for="(groupItems, customer) in groupedData" :key="customer">
+          <!-- Folder Header -->
+          <div class="folder-header">
+            <div class="folder-tab">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+              <span>SỐ LƯỢNG: {{ groupItems.length }}</span>
             </div>
-
-            <!-- Right: Info -->
-            <div class="card-info">
-              <div class="card-info-top">
-                <span class="product-badge" style="display: flex; align-items: center; gap: 4px;">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                  <span v-html="highlightMatch(item.LICENSE_ID || 'Chưa có ID', searchQuery)"></span>
-                </span>
-              </div>
-              
-              <h3 class="customer-name" style="margin-bottom: 6px; line-height: 1.4;" v-html="highlightMatch(item.PRODUCT_NAME || 'Sản phẩm ẩn danh', searchQuery)"></h3>
-              
-              <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px;">
-                <div style="display: flex; flex-direction: column; gap: 4px;">
-                  <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-                    <span v-if="item.PRODUCT_CODE" class="meta-tag code">{{ item.PRODUCT_CODE }}</span>
-                    <span v-if="item.NHA_SAN_XUAT" class="meta-tag nsx-badge" :style="getNsxStyle(item.NHA_SAN_XUAT)">{{ item.NHA_SAN_XUAT }}</span>
-                  </div>
-                  <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;" v-if="item.LICENSE_TYPE">
-                    <span class="meta-tag" style="background: rgba(148, 163, 184, 0.15); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.3);">{{ item.LICENSE_TYPE }}</span>
-                  </div>
-                </div>
-                <p class="customer-subtitle" style="color: #94a3b8; font-size: 0.95rem; margin: 0; font-weight: 500; display: flex; align-items: center; gap: 6px;">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                  <span v-html="highlightMatch(item.CUSTOMER || 'Khách hàng ẩn danh', searchQuery)"></span>
-                </p>
-              </div>
-
-              <div class="info-grid-3">
-                <div class="info-item">
-                  <span class="info-label">NGÀY CẤP</span>
-                  <span class="info-value">{{ item.DATE_OF_LICENSE || '-' }}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">HẾT HẠN</span>
-                  <span class="info-value" :class="{ 'text-danger': getRemainingTimeBadgeClass(item.EXPIRATION_TIME) === 'badge-danger' }">{{ item.EXPIRATION_TIME || '-' }}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">CÒN LẠI</span>
-                  <span class="info-value" :class="getRemainingTimeBadgeClass(item.EXPIRATION_TIME) === 'badge-danger' ? 'text-danger' : getRemainingTimeBadgeClass(item.EXPIRATION_TIME) === 'badge-warning' ? 'text-warning' : 'text-success'">{{ getRemainingTimeText(item.EXPIRATION_TIME) || '-' }}</span>
+            <div class="folder-body">
+              <h3 class="folder-title" :title="customer">{{ customer }}</h3>
+            </div>
+          </div>
+          
+          <div class="license-card" v-for="(item, index) in groupItems" :key="item.ROW_INDEX || index" @click="openEditModal(item)" :style="{ animationDelay: (index % 20) * 0.04 + 's' }">
+            <!-- Glow accent top -->
+            <div class="card-glow" :class="getRemainingTimeBadgeClass(item.EXPIRATION_TIME)"></div>
+            
+            <div class="card-inner">
+              <!-- Left: Image Preview -->
+              <div class="card-preview">
+                <a v-if="item.LINK_FILE" :href="item.LINK_FILE" target="_blank" class="card-img-link" :title="item.NAME_FILE" @click.stop>
+                  <img :src="getPreviewUrl(item.LINK_FILE)" alt="License" class="card-img" />
+                </a>
+                <div v-else class="card-img-placeholder">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                 </div>
               </div>
-
-              <div class="info-grid-3b">
-                <!-- LOẠI và SỐ LƯỢNG đã được ẩn/di chuyển theo yêu cầu -->
-                <div class="info-item">
-                  <span class="info-label">HIỆU LỰC</span>
-                  <span class="info-value" :style="{ color: getHieuLucColor(item.SO_NGAY_HIEU_LUC) }">{{ getHieuLucText(item.SO_NGAY_HIEU_LUC) }}</span>
+  
+              <!-- Right: Info -->
+              <div class="card-info">
+                <div class="card-info-top">
+                  <span class="product-badge" style="display: flex; align-items: center; gap: 4px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <span v-html="highlightMatch(item.LICENSE_ID || 'Chưa có ID', searchQuery)"></span>
+                  </span>
                 </div>
-              </div>
-
-              <!-- LOCALIZATION đã được ẩn theo yêu cầu -->
-
-              <div class="card-gia-han" v-if="!(item.IS_GIA_HAN || item.is_gia_han)">
-                <button 
-                  class="btn-gia-han chua-gia-han" 
-                  @click.stop="setGiaHan(item, 'Không gia hạn')"
-                  :disabled="item._toggling"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-                  Không gia hạn
-                </button>
-                <button 
-                  class="btn-gia-han da-gia-han" 
-                  @click.stop="setGiaHan(item, 'Đã gia hạn')"
-                  :disabled="item._toggling"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                  Đã gia hạn
-                </button>
-              </div>
-              <div class="card-gia-han" v-else style="display: flex; align-items: center; justify-content: space-between;">
-                <span v-if="(item.IS_GIA_HAN || item.is_gia_han) === 'Đã gia hạn'" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 5px 10px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; display: inline-flex; align-items: center; gap: 5px;">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                  Đã gia hạn
-                </span>
-                <span v-else-if="(item.IS_GIA_HAN || item.is_gia_han) === 'Không gia hạn'" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 5px 10px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; display: inline-flex; align-items: center; gap: 5px;">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-                  Không gia hạn
-                </span>
-                <span v-else style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); padding: 5px 10px; border-radius: 6px; font-size: 0.72rem; font-weight: 600;">
-                  {{ item.IS_GIA_HAN || item.is_gia_han }}
-                </span>
                 
-                <button @click.stop="setGiaHan(item, '')" :disabled="item._toggling" style="background: transparent; border: none; color: #94a3b8; font-size: 0.72rem; text-decoration: underline; cursor: pointer; transition: color 0.2s;" onmouseover="this.style.color='#f8fafc'" onmouseout="this.style.color='#94a3b8'">
-                  Hoàn tác
-                </button>
+                <h3 class="customer-name" style="margin-bottom: 6px; line-height: 1.4;" v-html="highlightMatch(item.PRODUCT_NAME || 'Sản phẩm ẩn danh', searchQuery)"></h3>
+                
+                <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px;">
+                  <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                      <span v-if="item.PRODUCT_CODE" class="meta-tag code">{{ item.PRODUCT_CODE }}</span>
+                      <span v-if="item.NHA_SAN_XUAT" class="meta-tag nsx-badge" :style="getNsxStyle(item.NHA_SAN_XUAT)">{{ item.NHA_SAN_XUAT }}</span>
+                    </div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;" v-if="item.LICENSE_TYPE">
+                      <span class="meta-tag" style="background: rgba(148, 163, 184, 0.15); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.3);">{{ item.LICENSE_TYPE }}</span>
+                    </div>
+                  </div>
+                  <p class="customer-subtitle" style="color: #94a3b8; font-size: 0.95rem; margin: 0; font-weight: 500; display: flex; align-items: center; gap: 6px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <span v-html="highlightMatch(item.CUSTOMER || 'Khách hàng ẩn danh', searchQuery)"></span>
+                  </p>
+                </div>
+  
+                <div class="info-grid-3">
+                  <div class="info-item">
+                    <span class="info-label">NGÀY CẤP</span>
+                    <span class="info-value">{{ item.DATE_OF_LICENSE || '-' }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">HẾT HẠN</span>
+                    <span class="info-value" :class="{ 'text-danger': getRemainingTimeBadgeClass(item.EXPIRATION_TIME) === 'badge-danger' }">{{ item.EXPIRATION_TIME || '-' }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">CÒN LẠI</span>
+                    <span class="info-value" :class="getRemainingTimeBadgeClass(item.EXPIRATION_TIME) === 'badge-danger' ? 'text-danger' : getRemainingTimeBadgeClass(item.EXPIRATION_TIME) === 'badge-warning' ? 'text-warning' : 'text-success'">{{ getRemainingTimeText(item.EXPIRATION_TIME) || '-' }}</span>
+                  </div>
+                </div>
+  
+                <div class="info-grid-3b">
+                  <!-- LOẠI và SỐ LƯỢNG đã được ẩn/di chuyển theo yêu cầu -->
+                  <div class="info-item">
+                    <span class="info-label">HIỆU LỰC</span>
+                    <span class="info-value" :style="{ color: getHieuLucColor(item.SO_NGAY_HIEU_LUC) }">{{ getHieuLucText(item.SO_NGAY_HIEU_LUC) }}</span>
+                  </div>
+                </div>
+  
+                <!-- LOCALIZATION đã được ẩn theo yêu cầu -->
+  
+                <div class="card-gia-han" v-if="!(item.IS_GIA_HAN || item.is_gia_han)">
+                  <button 
+                    class="btn-gia-han chua-gia-han" 
+                    @click.stop="setGiaHan(item, 'Không gia hạn')"
+                    :disabled="item._toggling"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    Không gia hạn
+                  </button>
+                  <button 
+                    class="btn-gia-han da-gia-han" 
+                    @click.stop="setGiaHan(item, 'Đã gia hạn')"
+                    :disabled="item._toggling"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    Đã gia hạn
+                  </button>
+                </div>
+                <div class="card-gia-han" v-else style="display: flex; align-items: center; justify-content: space-between;">
+                  <span v-if="(item.IS_GIA_HAN || item.is_gia_han) === 'Đã gia hạn'" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 5px 10px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; display: inline-flex; align-items: center; gap: 5px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    Đã gia hạn
+                  </span>
+                  <span v-else-if="(item.IS_GIA_HAN || item.is_gia_han) === 'Không gia hạn'" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 5px 10px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; display: inline-flex; align-items: center; gap: 5px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    Không gia hạn
+                  </span>
+                  <span v-else style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); padding: 5px 10px; border-radius: 6px; font-size: 0.72rem; font-weight: 600;">
+                    {{ item.IS_GIA_HAN || item.is_gia_han }}
+                  </span>
+                  
+                  <button @click.stop="setGiaHan(item, '')" :disabled="item._toggling" style="background: transparent; border: none; color: #94a3b8; font-size: 0.72rem; text-decoration: underline; cursor: pointer; transition: color 0.2s;" onmouseover="this.style.color='#f8fafc'" onmouseout="this.style.color='#94a3b8'">
+                    Hoàn tác
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </template>
+        
+        <!-- NÚT XEM THÊM -->
+        <button v-if="totalGroupsCount > displayLimit" 
+                @click="displayLimit += 15" 
+                style="grid-column: 1 / -1; margin-top: 20px; padding: 14px; background: rgba(56, 189, 248, 0.1); border: 1px dashed rgba(56, 189, 248, 0.4); color: #38bdf8; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s;"
+                onmouseover="this.style.background='rgba(56, 189, 248, 0.2)';" 
+                onmouseout="this.style.background='rgba(56, 189, 248, 0.1)';">
+          <i class="lucide-chevron-down" style="font-size: 14px; margin-right: 4px;"></i> 
+          Xem thêm (còn {{ totalGroupsCount - displayLimit }} nhóm khách hàng)
+        </button>
       </div>
     </div>
     <ImportLicenseModal 
@@ -432,7 +455,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import ImportLicenseModal from './ImportLicenseModal.vue'
 import ImportPDFModal from './ImportPDFModal.vue'
 import AsyncConfirmModal from './AsyncConfirmModal.vue'
@@ -1124,6 +1147,42 @@ const fetchData = async () => {
   }
 }
 
+const totalGroupsCount = computed(() => {
+  const categories = new Set(filteredData.value.map(item => item.CUSTOMER || 'KHÁCH HÀNG ẨN DANH'))
+  return categories.size
+})
+
+const displayLimit = ref(15)
+
+watch(searchQuery, () => {
+  displayLimit.value = 15
+})
+
+const groupedData = computed(() => {
+  const groups = {}
+  filteredData.value.forEach(item => {
+    const customer = item.CUSTOMER || 'KHÁCH HÀNG ẨN DANH'
+    if (!groups[customer]) {
+      groups[customer] = []
+    }
+    groups[customer].push(item)
+  })
+  
+  const sortedKeys = Object.keys(groups).sort()
+  const idx = sortedKeys.indexOf('KHÁCH HÀNG ẨN DANH')
+  if (idx > -1) {
+    sortedKeys.splice(idx, 1)
+    sortedKeys.push('KHÁCH HÀNG ẨN DANH')
+  }
+  const limitedKeys = sortedKeys.slice(0, displayLimit.value)
+  
+  const sortedGroups = {}
+  limitedKeys.forEach(k => {
+    sortedGroups[k] = groups[k]
+  })
+  return sortedGroups
+})
+
 onMounted(() => {
   fetchData();
 })
@@ -1338,7 +1397,7 @@ onMounted(() => {
 /* Card Grid Layout */
 .license-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
   gap: 20px;
 }
 
@@ -1988,6 +2047,51 @@ onMounted(() => {
 @keyframes slideRight {
   from { transform: translateX(-100%); }
   to { transform: translateX(0); }
+}
+/* ═══ FOLDER TAB CATEGORY GROUP ═══ */
+.folder-header {
+  grid-column: 1 / -1;
+  margin-top: 32px;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+}
+.folder-tab {
+  background: linear-gradient(135deg, #059669, #10b981); /* Green background */
+  border: 1px solid rgba(16, 185, 129, 0.5); /* Matching green border */
+  border-bottom: none;
+  border-radius: 10px 10px 0 0;
+  padding: 8px 24px;
+  width: max-content;
+  color: #ffffff; /* White text */
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+}
+.folder-body {
+  background: linear-gradient(135deg, #059669, #10b981); /* Match tab green */
+  border: 1px solid rgba(16, 185, 129, 0.5); /* Match tab border */
+  border-radius: 0 12px 12px 12px;
+  padding: 14px 24px;
+  position: relative;
+  z-index: 2;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2);
+  margin-top: -1px; /* Overlap to hide seam */
+}
+.folder-title {
+  color: #f8fafc;
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.5;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
 }
 </style>
 

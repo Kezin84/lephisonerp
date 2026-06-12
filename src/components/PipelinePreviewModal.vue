@@ -230,7 +230,7 @@
                       <td><strong>Qty*</strong></td>
                       <td><strong>Estimated Value (USD)</strong></td>
                     </tr>
-                    <tr v-for="(item, ii) in dr.items" :key="'bom-'+ii">
+                    <tr v-for="(item, ii) in dr.items" :key="'bom-'+ii" class="bom-item-row">
                       <td colspan="2">{{ item.name }}</td>
                       <td class="bom-qty">{{ item.qty }}</td>
                       <td class="bom-val">{{ formatNum(item.value) }}</td>
@@ -1862,6 +1862,12 @@ const dealRegs = computed(() => {
   font-size: 10pt;
   color: #000;
   font-weight: 400;
+}
+
+/* BOM items */
+.bom-item-row td {
+  color: #000;
+  font-weight: bold;
 }
 
 .bom-qty {

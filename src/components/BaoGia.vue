@@ -12,6 +12,7 @@ import FormattedInput from './FormattedInput.vue'
 import PipelinePreviewModal from './PipelinePreviewModal.vue'
 import html2canvas from 'html2canvas'
 import * as XLSX from 'xlsx-js-style'
+import Tesseract from 'tesseract.js'
 const route = useRoute()
 const router = useRouter()
 
@@ -244,6 +245,126 @@ const historyLogs = ref<Record<string, { time: string, oldVal: number, newVal: n
 })
 const showHistoryModal = ref(false)
 const showCustomerDetailModal = ref(false)
+
+// --- IMPORT ẢNH THUẾ LOGIC ---
+const showUploadTaxModal = ref(false)
+const showTaxModal = ref(false)
+const showTaxImageFullScreen = ref(false)
+const taxImageInput = ref<HTMLInputElement | null>(null)
+const taxInfo = ref({ mst: '', tenCongTy: '', tenCongTyEn: '', diaChi: '' })
+const taxPreviewUrl = ref('')
+
+function onTaxDragOver(e: DragEvent) {
+  e.preventDefault()
+}
+
+function onTaxDrop(e: DragEvent) {
+  e.preventDefault()
+  if (e.dataTransfer?.files && e.dataTransfer.files[0]) {
+    processTaxFile(e.dataTransfer.files[0])
+  }
+}
+
+function onTaxPaste(e: ClipboardEvent) {
+  if (!showUploadTaxModal.value) return
+  const items = e.clipboardData?.items
+  if (!items) return
+  for (let i = 0; i < items.length; i++) {
+    if (items[i].type.indexOf('image') !== -1) {
+      const blob = items[i].getAsFile()
+      if (blob) processTaxFile(blob)
+    }
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('paste', onTaxPaste)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('paste', onTaxPaste)
+})
+
+async function onTaxImageChange(e: Event) {
+  const target = e.target as HTMLInputElement
+  if (!target.files || !target.files[0]) return
+  const file = target.files[0]
+  await processTaxFile(file)
+  target.value = ''
+}
+
+async function processTaxFile(file: File) {
+  showUploadTaxModal.value = false
+  if (taxPreviewUrl.value) URL.revokeObjectURL(taxPreviewUrl.value)
+  taxPreviewUrl.value = URL.createObjectURL(file)
+  showAsyncLoading('Đang quét ảnh (OCR)...')
+  try {
+    const { data: { text } } = await Tesseract.recognize(file, 'vie')
+    
+    // 1. MST
+    const mstMatch = text.match(/Mã số thu[êế]\s*([\d\-]+)/i)
+    const mst = mstMatch ? mstMatch[1] : ''
+    
+    // 2. Address
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l)
+    let address = ''
+    for (const line of lines) {
+      if (line.match(/Đ[iị]a chỉ/i) && !line.match(/Thu[ếê]/i)) {
+        address = line.replace(/.*?Đ[iị]a chỉ\s*/i, '').trim()
+        break
+      }
+    }
+    
+    // 3. Company name
+    let companyName = ''
+    for (const line of lines) {
+      if (line.toUpperCase() === line && line.length > 10 && !line.match(/Mã số/i)) {
+        companyName = line.replace(/^['"\-\*\s]+/, '').trim()
+        break
+      }
+    }
+    
+    // Google Translate for Company Name
+    let companyNameEn = ''
+    if (companyName) {
+      try {
+        const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=vi&tl=en&dt=t&q=${encodeURIComponent(companyName)}`)
+        const json = await res.json()
+        if (json && json[0] && json[0][0] && json[0][0][0]) {
+          companyNameEn = json[0][0][0]
+        }
+      } catch (err) {
+        console.error('Lỗi dịch Google:', err)
+      }
+    }
+    
+    taxInfo.value = { mst, tenCongTy: companyName, tenCongTyEn: companyNameEn, diaChi: address }
+    asyncResultModal.value.show = false
+    showTaxModal.value = true
+  } catch (err: any) {
+    console.error(err)
+    showAsyncError('Lỗi', 'Lỗi khi quét ảnh: ' + String(err.message || err))
+  }
+}
+
+function closeTaxModal() {
+  showTaxModal.value = false
+  if (taxPreviewUrl.value) {
+    URL.revokeObjectURL(taxPreviewUrl.value)
+    taxPreviewUrl.value = ''
+  }
+}
+
+function confirmTaxInfo() {
+  khach.value.MST = taxInfo.value.mst
+  khach.value.Ten_cong_ty = taxInfo.value.tenCongTy
+  khach.value.COMPANY = taxInfo.value.tenCongTyEn
+  khach.value.Dia_chi_cong_ty = taxInfo.value.diaChi
+  closeTaxModal()
+  showAsyncSuccess('Thành công', 'Đã cập nhật thông tin khách hàng từ ảnh thuế.')
+}
+// -----------------------------
+
 const historyTitle = ref('')
 const currentHistory = ref<{ time: string, oldVal: number, newVal: number }[]>([])
 
@@ -6596,6 +6717,7 @@ async function confirmImport(saveToDb: boolean) {
               <span style="display: flex; align-items: center; gap: 8px;">
                 Khách hàng
                 <span v-if="khach.MST || khach.Ten_cong_ty || khach.Ten_khach_hang || khach.Dia_chi_cong_ty" style="cursor: pointer; background: #ef4444; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 1px 3px rgba(239,68,68,0.3); line-height: 1.2;" @click="resetCustomer" onmouseover="this.style.background='#dc2626'; this.style.transform='translateY(-1px)'" onmouseout="this.style.background='#ef4444'; this.style.transform='translateY(0)'">Reset</span>
+                <span style="cursor: pointer; background: #3b82f6; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 1px 3px rgba(59,130,246,0.3); line-height: 1.2; margin-left: 4px;" @click="showUploadTaxModal = true" onmouseover="this.style.background='#2563eb'; this.style.transform='translateY(-1px)'" onmouseout="this.style.background='#3b82f6'; this.style.transform='translateY(0)'">Import Ảnh Thuế</span>
               </span>
               <span style="margin-left: auto; cursor: pointer; color: #4ade80; font-size: 13px; font-weight: 800; text-decoration: underline; text-underline-offset: 3px; transition: all 0.2s; text-shadow: 0 0 6px rgba(74, 222, 128, 0.4);" @click="showCustomerDetailModal = true" onmouseover="this.style.color='#bbf7d0'; this.style.textShadow='0 0 10px rgba(187, 247, 208, 0.8)'" onmouseout="this.style.color='#4ade80'; this.style.textShadow='0 0 6px rgba(74, 222, 128, 0.4)'">Xem chi tiết ›</span>
             </div>
@@ -6794,6 +6916,75 @@ async function confirmImport(saveToDb: boolean) {
           </div>
         </div>
       </section>
+    </div>
+
+    <!-- ================== MODAL: TẢI ẢNH THUẾ LÊN ================== -->
+    <div v-if="showUploadTaxModal" class="modal vip-modal-overlay" @click.self="showUploadTaxModal = false" style="z-index: 10001;" @dragover="onTaxDragOver" @drop="onTaxDrop">
+      <div class="modal-content vip-modal" style="max-width: 600px; padding: 0; background: #ffffff; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+        <div class="modal-header" style="background: #f8fafc; padding: 16px 24px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; border-top-left-radius: 8px; border-top-right-radius: 8px;">
+          <div style="color: #1e293b; font-weight: 700; font-size: 16px;">Quét Dữ Liệu Từ Ảnh Thuế (OCR)</div>
+          <button class="x" @click="showUploadTaxModal = false" style="color: #64748b; background: transparent; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; font-size: 18px;">✕</button>
+        </div>
+        <div class="modal-body" style="padding: 24px;">
+          <p style="color: #64748b; font-size: 13px; margin-bottom: 16px;">Tải lên hình ảnh thông tin thuế, hệ thống sẽ tự động quét thông tin Mã số thuế, Tên công ty và Địa chỉ.</p>
+          <div style="border: 2px dashed #cbd5e1; border-radius: 8px; padding: 40px 20px; text-align: center; cursor: pointer; background: #f8fafc; transition: all 0.2s;" @click="taxImageInput?.click()" onmouseover="this.style.borderColor='#3b82f6'; this.style.background='#eff6ff'" onmouseout="this.style.borderColor='#cbd5e1'; this.style.background='#f8fafc'">
+            <i class="lucide-image" style="font-size: 48px; color: #94a3b8; margin-bottom: 12px; display: inline-block;"></i>
+            <div style="color: #64748b; font-size: 14px;">Kéo thả ảnh hoặc paste (Ctrl+V) vào đây, hoặc <span style="color: #3b82f6; font-weight: 700;">Nhấn để chọn ảnh</span></div>
+            <input type="file" ref="taxImageInput" accept="image/*" style="display: none" @change="onTaxImageChange" />
+          </div>
+        </div>
+        <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px; background: #ffffff; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;">
+          <button @click="showUploadTaxModal = false" style="padding: 8px 16px; border-radius: 6px; font-weight: 600; font-size: 13px; color: #475569; background: #ffffff; border: 1px solid #cbd5e1; cursor: pointer; transition: all 0.2s;">Hủy</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================== MODAL: IMPORT ẢNH THUẾ ================== -->
+    <div v-if="showTaxModal" class="modal vip-modal-overlay" @click.self="closeTaxModal" style="z-index: 10002;">
+      <div class="modal-content vip-modal" style="max-width: 1100px; padding: 0; background: #0b1118; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid #1e293b;">
+        <div class="modal-header" style="background: linear-gradient(135deg, #1e293b, #0f172a); padding: 16px 24px; border-bottom: 1px solid #334155; display: flex; align-items: center; justify-content: space-between; border-top-left-radius: 12px; border-top-right-radius: 12px;">
+          <div style="color: #fff; text-transform: uppercase; font-weight: 900; font-size: 16px; letter-spacing: 0.5px;"><i class="lucide-scan" style="margin-right: 8px;"></i>XÁC NHẬN THÔNG TIN THUẾ</div>
+          <button class="x" @click="closeTaxModal" style="color: #fff; background: rgba(0,0,0,0.15); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;">✕</button>
+        </div>
+        <div class="modal-body" style="padding: 24px; max-height: calc(100vh - 120px); overflow-y: auto; display: flex; gap: 24px;">
+          <div style="flex: 0 0 420px;">
+            <div style="margin-bottom: 20px;">
+              <label style="font-size: 12px; text-transform: uppercase; color: #94a3b8; font-weight: 700; margin-bottom: 8px; display: block;">Mã số thuế</label>
+              <input v-model="taxInfo.mst" class="cell-input" style="width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px 16px; color: #fff; font-size: 15px;" />
+            </div>
+            <div style="margin-bottom: 20px;">
+              <label style="font-size: 12px; text-transform: uppercase; color: #94a3b8; font-weight: 700; margin-bottom: 8px; display: block;">Tên công ty (Tiếng Việt)</label>
+              <textarea v-model="taxInfo.tenCongTy" class="cell-input" style="width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px 16px; color: #fff; font-size: 15px; min-height: 80px;"></textarea>
+            </div>
+            <div style="margin-bottom: 20px;">
+              <label style="font-size: 12px; text-transform: uppercase; color: #38bdf8; font-weight: 700; margin-bottom: 8px; display: block;">Tên công ty (Tiếng Anh - Tự động dịch)</label>
+              <textarea v-model="taxInfo.tenCongTyEn" class="cell-input" style="width: 100%; background: rgba(14, 165, 233, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 12px 16px; color: #38bdf8; font-size: 15px; min-height: 80px;"></textarea>
+            </div>
+            <div style="margin-bottom: 20px;">
+              <label style="font-size: 12px; text-transform: uppercase; color: #94a3b8; font-weight: 700; margin-bottom: 8px; display: block;">Địa chỉ công ty</label>
+              <textarea v-model="taxInfo.diaChi" class="cell-input" style="width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px 16px; color: #fff; font-size: 15px; min-height: 80px;"></textarea>
+            </div>
+          </div>
+          <div style="flex: 1; border-left: 1px solid #334155; padding-left: 24px; display: flex; flex-direction: column;">
+            <label style="font-size: 12px; text-transform: uppercase; color: #94a3b8; font-weight: 700; margin-bottom: 8px; display: block;">Ảnh Thuế Đã Tải Lên (Nhấn để phóng to)</label>
+            <div style="flex: 1; border: 1px dashed #475569; border-radius: 8px; background: #0f172a; display: flex; align-items: center; justify-content: center; overflow: hidden; min-height: 300px; cursor: pointer;" @click="showTaxImageFullScreen = true" onmouseover="this.style.borderColor='#3b82f6'" onmouseout="this.style.borderColor='#475569'">
+              <img v-if="taxPreviewUrl" :src="taxPreviewUrl" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid #334155; display: flex; justify-content: flex-end; gap: 12px; background: #1e293b; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
+          <button @click="closeTaxModal" style="padding: 12px 24px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #fff; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); cursor: pointer; transition: all 0.25s;">Hủy</button>
+          <button @click="confirmTaxInfo" style="padding: 12px 24px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #fff; background: #3b82f6; border: none; cursor: pointer; transition: all 0.25s;">Đồng ý & Cập nhật</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================== MODAL: XEM ẢNH THUẾ TO ================== -->
+    <div v-if="showTaxImageFullScreen" class="modal vip-modal-overlay" @click.self="showTaxImageFullScreen = false" style="z-index: 10003; background: rgba(0,0,0,0.85);">
+      <div style="position: relative; max-width: 90vw; max-height: 90vh; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+        <button @click="showTaxImageFullScreen = false" style="position: absolute; top: -40px; right: 0; background: transparent; color: #fff; font-size: 24px; border: none; cursor: pointer;">✕</button>
+        <img v-if="taxPreviewUrl" :src="taxPreviewUrl" style="max-width: 100%; max-height: 90vh; object-fit: contain; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.8);" />
+      </div>
     </div>
 
     <!-- ================== MODAL: THÔNG TIN KHÁCH HÀNG ================== -->
