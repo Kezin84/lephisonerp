@@ -166,8 +166,8 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs'
-import pdfWorkerUrl from 'pdfjs-dist/legacy/build/pdf.worker.mjs?url'
+import * as pdfjsLib from 'pdfjs-dist/build/pdf.js'
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.js?url'
 import AsyncConfirmModal from './AsyncConfirmModal.vue'
 
 const asyncModal = ref({ show: false, type: 'confirm', title: '', msg: '', confirmText: 'Đồng ý', cancelText: 'Hủy' })
