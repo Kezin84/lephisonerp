@@ -48,85 +48,52 @@
                 </div>
                 
                 <form class="license-form">
-                  <div class="modal-section">
-                    <h4 class="section-title">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                      Thông Tin Chung
-                    </h4>
-                    <div class="form-row">
-                      <div class="form-group">
-                        <label>License ID</label>
-                        <input type="text" v-model="formData.LICENSE_ID" class="form-control" />
-                      </div>
-                      <div class="form-group">
-                        <label>Product Code</label>
-                        <input type="text" v-model="formData.PRODUCT_CODE" class="form-control" />
-                      </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>License ID</label>
+                      <input type="text" v-model="formData.LICENSE_ID" class="form-control" />
                     </div>
-                    
-                    <div class="form-group" style="margin-bottom: 16px;">
-                      <label>Khách Hàng</label>
-                      <textarea v-model="formData.CUSTOMER" class="form-control" rows="2"></textarea>
-                    </div>
-
-                    <div class="form-group" style="margin-bottom: 16px;">
+                    <div class="form-group">
                       <label>Sản Phẩm</label>
-                      <textarea v-model="formData.PRODUCT_NAME" class="form-control" rows="2"></textarea>
+                      <input type="text" v-model="formData.PRODUCT_NAME" class="form-control" />
                     </div>
-
-                    <div class="form-row">
-                      <div class="form-group">
-                        <label>Volume (Số lượng)</label>
-                        <input type="text" v-model="formData.LICENSE_VOLUME" class="form-control" />
-                      </div>
-                      <div class="form-group">
-                        <label>Loại License</label>
-                        <input type="text" v-model="formData.LICENSE_TYPE" class="form-control" />
-                      </div>
+                  </div>
+                  
+                  <div class="form-group">
+                    <label>Khách Hàng</label>
+                    <textarea v-model="formData.CUSTOMER" class="form-control" rows="2"></textarea>
+                  </div>
+                  
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>Ngày Cấp (Date)</label>
+                      <input type="text" v-model="formData.DATE_OF_LICENSE" class="form-control" />
                     </div>
-
-                    <div class="form-row">
-                      <div class="form-group">
-                        <label>Localization</label>
-                        <input type="text" v-model="formData.LOCALIZATION" class="form-control" />
-                      </div>
-                      <div class="form-group">
-                        <label>Nhà Sản Xuất</label>
-                        <input type="text" v-model="formData.NHA_SAN_XUAT" class="form-control" />
-                      </div>
+                    <div class="form-group">
+                      <label>Hết Hạn (Expiration)</label>
+                      <input type="text" v-model="formData.EXPIRATION_TIME" class="form-control" />
                     </div>
                   </div>
 
-                  <div class="modal-section" style="margin-bottom: 0;">
-                    <h4 class="section-title">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                      Thời Gian & Hiệu Lực
-                    </h4>
-                    <div class="form-row">
-                      <div class="form-group">
-                        <label>Ngày Cấp (Date)</label>
-                        <input type="text" v-model="formData.DATE_OF_LICENSE" class="form-control" />
-                      </div>
-                      <div class="form-group">
-                        <label>Hết Hạn (Expiration)</label>
-                        <input type="text" v-model="formData.EXPIRATION_TIME" class="form-control" />
-                      </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>Volume (Số lượng)</label>
+                      <input type="text" v-model="formData.LICENSE_VOLUME" class="form-control" />
                     </div>
+                    <div class="form-group">
+                      <label>Loại License</label>
+                      <input type="text" v-model="formData.LICENSE_TYPE" class="form-control" />
+                    </div>
+                  </div>
 
-                    <div class="form-row">
-                      <div class="form-group">
-                        <label>Trạng thái gia hạn</label>
-                        <select v-model="formData.IS_GIA_HAN" class="form-control">
-                          <option value="">Chưa có / Trống</option>
-                          <option value="Không gia hạn">Không gia hạn</option>
-                          <option value="Đã gia hạn">Đã gia hạn</option>
-                        </select>
-                      </div>
-                      <div class="form-group">
-                        <label>Số ngày hiệu lực (sau hết hạn)</label>
-                        <input type="number" v-model="formData._editGraceDays" class="form-control" placeholder="VD: 10" />
-                        <small v-if="formData._editGraceDays && formData.EXPIRATION_TIME" style="color: #f59e0b; margin-top: 4px;">→ Hiệu lực đến: {{ calcGraceDate(formData.EXPIRATION_TIME, formData._editGraceDays) }}</small>
-                      </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>Product Code</label>
+                      <input type="text" v-model="formData.PRODUCT_CODE" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                      <label>Localization</label>
+                      <input type="text" v-model="formData.LOCALIZATION" class="form-control" />
                     </div>
                   </div>
                 </form>
@@ -149,18 +116,6 @@
         </button>
       </div>
     </div>
-    
-    <AsyncConfirmModal
-      :show="asyncModal.show"
-      :type="asyncModal.type"
-      :title="asyncModal.title"
-      :msg="asyncModal.msg"
-      :confirmText="asyncModal.confirmText"
-      :cancelText="asyncModal.cancelText"
-      @close="asyncModal.show = false"
-      @confirm="handleAsyncConfirm"
-      @cancel="handleAsyncCancel"
-    />
   </div>
 </template>
 
@@ -168,23 +123,6 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import * as pdfjsLib from 'pdfjs-dist/build/pdf.js'
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.js?url'
-import AsyncConfirmModal from './AsyncConfirmModal.vue'
-
-const asyncModal = ref({ show: false, type: 'confirm', title: '', msg: '', confirmText: 'Đồng ý', cancelText: 'Hủy' })
-let confirmResolve = null
-const confirmAction = (title, msg, confirmText) => {
-  return new Promise((resolve) => {
-    asyncModal.value = { show: true, type: 'confirm', title, msg, confirmText, cancelText: 'Hủy' }
-    confirmResolve = resolve
-  })
-}
-const handleAsyncConfirm = () => {
-  if (confirmResolve) confirmResolve(true)
-}
-const handleAsyncCancel = () => {
-  if (confirmResolve) confirmResolve(false)
-  asyncModal.value.show = false
-}
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
 
@@ -213,10 +151,6 @@ const getEmptyForm = () => ({
   PRODUCT_CODE: '',
   NAME_FILE: '',
   LINK_FILE: '',
-  SO_NGAY_HIEU_LUC: '',
-  NHA_SAN_XUAT: '',
-  IS_GIA_HAN: '',
-  _editGraceDays: 30,
   _file: null // Để chứa file object tạm thời
 })
 
@@ -264,40 +198,13 @@ const handleFiles = async (filesList) => {
   scanning.value = true
   scanProgress.value = 0.1
   
-  // Đọc TẤT CẢ file vào bộ nhớ NGAY LẬP TỨC (Dùng DataURL để an toàn trên iOS Safari)
-  let fileDataArray = [];
-  try {
-    const promises = files.map(file => {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const base64 = reader.result.split(',')[1];
-          const binaryString = atob(base64);
-          const len = binaryString.length;
-          const bytes = new Uint8Array(len);
-          for (let i = 0; i < len; i++) {
-              bytes[i] = binaryString.charCodeAt(i);
-          }
-          resolve({ file, typedarray: bytes });
-        };
-        reader.onerror = () => reject(reader.error);
-        reader.readAsDataURL(file);
-      });
-    });
-    fileDataArray = await Promise.all(promises);
-  } catch (err) {
-    console.error('Lỗi khi tải file vào bộ nhớ:', err);
-    errorMsg.value = `Lỗi hệ thống khi tải file: ${err.message || String(err)}`;
-    scanning.value = false;
-    return;
-  }
-
-  for (let idx = 0; idx < fileDataArray.length; idx++) {
-    const { file, typedarray } = fileDataArray[idx]
-    scanProgress.value = 0.1 + (0.8 * (idx / fileDataArray.length))
+  for (let idx = 0; idx < files.length; idx++) {
+    const file = files[idx]
+    scanProgress.value = 0.1 + (0.8 * (idx / files.length))
     
     try {
-      const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise
+      const arrayBuffer = await file.arrayBuffer()
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
       
       let fullText = ''
       for (let i = 1; i <= pdf.numPages; i++) {
@@ -360,18 +267,6 @@ const formatDateString = (dateStr) => {
   return dateStr;
 }
 
-const calcGraceDate = (dateStr, days) => {
-  if (!dateStr) return ''
-  const parts = dateStr.split('/')
-  if (parts.length !== 3) return ''
-  const d = new Date(parts[2], parts[1] - 1, parts[0])
-  if (isNaN(d.getTime())) return ''
-  d.setDate(d.getDate() + parseInt(days))
-  const dd = String(d.getDate()).padStart(2, '0')
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  return `${dd}/${mm}/${d.getFullYear()}`
-}
-
 const pushForms = (tempForms, file) => {
   if (tempForms.length === 0) {
     tempForms.push(getEmptyForm())
@@ -380,9 +275,6 @@ const pushForms = (tempForms, file) => {
     f._file = file
     f.NAME_FILE = file ? file.name : ''
     f.LINK_FILE = '' // Để trống, upload khi bấm lưu
-    if (f.EXPIRATION_TIME && !f.SO_NGAY_HIEU_LUC) {
-      f.SO_NGAY_HIEU_LUC = calcGraceDate(f.EXPIRATION_TIME, 30)
-    }
     formDatas.value.push(f)
   })
 }
@@ -394,7 +286,6 @@ const parsePdfText = (text, file) => {
   // Kaspersky Format
   if (lowerText.includes('kaspersky') && lowerText.includes('license id')) {
     const formData = getEmptyForm()
-    formData.NHA_SAN_XUAT = 'Kaspersky'
     const customerMatch = text.match(/Customer:\s*(.*?)(?=\s+Product Name)/is);
     if (customerMatch) formData.CUSTOMER = customerMatch[1].replace(/[\n\r]+/g, ' ').trim();
     
@@ -442,7 +333,6 @@ const parsePdfText = (text, file) => {
     while ((match = productRegex.exec(text)) !== null) {
       found = true;
       const formData = getEmptyForm()
-      formData.NHA_SAN_XUAT = 'Sophos'
       formData.CUSTOMER = customerStr
       formData.LICENSE_TYPE = typeStr
       formData.PRODUCT_NAME = match[1].replace(/[\n\r]+/g, ' ').trim()
@@ -457,7 +347,6 @@ const parsePdfText = (text, file) => {
     if (!found) {
         // Fallback for single product if regex fails
         const formData = getEmptyForm()
-        formData.NHA_SAN_XUAT = 'Sophos'
         formData.CUSTOMER = customerStr
         formData.LICENSE_TYPE = typeStr
         const prodMatch = text.match(/Term \(Months\)\s+(.*?)\s+\(SKU:/i);
@@ -479,7 +368,6 @@ const parsePdfText = (text, file) => {
   // Acronis Format
   else if (lowerText.includes('acronis')) {
     const formData = getEmptyForm()
-    formData.NHA_SAN_XUAT = 'Acronis'
     const customerMatch = text.match(/Licensee\s*(.*?)(?=No\.|VIETNAM)/is);
     if (customerMatch) formData.CUSTOMER = customerMatch[1].replace(/[\n\r]+/g, ' ').trim();
     
@@ -514,13 +402,8 @@ const parsePdfText = (text, file) => {
 }
 
 const saveData = async () => {
-  const userConfirmed = await confirmAction('Lưu dữ liệu', 'Bạn có chắc chắn muốn lưu các dữ liệu PDF này?', 'Lưu');
-  if (!userConfirmed) return;
-
   saving.value = true
   errorMsg.value = ''
-  asyncModal.value = { show: true, type: 'loading', title: 'Đang xử lý...', msg: 'Đang lưu dữ liệu lên server...' }
-
   try {
     // 1. Group unique files to upload them efficiently
     const uniqueFilesMap = new Map() // Tên file -> đối tượng File và URL
@@ -543,7 +426,6 @@ const saveData = async () => {
     // Nếu có lỗi upload, ngưng quá trình lưu
     if (errorMsg.value) {
       saving.value = false
-      asyncModal.value = { show: true, type: 'error', title: 'Lỗi', msg: errorMsg.value }
       return
     }
 
@@ -552,11 +434,6 @@ const saveData = async () => {
       if (formData._file) {
         formData.LINK_FILE = uniqueFilesMap.get(formData._file.name).url
       }
-      if (formData._editGraceDays && formData.EXPIRATION_TIME) {
-        formData.SO_NGAY_HIEU_LUC = calcGraceDate(formData.EXPIRATION_TIME, formData._editGraceDays) || formData.SO_NGAY_HIEU_LUC
-      } else if (formData.EXPIRATION_TIME && !formData.SO_NGAY_HIEU_LUC) {
-        formData.SO_NGAY_HIEU_LUC = calcGraceDate(formData.EXPIRATION_TIME, 30)
-      }
       
       const payload = {
         sheet: 'license_old_data',
@@ -564,7 +441,6 @@ const saveData = async () => {
         ...formData
       }
       delete payload._file // Xóa _file gốc khỏi payload gửi đi
-      delete payload._editGraceDays // Xóa thuộc tính tạm thời
       
       return fetch(API_URL, {
         method: 'POST',
@@ -576,20 +452,14 @@ const saveData = async () => {
     const hasError = results.some(r => r.status !== 'success')
     
     if (!hasError) {
-      asyncModal.value = { show: true, type: 'success', title: 'Thành công!', msg: 'Đã lưu tất cả dữ liệu' }
-      setTimeout(() => {
-        asyncModal.value.show = false
-        emit('import-success')
-        emit('close')
-      }, 1500)
+      emit('import-success')
+      emit('close')
     } else {
       errorMsg.value = 'Có lỗi xảy ra khi lưu một số mặt hàng.'
-      asyncModal.value = { show: true, type: 'error', title: 'Lỗi', msg: errorMsg.value }
     }
   } catch (err) {
     console.error('Save error:', err)
     errorMsg.value = 'Lỗi kết nối khi lưu dữ liệu. Vui lòng thử lại.'
-    asyncModal.value = { show: true, type: 'error', title: 'Lỗi', msg: errorMsg.value }
   } finally {
     saving.value = false
   }
@@ -832,36 +702,15 @@ const saveData = async () => {
   color: #0f172a;
 }
 
-.modal-section {
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 20px;
-  margin-bottom: 20px;
-}
-.section-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 1.05rem;
-  color: #3b82f6;
-  margin-top: 0;
-  margin-bottom: 16px;
-  padding-bottom: 10px;
-  border-bottom: 1px dashed #cbd5e1;
-}
-
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
   margin-bottom: 16px;
 }
-.form-row:last-child {
-  margin-bottom: 0;
-}
 
 .form-group {
+  margin-bottom: 16px;
   display: flex;
   flex-direction: column;
 }
@@ -969,36 +818,5 @@ const saveData = async () => {
 
 .forms-scroll-container::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
-}
-
-@media (max-width: 768px) {
-  .form-row {
-    grid-template-columns: 1fr;
-  }
-  .forms-scroll-container {
-    flex-direction: column;
-    overflow-x: hidden;
-    overflow-y: visible;
-  }
-  .form-card {
-    min-width: 0;
-    width: 100%;
-    box-sizing: border-box;
-  }
-  
-  .modal-container {
-    width: 100vw !important;
-    height: 100vh !important;
-    max-height: 100vh !important;
-    max-width: 100vw !important;
-    border-radius: 0 !important;
-    margin: 0 !important;
-    animation: slideRight 0.3s ease-out forwards;
-  }
-}
-
-@keyframes slideRight {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(0); }
 }
 </style>
