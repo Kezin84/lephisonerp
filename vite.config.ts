@@ -2,17 +2,16 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { nodePolyfills } from 'vite-plugin-node-polyfills'
 
+import { cloudflare } from "@cloudflare/vite-plugin";
+
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [
-    vue(),
-    nodePolyfills({
-      include: ['stream', 'buffer', 'util'],
-      globals: {
-        Buffer: true,
-        global: true,
-        process: true
-      }
-    })
-  ],
+  plugins: [vue(), nodePolyfills({
+    include: ['stream', 'buffer', 'util'],
+    globals: {
+      Buffer: true,
+      global: true,
+      process: true
+    }
+  }), cloudflare()],
 })
