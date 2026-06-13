@@ -174,6 +174,12 @@
           </div>
           THÊM
         </button>
+        <button v-if="isMobile" class="mobile-action-btn pending" @click="isPendingModalOpen = true">
+          <div class="icon-white-bg">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3H6a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h4M16 17l5-5-5-5M19.8 12H9"/></svg>
+          </div>
+          NHẮC LẠI
+        </button>
         <button class="mobile-action-btn empty-days" @click="showEmptyDays">
           <div class="icon-white-bg">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
@@ -237,6 +243,10 @@
         <div class="toolbar-left" style="display: flex; align-items: center; gap: 0.5rem;">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line></svg>
           <h3>DANH SÁCH BÁO CÁO</h3>
+          <button @click="isPendingModalOpen = true" style="margin-left: 1rem; padding: 0.4rem 0.8rem; font-size: 0.85rem; border-radius: 6px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); cursor: pointer; display: flex; align-items: center; gap: 0.4rem; font-weight: bold; transition: all 0.2s;" onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3H6a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h4M16 17l5-5-5-5M19.8 12H9"/></svg>
+            Nhắc lại
+          </button>
         </div>
         <div class="toolbar-right" style="margin-left: 1rem; display: flex; align-items: center; gap: 0.75rem;">
           <span class="record-badge">{{ filteredReports.length }} việc</span>
@@ -1732,6 +1742,95 @@
         <img :src="selectedImage" style="max-width: 100%; max-height: 90vh; border-radius: 8px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); object-fit: contain;" />
       </div>
     </div>
+    <!-- Modal Nhắc Lại -->
+    <div class="elite-modal-overlay" v-if="isPendingModalOpen" @click.self="isPendingModalOpen = false" style="z-index: 999999; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);">
+      <div class="elite-modal dark-mode-modal" style="max-width: 1000px; width: 95%; max-height: 90vh; display: flex; flex-direction: column; background: #0f172a !important; border: 1px solid rgba(255,255,255,0.08) !important; box-shadow: 0 25px 60px -12px rgba(0,0,0,0.7); border-radius: 12px; overflow: hidden;">
+        
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); flex-shrink: 0;">
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.2); border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);">
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            </div>
+            <div>
+              <h2 style="color: #ffffff; margin: 0; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.01em; text-transform: uppercase;">
+                Việc chưa hoàn thành 
+                <span v-if="!loading">({{ filteredPendingReports.length }})</span>
+                <span v-else style="font-size: 1rem; opacity: 0.7; letter-spacing: 2px;">(...)</span>
+              </h2>
+            </div>
+          </div>
+          <button @click="isPendingModalOpen = false" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #ffffff; font-size: 1.1rem; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">✕</button>
+        </div>
+
+        <!-- Body -->
+        <div class="elite-modal-body custom-scrollbar" style="padding: 1.5rem; overflow-y: auto; background: #0b1118; display: flex; flex-direction: column; gap: 1rem;">
+          
+          <!-- Bộ lọc trong modal -->
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem; background: #1e293b; padding: 0.8rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); align-items: center;">
+            <span style="color: #94a3b8; font-weight: 700; font-size: 0.85rem; margin-right: 0.5rem;">BỘ LỌC:</span>
+            <button @click="pendingFilterMode = 'all'" :style="pendingFilterMode === 'all' ? 'background: #ef4444; color: white;' : 'background: rgba(255,255,255,0.05); color: #94a3b8;'" style="padding: 0.4rem 1rem; border-radius: 8px; font-size: 0.85rem; font-weight: 700; border: none; cursor: pointer; transition: all 0.2s;">Tất cả</button>
+            <button @click="pendingFilterMode = 'recent'" :style="pendingFilterMode === 'recent' ? 'background: #ef4444; color: white;' : 'background: rgba(255,255,255,0.05); color: #94a3b8;'" style="padding: 0.4rem 1rem; border-radius: 8px; font-size: 0.85rem; font-weight: 700; border: none; cursor: pointer; transition: all 0.2s;">Gần đây</button>
+            <button @click="pendingFilterMode = 'old'" :style="pendingFilterMode === 'old' ? 'background: #ef4444; color: white;' : 'background: rgba(255,255,255,0.05); color: #94a3b8;'" style="padding: 0.4rem 1rem; border-radius: 8px; font-size: 0.85rem; font-weight: 700; border: none; cursor: pointer; transition: all 0.2s;">Quá lâu</button>
+            <button @click="pendingFilterMode = 'week'" :style="pendingFilterMode === 'week' ? 'background: #ef4444; color: white;' : 'background: rgba(255,255,255,0.05); color: #94a3b8;'" style="padding: 0.4rem 1rem; border-radius: 8px; font-size: 0.85rem; font-weight: 700; border: none; cursor: pointer; transition: all 0.2s;">Tuần này</button>
+            <button @click="pendingFilterMode = 'month'" :style="pendingFilterMode === 'month' ? 'background: #ef4444; color: white;' : 'background: rgba(255,255,255,0.05); color: #94a3b8;'" style="padding: 0.4rem 1rem; border-radius: 8px; font-size: 0.85rem; font-weight: 700; border: none; cursor: pointer; transition: all 0.2s;">Tháng này</button>
+            <button @click="pendingFilterMode = 'year'" :style="pendingFilterMode === 'year' ? 'background: #ef4444; color: white;' : 'background: rgba(255,255,255,0.05); color: #94a3b8;'" style="padding: 0.4rem 1rem; border-radius: 8px; font-size: 0.85rem; font-weight: 700; border: none; cursor: pointer; transition: all 0.2s;">Năm nay</button>
+          </div>
+
+          <div v-if="loading" style="display: flex; flex-direction: column; gap: 1.25rem;">
+            <div v-for="i in 3" :key="i" class="animate-pulse" style="background: #1e293b; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem;">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div style="height: 22px; width: 90px; background: rgba(59,130,246,0.2); border-radius: 999px;"></div>
+                <div style="height: 24px; width: 110px; background: rgba(16,185,129,0.2); border-radius: 6px;"></div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
+                <div style="height: 14px; width: 100%; background: rgba(255,255,255,0.05); border-radius: 4px;"></div>
+                <div style="height: 14px; width: 85%; background: rgba(255,255,255,0.05); border-radius: 4px;"></div>
+                <div style="height: 14px; width: 40%; background: rgba(255,255,255,0.05); border-radius: 4px;"></div>
+              </div>
+            </div>
+          </div>
+
+          <div v-else-if="filteredPendingReports.length === 0" style="text-align: center; color: #94a3b8; padding: 4rem 2rem; display: flex; flex-direction: column; align-items: center; gap: 1rem;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.2;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            <p style="font-size: 1.1rem; font-weight: 600;">Tuyệt vời! Không còn việc nào tồn đọng.</p>
+          </div>
+          <div v-else style="display: flex; flex-direction: column; gap: 1.25rem;">
+            <div v-for="(report, idx) in filteredPendingReports" :key="report.id" @click="navigateToReportDate(report)" style="background: #1e293b; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 1.25rem; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; gap: 0.8rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);" onmouseover="this.style.transform='translateY(-3px)'; this.style.borderColor='#ef4444'; this.style.boxShadow='0 10px 20px -5px rgba(0,0,0,0.3)'" onmouseout="this.style.transform='none'; this.style.borderColor='rgba(255,255,255,0.06)'; this.style.boxShadow='0 4px 6px -1px rgba(0,0,0,0.1)'">
+              
+              <!-- Header của card -->
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                  <span style="font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 999px; font-weight: 800; background: rgba(59,130,246,0.1); color: #60a5fa; border: 1px solid rgba(59,130,246,0.2); letter-spacing: 0.05em;">{{ report.phan_loai }}</span>
+                  <span v-if="report.tag === 'ƯU TIÊN'" style="font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 999px; font-weight: 800; background: rgba(239,68,68,0.1); color: #f87171; border: 1px solid rgba(239,68,68,0.2); letter-spacing: 0.05em;">ƯU TIÊN</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.75rem; color: #ffffff; font-weight: 800; background: #10b981; padding: 0.25rem 0.6rem; border-radius: 6px; border: 1px solid #059669; white-space: nowrap; box-shadow: 0 2px 4px rgba(16,185,129,0.3);">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                  {{ formatDisplayTime(report.thoi_gian).date }}
+                </div>
+              </div>
+              
+              <!-- Nội dung -->
+              <div style="color: #f8fafc; font-size: 0.95rem; line-height: 1.6; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; flex: 1;">
+                {{ report.noi_dung }}
+              </div>
+              
+              <!-- Ghi chú nếu có -->
+              <div v-if="report.ghi_chu" style="margin-top: 0.2rem; font-size: 0.8rem; color: #fca5a5; background: rgba(239,68,68,0.05); padding: 0.6rem 0.8rem; border-radius: 8px; border-left: 3px solid #ef4444; display: flex; gap: 0.5rem; align-items: flex-start;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 0.1rem;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                <span style="line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ report.ghi_chu }}</span>
+              </div>
+              
+              <!-- Đính kèm -->
+              <div v-if="report.img_save || report.link_excel_bao_gia || report.link_excel_mua_hang" style="display: flex; gap: 0.8rem; margin-top: 0.2rem; border-top: 1px dashed rgba(255,255,255,0.08); padding-top: 0.8rem;">
+                <span v-if="report.img_save" style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: #94a3b8; font-weight: 600;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> Có ảnh</span>
+                <span v-if="report.link_excel_bao_gia || report.link_excel_mua_hang" style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: #10b981; font-weight: 600;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="16" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg> Excel</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -1972,6 +2071,30 @@ const parseDateFromReport = (thoi_gian) => {
   return null;
 }
 
+const navigateToReportDate = (report) => {
+  const dObj = parseDateFromReport(report.thoi_gian);
+  if (dObj) {
+    const yyyy = dObj.getFullYear();
+    const mm = String(dObj.getMonth() + 1).padStart(2, '0');
+    const dd = String(dObj.getDate()).padStart(2, '0');
+    const dateStr = `${yyyy}-${mm}-${dd}`;
+    
+    filters.value.filterMode = 'day';
+    filters.value.dateFrom = dateStr;
+    filters.value.dateTo = dateStr;
+    filters.value.period = ''; // Hiển thị tất cả các buổi
+    
+    // Đóng modal
+    isPendingModalOpen.value = false;
+    
+    // Cuộn xuống bảng
+    scrollToTable();
+  } else {
+    // Nếu ngày không hợp lệ thì vẫn đóng modal
+    isPendingModalOpen.value = false;
+  }
+}
+
 // Helper định dạng hiển thị thời gian
 const formatDisplayTime = (thoi_gian) => {
   if (!thoi_gian) return { time: '', thu: '', date: '' };
@@ -2084,6 +2207,46 @@ const completedCount = computed(() => baseFilteredReports.value.filter(r => r.tr
 
 const pendingReports = computed(() => filteredReports.value.filter(r => r.trang_thai !== 'Hoàn thành'));
 const completedReports = computed(() => filteredReports.value.filter(r => r.trang_thai === 'Hoàn thành'));
+const allPendingReports = computed(() => reports.value.filter(r => r.trang_thai !== 'Hoàn thành'));
+
+const pendingFilterMode = ref('all')
+
+const filteredPendingReports = computed(() => {
+  let list = [...allPendingReports.value];
+  if (pendingFilterMode.value !== 'all') {
+    const now = new Date();
+    const currentWeek = getWeekString(now);
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    list = list.filter(r => {
+      const dObj = parseDateFromReport(r.thoi_gian);
+      if (!dObj) return false;
+      
+      if (pendingFilterMode.value === 'week') {
+        return getWeekString(dObj) === currentWeek;
+      } else if (pendingFilterMode.value === 'month') {
+        return dObj.getMonth() === currentMonth && dObj.getFullYear() === currentYear;
+      } else if (pendingFilterMode.value === 'year') {
+        return dObj.getFullYear() === currentYear;
+      }
+      return true;
+    });
+  }
+  
+  // Sắp xếp
+  list.sort((a, b) => {
+    const dA = parseDateFromReport(a.thoi_gian) || new Date(0);
+    const dB = parseDateFromReport(b.thoi_gian) || new Date(0);
+    if (pendingFilterMode.value === 'old') {
+      return dA - dB; // Quá lâu: cũ nhất lên đầu
+    } else {
+      return dB - dA; // Gần đây, Tất cả...: mới nhất lên đầu
+    }
+  });
+
+  return list;
+});
 
 const kanbanColumns = computed(() => [
   {
@@ -2299,6 +2462,7 @@ const applyFilters = () => {
 }
 
 const isModalOpen = ref(false)
+const isPendingModalOpen = ref(false)
 const isEditing = ref(false)
 const formData = ref({
   id: '',
@@ -3978,6 +4142,7 @@ onMounted(() => {
     filters.value.dateFrom = String(route.query.date)
     filters.value.dateTo = String(route.query.date)
   }
+  isPendingModalOpen.value = true
   fetchReports()
   window.addEventListener('resize', onResize)
 })
@@ -5710,7 +5875,7 @@ button {
     box-shadow: 0 2px 6px rgba(0,0,0,0.15);
     flex-shrink: 0;
   }
-  .mobile-action-btn.add .icon-white-bg {
+  .mobile-action-btn.add .icon-white-bg, .mobile-action-btn.pending .icon-white-bg {
     width: 24px;
     height: 24px;
     border-radius: 8px;
@@ -5732,19 +5897,26 @@ button {
   .mobile-action-btn.empty-days:active {
     transform: scale(0.96);
   }
-  .mobile-action-btn.add {
+  .mobile-action-btn.add, .mobile-action-btn.pending {
     order: 2;
-    flex-basis: 100%;
+    flex: 1;
     flex-direction: row;
     gap: 0.5rem;
     padding: 0.6rem 1rem;
     font-size: 0.85rem;
+    border-radius: 14px;
+  }
+  .mobile-action-btn.add {
     background: linear-gradient(135deg, #3b82f6, #1d4ed8);
     color: white;
     box-shadow: 0 4px 15px -2px rgba(37, 99, 235, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.3);
-    border-radius: 14px;
   }
-  .mobile-action-btn.add:active {
+  .mobile-action-btn.pending {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    box-shadow: 0 4px 15px -2px rgba(239, 68, 68, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.3);
+  }
+  .mobile-action-btn.add:active, .mobile-action-btn.pending:active {
     transform: scale(0.96);
   }
   .report-container {
