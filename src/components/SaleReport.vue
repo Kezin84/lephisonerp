@@ -1141,7 +1141,7 @@
                   <button class="sr-tab-btn" @click="isSwitchingTab = true; chartModal.show = false; openTopCustomerModal(chartModal.metric); setTimeout(() => isSwitchingTab = false, 50)">Khách hàng</button>
                   <button class="sr-tab-btn" @click="isSwitchingTab = true; chartModal.show = false; openTopProductModal(chartModal.metric); setTimeout(() => isSwitchingTab = false, 50)">Sản phẩm</button>
                 </div>
-                <div style="font-size: 14px; font-weight: 700; color: #22c55e; text-transform: uppercase; letter-spacing: 1px;">{{ currentTimeLabel }}</div>
+                <div style="font-size: 12px; font-weight: 700; color: #ffffff; background-color: #ef4444; padding: 2px 10px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.5px;">{{ currentTimeLabel }}</div>
               </div>
             <button class="sr-btn-close" @click="chartModal.show = false" style="background: none; border: none; font-size: 24px; color: #64748b; cursor: pointer;">×</button>
           </div>
@@ -1169,14 +1169,14 @@
                   <button class="sr-tab-btn active">Khách hàng</button>
                   <button class="sr-tab-btn" @click="isSwitchingTab = true; topCustomerModal.show = false; openTopProductModal(topCustomerModal.metric); setTimeout(() => isSwitchingTab = false, 50)">Sản phẩm</button>
                 </div>
-                <div style="font-size: 14px; font-weight: 700; color: #22c55e; text-transform: uppercase; letter-spacing: 1px;">{{ currentTimeLabel }}</div>
+                <div style="font-size: 12px; font-weight: 700; color: #ffffff; background-color: #ef4444; padding: 2px 10px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.5px;">{{ currentTimeLabel }}</div>
               </div>
             <div style="display: flex; align-items: center; gap: 16px;">
               <div style="display: flex; align-items: center; gap: 8px;">
                 <span style="color: #cbd5e1; font-size: 13px; font-weight: 600; margin-right: 12px; padding-right: 12px; border-right: 1px solid #334155;">Hiện có: <span style="color: #38bdf8;">{{ topCustomerRawData.sorted.length }}</span></span>
                   <label style="color: #94a3b8; font-size: 14px; font-weight: 600;">Số lượng TOP:</label>
                 <input type="number" v-model.number="topCustomerLimit" min="1" max="100" style="width: 70px; background: rgba(15,23,42,0.6); border: 1px solid #334155; color: #f8fafc; border-radius: 6px; padding: 4px 8px; outline: none; text-align: center;" />
-                  <button @click="topCustomerLimit = topCustomerRawData.sorted.length" style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); color: #38bdf8; border-radius: 6px; padding: 4px 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-left: 8px;" onmouseover="this.style.background='rgba(56, 189, 248, 0.2)'" onmouseout="this.style.background='rgba(56, 189, 248, 0.1)'">Tất cả</button>
+                  <button @click="topCustomerLimit = topCustomerRawData.sorted.length" style="background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); color: #22c55e; border-radius: 6px; padding: 4px 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-left: 8px;" onmouseover="this.style.background='rgba(34, 197, 94, 0.2)'" onmouseout="this.style.background='rgba(34, 197, 94, 0.1)'">Tất cả</button>
               </div>
               <button class="sr-btn-close" @click="topCustomerModal.show = false" style="background: none; border: none; font-size: 24px; color: #64748b; cursor: pointer; line-height: 1;">×</button>
             </div>
@@ -1221,14 +1221,14 @@
                   <button class="sr-tab-btn" @click="isSwitchingTab = true; topProductModal.show = false; openTopCustomerModal(topProductModal.metric); setTimeout(() => isSwitchingTab = false, 50)">Khách hàng</button>
                   <button class="sr-tab-btn active">Sản phẩm</button>
                 </div>
-                <div style="font-size: 14px; font-weight: 700; color: #22c55e; text-transform: uppercase; letter-spacing: 1px;">{{ currentTimeLabel }}</div>
+                <div style="font-size: 12px; font-weight: 700; color: #ffffff; background-color: #ef4444; padding: 2px 10px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.5px;">{{ currentTimeLabel }}</div>
               </div>
               <div style="display: flex; align-items: center; gap: 16px;">
                 <div style="display: flex; align-items: center; gap: 8px;">
                   <span style="color: #cbd5e1; font-size: 13px; font-weight: 600; margin-right: 12px; padding-right: 12px; border-right: 1px solid #334155;">Hiện có: <span style="color: #22c55e;">{{ topProductRawData.sorted.length }}</span></span>
                   <label style="color: #94a3b8; font-size: 14px; font-weight: 600;">Số lượng TOP:</label>
                   <input type="number" v-model.number="topProductLimit" min="1" max="100" style="width: 70px; background: rgba(15,23,42,0.6); border: 1px solid #334155; color: #f8fafc; border-radius: 6px; padding: 4px 8px; outline: none; text-align: center;" />
-                  <button @click="topProductLimit = topProductRawData.sorted.length" style="background: rgba(244, 114, 182, 0.1); border: 1px solid rgba(244, 114, 182, 0.3); color: #f472b6; border-radius: 6px; padding: 4px 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-left: 8px;" onmouseover="this.style.background='rgba(244, 114, 182, 0.2)'" onmouseout="this.style.background='rgba(244, 114, 182, 0.1)'">Tất cả</button>
+                  <button @click="topProductLimit = topProductRawData.sorted.length" style="background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); color: #22c55e; border-radius: 6px; padding: 4px 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-left: 8px;" onmouseover="this.style.background='rgba(34, 197, 94, 0.2)'" onmouseout="this.style.background='rgba(34, 197, 94, 0.1)'">Tất cả</button>
                 </div>
                 <button class="sr-btn-close" @click="topProductModal.show = false" style="background: none; border: none; font-size: 24px; color: #64748b; cursor: pointer; line-height: 1;">&times;</button>
               </div>
