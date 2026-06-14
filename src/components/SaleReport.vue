@@ -37,7 +37,7 @@
               <span style="color: #f8fafc; font-weight: 600; font-size: 14px;">PO {{ item.So_PO }}</span>
               <span style="color: #38bdf8; font-size: 12px; background: rgba(56,189,248,0.1); padding: 2px 8px; border-radius: 12px;">{{ item.account_manager_name }}</span>
             </div>
-            <div v-if="item.content_of_contract_PO" style="color: #10b981; font-size: 13px; font-weight: 600;">{{ item.content_of_contract_PO }}</div>
+            <div v-if="item.content_of_contract_PO" style="color: #22c55e; font-size: 13px; font-weight: 600;">{{ item.content_of_contract_PO }}</div>
             <div style="color: #94a3b8; font-size: 13px;">Khách hàng: <span style="color: #e2e8f0;">{{ item.Ten_cong_ty }}</span></div>
             <div style="color: #64748b; font-size: 12px;">MST: {{ item.MST }}</div>
           </div>
@@ -141,7 +141,13 @@
               <span>{{ getTrendData(sumCol('doanhSoBan'), sumColPrev('doanhSoBan'))?.text }} so với kỳ trước</span>
             </div>
           </template>
-          <div class="sr-card-top-customer" @click.stop="openTopCustomerModal('doanhSoBan')" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(148, 163, 184, 0.2); font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#38bdf8'; this.querySelector('.arrow-icon').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon').style.transform='translateX(0)'" title="Xem BXH Top Khách hàng">
+          
+          <div class="sr-card-detail-chart" @click.stop="openChart('doanhSoBan')" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(148, 163, 184, 0.2); font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#8b5cf6'; this.querySelector('.arrow-icon-c-doanhSoBan').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon-c-doanhSoBan').style.transform='translateX(0)'" title="Xem biểu đồ chi tiết">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+            <span style="font-weight: 600;">Xem biểu đồ chi tiết</span>
+            <svg class="arrow-icon-c-doanhSoBan" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
+          <div class="sr-card-top-customer" @click.stop="openTopCustomerModal('doanhSoBan')" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(148, 163, 184, 0.1); font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#38bdf8'; this.querySelector('.arrow-icon').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon').style.transform='translateX(0)'" title="Xem BXH Top Khách hàng">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
             <span style="font-weight: 600;">Xem top khách hàng</span>
             <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
@@ -169,7 +175,13 @@
               <span>{{ getTrendData(sumCol('grossCom'), sumColPrev('grossCom'))?.text }} so với kỳ trước</span>
             </div>
           </template>
-          <div class="sr-card-top-customer" @click.stop="openTopCustomerModal('grossCom')" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(148, 163, 184, 0.2); font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#38bdf8'; this.querySelector('.arrow-icon').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon').style.transform='translateX(0)'" title="Xem BXH Top Khách hàng">
+          
+          <div class="sr-card-detail-chart" @click.stop="openChart('grossCom')" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(148, 163, 184, 0.2); font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#8b5cf6'; this.querySelector('.arrow-icon-c-grossCom').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon-c-grossCom').style.transform='translateX(0)'" title="Xem biểu đồ chi tiết">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+            <span style="font-weight: 600;">Xem biểu đồ chi tiết</span>
+            <svg class="arrow-icon-c-grossCom" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
+          <div class="sr-card-top-customer" @click.stop="openTopCustomerModal('grossCom')" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(148, 163, 184, 0.1); font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#38bdf8'; this.querySelector('.arrow-icon').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon').style.transform='translateX(0)'" title="Xem BXH Top Khách hàng">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
             <span style="font-weight: 600;">Xem top khách hàng</span>
             <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
@@ -197,7 +209,13 @@
               <span>{{ getTrendData(sumCol('netCom'), sumColPrev('netCom'))?.text }} so với kỳ trước</span>
             </div>
           </template>
-          <div class="sr-card-top-customer" @click.stop="openTopCustomerModal('netCom')" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(148, 163, 184, 0.2); font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#34d399'; this.querySelector('.arrow-icon').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon').style.transform='translateX(0)'" title="Xem BXH Top Khách hàng">
+          
+          <div class="sr-card-detail-chart" @click.stop="openChart('netCom')" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(148, 163, 184, 0.2); font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#8b5cf6'; this.querySelector('.arrow-icon-c-netCom').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon-c-netCom').style.transform='translateX(0)'" title="Xem biểu đồ chi tiết">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+            <span style="font-weight: 600;">Xem biểu đồ chi tiết</span>
+            <svg class="arrow-icon-c-netCom" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
+          <div class="sr-card-top-customer" @click.stop="openTopCustomerModal('netCom')" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(148, 163, 184, 0.1); font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#34d399'; this.querySelector('.arrow-icon').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon').style.transform='translateX(0)'" title="Xem BXH Top Khách hàng">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
             <span style="font-weight: 600;">Xem top khách hàng</span>
             <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
@@ -225,7 +243,13 @@
               <span>{{ getTrendData(sumCol('netMargin'), sumColPrev('netMargin'))?.text }} so với kỳ trước</span>
             </div>
           </template>
-          <div class="sr-card-top-customer" @click.stop="openTopCustomerModal('netMargin')" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(148, 163, 184, 0.2); font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#f8fafc'; this.querySelector('.arrow-icon').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon').style.transform='translateX(0)'" title="Xem BXH Top Khách hàng">
+          
+          <div class="sr-card-detail-chart" @click.stop="openChart('netMargin')" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(148, 163, 184, 0.2); font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#8b5cf6'; this.querySelector('.arrow-icon-c-netMargin').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon-c-netMargin').style.transform='translateX(0)'" title="Xem biểu đồ chi tiết">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+            <span style="font-weight: 600;">Xem biểu đồ chi tiết</span>
+            <svg class="arrow-icon-c-netMargin" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
+          <div class="sr-card-top-customer" @click.stop="openTopCustomerModal('netMargin')" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(148, 163, 184, 0.1); font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#f8fafc'; this.querySelector('.arrow-icon').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon').style.transform='translateX(0)'" title="Xem BXH Top Khách hàng">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
             <span style="font-weight: 600;">Xem top khách hàng</span>
             <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
@@ -253,7 +277,13 @@
               <span>{{ getTrendData(sumCol('netPO'), sumColPrev('netPO'))?.text }} so với kỳ trước</span>
             </div>
           </template>
-          <div class="sr-card-top-customer" @click.stop="openTopCustomerModal('netPO')" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(148, 163, 184, 0.2); font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#38bdf8'; this.querySelector('.arrow-icon').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon').style.transform='translateX(0)'" title="Xem BXH Top Khách hàng">
+          
+          <div class="sr-card-detail-chart" @click.stop="openChart('netPO')" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(148, 163, 184, 0.2); font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#8b5cf6'; this.querySelector('.arrow-icon-c-netPO').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon-c-netPO').style.transform='translateX(0)'" title="Xem biểu đồ chi tiết">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+            <span style="font-weight: 600;">Xem biểu đồ chi tiết</span>
+            <svg class="arrow-icon-c-netPO" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
+          <div class="sr-card-top-customer" @click.stop="openTopCustomerModal('netPO')" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(148, 163, 184, 0.1); font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#38bdf8'; this.querySelector('.arrow-icon').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon').style.transform='translateX(0)'" title="Xem BXH Top Khách hàng">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
             <span style="font-weight: 600;">Xem top khách hàng</span>
             <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
@@ -280,7 +310,13 @@
               <span>{{ getTrendData(totalNetComPct, prevTotalNetComPct, true)?.text }} so với kỳ trước</span>
             </div>
           </template>
-          <div class="sr-card-top-customer" @click.stop="openTopCustomerModal('totalNetComPct')" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(148, 163, 184, 0.2); font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#10b981'; this.querySelector('.arrow-icon').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon').style.transform='translateX(0)'" title="Xem BXH Top Khách hàng">
+          
+          <div class="sr-card-detail-chart" @click.stop="openChart('totalNetComPct', true)" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(148, 163, 184, 0.2); font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#8b5cf6'; this.querySelector('.arrow-icon-c-totalNetComPct').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon-c-totalNetComPct').style.transform='translateX(0)'" title="Xem biểu đồ chi tiết">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+            <span style="font-weight: 600;">Xem biểu đồ chi tiết</span>
+            <svg class="arrow-icon-c-totalNetComPct" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
+          <div class="sr-card-top-customer" @click.stop="openTopCustomerModal('totalNetComPct')" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(148, 163, 184, 0.1); font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#10b981'; this.querySelector('.arrow-icon').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon').style.transform='translateX(0)'" title="Xem BXH Top Khách hàng">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
             <span style="font-weight: 600;">Xem top khách hàng</span>
             <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
@@ -306,7 +342,13 @@
               <span>{{ getTrendData(totalNetMarginPct, prevTotalNetMarginPct, true)?.text }} so với kỳ trước</span>
             </div>
           </template>
-          <div class="sr-card-top-customer" @click.stop="openTopCustomerModal('totalNetMarginPct')" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(148, 163, 184, 0.2); font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#10b981'; this.querySelector('.arrow-icon').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon').style.transform='translateX(0)'" title="Xem BXH Top Khách hàng">
+          
+          <div class="sr-card-detail-chart" @click.stop="openChart('totalNetMarginPct', true)" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(148, 163, 184, 0.2); font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#8b5cf6'; this.querySelector('.arrow-icon-c-totalNetMarginPct').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon-c-totalNetMarginPct').style.transform='translateX(0)'" title="Xem biểu đồ chi tiết">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+            <span style="font-weight: 600;">Xem biểu đồ chi tiết</span>
+            <svg class="arrow-icon-c-totalNetMarginPct" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
+          <div class="sr-card-top-customer" @click.stop="openTopCustomerModal('totalNetMarginPct')" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(148, 163, 184, 0.1); font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#10b981'; this.querySelector('.arrow-icon').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon').style.transform='translateX(0)'" title="Xem BXH Top Khách hàng">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
             <span style="font-weight: 600;">Xem top khách hàng</span>
             <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
@@ -332,7 +374,13 @@
               <span>{{ getTrendData(totalNetComDsbPct, prevTotalNetComDsbPct, true)?.text }} so với kỳ trước</span>
             </div>
           </template>
-          <div class="sr-card-top-customer" @click.stop="openTopCustomerModal('totalNetComDsbPct')" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(148, 163, 184, 0.2); font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#10b981'; this.querySelector('.arrow-icon').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon').style.transform='translateX(0)'" title="Xem BXH Top Khách hàng">
+          
+          <div class="sr-card-detail-chart" @click.stop="openChart('totalNetComDsbPct', true)" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(148, 163, 184, 0.2); font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#8b5cf6'; this.querySelector('.arrow-icon-c-totalNetComDsbPct').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon-c-totalNetComDsbPct').style.transform='translateX(0)'" title="Xem biểu đồ chi tiết">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+            <span style="font-weight: 600;">Xem biểu đồ chi tiết</span>
+            <svg class="arrow-icon-c-totalNetComDsbPct" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
+          <div class="sr-card-top-customer" @click.stop="openTopCustomerModal('totalNetComDsbPct')" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(148, 163, 184, 0.1); font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#10b981'; this.querySelector('.arrow-icon').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon').style.transform='translateX(0)'" title="Xem BXH Top Khách hàng">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
             <span style="font-weight: 600;">Xem top khách hàng</span>
             <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
@@ -358,7 +406,13 @@
               <span>{{ getTrendData(totalNetMarginDsbPct, prevTotalNetMarginDsbPct, true)?.text }} so với kỳ trước</span>
             </div>
           </template>
-          <div class="sr-card-top-customer" @click.stop="openTopCustomerModal('totalNetMarginDsbPct')" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(148, 163, 184, 0.2); font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#10b981'; this.querySelector('.arrow-icon').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon').style.transform='translateX(0)'" title="Xem BXH Top Khách hàng">
+          
+          <div class="sr-card-detail-chart" @click.stop="openChart('totalNetMarginDsbPct', true)" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(148, 163, 184, 0.2); font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#8b5cf6'; this.querySelector('.arrow-icon-c-totalNetMarginDsbPct').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon-c-totalNetMarginDsbPct').style.transform='translateX(0)'" title="Xem biểu đồ chi tiết">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+            <span style="font-weight: 600;">Xem biểu đồ chi tiết</span>
+            <svg class="arrow-icon-c-totalNetMarginDsbPct" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
+          <div class="sr-card-top-customer" @click.stop="openTopCustomerModal('totalNetMarginDsbPct')" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(148, 163, 184, 0.1); font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#10b981'; this.querySelector('.arrow-icon').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon').style.transform='translateX(0)'" title="Xem BXH Top Khách hàng">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
             <span style="font-weight: 600;">Xem top khách hàng</span>
             <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
@@ -379,7 +433,7 @@
       <div class="toolbar-left-buttons" style="display: flex; gap: 12px; align-items: center; padding-bottom: 2px;">
         <button class="sr-btn sr-btn-import bg-btn" style="background:#2563eb;color:#ffffff;border-color:#1d4ed8;font-weight:700;height:42px;" @click="triggerImport(null, 'bao_gia')">📄 Import Báo giá</button>
         <button class="sr-btn sr-btn-import bg-btn" style="background:#8b5cf6;color:#ffffff;border-color:#7c3aed;font-weight:700;height:42px;" @click="triggerReportImport()">📊 Import Report</button>
-        <input type="file" ref="reportUploadInput" accept=".xlsx, .xls" style="display: none" @change="onReportSelected" />
+        <input type="file" ref="reportUploadInput" accept=".xlsx, .xls" multiple style="display: none" @change="onReportFilesSelected" />
         <button class="sr-btn sr-btn-export" style="background:#16a34a;color:#ffffff;border-color:#15803d;font-weight:700;display:flex;align-items:center;gap:6px;padding:0 16px;height:42px;" @click="showExportModal = true">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="18" height="18"><path fill="#4CAF50" d="M41,10H25v28h16c0.553,0,1-0.447,1-1V11C42,10.447,41.553,10,41,10z"/><path fill="#FFF" d="M32 15H39V18H32zM32 25H39V28H32zM32 30H39V33H32zM32 20H39V23H32zM25 15H30V18H25zM25 25H30V28H25zM25 30H30V33H25zM25 20H30V23H25z"/><path fill="#2E7D32" d="M27,42L6,38.746C5.416,38.655,5,38.146,5,37.555v-27.11c0-0.591,0.416-1.1,1-1.191L27,6V42z"/><path fill="#FFF" d="M19.129,31l-2.411-4.561c-0.092-0.171-0.186-0.483-0.284-0.938h-0.037c-0.046,0.215-0.154,0.541-0.324,0.979L13.652,31H9.895l4.462-7.001L10.274,17h3.837l2.001,4.196c0.156,0.331,0.296,0.725,0.42,1.179h0.04c0.078-0.271,0.224-0.68,0.439-1.22L19.237,17h3.515l-4.199,6.939l4.316,7.059h-3.74V31z"/></svg>
           Xuất Excel
@@ -548,8 +602,8 @@
 
     <!-- Multi Edit Modal -->
     <Teleport to="body">
-      <div v-if="multiEditModal.show" class="sr-modal-overlay" @click.self="multiEditModal.show = false" style="z-index: 10000;">
-        <div class="sr-modal sr-modal-large">
+      <div v-if="multiEditModal.show" class="sr-modal-overlay" :class="{ 'no-anim': isSwitchingTab }" @click.self="multiEditModal.show = false" style="z-index: 10000;">
+        <div class="sr-modal sr-modal-large" :class="{ 'no-anim': isSwitchingTab }">
           
           <div class="sr-modal-body" style="background: transparent; padding: 0; max-height: 95vh; overflow-y: auto; border-radius: 16px;">
             <div v-if="multiEditModal.items.length === 0" style="text-align:center;color:#64748b;padding:20px;">
@@ -783,7 +837,7 @@
                     <div class="sr-modal-fin-col highlight-col">
                       <div style="display: flex; justify-content: space-between; padding: 4px 0;">
                         <span style="font-size: 12px; color: #ffffff; font-weight: 700;">Net COM / Net PO</span>
-                        <strong style="font-size: 13px; color: #10b981;">{{ pctFmt(item.doanhSoBan - item.grossCom !== 0 ? (item.netCom / (item.doanhSoBan - item.grossCom)) * 100 : 0) }}</strong>
+                        <strong style="font-size: 13px; color: #22c55e;">{{ pctFmt(item.doanhSoBan - item.grossCom !== 0 ? (item.netCom / (item.doanhSoBan - item.grossCom)) * 100 : 0) }}</strong>
                       </div>
                       <div style="display: flex; justify-content: space-between; padding: 4px 0;">
                         <span style="font-size: 12px; color: #ffffff; font-weight: 700;">Net Margin / Net PO</span>
@@ -791,7 +845,7 @@
                       </div>
                       <div style="display: flex; justify-content: space-between; padding: 4px 0; border-top: 1px solid rgba(16,185,129,.15); margin-top: 4px; padding-top: 8px;">
                         <span style="font-size: 12px; color: #ffffff; font-weight: 700;">Net COM / DSB</span>
-                        <strong style="font-size: 13px; color: #10b981;">{{ pctFmt(item.doanhSoBan !== 0 ? (item.netCom / item.doanhSoBan) * 100 : 0) }}</strong>
+                        <strong style="font-size: 13px; color: #22c55e;">{{ pctFmt(item.doanhSoBan !== 0 ? (item.netCom / item.doanhSoBan) * 100 : 0) }}</strong>
                       </div>
                       <div style="display: flex; justify-content: space-between; padding: 4px 0;">
                         <span style="font-size: 12px; color: #ffffff; font-weight: 700;">Net Margin / DSB</span>
@@ -865,7 +919,7 @@
                           <input type="text" :value="g.vatStr !== undefined ? g.vatStr : fmtInput(g.vat)" @input="e => onGoodsInput(e, item, g, 'vat')" class="sr-modal-input text-right" style="width: 110px; padding: 6px 4px; border-color: #334155; font-size: 12px; height: 32px; background: rgba(15,23,42,.6);" placeholder="VNĐ" />
                        </div>
                     </td>
-                    <td style="padding: 16px 8px; text-align: right; color: #10b981; font-weight: 600;">{{ fmtInput(g.ttSau) }}</td>
+                    <td style="padding: 16px 8px; text-align: right; color: #22c55e; font-weight: 600;">{{ fmtInput(g.ttSau) }}</td>
                     <td style="padding: 16px 8px; text-align: center;">
                        <button @click="removeGoodsRow(item, i)" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #ef4444; cursor: pointer; padding: 6px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" class="hover:bg-red-500/20" title="Xóa hàng hóa">
                           <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
@@ -873,7 +927,7 @@
                     </td>
                   </tr>
                   </template>
-                  <tr v-if="item.goodsTotal" style="background: rgba(16,185,129,.1); font-weight: 700; color: #10b981;">
+                  <tr v-if="item.goodsTotal" style="background: rgba(16,185,129,.1); font-weight: 700; color: #22c55e;">
                     <td style="padding: 10px 8px;"></td>
                     <td colspan="5" style="padding: 10px 8px; text-align: left; text-transform: uppercase; padding-left: 8px;">Tổng Cộng</td>
                     <td style="padding: 10px 8px; text-align: right;">{{ fmtInput(item.goodsTotal.ttTruoc) }}</td>
@@ -916,7 +970,7 @@
 
     <!-- Scan Confirm Modal -->
     <Teleport to="body">
-      <div v-if="scanConfirmModal.show" class="sr-modal-overlay" @click.self="closeScanConfirmModal" style="z-index: 10000">
+      <div v-if="scanConfirmModal.show" class="sr-modal-overlay" :class="{ 'no-anim': isSwitchingTab }" @click.self="closeScanConfirmModal" style="z-index: 10000">
         <div class="sr-modal" style="max-width: 500px">
           <div class="sr-modal-header">
             <div class="sr-modal-icon" style="background:rgba(2,132,199,.2);color:#0284c7">
@@ -959,7 +1013,7 @@
 
     <!-- Export Modal -->
     <Teleport to="body">
-      <div v-if="showExportModal" class="sr-modal-overlay" @click.self="showExportModal = false">
+      <div v-if="showExportModal" class="sr-modal-overlay" :class="{ 'no-anim': isSwitchingTab }" @click.self="showExportModal = false">
         <div class="sr-modal" style="max-width: 700px; width: 90vw;">
           <div class="sr-modal-header">
             <div class="sr-modal-icon" style="background:rgba(16,185,129,.2);color:#34d399">
@@ -1037,7 +1091,7 @@
                     <div style="font-size: 12px; color: #cbd5e1; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ r.Ten_cong_ty || 'Chưa có thông tin Customer' }}</div>
                     <div style="font-size: 11px; color: #94a3b8; display: flex; flex-wrap: wrap; align-items: center;">
                       <span>PO: <span style="color: #38bdf8;">{{ r.So_PO }}</span> <span style="color: #475569; margin: 0 6px;">|</span></span>
-                      <span>DSB: <span style="color: #10b981;">{{ fmt(doanhSoBan(r)) }}</span> <span style="color: #475569; margin: 0 6px;">|</span></span>
+                      <span>DSB: <span style="color: #22c55e;">{{ fmt(doanhSoBan(r)) }}</span> <span style="color: #475569; margin: 0 6px;">|</span></span>
                       <span>Giá mua: <span style="color: #f59e0b;">{{ fmt(giaMua(r)) }}</span> <span style="color: #475569; margin: 0 6px;">|</span></span>
                       <span>Gross COM: <span style="color: #a855f7;">{{ fmt(grossCom(r)) }}</span> <span style="color: #475569; margin: 0 6px;">|</span></span>
                       <span>Net COM: <span style="color: #34d399;">{{ fmt(netCom(r)) }}</span></span>
@@ -1074,18 +1128,26 @@
 
     <!-- Chart Modal -->
     <Teleport to="body">
-      <div v-if="chartModal.show" class="sr-modal-overlay" @click.self="chartModal.show = false" style="z-index: 100000; padding: 24px;">
-        <div class="sr-modal sr-modal-large" style="width: 1000px; max-width: 95%; background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column;">
-          <div class="sr-modal-header" style="background: rgba(15,23,42,.8); border-bottom: 1px solid #1e293b; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center;">
+      <div v-if="chartModal.show" class="sr-modal-overlay" :class="{ 'no-anim': isSwitchingTab }" @click.self="chartModal.show = false" style="z-index: 100000; padding: 24px;">
+        <div class="sr-modal sr-modal-large" :class="{ 'no-anim': isSwitchingTab }" style="width: 1000px; max-width: 95%; background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column;">
+          <div class="sr-modal-header" style="background: rgba(15,23,42,.8); border-bottom: 1px solid #1e293b; padding: 32px 24px; display: flex; justify-content: space-between; align-items: center;">
             <h3 style="margin: 0; color: #f8fafc; font-size: 18px; font-weight: 700; text-transform: uppercase; display: flex; align-items: center; gap: 8px;">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
               Biểu đồ {{ chartData.datasets[1]?.label }}
             </h3>
+              <div style="position: absolute; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 10;">
+                <div class="sr-modal-tabs" style="display: flex; gap: 4px; background: rgba(30, 41, 59, 0.5); padding: 4px; border-radius: 8px; border: 1px solid #334155;">
+                  <button class="sr-tab-btn active">Chỉ số</button>
+                  <button class="sr-tab-btn" @click="isSwitchingTab = true; chartModal.show = false; openTopCustomerModal(chartModal.metric); setTimeout(() => isSwitchingTab = false, 50)">Khách hàng</button>
+                  <button class="sr-tab-btn" @click="isSwitchingTab = true; chartModal.show = false; openTopProductModal(chartModal.metric); setTimeout(() => isSwitchingTab = false, 50)">Sản phẩm</button>
+                </div>
+                <div style="font-size: 14px; font-weight: 700; color: #22c55e; text-transform: uppercase; letter-spacing: 1px;">{{ currentTimeLabel }}</div>
+              </div>
             <button class="sr-btn-close" @click="chartModal.show = false" style="background: none; border: none; font-size: 24px; color: #64748b; cursor: pointer;">×</button>
           </div>
           <div class="sr-modal-body" style="padding: 24px; flex: 1; background: #0b1121; position: relative;">
-            <div style="height: 500px; width: 100%;">
-               <Bar v-if="chartModal.show" :data="chartData" :options="chartOptions" />
+            <div style="height: 650px; width: 100%;">
+                <Bar v-if="chartModal.show" :data="chartData" :options="chartOptions" />
             </div>
           </div>
         </div>
@@ -1094,13 +1156,21 @@
 
     <!-- Top Customer Chart Modal -->
     <Teleport to="body">
-      <div v-if="topCustomerModal.show" class="sr-modal-overlay" @click.self="topCustomerModal.show = false" style="z-index: 100000; padding: 24px;">
-        <div class="sr-modal sr-modal-large" style="width: 1100px; max-width: 95%; background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column;">
-          <div class="sr-modal-header" style="background: rgba(15,23,42,.8); border-bottom: 1px solid #1e293b; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center;">
+      <div v-if="topCustomerModal.show" class="sr-modal-overlay" :class="{ 'no-anim': isSwitchingTab }" @click.self="topCustomerModal.show = false" style="z-index: 100000; padding: 24px;">
+        <div class="sr-modal sr-modal-large" :class="{ 'no-anim': isSwitchingTab }" style="width: 1100px; max-width: 95%; background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column;">
+          <div class="sr-modal-header" style="background: rgba(15,23,42,.8); border-bottom: 1px solid #1e293b; padding: 32px 24px; display: flex; justify-content: space-between; align-items: center;">
             <h3 style="margin: 0; color: #f8fafc; font-size: 18px; font-weight: 700; text-transform: uppercase; display: flex; align-items: center; gap: 8px;">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
               BXH Khách hàng - {{ topCustomerModal.metricLabel }}
             </h3>
+              <div style="position: absolute; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 10;">
+                <div class="sr-modal-tabs" style="display: flex; gap: 4px; background: rgba(30, 41, 59, 0.5); padding: 4px; border-radius: 8px; border: 1px solid #334155;">
+                  <button class="sr-tab-btn" @click="topCustomerModal.show = false; openChart(topCustomerModal.metric, topCustomerModal.metric.includes('Pct'))">Chỉ số</button>
+                  <button class="sr-tab-btn active">Khách hàng</button>
+                  <button class="sr-tab-btn" @click="isSwitchingTab = true; topCustomerModal.show = false; openTopProductModal(topCustomerModal.metric); setTimeout(() => isSwitchingTab = false, 50)">Sản phẩm</button>
+                </div>
+                <div style="font-size: 14px; font-weight: 700; color: #22c55e; text-transform: uppercase; letter-spacing: 1px;">{{ currentTimeLabel }}</div>
+              </div>
             <div style="display: flex; align-items: center; gap: 16px;">
               <div style="display: flex; align-items: center; gap: 8px;">
                 <span style="color: #cbd5e1; font-size: 13px; font-weight: 600; margin-right: 12px; padding-right: 12px; border-right: 1px solid #334155;">Hiện có: <span style="color: #38bdf8;">{{ topCustomerRawData.sorted.length }}</span></span>
@@ -1116,8 +1186,8 @@
               <!-- Pie Chart (Hide for ratio metrics) -->
               <div v-if="!topCustomerModal.metric.includes('Pct')" style="flex: 1; min-width: 300px; max-width: 400px; background: rgba(15,23,42,.6); border: 1px solid #1e293b; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; align-items: center;">
                  <h4 style="color: #94a3b8; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;">Tỉ trọng Top Khách Hàng</h4>
-                 <div style="height: 350px; width: 100%;">
-                   <Pie v-if="topCustomerModal.show" :data="topCustomerPieData" :options="topCustomerPieOptions" />
+                 <div style="height: 500px; width: 100%;">
+                     <Pie v-if="topCustomerModal.show" :data="topCustomerPieData" :options="topCustomerPieOptions" />
                  </div>
               </div>
               
@@ -1125,7 +1195,7 @@
               <div style="flex: 2; min-width: 500px; background: rgba(15,23,42,.6); border: 1px solid #1e293b; border-radius: 12px; padding: 16px; display: flex; flex-direction: column;">
                  <h4 style="color: #94a3b8; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;">Xếp Hạng Khách Hàng</h4>
                  <div style="flex: 1; overflow-x: auto; padding-bottom: 8px;" class="custom-scrollbar">
-                   <div :style="{ height: '350px', width: Math.max(100, Math.min(topCustomerRawData.sorted.length, Number(topCustomerLimit) || 5) * 120) + 'px', minWidth: '100%' }">
+                   <div :style="{ height: '500px', width: Math.max(100, Math.min(topCustomerRawData.sorted.length, Number(topCustomerLimit) || 5) * 120) + 'px', minWidth: '100%' }">
                      <Bar v-if="topCustomerModal.show" :data="topCustomerBarData" :options="topCustomerBarOptions" />
                    </div>
                  </div>
@@ -1138,16 +1208,24 @@
 
       <!-- Top Product Chart Modal -->
       <Teleport to="body">
-        <div v-if="topProductModal.show" class="sr-modal-overlay" @click.self="topProductModal.show = false" style="z-index: 100000; padding: 24px;">
-          <div class="sr-modal sr-modal-large" style="width: 1100px; max-width: 95%; background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column;">
-            <div class="sr-modal-header" style="background: rgba(15,23,42,.8); border-bottom: 1px solid #1e293b; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center;">
+        <div v-if="topProductModal.show" class="sr-modal-overlay" :class="{ 'no-anim': isSwitchingTab }" @click.self="topProductModal.show = false" style="z-index: 100000; padding: 24px;">
+          <div class="sr-modal sr-modal-large" :class="{ 'no-anim': isSwitchingTab }" style="width: 1100px; max-width: 95%; background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column;">
+            <div class="sr-modal-header" style="background: rgba(15,23,42,.8); border-bottom: 1px solid #1e293b; padding: 32px 24px; display: flex; justify-content: space-between; align-items: center;">
               <h3 style="margin: 0; color: #f8fafc; font-size: 18px; font-weight: 700; text-transform: uppercase; display: flex; align-items: center; gap: 8px;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
                 BXH Sản phẩm - {{ topProductModal.metricLabel }}
               </h3>
+              <div style="position: absolute; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 10;">
+                <div class="sr-modal-tabs" style="display: flex; gap: 4px; background: rgba(30, 41, 59, 0.5); padding: 4px; border-radius: 8px; border: 1px solid #334155;">
+                  <button class="sr-tab-btn" @click="topProductModal.show = false; openChart(topProductModal.metric, topProductModal.metric.includes('Pct'))">Chỉ số</button>
+                  <button class="sr-tab-btn" @click="isSwitchingTab = true; topProductModal.show = false; openTopCustomerModal(topProductModal.metric); setTimeout(() => isSwitchingTab = false, 50)">Khách hàng</button>
+                  <button class="sr-tab-btn active">Sản phẩm</button>
+                </div>
+                <div style="font-size: 14px; font-weight: 700; color: #22c55e; text-transform: uppercase; letter-spacing: 1px;">{{ currentTimeLabel }}</div>
+              </div>
               <div style="display: flex; align-items: center; gap: 16px;">
                 <div style="display: flex; align-items: center; gap: 8px;">
-                  <span style="color: #cbd5e1; font-size: 13px; font-weight: 600; margin-right: 12px; padding-right: 12px; border-right: 1px solid #334155;">Hiện có: <span style="color: #10b981;">{{ topProductRawData.sorted.length }}</span></span>
+                  <span style="color: #cbd5e1; font-size: 13px; font-weight: 600; margin-right: 12px; padding-right: 12px; border-right: 1px solid #334155;">Hiện có: <span style="color: #22c55e;">{{ topProductRawData.sorted.length }}</span></span>
                   <label style="color: #94a3b8; font-size: 14px; font-weight: 600;">Số lượng TOP:</label>
                   <input type="number" v-model.number="topProductLimit" min="1" max="100" style="width: 70px; background: rgba(15,23,42,0.6); border: 1px solid #334155; color: #f8fafc; border-radius: 6px; padding: 4px 8px; outline: none; text-align: center;" />
                   <button @click="topProductLimit = topProductRawData.sorted.length" style="background: rgba(244, 114, 182, 0.1); border: 1px solid rgba(244, 114, 182, 0.3); color: #f472b6; border-radius: 6px; padding: 4px 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-left: 8px;" onmouseover="this.style.background='rgba(244, 114, 182, 0.2)'" onmouseout="this.style.background='rgba(244, 114, 182, 0.1)'">Tất cả</button>
@@ -1160,7 +1238,7 @@
                 <!-- Pie Chart -->
                 <div v-if="!topProductModal.metric.includes('Pct')" style="flex: 1; min-width: 300px; max-width: 400px; background: rgba(15,23,42,.6); border: 1px solid #1e293b; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; align-items: center;">
                    <h4 style="color: #94a3b8; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;">Tỷ trọng Top Sản Phẩm</h4>
-                   <div style="height: 350px; width: 100%;">
+                   <div style="height: 500px; width: 100%;">
                      <Pie v-if="topProductModal.show" :data="topProductPieData" :options="topProductPieOptions" />
                    </div>
                 </div>
@@ -1169,7 +1247,7 @@
                 <div style="flex: 2; min-width: 500px; background: rgba(15,23,42,.6); border: 1px solid #1e293b; border-radius: 12px; padding: 16px; display: flex; flex-direction: column;">
                    <h4 style="color: #94a3b8; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;">Xếp Hạng Sản Phẩm</h4>
                    <div style="flex: 1; overflow-x: auto; padding-bottom: 8px;" class="custom-scrollbar">
-                     <div :style="{ height: '350px', width: Math.max(100, Math.min(topProductRawData.sorted.length, Number(topProductLimit) || 5) * 120) + 'px', minWidth: '100%' }">
+                     <div :style="{ height: '500px', width: Math.max(100, Math.min(topProductRawData.sorted.length, Number(topProductLimit) || 5) * 120) + 'px', minWidth: '100%' }">
                        <Bar v-if="topProductModal.show" :data="topProductBarData" :options="topProductBarOptions" />
                      </div>
                    </div>
@@ -1179,6 +1257,27 @@
           </div>
         </div>
       </Teleport>
+
+    <!-- Year Selection Modal for Report Import -->
+    <Teleport to="body">
+      <div v-if="showYearModal" class="sr-modal-overlay" style="z-index: 100000; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.5);">
+        <div class="sr-modal" style="width: 400px; background: #0f172a; border: 1px solid #1e293b; border-radius: 12px; padding: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
+          <h3 style="margin-top: 0; color: #f8fafc; font-size: 18px; text-transform: uppercase;">Chọn năm cho dữ liệu</h3>
+          <p style="color: #94a3b8; font-size: 14px; margin-bottom: 20px;">Vui lòng chọn năm cho ({{ pendingReportFiles.length }}) file dữ liệu báo cáo cần import.</p>
+          
+          <div class="elite-form-group">
+            <label style="color: #cbd5e1; font-weight: 600; display: block; margin-bottom: 8px;">Năm</label>
+            <input type="number" v-model="selectedYearForReport" class="elite-input" style="width: 100%; background: #1e293b; color: white; border: 1px solid #334155; padding: 10px; border-radius: 6px;" />
+          </div>
+
+          <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+            <button class="sr-btn sr-btn-cancel" @click="showYearModal = false" style="background: transparent; color: #cbd5e1; border: 1px solid #334155; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Hủy bỏ</button>
+            <button class="sr-btn sr-btn-save" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;" @click="confirmYearAndImportReport">Xác nhận import</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
 
 
   </div>
@@ -1222,124 +1321,136 @@ const showSearchSuggestions = ref(false)
 
 const reportUploadInput = ref<HTMLInputElement | null>(null);
 
+const showYearModal = ref(false);
+const selectedYearForReport = ref(new Date().getFullYear().toString());
+const pendingReportFiles = ref<File[]>([]);
+
+
 function triggerReportImport() {
   reportUploadInput.value?.click();
 }
 
-async function onReportSelected(e: Event) {
-  const target = e.target as HTMLInputElement;
-  const file = target.files?.[0];
-  if (!file) return;
-  
-  try {
-    const arrayBuffer = await file.arrayBuffer();
-    const wb = new ExcelJS.Workbook();
-    await wb.xlsx.load(arrayBuffer);
-    const ws = wb.worksheets[0];
-    
-    if (!ws) {
-      alert("File không hợp lệ.");
-      return;
-    }
-    
-    const items: ImportItem[] = [];
-    
-    ws.eachRow((row, rowNumber) => {
-      // Bỏ qua dòng tiêu đề (dòng 1)
-      if (rowNumber === 1) return;
-      
-      const getNum = (c: number) => {
-        const val = row.getCell(c).value;
-        if (typeof val === 'number') return val;
-        if (typeof val === 'object' && val && 'result' in val) {
-          return Number(val.result) || 0;
-        }
-        return Number(val?.toString().replace(/[,]/g, '')) || 0;
-      };
 
-      const mst = row.getCell(1).value?.toString() || '';
-      const po = row.getCell(2).value?.toString() || '';
-      const am = row.getCell(3).value?.toString() || '';
-      const monCell = row.getCell(4).value?.toString() || '';
-      const customer = row.getCell(5).value?.toString() || '';
-      const content = row.getCell(6).value?.toString() || '';
-      const productType = row.getCell(7).value?.toString() || '';
+function onReportFilesSelected(e: Event) {
+  const target = e.target as HTMLInputElement;
+  if (!target.files || target.files.length === 0) return;
+  pendingReportFiles.value = Array.from(target.files);
+  showYearModal.value = true;
+  target.value = ''; // clear input so same files can be selected again
+}
+
+async function confirmYearAndImportReport() {
+  showYearModal.value = false;
+  if (pendingReportFiles.value.length === 0) return;
+
+  const allItems: ImportItem[] = [];
+
+  for (const file of pendingReportFiles.value) {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(arrayBuffer);
+      const ws = wb.worksheets[0];
       
-      // Tự động nhận dạng thời gian tạo (createdTime)
-      let createdTime = '';
-      const dateMatch = content.match(/(\d{2})[./](\d{2})[./](\d{4})/);
-      if (dateMatch) {
-        // Tìm thấy ngày tháng năm trong Content
-        const dd = dateMatch[1];
-        const mm = dateMatch[2];
-        const yyyy = dateMatch[3];
-        createdTime = `${dd}/${mm}/${yyyy} 00:00:00`;
-      } else if (monCell) {
-        // Fallback: Dùng cột Month + Năm hiện tại
-        const monthNum = parseInt(monCell.replace(/\D/g, ''));
-        if (monthNum >= 1 && monthNum <= 12) {
-          const yyyy = new Date().getFullYear();
-          const mm = String(monthNum).padStart(2, '0');
-          createdTime = `01/${mm}/${yyyy} 00:00:00`;
+      if (!ws) {
+        console.error("File không hợp lệ:", file.name);
+        continue;
+      }
+      
+      ws.eachRow((row, rowNumber) => {
+        // Bỏ qua dòng tiêu đề (dòng 1)
+        if (rowNumber === 1) return;
+        
+        const getNum = (c: number) => {
+          const val = row.getCell(c).value;
+          if (typeof val === 'number') return val;
+          if (typeof val === 'object' && val && 'result' in val) {
+            return Number(val.result) || 0;
+          }
+          return Number(val?.toString().replace(/[,]/g, '')) || 0;
+        };
+  
+        const mst = row.getCell(1).value?.toString() || '';
+        const po = row.getCell(2).value?.toString() || '';
+        const am = row.getCell(3).value?.toString() || '';
+        const monCell = row.getCell(4).value?.toString() || '';
+        const customer = row.getCell(5).value?.toString() || '';
+        const contentVal = row.getCell(6).value?.toString() || '';
+        const productType = row.getCell(7).value?.toString() || '';
+        
+        // Tự động nhận dạng thời gian tạo (createdTime)
+        let createdTime = '';
+        const dateMatch = contentVal.match(/(\d{2})[./](\d{2})[./](\d{4})/);
+        if (dateMatch) {
+          // Tìm thấy ngày tháng năm trong Content
+          const dd = dateMatch[1];
+          const mm = dateMatch[2];
+          const yyyy = selectedYearForReport.value; // Override selected year!
+          createdTime = `${dd}/${mm}/${yyyy} 00:00:00`;
+        } else if (monCell) {
+          // Fallback: Dùng cột Month + Năm đã chọn
+          const monthNum = parseInt(monCell.replace(/\D/g, ''));
+          if (monthNum >= 1 && monthNum <= 12) {
+            const yyyy = selectedYearForReport.value; // Override selected year!
+            const mm = String(monthNum).padStart(2, '0');
+            createdTime = `01/${mm}/${yyyy} 00:00:00`;
+          }
         }
-      }
-      
-      const doanhSoBan = getNum(8);
-      const giaMua = getNum(9);
-      const tongCP = getNum(13);
-      const grossCom = getNum(14);
-      const thueVal = getNum(15);
-      const netCom = getNum(16);
-      
-      let taxPct = 0;
-      if (grossCom > 0 && thueVal > 0) {
-        taxPct = Math.round((thueVal / grossCom) * 100);
-      } else if (thueVal > 0) {
-        taxPct = 25; // fallback
-      }
-      
-      // Chỉ import các dòng có dữ liệu PO hoặc Doanh số
-      if (po || doanhSoBan > 0) {
-        items.push({
-          id: Date.now() + rowNumber,
-          row: null,
-          doanhSoBan,
-          giaMua,
-          tongCP,
-          grossCom,
-          soPO: po,
-          productType,
-          customer,
-          mst,
-          createdTime,
-          content,
-          netCom,
-          am,
-          taxPct,
-          scanning: false,
-          activeTab: 'po'
-        });
-      }
-    });
-    
-    if (items.length > 0) {
-      multiEditModal.value = {
-        show: true,
-        mode: 'create',
-        items
-      };
-    } else {
-      alert("Không tìm thấy dữ liệu hợp lệ trong file Excel.");
+        
+        const doanhSoBan = getNum(8);
+        const giaMua = getNum(9);
+        const tongCP = getNum(13);
+        const grossCom = getNum(14);
+        const thueVal = getNum(15);
+        const netCom = getNum(16);
+        
+        let taxPct = 0;
+        if (grossCom > 0 && thueVal > 0) {
+          taxPct = Math.round((thueVal / grossCom) * 100);
+        } else if (thueVal > 0) {
+          taxPct = 25; // fallback
+        }
+        
+        // Chỉ import các dòng có dữ liệu PO hoặc Doanh số
+        if (po || doanhSoBan > 0) {
+          allItems.push({
+            id: Date.now() + Math.random(),
+            row: null,
+            doanhSoBan,
+            giaMua,
+            tongCP,
+            grossCom,
+            soPO: po,
+            productType,
+            customer,
+            mst,
+            createdTime,
+            content: contentVal,
+            netCom,
+            am,
+            taxPct,
+            scanning: false,
+            activeTab: 'po'
+          });
+        }
+      });
+    } catch (error) {
+      console.error("Lỗi đọc file Excel:", error);
     }
-  } catch (error) {
-    console.error("Lỗi đọc file Excel:", error);
-    alert("Có lỗi khi đọc file Report.");
-  } finally {
-    target.value = ''; // clear input
+  }
+
+  if (allItems.length > 0) {
+    multiEditModal.value = {
+      show: true,
+      mode: 'create',
+      items: allItems
+    };
+  } else {
+    alert("Không tìm thấy dữ liệu hợp lệ trong các file Excel đã chọn.");
   }
 }
 
-const searchSuggestions = computed(() => {
+  const searchSuggestions = computed(() => {
   return filteredRows.value.slice(0, 5)
 })
 
@@ -1841,6 +1952,53 @@ const pctFmt = (v: number) => {
 }
 
 // ─── Chart Modal ───
+
+const currentTimeLabel = computed(() => {
+  const formatYMD = (s) => {
+    if (!s) return '';
+    const parts = s.split('-');
+    if (parts.length === 3) return parts[2] + '/' + parts[1] + '/' + parts[0];
+    return s;
+  };
+  const formatYM = (s) => {
+    if (!s) return '';
+    const parts = s.split('-');
+    if (parts.length === 2) return parts[1] + '/' + parts[0];
+    return s;
+  };
+
+  if (timeFilterMode.value === 'all') return 'Tất cả thời gian';
+  if (timeFilterMode.value === 'day') {
+    if (dateFrom.value && dateTo.value) {
+      if (dateFrom.value === dateTo.value) return `Ngày ${formatYMD(dateFrom.value)}`;
+      return `${formatYMD(dateFrom.value)} đến ${formatYMD(dateTo.value)}`;
+    }
+    if (dateFrom.value) return `Từ ngày ${formatYMD(dateFrom.value)}`;
+    if (dateTo.value) return `Đến ngày ${formatYMD(dateTo.value)}`;
+    return 'Ngày (Chưa chọn)';
+  }
+  if (timeFilterMode.value === 'month') {
+    if (monthFrom.value && monthTo.value) {
+      if (monthFrom.value === monthTo.value) return `Tháng ${formatYM(monthFrom.value)}`;
+      return `${formatYM(monthFrom.value)} đến ${formatYM(monthTo.value)}`;
+    }
+    if (monthFrom.value) return `Từ tháng ${formatYM(monthFrom.value)}`;
+    if (monthTo.value) return `Đến tháng ${formatYM(monthTo.value)}`;
+    return 'Tháng (Chưa chọn)';
+  }
+  if (timeFilterMode.value === 'year') {
+    if (yearFrom.value && yearTo.value) {
+      if (yearFrom.value === yearTo.value) return `Năm ${yearFrom.value}`;
+      return `${yearFrom.value} đến ${yearTo.value}`;
+    }
+    if (yearFrom.value) return `Từ năm ${yearFrom.value}`;
+    if (yearTo.value) return `Đến năm ${yearTo.value}`;
+    return 'Năm (Chưa chọn)';
+  }
+  return '';
+});
+
+const isSwitchingTab = ref(false);
 const chartModal = ref({
   show: false,
   metric: '',
@@ -2412,7 +2570,8 @@ interface ImportItem {
 const multiEditModal = ref({
   show: false,
   mode: 'update' as 'create' | 'update',
-  items: [] as ImportItem[]
+  items: [] as ImportItem[],
+  isReportImport: false
 })
 
 const isModalDirty = ref(false)
@@ -2724,8 +2883,10 @@ function genMaKhachHang(recipient: string, company: string) {
 }
 
 function genMaCongTy(company: string) {
-  if (!company) return '';
-  return String(company).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    if (!company) return '';
+    // XoA h?u t? lA d?u g?ch ngang vA s? ? cu?i (vA d?: " -725", "- 725")
+    const baseName = String(company).replace(/\s*-\s*\d+.*$/, '');
+    return baseName.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
 }
 
 async function saveMultiModal() {
@@ -2744,187 +2905,146 @@ async function saveMultiModal() {
     }
 
     if (m.mode === 'create') {
-      // Create batch (or sequence of creates)
-      for (const item of validItems) {
-        let uploadedUrl = ''
-        if (item.base64Img) {
-          try {
-            const formData = new FormData()
-            formData.append('key', 'b202a4bdc79bf1dc72f6f6ded6b74501')
-            formData.append('image', item.base64Img)
-            
-            const uploadRes = await fetch('https://api.imgbb.com/1/upload', {
-              method: 'POST',
-              body: formData
-            }).then(r => r.json())
-            
-            if (uploadRes.success) {
-              uploadedUrl = uploadRes.data.url
-            } else {
-              console.error('Lỗi từ imgbb:', uploadRes)
-              alert('Lỗi upload ảnh từ imgbb: ' + (uploadRes.error?.message || 'Không rõ nguyên nhân'))
+        // --- BULK CREATE SEQUENCE ---
+        const bulkOfficialItems = [];
+        const bulkSaleReportItems = [];
+        
+        for (const item of validItems) {
+          let uploadedUrl = ''
+          if (item.base64Img) {
+            try {
+              const formData = new FormData()
+              formData.append('key', 'b202a4bdc79bf1dc72f6f6ded6b74501')
+              formData.append('image', item.base64Img)
+              const uploadRes = await fetch('https://api.imgbb.com/1/upload', { method: 'POST', body: formData }).then(r => r.json())
+              if (uploadRes.success) uploadedUrl = uploadRes.data.url
+            } catch (e) {
+              console.error('Lỗi upload ảnh:', e)
             }
-          } catch (e) {
-            console.error('Lỗi upload ảnh:', e)
-            alert('Lỗi mạng khi upload ảnh lên imgbb: ' + String(e))
           }
-        }
-
-        const uploadCloudinary = async (file: File) => {
-          try {
-            const formData = new FormData()
-            formData.append('upload_preset', 'upload_file')
-            formData.append('file', file)
-            const uploadRes = await fetch('https://api.cloudinary.com/v1_1/db6fzs3rh/auto/upload', {
-              method: 'POST',
-              body: formData
-            }).then(r => r.json())
-            return uploadRes.secure_url || ''
-          } catch (e) {
-            console.error('Lỗi upload file:', e)
-            return ''
+  
+          const uploadCloudinary = async (file) => {
+            try {
+              const formData = new FormData()
+              formData.append('upload_preset', 'upload_file')
+              formData.append('file', file)
+              const uploadRes = await fetch('https://api.cloudinary.com/v1_1/db6fzs3rh/auto/upload', { method: 'POST', body: formData }).then(r => r.json())
+              return uploadRes.secure_url || ''
+            } catch (e) { return '' }
           }
-        }
-
-        let linkBG = ''
-        let linkMH = ''
-        let tenBG = ''
-        let tenMH = ''
-        if (item.rawFileBaoGia) {
-          linkBG = await uploadCloudinary(item.rawFileBaoGia)
-          tenBG = item.rawFileBaoGia.name
-        }
-        if (item.rawFileMuaHang) {
-          linkMH = await uploadCloudinary(item.rawFileMuaHang)
-          tenMH = item.rawFileMuaHang.name
-        }
-
-        const maHD = 'HD' + Date.now();
-        hdLen++;
-        const soHD = `HĐ${hdLen}`;
-
-        const maKHGen = genMaKhachHang(item.recipient || '', item.customer || '');
-        const maCongTyGen = genMaCongTy(item.customer);
-
-        const tTruoc = item.goodsTotal?.ttTruoc || item.doanhSoBan || 0;
-        const tVat = item.goodsTotal?.vat || 0;
-        const tSau = item.goodsTotal?.ttSau || (tTruoc + tVat);
-
-        const payloadSaleReport = {
-            sheet: 'sale_report',
-            action: 'add',
-            ma_hop_dong: maHD,
-            so_hop_dong: soHD,
-            So_PO: item.soPO,
-            Ten_nha_cung_cap: item.productType,
-            Ma_khach_hang: maKHGen,
-            Ten_khach_hang: item.recipient || item.customer,
-            Ma_cong_ty: maCongTyGen,
-            Ten_cong_ty: item.customer,
-            MST: item.mst,
-            created_time: item.createdTime || getFormattedNow(),
-            content_of_contract_PO: item.content,
-            Tong_tien_truoc_thueVAT: tTruoc,
-            Tong_thueVAT: tVat,
-            Tong_tien_sau_thueVAT: tSau,
-            chiet_khau_tong_truoc_thue: item.grossCom,
-            phan_tram_thue_chenh_lech_gia: item.taxPct,
-            thue_chenh_lech_gia: item.grossCom * (item.taxPct / 100),
-            Tong_thanh_tien_chua_VAT_mua_hang: item.giaMua,
-            Tong_CP_don_hang: item.tongCP,
-            con_lai: item.netCom,
-            account_manager_name: item.am,
-            img_save: uploadedUrl,
-            link_excel_bao_gia: linkBG,
-            link_excel_mua_hang: linkMH,
-            ten_file_bao_gia: tenBG,
-            ten_file_mua_hang: tenMH
-        };
-        
-        const promises: any[] = [
-          fetch(BASE_URL, { method: 'POST', body: JSON.stringify(payloadSaleReport) })
-        ];
-
-        const hdTongRow = [
-          maHD, soHD, maKHGen, item.recipient || item.customer, formatNgayTaoHopDong(),
-          tTruoc, tVat, tSau, 0, tSau, 0, 0, 0, 0,
-          'Chưa thanh toán đủ', 'Chính thức', item.content || '', 'VND', 1, '', tTruoc, formatCreatedTimeDateOnly(),
-          item.soPO || '', '', item.content || '', item.grossCom || 0, 0, (item.grossCom * (item.taxPct / 100)) || 0, item.taxPct || 0, 0, item.netCom || 0, 0
-        ];
-        
-        let hdChiTietRows = [];
-        if (item.goodsList && item.goodsList.length > 0) {
-          hdChiTietRows = item.goodsList.map(g => {
-            const vatPct = g.ttTruoc > 0 ? (g.vat / g.ttTruoc) * 100 : 0;
-            return [
-              maHD, soHD, '', g.ten || '', '', '', item.productType || '', '', '', g.dienGiai || '', g.danhMuc || '', '',
-              g.dvt || '', g.donGia || 0, g.donGia || 0, 'VND', 1, vatPct, g.sl || 1, '', 0, 0, 0
-            ];
+  
+          let linkBG = '', linkMH = '', tenBG = '', tenMH = ''
+          if (item.rawFileBaoGia) { linkBG = await uploadCloudinary(item.rawFileBaoGia); tenBG = item.rawFileBaoGia.name; }
+          if (item.rawFileMuaHang) { linkMH = await uploadCloudinary(item.rawFileMuaHang); tenMH = item.rawFileMuaHang.name; }
+  
+          const maHD = 'HD' + Date.now() + Math.floor(Math.random() * 10000);
+          hdLen++;
+          const soHD = `HĐ ${hdLen}`;
+  
+          const maKHGen = genMaKhachHang(item.recipient || '', item.customer || '');
+          const maCongTyGen = genMaCongTy(item.customer);
+  
+          const tTruoc = item.goodsTotal?.ttTruoc || item.doanhSoBan || 0;
+          const tVat = item.goodsTotal?.vat || 0;
+          const tSau = item.goodsTotal?.ttSau || (tTruoc + tVat);
+  
+          bulkSaleReportItems.push({
+              sheet: 'sale_report',
+              action: 'add', // Will be wrapped in add_bulk
+              ma_hop_dong: maHD,
+              so_hop_dong: soHD,
+              So_PO: item.soPO,
+              Ten_nha_cung_cap: item.productType,
+              Ma_khach_hang: maKHGen,
+              Ten_khach_hang: item.recipient || item.customer,
+              Ma_cong_ty: maCongTyGen,
+              Ten_cong_ty: item.customer,
+              MST: item.mst,
+              created_time: "'" + (item.createdTime || getFormattedNow()),
+              content_of_contract_PO: item.content,
+              Tong_tien_truoc_thueVAT: tTruoc,
+              Tong_thueVAT: tVat,
+              Tong_tien_sau_thueVAT: tSau,
+              chiet_khau_tong_truoc_thue: item.grossCom,
+              phan_tram_thue_chenh_lech_gia: item.taxPct,
+              thue_chenh_lech_gia: item.grossCom * (item.taxPct / 100),
+              Tong_thanh_tien_chua_VAT_mua_hang: item.giaMua,
+              Tong_CP_don_hang: item.tongCP,
+              con_lai: item.netCom,
+              account_manager_name: item.am,
+              img_save: uploadedUrl,
+              link_excel_bao_gia: linkBG,
+              link_excel_mua_hang: linkMH,
+              ten_file_bao_gia: tenBG,
+              ten_file_mua_hang: tenMH
           });
-        } else {
-          // Bắt buộc phải có ít nhất 1 dòng chi tiết
-          hdChiTietRows = [[
-             maHD, soHD, '', 'Hàng hóa mặc định', '', '', item.productType || '', '', '', item.content || '', '', '',
-            'Cái', tTruoc, tTruoc, 'VND', 1, 0, 1, '', 0, 0, 0
-          ]];
+  
+          const hdTongRow = [
+            maHD, soHD, maKHGen, item.recipient || item.customer, formatNgayTaoHopDong(),
+            tTruoc, tVat, tSau, 0, tSau, 0, 0, 0, 0,
+            'Chưa thanh toán đủ', 'Chính thức', item.content || '', 'VND', 1, '', tTruoc, formatCreatedTimeDateOnly(),
+            item.soPO || '', '', item.content || '', item.grossCom || 0, 0, (item.grossCom * (item.taxPct / 100)) || 0, item.taxPct || 0, 0, item.netCom || 0, 0
+          ];
+          
+          let hdChiTietRows = [];
+          if (item.goodsItems && item.goodsItems.length > 0) {
+            item.goodsItems.forEach((g) => {
+              hdChiTietRows.push([
+                maHD, soHD, '', g.ten || 'Hàng hóa mặc định', g.dvt || '', '', g.ncc || item.productType || '', '', '', g.moTa || item.content || '', '', '',
+                'Cái', g.soLuong || 1, g.giaBan || 0, 'VND', g.vat || 0, 0, 1, '', 0, 0, g.giaMua || 0
+              ]);
+            });
+          } else {
+            hdChiTietRows = [[
+               maHD, soHD, '', 'Hàng hóa mặc định', '', '', item.productType || '', '', '', item.content || '', '', '',
+              'Cái', tTruoc, tTruoc, 'VND', 1, 0, 1, '', 0, 0, 0
+            ]];
+          }
+  
+          bulkOfficialItems.push({
+              hd_tong_quat_row: hdTongRow,
+              hd_chi_tiet_rows: hdChiTietRows,
+              ma_khach_hang: maKHGen,
+              tong_sau_thue: (item.doanhSoBan > 0 ? item.doanhSoBan : 1) // Bypass backend zero check
+          });
         }
 
-        const formData = new URLSearchParams();
-        formData.set('action', 'save_contract_official');
-        formData.set('payload', JSON.stringify({
-            action: 'save_contract_official',
-            hd_tong_quat_row: hdTongRow,
-            hd_chi_tiet_rows: hdChiTietRows,
-            ma_khach_hang: maKHGen,
-            tong_sau_thue: (item.doanhSoBan > 0 ? item.doanhSoBan : 1) // Bypass backend zero check
-        }));
+        const promises = [];
+        
+        if (bulkSaleReportItems.length > 0) {
+            promises.push(
+                fetch(BASE_URL, { 
+                    method: 'POST', 
+                    body: JSON.stringify({
+                        sheet: 'sale_report',
+                        action: 'add_bulk',
+                        items: bulkSaleReportItems
+                    })
+                }).then(r => r.json()).catch(e => console.error("Sale Report Bulk error:", e))
+            );
+        }
 
-        promises.push(
-          fetch(BASE_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: formData.toString()
-          }).then(r => r.json()).then(res => {
-            if (!res.ok) {
-              console.error('Lỗi khi lưu hợp đồng:', res);
-              alert('Lỗi lưu hợp đồng: ' + (res.error || 'Unknown error'));
-            }
-          }).catch(e => {
-            console.error('Lỗi fetch lưu hợp đồng:', e);
-          })
-        );
+        if (bulkOfficialItems.length > 0) {
+            const formData = new URLSearchParams();
+            formData.set('action', 'save_contract_official_bulk');
+            formData.set('payload', JSON.stringify({
+                action: 'save_contract_official_bulk',
+                items: bulkOfficialItems
+            }));
+    
+            promises.push(
+              fetch(BASE_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString()
+              }).then(r => r.json()).catch(e => console.error("Official Bulk error:", e))
+            );
+        }
 
         await Promise.all(promises);
-        
-        rows.value.unshift({
-          ID: 'TEMP_' + Date.now() + Math.random(),
-          So_PO: item.soPO,
-          Ten_nha_cung_cap: item.productType,
-          Ma_khach_hang: maKHGen,
-          Ten_khach_hang: item.recipient || item.customer,
-          Ma_cong_ty: maCongTyGen,
-          Ten_cong_ty: item.customer,
-          MST: item.mst,
-          created_time: item.createdTime || getFormattedNow(),
-          content_of_contract_PO: item.content,
-          Tong_tien_truoc_thueVAT: item.doanhSoBan,
-          chiet_khau_tong_truoc_thue: item.grossCom,
-          phan_tram_thue_chenh_lech_gia: item.taxPct,
-          thue_chenh_lech_gia: item.grossCom * (item.taxPct / 100),
-          Tong_thanh_tien_chua_VAT_mua_hang: item.giaMua,
-          Tong_CP_don_hang: item.tongCP,
-          con_lai: item.netCom,
-          account_manager_name: item.am,
-          img_save: uploadedUrl,
-          link_excel_bao_gia: linkBG,
-          link_excel_mua_hang: linkMH,
-          ten_file_bao_gia: tenBG,
-          ten_file_mua_hang: tenMH
-        })
-      }
-      loadData()
-    } else {
-      // Update sequence
+        loadData()
+      } else {
+        // Update sequence
       for (const item of validItems) {
         let uploadedUrl = ''
         if (item.base64Img) {
@@ -4723,7 +4843,7 @@ async function doExport() {
 .sr-calc-item strong { font-size: 16px; color: #f8fafc; font-family: 'JetBrains Mono', monospace; }
 .sr-calc-item.highlight { background: rgba(16,185,129,.08); border-color: rgba(16,185,129,.2); }
 .sr-calc-item.highlight span { color: #34d399; }
-.sr-calc-item.highlight strong { color: #10b981; }
+.sr-calc-item.highlight strong { color: #22c55e; }
 .sr-modal-large { width: 1920px !important; max-width: 96vw; }
 .sr-import-card {
   background: #0f172a;
@@ -4812,12 +4932,12 @@ async function doExport() {
   font-family: inherit;
 }
 .sr-month-btn:hover {
-  border-color: #10b981;
+  border-color: #22c55e;
   background: #ecfdf5;
-  color: #059669;
+  color: #22c55e;
 }
 .sr-month-btn.active {
-  border-color: #10b981;
+  border-color: #22c55e;
   background: #10b981;
   color: #fff;
   box-shadow: 0 2px 8px rgba(16,185,129,.3);
@@ -5299,7 +5419,7 @@ async function doExport() {
   letter-spacing: -0.01em;
 }
 
-.elite-filter-title svg { color: #10b981; }
+.elite-filter-title svg { color: #22c55e; }
 
 .elite-refresh-btn {
   display: inline-flex;
@@ -5307,7 +5427,7 @@ async function doExport() {
   gap: 0.4rem;
   padding: 0.5rem 1.1rem;
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(52, 211, 153, 0.08) 100%);
-  color: #10b981;
+  color: #22c55e;
   border-radius: 10px;
   font-size: 0.8rem;
   font-weight: 600;
@@ -5410,7 +5530,7 @@ async function doExport() {
   align-items: center;
   justify-content: center;
   margin-bottom: 0.75rem;
-  color: #10b981;
+  color: #22c55e;
   font-size: 1.1rem;
   font-weight: 600;
   opacity: 0.6;
@@ -5462,7 +5582,7 @@ async function doExport() {
 
 .elite-select option {
   background-color: #0f172a; /* Nền xanh đậm */
-  color: #10b981; /* Chữ xanh lá cây */
+  color: #22c55e; /* Chữ xanh lá cây */
   font-weight: 600;
   padding: 8px;
 }
@@ -5573,7 +5693,7 @@ async function doExport() {
 
 .elite-row:hover .row-index {
   background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
-  color: #10b981;
+  color: #22c55e;
 }
 
 .elite-time-cell {
@@ -5597,7 +5717,7 @@ async function doExport() {
 }
 
 .elite-time-thu {
-  color: #10b981;
+  color: #22c55e;
   font-weight: 600;
   font-size: 0.7rem;
   background: rgba(16, 185, 129, 0.1);
@@ -6076,7 +6196,7 @@ async function doExport() {
 .fintech-icon.success { background: rgba(52, 211, 153, 0.1); color: #34d399; }
 .fintech-icon.warning { background: rgba(251, 191, 36, 0.1); color: #fbbf24; }
 .fintech-icon.danger { background: rgba(248, 113, 113, 0.1); color: #f87171; }
-.fintech-icon.ratio { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+.fintech-icon.ratio { background: rgba(16, 185, 129, 0.1); color: #22c55e; }
 
 .fintech-val {
   font-size: 24px; font-weight: 800; color: #f8fafc; font-family: 'Inter', sans-serif;
@@ -6143,4 +6263,18 @@ async function doExport() {
   }
 }
 
+
+.sr-tab-btn {
+    background: transparent; color: #94a3b8; border: none; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; white-space: nowrap; text-transform: uppercase;
+  }
+.sr-tab-btn:hover {
+  color: #f8fafc; background: rgba(51, 65, 85, 0.5);
+}
+.sr-tab-btn.active {
+    background: rgba(16, 185, 129, 0.15); color: #22c55e; border: 1px solid rgba(16, 185, 129, 0.2); cursor: default; pointer-events: none;
+  }
+.no-anim {
+  animation: none !important;
+  transition: none !important;
+}
 </style>
