@@ -452,9 +452,17 @@
           
           <!-- Custom Dropdown -->
           <ul v-if="showCustomerDropdown" style="position: absolute; top: 100%; left: 0; width: 100%; margin-top: 8px; padding: 6px; background: #0f172a; border: 1px solid #1e293b; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); z-index: 1000; max-height: 280px; overflow-y: auto; list-style: none; display: flex; flex-direction: column; gap: 2px;" class="custom-scrollbar">
-            <li v-for="c in filteredCustomerOptions" :key="c" @mousedown="selectCustomerOption(c)" style="padding: 10px 14px; color: #cbd5e1; font-size: 13.5px; font-weight: 500; cursor: pointer; border-radius: 6px; transition: all 0.2s; text-align: left; display: flex; align-items: center; gap: 8px;" onmouseover="this.style.background='rgba(16, 185, 129, 0.15)'; this.style.color='#10b981'" onmouseout="this.style.background='transparent'; this.style.color='#cbd5e1'">
-              <svg v-if="c === 'Tất cả'" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.8;"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
-              {{ c === 'Tất cả' ? '-- Tất cả khách hàng --' : c }}
+            <li v-for="c in filteredCustomerOptions" :key="c.companyName + c.companyCode" @mousedown="selectCustomerOption(c)" style="padding: 10px 14px; cursor: pointer; border-radius: 6px; transition: all 0.2s; text-align: left; display: flex; align-items: center; gap: 8px;" onmouseover="this.style.background='rgba(16, 185, 129, 0.15)'" onmouseout="this.style.background='transparent'">
+              <template v-if="c.companyName === 'Tất cả'">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.8;"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                <span style="color: #cbd5e1; font-size: 13.5px; font-weight: 500;">-- Tất cả khách hàng --</span>
+              </template>
+              <template v-else>
+                <div style="display: flex; flex-direction: column; gap: 2px;">
+                  <span style="font-weight: 700; color: #10b981; font-size: 14px;">{{ c.companyName }}</span>
+                  <span style="font-size: 11.5px; color: #94a3b8;">{{ c.customerName }} <span v-if="c.companyCode" style="opacity: 0.6;">({{ c.companyCode }})</span></span>
+                </div>
+              </template>
             </li>
             <li v-if="filteredCustomerOptions.length === 0" style="padding: 10px 14px; color: #64748b; font-size: 13px; text-align: center; font-style: italic;">
               Không tìm thấy khách hàng
@@ -492,9 +500,27 @@
       </div>
     </div>
 
-    <!-- Card List -->
-    <div class="sr-card-list" v-if="!loading && filteredRows.length > 0">
-      <div v-for="(r, idx) in displayedRows" :key="r.ID || idx" class="sr-record-card" @click="openMultiEditModal(r)" style="cursor: pointer;">
+    <!-- Grouped Card List -->
+    <div class="sr-groups-container" v-if="!loading && filteredRows.length > 0">
+      <div v-for="(group, gIdx) in groupedDisplayedRows" :key="group.ma_cong_ty + gIdx" class="sr-report-group" style="margin-bottom: 24px;">
+        <div class="folder-header" style="cursor: pointer; margin-bottom: 16px;">
+          <div class="folder-tab" style="background: linear-gradient(135deg, #059669, #10b981); border: 1px solid rgba(16, 185, 129, 0.5); border-bottom: none; border-radius: 10px 10px 0 0; padding: 8px 24px; width: max-content; color: #ffffff; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span style="display: flex; align-items: center; gap: 6px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                <span>{{ group.ma_cong_ty }}</span>
+              </span>
+              <div style="width: 1px; height: 14px; background: rgba(255,255,255,0.3);"></div>
+              <span style="max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ group.ten_cong_ty }}</span>
+              <div style="width: 1px; height: 14px; background: rgba(255,255,255,0.3);"></div>
+              <span>SỐ LƯỢNG: {{ group.items.length }}</span>
+            </div>
+          </div>
+          <div class="folder-body-line" style="height: 4px; background: #10b981; border-radius: 0 4px 4px 4px; box-shadow: 0 2px 10px rgba(16,185,129,0.2);"></div>
+        </div>
+        
+        <div class="sr-card-list">
+          <div v-for="(r, idx) in group.items" :key="r.ID || idx" class="sr-record-card" @click="openMultiEditModal(r)" style="cursor: pointer;">
         
         <div class="sr-rc-header">
           <div class="sr-rc-left">
@@ -504,12 +530,7 @@
             </div>
             <span class="sr-rc-date" style="color: #f8fafc;">Tạo: {{ fmtDate(r.created_time) }} (Tháng {{ getMonth(r.created_time) }})</span>
           </div>
-          <div class="sr-rc-right">
-            <button class="sr-btn-edit-rc" @click.stop="openMultiEditModal(r)">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              Cập nhật số liệu
-            </button>
-          </div>
+          
         </div>
 
         <div class="sr-rc-body" style="flex-direction: column;">
@@ -581,6 +602,8 @@
         <div class="sr-rc-footer" v-if="r.ghi_chu">
           <strong>Note:</strong> {{ r.ghi_chu }}
         </div>
+      </div>
+      </div>
       </div>
 
       <div v-if="displayLimit < filteredRows.length" style="display: flex; justify-content: center; margin-top: 24px; margin-bottom: 24px;">
@@ -1135,7 +1158,7 @@
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
               Biểu đồ {{ chartData.datasets[1]?.label }}
             </h3>
-              <div style="position: absolute; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 10;">
+              <div class="sr-modal-center-block" style="display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 10;">
                 <div class="sr-modal-tabs" style="display: flex; gap: 4px; background: rgba(30, 41, 59, 0.5); padding: 4px; border-radius: 8px; border: 1px solid #334155;">
                   <button class="sr-tab-btn active">Chỉ số</button>
                   <button class="sr-tab-btn" @click="isSwitchingTab = true; chartModal.show = false; openTopCustomerModal(chartModal.metric); setTimeout(() => isSwitchingTab = false, 50)">Khách hàng</button>
@@ -1146,7 +1169,7 @@
             <button class="sr-btn-close" @click="chartModal.show = false" style="background: none; border: none; font-size: 24px; color: #64748b; cursor: pointer;">×</button>
           </div>
           <div class="sr-modal-body" style="padding: 24px; flex: 1; background: #0b1121; position: relative;">
-            <div style="height: 650px; width: 100%;">
+            <div class="chart-wrapper-mobile" style="height: 650px; width: 100%;">
                 <Bar v-if="chartModal.show" :data="chartData" :options="chartOptions" />
             </div>
           </div>
@@ -1163,7 +1186,7 @@
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
               BXH Khách hàng - {{ topCustomerModal.metricLabel }}
             </h3>
-              <div style="position: absolute; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 10;">
+              <div class="sr-modal-center-block" style="display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 10;">
                 <div class="sr-modal-tabs" style="display: flex; gap: 4px; background: rgba(30, 41, 59, 0.5); padding: 4px; border-radius: 8px; border: 1px solid #334155;">
                   <button class="sr-tab-btn" @click="topCustomerModal.show = false; openChart(topCustomerModal.metric, topCustomerModal.metric.includes('Pct'))">Chỉ số</button>
                   <button class="sr-tab-btn active">Khách hàng</button>
@@ -1184,18 +1207,18 @@
           <div class="sr-modal-body" style="padding: 24px; flex: 1; background: #0b1121; position: relative;">
             <div style="display: flex; gap: 24px; flex-wrap: wrap;">
               <!-- Pie Chart (Hide for ratio metrics) -->
-              <div v-if="!topCustomerModal.metric.includes('Pct')" style="flex: 1; min-width: 300px; max-width: 400px; background: rgba(15,23,42,.6); border: 1px solid #1e293b; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; align-items: center;">
+              <div v-if="!topCustomerModal.metric.includes('Pct')" class="modal-pie-container" style="flex: 1; min-width: 300px; max-width: 400px; background: rgba(15,23,42,.6); border: 1px solid #1e293b; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; align-items: center;">
                  <h4 style="color: #94a3b8; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;">Tỉ trọng Top Khách Hàng</h4>
-                 <div style="height: 500px; width: 100%;">
+                 <div class="chart-wrapper-mobile" style="height: 400px; width: 100%; display: flex; justify-content: center;">
                      <Pie v-if="topCustomerModal.show" :data="topCustomerPieData" :options="topCustomerPieOptions" />
                  </div>
               </div>
               
               <!-- Bar Chart -->
-              <div style="flex: 2; min-width: 500px; background: rgba(15,23,42,.6); border: 1px solid #1e293b; border-radius: 12px; padding: 16px; display: flex; flex-direction: column;">
+              <div class="modal-bar-container" style="flex: 2; min-width: 500px; background: rgba(15,23,42,.6); border: 1px solid #1e293b; border-radius: 12px; padding: 16px; display: flex; flex-direction: column;">
                  <h4 style="color: #94a3b8; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;">Xếp Hạng Khách Hàng</h4>
                  <div style="flex: 1; overflow-x: auto; padding-bottom: 8px;" class="custom-scrollbar">
-                   <div :style="{ height: '500px', width: Math.max(100, Math.min(topCustomerRawData.sorted.length, Number(topCustomerLimit) || 5) * 120) + 'px', minWidth: '100%' }">
+                   <div class="chart-wrapper-mobile" :style="{ height: '500px', width: Math.max(100, Math.min(topCustomerRawData.sorted.length, Number(topCustomerLimit) || 5) * (isMobile ? 90 : 120)) + 'px', minWidth: '100%' }">
                      <Bar v-if="topCustomerModal.show" :data="topCustomerBarData" :options="topCustomerBarOptions" />
                    </div>
                  </div>
@@ -1215,7 +1238,7 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
                 BXH Sản phẩm - {{ topProductModal.metricLabel }}
               </h3>
-              <div style="position: absolute; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 10;">
+              <div class="sr-modal-center-block" style="display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 10;">
                 <div class="sr-modal-tabs" style="display: flex; gap: 4px; background: rgba(30, 41, 59, 0.5); padding: 4px; border-radius: 8px; border: 1px solid #334155;">
                   <button class="sr-tab-btn" @click="topProductModal.show = false; openChart(topProductModal.metric, topProductModal.metric.includes('Pct'))">Chỉ số</button>
                   <button class="sr-tab-btn" @click="isSwitchingTab = true; topProductModal.show = false; openTopCustomerModal(topProductModal.metric); setTimeout(() => isSwitchingTab = false, 50)">Khách hàng</button>
@@ -1236,18 +1259,18 @@
             <div class="sr-modal-body" style="padding: 24px; flex: 1; background: #0b1121; position: relative;">
               <div style="display: flex; gap: 24px; flex-wrap: wrap;">
                 <!-- Pie Chart -->
-                <div v-if="!topProductModal.metric.includes('Pct')" style="flex: 1; min-width: 300px; max-width: 400px; background: rgba(15,23,42,.6); border: 1px solid #1e293b; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; align-items: center;">
+                <div v-if="!topProductModal.metric.includes('Pct')" class="modal-pie-container" style="flex: 1; min-width: 300px; max-width: 400px; background: rgba(15,23,42,.6); border: 1px solid #1e293b; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; align-items: center;">
                    <h4 style="color: #94a3b8; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;">Tỷ trọng Top Sản Phẩm</h4>
-                   <div style="height: 500px; width: 100%;">
+                   <div class="chart-wrapper-mobile" style="height: 400px; width: 100%; display: flex; justify-content: center;">
                      <Pie v-if="topProductModal.show" :data="topProductPieData" :options="topProductPieOptions" />
                    </div>
                 </div>
                 
                 <!-- Bar Chart -->
-                <div style="flex: 2; min-width: 500px; background: rgba(15,23,42,.6); border: 1px solid #1e293b; border-radius: 12px; padding: 16px; display: flex; flex-direction: column;">
+                <div class="modal-bar-container" style="flex: 2; min-width: 500px; background: rgba(15,23,42,.6); border: 1px solid #1e293b; border-radius: 12px; padding: 16px; display: flex; flex-direction: column;">
                    <h4 style="color: #94a3b8; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;">Xếp Hạng Sản Phẩm</h4>
                    <div style="flex: 1; overflow-x: auto; padding-bottom: 8px;" class="custom-scrollbar">
-                     <div :style="{ height: '500px', width: Math.max(100, Math.min(topProductRawData.sorted.length, Number(topProductLimit) || 5) * 120) + 'px', minWidth: '100%' }">
+                     <div class="chart-wrapper-mobile" :style="{ height: '500px', width: Math.max(100, Math.min(topProductRawData.sorted.length, Number(topProductLimit) || 5) * (isMobile ? 90 : 120)) + 'px', minWidth: '100%' }">
                        <Bar v-if="topProductModal.show" :data="topProductBarData" :options="topProductBarOptions" />
                      </div>
                    </div>
@@ -1461,9 +1484,13 @@ const hideSearchSuggestionsDelay = () => {
 }
 
 const selectSuggestion = (item: any) => {
-  openMultiEditModal(item)
-  searchStr.value = item.So_PO
-  showSearchSuggestions.value = false
+  searchStr.value = item.So_PO;
+  showSearchSuggestions.value = false;
+  setTimeout(() => {
+    searchStr.value = "";
+    const fullRow = rows.value.find(r => String(r.So_PO).trim() === String(item.So_PO).trim());
+    if (fullRow) openMultiEditModal(fullRow); else openMultiEditModal(item);
+  }, 150);
 }
 
 const currentDate = new Date()
@@ -1610,13 +1637,18 @@ const showCustomerDropdown = ref(false);
 
 const filteredCustomerOptions = computed(() => {
   const search = (filterCustomer.value || '').toLowerCase().trim();
-  const all = ['Tất cả', ...uniqueCustomers.value];
-  if (!search || search === 'tất cả') return all;
-  return all.filter(c => c.toLowerCase().includes(search));
+  const allOptions = uniqueCustomers.value;
+  if (!search || search === 'tất cả') return [{ companyName: 'Tất cả' }, ...allOptions];
+  
+  return allOptions.filter(c => 
+    c.companyName.toLowerCase().includes(search) || 
+    c.customerName.toLowerCase().includes(search) ||
+    c.companyCode.toLowerCase().includes(search)
+  );
 });
 
-const selectCustomerOption = (c: string) => {
-  filterCustomer.value = c;
+const selectCustomerOption = (c: any) => {
+  filterCustomer.value = c.companyName === 'Tất cả' ? 'Tất cả' : c.companyName;
   showCustomerDropdown.value = false;
 };
 
@@ -1630,11 +1662,29 @@ const onCustomerInputBlur = () => {
 };
 
 const uniqueCustomers = computed(() => {
-  const set = new Set<string>();
+  const map = new Map();
   rows.value.forEach(r => {
-    if (r.Ten_cong_ty) set.add(String(r.Ten_cong_ty).trim());
+    const maCty = String(r.Ma_cong_ty || '').trim();
+    if (maCty) {
+      if (!map.has(maCty)) {
+        map.set(maCty, {
+          companyName: String(r.Ten_cong_ty || '').trim() || maCty,
+          customerName: String(r.Ten_khach_hang || '').trim(),
+          companyCode: maCty
+        });
+      }
+    } else {
+      const cty = String(r.Ten_cong_ty || '').trim();
+      if (cty && !map.has(cty)) {
+         map.set(cty, {
+            companyName: cty,
+            customerName: String(r.Ten_khach_hang || '').trim(),
+            companyCode: ''
+         });
+      }
+    }
   });
-  return Array.from(set).sort();
+  return Array.from(map.values()).sort((a, b) => a.companyName.localeCompare(b.companyName));
 });
 
 const filteredRows = computed(() => {
@@ -1675,13 +1725,18 @@ const filteredRows = computed(() => {
   }
 
   if (filterCustomer.value && filterCustomer.value !== 'Tất cả') {
-    const target = filterCustomer.value.toLowerCase().trim()
+    const target = filterCustomer.value.toLowerCase().trim();
+    const exactMatch = uniqueCustomers.value.find(c => c.companyName.toLowerCase() === target);
+    const targetCode = exactMatch ? exactMatch.companyCode.toLowerCase() : '';
+
     list = list.filter(r => {
       const ten = String(r.Ten_cong_ty || '').toLowerCase();
-      const makh = String(r.Ma_khach_hang || '').toLowerCase();
+      const tenKh = String(r.Ten_khach_hang || '').toLowerCase();
       const macty = String(r.Ma_cong_ty || '').toLowerCase();
-      return ten.includes(target) || makh.includes(target) || macty.includes(target);
-    })
+      
+      if (targetCode && macty === targetCode) return true;
+      return ten.includes(target) || tenKh.includes(target) || macty.includes(target);
+    });
   }
 
   if (filterProductType.value !== 'Tất cả') {
@@ -1716,6 +1771,22 @@ watch(filteredRows, () => {
 const displayedRows = computed(() => {
   return filteredRows.value.slice(0, displayLimit.value)
 })
+
+const groupedDisplayedRows = computed(() => {
+  const map = new Map();
+  displayedRows.value.forEach(r => {
+    const maCty = r.Ma_cong_ty || 'Khác';
+    if (!map.has(maCty)) {
+      map.set(maCty, {
+        ma_cong_ty: maCty,
+        ten_cong_ty: r.Ten_cong_ty || 'N/A',
+        items: []
+      });
+    }
+    map.get(maCty).items.push(r);
+  });
+  return Array.from(map.values());
+});
 
 const loadMore = () => {
   displayLimit.value += 15
@@ -1999,6 +2070,10 @@ const currentTimeLabel = computed(() => {
 });
 
 const isSwitchingTab = ref(false);
+const isMobile = ref(typeof window !== 'undefined' ? window.innerWidth <= 1000 : false);
+if (typeof window !== 'undefined') {
+  window.addEventListener('resize', () => { isMobile.value = window.innerWidth <= 1000; });
+}
 const chartModal = ref({
   show: false,
   metric: '',
@@ -2192,7 +2267,7 @@ const topCustomerPieOptions = computed(() => ({
     }
   },
   plugins: {
-    legend: { position: 'right' as const, labels: { color: '#cbd5e1', font: { size: 11 } } },
+    legend: { position: 'bottom' as const, labels: { color: '#cbd5e1', font: { size: 11 } } },
     tooltip: { callbacks: { label: (ctx: any) => ` ${ctx.label}: ${fmt(ctx.raw)} (${((ctx.raw / topCustomerRawData.value.total) * 100).toFixed(1)}%)` } },
     datalabels: {
       color: '#fff',
@@ -2223,20 +2298,48 @@ const topCustomerBarOptions = computed(() => ({
   layout: { padding: { top: 30, bottom: 20 } },
   scales: {
     y: { grid: { color: 'rgba(51, 65, 85, 0.5)' }, ticks: { color: '#94a3b8', callback: (v: any) => fmt(v) } },
-    x: { grid: { display: false }, ticks: { color: '#e2e8f0', minRotation: 0, maxRotation: 0, autoSkip: false, font: { size: 11 } } }
+    x: { grid: { display: false }, ticks: { color: '#e2e8f0', minRotation: 0, maxRotation: 0, autoSkip: false, font: { size: 11 }, callback: function(val) { let label = this.getLabelForValue(val); if (isMobile.value && label && label.length > 10) return label.substring(0, 10) + '...'; return label; } } }
   },
   plugins: {
     legend: { display: false },
     tooltip: { callbacks: { label: (ctx: any) => topCustomerModal.value.metric.includes('Pct') ? pctFmt(ctx.raw) : fmt(ctx.raw) } },
     datalabels: {
-      color: '#fff',
-      anchor: 'end',
-      align: 'top',
-      offset: 4,
-      formatter: (val: number) => topCustomerModal.value.metric.includes('Pct') ? pctFmt(val) : fmt(val),
-      font: { weight: 'bold', size: 11 },
-      textShadowBlur: 4,
-      textShadowColor: 'rgba(0,0,0,0.5)'
+      labels: {
+        value: {
+          color: '#fff',
+          anchor: 'end',
+          align: 'top', offset: 20,
+          font: { weight: 'bold', size: isMobile.value ? 9 : 11 },
+          formatter: (val: number) => {
+            if (topCustomerModal.value.metric.includes('Pct')) return pctFmt(val);
+            if (isMobile.value) {
+              if (Math.abs(val) >= 1e9) return (val / 1e9).toFixed(1) + ' Tỷ';
+              if (Math.abs(val) >= 1e6) return (val / 1e6).toFixed(1) + ' Tr';
+            }
+            return fmt(val);
+          },
+          
+          textShadowBlur: 4,
+          textShadowColor: 'rgba(0,0,0,0.5)'
+        },
+        percent: {
+          color: '#22c55e',
+          anchor: 'end',
+          align: 'top',
+          offset: 4,
+          font: { weight: 'bold', size: isMobile.value ? 9 : 11 },
+          formatter: (val: number) => {
+            if (topCustomerModal.value.metric.includes('Pct')) return '';
+            const total = topCustomerRawData.value.total;
+            if (!total) return '';
+            const pct = (val / total) * 100;
+            return `${pct.toFixed(1)}%`;
+          },
+          
+          textShadowBlur: 4,
+          textShadowColor: 'rgba(0,0,0,0.5)'
+        }
+      }
     }
   }
 }));
@@ -2322,7 +2425,12 @@ const topCustomerPieData = computed(() => {
   const topN = data.slice(0, limit);
   const others = data.slice(limit).reduce((sum, item) => sum + item[1], 0);
   
-  const labels = topN.map(d => wrapText(d[0], 25));
+  const labels = topN.map(d => {
+    let text = d[0];
+    if (isMobile.value && text.length > 15) return text.substring(0, 15) + '...';
+    if (!isMobile.value && text.length > 25) return text.substring(0, 25) + '...';
+    return text;
+  });
   const values = topN.map(d => d[1]);
   
   if (others > 0) {
@@ -2386,7 +2494,7 @@ function openTopCustomerModal(metric: string) {
       }
     },
     plugins: {
-      legend: { position: 'right' as const, labels: { color: '#cbd5e1', font: { size: 11 } } },
+      legend: { position: 'bottom' as const, labels: { color: '#cbd5e1', font: { size: 11 } } },
       tooltip: { callbacks: { label: (ctx: any) => ` ${ctx.label}: ${fmt(ctx.raw)} (${((ctx.raw / topProductRawData.value.total) * 100).toFixed(1)}%)` } },
       datalabels: {
         color: '#fff',
@@ -2417,21 +2525,49 @@ function openTopCustomerModal(metric: string) {
     layout: { padding: { top: 30, bottom: 20 } },
     scales: {
       y: { grid: { color: 'rgba(51, 65, 85, 0.5)' }, ticks: { color: '#94a3b8', callback: (v: any) => fmt(v) } },
-      x: { grid: { display: false }, ticks: { color: '#e2e8f0', minRotation: 0, maxRotation: 0, autoSkip: false, font: { size: 11 } } }
+      x: { grid: { display: false }, ticks: { color: '#e2e8f0', minRotation: 0, maxRotation: 0, autoSkip: false, font: { size: 11 }, callback: function(val) { let label = this.getLabelForValue(val); if (isMobile.value && label && label.length > 10) return label.substring(0, 10) + '...'; return label; } } }
     },
     plugins: {
       legend: { display: false },
       tooltip: { callbacks: { label: (ctx: any) => topProductModal.value.metric.includes('Pct') ? pctFmt(ctx.raw) : fmt(ctx.raw) } },
       datalabels: {
-        color: '#fff',
-        anchor: 'end',
-        align: 'top',
-        offset: 4,
-        formatter: (val: number) => topProductModal.value.metric.includes('Pct') ? pctFmt(val) : fmt(val),
-        font: { weight: 'bold', size: 11 },
-        textShadowBlur: 4,
-        textShadowColor: 'rgba(0,0,0,0.5)'
+      labels: {
+        value: {
+          color: '#fff',
+          anchor: 'end',
+          align: 'top', offset: 20,
+          font: { weight: 'bold', size: isMobile.value ? 9 : 11 },
+          formatter: (val: number) => {
+            if (topProductModal.value.metric.includes('Pct')) return pctFmt(val);
+            if (isMobile.value) {
+              if (Math.abs(val) >= 1e9) return (val / 1e9).toFixed(1) + ' Tỷ';
+              if (Math.abs(val) >= 1e6) return (val / 1e6).toFixed(1) + ' Tr';
+            }
+            return fmt(val);
+          },
+          
+          textShadowBlur: 4,
+          textShadowColor: 'rgba(0,0,0,0.5)'
+        },
+        percent: {
+          color: '#22c55e',
+          anchor: 'end',
+          align: 'top',
+          offset: 4,
+          font: { weight: 'bold', size: isMobile.value ? 9 : 11 },
+          formatter: (val: number) => {
+            if (topProductModal.value.metric.includes('Pct')) return '';
+            const total = topProductRawData.value.total;
+            if (!total) return '';
+            const pct = (val / total) * 100;
+            return `${pct.toFixed(1)}%`;
+          },
+          
+          textShadowBlur: 4,
+          textShadowColor: 'rgba(0,0,0,0.5)'
+        }
       }
+    }
     }
   }));
 
@@ -2485,7 +2621,12 @@ function openTopCustomerModal(metric: string) {
     const topN = data.slice(0, limit);
     const others = data.slice(limit).reduce((sum, item) => sum + item[1], 0);
     
-    const labels = topN.map(d => wrapText(d[0], 25));
+    const labels = topN.map(d => {
+    let text = d[0];
+    if (isMobile.value && text.length > 15) return text.substring(0, 15) + '...';
+    if (!isMobile.value && text.length > 25) return text.substring(0, 25) + '...';
+    return text;
+  });
     const values = topN.map(d => d[1]);
     
     if (others > 0) {
@@ -4502,8 +4643,8 @@ async function doExport() {
 
 /* Cards Layout */
 .sr-card-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 24px;
   margin-bottom: 40px;
 }
@@ -4535,7 +4676,7 @@ async function doExport() {
 }
 .sr-rc-left { display: flex; flex-direction: column; gap: 4px; }
 .sr-rc-po { font-size: 13px; font-weight: 800; color: #ffffff; background: #10b981; padding: 2px 10px; border-radius: 12px; align-self: flex-start; border: 1px solid #059669; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3); }
-.sr-rc-customer { margin: 6px 0 2px 0; font-size: 18px; font-weight: 700; color: #f8fafc; }
+.sr-rc-customer { margin: 6px 0 2px 0; font-size: 18px; font-weight: 700; color: #f8fafc; word-break: break-word; white-space: normal; }
 .sr-rc-date { font-size: 12px; color: #64748b; font-weight: 500; }
 .sr-rc-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
 .sr-btn-edit-rc {
@@ -5892,7 +6033,7 @@ async function doExport() {
 
 .elite-modal {
     width: 100vw !important;
-    max-width: 100vw !important;
+    max-width: 100% !important;
     height: 100vh !important;
     height: 100dvh !important;
     max-height: 100vh !important;
@@ -6277,4 +6418,117 @@ async function doExport() {
   animation: none !important;
   transition: none !important;
 }
+@media (max-width: 768px) {
+  
+}
+
+@media (max-width: 768px) {
+  .sr-modal-body > div[style*="flex-wrap: wrap"] > div {
+    min-width: 100% !important;
+    max-width: 100% !important;
+    margin-bottom: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .sr-modal-large {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+  }
+  .sr-modal-overlay {
+    padding: 0 !important;
+  }
+  .sr-modal-large .sr-modal-header {
+    border-radius: 0 !important;
+    padding: 16px !important;
+  }
+  .sr-modal-large .sr-modal-body {
+    padding: 16px !important;
+    overflow-y: auto !important;
+    flex: 1 !important;
+  }
+}
+
+.sr-modal-center-block {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+@media (max-width: 768px) {
+  .sr-modal-large .sr-modal-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    position: relative !important;
+    gap: 12px !important;
+  }
+  .sr-modal-center-block {
+    position: static !important;
+    transform: none !important;
+    width: 100% !important;
+    align-items: flex-start !important;
+  }
+  .sr-btn-close {
+    position: absolute !important;
+    top: 16px !important;
+    right: 16px !important;
+  }
+  
+  /* Make the tabs scrollable horizontally if they exceed width */
+  .sr-modal-tabs {
+    flex-wrap: wrap !important;
+    justify-content: flex-start !important;
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .chart-wrapper-mobile {
+    position: relative !important;
+    min-width: 100% !important;
+    height: 350px !important;
+    overflow-x: auto !important;
+  }
+  .chart-wrapper-mobile canvas {
+    max-width: 100% !important;
+    max-height: 100% !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .modal-pie-container {
+    min-width: 100% !important;
+    max-width: 100% !important;
+  }
+  .modal-bar-container {
+    min-width: 100% !important;
+    max-width: 100% !important;
+  }
+  .modal-chart-main-container {
+    min-width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+.custom-scrollbar {
+  overflow-x: auto;
+}
+@media (max-width: 768px) {
+  .custom-scrollbar { overflow-x: auto !important; }
+}
+
+@media (max-width: 768px) {
+  .sr-card-list {
+    grid-template-columns: 1fr !important;
+  }
+}
 </style>
+
+
+
+
+
