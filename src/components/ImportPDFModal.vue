@@ -14,7 +14,7 @@
         </div>
 
         <div class="upload-section" v-if="!scanComplete && !scanning">
-          <p class="text-muted">Tải lên hoặc kéo thả nhiều file PDF certificate (Kaspersky, Sophos, Acronis). Hỗ trợ Dán file (Ctrl+V).</p>
+          <p class="text-muted">Tải lên hoặc kéo thả nhiều file PDF certificate (Kaspersky, Sophos, Acronis, Delinea). Hỗ trợ Dán file (Ctrl+V).</p>
           <div class="upload-area" @click="triggerFileInput" @dragover.prevent @drop.prevent="handleDrop">
             <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#6c757d" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
             <p>Kéo thả file PDF vào đây, ấn <strong>Ctrl+V</strong> để Dán, hoặc <strong>Nhấn để chọn file</strong></p>
@@ -96,6 +96,15 @@
                       <input type="text" v-model="formData.LOCALIZATION" class="form-control" />
                     </div>
                   </div>
+
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>Ngày Hiệu Lực</label>
+                      <input type="text" v-model="formData.SO_NGAY_HIEU_LUC" class="form-control" placeholder="DD/MM/YYYY" />
+                    </div>
+                    <div class="form-group">
+                    </div>
+                  </div>
                 </form>
               </div>
             </div>
@@ -149,6 +158,7 @@ const getEmptyForm = () => ({
   EXPIRATION_TIME: '',
   LICENSE_TYPE: '',
   PRODUCT_CODE: '',
+  SO_NGAY_HIEU_LUC: '',
   NAME_FILE: '',
   LINK_FILE: '',
   _file: null // Để chứa file object tạm thời
@@ -267,10 +277,45 @@ const formatDateString = (dateStr) => {
   return dateStr;
 }
 
+const addDaysToDateStr = (dateStr, days) => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('/');
+  if (parts.length === 3) {
+    const d = new Date(parts[2], parts[1] - 1, parts[0]);
+    if (!isNaN(d.getTime())) {
+      d.setDate(d.getDate() + days);
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      return `${dd}/${mm}/${d.getFullYear()}`;
+    }
+  }
+  return '';
+}
+
 const pushForms = (tempForms, file) => {
   if (tempForms.length === 0) {
     tempForms.push(getEmptyForm())
   }
+  
+  // Xử lý trùng License ID trong cùng 1 file
+  const idGroups = {};
+  tempForms.forEach(f => {
+    const id = f.LICENSE_ID;
+    if (id) {
+      if (!idGroups[id]) idGroups[id] = [];
+      idGroups[id].push(f);
+    }
+  });
+
+  Object.keys(idGroups).forEach(id => {
+    const group = idGroups[id];
+    if (group.length > 1) {
+      group.forEach((f, idx) => {
+        f.LICENSE_ID = `${id}-${idx + 1}`;
+      });
+    }
+  });
+
   tempForms.forEach(f => {
     f._file = file
     f.NAME_FILE = file ? file.name : ''
@@ -396,6 +441,40 @@ const parsePdfText = (text, file) => {
     if (keyMatch) formData.LICENSE_DESCRIPTION = 'Key: ' + keyMatch[1];
     
     tempForms.push(formData)
+  }
+  // Delinea Format
+  else if (lowerText.includes('delinea') || lowerText.includes('secret server')) {
+    const certIdMatch = text.match(/License Certificate Id\s+([A-Z0-9\-]+)/i);
+    const certId = certIdMatch ? certIdMatch[1].trim() : '';
+
+    let customerStr = '';
+    const customerMatch = text.match(/End User\s+(.*?)(?=Contact Name)/is);
+    if (customerMatch) {
+      customerStr = customerMatch[1].replace(/[\n\r]+/g, ' ').trim();
+    }
+
+    const regex = /(?:Entitlements\s+|License End Date:\s*[\d\-]+\s+)?([a-zA-Z0-9\s\-\/\.]+?)\s*License Name:\s*(.*?)\s*License Key:\s*([A-Z0-9\-]+)\s*License Quantity:\s*(\d+)\s*License Start Date:\s*([\d\-]+)\s*License End Date:\s*([\d\-]+)/g;
+    let match;
+
+    while ((match = regex.exec(text)) !== null) {
+      const formData = getEmptyForm();
+      formData.CUSTOMER = customerStr;
+      formData.NHA_SAN_XUAT = 'Delinea';
+      formData.LICENSE_ID = certId;
+      
+      let productName = match[1].replace(/[\n\r]+/g, ' ').trim();
+      if (productName.startsWith('Entitlements')) {
+        productName = productName.substring(12).trim();
+      }
+      formData.PRODUCT_NAME = productName;
+      formData.LICENSE_DESCRIPTION = 'Key: ' + match[3].trim();
+      formData.LICENSE_VOLUME = match[4].trim();
+      formData.DATE_OF_LICENSE = formatDateString(match[5].trim());
+      formData.EXPIRATION_TIME = formatDateString(match[6].trim());
+      formData.SO_NGAY_HIEU_LUC = addDaysToDateStr(formData.EXPIRATION_TIME, 30);
+      
+      tempForms.push(formData);
+    }
   }
   
   pushForms(tempForms, file)

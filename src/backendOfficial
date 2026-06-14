@@ -731,6 +731,7 @@ function doPost(e) {
     if (
       action === "save_contract_temp" || 
       action === "save_contract_official" ||
+        action === "save_contract_official_bulk" ||
       action === "update_contract" ||
       action === "create_dieu_khoan" ||
       action === "update_dieu_khoan" ||
@@ -1133,6 +1134,12 @@ function bg_doPost(e) {
 
         if (action === 'save_contract_temp') {
             const rs = saveContractTemp_(payload)
+            clearGetCache_()
+            return bg_json({ ok: true, action, ...rs })
+        }
+
+        if (action === 'save_contract_official_bulk') {
+            const rs = saveContractOfficialBulk_(payload)
             clearGetCache_()
             return bg_json({ ok: true, action, ...rs })
         }
@@ -2918,4 +2925,105 @@ function licenseOldData_deleteRow(p) {
         return { status: "success", action: "delete" };
     }
     return { status: "error", message: "Missing ROW_INDEX" };
+}
+
+
+function saveContractOfficialBulk_(payload) {
+    if (!payload.items || !Array.isArray(payload.items)) {
+        return { status: 'error', message: 'Missing or invalid items array' };
+    }
+    
+    const shTong = getSheet_(BG_SHEETS.hop_dong_tong_quat);
+    const shCT = getSheet_(BG_SHEETS.hop_dong_chi_tiet);
+    const shKH = getSheet_(BG_SHEETS.khach_hang);
+
+    const allHdRows = [];
+    const allCtRows = [];
+    let successCount = 0;
+
+    // Load customer data to memory
+    const lastKHRow = shKH.getLastRow();
+    let khData = [];
+    if (lastKHRow >= 2) {
+        khData = shKH.getRange(2, 1, lastKHRow - 1, 14).getValues();
+    }
+    
+    for (let i = 0; i < payload.items.length; i++) {
+        try {
+            const item = payload.items[i];
+            let hdRow = item.hd_tong_quat_row;
+            const ctRows = item.hd_chi_tiet_rows;
+            const maKH = String(item.ma_khach_hang || '').trim();
+            const tongSauThue = toNum_(item.tong_sau_thue, 0);
+
+            if (!Array.isArray(hdRow) || hdRow.length < 17) throw new Error('INVALID_hd_tong_quat_row');
+            if (!Array.isArray(ctRows) || ctRows.length < 1) throw new Error('INVALID_hd_chi_tiet_rows');
+            if (!maKH) throw new Error('MISSING_ma_khach_hang');
+            if (tongSauThue <= 0) throw new Error('INVALID_tong_sau_thue');
+
+            hdRow = normalizeRow_(hdRow, HD_TONG_COLS);
+            hdRow[14] = 'Chưa thanh toán đủ';
+            hdRow[15] = 'Chính thức';
+
+            const maCu = String(hdRow[19] || '').trim();
+            if (maCu) {
+                const gocFromOld = getMaHopDongGoc_(maCu);
+                hdRow[32] = gocFromOld || String(hdRow[0]);
+            } else {
+                hdRow[32] = String(hdRow[0]);
+            }
+            hdRow[33] = true;
+
+            hdRow = patchTongQuatCurrencyTiGia_(hdRow, ctRows);
+
+            const addHoaHong = toNum_(hdRow[31], 0);
+            const addTongChiTieu = toNum_(hdRow[20], 0);
+            const addTongLoiNhuan = toNum_(hdRow[34], 0);
+
+            let newTongLoiNhuan = 0;
+            for (let k = 0; k < khData.length; k++) {
+                if (String(khData[k][0] || '').trim() === maKH) {
+                    khData[k][11] = toNum_(khData[k][11], 0) + addHoaHong;
+                    khData[k][12] = toNum_(khData[k][12], 0) + addTongChiTieu;
+                    khData[k][13] = toNum_(khData[k][13], 0) + addTongLoiNhuan;
+                    newTongLoiNhuan = khData[k][13];
+                    break;
+                }
+            }
+
+            hdRow[13] = newTongLoiNhuan;
+
+            allHdRows.push(hdRow);
+            for (let r = 0; r < ctRows.length; r++) {
+                allCtRows.push(normalizeRow_(ctRows[r], CT_COLS));
+            }
+            
+            successCount++;
+        } catch (e) {
+            console.warn('Lỗi save bulk item ' + i, e);
+        }
+    }
+
+    if (khData.length > 0) {
+        const khUpdates = khData.map(row => [row[11], row[12], row[13]]);
+        shKH.getRange(2, 12, khUpdates.length, 3).setValues(khUpdates);
+    }
+
+    if (allHdRows.length > 0) {
+        const hdStart = shTong.getLastRow() + 1;
+        shTong.getRange(hdStart, 1, allHdRows.length, HD_TONG_COLS).setValues(allHdRows);
+        ensureTextColsBulk_(shTong, hdStart, allHdRows, [1]);
+    }
+
+    if (allCtRows.length > 0) {
+        const ctStart = shCT.getLastRow() + 1;
+        shCT.getRange(ctStart, 1, allCtRows.length, CT_COLS).setValues(allCtRows);
+        ensureTextColsBulk_(shCT, ctStart, allCtRows, [1]);
+    }
+
+    return {
+        status: 'success',
+        total: payload.items.length,
+        successCount: successCount
+    };
 }

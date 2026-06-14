@@ -176,7 +176,7 @@
         </button>
         <button v-if="isMobile" class="mobile-action-btn pending" @click="isPendingModalOpen = true">
           <div class="icon-white-bg">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3H6a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h4M16 17l5-5-5-5M19.8 12H9"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2 2"></path><path d="M5 3 2 6"></path><path d="m22 6-3-3"></path><path d="M6.38 18.7 4 21"></path><path d="M17.64 18.67 20 21"></path></svg>
           </div>
           NHẮC LẠI
         </button>
@@ -243,9 +243,11 @@
         <div class="toolbar-left" style="display: flex; align-items: center; gap: 0.5rem;">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line></svg>
           <h3>DANH SÁCH BÁO CÁO</h3>
-          <button @click="isPendingModalOpen = true" style="margin-left: 1rem; padding: 0.4rem 0.8rem; font-size: 0.85rem; border-radius: 6px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); cursor: pointer; display: flex; align-items: center; gap: 0.4rem; font-weight: bold; transition: all 0.2s;" onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3H6a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h4M16 17l5-5-5-5M19.8 12H9"/></svg>
-            Nhắc lại
+          <button @click="isPendingModalOpen = true" style="margin-left: 1rem; padding: 0.4rem 0.8rem; font-size: 0.85rem; border-radius: 12px; background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border: none; box-shadow: 0 4px 15px -2px rgba(239, 68, 68, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.3); cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-weight: 800; transition: all 0.2s; letter-spacing: 0.02em;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
+            <div style="width: 22px; height: 22px; background: white; border-radius: 7px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.15); flex-shrink: 0;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2 2"></path><path d="M5 3 2 6"></path><path d="m22 6-3-3"></path><path d="M6.38 18.7 4 21"></path><path d="M17.64 18.67 20 21"></path></svg>
+            </div>
+            NHẮC LẠI
           </button>
         </div>
         <div class="toolbar-right" style="margin-left: 1rem; display: flex; align-items: center; gap: 0.75rem;">
@@ -303,7 +305,7 @@
                 </div>
                 <template v-else>
                   <div v-for="(report, index) in col.reports.filter(r => formatDisplayTime(r.thoi_gian).period === 'Sáng')" :key="'card-' + report.id" 
-                       class="report-card-timeline" :class="{ 'highlight-card': report.id === highlightedReportId, 'deleting-row': deletingIds.includes(report.id), 'dropped-success': report.id === droppedReportId }" 
+                       class="report-card-timeline" :id="'report-card-' + report.id" :class="{ 'highlight-card': report.id === highlightedReportId, 'deleting-row': deletingIds.includes(report.id), 'dropped-success': report.id === droppedReportId }" 
                        :style="{ animationDelay: (index * 0.07) + 's' }"
                        draggable="true"
                        @dragstart="onDragStartReport($event, report)"
@@ -408,7 +410,7 @@
                 </div>
                 <template v-else>
                   <div v-for="(report, index) in col.reports.filter(r => formatDisplayTime(r.thoi_gian).period === 'Chiều')" :key="'card-' + report.id" 
-                       class="report-card-timeline" :class="{ 'highlight-card': report.id === highlightedReportId, 'deleting-row': deletingIds.includes(report.id), 'dropped-success': report.id === droppedReportId }" 
+                       class="report-card-timeline" :id="'report-card-' + report.id" :class="{ 'highlight-card': report.id === highlightedReportId, 'deleting-row': deletingIds.includes(report.id), 'dropped-success': report.id === droppedReportId }" 
                        :style="{ animationDelay: (index * 0.07) + 's' }"
                        draggable="true"
                        @dragstart="onDragStartReport($event, report)"
@@ -527,7 +529,7 @@
               </div>
               <div v-else class="daily-task-list">
                 <div v-for="(report, index) in day.morning" :key="'dm-'+report.id"
-                     class="report-card-timeline" :class="{ 'highlight-card': report.id === highlightedReportId, 'deleting-row': deletingIds.includes(report.id), 'dropped-success': report.id === droppedReportId }"
+                     class="report-card-timeline" :id="'report-card-' + report.id" :class="{ 'highlight-card': report.id === highlightedReportId, 'deleting-row': deletingIds.includes(report.id), 'dropped-success': report.id === droppedReportId }"
                      :style="{ animationDelay: (index * 0.07) + 's' }"
                      draggable="true"
                      @dragstart="onDragStartReport($event, report)"
@@ -622,7 +624,7 @@
               </div>
               <div v-else class="daily-task-list">
                 <div v-for="(report, index) in day.afternoon" :key="'da-'+report.id"
-                     class="report-card-timeline" :class="{ 'highlight-card': report.id === highlightedReportId, 'deleting-row': deletingIds.includes(report.id), 'dropped-success': report.id === droppedReportId }"
+                     class="report-card-timeline" :id="'report-card-' + report.id" :class="{ 'highlight-card': report.id === highlightedReportId, 'deleting-row': deletingIds.includes(report.id), 'dropped-success': report.id === droppedReportId }"
                      :style="{ animationDelay: (index * 0.07) + 's' }"
                      draggable="true"
                      @dragstart="onDragStartReport($event, report)"
@@ -719,7 +721,7 @@
           <p style="opacity: 0.5; font-size: 0.85rem; margin-top: 1rem;">Trống</p>
         </div>
         <div v-else v-for="(report, index) in filteredReports" :key="'mob-' + report.id"
-             class="report-card-timeline" :class="{ 'highlight-card': report.id === highlightedReportId, 'deleting-row': deletingIds.includes(report.id), 'dropped-success': report.id === droppedReportId }"
+             class="report-card-timeline" :id="'report-card-' + report.id" :class="{ 'highlight-card': report.id === highlightedReportId, 'deleting-row': deletingIds.includes(report.id), 'dropped-success': report.id === droppedReportId }"
              :style="{ animationDelay: (index * 0.07) + 's' }"
              @click="openEditModal(report)">
 
@@ -2087,8 +2089,26 @@ const navigateToReportDate = (report) => {
     // Đóng modal
     isPendingModalOpen.value = false;
     
+    // Cập nhật highlight cho thẻ được chọn
+    highlightedReportId.value = report.id;
+    
     // Cuộn xuống bảng
     scrollToTable();
+
+    // Cuộn tới thẻ tương ứng
+    setTimeout(() => {
+      const el = document.getElementById(`report-card-${report.id}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      
+      // Xóa highlight sau 1.3 giây
+      setTimeout(() => {
+        if (highlightedReportId.value === report.id) {
+          highlightedReportId.value = null;
+        }
+      }, 1300);
+    }, 300); // Đợi Vue render DOM xong
   } else {
     // Nếu ngày không hợp lệ thì vẫn đóng modal
     isPendingModalOpen.value = false;
@@ -5899,7 +5919,8 @@ button {
   }
   .mobile-action-btn.add, .mobile-action-btn.pending {
     order: 2;
-    flex: 1;
+    flex: 1 1 45%;
+    min-width: 45%;
     flex-direction: row;
     gap: 0.5rem;
     padding: 0.6rem 1rem;
@@ -7083,9 +7104,10 @@ button {
 }
 
 .highlight-card {
-  border-color: #22c55e !important;
-  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.3) !important;
-  transition: all 0.5s ease;
+  background: rgba(239, 68, 68, 0.15) !important;
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.3) !important;
+  transition: all 0.3s ease;
 }
 
 /* ============================================

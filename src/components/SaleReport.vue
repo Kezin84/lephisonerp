@@ -74,6 +74,7 @@
           <div class="elite-date-group group-tabs" style="flex: 0 0 auto; min-width: auto; max-width: none;">
             <label style="opacity: 0; user-select: none;" class="mobile-hidden-label">Chế độ</label>
             <div class="elite-mode-tabs" style="min-width: 180px; width: auto;">
+              <button type="button" :class="{ active: timeFilterMode === 'all' }" @click="timeFilterMode = 'all'">Tất cả</button>
               <button type="button" :class="{ active: timeFilterMode === 'day' }" @click="timeFilterMode = 'day'">Ngày</button>
               <button type="button" :class="{ active: timeFilterMode === 'month' }" @click="timeFilterMode = 'month'">Tháng</button>
               <button type="button" :class="{ active: timeFilterMode === 'year' }" @click="timeFilterMode = 'year'">Năm</button>
@@ -145,6 +146,11 @@
             <span style="font-weight: 600;">Xem top khách hàng</span>
             <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
           </div>
+          <div class="sr-card-top-product" @click.stop="openTopProductModal('doanhSoBan')" style="margin-top: 0px; padding-top: 8px; font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#38bdf8'; this.querySelector('.arrow-icon-p-doanhSoBan').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon-p-doanhSoBan').style.transform='translateX(0)'" title="Xem BXH Top Sản phẩm">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+            <span style="font-weight: 600;">Xem top sản phẩm</span>
+            <svg class="arrow-icon-p-doanhSoBan" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
         </div>
 
         <div class="fintech-card primary" @click="openChart('grossCom')" style="cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
@@ -167,6 +173,11 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
             <span style="font-weight: 600;">Xem top khách hàng</span>
             <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
+          <div class="sr-card-top-product" @click.stop="openTopProductModal('grossCom')" style="margin-top: 0px; padding-top: 8px; font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#38bdf8'; this.querySelector('.arrow-icon-p-grossCom').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon-p-grossCom').style.transform='translateX(0)'" title="Xem BXH Top Sản phẩm">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+            <span style="font-weight: 600;">Xem top sản phẩm</span>
+            <svg class="arrow-icon-p-grossCom" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
           </div>
         </div>
 
@@ -191,6 +202,11 @@
             <span style="font-weight: 600;">Xem top khách hàng</span>
             <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
           </div>
+          <div class="sr-card-top-product" @click.stop="openTopProductModal('netCom')" style="margin-top: 0px; padding-top: 8px; font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#34d399'; this.querySelector('.arrow-icon-p-netCom').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon-p-netCom').style.transform='translateX(0)'" title="Xem BXH Top Sản phẩm">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+            <span style="font-weight: 600;">Xem top sản phẩm</span>
+            <svg class="arrow-icon-p-netCom" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
         </div>
 
         <div class="fintech-card" :class="sumCol('netMargin') >= 0 ? 'success' : 'danger'" @click="openChart('netMargin')" style="cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
@@ -213,6 +229,11 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
             <span style="font-weight: 600;">Xem top khách hàng</span>
             <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
+          <div class="sr-card-top-product" @click.stop="openTopProductModal('netMargin')" style="margin-top: 0px; padding-top: 8px; font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#f8fafc'; this.querySelector('.arrow-icon-p-netMargin').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon-p-netMargin').style.transform='translateX(0)'" title="Xem BXH Top Sản phẩm">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f8fafc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+            <span style="font-weight: 600;">Xem top sản phẩm</span>
+            <svg class="arrow-icon-p-netMargin" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
           </div>
         </div>
 
@@ -237,6 +258,11 @@
             <span style="font-weight: 600;">Xem top khách hàng</span>
             <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
           </div>
+          <div class="sr-card-top-product" @click.stop="openTopProductModal('netPO')" style="margin-top: 0px; padding-top: 8px; font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#38bdf8'; this.querySelector('.arrow-icon-p-netPO').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon-p-netPO').style.transform='translateX(0)'" title="Xem BXH Top Sản phẩm">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+            <span style="font-weight: 600;">Xem top sản phẩm</span>
+            <svg class="arrow-icon-p-netPO" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
         </div>
         
         <!-- Ratio Metrics -->
@@ -259,6 +285,11 @@
             <span style="font-weight: 600;">Xem top khách hàng</span>
             <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
           </div>
+          <div class="sr-card-top-product" @click.stop="openTopProductModal('totalNetComPct')" style="margin-top: 0px; padding-top: 8px; font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#10b981'; this.querySelector('.arrow-icon-p-totalNetComPct').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon-p-totalNetComPct').style.transform='translateX(0)'" title="Xem BXH Top Sản phẩm">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+            <span style="font-weight: 600;">Xem top sản phẩm</span>
+            <svg class="arrow-icon-p-totalNetComPct" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
         </div>
 
         <div class="fintech-card ratio" @click="openChart('totalNetMarginPct', true)" style="cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
@@ -279,6 +310,11 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
             <span style="font-weight: 600;">Xem top khách hàng</span>
             <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
+          <div class="sr-card-top-product" @click.stop="openTopProductModal('totalNetMarginPct')" style="margin-top: 0px; padding-top: 8px; font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#10b981'; this.querySelector('.arrow-icon-p-totalNetMarginPct').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon-p-totalNetMarginPct').style.transform='translateX(0)'" title="Xem BXH Top Sản phẩm">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+            <span style="font-weight: 600;">Xem top sản phẩm</span>
+            <svg class="arrow-icon-p-totalNetMarginPct" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
           </div>
         </div>
 
@@ -301,6 +337,11 @@
             <span style="font-weight: 600;">Xem top khách hàng</span>
             <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
           </div>
+          <div class="sr-card-top-product" @click.stop="openTopProductModal('totalNetComDsbPct')" style="margin-top: 0px; padding-top: 8px; font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#10b981'; this.querySelector('.arrow-icon-p-totalNetComDsbPct').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon-p-totalNetComDsbPct').style.transform='translateX(0)'" title="Xem BXH Top Sản phẩm">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+            <span style="font-weight: 600;">Xem top sản phẩm</span>
+            <svg class="arrow-icon-p-totalNetComDsbPct" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
         </div>
 
         <div class="fintech-card ratio" @click="openChart('totalNetMarginDsbPct', true)" style="cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
@@ -321,6 +362,11 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
             <span style="font-weight: 600;">Xem top khách hàng</span>
             <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
+          <div class="sr-card-top-product" @click.stop="openTopProductModal('totalNetMarginDsbPct')" style="margin-top: 0px; padding-top: 8px; font-size: 13px; color: #94a3b8; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#10b981'; this.querySelector('.arrow-icon-p-totalNetMarginDsbPct').style.transform='translateX(4px)'" onmouseout="this.style.color='#94a3b8'; this.querySelector('.arrow-icon-p-totalNetMarginDsbPct').style.transform='translateX(0)'" title="Xem BXH Top Sản phẩm">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+            <span style="font-weight: 600;">Xem top sản phẩm</span>
+            <svg class="arrow-icon-p-totalNetMarginDsbPct" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="9 18 15 12 9 6"></polyline></svg>
           </div>
         </div>
       </div>
@@ -394,7 +440,7 @@
 
     <!-- Card List -->
     <div class="sr-card-list" v-if="!loading && filteredRows.length > 0">
-      <div v-for="(r, idx) in filteredRows" :key="r.ID || idx" class="sr-record-card" @click="openMultiEditModal(r)" style="cursor: pointer;">
+      <div v-for="(r, idx) in displayedRows" :key="r.ID || idx" class="sr-record-card" @click="openMultiEditModal(r)" style="cursor: pointer;">
         
         <div class="sr-rc-header">
           <div class="sr-rc-left">
@@ -483,6 +529,11 @@
         </div>
       </div>
 
+      <div v-if="displayLimit < filteredRows.length" style="display: flex; justify-content: center; margin-top: 24px; margin-bottom: 24px;">
+        <button @click="loadMore" class="sr-btn sr-btn-import" style="background: rgba(56, 189, 248, 0.1); color: #38bdf8; border: 1px dashed rgba(56, 189, 248, 0.4); padding: 12px 32px; font-weight: 600; border-radius: 12px; transition: all 0.2s;" onmouseover="this.style.background='rgba(56, 189, 248, 0.2)'" onmouseout="this.style.background='rgba(56, 189, 248, 0.1)'">
+          Xem thêm ({{ filteredRows.length - displayLimit }} bản ghi nữa)
+        </button>
+      </div>
     </div>
 
     <div v-if="loading" class="sr-loading">
@@ -1050,7 +1101,15 @@
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
               BXH Khách hàng - {{ topCustomerModal.metricLabel }}
             </h3>
-            <button class="sr-btn-close" @click="topCustomerModal.show = false" style="background: none; border: none; font-size: 24px; color: #64748b; cursor: pointer;">×</button>
+            <div style="display: flex; align-items: center; gap: 16px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="color: #cbd5e1; font-size: 13px; font-weight: 600; margin-right: 12px; padding-right: 12px; border-right: 1px solid #334155;">Hiện có: <span style="color: #38bdf8;">{{ topCustomerRawData.sorted.length }}</span></span>
+                  <label style="color: #94a3b8; font-size: 14px; font-weight: 600;">Số lượng TOP:</label>
+                <input type="number" v-model.number="topCustomerLimit" min="1" max="100" style="width: 70px; background: rgba(15,23,42,0.6); border: 1px solid #334155; color: #f8fafc; border-radius: 6px; padding: 4px 8px; outline: none; text-align: center;" />
+                  <button @click="topCustomerLimit = topCustomerRawData.sorted.length" style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); color: #38bdf8; border-radius: 6px; padding: 4px 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-left: 8px;" onmouseover="this.style.background='rgba(56, 189, 248, 0.2)'" onmouseout="this.style.background='rgba(56, 189, 248, 0.1)'">Tất cả</button>
+              </div>
+              <button class="sr-btn-close" @click="topCustomerModal.show = false" style="background: none; border: none; font-size: 24px; color: #64748b; cursor: pointer; line-height: 1;">×</button>
+            </div>
           </div>
           <div class="sr-modal-body" style="padding: 24px; flex: 1; background: #0b1121; position: relative;">
             <div style="display: flex; gap: 24px; flex-wrap: wrap;">
@@ -1066,7 +1125,7 @@
               <div style="flex: 2; min-width: 500px; background: rgba(15,23,42,.6); border: 1px solid #1e293b; border-radius: 12px; padding: 16px; display: flex; flex-direction: column;">
                  <h4 style="color: #94a3b8; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;">Xếp Hạng Khách Hàng</h4>
                  <div style="flex: 1; overflow-x: auto; padding-bottom: 8px;" class="custom-scrollbar">
-                   <div :style="{ height: '350px', width: Math.max(100, topCustomerRawData.sorted.length * 120) + 'px', minWidth: '100%' }">
+                   <div :style="{ height: '350px', width: Math.max(100, Math.min(topCustomerRawData.sorted.length, Number(topCustomerLimit) || 5) * 120) + 'px', minWidth: '100%' }">
                      <Bar v-if="topCustomerModal.show" :data="topCustomerBarData" :options="topCustomerBarOptions" />
                    </div>
                  </div>
@@ -1076,6 +1135,51 @@
         </div>
       </div>
     </Teleport>
+
+      <!-- Top Product Chart Modal -->
+      <Teleport to="body">
+        <div v-if="topProductModal.show" class="sr-modal-overlay" @click.self="topProductModal.show = false" style="z-index: 100000; padding: 24px;">
+          <div class="sr-modal sr-modal-large" style="width: 1100px; max-width: 95%; background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column;">
+            <div class="sr-modal-header" style="background: rgba(15,23,42,.8); border-bottom: 1px solid #1e293b; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center;">
+              <h3 style="margin: 0; color: #f8fafc; font-size: 18px; font-weight: 700; text-transform: uppercase; display: flex; align-items: center; gap: 8px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+                BXH Sản phẩm - {{ topProductModal.metricLabel }}
+              </h3>
+              <div style="display: flex; align-items: center; gap: 16px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="color: #cbd5e1; font-size: 13px; font-weight: 600; margin-right: 12px; padding-right: 12px; border-right: 1px solid #334155;">Hiện có: <span style="color: #10b981;">{{ topProductRawData.sorted.length }}</span></span>
+                  <label style="color: #94a3b8; font-size: 14px; font-weight: 600;">Số lượng TOP:</label>
+                  <input type="number" v-model.number="topProductLimit" min="1" max="100" style="width: 70px; background: rgba(15,23,42,0.6); border: 1px solid #334155; color: #f8fafc; border-radius: 6px; padding: 4px 8px; outline: none; text-align: center;" />
+                  <button @click="topProductLimit = topProductRawData.sorted.length" style="background: rgba(244, 114, 182, 0.1); border: 1px solid rgba(244, 114, 182, 0.3); color: #f472b6; border-radius: 6px; padding: 4px 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-left: 8px;" onmouseover="this.style.background='rgba(244, 114, 182, 0.2)'" onmouseout="this.style.background='rgba(244, 114, 182, 0.1)'">Tất cả</button>
+                </div>
+                <button class="sr-btn-close" @click="topProductModal.show = false" style="background: none; border: none; font-size: 24px; color: #64748b; cursor: pointer; line-height: 1;">&times;</button>
+              </div>
+            </div>
+            <div class="sr-modal-body" style="padding: 24px; flex: 1; background: #0b1121; position: relative;">
+              <div style="display: flex; gap: 24px; flex-wrap: wrap;">
+                <!-- Pie Chart -->
+                <div v-if="!topProductModal.metric.includes('Pct')" style="flex: 1; min-width: 300px; max-width: 400px; background: rgba(15,23,42,.6); border: 1px solid #1e293b; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; align-items: center;">
+                   <h4 style="color: #94a3b8; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;">Tỷ trọng Top Sản Phẩm</h4>
+                   <div style="height: 350px; width: 100%;">
+                     <Pie v-if="topProductModal.show" :data="topProductPieData" :options="topProductPieOptions" />
+                   </div>
+                </div>
+                
+                <!-- Bar Chart -->
+                <div style="flex: 2; min-width: 500px; background: rgba(15,23,42,.6); border: 1px solid #1e293b; border-radius: 12px; padding: 16px; display: flex; flex-direction: column;">
+                   <h4 style="color: #94a3b8; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;">Xếp Hạng Sản Phẩm</h4>
+                   <div style="flex: 1; overflow-x: auto; padding-bottom: 8px;" class="custom-scrollbar">
+                     <div :style="{ height: '350px', width: Math.max(100, Math.min(topProductRawData.sorted.length, Number(topProductLimit) || 5) * 120) + 'px', minWidth: '100%' }">
+                       <Bar v-if="topProductModal.show" :data="topProductBarData" :options="topProductBarOptions" />
+                     </div>
+                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Teleport>
+
 
   </div>
 </template>
@@ -1254,11 +1358,11 @@ const selectSuggestion = (item: any) => {
 const currentDate = new Date()
 const currentMonthStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`
 
-const timeFilterMode = ref('month')
+const timeFilterMode = ref('all')
 const dateFrom = ref('')
 const dateTo = ref('')
-const monthFrom = ref(currentMonthStr)
-const monthTo = ref(currentMonthStr)
+const monthFrom = ref('')
+const monthTo = ref('')
 const yearFrom = ref('')
 const yearTo = ref('')
 const filterAM = ref('')
@@ -1461,7 +1565,12 @@ const filteredRows = computed(() => {
 
   if (filterCustomer.value && filterCustomer.value !== 'Tất cả') {
     const target = filterCustomer.value.toLowerCase().trim()
-    list = list.filter(r => String(r.Ten_cong_ty).toLowerCase().includes(target))
+    list = list.filter(r => {
+      const ten = String(r.Ten_cong_ty || '').toLowerCase();
+      const makh = String(r.Ma_khach_hang || '').toLowerCase();
+      const macty = String(r.Ma_cong_ty || '').toLowerCase();
+      return ten.includes(target) || makh.includes(target) || macty.includes(target);
+    })
   }
 
   if (filterProductType.value !== 'Tất cả') {
@@ -1486,6 +1595,20 @@ const filteredRows = computed(() => {
 
   return list
 })
+
+const displayLimit = ref(15)
+
+watch(filteredRows, () => {
+  displayLimit.value = 15
+})
+
+const displayedRows = computed(() => {
+  return filteredRows.value.slice(0, displayLimit.value)
+})
+
+const loadMore = () => {
+  displayLimit.value += 15
+}
 
 // ─── Financial formulas ───
 const doanhSoBan = (r: any) => toNum(r.Tong_tien_truoc_thueVAT)
@@ -1878,6 +2001,7 @@ function openChart(metric: string, isRatio = false) {
 }
 
 // ─── Top Customer Modal ───
+const topCustomerLimit = ref(5);
 const topCustomerModal = ref({
   show: false,
   metric: '',
@@ -1904,7 +2028,7 @@ const topCustomerPieOptions = computed(() => ({
       const index = activeEls[0].index;
       const clickedLabel = topCustomerPieData.value.labels[index];
       if (clickedLabel && clickedLabel !== 'Khác') {
-        filterCustomer.value = topCustomerRawData.value.sorted[index][0];
+        filterCustomer.value = topCustomerRawData.value.sorted[index][0].split(' / ')[0];
         topCustomerModal.value.show = false;
       }
     }
@@ -1933,7 +2057,7 @@ const topCustomerBarOptions = computed(() => ({
       const index = activeEls[0].index;
       const clickedLabel = topCustomerRawData.value.sorted[index][0];
       if (clickedLabel && clickedLabel !== 'Khác') {
-        filterCustomer.value = clickedLabel;
+        filterCustomer.value = clickedLabel.split(' / ')[0];
         topCustomerModal.value.show = false;
       }
     }
@@ -1960,15 +2084,19 @@ const topCustomerBarOptions = computed(() => ({
 }));
 
 const topCustomerRawData = computed(() => {
-  const metric = topCustomerModal.value.metric;
-  if (!metric) return { sorted: [], total: 0 };
-  
-  const map = new Map<string, { num: number; den: number }>();
-  let total = 0;
-  
-  filteredRows.value.forEach(r => {
-    const name = r.Ten_cong_ty ? String(r.Ten_cong_ty).trim() : 'Khác';
-    if (name) {
+    const metric = topCustomerModal.value.metric;
+    if (!metric) return { sorted: [], total: 0 };
+    
+    const map = new Map<string, { num: number; den: number; names: Set<string> }>();
+    let total = 0;
+    
+    filteredRows.value.forEach(r => {
+      const tenCty = r.Ten_cong_ty ? String(r.Ten_cong_ty).trim() : '';
+      const maKH = r.Ma_khach_hang ? String(r.Ma_khach_hang).trim() : '';
+      const maCT = r.Ma_cong_ty ? String(r.Ma_cong_ty).trim() : '';
+      
+      const key = (maKH || maCT) ? `${maKH}_${maCT}` : (tenCty || 'Khác');
+      
       let num = 0, den = 0;
       if (metric === 'doanhSoBan') { num = doanhSoBan(r); den = 1 }
       else if (metric === 'grossCom') { num = grossCom(r); den = 1 }
@@ -1980,28 +2108,37 @@ const topCustomerRawData = computed(() => {
       else if (metric === 'totalNetComDsbPct') { num = netCom(r); den = doanhSoBan(r) }
       else if (metric === 'totalNetMarginDsbPct') { num = netMargin(r); den = doanhSoBan(r) }
       
-      if (!map.has(name)) map.set(name, { num: 0, den: 0 });
-      const val = map.get(name)!;
+      if (!map.has(key)) map.set(key, { num: 0, den: 0, names: new Set() });
+      const val = map.get(key)!;
       val.num += num;
       val.den += den;
+      if (tenCty) val.names.add(tenCty);
+    });
+    
+    const entries: [string, number][] = [];
+    for (const val of map.values()) {
+      let finalVal = 0;
+      if (metric.includes('Pct')) {
+        finalVal = val.den !== 0 ? (val.num / val.den) * 100 : 0;
+      } else {
+        finalVal = val.num;
+        total += finalVal;
+      }
+      
+      const displayName = val.names.size > 0 ? Array.from(val.names).join(' / ') : 'Khác';
+      entries.push([displayName, finalVal]);
     }
+    
+    const finalMap = new Map<string, number>();
+    for (const [name, val] of entries) {
+      finalMap.set(name, (finalMap.get(name) || 0) + val);
+    }
+    
+    const mergedEntries: [string, number][] = Array.from(finalMap.entries());
+    const sorted = mergedEntries.sort((a, b) => b[1] - a[1]);
+    
+    return { sorted, total };
   });
-  
-  const entries: [string, number][] = [];
-  for (const [name, val] of map.entries()) {
-    let finalVal = 0;
-    if (metric.includes('Pct')) {
-      finalVal = val.den !== 0 ? (val.num / val.den) * 100 : 0;
-    } else {
-      finalVal = val.num;
-      total += finalVal;
-    }
-    entries.push([name, finalVal]);
-  }
-  
-  const sorted = entries.sort((a, b) => b[1] - a[1]);
-  return { sorted, total };
-});
 
 const wrapText = (text: string, maxLen: number = 20) => {
   if (!text) return '';
@@ -2023,11 +2160,12 @@ const wrapText = (text: string, maxLen: number = 20) => {
 
 const topCustomerPieData = computed(() => {
   const data = topCustomerRawData.value.sorted;
-  const top5 = data.slice(0, 5);
-  const others = data.slice(5).reduce((sum, item) => sum + item[1], 0);
+  const limit = Number(topCustomerLimit.value) || 5;
+  const topN = data.slice(0, limit);
+  const others = data.slice(limit).reduce((sum, item) => sum + item[1], 0);
   
-  const labels = top5.map(d => wrapText(d[0], 25));
-  const values = top5.map(d => d[1]);
+  const labels = topN.map(d => wrapText(d[0], 25));
+  const values = topN.map(d => d[1]);
   
   if (others > 0) {
     labels.push('Khác');
@@ -2047,11 +2185,12 @@ const topCustomerPieData = computed(() => {
 
 const topCustomerBarData = computed(() => {
   const allData = topCustomerRawData.value.sorted;
+  const limit = Number(topCustomerLimit.value) || 5;
   
   return {
-    labels: allData.map(d => wrapText(d[0], 20)),
+    labels: allData.slice(0, limit).map(d => wrapText(d[0], 20)),
     datasets: [{
-      data: allData.map(d => d[1]),
+      data: allData.slice(0, limit).map(d => d[1]),
       backgroundColor: (ctx: any) => ctx.raw < 0 ? '#ef4444' : '#38bdf8',
       borderRadius: 4,
       maxBarThickness: 60,
@@ -2066,6 +2205,170 @@ function openTopCustomerModal(metric: string) {
     metricLabel: labelMap[metric] || metric
   };
 }
+
+  // --- Top Product Modal ---
+  const topProductLimit = ref(5);
+  const topProductModal = ref({
+    show: false,
+    metric: '',
+    metricLabel: ''
+  });
+
+  const topProductPieOptions = computed(() => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    onClick: (e: any, activeEls: any[]) => {
+      if (activeEls.length > 0) {
+        const index = activeEls[0].index;
+        const clickedLabel = topProductPieData.value.labels[index];
+        if (clickedLabel && clickedLabel !== 'Khác') {
+          filterProductType.value = topProductRawData.value.sorted[index][0];
+          topProductModal.value.show = false;
+        }
+      }
+    },
+    plugins: {
+      legend: { position: 'right' as const, labels: { color: '#cbd5e1', font: { size: 11 } } },
+      tooltip: { callbacks: { label: (ctx: any) => ` ${ctx.label}: ${fmt(ctx.raw)} (${((ctx.raw / topProductRawData.value.total) * 100).toFixed(1)}%)` } },
+      datalabels: {
+        color: '#fff',
+        formatter: (val: number, ctx: any) => {
+          const pct = (val / topProductRawData.value.total) * 100;
+          return pct > 5 ? `${pct.toFixed(0)}%` : '';
+        },
+        font: { weight: 'bold', size: 11 },
+        textShadowBlur: 4,
+        textShadowColor: 'rgba(0,0,0,0.8)'
+      }
+    }
+  }));
+
+  const topProductBarOptions = computed(() => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    onClick: (e: any, activeEls: any[]) => {
+      if (activeEls.length > 0) {
+        const index = activeEls[0].index;
+        const clickedLabel = topProductRawData.value.sorted[index][0];
+        if (clickedLabel && clickedLabel !== 'Khác') {
+          filterProductType.value = clickedLabel;
+          topProductModal.value.show = false;
+        }
+      }
+    },
+    layout: { padding: { top: 30, bottom: 20 } },
+    scales: {
+      y: { grid: { color: 'rgba(51, 65, 85, 0.5)' }, ticks: { color: '#94a3b8', callback: (v: any) => fmt(v) } },
+      x: { grid: { display: false }, ticks: { color: '#e2e8f0', minRotation: 0, maxRotation: 0, autoSkip: false, font: { size: 11 } } }
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: (ctx: any) => topProductModal.value.metric.includes('Pct') ? pctFmt(ctx.raw) : fmt(ctx.raw) } },
+      datalabels: {
+        color: '#fff',
+        anchor: 'end',
+        align: 'top',
+        offset: 4,
+        formatter: (val: number) => topProductModal.value.metric.includes('Pct') ? pctFmt(val) : fmt(val),
+        font: { weight: 'bold', size: 11 },
+        textShadowBlur: 4,
+        textShadowColor: 'rgba(0,0,0,0.5)'
+      }
+    }
+  }));
+
+  const topProductRawData = computed(() => {
+    const metric = topProductModal.value.metric;
+    if (!metric) return { sorted: [], total: 0 };
+    
+    const map = new Map<string, { num: number; den: number; original: string }>();
+    let total = 0;
+    
+    filteredRows.value.forEach(r => {
+      const tenCty = r.Ten_nha_cung_cap ? String(r.Ten_nha_cung_cap).trim() : 'Khác';
+      const key = tenCty.toLowerCase();
+      
+      let num = 0, den = 0;
+      if (metric === 'doanhSoBan') { num = doanhSoBan(r); den = 1 }
+      else if (metric === 'grossCom') { num = grossCom(r); den = 1 }
+      else if (metric === 'netCom') { num = netCom(r); den = 1 }
+      else if (metric === 'netPO') { num = netPO(r); den = 1 }
+      else if (metric === 'netMargin') { num = netMargin(r); den = 1 }
+      else if (metric === 'totalNetComPct') { num = netCom(r); den = netPO(r) }
+      else if (metric === 'totalNetMarginPct') { num = netMargin(r); den = netPO(r) }
+      else if (metric === 'totalNetComDsbPct') { num = netCom(r); den = doanhSoBan(r) }
+      else if (metric === 'totalNetMarginDsbPct') { num = netMargin(r); den = doanhSoBan(r) }
+      
+      if (!map.has(key)) map.set(key, { num: 0, den: 0, original: tenCty });
+      const val = map.get(key)!;
+      val.num += num;
+      val.den += den;
+    });
+    
+    const entries: [string, number][] = [];
+    for (const val of map.values()) {
+      let finalVal = 0;
+      if (metric.includes('Pct')) {
+        finalVal = val.den !== 0 ? (val.num / val.den) * 100 : 0;
+      } else {
+        finalVal = val.num;
+        total += finalVal;
+      }
+      entries.push([val.original, finalVal]);
+    }
+    
+    const sorted = entries.sort((a, b) => b[1] - a[1]);
+    return { sorted, total };
+  });
+
+  const topProductPieData = computed(() => {
+    const data = topProductRawData.value.sorted;
+    const limit = Number(topProductLimit.value) || 5;
+    const topN = data.slice(0, limit);
+    const others = data.slice(limit).reduce((sum, item) => sum + item[1], 0);
+    
+    const labels = topN.map(d => wrapText(d[0], 25));
+    const values = topN.map(d => d[1]);
+    
+    if (others > 0) {
+      labels.push('Khác');
+      values.push(others);
+    }
+    
+    return {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: ['#10b981', '#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16', '#d946ef', '#0ea5e9', '#a855f7', '#eab308', '#f43f5e', '#06b6d4', '#64748b'],
+        borderWidth: 1,
+        borderColor: '#1e293b'
+      }]
+    };
+  });
+
+  const topProductBarData = computed(() => {
+    const allData = topProductRawData.value.sorted;
+    const limit = Number(topProductLimit.value) || 5;
+    
+    return {
+      labels: allData.slice(0, limit).map(d => wrapText(d[0], 20)),
+      datasets: [{
+        data: allData.slice(0, limit).map(d => d[1]),
+        backgroundColor: (ctx: any) => ctx.raw < 0 ? '#ef4444' : '#10b981',
+        borderRadius: 4,
+        maxBarThickness: 60,
+      }]
+    };
+  });
+
+  function openTopProductModal(metric: string) {
+    topProductModal.value = {
+      show: true,
+      metric,
+      metricLabel: labelMap[metric] || metric
+    };
+  }
+
 
 // ─── Modal edit ───
 interface ImportItem {

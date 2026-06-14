@@ -7009,7 +7009,7 @@ async function confirmImport(saveToDb: boolean) {
                 <datalist id="dl-ma-kh-modal-2"><option v-for="k in customers" :key="k.Ma_khach_hang" :value="k.Ma_khach_hang" /></datalist>
               </div>
               <div style="display: flex; flex-direction: column; gap: 3px;">
-                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Tên KH</label>
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Tên người liên hệ</label>
                 <input v-model="tenKHInput" list="dl-ten-kh-modal-2" placeholder="Tên KH" @change="fillCustomerByTen(tenKHInput)" @blur="onBlurTenKH" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
                 <datalist id="dl-ten-kh-modal-2"><option v-for="k in customers" :key="k.Ma_khach_hang + '_' + k.Ten_khach_hang" :value="k.Ten_khach_hang" /></datalist>
               </div>

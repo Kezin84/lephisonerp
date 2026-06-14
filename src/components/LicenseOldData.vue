@@ -656,6 +656,9 @@ const getNsxStyle = (nsx) => {
   if (name.includes('acronis')) {
     return { background: '#1e3a8a', color: '#ffffff', borderColor: '#1e3a8a', fontWeight: 'bold' }
   }
+  if (name.includes('delinea')) {
+    return { background: '#9333ea', color: '#ffffff', borderColor: '#9333ea', fontWeight: 'bold' }
+  }
   return {}
 }
 
