@@ -87,7 +87,7 @@ function getData(params) {
   }
 
   // Lấy tất cả dữ liệu 1 lần (tránh loop getRange từng row)
-  const range  = sheet.getRange(2, 1, lastRow - 1, 13);
+  const range  = sheet.getRange(2, 1, lastRow - 1, 14);
   const values = range.getValues();
 
   let rows = values
@@ -105,7 +105,8 @@ function getData(params) {
       link_excel_bao_gia: r[9] || "",
       link_excel_mua_hang: r[10] || "",
       ten_file_bao_gia: r[11] || "",
-      ten_file_mua_hang: r[12] || ""
+      ten_file_mua_hang: r[12] || "",
+      isFailed    : r[13] === true || String(r[13]).toLowerCase() === 'true'
     }));
 
   // --- apply filters ---
@@ -166,7 +167,8 @@ function addRow(p) {
     p.link_excel_bao_gia || "",
     p.link_excel_mua_hang || "",
     p.ten_file_bao_gia || "",
-    p.ten_file_mua_hang || ""
+    p.ten_file_mua_hang || "",
+    p.isFailed ? true : ""
   ]);
 
   invalidateCache();
@@ -185,9 +187,9 @@ function updateRow(p) {
   if (!cell) return { status: "error", message: `Không tìm thấy ID: ${p.id}` };
 
   const rowNum = cell.getRow();
-  const row    = sheet.getRange(rowNum, 1, 1, 13).getValues()[0];
+  const row    = sheet.getRange(rowNum, 1, 1, 14).getValues()[0];
 
-  sheet.getRange(rowNum, 1, 1, 13).setValues([[
+  sheet.getRange(rowNum, 1, 1, 14).setValues([[
     row[0],
     p.phan_loai  !== undefined ? p.phan_loai  : row[1],
     p.thoi_gian  !== undefined ? p.thoi_gian  : row[2],
@@ -200,7 +202,8 @@ function updateRow(p) {
     p.link_excel_bao_gia !== undefined ? p.link_excel_bao_gia : (row[9] || ""),
     p.link_excel_mua_hang !== undefined ? p.link_excel_mua_hang : (row[10] || ""),
     p.ten_file_bao_gia !== undefined ? p.ten_file_bao_gia : (row[11] || ""),
-    p.ten_file_mua_hang !== undefined ? p.ten_file_mua_hang : (row[12] || "")
+    p.ten_file_mua_hang !== undefined ? p.ten_file_mua_hang : (row[12] || ""),
+    p.isFailed !== undefined ? p.isFailed : (row[13] || "")
   ]]);
 
   invalidateCache();

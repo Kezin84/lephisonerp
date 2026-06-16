@@ -162,6 +162,17 @@
           <span class="stat-value">{{ completedCount }} <span class="unit-text">việc</span></span>
         </div>
       </div>
+      <div class="stat-card card-failed" 
+           :class="{ 'elite-active': filters.trang_thai === 'Failed' }"
+           @click="onCardClick('Failed')">
+        <div class="stat-icon failed">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+        </div>
+        <div class="stat-info">
+          <span class="stat-label">Thất bại</span>
+          <span class="stat-value">{{ failedCount }} <span class="unit-text">việc</span></span>
+        </div>
+      </div>
     </div>
 
     <!-- Action Buttons & PC Filters -->
@@ -305,7 +316,7 @@
                 </div>
                 <template v-else>
                   <div v-for="(report, index) in col.reports.filter(r => formatDisplayTime(r.thoi_gian).period === 'Sáng')" :key="'card-' + report.id" 
-                       class="report-card-timeline" :id="'report-card-' + report.id" :class="{ 'highlight-card': report.id === highlightedReportId, 'deleting-row': deletingIds.includes(report.id), 'dropped-success': report.id === droppedReportId }" 
+                       class="report-card-timeline" :id="'report-card-' + report.id" :class="{ 'highlight-card': report.id === highlightedReportId, 'deleting-row': deletingIds.includes(report.id), 'dropped-success': report.id === droppedReportId, 'is-failed': report.isFailed === true || report.isFailed === 'TRUE' }" 
                        :style="{ animationDelay: (index * 0.07) + 's' }"
                        draggable="true"
                        @dragstart="onDragStartReport($event, report)"
@@ -335,6 +346,7 @@
                       <div class="tl-rect-header">
                         <div class="tl-rect-tags">
                           <span class="tl-badge-cat" :class="getCategoryClass(report.phan_loai)">{{ report.phan_loai }}</span>
+                          <span v-if="report.isFailed === true || report.isFailed === 'TRUE'" class="is-failed-tag">Failed</span>
                           <div class="tl-status-chip" :class="getStatusPillClass(report.trang_thai)">
                             <svg v-if="report.trang_thai === 'Hoàn thành'" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                             <svg v-else xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
@@ -378,6 +390,10 @@
                           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                           Xoá
                         </button>
+                        <button v-if="report.trang_thai !== 'Hoàn thành'" class="tl-action-btn" @click.stop="markAsFailed(report)" style="background: linear-gradient(135deg, #f97316, #ea580c); color: white; box-shadow: 0 3px 10px -3px rgba(249, 115, 22, 0.45); border: none; padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 0.3rem; margin-right: 0.3rem;">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                          Fail
+                        </button>
                         <button v-if="report.trang_thai !== 'Hoàn thành'" class="tl-action-btn tl-action-done" @click.stop="markAsCompleted(report)">
                           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                           Xong
@@ -410,7 +426,7 @@
                 </div>
                 <template v-else>
                   <div v-for="(report, index) in col.reports.filter(r => formatDisplayTime(r.thoi_gian).period === 'Chiều')" :key="'card-' + report.id" 
-                       class="report-card-timeline" :id="'report-card-' + report.id" :class="{ 'highlight-card': report.id === highlightedReportId, 'deleting-row': deletingIds.includes(report.id), 'dropped-success': report.id === droppedReportId }" 
+                       class="report-card-timeline" :id="'report-card-' + report.id" :class="{ 'highlight-card': report.id === highlightedReportId, 'deleting-row': deletingIds.includes(report.id), 'dropped-success': report.id === droppedReportId, 'is-failed': report.isFailed === true || report.isFailed === 'TRUE' }" 
                        :style="{ animationDelay: (index * 0.07) + 's' }"
                        draggable="true"
                        @dragstart="onDragStartReport($event, report)"
@@ -440,6 +456,7 @@
                       <div class="tl-rect-header">
                         <div class="tl-rect-tags">
                           <span class="tl-badge-cat" :class="getCategoryClass(report.phan_loai)">{{ report.phan_loai }}</span>
+                          <span v-if="report.isFailed === true || report.isFailed === 'TRUE'" class="is-failed-tag">Failed</span>
                           <div class="tl-status-chip" :class="getStatusPillClass(report.trang_thai)">
                             <svg v-if="report.trang_thai === 'Hoàn thành'" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                             <svg v-else xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
@@ -482,6 +499,10 @@
                         <button class="tl-action-btn tl-action-delete" @click.stop="confirmDelete(report.id)">
                           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                           Xoá
+                        </button>
+                        <button v-if="report.trang_thai !== 'Hoàn thành'" class="tl-action-btn" @click.stop="markAsFailed(report)" style="background: linear-gradient(135deg, #f97316, #ea580c); color: white; box-shadow: 0 3px 10px -3px rgba(249, 115, 22, 0.45); border: none; padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 0.3rem; margin-right: 0.3rem;">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                          Fail
                         </button>
                         <button v-if="report.trang_thai !== 'Hoàn thành'" class="tl-action-btn tl-action-done" @click.stop="markAsCompleted(report)">
                           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
@@ -529,7 +550,7 @@
               </div>
               <div v-else class="daily-task-list">
                 <div v-for="(report, index) in day.morning" :key="'dm-'+report.id"
-                     class="report-card-timeline" :id="'report-card-' + report.id" :class="{ 'highlight-card': report.id === highlightedReportId, 'deleting-row': deletingIds.includes(report.id), 'dropped-success': report.id === droppedReportId }"
+                     class="report-card-timeline" :id="'report-card-' + report.id" :class="{ 'highlight-card': report.id === highlightedReportId, 'deleting-row': deletingIds.includes(report.id), 'dropped-success': report.id === droppedReportId, 'is-failed': report.isFailed === true || report.isFailed === 'TRUE' }"
                      :style="{ animationDelay: (index * 0.07) + 's' }"
                      draggable="true"
                      @dragstart="onDragStartReport($event, report)"
@@ -556,6 +577,7 @@
                     <div class="tl-rect-header">
                       <div class="tl-rect-tags">
                         <span class="tl-badge-cat" :class="getCategoryClass(report.phan_loai)">{{ report.phan_loai }}</span>
+                          <span v-if="report.isFailed === true || report.isFailed === 'TRUE'" class="is-failed-tag">Failed</span>
                         <div class="tl-status-chip" :class="getStatusPillClass(report.trang_thai)">
                           <svg v-if="report.trang_thai === 'Hoàn thành'" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                           <svg v-else xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
@@ -600,6 +622,10 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                         Xoá
                       </button>
+                      <button v-if="report.trang_thai !== 'Hoàn thành'" class="tl-action-btn" @click.stop="markAsFailed(report)" style="background: linear-gradient(135deg, #f97316, #ea580c); color: white; box-shadow: 0 3px 10px -3px rgba(249, 115, 22, 0.45); border: none; padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 0.3rem; margin-right: 0.3rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        Fail
+                      </button>
                       <button v-if="report.trang_thai !== 'Hoàn thành'" class="tl-action-btn tl-action-done" @click.stop="markAsCompleted(report)">
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                         Xong
@@ -624,7 +650,7 @@
               </div>
               <div v-else class="daily-task-list">
                 <div v-for="(report, index) in day.afternoon" :key="'da-'+report.id"
-                     class="report-card-timeline" :id="'report-card-' + report.id" :class="{ 'highlight-card': report.id === highlightedReportId, 'deleting-row': deletingIds.includes(report.id), 'dropped-success': report.id === droppedReportId }"
+                     class="report-card-timeline" :id="'report-card-' + report.id" :class="{ 'highlight-card': report.id === highlightedReportId, 'deleting-row': deletingIds.includes(report.id), 'dropped-success': report.id === droppedReportId, 'is-failed': report.isFailed === true || report.isFailed === 'TRUE' }"
                      :style="{ animationDelay: (index * 0.07) + 's' }"
                      draggable="true"
                      @dragstart="onDragStartReport($event, report)"
@@ -651,6 +677,7 @@
                     <div class="tl-rect-header">
                       <div class="tl-rect-tags">
                         <span class="tl-badge-cat" :class="getCategoryClass(report.phan_loai)">{{ report.phan_loai }}</span>
+                          <span v-if="report.isFailed === true || report.isFailed === 'TRUE'" class="is-failed-tag">Failed</span>
                         <div class="tl-status-chip" :class="getStatusPillClass(report.trang_thai)">
                           <svg v-if="report.trang_thai === 'Hoàn thành'" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                           <svg v-else xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
@@ -694,6 +721,10 @@
                       <button class="tl-action-btn tl-action-delete" @click.stop="confirmDelete(report.id)">
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                         Xoá
+                      </button>
+                      <button v-if="report.trang_thai !== 'Hoàn thành'" class="tl-action-btn" @click.stop="markAsFailed(report)" style="background: linear-gradient(135deg, #f97316, #ea580c); color: white; box-shadow: 0 3px 10px -3px rgba(249, 115, 22, 0.45); border: none; padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 0.3rem; margin-right: 0.3rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        Fail
                       </button>
                       <button v-if="report.trang_thai !== 'Hoàn thành'" class="tl-action-btn tl-action-done" @click.stop="markAsCompleted(report)">
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
@@ -721,7 +752,7 @@
           <p style="opacity: 0.5; font-size: 0.85rem; margin-top: 1rem;">Trống</p>
         </div>
         <div v-else v-for="(report, index) in filteredReports" :key="'mob-' + report.id"
-             class="report-card-timeline" :id="'report-card-' + report.id" :class="{ 'highlight-card': report.id === highlightedReportId, 'deleting-row': deletingIds.includes(report.id), 'dropped-success': report.id === droppedReportId }"
+             class="report-card-timeline" :id="'report-card-' + report.id" :class="{ 'highlight-card': report.id === highlightedReportId, 'deleting-row': deletingIds.includes(report.id), 'dropped-success': report.id === droppedReportId, 'is-failed': report.isFailed === true || report.isFailed === 'TRUE' }"
              :style="{ animationDelay: (index * 0.07) + 's' }"
              @click="openEditModal(report)">
 
@@ -752,6 +783,7 @@
             <div class="tl-rect-header">
               <div class="tl-rect-tags">
                 <span class="tl-badge-cat" :class="getCategoryClass(report.phan_loai)">{{ report.phan_loai }}</span>
+                          <span v-if="report.isFailed === true || report.isFailed === 'TRUE'" class="is-failed-tag">Failed</span>
                 <div class="tl-status-chip" :class="getStatusPillClass(report.trang_thai)">
                   <svg v-if="report.trang_thai === 'Hoàn thành'" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                   <svg v-else xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
@@ -794,6 +826,10 @@
               <button class="tl-action-btn tl-action-delete" @click.stop="confirmDelete(report.id)">
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                 Xoá
+              </button>
+              <button v-if="report.trang_thai !== 'Hoàn thành'" class="tl-action-btn" @click.stop="markAsFailed(report)" style="background: linear-gradient(135deg, #f97316, #ea580c); color: white; box-shadow: 0 3px 10px -3px rgba(249, 115, 22, 0.45); border: none; padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 0.3rem; margin-right: 0.3rem;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                Fail
               </button>
               <button v-if="report.trang_thai !== 'Hoàn thành'" class="tl-action-btn tl-action-done" @click.stop="markAsCompleted(report)">
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
@@ -1659,6 +1695,32 @@
         </div>
       </div>
     </div>
+    <!-- Modal Xác Nhận Fail -->
+    <div class="elite-modal-overlay" v-if="isFailModalOpen" @click.self="isFailModalOpen = false" style="z-index: 9999999;">
+      <div class="elite-modal" style="max-width: 400px;">
+        <div class="elite-modal-header">
+          <div class="elite-modal-title" style="display: flex; align-items: flex-start; gap: 0.6rem;">
+            <div style="margin-top: 0.15rem; color: #f97316;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </div>
+            <h2 style="margin: 0; line-height: 1.3;">Đánh dấu FAIL?</h2>
+          </div>
+          <button class="elite-btn-close" @click="isFailModalOpen = false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+        <div class="elite-modal-body">
+          <p style="color: #475569; font-size: 0.95rem; margin-bottom: 1.5rem; line-height: 1.5;">Bạn có chắc chắn muốn đánh dấu việc này là FAIL?</p>
+          <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+            <button class="btn-secondary" @click="isFailModalOpen = false" style="padding: 0.6rem 1.25rem;">Hủy</button>
+            <button class="btn-primary" @click="executeFail" style="background: #f97316; padding: 0.6rem 1.25rem; display: flex; align-items: center; gap: 0.5rem; border: none; box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              Đồng ý
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Modal Xác Nhận Hoàn Thành -->
     <div class="elite-modal-overlay" v-if="isDoneModalOpen" @click.self="isDoneModalOpen = false" style="z-index: 999999;">
@@ -1746,7 +1808,7 @@
     </div>
     <!-- Modal Nhắc Lại -->
     <div class="elite-modal-overlay" v-if="isPendingModalOpen" @click.self="isPendingModalOpen = false" style="z-index: 999999; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);">
-      <div class="elite-modal dark-mode-modal" style="max-width: 1000px; width: 95%; max-height: 90vh; display: flex; flex-direction: column; background: #0f172a !important; border: 1px solid rgba(255,255,255,0.08) !important; box-shadow: 0 25px 60px -12px rgba(0,0,0,0.7); border-radius: 12px; overflow: hidden;">
+      <div class="elite-modal dark-mode-modal" style="max-width: 1400px; width: 95%; max-height: 90vh; display: flex; flex-direction: column; background: #0f172a !important; border: 1px solid rgba(255,255,255,0.08) !important; box-shadow: 0 25px 60px -12px rgba(0,0,0,0.7); border-radius: 12px; overflow: hidden;">
         
         <!-- Header -->
         <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); flex-shrink: 0;">
@@ -1797,36 +1859,126 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.2;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
             <p style="font-size: 1.1rem; font-weight: 600;">Tuyệt vời! Không còn việc nào tồn đọng.</p>
           </div>
-          <div v-else style="display: flex; flex-direction: column; gap: 1.25rem;">
-            <div v-for="(report, idx) in filteredPendingReports" :key="report.id" @click="navigateToReportDate(report)" style="background: #1e293b; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 1.25rem; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; gap: 0.8rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);" onmouseover="this.style.transform='translateY(-3px)'; this.style.borderColor='#ef4444'; this.style.boxShadow='0 10px 20px -5px rgba(0,0,0,0.3)'" onmouseout="this.style.transform='none'; this.style.borderColor='rgba(255,255,255,0.06)'; this.style.boxShadow='0 4px 6px -1px rgba(0,0,0,0.1)'">
-              
-              <!-- Header của card -->
-              <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
-                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                  <span style="font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 999px; font-weight: 800; background: rgba(59,130,246,0.1); color: #60a5fa; border: 1px solid rgba(59,130,246,0.2); letter-spacing: 0.05em;">{{ report.phan_loai }}</span>
-                  <span v-if="report.tag === 'ƯU TIÊN'" style="font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 999px; font-weight: 800; background: rgba(239,68,68,0.1); color: #f87171; border: 1px solid rgba(239,68,68,0.2); letter-spacing: 0.05em;">ƯU TIÊN</span>
+          <div v-else :style="!isMobile ? 'display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;' : 'display: flex; flex-direction: column; gap: 1.25rem;'">
+            <!-- Cột Việc chưa xử lý -->
+            <div :style="!isMobile ? 'display: flex; flex-direction: column; gap: 1.25rem; background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 12px; border: 1px dashed rgba(255,255,255,0.1);' : 'display: contents;'">
+              <h3 v-if="!isMobile" style="color: #94a3b8; font-size: 1rem; text-align: center; margin: 0 0 0.5rem 0; text-transform: uppercase; letter-spacing: 0.05em;">Việc Chưa Xử Lý ({{ pendingOtherReports.length }})</h3>
+              <div v-for="(report, idx) in (!isMobile ? pendingOtherReports : filteredPendingReports)" :key="report.id" 
+                   @click="navigateToReportDate(report)" 
+                   :draggable="!isMobile"
+                   @dragstart="!isMobile && onDragStartReport($event, report)"
+                   @dragend="!isMobile && onDragEndReport($event)"
+                   :style="['background: #1e293b; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 1.25rem; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; gap: 0.8rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);', draggedReportId === report.id ? 'opacity: 0.9; transform: scale(1.04) rotate(-2deg); border-color: rgba(16, 185, 129, 0.8); box-shadow: 0 25px 35px -5px rgba(0,0,0,0.4), 0 0 20px rgba(16, 185, 129, 0.4); z-index: 100;' : '', (report.isFailed === true || report.isFailed === 'TRUE') ? 'opacity: 0.65; filter: grayscale(80%);' : '']"
+                   onmouseover="this.style.transform='translateY(-3px)'; this.style.borderColor='#ef4444'; this.style.boxShadow='0 10px 20px -5px rgba(0,0,0,0.3)'" 
+                   onmouseout="this.style.transform='none'; this.style.borderColor='rgba(255,255,255,0.06)'; this.style.boxShadow='0 4px 6px -1px rgba(0,0,0,0.1)'">
+                
+                <!-- Header của card -->
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
+                  <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <span style="font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 999px; font-weight: 800; background: rgba(59,130,246,0.1); color: #60a5fa; border: 1px solid rgba(59,130,246,0.2); letter-spacing: 0.05em;">{{ report.phan_loai }}</span>
+                    <span v-if="report.isFailed === true || report.isFailed === 'TRUE'" class="is-failed-tag">Failed</span>
+                    <span v-if="report.tag === 'ƯU TIÊN'" style="font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 999px; font-weight: 800; background: rgba(239,68,68,0.1); color: #f87171; border: 1px solid rgba(239,68,68,0.2); letter-spacing: 0.05em;">ƯU TIÊN</span>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.75rem; color: #10b981; font-weight: 800; background: rgba(16,185,129,0.1); padding: 0.25rem 0.6rem; border-radius: 6px; border: 1px solid #10b981; white-space: nowrap; box-shadow: 0 2px 4px rgba(16,185,129,0.15);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    {{ getRelativeDateText(report.thoi_gian) }}
+                  </div>
                 </div>
-                <div style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.75rem; color: #ffffff; font-weight: 800; background: #10b981; padding: 0.25rem 0.6rem; border-radius: 6px; border: 1px solid #059669; white-space: nowrap; box-shadow: 0 2px 4px rgba(16,185,129,0.3);">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                  {{ formatDisplayTime(report.thoi_gian).date }}
+                
+                <!-- Nội dung -->
+                <div style="color: #f8fafc; font-size: 0.95rem; line-height: 1.6; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; flex: 1;">
+                  {{ report.noi_dung }}
+                </div>
+                
+                <!-- Ghi chú nếu có -->
+                <div v-if="report.ghi_chu" style="margin-top: 0.2rem; font-size: 0.8rem; color: #fca5a5; background: rgba(239,68,68,0.05); padding: 0.6rem 0.8rem; border-radius: 8px; border-left: 3px solid #ef4444; display: flex; gap: 0.5rem; align-items: flex-start;">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 0.1rem;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                  <span style="line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ report.ghi_chu }}</span>
+                </div>
+                
+                <!-- Đính kèm -->
+                <div v-if="report.img_save || report.link_excel_bao_gia || report.link_excel_mua_hang" style="display: flex; gap: 0.8rem; margin-top: 0.2rem; border-top: 1px dashed rgba(255,255,255,0.08); padding-top: 0.8rem;">
+                  <span v-if="report.img_save" style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: #94a3b8; font-weight: 600;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> Có ảnh</span>
+                  <span v-if="report.link_excel_bao_gia || report.link_excel_mua_hang" style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: #10b981; font-weight: 600;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="16" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg> Excel</span>
+                </div>
+                
+                <!-- Actions -->
+                <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; justify-content: flex-end; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.05);">
+                  <button v-if="report.trang_thai !== 'Hoàn thành'" class="tl-action-btn" @click.stop="markAsFailed(report)" style="color: white; background: linear-gradient(135deg, #f97316, #ea580c); border:none; padding: 6px 12px; border-radius: 6px; display:flex; align-items:center; gap:4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px -2px rgba(249, 115, 22, 0.5);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    Fail
+                  </button>
+                  <button v-if="report.trang_thai !== 'Hoàn thành'" class="tl-action-btn tl-action-today" @click.stop="moveToToday(report)" style="color: white; background: linear-gradient(135deg, #3b82f6, #2563eb); border:none; padding: 6px 12px; border-radius: 6px; display:flex; align-items:center; gap:4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px -2px rgba(59,130,246,0.5);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                    Làm hôm nay
+                  </button>
                 </div>
               </div>
+            </div>
+
+            <!-- Cột Việc làm hôm nay -->
+            <div v-if="!isMobile" 
+                 @dragover.prevent="dragOverColumn = 'modal-today'"
+                 @dragleave="dragOverColumn = null"
+                 @drop="onDropToToday($event); dragOverColumn = null"
+                 :class="{ 'modal-today-dropzone-highlight': draggedReportId !== null, 'modal-today-dropzone-active': dragOverColumn === 'modal-today' }"
+                 style="display: flex; flex-direction: column; gap: 1.25rem; background: rgba(16, 185, 129, 0.05); padding: 1rem; border-radius: 12px; border: 1px dashed rgba(16, 185, 129, 0.2); min-height: 200px; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);">
+              <h3 style="color: #10b981; font-size: 1rem; text-align: center; margin: 0 0 0.5rem 0; text-transform: uppercase; letter-spacing: 0.05em;">Việc Làm Hôm Nay ({{ pendingTodayReports.length }})</h3>
               
-              <!-- Nội dung -->
-              <div style="color: #f8fafc; font-size: 0.95rem; line-height: 1.6; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; flex: 1;">
-                {{ report.noi_dung }}
+              <div v-if="pendingTodayReports.length === 0" style="text-align: center; color: #94a3b8; padding: 2rem 1rem; font-style: italic; font-size: 0.9rem;">
+                Kéo việc chưa xử lý thả vào đây để làm hôm nay
               </div>
-              
-              <!-- Ghi chú nếu có -->
-              <div v-if="report.ghi_chu" style="margin-top: 0.2rem; font-size: 0.8rem; color: #fca5a5; background: rgba(239,68,68,0.05); padding: 0.6rem 0.8rem; border-radius: 8px; border-left: 3px solid #ef4444; display: flex; gap: 0.5rem; align-items: flex-start;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 0.1rem;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                <span style="line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ report.ghi_chu }}</span>
-              </div>
-              
-              <!-- Đính kèm -->
-              <div v-if="report.img_save || report.link_excel_bao_gia || report.link_excel_mua_hang" style="display: flex; gap: 0.8rem; margin-top: 0.2rem; border-top: 1px dashed rgba(255,255,255,0.08); padding-top: 0.8rem;">
-                <span v-if="report.img_save" style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: #94a3b8; font-weight: 600;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> Có ảnh</span>
-                <span v-if="report.link_excel_bao_gia || report.link_excel_mua_hang" style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: #10b981; font-weight: 600;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="16" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg> Excel</span>
+
+              <div v-for="(report, idx) in pendingTodayReports" :key="'today-'+report.id" 
+                   @click="navigateToReportDate(report)" 
+                   :draggable="true"
+                   @dragstart="onDragStartReport($event, report)"
+                   @dragend="onDragEndReport($event)"
+                   :class="{ 'modal-card-dropped': report.id === droppedReportId }"
+                   :style="['background: #1e293b; border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; padding: 1.25rem; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; gap: 0.8rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);', draggedReportId === report.id ? 'opacity: 0.9; transform: scale(1.04) rotate(-2deg); border-color: rgba(16, 185, 129, 0.8); box-shadow: 0 25px 35px -5px rgba(0,0,0,0.4), 0 0 20px rgba(16, 185, 129, 0.4); z-index: 100;' : '', (report.isFailed === true || report.isFailed === 'TRUE') ? 'opacity: 0.65; filter: grayscale(80%);' : '']"
+                   onmouseover="if(this.className.indexOf('modal-card-dropped') === -1) { this.style.transform='translateY(-3px)'; this.style.borderColor='#10b981'; this.style.boxShadow='0 10px 20px -5px rgba(16, 185, 129, 0.2)' }" 
+                   onmouseout="if(this.className.indexOf('modal-card-dropped') === -1) { this.style.transform='none'; this.style.borderColor='rgba(16, 185, 129, 0.3)'; this.style.boxShadow='0 4px 6px -1px rgba(0,0,0,0.1)' }">
+                <!-- Header của card -->
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
+                  <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <span style="font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 999px; font-weight: 800; background: rgba(59,130,246,0.1); color: #60a5fa; border: 1px solid rgba(59,130,246,0.2); letter-spacing: 0.05em;">{{ report.phan_loai }}</span>
+                    <span v-if="report.isFailed === true || report.isFailed === 'TRUE'" class="is-failed-tag">Failed</span>
+                    <span v-if="report.tag === 'ƯU TIÊN'" style="font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 999px; font-weight: 800; background: rgba(239,68,68,0.1); color: #f87171; border: 1px solid rgba(239,68,68,0.2); letter-spacing: 0.05em;">ƯU TIÊN</span>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.75rem; color: #10b981; font-weight: 800; background: rgba(16,185,129,0.1); padding: 0.25rem 0.6rem; border-radius: 6px; border: 1px solid #10b981; white-space: nowrap; box-shadow: 0 2px 4px rgba(16,185,129,0.15);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    {{ getRelativeDateText(report.thoi_gian) }}
+                  </div>
+                </div>
+                
+                <!-- Nội dung -->
+                <div style="color: #f8fafc; font-size: 0.95rem; line-height: 1.6; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; flex: 1;">
+                  {{ report.noi_dung }}
+                </div>
+                
+                <!-- Ghi chú nếu có -->
+                <div v-if="report.ghi_chu" style="margin-top: 0.2rem; font-size: 0.8rem; color: #fca5a5; background: rgba(239,68,68,0.05); padding: 0.6rem 0.8rem; border-radius: 8px; border-left: 3px solid #ef4444; display: flex; gap: 0.5rem; align-items: flex-start;">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 0.1rem;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                  <span style="line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ report.ghi_chu }}</span>
+                </div>
+                
+                <!-- Đính kèm -->
+                <div v-if="report.img_save || report.link_excel_bao_gia || report.link_excel_mua_hang" style="display: flex; gap: 0.8rem; margin-top: 0.2rem; border-top: 1px dashed rgba(255,255,255,0.08); padding-top: 0.8rem;">
+                  <span v-if="report.img_save" style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: #94a3b8; font-weight: 600;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> Có ảnh</span>
+                  <span v-if="report.link_excel_bao_gia || report.link_excel_mua_hang" style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: #10b981; font-weight: 600;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="16" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg> Excel</span>
+                </div>
+                
+                <!-- Actions -->
+                <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; justify-content: flex-end; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.05);">
+                  <button v-if="report.trang_thai !== 'Hoàn thành'" class="tl-action-btn" @click.stop="markAsFailed(report)" style="color: white; background: linear-gradient(135deg, #f97316, #ea580c); border:none; padding: 6px 12px; border-radius: 6px; display:flex; align-items:center; gap:4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px -2px rgba(249, 115, 22, 0.5);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    Fail
+                  </button>
+                  <button v-if="report.trang_thai !== 'Hoàn thành'" class="tl-action-btn tl-action-done" @click.stop="markAsCompleted(report)" style="color: white; background: linear-gradient(135deg, #059669, #10b981); border:none; padding: 6px 12px; border-radius: 6px; display:flex; align-items:center; gap:4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px -2px rgba(16,185,129,0.5);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    Xong
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -2069,9 +2221,39 @@ const parseDateFromReport = (thoi_gian) => {
       const [d, m, y] = datePart.split('/');
       return new Date(Number(y), Number(m) - 1, Number(d), Number(hour), Number(minute));
     }
-  } catch (e) {}
-  return null;
-}
+  } catch (e) {
+    return null;
+  }
+};
+
+const getRelativeDateText = (thoi_gian) => {
+  if (!thoi_gian) return '';
+  const parsed = parseDateFromReport(thoi_gian);
+  if (!parsed) {
+    const parts = thoi_gian.split(' /');
+    if (parts.length === 3) return parts[2];
+    return thoi_gian;
+  }
+  
+  const targetDate = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+  const now = new Date();
+  
+  const targetTime = targetDate.getTime();
+  const todayTime = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  
+  const diffTime = targetTime - todayTime;
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) {
+    return 'Hôm nay';
+  } else if (diffDays === -1) {
+    return 'Hôm qua';
+  } else if (diffDays === 1) {
+    return 'Ngày mai';
+  } else {
+    return `${String(parsed.getDate()).padStart(2, '0')}/${String(parsed.getMonth() + 1).padStart(2, '0')}/${parsed.getFullYear()}`;
+  }
+};
 
 const navigateToReportDate = (report) => {
   const dObj = parseDateFromReport(report.thoi_gian);
@@ -2216,7 +2398,13 @@ const baseFilteredReports = computed(() => {
 
 const filteredReports = computed(() => {
   return baseFilteredReports.value.filter(r => {
-    if (filters.value.trang_thai && filters.value.trang_thai !== 'Tất cả' && r.trang_thai !== filters.value.trang_thai) return false;
+    if (filters.value.trang_thai && filters.value.trang_thai !== 'Tất cả') {
+      if (filters.value.trang_thai === 'Failed') {
+        if (!r.isFailed || (r.isFailed !== true && r.isFailed !== 'TRUE')) return false;
+      } else {
+        if (r.trang_thai !== filters.value.trang_thai) return false;
+      }
+    }
     return true;
   });
 });
@@ -2224,6 +2412,7 @@ const filteredReports = computed(() => {
 const totalCount = computed(() => baseFilteredReports.value.length)
 const pendingCount = computed(() => baseFilteredReports.value.filter(r => r.trang_thai === 'Chưa xử lý').length)
 const completedCount = computed(() => baseFilteredReports.value.filter(r => r.trang_thai === 'Hoàn thành').length)
+const failedCount = computed(() => baseFilteredReports.value.filter(r => r.isFailed === true || r.isFailed === 'TRUE').length)
 
 const pendingReports = computed(() => filteredReports.value.filter(r => r.trang_thai !== 'Hoàn thành'));
 const completedReports = computed(() => filteredReports.value.filter(r => r.trang_thai === 'Hoàn thành'));
@@ -2268,6 +2457,125 @@ const filteredPendingReports = computed(() => {
   return list;
 });
 
+const pendingTodayReports = computed(() => {
+  const todayStr = getTodayStr();
+  return filteredPendingReports.value.filter(r => {
+    const dObj = parseDateFromReport(r.thoi_gian);
+    if (!dObj) return false;
+    const dStr = `${dObj.getFullYear()}-${String(dObj.getMonth() + 1).padStart(2, '0')}-${String(dObj.getDate()).padStart(2, '0')}`;
+    return dStr === todayStr;
+  });
+});
+
+const pendingOtherReports = computed(() => {
+  const todayStr = getTodayStr();
+  return filteredPendingReports.value.filter(r => {
+    const dObj = parseDateFromReport(r.thoi_gian);
+    if (!dObj) return true;
+    const dStr = `${dObj.getFullYear()}-${String(dObj.getMonth() + 1).padStart(2, '0')}-${String(dObj.getDate()).padStart(2, '0')}`;
+    return dStr !== todayStr;
+  });
+});
+
+const onDropToToday = async (e) => {
+  const id = draggedReportId.value;
+  if (!id) return;
+  const report = reports.value.find(r => r.id === id);
+  if (report) {
+    if (API_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL') {
+       alert("Tính năng này cần cấu hình API_URL");
+       return;
+    }
+    const originalTime = report.thoi_gian;
+    
+    const now = new Date();
+    const timeObj = parseTimeString(report.thoi_gian);
+    if (!timeObj) return;
+    
+    timeObj.day = String(now.getDate()).padStart(2, '0');
+    timeObj.month = String(now.getMonth() + 1).padStart(2, '0');
+    timeObj.year = String(now.getFullYear());
+    const dayOfWeek = now.getDay();
+    timeObj.thu = dayOfWeek === 0 ? '8' : String(dayOfWeek + 1);
+    
+    const newTimeStr = `${timeObj.hour}:${timeObj.minute} /${timeObj.thu} /${timeObj.day}/${timeObj.month}/${timeObj.year}`;
+    if (newTimeStr === originalTime && (!report.isFailed || report.isFailed === '')) return;
+    
+    const originalIsFailed = report.isFailed;
+    report.thoi_gian = newTimeStr;
+    report.isFailed = '';
+
+    droppedReportId.value = report.id;
+    setTimeout(() => {
+      if (droppedReportId.value === report.id) droppedReportId.value = null;
+    }, 800);
+    
+    try {
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'update', ...report })
+      });
+      const result = await response.json();
+      if (result.status !== 'success') {
+        report.thoi_gian = originalTime;
+        report.isFailed = originalIsFailed;
+        alert('Lỗi cập nhật: ' + result.message);
+      }
+    } catch (error) {
+      report.thoi_gian = originalTime;
+      report.isFailed = originalIsFailed;
+      alert('Lỗi kết nối: ' + error.message);
+    }
+  }
+};
+
+const moveToToday = async (report) => {
+  if (!report) return;
+  if (API_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL') {
+     alert("Tính năng này cần cấu hình API_URL");
+     return;
+  }
+  const originalTime = report.thoi_gian;
+  
+  const now = new Date();
+  const timeObj = parseTimeString(report.thoi_gian);
+  if (!timeObj) return;
+  
+  timeObj.day = String(now.getDate()).padStart(2, '0');
+  timeObj.month = String(now.getMonth() + 1).padStart(2, '0');
+  timeObj.year = String(now.getFullYear());
+  const dayOfWeek = now.getDay();
+  timeObj.thu = dayOfWeek === 0 ? '8' : String(dayOfWeek + 1);
+  
+  const newTimeStr = `${timeObj.hour}:${timeObj.minute} /${timeObj.thu} /${timeObj.day}/${timeObj.month}/${timeObj.year}`;
+  if (newTimeStr === originalTime && (!report.isFailed || report.isFailed === '')) return;
+  
+  const originalIsFailed = report.isFailed;
+  report.thoi_gian = newTimeStr;
+  report.isFailed = '';
+
+  droppedReportId.value = report.id;
+  setTimeout(() => {
+    if (droppedReportId.value === report.id) droppedReportId.value = null;
+  }, 800);
+  
+  try {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'update', ...report })
+    });
+    const result = await response.json();
+    if (result.status !== 'success') {
+      report.thoi_gian = originalTime;
+      report.isFailed = originalIsFailed;
+      alert('Lỗi cập nhật: ' + result.message);
+    }
+  } catch (error) {
+    report.thoi_gian = originalTime;
+    report.isFailed = originalIsFailed;
+    alert('Lỗi kết nối: ' + error.message);
+  }
+};
 const kanbanColumns = computed(() => [
   {
     status: 'Chưa xử lý',
@@ -2408,8 +2716,12 @@ const onDropReport = async (e, newStatus, newPeriod) => {
       }
       const originalStatus = report.trang_thai;
       const originalTime = report.thoi_gian;
+      const originalIsFailed = report.isFailed;
       
       report.trang_thai = effectiveStatus;
+      if (effectiveStatus !== 'Hoàn thành') {
+        report.isFailed = '';
+      }
 
       droppedReportId.value = report.id;
       setTimeout(() => {
@@ -2435,12 +2747,14 @@ const onDropReport = async (e, newStatus, newPeriod) => {
         if (result.status !== 'success') {
           report.trang_thai = originalStatus;
           report.thoi_gian = originalTime;
+          report.isFailed = originalIsFailed;
           alert('Lỗi cập nhật: ' + result.message);
         }
       } catch (error) {
         console.error('Lỗi khi cập nhật trạng thái:', error);
         report.trang_thai = originalStatus;
         report.thoi_gian = originalTime;
+        report.isFailed = originalIsFailed;
       }
     }
   }
@@ -2945,6 +3259,9 @@ const saveReport = async (options = {}) => {
   }
 
   formData.value.thoi_gian = formatTimeString();
+  if (formData.value.trang_thai !== 'Hoàn thành') {
+    formData.value.isFailed = '';
+  }
 
   saving.value = true
   if (isUploadingFiles.value) {
@@ -3130,6 +3447,54 @@ const executeMarkAsCompleted = async () => {
     console.error('Lỗi khi lưu:', error)
     report.trang_thai = originalStatus;
   }
+}
+
+const isFailModalOpen = ref(false);
+const failTarget = ref(null);
+
+const markAsFailed = async (report) => {
+  if (API_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL') {
+     alert("Tính năng này cần cấu hình API_URL");
+     return;
+  }
+  failTarget.value = report;
+  isFailModalOpen.value = true;
+};
+
+const executeFail = async () => {
+  if (!failTarget.value) return;
+  const report = failTarget.value;
+  isFailModalOpen.value = false;
+
+  const originalStatus = report.trang_thai;
+  const originalIsFailed = report.isFailed;
+  report.trang_thai = 'Hoàn thành';
+  report.isFailed = true;
+  
+  try {
+    const payload = {
+      action: 'update',
+      ...report
+    }
+
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+    
+    const result = await response.json()
+    if (result.status !== 'success') {
+      report.trang_thai = originalStatus;
+      report.isFailed = originalIsFailed;
+      alert('Lỗi cập nhật: ' + result.message);
+    }
+  } catch (error) {
+    report.trang_thai = originalStatus;
+    report.isFailed = originalIsFailed;
+    alert('Lỗi kết nối');
+  }
+  
+  failTarget.value = null;
 }
 
 // Xoá
@@ -5750,6 +6115,10 @@ button {
   background: rgba(16, 185, 129, 0.15);
   color: #34d399;
 }
+.stat-icon.failed {
+  background: rgba(249, 115, 22, 0.15);
+  color: #f97316;
+}
 .stat-info {
   display: flex;
   flex-direction: column;
@@ -5790,6 +6159,11 @@ button {
 .card-done .stat-label { color: #6ee7b7 !important; }
 .card-done.elite-active { border-color: #34d399 !important; box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.2) !important; background: rgba(52, 211, 153, 0.12) !important; }
 .card-done.elite-active::after { content: ''; position: absolute; top: 0; right: 0; width: 0; height: 0; border-style: solid; border-width: 0 16px 16px 0; border-color: transparent #34d399 transparent transparent; }
+
+.card-failed .stat-value { color: #f97316 !important; }
+.card-failed .stat-label { color: #fdba74 !important; }
+.card-failed.elite-active { border-color: #f97316 !important; box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2) !important; background: rgba(249, 115, 22, 0.12) !important; }
+.card-failed.elite-active::after { content: ''; position: absolute; top: 0; right: 0; width: 0; height: 0; border-style: solid; border-width: 0 16px 16px 0; border-color: transparent #f97316 transparent transparent; }
 
 /* Date filter */
 .date-filter {
@@ -6197,6 +6571,24 @@ button {
 .report-card-timeline:active { transform: scale(0.975); }
 
 /* Hover effects for content cards */
+.is-failed {
+  opacity: 0.65 !important;
+  filter: grayscale(80%) !important;
+}
+.is-failed-tag {
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.5rem;
+  box-shadow: 0 2px 4px rgba(249, 115, 22, 0.3);
+}
 .report-card-timeline:hover .tl-rect {
   transform: translateY(-4px) scale(1.015);
   filter: brightness(1.1);
@@ -8425,5 +8817,59 @@ span[style*="color: #334155"] {
     gap: 2rem !important;
   }
 }
-</style>
 
+.tl-rect--pending .tl-action-today, .elite-modal-card .tl-action-today, .tl-action-today {
+  background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  border: none !important;
+  box-shadow: 0 3px 12px -2px rgba(59, 130, 246, 0.5) !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+.tl-rect--pending .tl-action-today:hover, .elite-modal-card .tl-action-today:hover, .tl-action-today:hover {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 5px 16px -2px rgba(59, 130, 246, 0.6) !important;
+}
+
+.modal-card-dropped {
+  animation: modalDropRadiate 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards !important;
+  z-index: 50;
+  position: relative;
+}
+
+@keyframes modalDropRadiate {
+  0% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.8);
+    background: rgba(16, 185, 129, 0.3) !important;
+    border-color: #10b981 !important;
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 0 20px 10px rgba(16, 185, 129, 0);
+    background: rgba(16, 185, 129, 0.1) !important;
+    border-color: rgba(16, 185, 129, 0.5) !important;
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    background: #1e293b !important;
+    border-color: rgba(16, 185, 129, 0.3) !important;
+  }
+}
+
+.modal-today-dropzone-highlight {
+  border: 2px dashed rgba(16, 185, 129, 0.5) !important;
+  background: rgba(16, 185, 129, 0.08) !important;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.1) inset !important;
+}
+
+.modal-today-dropzone-active {
+  border: 2px dashed #10b981 !important;
+  background: rgba(16, 185, 129, 0.15) !important;
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.25) inset !important;
+  transform: scale(1.02);
+}
+</style>

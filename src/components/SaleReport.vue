@@ -108,12 +108,18 @@
           <template v-if="timeFilterMode === 'year'">
             <div class="elite-date-group group-date" style="flex: 1; max-width: 500px;">
               <label style="color: #94a3b8 !important;">Từ năm</label>
-              <input type="number" v-model="yearFrom" :max="yearTo" placeholder="2024" class="elite-input" style="width: 100%;" />
+              <select v-model="yearFrom" class="elite-input" style="width: 100%;">
+                <option value="">Chọn năm...</option>
+                <option v-for="y in availableYearsList" :key="y" :value="y">{{ y }}</option>
+              </select>
             </div>
             <span class="elite-range-sep">→</span>
             <div class="elite-date-group group-date" style="flex: 1; max-width: 500px;">
               <label style="color: #94a3b8 !important;">Đến năm</label>
-              <input type="number" v-model="yearTo" :min="yearFrom" placeholder="2025" class="elite-input" style="width: 100%;" />
+              <select v-model="yearTo" class="elite-input" style="width: 100%;">
+                <option value="">Chọn năm...</option>
+                <option v-for="y in availableYearsList" :key="y" :value="y">{{ y }}</option>
+              </select>
             </div>
           </template>
         </div>
@@ -1086,11 +1092,17 @@
               <template v-if="exportTimeMode === 'year'">
                 <div class="elite-date-group group-date" style="width: 100%;">
                   <label style="color: #94a3b8 !important; margin-bottom: 4px; display: block; font-size: 12px;">Từ năm</label>
-                  <input type="number" v-model="exportYearFrom" :max="exportYearTo" placeholder="2024" class="elite-input" style="width: 100%; padding: 10px;" />
+                  <select v-model="exportYearFrom" class="elite-input" style="width: 100%; padding: 10px;">
+                    <option value="">Chọn năm...</option>
+                    <option v-for="y in availableYearsList" :key="y" :value="y">{{ y }}</option>
+                  </select>
                 </div>
                 <div class="elite-date-group group-date" style="width: 100%;">
                   <label style="color: #94a3b8 !important; margin-bottom: 4px; display: block; font-size: 12px;">Đến năm</label>
-                  <input type="number" v-model="exportYearTo" :min="exportYearFrom" placeholder="2025" class="elite-input" style="width: 100%; padding: 10px;" />
+                  <select v-model="exportYearTo" class="elite-input" style="width: 100%; padding: 10px;">
+                    <option value="">Chọn năm...</option>
+                    <option v-for="y in availableYearsList" :key="y" :value="y">{{ y }}</option>
+                  </select>
                 </div>
               </template>
             </div>
@@ -1288,9 +1300,11 @@
           <h3 style="margin-top: 0; color: #f8fafc; font-size: 18px; text-transform: uppercase;">Chọn năm cho dữ liệu</h3>
           <p style="color: #94a3b8; font-size: 14px; margin-bottom: 20px;">Vui lòng chọn năm cho ({{ pendingReportFiles.length }}) file dữ liệu báo cáo cần import.</p>
           
-          <div class="elite-form-group">
-            <label style="color: #cbd5e1; font-weight: 600; display: block; margin-bottom: 8px;">Năm</label>
-            <input type="number" v-model="selectedYearForReport" class="elite-input" style="width: 100%; background: #1e293b; color: white; border: 1px solid #334155; padding: 10px; border-radius: 6px;" />
+          <div class="elite-date-group group-date" style="margin-bottom: 20px; width: 100%;">
+            <label style="color: #94a3b8 !important; margin-bottom: 8px; display: block;">Năm báo cáo</label>
+            <select v-model="selectedYearForReport" class="elite-input" style="width: 100%; background: #1e293b; color: white; border: 1px solid #334155; padding: 10px; border-radius: 6px;">
+              <option v-for="y in availableYearsList" :key="y" :value="y">{{ y }}</option>
+            </select>
           </div>
 
           <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
@@ -1348,6 +1362,11 @@ const showYearModal = ref(false);
 const selectedYearForReport = ref(new Date().getFullYear().toString());
 const pendingReportFiles = ref<File[]>([]);
 
+const availableYearsList = computed(() => {
+  const currentYear = new Date().getFullYear();
+  return Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
+});
+
 
 function triggerReportImport() {
   reportUploadInput.value?.click();
@@ -1401,17 +1420,9 @@ async function confirmYearAndImportReport() {
         const contentVal = row.getCell(6).value?.toString() || '';
         const productType = row.getCell(7).value?.toString() || '';
         
-        // Tự động nhận dạng thời gian tạo (createdTime)
+        // Lấy thời gian tạo theo cột Month và năm đã chọn, ngày mặc định là 01
         let createdTime = '';
-        const dateMatch = contentVal.match(/(\d{2})[./](\d{2})[./](\d{4})/);
-        if (dateMatch) {
-          // Tìm thấy ngày tháng năm trong Content
-          const dd = dateMatch[1];
-          const mm = dateMatch[2];
-          const yyyy = selectedYearForReport.value; // Override selected year!
-          createdTime = `${dd}/${mm}/${yyyy} 00:00:00`;
-        } else if (monCell) {
-          // Fallback: Dùng cột Month + Năm đã chọn
+        if (monCell) {
           const monthNum = parseInt(monCell.replace(/\D/g, ''));
           if (monthNum >= 1 && monthNum <= 12) {
             const yyyy = selectedYearForReport.value; // Override selected year!
