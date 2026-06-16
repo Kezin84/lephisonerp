@@ -2719,9 +2719,7 @@ const onDropReport = async (e, newStatus, newPeriod) => {
       const originalIsFailed = report.isFailed;
       
       report.trang_thai = effectiveStatus;
-      if (effectiveStatus !== 'Hoàn thành') {
-        report.isFailed = '';
-      }
+      report.isFailed = '';
 
       droppedReportId.value = report.id;
       setTimeout(() => {
@@ -3425,7 +3423,9 @@ const executeMarkAsCompleted = async () => {
   isDoneModalOpen.value = false;
 
   const originalStatus = report.trang_thai;
+  const originalIsFailed = report.isFailed;
   report.trang_thai = 'Hoàn thành';
+  report.isFailed = '';
   
   try {
     const payload = {
@@ -3442,10 +3442,12 @@ const executeMarkAsCompleted = async () => {
     if (result.status !== 'success') {
       alert('Lỗi cập nhật: ' + result.message)
       report.trang_thai = originalStatus;
+      report.isFailed = originalIsFailed;
     }
   } catch (error) {
     console.error('Lỗi khi lưu:', error)
     report.trang_thai = originalStatus;
+    report.isFailed = originalIsFailed;
   }
 }
 
