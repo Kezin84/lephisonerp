@@ -91,12 +91,16 @@
           <template v-if="filterConfig.filterMode === 'year'">
             <div class="elite-date-group group-date">
               <label>Từ năm</label>
-              <input type="number" v-model="filterConfig.yearFrom" :max="filterConfig.yearTo" placeholder="2024" class="elite-input" />
+              <select v-model="filterConfig.yearFrom" class="elite-input" style="appearance: auto; background-color: #1e293b;">
+                <option v-for="y in 21" :key="'yfrom-'+y" :value="2019 + y">{{ 2019 + y }}</option>
+              </select>
             </div>
             <span class="elite-range-sep">→</span>
             <div class="elite-date-group group-date">
               <label>Đến năm</label>
-              <input type="number" v-model="filterConfig.yearTo" :min="filterConfig.yearFrom" placeholder="2025" class="elite-input" />
+              <select v-model="filterConfig.yearTo" class="elite-input" style="appearance: auto; background-color: #1e293b;">
+                <option v-for="y in 21" :key="'yto-'+y" :value="2019 + y">{{ 2019 + y }}</option>
+              </select>
             </div>
           </template>
         </div>
@@ -3045,6 +3049,18 @@ onUnmounted(() => {
     width: 100% !important;
     flex-wrap: wrap !important;
     justify-content: center !important;
+  }
+  .elite-time-filter .elite-mode-tabs {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    padding: 4px !important;
+    justify-content: flex-start !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .elite-time-filter .elite-mode-tabs button {
+    padding: 0.4rem 0.6rem !important;
+    font-size: 0.75rem !important;
+    flex-shrink: 0;
   }
   .kanban-board {
     flex-direction: column !important;
