@@ -146,6 +146,7 @@
           v-model="boardData.unassigned"
           group="pipeline"
           item-key="Id_pipeline"
+          :disabled="isMobile"
           @change="(evt) => onChange(evt, 'unassigned')"
           @start="isDragging = true"
           @end="isDragging = false"
@@ -160,6 +161,7 @@
                   v-model="element.linked_items"
                   group="pipeline"
                   item-key="Id_pipeline"
+                  :disabled="isMobile"
                   @change="(evt) => onNestedChange(evt, element)"
                   class="nested-dropzone"
                   ghost-class="ghost-sub-card"
@@ -349,6 +351,7 @@
             v-model="boardData[col.id]"
             group="pipeline"
             item-key="Id_pipeline"
+            :disabled="isMobile"
             @change="(evt) => onChange(evt, col.id)"
             @start="isDragging = true"
             @end="isDragging = false"
@@ -363,6 +366,7 @@
                   v-model="element.linked_items"
                   group="pipeline"
                   item-key="Id_pipeline"
+                  :disabled="isMobile"
                   @change="(evt) => onNestedChange(evt, element)"
                   class="nested-dropzone"
                   ghost-class="ghost-sub-card"
@@ -802,6 +806,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import draggable from 'vuedraggable'
 import NumberInput from './NumberInput.vue'
 import ExcelJS from 'exceljs'
@@ -817,6 +822,9 @@ const formatNumber = (val) => {
 
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx1yDOQLxYgJb5w30KmxQHF8AYUZln_5q58HCKP4zlUmtJye6aJBiSt3oyT0j_3QaigdQ/exec'
 
+const route = useRoute()
+const router = useRouter()
+
 // Configuration of columns
 const COLUMNS = [
   { id: 'nhap', label: 'TẠM', value: 'TẠM', percent: '0%' },
@@ -824,8 +832,8 @@ const COLUMNS = [
   { id: 'col_50', label: '50%: Forecast', value: 'Forecast (đã lên báo giá gởi khách hàng)', percent: '50%' },
   { id: 'col_70', label: '70%: Commit', value: 'Commit (EU đồng ý giải pháp, chờ ngân sách đầu tư)', percent: '70%' },
   { id: 'col_90', label: '90%: Closed Won', value: 'Closed Won (đã ký xác nhận đặt hàng)', percent: '90%' },
-  { id: 'that_bai', label: 'THẤT BẠI', value: 'THẤT BẠI', percent: '0%' },
-  { id: 'hoan_thanh', label: 'THÀNH CÔNG', value: 'THÀNH CÔNG', percent: '100%' }
+  { id: 'hoan_thanh', label: 'THÀNH CÔNG', value: 'THÀNH CÔNG', percent: '100%' },
+  { id: 'that_bai', label: 'THẤT BẠI', value: 'THẤT BẠI', percent: '0%' }
 ]
 
 const items = ref([])
@@ -1553,6 +1561,13 @@ const fetchData = async () => {
         return item
       })
       distributeItems()
+      if (route.query.openId) {
+        const targetItem = items.value.find(i => String(i.Id_pipeline) === String(route.query.openId))
+        if (targetItem) {
+          openEditModal(targetItem)
+        }
+        router.replace({ path: '/pipeline' })
+      }
     } else {
       console.error('Fetch error:', result.message)
     }
@@ -3009,6 +3024,27 @@ onUnmounted(() => {
 @media (max-width: 768px) {
   .kanban-wrapper {
     flex-direction: column !important;
+  }
+  .elite-filter-panel {
+    flex-direction: column !important;
+    gap: 1rem !important;
+    align-items: stretch !important;
+    padding: 1rem !important;
+    box-sizing: border-box !important;
+  }
+  .elite-filter-panel .search-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .elite-filter-panel .search-container input {
+    box-sizing: border-box !important;
+    width: 100% !important;
+  }
+  .elite-filter-panel .header-actions {
+    width: 100% !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
   }
   .kanban-board {
     flex-direction: column !important;

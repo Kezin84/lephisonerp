@@ -373,11 +373,14 @@
                       
                       <div class="tl-rect-pipeline" v-if="getLinkedPipelines(report).length > 0" style="display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.4rem;">
                         <div v-for="(pl, idx) in getLinkedPipelines(report)" :key="'pl-'+idx" style="display: flex; align-items: stretch; gap: 0; border-radius: 6px; overflow: hidden; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2);">
-                          <div style="width: 3.5px; min-width: 3.5px; flex-shrink: 0; background: linear-gradient(180deg, #3b82f6, #2563eb); border-radius: 2px 0 0 2px;"></div>
-                          <div style="padding: 0.4rem 0.6rem; font-size: 0.8rem; color: #cbd5e1; line-height: 1.3;">
-                            <span style="font-weight: 800; color: #60a5fa;">pipeline</span> : <span>{{ pl.content_of_contract_po || 'Không có nội dung' }}</span>
-                          </div>
-                        </div>
+  <div style="width: 3.5px; min-width: 3.5px; flex-shrink: 0; background: linear-gradient(180deg, #3b82f6, #2563eb); border-radius: 2px 0 0 2px;"></div>
+  <div style="padding: 0.4rem 0.6rem; font-size: 0.8rem; color: #cbd5e1; line-height: 1.3; flex: 1;">
+    <span style="font-weight: 800; color: #60a5fa;">pipeline</span> : <span>{{ pl.content_of_contract_po || 'Không có nội dung' }}</span>
+  </div>
+  <div @click.stop="goToPipeline(pl.Id_pipeline)" style="padding: 0 0.6rem; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #60a5fa; transition: color 0.2s;" onmouseover="this.style.color='#93c5fd'" onmouseout="this.style.color='#60a5fa'" title="Xem chi tiết">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+  </div>
+</div>
                       </div>
 
                       <div class="tl-attachments" v-if="report.link_excel_bao_gia || report.link_excel_mua_hang" style="display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.5rem; padding: 0 0.5rem;">
@@ -492,11 +495,14 @@
                       
                       <div class="tl-rect-pipeline" v-if="getLinkedPipelines(report).length > 0" style="display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.4rem;">
                         <div v-for="(pl, idx) in getLinkedPipelines(report)" :key="'pl-'+idx" style="display: flex; align-items: stretch; gap: 0; border-radius: 6px; overflow: hidden; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2);">
-                          <div style="width: 3.5px; min-width: 3.5px; flex-shrink: 0; background: linear-gradient(180deg, #3b82f6, #2563eb); border-radius: 2px 0 0 2px;"></div>
-                          <div style="padding: 0.4rem 0.6rem; font-size: 0.8rem; color: #cbd5e1; line-height: 1.3;">
-                            <span style="font-weight: 800; color: #60a5fa;">pipeline</span> : <span>{{ pl.content_of_contract_po || 'Không có nội dung' }}</span>
-                          </div>
-                        </div>
+  <div style="width: 3.5px; min-width: 3.5px; flex-shrink: 0; background: linear-gradient(180deg, #3b82f6, #2563eb); border-radius: 2px 0 0 2px;"></div>
+  <div style="padding: 0.4rem 0.6rem; font-size: 0.8rem; color: #cbd5e1; line-height: 1.3; flex: 1;">
+    <span style="font-weight: 800; color: #60a5fa;">pipeline</span> : <span>{{ pl.content_of_contract_po || 'Không có nội dung' }}</span>
+  </div>
+  <div @click.stop="goToPipeline(pl.Id_pipeline)" style="padding: 0 0.6rem; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #60a5fa; transition: color 0.2s;" onmouseover="this.style.color='#93c5fd'" onmouseout="this.style.color='#60a5fa'" title="Xem chi tiết">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+  </div>
+</div>
                       </div>
 
                       <div class="tl-attachments" v-if="report.link_excel_bao_gia || report.link_excel_mua_hang" style="display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.5rem; padding: 0 0.5rem;">
@@ -622,11 +628,14 @@
                     
                     <div class="tl-rect-pipeline" v-if="getLinkedPipelines(report).length > 0" style="display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.4rem;">
                       <div v-for="(pl, idx) in getLinkedPipelines(report)" :key="'pl-'+idx" style="display: flex; align-items: stretch; gap: 0; border-radius: 6px; overflow: hidden; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2);">
-                        <div style="width: 3.5px; min-width: 3.5px; flex-shrink: 0; background: linear-gradient(180deg, #3b82f6, #2563eb); border-radius: 2px 0 0 2px;"></div>
-                        <div style="padding: 0.4rem 0.6rem; font-size: 0.8rem; color: #cbd5e1; line-height: 1.3;">
-                          <span style="font-weight: 800; color: #60a5fa;">pipeline</span> : <span>{{ pl.content_of_contract_po || 'Không có nội dung' }}</span>
-                        </div>
-                      </div>
+  <div style="width: 3.5px; min-width: 3.5px; flex-shrink: 0; background: linear-gradient(180deg, #3b82f6, #2563eb); border-radius: 2px 0 0 2px;"></div>
+  <div style="padding: 0.4rem 0.6rem; font-size: 0.8rem; color: #cbd5e1; line-height: 1.3; flex: 1;">
+    <span style="font-weight: 800; color: #60a5fa;">pipeline</span> : <span>{{ pl.content_of_contract_po || 'Không có nội dung' }}</span>
+  </div>
+  <div @click.stop="goToPipeline(pl.Id_pipeline)" style="padding: 0 0.6rem; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #60a5fa; transition: color 0.2s;" onmouseover="this.style.color='#93c5fd'" onmouseout="this.style.color='#60a5fa'" title="Xem chi tiết">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+  </div>
+</div>
                     </div>
                     
                     <div class="tl-attachments" v-if="report.link_excel_bao_gia || report.link_excel_mua_hang" style="display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.5rem; padding: 0 0.5rem;">
@@ -731,11 +740,14 @@
                     
                     <div class="tl-rect-pipeline" v-if="getLinkedPipelines(report).length > 0" style="display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.4rem;">
                       <div v-for="(pl, idx) in getLinkedPipelines(report)" :key="'pl-'+idx" style="display: flex; align-items: stretch; gap: 0; border-radius: 6px; overflow: hidden; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2);">
-                        <div style="width: 3.5px; min-width: 3.5px; flex-shrink: 0; background: linear-gradient(180deg, #3b82f6, #2563eb); border-radius: 2px 0 0 2px;"></div>
-                        <div style="padding: 0.4rem 0.6rem; font-size: 0.8rem; color: #cbd5e1; line-height: 1.3;">
-                          <span style="font-weight: 800; color: #60a5fa;">pipeline</span> : <span>{{ pl.content_of_contract_po || 'Không có nội dung' }}</span>
-                        </div>
-                      </div>
+  <div style="width: 3.5px; min-width: 3.5px; flex-shrink: 0; background: linear-gradient(180deg, #3b82f6, #2563eb); border-radius: 2px 0 0 2px;"></div>
+  <div style="padding: 0.4rem 0.6rem; font-size: 0.8rem; color: #cbd5e1; line-height: 1.3; flex: 1;">
+    <span style="font-weight: 800; color: #60a5fa;">pipeline</span> : <span>{{ pl.content_of_contract_po || 'Không có nội dung' }}</span>
+  </div>
+  <div @click.stop="goToPipeline(pl.Id_pipeline)" style="padding: 0 0.6rem; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #60a5fa; transition: color 0.2s;" onmouseover="this.style.color='#93c5fd'" onmouseout="this.style.color='#60a5fa'" title="Xem chi tiết">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+  </div>
+</div>
                     </div>
                     
                     <div class="tl-attachments" v-if="report.link_excel_bao_gia || report.link_excel_mua_hang" style="display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.5rem; padding: 0 0.5rem;">
@@ -846,11 +858,14 @@
             
             <div class="tl-rect-pipeline" v-if="getLinkedPipelines(report).length > 0" style="display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.4rem;">
               <div v-for="(pl, idx) in getLinkedPipelines(report)" :key="'pl-'+idx" style="display: flex; align-items: stretch; gap: 0; border-radius: 6px; overflow: hidden; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2);">
-                <div style="width: 3.5px; min-width: 3.5px; flex-shrink: 0; background: linear-gradient(180deg, #3b82f6, #2563eb); border-radius: 2px 0 0 2px;"></div>
-                <div style="padding: 0.4rem 0.6rem; font-size: 0.8rem; color: #cbd5e1; line-height: 1.3;">
-                  <span style="font-weight: 800; color: #60a5fa;">pipeline</span> : <span>{{ pl.content_of_contract_po || 'Không có nội dung' }}</span>
-                </div>
-              </div>
+  <div style="width: 3.5px; min-width: 3.5px; flex-shrink: 0; background: linear-gradient(180deg, #3b82f6, #2563eb); border-radius: 2px 0 0 2px;"></div>
+  <div style="padding: 0.4rem 0.6rem; font-size: 0.8rem; color: #cbd5e1; line-height: 1.3; flex: 1;">
+    <span style="font-weight: 800; color: #60a5fa;">pipeline</span> : <span>{{ pl.content_of_contract_po || 'Không có nội dung' }}</span>
+  </div>
+  <div @click.stop="goToPipeline(pl.Id_pipeline)" style="padding: 0 0.6rem; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #60a5fa; transition: color 0.2s;" onmouseover="this.style.color='#93c5fd'" onmouseout="this.style.color='#60a5fa'" title="Xem chi tiết">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+  </div>
+</div>
             </div>
 
             <div class="tl-attachments" v-if="report.link_excel_bao_gia || report.link_excel_mua_hang" style="display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.5rem; padding: 0 0.5rem;">
@@ -2080,8 +2095,13 @@
                   Hạn: {{ p.finish_time }}
                 </div>
              </div>
-             <div style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 6px; transition: all 0.2s;" :style="isPipelineSelected(p.Id_pipeline) ? 'background: #3b82f6;' : 'border: 2px solid rgba(255,255,255,0.2); background: transparent;'">
-                <svg v-if="isPipelineSelected(p.Id_pipeline)" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+             <div style="display: flex; align-items: center; gap: 12px; flex-shrink: 0;">
+                <div @click.stop="goToPipeline(p.Id_pipeline)" style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: rgba(96, 165, 250, 0.1); color: #60a5fa; transition: all 0.2s;" onmouseover="this.style.background='rgba(96, 165, 250, 0.2)'; this.style.color='#93c5fd'" onmouseout="this.style.background='rgba(96, 165, 250, 0.1)'; this.style.color='#60a5fa'" title="Xem chi tiết Pipeline">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                </div>
+                <div style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 6px; transition: all 0.2s;" :style="isPipelineSelected(p.Id_pipeline) ? 'background: #3b82f6;' : 'border: 2px solid rgba(255,255,255,0.2); background: transparent;'">
+                   <svg v-if="isPipelineSelected(p.Id_pipeline)" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
              </div>
           </div>
         </div>
@@ -2095,11 +2115,12 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import * as XLSX from 'xlsx-js-style'
 import CustomSelect from './CustomSelect.vue'
 
 const route = useRoute()
+const router = useRouter()
 let autoOpenedId = false
 
 const isMobile = ref(window.innerWidth <= 768)
@@ -4705,6 +4726,11 @@ const togglePipelineSelection = (id) => {
     formData.value.id_pipeline = current.join(', ');
   }
 };
+
+const goToPipeline = (id) => {
+  if (!id) return
+  router.push({ path: '/pipeline', query: { openId: id } })
+}
 
 onMounted(() => {
   loadPipelineData();
