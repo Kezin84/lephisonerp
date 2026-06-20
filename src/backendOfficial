@@ -87,7 +87,7 @@ function getData(params) {
   }
 
   // Lấy tất cả dữ liệu 1 lần (tránh loop getRange từng row)
-  const range  = sheet.getRange(2, 1, lastRow - 1, 14);
+  const range  = sheet.getRange(2, 1, lastRow - 1, 15);
   const values = range.getValues();
 
   let rows = values
@@ -106,7 +106,8 @@ function getData(params) {
       link_excel_mua_hang: r[10] || "",
       ten_file_bao_gia: r[11] || "",
       ten_file_mua_hang: r[12] || "",
-      isFailed    : r[13] === true || String(r[13]).toLowerCase() === 'true'
+      isFailed    : r[13] === true || String(r[13]).toLowerCase() === 'true',
+      id_pipeline : r[14] || ""
     }));
 
   // --- apply filters ---
@@ -168,7 +169,8 @@ function addRow(p) {
     p.link_excel_mua_hang || "",
     p.ten_file_bao_gia || "",
     p.ten_file_mua_hang || "",
-    p.isFailed ? true : ""
+    p.isFailed ? true : "",
+    p.id_pipeline || ""
   ]);
 
   invalidateCache();
@@ -187,9 +189,9 @@ function updateRow(p) {
   if (!cell) return { status: "error", message: `Không tìm thấy ID: ${p.id}` };
 
   const rowNum = cell.getRow();
-  const row    = sheet.getRange(rowNum, 1, 1, 14).getValues()[0];
+  const row    = sheet.getRange(rowNum, 1, 1, 15).getValues()[0];
 
-  sheet.getRange(rowNum, 1, 1, 14).setValues([[
+  sheet.getRange(rowNum, 1, 1, 15).setValues([[
     row[0],
     p.phan_loai  !== undefined ? p.phan_loai  : row[1],
     p.thoi_gian  !== undefined ? p.thoi_gian  : row[2],
@@ -203,7 +205,8 @@ function updateRow(p) {
     p.link_excel_mua_hang !== undefined ? p.link_excel_mua_hang : (row[10] || ""),
     p.ten_file_bao_gia !== undefined ? p.ten_file_bao_gia : (row[11] || ""),
     p.ten_file_mua_hang !== undefined ? p.ten_file_mua_hang : (row[12] || ""),
-    p.isFailed !== undefined ? p.isFailed : (row[13] || "")
+    p.isFailed !== undefined ? p.isFailed : (row[13] || ""),
+    p.id_pipeline !== undefined ? p.id_pipeline : (row[14] || "")
   ]]);
 
   invalidateCache();
@@ -678,6 +681,8 @@ function doGet(e) {
         } else {
           result = licenseOldData_getData(params);
         }
+      } else if (sheet === "pipeline") {
+        result = params.action === "delete" ? pipeline_deleteRow(params) : pipeline_getData(params);
       } else {
       result = params.action === "delete" ? deleteRow(params) : getData(params);
     }
@@ -704,6 +709,160 @@ function licenseOldData_getData(params) {
   const values = sheet.getRange(2, 1, lastRow - 1, 15).getValues();
   
   return { status: "success", total: values.length, data: values };
+}
+
+// ─────────────────────────────────────────────────────────────
+//  PIPELINE - GET/POST/UPDATE/DELETE
+// ─────────────────────────────────────────────────────────────
+function pipeline_getSheet_() {
+  return SpreadsheetApp.getActiveSpreadsheet().getSheetByName("pipeline");
+}
+
+function pipeline_getData(params) {
+  const sheet = pipeline_getSheet_();
+  if (!sheet) return { status: "error", message: "Sheet pipeline không tồn tại" };
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { status: "success", data: [] };
+  const values = sheet.getRange(2, 1, lastRow - 1, 22).getValues();
+  const rows = values.map(r => ({
+    Id_pipeline: r[0],
+    report_id: r[1],
+    ma_hop_dong: r[2],
+    ma_khach_hang: r[3],
+    ten_khach_hang: r[4],
+    ma_cong_ty: r[5],
+    ten_cong_ty: r[6],
+    AM: r[7],
+    tag: r[8],
+    "%status": r[9],
+    status_name: r[10],
+    isSuccess: r[11],
+    type: r[12],
+    ghi_chu_hop_dong: r[13],
+    created_time: r[14],
+    finish_time: r[15],
+    content_of_contract_po: r[16],
+    quantity: r[17],
+    volume: r[18],
+    ten_file: r[19],
+    link_file: r[20],
+    id_pipeline_lien_ket: r[21]
+  }));
+  return { status: "success", total: rows.length, data: rows };
+}
+
+function pipeline_postData(payload) {
+  const action = (payload.action || "add").toLowerCase();
+  if (action === "add") return pipeline_addRow(payload);
+  if (action === "update") return pipeline_updateRow(payload);
+  if (action === "update_bulk") return pipeline_updateRows_bulk(payload);
+  if (action === "delete") return pipeline_deleteRow(payload);
+  return { status: "error", message: "action không hợp lệ. Dùng: add | update | update_bulk | delete" };
+}
+
+function pipeline_addRow(p) {
+  const sheet = pipeline_getSheet_();
+  const id = p.Id_pipeline || `PIPE_${new Date().getTime()}`;
+  sheet.appendRow([
+    id, p.report_id || "", p.ma_hop_dong || "", p.ma_khach_hang || "", p.ten_khach_hang || "",
+    p.ma_cong_ty || "", p.ten_cong_ty || "", p.AM || "", p.tag || "", p["%status"] || "",
+    p.status_name || "", p.isSuccess || "", p.type || "", p.ghi_chu_hop_dong || "",
+    p.created_time || "", p.finish_time || "", p.content_of_contract_po || "", p.quantity || "",
+    p.volume || "", p.ten_file || "", p.link_file || "", p.id_pipeline_lien_ket || ""
+  ]);
+  return { status: "success", action: "add", id };
+}
+
+function pipeline_updateRow(p) {
+  if (!p.Id_pipeline) return { status: "error", message: "Id_pipeline là bắt buộc" };
+  const sheet = pipeline_getSheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { status: "error", message: "Sheet rỗng" };
+  const cell = sheet.getRange(2, 1, lastRow - 1, 1).createTextFinder(p.Id_pipeline).matchEntireCell(true).findNext();
+  if (!cell) return { status: "error", message: `Không tìm thấy ID: ${p.Id_pipeline}` };
+  const rowNum = cell.getRow();
+  const row = sheet.getRange(rowNum, 1, 1, 22).getValues()[0];
+  sheet.getRange(rowNum, 1, 1, 22).setValues([[
+    row[0],
+    p.report_id !== undefined ? p.report_id : row[1],
+    p.ma_hop_dong !== undefined ? p.ma_hop_dong : row[2],
+    p.ma_khach_hang !== undefined ? p.ma_khach_hang : row[3],
+    p.ten_khach_hang !== undefined ? p.ten_khach_hang : row[4],
+    p.ma_cong_ty !== undefined ? p.ma_cong_ty : row[5],
+    p.ten_cong_ty !== undefined ? p.ten_cong_ty : row[6],
+    p.AM !== undefined ? p.AM : row[7],
+    p.tag !== undefined ? p.tag : row[8],
+    p["%status"] !== undefined ? p["%status"] : row[9],
+    p.status_name !== undefined ? p.status_name : row[10],
+    p.isSuccess !== undefined ? p.isSuccess : row[11],
+    p.type !== undefined ? p.type : row[12],
+    p.ghi_chu_hop_dong !== undefined ? p.ghi_chu_hop_dong : row[13],
+    p.created_time !== undefined ? p.created_time : row[14],
+    p.finish_time !== undefined ? p.finish_time : row[15],
+    p.content_of_contract_po !== undefined ? p.content_of_contract_po : row[16],
+    p.quantity !== undefined ? p.quantity : row[17],
+    p.volume !== undefined ? p.volume : row[18],
+    p.ten_file !== undefined ? p.ten_file : row[19],
+    p.link_file !== undefined ? p.link_file : row[20],
+    p.id_pipeline_lien_ket !== undefined ? p.id_pipeline_lien_ket : (row[21] || "")
+  ]]);
+  return { status: "success", action: "update", id: p.Id_pipeline };
+}
+
+function pipeline_updateRows_bulk(p) {
+  if (!p.items || !Array.isArray(p.items)) return { status: "error", message: "Danh sách items không hợp lệ" };
+  const sheet = pipeline_getSheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { status: "error", message: "Sheet rỗng" };
+  
+  let count = 0;
+  for (let i = 0; i < p.items.length; i++) {
+    const item = p.items[i];
+    if (!item.Id_pipeline) continue;
+    const cell = sheet.getRange(2, 1, lastRow - 1, 1).createTextFinder(item.Id_pipeline).matchEntireCell(true).findNext();
+    if (!cell) continue;
+    const rowNum = cell.getRow();
+    const row = sheet.getRange(rowNum, 1, 1, 22).getValues()[0];
+    sheet.getRange(rowNum, 1, 1, 22).setValues([[
+      row[0],
+      item.report_id !== undefined ? item.report_id : row[1],
+      item.ma_hop_dong !== undefined ? item.ma_hop_dong : row[2],
+      item.ma_khach_hang !== undefined ? item.ma_khach_hang : row[3],
+      item.ten_khach_hang !== undefined ? item.ten_khach_hang : row[4],
+      item.ma_cong_ty !== undefined ? item.ma_cong_ty : row[5],
+      item.ten_cong_ty !== undefined ? item.ten_cong_ty : row[6],
+      item.AM !== undefined ? item.AM : row[7],
+      item.tag !== undefined ? item.tag : row[8],
+      item["%status"] !== undefined ? item["%status"] : row[9],
+      item.status_name !== undefined ? item.status_name : row[10],
+      item.isSuccess !== undefined ? item.isSuccess : row[11],
+      item.type !== undefined ? item.type : row[12],
+      item.ghi_chu_hop_dong !== undefined ? item.ghi_chu_hop_dong : row[13],
+      item.created_time !== undefined ? item.created_time : row[14],
+      item.finish_time !== undefined ? item.finish_time : row[15],
+      item.content_of_contract_po !== undefined ? item.content_of_contract_po : row[16],
+      item.quantity !== undefined ? item.quantity : row[17],
+      item.volume !== undefined ? item.volume : row[18],
+      item.ten_file !== undefined ? item.ten_file : row[19],
+      item.link_file !== undefined ? item.link_file : row[20],
+      item.id_pipeline_lien_ket !== undefined ? item.id_pipeline_lien_ket : (row[21] || "")
+    ]]);
+    count++;
+  }
+  
+  return { status: "success", action: "update_bulk", updatedCount: count };
+}
+
+function pipeline_deleteRow(p) {
+  const id = p.Id_pipeline || p.id;
+  if (!id) return { status: "error", message: "Id_pipeline là bắt buộc" };
+  const sheet = pipeline_getSheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { status: "error", message: "Sheet rỗng" };
+  const cell = sheet.getRange(2, 1, lastRow - 1, 1).createTextFinder(id).matchEntireCell(true).findNext();
+  if (!cell) return { status: "error", message: `Không tìm thấy ID: ${id}` };
+  sheet.deleteRow(cell.getRow());
+  return { status: "success", action: "delete", id };
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -784,6 +943,8 @@ function doPost(e) {
         result = ufm_postData(payload);
       } else if (sheet === "license_old_data") {
         result = licenseOldData_postData(payload);
+      } else if (sheet === "pipeline") {
+        result = pipeline_postData(payload);
       } else {
         result = postData(payload);
       }

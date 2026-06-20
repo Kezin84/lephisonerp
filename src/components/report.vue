@@ -370,6 +370,15 @@
                           <span>{{ report.ghi_chu }}</span>
                         </div>
                       </div>
+                      
+                      <div class="tl-rect-pipeline" v-if="getLinkedPipelines(report).length > 0" style="display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.4rem;">
+                        <div v-for="(pl, idx) in getLinkedPipelines(report)" :key="'pl-'+idx" style="display: flex; align-items: stretch; gap: 0; border-radius: 6px; overflow: hidden; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2);">
+                          <div style="width: 3.5px; min-width: 3.5px; flex-shrink: 0; background: linear-gradient(180deg, #3b82f6, #2563eb); border-radius: 2px 0 0 2px;"></div>
+                          <div style="padding: 0.4rem 0.6rem; font-size: 0.8rem; color: #cbd5e1; line-height: 1.3;">
+                            <span style="font-weight: 800; color: #60a5fa;">pipeline</span> : <span>{{ pl.content_of_contract_po || 'Không có nội dung' }}</span>
+                          </div>
+                        </div>
+                      </div>
 
                       <div class="tl-attachments" v-if="report.link_excel_bao_gia || report.link_excel_mua_hang" style="display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.5rem; padding: 0 0.5rem;">
                         <div v-if="report.link_excel_bao_gia" style="display: flex; flex-wrap: wrap; gap: 0.3rem;">
@@ -478,6 +487,15 @@
                         <div class="tl-note-content">
                           <div class="tl-note-icon">NOTE</div>
                           <span>{{ report.ghi_chu }}</span>
+                        </div>
+                      </div>
+                      
+                      <div class="tl-rect-pipeline" v-if="getLinkedPipelines(report).length > 0" style="display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.4rem;">
+                        <div v-for="(pl, idx) in getLinkedPipelines(report)" :key="'pl-'+idx" style="display: flex; align-items: stretch; gap: 0; border-radius: 6px; overflow: hidden; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2);">
+                          <div style="width: 3.5px; min-width: 3.5px; flex-shrink: 0; background: linear-gradient(180deg, #3b82f6, #2563eb); border-radius: 2px 0 0 2px;"></div>
+                          <div style="padding: 0.4rem 0.6rem; font-size: 0.8rem; color: #cbd5e1; line-height: 1.3;">
+                            <span style="font-weight: 800; color: #60a5fa;">pipeline</span> : <span>{{ pl.content_of_contract_po || 'Không có nội dung' }}</span>
+                          </div>
                         </div>
                       </div>
 
@@ -602,6 +620,15 @@
                       </div>
                     </div>
                     
+                    <div class="tl-rect-pipeline" v-if="getLinkedPipelines(report).length > 0" style="display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.4rem;">
+                      <div v-for="(pl, idx) in getLinkedPipelines(report)" :key="'pl-'+idx" style="display: flex; align-items: stretch; gap: 0; border-radius: 6px; overflow: hidden; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2);">
+                        <div style="width: 3.5px; min-width: 3.5px; flex-shrink: 0; background: linear-gradient(180deg, #3b82f6, #2563eb); border-radius: 2px 0 0 2px;"></div>
+                        <div style="padding: 0.4rem 0.6rem; font-size: 0.8rem; color: #cbd5e1; line-height: 1.3;">
+                          <span style="font-weight: 800; color: #60a5fa;">pipeline</span> : <span>{{ pl.content_of_contract_po || 'Không có nội dung' }}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
                     <div class="tl-attachments" v-if="report.link_excel_bao_gia || report.link_excel_mua_hang" style="display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.5rem; padding: 0 0.5rem;">
                       <div v-if="report.link_excel_bao_gia" style="display: flex; flex-wrap: wrap; gap: 0.3rem;">
                         <a v-for="(link, i) in report.link_excel_bao_gia.split('\n').filter(Boolean)" :key="'bg'+i" href="#" @click.prevent.stop="downloadExcelFile(link, getExcelFileName(report, 'link_excel_bao_gia', i, 'Báo giá'))"  class="file-attach-badge" :title="getExcelFileName(report, 'link_excel_bao_gia', i, 'Báo giá')">
@@ -699,6 +726,15 @@
                       <div class="tl-note-content">
                         <div class="tl-note-icon">NOTE</div>
                         <span>{{ report.ghi_chu }}</span>
+                      </div>
+                    </div>
+                    
+                    <div class="tl-rect-pipeline" v-if="getLinkedPipelines(report).length > 0" style="display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.4rem;">
+                      <div v-for="(pl, idx) in getLinkedPipelines(report)" :key="'pl-'+idx" style="display: flex; align-items: stretch; gap: 0; border-radius: 6px; overflow: hidden; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2);">
+                        <div style="width: 3.5px; min-width: 3.5px; flex-shrink: 0; background: linear-gradient(180deg, #3b82f6, #2563eb); border-radius: 2px 0 0 2px;"></div>
+                        <div style="padding: 0.4rem 0.6rem; font-size: 0.8rem; color: #cbd5e1; line-height: 1.3;">
+                          <span style="font-weight: 800; color: #60a5fa;">pipeline</span> : <span>{{ pl.content_of_contract_po || 'Không có nội dung' }}</span>
+                        </div>
                       </div>
                     </div>
                     
@@ -805,6 +841,15 @@
               <div class="tl-note-content">
                 <div class="tl-note-icon">NOTE</div>
                 <span>{{ report.ghi_chu }}</span>
+              </div>
+            </div>
+            
+            <div class="tl-rect-pipeline" v-if="getLinkedPipelines(report).length > 0" style="display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.4rem;">
+              <div v-for="(pl, idx) in getLinkedPipelines(report)" :key="'pl-'+idx" style="display: flex; align-items: stretch; gap: 0; border-radius: 6px; overflow: hidden; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2);">
+                <div style="width: 3.5px; min-width: 3.5px; flex-shrink: 0; background: linear-gradient(180deg, #3b82f6, #2563eb); border-radius: 2px 0 0 2px;"></div>
+                <div style="padding: 0.4rem 0.6rem; font-size: 0.8rem; color: #cbd5e1; line-height: 1.3;">
+                  <span style="font-weight: 800; color: #60a5fa;">pipeline</span> : <span>{{ pl.content_of_contract_po || 'Không có nội dung' }}</span>
+                </div>
               </div>
             </div>
 
@@ -999,6 +1044,23 @@
                 </button>
               </div>
               <textarea v-model="formData.ghi_chu" placeholder="Các ghi chú bổ sung nếu có..." class="elite-input" style="color: #ef4444 !important; font-weight: 700 !important; flex: 1; resize: vertical; min-height: 60px;"></textarea>
+            </div>
+            
+            <div class="elite-form-group" style="margin-top: 1rem; display: flex; flex-direction: column; position: relative;">
+              <div class="form-group-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <label style="color: #3b82f6 !important; font-weight: 700 !important; margin: 0;">ID Pipeline (Liên kết)</label>
+                <button type="button" class="elite-btn-primary" style="padding: 0.3rem 0.8rem; font-size: 0.75rem; border-radius: 4px; background: #3b82f6; border: none; color: white; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;" @click="isPipelineModalOpen = true">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                  Liên kết
+                </button>
+              </div>
+              <div class="chip-input-container" style="min-height: 40px; padding: 0.4rem; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; background: #0f172a; display: flex; flex-wrap: wrap; gap: 0.4rem;">
+                 <div v-if="!formData.id_pipeline" style="color: rgba(255,255,255,0.4); padding: 0.2rem; font-size: 0.85rem;">Chưa có liên kết nào...</div>
+                 <div v-else v-for="(pId, idx) in splitPipelines(formData.id_pipeline)" :key="idx" class="report-chip" style="background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3); padding: 0.2rem 0.5rem; border-radius: 4px; display: flex; align-items: center; gap: 0.3rem; font-size: 0.8rem;">
+                    <span style="color: #3b82f6; font-weight: 600;">{{ pId }}</span>
+                    <button type="button" @click.stop="togglePipelineSelection(pId)" style="background:none; border:none; color: #ef4444; cursor:pointer;">✕</button>
+                 </div>
+              </div>
             </div>
             </div>
           </div>
@@ -1986,6 +2048,49 @@
       </div>
     </div>
   </div>
+    <!-- Pipeline Link Modal -->
+    <div v-if="isPipelineModalOpen" class="elite-modal-overlay" @click.self="isPipelineModalOpen = false" style="z-index: 9999999; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);">
+      <div class="elite-modal dark-mode-modal" style="max-width: 700px; width: 95%; max-height: 85vh; display: flex; flex-direction: column; background: #0f172a !important; border: 1px solid rgba(255,255,255,0.08) !important; box-shadow: 0 25px 60px -12px rgba(0,0,0,0.7); border-radius: 12px; overflow: hidden;">
+        
+        <div class="elite-modal-header" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06); flex-shrink: 0;">
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <div style="width: 42px; height: 42px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+            </div>
+            <div>
+              <h2 style="color: #f8fafc; margin: 0; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em;">LIÊN KẾT PIPELINE</h2>
+              <p style="color: #94a3b8; margin: 0.1rem 0 0 0; font-size: 0.8rem;">Chọn một hoặc nhiều Pipeline để đính kèm vào báo cáo.</p>
+            </div>
+          </div>
+          <button @click="isPipelineModalOpen = false" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #94a3b8; font-size: 1.1rem; transition: all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.2)'; this.style.color='#f87171'" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='#94a3b8'">✕</button>
+        </div>
+
+        <div style="flex: 1; overflow-y: auto; padding: 1.5rem; background: #0b1118; display: flex; flex-direction: column; gap: 0.8rem;">
+          <div v-if="pipelineData.length === 0" style="color: rgba(255,255,255,0.5); padding: 2rem; text-align: center; font-size: 0.95rem; font-style: italic;">Đang tải dữ liệu Pipeline...</div>
+          <div v-for="p in pipelineData" :key="'modal-pl-'+p.Id_pipeline" @click.stop="togglePipelineSelection(p.Id_pipeline)" style="padding: 1rem 1.25rem; border-radius: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 4px 6px rgba(0,0,0,0.1);" :style="isPipelineSelected(p.Id_pipeline) ? 'background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.4); transform: translateY(-1px); box-shadow: 0 6px 12px rgba(59,130,246,0.15);' : 'background: #1e293b;'" onmouseover="if(!this.style.background.includes('59')){this.style.background='rgba(255,255,255,0.03)'; this.style.borderColor='rgba(255,255,255,0.1)'}" onmouseout="if(!this.style.background.includes('59')){this.style.background='#1e293b'; this.style.borderColor='rgba(255,255,255,0.05)'}">
+             <div style="display: flex; flex-direction: column; max-width: 85%; gap: 0.35rem;">
+                <div v-if="p.ten_khach_hang || p.ten_cong_ty" style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+                  <span v-if="p.ten_khach_hang" style="background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600;">{{ p.ten_khach_hang }}</span>
+                  <span v-if="p.ten_cong_ty" style="background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600;">{{ p.ten_cong_ty }}</span>
+                </div>
+                <div v-if="p.content_of_contract_po" style="color: #f8fafc; font-size: 1.05rem; font-weight: 700; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4;">{{ p.content_of_contract_po }}</div>
+                <div v-if="p.ghi_chu_hop_dong" style="color: #94a3b8; font-size: 0.8rem; font-style: italic; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.35;">{{ p.ghi_chu_hop_dong }}</div>
+                <div v-if="p.finish_time" style="display: flex; align-items: center; gap: 0.3rem; color: #f43f5e; font-size: 0.75rem; font-weight: 600; margin-top: 0.15rem;">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                  Hạn: {{ p.finish_time }}
+                </div>
+             </div>
+             <div style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 6px; transition: all 0.2s;" :style="isPipelineSelected(p.Id_pipeline) ? 'background: #3b82f6;' : 'border: 2px solid rgba(255,255,255,0.2); background: transparent;'">
+                <svg v-if="isPipelineSelected(p.Id_pipeline)" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+             </div>
+          </div>
+        </div>
+        
+        <div style="padding: 1.25rem 1.5rem; border-top: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: flex-end; background: #0f172a;">
+          <button type="button" @click="isPipelineModalOpen = false" class="elite-btn-primary" style="padding: 0.75rem 2rem; font-weight: 700; border-radius: 8px; background: #3b82f6; border: none; color: white; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 10px rgba(59,130,246,0.3);" onmouseover="this.style.background='#2563eb'; this.style.transform='translateY(-1px)'" onmouseout="this.style.background='#3b82f6'; this.style.transform='none'">Xác nhận liên kết</button>
+        </div>
+      </div>
+    </div>
 </template>
 
 <script setup>
@@ -1995,6 +2100,7 @@ import * as XLSX from 'xlsx-js-style'
 import CustomSelect from './CustomSelect.vue'
 
 const route = useRoute()
+let autoOpenedId = false
 
 const isMobile = ref(window.innerWidth <= 768)
 const onResize = () => { isMobile.value = window.innerWidth <= 768 }
@@ -2805,7 +2911,8 @@ const formData = ref({
   trang_thai: 'Chưa xử lý',
   img_save: '',
   link_excel_bao_gia: '',
-  link_excel_mua_hang: ''
+  link_excel_mua_hang: '',
+  id_pipeline: ''
 })
 
 const isUploadingFiles = ref(false)
@@ -2973,6 +3080,33 @@ const fetchReports = async () => {
     const result = await response.json()
     if (result.status === 'success') {
       reports.value = result.data
+      if (route.query.id && !autoOpenedId) {
+        autoOpenedId = true
+        const r = reports.value.find(x => String(x.id) === String(route.query.id))
+        if (r) {
+          const rd = parseDateFromReport(r.thoi_gian)
+          if (rd) {
+            filters.value.filterMode = 'day'
+            const dStr = `${rd.getFullYear()}-${String(rd.getMonth() + 1).padStart(2, '0')}-${String(rd.getDate()).padStart(2, '0')}`
+            filters.value.dateFrom = dStr
+            filters.value.dateTo = dStr
+          }
+          
+          highlightedReportId.value = r.id;
+          
+          setTimeout(() => {
+            const el = document.getElementById('report-card-' + r.id)
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+              setTimeout(() => {
+                if (highlightedReportId.value === r.id) {
+                  highlightedReportId.value = null;
+                }
+              }, 3000);
+            }
+          }, 300);
+        }
+      }
     } else {
       alert('Lỗi khi tải dữ liệu: ' + result.message)
     }
@@ -2997,7 +3131,8 @@ const openAddModal = () => {
     link_excel_bao_gia: '',
     link_excel_mua_hang: '',
     ten_file_bao_gia: '',
-    ten_file_mua_hang: ''
+    ten_file_mua_hang: '',
+    id_pipeline: ''
   }
   timeInputs.value = getNowTimeInputs();
   isModalOpen.value = true
@@ -3028,7 +3163,8 @@ const openAddModalWithSlot = (slot) => {
     link_excel_bao_gia: '',
     link_excel_mua_hang: '',
     ten_file_bao_gia: '',
-    ten_file_mua_hang: ''
+    ten_file_mua_hang: '',
+    id_pipeline: ''
   };
   
   const d = slot.date;
@@ -3051,7 +3187,7 @@ const hasChanges = computed(() => {
   if (!isEditing.value) return true;
   if (!originalData.value || !originalTimeInputs.value) return false;
   
-  const formKeys = ['phan_loai', 'noi_dung', 'ghi_chu', 'tag', 'trang_thai', 'img_save', 'link_excel_bao_gia', 'link_excel_mua_hang', 'ten_file_bao_gia', 'ten_file_mua_hang'];
+  const formKeys = ['phan_loai', 'noi_dung', 'ghi_chu', 'tag', 'trang_thai', 'img_save', 'link_excel_bao_gia', 'link_excel_mua_hang', 'ten_file_bao_gia', 'ten_file_mua_hang', 'id_pipeline'];
   for (const k of formKeys) {
     if (formData.value[k] !== originalData.value[k]) return true;
   }
@@ -3072,6 +3208,7 @@ const openEditModal = (report) => {
   if (!formData.value.link_excel_mua_hang) formData.value.link_excel_mua_hang = ''
   if (!formData.value.ten_file_bao_gia) formData.value.ten_file_bao_gia = ''
   if (!formData.value.ten_file_mua_hang) formData.value.ten_file_mua_hang = ''
+  if (!formData.value.id_pipeline) formData.value.id_pipeline = ''
   originalData.value = { ...report }
   timeInputs.value = parseTimeString(report.thoi_gian);
   originalTimeInputs.value = { ...timeInputs.value }
@@ -4523,7 +4660,54 @@ const doExportExcel = () => {
   XLSX.writeFile(wb, `Bao_Cao_Cong_Viec_${exportMonth}_${exportYear}.xlsx`);
 }
 
+const pipelineData = ref([]);
+const isPipelineDropdownOpen = ref(false);
+const isPipelineModalOpen = ref(false);
+
+const loadPipelineData = async () => {
+  if (API_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL') return;
+  try {
+    const url = new URL(API_URL);
+    url.searchParams.append('sheet', 'pipeline');
+    url.searchParams.append('action', 'get');
+    const response = await fetch(url.toString());
+    const result = await response.json();
+    if (result.status === 'success') {
+       pipelineData.value = result.data;
+    }
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+const getLinkedPipelines = (report) => {
+  if (!report || !report.id_pipeline || !pipelineData.value.length) return [];
+  const ids = String(report.id_pipeline).split(',').map(s => s.trim()).filter(Boolean);
+  return ids.map(id => pipelineData.value.find(p => p.Id_pipeline === id)).filter(Boolean);
+}
+
+const splitPipelines = (str) => {
+  if (!str) return [];
+  return String(str).split(',').map(s => s.trim()).filter(Boolean);
+};
+
+const isPipelineSelected = (id) => {
+  return splitPipelines(formData.value.id_pipeline).includes(String(id));
+};
+
+const togglePipelineSelection = (id) => {
+  const current = splitPipelines(formData.value.id_pipeline);
+  const idStr = String(id);
+  if (current.includes(idStr)) {
+    formData.value.id_pipeline = current.filter(x => x !== idStr).join(', ');
+  } else {
+    current.push(idStr);
+    formData.value.id_pipeline = current.join(', ');
+  }
+};
+
 onMounted(() => {
+  loadPipelineData();
   if (route.query.date) {
     filters.value.filterMode = 'day'
     filters.value.dateFrom = String(route.query.date)

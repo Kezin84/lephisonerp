@@ -10,6 +10,7 @@ import QuanLyHangHoa from '../components/QuanLyHangHoa.vue'
 import SaleReport from '../components/SaleReport.vue'
 import LicenseOldData from '../components/LicenseOldData.vue'
 import Dashboard from '../components/Dashboard.vue'
+import Pipeline from '../components/Pipeline.vue'
 
 const routes = [
   {
@@ -70,6 +71,11 @@ const routes = [
     path: '/license-old-data',
     name: 'LicenseOldData',
     component: LicenseOldData
+  },
+  {
+    path: '/pipeline',
+    name: 'Pipeline',
+    component: Pipeline
   }
 ]
 
