@@ -1,15 +1,34 @@
 <template>
   <div class="pipeline-page">
     <!-- Elite Header -->
-    <header class="header" style="position: relative; justify-content: center; display: flex; align-items: center; margin-bottom: 1.5rem; flex-shrink: 0;">
-      <div class="title-section" style="text-align: center;">
+    <header class="header" style="position: relative; justify-content: center; display: flex; align-items: center; margin-bottom: 1.5rem; flex-shrink: 0; flex-direction: column;">
+      <div class="title-section" style="text-align: center; margin-bottom: 1rem;">
         <h1 style="color: #10b981; text-transform: uppercase; margin: 0; font-size: 1.5rem; font-weight: 800; letter-spacing: 0.05em; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">Pipeline Kanban</h1>
         <p class="subtitle" style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #94a3b8;">Theo dõi và cập nhật trạng thái hợp đồng</p>
       </div>
+
+      <!-- Tab Switcher -->
+      <div class="pipeline-tabs" style="display: flex; gap: 0.5rem; background: rgba(15, 23, 42, 0.6); padding: 0.25rem; border-radius: 99px; border: 1px solid rgba(255,255,255,0.05);">
+        <button 
+          :class="['pipeline-tab-btn', activeTab === 'kanban' ? 'active' : '']"
+          @click="activeTab = 'kanban'"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg>
+          Kanban Board
+        </button>
+        <button 
+          :class="['pipeline-tab-btn', activeTab === 'workflow' ? 'active' : '']"
+          @click="activeTab = 'workflow'"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+          Thiết kế Workflow
+        </button>
+      </div>
     </header>
 
-    <!-- Time Filter -->
-    <div class="elite-filter-panel elite-time-filter" style="margin-bottom: 1rem;">
+    <div v-show="activeTab === 'kanban'" class="kanban-tab-content" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+      <!-- Time Filter -->
+      <div class="elite-filter-panel elite-time-filter" style="margin-bottom: 1rem;">
       <div class="elite-filter-accent"></div>
       <div class="elite-filter-header">
         <div class="elite-filter-title">
@@ -114,6 +133,14 @@
         <input type="text" v-model="searchQuery" placeholder="Tìm tên KH, mã hợp đồng..." class="elite-input" style="width: 100%; padding: 0.5rem 1rem 0.5rem 2.5rem; border-radius: 99px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: #fff; outline: none; transition: all 0.2s; font-size: 0.85rem;" onfocus="this.style.borderColor='#10b981'; this.style.boxShadow='0 0 0 2px rgba(16,185,129,0.2)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'; this.style.boxShadow='none'" />
       </div>
 
+      <div class="workflow-selector" style="display: flex; align-items: center; gap: 8px; margin-right: 12px;">
+        <span style="color: #94a3b8; font-size: 0.85rem; font-weight: 600;">Quy trình:</span>
+        <select v-model="selectedWorkflowId" class="elite-input" style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 4px 12px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; outline: none; min-width: 150px;">
+          <option value="WF_DEFAULT">Mặc định</option>
+          <option v-for="wf in uniqueWorkflows" :key="wf.id_workflow" :value="wf.id_workflow" style="background: #1e293b; color: #f8fafc;">{{ wf.name_workflow }}</option>
+        </select>
+      </div>
+
       <div class="header-actions" style="display: flex; gap: 0.75rem;">
         <button class="tech-vip-btn" @click="exportToExcel" style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 600; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
@@ -136,17 +163,16 @@
       
       <!-- Backlog / Unassigned Column -->
       <div class="kanban-column unassigned-col" data-col-name="Chưa phân loại" style="background: rgba(15, 23, 42, 0.8); border: 1px dashed rgba(148, 163, 184, 0.3);">
-        <div class="kanban-header" @click="isMobile && (collapsedCols.unassigned = !collapsedCols.unassigned)" :style="{ cursor: isMobile ? 'pointer' : 'default' }">
+        <div class="kanban-header" style="background: rgba(148, 163, 184, 0.15);">
           <div class="kanban-title">
             <span class="status-dot" style="background: #94a3b8; box-shadow: 0 0 8px rgba(148,163,184,0.5);"></span>
             <h3 style="color: #94a3b8; margin: 0; font-size: 0.85rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">Chưa phân loại</h3>
           </div>
           <div style="display: flex; align-items: center; gap: 8px;">
-            <span class="kanban-badge" v-show="isMobile || !collapsedCols.unassigned">{{ boardData.unassigned?.length || 0 }}</span>
-            <svg v-if="isMobile" :style="{ transform: collapsedCols.unassigned ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }" viewBox="0 0 24 24" width="20" height="20" stroke="rgba(255,255,255,0.7)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M19 9l-7 7-7-7"></path></svg>
+            <span class="kanban-badge">{{ boardData.unassigned?.length || 0 }}</span>
           </div>
         </div>
-        <draggable v-show="!isMobile || !collapsedCols.unassigned"
+        <draggable v-show="true"
           v-model="boardData.unassigned"
           group="pipeline"
           item-key="Id_pipeline"
@@ -335,9 +361,9 @@
       <!-- Main Kanban Board -->
       <div class="kanban-board" :class="{ 'is-dragging': isDragging }" style="padding-bottom: 0; flex: 7;">
         <div class="kanban-column" v-for="col in COLUMNS" :key="col.id" :data-col-name="col.label" :class="{ 'col-that-bai': col.id === 'that_bai', 'col-hoan-thanh': col.id === 'hoan_thanh' }" :style="(!isMobile && collapsedCols[col.id]) ? 'min-width: 48px; width: 48px; flex: none;' : ''">
-          <div class="kanban-header" @click="isMobile && (collapsedCols[col.id] = !collapsedCols[col.id])" :style="{ cursor: isMobile ? 'pointer' : 'default', background: getColHeaderBg(col.id), ...((!isMobile && collapsedCols[col.id]) ? { flexDirection: 'column', padding: '12px 4px', height: '100%', position: 'relative' } : {}) }">
+          <div class="kanban-header" :style="{ background: getColHeaderBg(col.id), ...((!isMobile && collapsedCols[col.id]) ? { flexDirection: 'column', padding: '12px 4px', height: '100%', position: 'relative' } : {}) }">
             <div class="kanban-title" :style="(!isMobile && collapsedCols[col.id]) ? 'flex-direction: column; gap: 12px;' : ''">
-              <span class="status-dot" :class="getColColorClass(col.id)" :style="(!isMobile && collapsedCols[col.id]) ? 'margin-right: 0;' : ''"></span>
+              <span class="status-dot" :class="getColColorClass(col.id)" :style="getColColorStyle(col, !isMobile && collapsedCols[col.id])"></span>
               <h3 v-if="isMobile || !collapsedCols[col.id]" style="margin: 0; font-size: 0.85rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;" :style="{ color: getColTitleColor(col.id) }">{{ col.label }}</h3>
               <h3 v-else style="margin: 0; font-size: 0.85rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; writing-mode: vertical-rl; transform: rotate(180deg); margin-top: 12px; white-space: nowrap;" :style="{ color: getColTitleColor(col.id) }">{{ col.label }}</h3>
             </div>
@@ -347,11 +373,10 @@
                 <svg v-if="collapsedCols[col.id]" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>
                 <svg v-else viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"></path></svg>
               </button>
-              <svg v-if="isMobile" :style="{ transform: collapsedCols[col.id] ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }" viewBox="0 0 24 24" width="20" height="20" stroke="rgba(255,255,255,0.7)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M19 9l-7 7-7-7"></path></svg>
             </div>
           </div>
           
-          <draggable v-show="!collapsedCols[col.id]"
+          <draggable v-show="isMobile || !collapsedCols[col.id]"
             v-model="boardData[col.id]"
             group="pipeline"
             item-key="Id_pipeline"
@@ -381,7 +406,7 @@
                       <div v-if="index > 0" :style="{ position: 'absolute', left: '50%', top: '-24px', transform: 'translateX(-50%)', width: '2px', height: '24px', background: (col.id === 'that_bai' || col.id === 'hoan_thanh') ? '#475569' : getColTitleColor(col.id) }"></div>
                       <div class="kanban-card vip-card" @click="mergeMode ? toggleMergeSelect(child) : openEditModal(child)" :style="{ cursor: 'pointer', margin: 0, border: mergeSelected.find(i => i.Id_pipeline === child.Id_pipeline) ? '2px solid #3b82f6' : ((col.id === 'that_bai' || col.id === 'hoan_thanh') ? '1px solid rgba(255,255,255,0.05)' : `1px solid ${getColTitleColor(col.id)}`) }">
                         <div class="tl-shimmer-border"></div>
-                        <div :style="{ background: getColTitleColor(col.id), color: '#ffffff', padding: '6px 16px', margin: '-16px -16px 12px -16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', fontWeight: '700', borderBottom: '1px solid rgba(255,255,255,0.05)' }">
+                        <div :style="{ background: 'transparent', color: getColTitleColor(col.id), padding: '6px 16px', margin: '-16px -16px 12px -16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', fontWeight: '700', borderBottom: '1px solid rgba(255,255,255,0.05)' }">
                           <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
                             <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                             {{ child.finish_time || 'No Deadline' }}
@@ -460,7 +485,7 @@
 
             <div v-else class="kanban-card vip-card" v-show="matchesSearch(element)" @click="mergeMode ? toggleMergeSelect(element) : openEditModal(element)" :style="{ cursor: 'pointer', border: mergeSelected.find(i => i.Id_pipeline === element.Id_pipeline) ? '2px solid #3b82f6' : ((col.id === 'that_bai' || col.id === 'hoan_thanh') ? '1px solid rgba(255,255,255,0.05)' : `1px solid ${getColTitleColor(col.id)}`) }">
               <div class="tl-shimmer-border"></div>
-              <div :style="{ background: getColTitleColor(col.id), color: '#ffffff', padding: '6px 16px', margin: '-16px -16px 12px -16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', fontWeight: '700', borderBottom: '1px solid rgba(255,255,255,0.05)' }">
+              <div :style="{ background: 'transparent', color: getColTitleColor(col.id), padding: '6px 16px', margin: '-16px -16px 12px -16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', fontWeight: '700', borderBottom: '1px solid rgba(255,255,255,0.05)' }">
                 <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
                   <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                   {{ element.finish_time || 'No Deadline' }}
@@ -731,7 +756,7 @@
         </div>
         <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid rgba(255,255,255,0.1); display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; background: rgba(15, 23, 42, 0.4);">
           <!-- Trái rỗng để cân bằng grid -->
-          <div></div>
+          <div class="hide-on-mobile"></div>
           
           <!-- Giữa: 4 Nút chức năng -->
           <div class="modal-actions-center" style="display: flex; gap: 12px; justify-content: center;" v-if="isEditing">
@@ -739,11 +764,11 @@
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
               Nhân bản
             </button>
-            <button class="vip-btn danger" @click="requestAction(items.find(i => i.Id_pipeline === formData.Id_pipeline) || formData, 'fail')" title="Thất bại" style="width: auto; padding: 6px 12px; gap: 6px; font-size: 13px; font-weight: 600;">
+            <button class="vip-btn danger hide-on-mobile" @click="requestAction(items.find(i => i.Id_pipeline === formData.Id_pipeline) || formData, 'fail')" title="Thất bại" style="width: auto; padding: 6px 12px; gap: 6px; font-size: 13px; font-weight: 600;">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
               Thất bại
             </button>
-            <button class="vip-btn success" @click="requestAction(items.find(i => i.Id_pipeline === formData.Id_pipeline) || formData, 'complete')" title="Hoàn thành" style="width: auto; padding: 6px 12px; gap: 6px; font-size: 13px; font-weight: 600;">
+            <button class="vip-btn success hide-on-mobile" @click="requestAction(items.find(i => i.Id_pipeline === formData.Id_pipeline) || formData, 'complete')" title="Hoàn thành" style="width: auto; padding: 6px 12px; gap: 6px; font-size: 13px; font-weight: 600;">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
               Hoàn thành
             </button>
@@ -800,6 +825,11 @@
         <button @click="executeMerge" :disabled="mergeSelected.length === 0" :style="{ background: mergeSelected.length > 0 ? '#3b82f6' : '#475569', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: mergeSelected.length > 0 ? 'pointer' : 'not-allowed', fontWeight: '600', transition: 'background 0.2s' }" onmouseover="if(!this.disabled) this.style.background='#2563eb'" onmouseout="if(!this.disabled) this.style.background='#3b82f6'">Xác nhận gộp</button>
       </div>
     </div>
+    </div>
+
+    <!-- Workflow Design Tab -->
+    <PipelineWorkflow v-if="activeTab === 'workflow'" />
+
   </div>
   <Teleport to="body">
     <div v-if="isDragging && hoverColName" class="drag-cursor-tooltip" :style="{ left: mouseX + 'px', top: mouseY + 'px' }">
@@ -814,6 +844,9 @@ import { useRoute, useRouter } from 'vue-router'
 import draggable from 'vuedraggable'
 import NumberInput from './NumberInput.vue'
 import ExcelJS from 'exceljs'
+import PipelineWorkflow from './PipelineWorkflow.vue'
+
+const activeTab = ref('kanban')
 
 const formatNumber = (val) => {
   if (val == null || val === '') return '';
@@ -829,8 +862,20 @@ const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx1yDOQLxYgJb5w30Kmx
 const route = useRoute()
 const router = useRouter()
 
-// Configuration of columns
-const COLUMNS = [
+const selectedWorkflowId = ref('WF_DEFAULT')
+const workflowsData = ref([])
+
+const uniqueWorkflows = computed(() => {
+  const map = new Map()
+  workflowsData.value.forEach(wf => {
+    if (wf.id_workflow && !map.has(wf.id_workflow)) {
+      map.set(wf.id_workflow, { id_workflow: wf.id_workflow, name_workflow: wf.name_workflow })
+    }
+  })
+  return Array.from(map.values())
+})
+
+const defaultColumns = [
   { id: 'nhap', label: 'TẠM', value: 'TẠM', percent: '0%' },
   { id: 'col_30', label: '30%: Pipeline', value: 'Pipeline (khảo sát nhu cầu khách hàng)', percent: '30%' },
   { id: 'col_50', label: '50%: Forecast', value: 'Forecast (đã lên báo giá gởi khách hàng)', percent: '50%' },
@@ -839,6 +884,32 @@ const COLUMNS = [
   { id: 'hoan_thanh', label: 'THÀNH CÔNG', value: 'THÀNH CÔNG', percent: '100%' },
   { id: 'that_bai', label: 'THẤT BẠI', value: 'THẤT BẠI', percent: '0%' }
 ]
+
+// Configuration of columns
+const COLUMNS = computed(() => {
+  if (selectedWorkflowId.value === 'WF_DEFAULT') {
+    return defaultColumns
+  }
+  const wfColumns = workflowsData.value
+    .filter(wf => wf.id_workflow === selectedWorkflowId.value)
+    .sort((a, b) => parseInt(a.status_index || 0) - parseInt(b.status_index || 0))
+    .map(wf => ({
+      id: `wf_${wf.id_status_workflow}`,
+      label: wf.status_name,
+      value: wf.status_name,
+      percent: wf['%status'],
+      color: wf.status_color
+    }))
+  
+  if (wfColumns.length > 0) {
+    return [
+      ...wfColumns,
+      { id: 'hoan_thanh', label: 'THÀNH CÔNG', value: 'THÀNH CÔNG', percent: '100%' },
+      { id: 'that_bai', label: 'THẤT BẠI', value: 'THẤT BẠI', percent: '0%' }
+    ]
+  }
+  return defaultColumns
+})
 
 const items = ref([])
 const loading = ref(false)
@@ -1032,7 +1103,7 @@ const exportToExcel = async () => {
         }
       } else if (!statusStr.includes('%') && item.status_name) {
         // Fallback lấy % từ cấu hình COLUMNS nếu API trả về lỗi
-        const colMatch = COLUMNS.find(c => c.value === item.status_name);
+        const colMatch = COLUMNS.value.find(c => c.value === item.status_name);
         if (colMatch) statusStr = colMatch.percent;
       }
 
@@ -1158,13 +1229,13 @@ const checkMobile = () => {
   isMobile.value = window.innerWidth <= 768
   
   if (isMobile.value && !wasMobile) {
-    COLUMNS.forEach(c => {
+    COLUMNS.value.forEach(c => {
       collapsedCols.value[c.id] = true
     })
     collapsedCols.value.unassigned = true
     collapsedCols.value.tam = false // keep the first one open
   } else if (!isMobile.value && wasMobile) {
-    COLUMNS.forEach(c => {
+    COLUMNS.value.forEach(c => {
       collapsedCols.value[c.id] = (c.id === 'that_bai' || c.id === 'hoan_thanh')
     })
     collapsedCols.value.unassigned = false
@@ -1271,22 +1342,32 @@ watch(isDragging, (val) => {
   }
 })
 
-const boardData = ref({
-  unassigned: [],
-  nhap: [],
-  col_30: [],
-  col_50: [],
-  col_70: [],
-  col_90: [],
-  that_bai: [],
-  hoan_thanh: []
+const boardData = ref({ unassigned: [] })
+
+watch(COLUMNS, (newCols) => {
+  const newBoardData = { unassigned: boardData.value.unassigned || [] }
+  newCols.forEach(c => {
+    newBoardData[c.id] = boardData.value[c.id] || []
+  })
+  boardData.value = newBoardData
+  
+  newCols.forEach(c => {
+    if (collapsedCols.value[c.id] === undefined) {
+      collapsedCols.value[c.id] = (c.id === 'that_bai' || c.id === 'hoan_thanh')
+    }
+  })
+}, { immediate: true })
+
+watch(selectedWorkflowId, () => {
+  distributeItems()
 })
 
 const defaultFormData = {
   Id_pipeline: '', report_id: '', ma_hop_dong: '', ma_khach_hang: '', ten_khach_hang: '',
   ma_cong_ty: '', ten_cong_ty: '', AM: 'Sơn', tag: 'Bình thường', '%status': '0%', status_name: 'TẠM',
   isSuccess: '', type: '', ghi_chu_hop_dong: '', created_time: '', finish_time: '',
-  content_of_contract_po: '', quantity: '', volume: '', ten_file: '', link_file: ''
+  content_of_contract_po: '', quantity: '', volume: '', ten_file: '', link_file: '',
+  id_workflow: ''
 }
 
 const formData = ref({ ...defaultFormData })
@@ -1489,10 +1570,18 @@ const distributeItems = () => {
   
   // Distribute root items to columns
   rootItems.forEach(item => {
-    const colConfig = COLUMNS.find(c => c.value === item.status_name) || COLUMNS.find(c => c.percent === item['%status'])
+    const wfMatch = selectedWorkflowId.value === 'WF_DEFAULT' 
+        ? (!item.id_workflow || item.id_workflow === 'WF_DEFAULT')
+        : (item.id_workflow === selectedWorkflowId.value);
+
+    if (!wfMatch) return;
+
+    const colConfig = COLUMNS.value.find(c => c.value === item.status_name) || COLUMNS.value.find(c => c.percent === item['%status'])
     if (colConfig) {
+      if (!boardData.value[colConfig.id]) boardData.value[colConfig.id] = []
       boardData.value[colConfig.id].push(item)
     } else {
+      if (!boardData.value.unassigned) boardData.value.unassigned = []
       boardData.value.unassigned.push(item)
     }
   })
@@ -1517,7 +1606,18 @@ const getColColorClass = (colId) => {
   return 'dot-primary'
 }
 
+const getColColorStyle = (col, isCollapsed) => {
+  let style = isCollapsed ? 'margin-right: 0;' : ''
+  if (col && col.color && col.color !== '#94a3b8') {
+    style += ` background-color: ${col.color}; box-shadow: 0 0 8px ${col.color}80;`
+  }
+  return style
+}
+
 const getColTitleColor = (colId) => {
+  const col = COLUMNS.value.find(c => c.id === colId)
+  if (col && col.color && col.color !== '#94a3b8') return col.color
+
   if (colId === 'col_30') return '#ef4444' // Red
   if (colId === 'col_50') return '#f97316' // Orange
   if (colId === 'col_70') return '#eab308' // Yellow
@@ -1529,6 +1629,9 @@ const getColTitleColor = (colId) => {
 }
 
 const getColDarkColor = (colId) => {
+  const col = COLUMNS.value.find(c => c.id === colId)
+  if (col && col.color && col.color !== '#94a3b8') return col.color
+
   if (colId === 'col_30') return '#b91c1c' // Dark Red
   if (colId === 'col_50') return '#c2410c' // Dark Orange
   if (colId === 'col_70') return '#a16207' // Dark Yellow
@@ -1540,18 +1643,25 @@ const getColDarkColor = (colId) => {
 }
 
 const getColHeaderBg = (colId) => {
-  if (colId === 'col_30') return 'rgba(239, 68, 68, 0.15)' // Red
-  if (colId === 'col_50') return 'rgba(249, 115, 22, 0.15)' // Orange
-  if (colId === 'col_70') return 'rgba(234, 179, 8, 0.15)' // Yellow
-  if (colId === 'col_90') return 'rgba(34, 197, 94, 0.15)' // Green
-  return 'linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 100%)' // Default
+  const color = getColTitleColor(colId)
+  return `color-mix(in srgb, ${color} 15%, transparent)`
 }
 
 const fetchData = async () => {
   loading.value = true
   try {
-    const res = await fetch(`${SCRIPT_URL}?sheet=pipeline&action=get`)
-    const result = await res.json()
+    const [resPipeline, resWorkflow] = await Promise.all([
+      fetch(`${SCRIPT_URL}?sheet=pipeline&action=get`),
+      fetch(`${SCRIPT_URL}?sheet=pipeline_workflow&action=get`)
+    ])
+    
+    const result = await resPipeline.json()
+    const wfResult = await resWorkflow.json()
+    
+    if (wfResult.status === 'success') {
+      workflowsData.value = wfResult.data || []
+    }
+    
     if (result.status === 'success') {
       items.value = (result.data || []).map(item => {
         // Format ISO dates coming from Google Sheets API back to DD/MM/YYYY HH:mm:ss
@@ -1596,7 +1706,7 @@ const fetchReports = async () => {
 }
 
 const optimisticCleanupFolders = () => {
-  const allCols = [...COLUMNS.map(c => c.id), 'unassigned']
+  const allCols = [...COLUMNS.value.map(c => c.id), 'unassigned']
   for (const colId of allCols) {
     const list = boardData.value[colId]
     if (!list) continue
@@ -1644,7 +1754,7 @@ const onNestedChange = (evt, dropTarget) => {
 const onChange = (evt, colId) => {
   if (evt.added) {
     const item = evt.added.element
-    const colConfig = COLUMNS.find(c => c.id === colId) || { value: '', percent: '' }
+    const colConfig = COLUMNS.value.find(c => c.id === colId) || { value: '', percent: '' }
     
     if (item.isGroup) {
       item.status_name = colConfig.value
@@ -1691,7 +1801,7 @@ const onChange = (evt, colId) => {
 }
 
 const onStatusNameChange = () => {
-  const colConfig = COLUMNS.find(c => c.value === formData.value.status_name)
+  const colConfig = COLUMNS.value.find(c => c.value === formData.value.status_name)
   if (colConfig) {
     formData.value['%status'] = colConfig.percent
   }
@@ -1856,6 +1966,7 @@ const getCurrentFormattedTime = () => {
 const openAddModal = () => {
   isEditing.value = false
   formData.value = { ...defaultFormData }
+  formData.value.id_workflow = selectedWorkflowId.value === 'WF_DEFAULT' ? '' : selectedWorkflowId.value
   formData.value.created_time = getCurrentFormattedTime()
   tempStartDate.value = ''
   tempEndDate.value = ''
@@ -2444,6 +2555,10 @@ onUnmounted(() => {
   opacity: 0.6;
   background: rgba(30, 41, 59, 0.8);
   border: 2px dashed rgba(16, 185, 129, 0.5);
+  transition: none !important;
+}
+.sortable-drag, .sortable-chosen {
+  transition: none !important;
 }
 
 /* Tag Badges */
@@ -3027,7 +3142,14 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .kanban-wrapper {
-    flex-direction: column !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory !important;
+    padding-bottom: 20px !important;
+    scrollbar-width: none;
+  }
+  .kanban-wrapper::-webkit-scrollbar {
+    display: none;
   }
   .elite-filter-panel {
     flex-direction: column !important;
@@ -3063,31 +3185,95 @@ onUnmounted(() => {
     flex-shrink: 0;
   }
   .kanban-board {
-    flex-direction: column !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
+    flex-direction: row !important;
+    overflow-y: visible !important;
+    overflow-x: visible !important;
+    flex: none !important;
   }
   .kanban-column {
-    min-width: 100% !important;
-    width: 100% !important;
-    margin-bottom: 12px;
-    height: auto !important;
+    min-width: 88vw !important;
+    width: 88vw !important;
+    margin-bottom: 0 !important;
+    height: 100% !important;
+    scroll-snap-align: center !important;
+    flex: none !important;
   }
   .form-grid {
     grid-template-columns: 1fr;
   }
   .large-modal {
-    width: 100% !important;
+    width: 100vw !important;
     max-width: 100vw !important;
-    height: 100vh !important;
-    max-height: 100vh !important;
+    height: 100% !important;
+    max-height: 100% !important;
     border-radius: 0 !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+    margin: 0 !important;
   }
   .modal-body {
     padding: 16px !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+    width: 100% !important;
+  }
+  .modal-footer {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    padding: 16px !important;
+    padding-bottom: 90px !important;
+    gap: 8px !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    justify-content: space-between !important;
+    scrollbar-width: none;
+  }
+  .modal-footer::-webkit-scrollbar {
+    display: none;
+  }
+  .modal-footer > div {
+    display: contents !important;
+  }
+  .modal-footer button {
+    flex: none !important;
+    white-space: nowrap !important;
+  }
+  .hide-on-mobile {
+    display: none !important;
   }
   .form-grid .input-field, .form-grid .custom-select-container {
     max-width: 100% !important;
   }
+}
+
+.pipeline-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.2rem;
+  border-radius: 99px;
+  background: transparent;
+  color: #94a3b8;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.pipeline-tab-btn:hover {
+  color: #e2e8f0;
+}
+
+.pipeline-tab-btn.active {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.pipeline-tab-btn svg {
+  stroke-width: 2.5;
 }
 </style>

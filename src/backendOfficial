@@ -683,6 +683,8 @@ function doGet(e) {
         }
       } else if (sheet === "pipeline") {
         result = params.action === "delete" ? pipeline_deleteRow(params) : pipeline_getData(params);
+      } else if (sheet === "pipeline_workflow") {
+        result = params.action === "delete" ? pipeline_workflow_deleteRow(params) : pipeline_workflow_getData(params);
       } else {
       result = params.action === "delete" ? deleteRow(params) : getData(params);
     }
@@ -723,7 +725,7 @@ function pipeline_getData(params) {
   if (!sheet) return { status: "error", message: "Sheet pipeline không tồn tại" };
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return { status: "success", data: [] };
-  const values = sheet.getRange(2, 1, lastRow - 1, 22).getValues();
+  const values = sheet.getRange(2, 1, lastRow - 1, 23).getValues();
   const rows = values.map(r => ({
     Id_pipeline: r[0],
     report_id: r[1],
@@ -746,7 +748,8 @@ function pipeline_getData(params) {
     volume: r[18],
     ten_file: r[19],
     link_file: r[20],
-    id_pipeline_lien_ket: r[21]
+    id_pipeline_lien_ket: r[21],
+    id_workflow: r[22] || "WF_DEFAULT"
   }));
   return { status: "success", total: rows.length, data: rows };
 }
@@ -768,7 +771,8 @@ function pipeline_addRow(p) {
     p.ma_cong_ty || "", p.ten_cong_ty || "", p.AM || "", p.tag || "", p["%status"] || "",
     p.status_name || "", p.isSuccess || "", p.type || "", p.ghi_chu_hop_dong || "",
     p.created_time || "", p.finish_time || "", p.content_of_contract_po || "", p.quantity || "",
-    p.volume || "", p.ten_file || "", p.link_file || "", p.id_pipeline_lien_ket || ""
+    p.volume || "", p.ten_file || "", p.link_file || "", p.id_pipeline_lien_ket || "",
+    p.id_workflow || "WF_DEFAULT"
   ]);
   return { status: "success", action: "add", id };
 }
@@ -781,8 +785,8 @@ function pipeline_updateRow(p) {
   const cell = sheet.getRange(2, 1, lastRow - 1, 1).createTextFinder(p.Id_pipeline).matchEntireCell(true).findNext();
   if (!cell) return { status: "error", message: `Không tìm thấy ID: ${p.Id_pipeline}` };
   const rowNum = cell.getRow();
-  const row = sheet.getRange(rowNum, 1, 1, 22).getValues()[0];
-  sheet.getRange(rowNum, 1, 1, 22).setValues([[
+  const row = sheet.getRange(rowNum, 1, 1, 23).getValues()[0];
+  sheet.getRange(rowNum, 1, 1, 23).setValues([[
     row[0],
     p.report_id !== undefined ? p.report_id : row[1],
     p.ma_hop_dong !== undefined ? p.ma_hop_dong : row[2],
@@ -804,7 +808,8 @@ function pipeline_updateRow(p) {
     p.volume !== undefined ? p.volume : row[18],
     p.ten_file !== undefined ? p.ten_file : row[19],
     p.link_file !== undefined ? p.link_file : row[20],
-    p.id_pipeline_lien_ket !== undefined ? p.id_pipeline_lien_ket : (row[21] || "")
+    p.id_pipeline_lien_ket !== undefined ? p.id_pipeline_lien_ket : (row[21] || ""),
+    p.id_workflow !== undefined ? p.id_workflow : (row[22] || "WF_DEFAULT")
   ]]);
   return { status: "success", action: "update", id: p.Id_pipeline };
 }
@@ -822,8 +827,8 @@ function pipeline_updateRows_bulk(p) {
     const cell = sheet.getRange(2, 1, lastRow - 1, 1).createTextFinder(item.Id_pipeline).matchEntireCell(true).findNext();
     if (!cell) continue;
     const rowNum = cell.getRow();
-    const row = sheet.getRange(rowNum, 1, 1, 22).getValues()[0];
-    sheet.getRange(rowNum, 1, 1, 22).setValues([[
+    const row = sheet.getRange(rowNum, 1, 1, 23).getValues()[0];
+    sheet.getRange(rowNum, 1, 1, 23).setValues([[
       row[0],
       item.report_id !== undefined ? item.report_id : row[1],
       item.ma_hop_dong !== undefined ? item.ma_hop_dong : row[2],
@@ -845,7 +850,8 @@ function pipeline_updateRows_bulk(p) {
       item.volume !== undefined ? item.volume : row[18],
       item.ten_file !== undefined ? item.ten_file : row[19],
       item.link_file !== undefined ? item.link_file : row[20],
-      item.id_pipeline_lien_ket !== undefined ? item.id_pipeline_lien_ket : (row[21] || "")
+      item.id_pipeline_lien_ket !== undefined ? item.id_pipeline_lien_ket : (row[21] || ""),
+      item.id_workflow !== undefined ? item.id_workflow : (row[22] || "WF_DEFAULT")
     ]]);
     count++;
   }
@@ -860,6 +866,118 @@ function pipeline_deleteRow(p) {
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return { status: "error", message: "Sheet rỗng" };
   const cell = sheet.getRange(2, 1, lastRow - 1, 1).createTextFinder(id).matchEntireCell(true).findNext();
+  if (!cell) return { status: "error", message: `Không tìm thấy ID: ${id}` };
+  sheet.deleteRow(cell.getRow());
+  return { status: "success", action: "delete", id };
+}
+
+// ─────────────────────────────────────────────────────────────
+//  PIPELINE WORKFLOW - GET/POST/UPDATE/DELETE
+// ─────────────────────────────────────────────────────────────
+function pipeline_workflow_getSheet_() {
+  return SpreadsheetApp.getActiveSpreadsheet().getSheetByName("pipeline_workflow");
+}
+
+function pipeline_workflow_getData(params) {
+  const sheet = pipeline_workflow_getSheet_();
+  if (!sheet) return { status: "error", message: "Sheet pipeline_workflow không tồn tại" };
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { status: "success", data: [] };
+  const values = sheet.getRange(2, 1, lastRow - 1, 7).getValues();
+  const rows = values.map(r => ({
+    id_workflow: r[0],
+    id_status_workflow: r[1],
+    name_workflow: r[2],
+    "%status": r[3],
+    status_name: r[4],
+    status_index: r[5],
+    status_color: r[6]
+  }));
+  return { status: "success", total: rows.length, data: rows };
+}
+
+function pipeline_workflow_postData(payload) {
+  const action = (payload.action || "add").toLowerCase();
+  if (action === "add" || action === "insert") return pipeline_workflow_addRow(payload);
+  if (action === "update") return pipeline_workflow_updateRow(payload);
+  if (action === "update_bulk") return pipeline_workflow_updateRows_bulk(payload);
+  if (action === "delete") return pipeline_workflow_deleteRow(payload);
+  return { status: "error", message: "action không hợp lệ. Dùng: add/insert | update | update_bulk | delete" };
+}
+
+function pipeline_workflow_addRow(p) {
+  const sheet = pipeline_workflow_getSheet_();
+  const id_wf = p.id_workflow || `WF_${new Date().getTime()}`;
+  const id_pl = p.id_status_workflow || `PL_${new Date().getTime()}_${Math.floor(Math.random()*1000)}`;
+  sheet.appendRow([
+    id_wf,
+    id_pl,
+    p.name_workflow || "", 
+    p["%status"] || "", 
+    p.status_name || "", 
+    p.status_index || "",
+    p.status_color || ""
+  ]);
+  return { status: "success", action: "add", id: id_pl };
+}
+
+function pipeline_workflow_updateRow(p) {
+  if (!p.id_status_workflow) return { status: "error", message: "id_status_workflow là bắt buộc" };
+  const sheet = pipeline_workflow_getSheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { status: "error", message: "Sheet rỗng" };
+  const cell = sheet.getRange(2, 2, lastRow - 1, 1).createTextFinder(p.id_status_workflow).matchEntireCell(true).findNext();
+  if (!cell) return { status: "error", message: `Không tìm thấy ID: ${p.id_status_workflow}` };
+  const rowNum = cell.getRow();
+  const row = sheet.getRange(rowNum, 1, 1, 7).getValues()[0];
+  sheet.getRange(rowNum, 1, 1, 7).setValues([[
+    p.id_workflow !== undefined ? p.id_workflow : row[0],
+    row[1],
+    p.name_workflow !== undefined ? p.name_workflow : row[2],
+    p["%status"] !== undefined ? p["%status"] : row[3],
+    p.status_name !== undefined ? p.status_name : row[4],
+    p.status_index !== undefined ? p.status_index : row[5],
+    p.status_color !== undefined ? p.status_color : (row[6] || "")
+  ]]);
+  return { status: "success", action: "update", id: p.id_status_workflow };
+}
+
+function pipeline_workflow_updateRows_bulk(p) {
+  if (!p.items || !Array.isArray(p.items)) return { status: "error", message: "Danh sách items không hợp lệ" };
+  const sheet = pipeline_workflow_getSheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { status: "error", message: "Sheet rỗng" };
+  
+  let count = 0;
+  for (let i = 0; i < p.items.length; i++) {
+    const item = p.items[i];
+    if (!item.id_status_workflow) continue;
+    const cell = sheet.getRange(2, 2, lastRow - 1, 1).createTextFinder(item.id_status_workflow).matchEntireCell(true).findNext();
+    if (!cell) continue;
+    const rowNum = cell.getRow();
+    const row = sheet.getRange(rowNum, 1, 1, 7).getValues()[0];
+    sheet.getRange(rowNum, 1, 1, 7).setValues([[
+      item.id_workflow !== undefined ? item.id_workflow : row[0],
+      row[1],
+      item.name_workflow !== undefined ? item.name_workflow : row[2],
+      item["%status"] !== undefined ? item["%status"] : row[3],
+      item.status_name !== undefined ? item.status_name : row[4],
+      item.status_index !== undefined ? item.status_index : row[5],
+      item.status_color !== undefined ? item.status_color : (row[6] || "")
+    ]]);
+    count++;
+  }
+  
+  return { status: "success", action: "update_bulk", updatedCount: count };
+}
+
+function pipeline_workflow_deleteRow(p) {
+  const id = p.id_status_workflow || p.idValue || p.id;
+  if (!id) return { status: "error", message: "id_status_workflow là bắt buộc" };
+  const sheet = pipeline_workflow_getSheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { status: "error", message: "Sheet rỗng" };
+  const cell = sheet.getRange(2, 2, lastRow - 1, 1).createTextFinder(id).matchEntireCell(true).findNext();
   if (!cell) return { status: "error", message: `Không tìm thấy ID: ${id}` };
   sheet.deleteRow(cell.getRow());
   return { status: "success", action: "delete", id };
@@ -945,6 +1063,8 @@ function doPost(e) {
         result = licenseOldData_postData(payload);
       } else if (sheet === "pipeline") {
         result = pipeline_postData(payload);
+      } else if (sheet === "pipeline_workflow") {
+        result = pipeline_workflow_postData(payload);
       } else {
         result = postData(payload);
       }
