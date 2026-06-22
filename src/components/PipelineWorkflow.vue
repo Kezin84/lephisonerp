@@ -6,6 +6,10 @@
         <p>Quản lý các quy trình và trạng thái trong Pipeline của bạn.</p>
       </div>
       <div class="header-actions">
+        <div class="search-container">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" v-model="searchQuery" placeholder="Tìm tên quy trình..." class="elite-input search-input" />
+        </div>
         <button class="tech-vip-btn bg-blue" @click="openAddWorkflowModal">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           Tạo Quy trình mới
@@ -31,21 +35,23 @@
       <div v-else class="workflow-groups-container">
         <!-- Render each workflow group -->
         <div v-for="group in groupedWorkflows" :key="group.id_workflow" class="workflow-group-card">
-          <div class="group-header" @click="toggleGroup(group.id_workflow)" style="cursor: pointer;">
-            <h3>
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+          <div class="group-header" @click="toggleGroup(group.id_workflow)">
+            <h3 class="group-title">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
               {{ group.name_workflow || 'Quy trình chưa đặt tên' }}
             </h3>
-            <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="group-header-actions">
               <span class="status-count-badge">{{ group.statuses.length }} bước</span>
               <button class="action-btn delete-btn" @click.stop="confirmDeleteWorkflow(group)" title="Xóa quy trình này">
                 <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
               </button>
-              <svg class="mobile-only toggle-icon" :class="{ 'rotated': collapsedGroups[group.id_workflow] }" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+              <button class="action-btn toggle-btn mobile-only">
+                <svg class="toggle-icon" :class="{ 'rotated': collapsedGroups[group.id_workflow] }" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+              </button>
             </div>
           </div>
           
-          <div v-show="!collapsedGroups[group.id_workflow]">
+          <div v-show="!collapsedGroups[group.id_workflow]" class="workflow-group-content">
             <div class="workflow-list-header">
             <div class="col-drag"></div>
             <div class="col-status-name">Tên Trạng Thái</div>
@@ -280,6 +286,7 @@ const saving = ref(false)
 const isReordering = ref(false)
 const toastMessage = ref('')
 const toastType = ref('success')
+const searchQuery = ref('')
 
 const isMobile = ref(window.innerWidth <= 768)
 const collapsedGroups = ref({})
@@ -365,10 +372,20 @@ const groupedWorkflows = computed(() => {
   })
   
   // Convert to array and sort statuses by status_index
-  return Object.values(groups).map(g => {
+  let result = Object.values(groups).map(g => {
     g.statuses.sort((a, b) => (parseInt(a.status_index) || 0) - (parseInt(b.status_index) || 0))
     return g
   })
+
+  if (searchQuery.value.trim() !== '') {
+    const q = searchQuery.value.toLowerCase().trim()
+    result = result.filter(g => {
+      const name = String(g.name_workflow || 'Quy trình chưa đặt tên').toLowerCase()
+      return name.includes(q)
+    })
+  }
+
+  return result
 })
 
 const modalTitle = computed(() => {
@@ -385,9 +402,6 @@ onMounted(() => {
     const mobile = window.innerWidth <= 768
     if (mobile !== isMobile.value) {
       isMobile.value = mobile
-      if (!mobile) {
-        collapsedGroups.value = {}
-      }
     }
   })
   fetchWorkflows()
@@ -419,12 +433,10 @@ const fetchWorkflows = async () => {
         return item;
       });
 
-      // Default collapse on mobile
-      if (isMobile.value) {
-        items.value.forEach(item => {
-          collapsedGroups.value[item.id_workflow] = true
-        })
-      }
+      // Default collapse
+      items.value.forEach(item => {
+        collapsedGroups.value[item.id_workflow] = true
+      })
     } else {
       console.error('Fetch error:', result.message)
     }
@@ -888,6 +900,23 @@ const fallbackSequentialUpdate = async (updates) => {
 .header-actions {
   display: flex;
   gap: 1rem;
+  align-items: center;
+}
+
+.search-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.search-icon {
+  position: absolute;
+  left: 12px;
+  color: #94a3b8;
+  pointer-events: none;
+}
+.search-input {
+  padding-left: 2.5rem !important;
+  width: 250px;
 }
 
 .bg-blue {
@@ -943,50 +972,72 @@ const fallbackSequentialUpdate = async (updates) => {
 }
 
 .workflow-group-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+}
+
+.workflow-group-content {
   background: rgba(30, 41, 59, 0.4);
   border: 1px solid rgba(255,255,255,0.05);
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+  width: 100%;
 }
 
 .group-header {
-  background: rgba(15, 23, 42, 0.8);
-  padding: 1rem 1.5rem;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  padding: 0.75rem 1.5rem;
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+  color: white;
+  position: relative;
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+  cursor: pointer;
 }
 
-.group-header h3 {
+.group-header .group-title {
   margin: 0;
   font-size: 1.1rem;
   color: #f8fafc;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
+  text-align: center;
+}
+
+.group-header .group-header-actions {
+  position: absolute;
+  right: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .status-count-badge {
-  background: rgba(56, 189, 248, 0.1);
-  color: #38bdf8;
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
   padding: 4px 10px;
   border-radius: 20px;
   font-size: 0.85rem;
   font-weight: 600;
-  border: 1px solid rgba(56, 189, 248, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
-.mobile-only {
-  display: block;
-}
 @media (min-width: 769px) {
-  .mobile-only { display: none; }
+  .mobile-only { display: none !important; }
 }
 .toggle-icon {
   transition: transform 0.3s;
-  color: #94a3b8;
+  color: #ffffff;
 }
 .toggle-icon.rotated {
   transform: rotate(180deg);
@@ -1200,6 +1251,25 @@ const fallbackSequentialUpdate = async (updates) => {
 .edit-btn:hover { background: rgba(56, 189, 248, 0.2); color: #38bdf8; }
 .delete-btn:hover { background: rgba(244, 63, 94, 0.2); color: #fb7185; }
 
+.group-header .action-btn {
+  color: #ffffff;
+}
+
+.group-header .delete-btn {
+  background: #ef4444;
+}
+.group-header .delete-btn:hover {
+  background: #dc2626;
+  color: white;
+}
+
+.group-header .toggle-btn {
+  background: #ffffff;
+}
+.group-header .toggle-btn .toggle-icon {
+  color: #16a34a;
+}
+
 .group-footer {
   padding: 1rem 1.5rem;
   background: rgba(15, 23, 42, 0.4);
@@ -1388,6 +1458,12 @@ const fallbackSequentialUpdate = async (updates) => {
     justify-content: flex-start;
     gap: 8px;
   }
+  .search-container {
+    width: 100%;
+  }
+  .search-input {
+    width: 100%;
+  }
   .header-actions button {
     flex: 1;
     justify-content: center;
@@ -1401,13 +1477,17 @@ const fallbackSequentialUpdate = async (updates) => {
     display: inline-block;
   }
   .group-header {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
     padding: 1rem;
+    justify-content: space-between;
   }
-  .group-header h3 {
+  .group-header .group-title {
     font-size: 1rem;
+    justify-content: flex-start;
+    text-align: left;
+    flex: 1;
+  }
+  .group-header .group-header-actions {
+    position: static;
   }
   .workflow-list {
     flex-direction: column !important;
