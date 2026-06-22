@@ -38,6 +38,9 @@
             </h3>
             <div style="display: flex; align-items: center; gap: 12px;">
               <span class="status-count-badge">{{ group.statuses.length }} bước</span>
+              <button class="action-btn delete-btn" @click.stop="confirmDeleteWorkflow(group)" title="Xóa quy trình này">
+                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              </button>
               <svg class="mobile-only toggle-icon" :class="{ 'rotated': collapsedGroups[group.id_workflow] }" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
             </div>
           </div>
@@ -109,62 +112,139 @@
         <div class="elite-modal-body">
           <div class="elite-form-grid">
             
-            <!-- Only show when creating a new workflow -->
-            <div v-if="modalMode === 'new_workflow'" class="elite-form-group">
-              <label>Tên Quy trình (Workflow) <span class="required">*</span></label>
-              <input v-model="formData.name_workflow" type="text" class="elite-input" placeholder="Ví dụ: Quy trình Bán lẻ..." />
-              <small class="hint">Khởi tạo quy trình cần tạo luôn bước trạng thái đầu tiên bên dưới.</small>
-            </div>
-
             <!-- Show inherited workflow name when adding status to existing workflow -->
             <div v-if="modalMode === 'new_status'" class="elite-form-group">
               <label>Quy trình</label>
               <div class="readonly-field">{{ formData.name_workflow }}</div>
             </div>
 
-            <div class="elite-form-group">
-              <label>Tên Trạng Thái (Bước) <span class="required">*</span></label>
-              <input v-model="formData.status_name" type="text" class="elite-input" placeholder="Ví dụ: Tiếp cận khách hàng..." />
+            <div v-if="modalMode === 'new_workflow'" class="elite-form-group">
+              <template v-if="currentStep === 0">
+                <label>Tên Quy trình (Workflow) <span class="required">*</span></label>
+                <input v-model="formData.name_workflow" type="text" class="elite-input" placeholder="Ví dụ: Quy trình Bán lẻ..." />
+              </template>
+              <template v-else>
+                <div class="status-block">
+                  <div class="elite-form-group" style="margin-bottom: 1rem;">
+                    <label>Tên Trạng Thái {{ currentStep }} <span class="required">*</span></label>
+                    <input v-model="newWorkflowStatuses[currentStep - 1].status_name" type="text" class="elite-input" placeholder="Ví dụ: Tiếp cận..." />
+                  </div>
+                  <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                    <div class="elite-form-group" style="flex: 1; min-width: 120px;">
+                      <label>Tiến độ (%)</label>
+                      <input v-model="newWorkflowStatuses[currentStep - 1]['%status']" type="text" class="elite-input" placeholder="10%" />
+                    </div>
+                    <div class="elite-form-group" style="flex: 2; min-width: 150px;">
+                      <label>Màu hiển thị</label>
+                      <div class="color-picker-container" style="gap: 4px;">
+                        <button v-for="color in PRESET_COLORS" :key="color.hex" class="color-swatch" :class="{ 'active': newWorkflowStatuses[currentStep - 1].status_color === color.hex }" :style="{ backgroundColor: color.hex, width: '24px', height: '24px' }" @click.prevent="newWorkflowStatuses[currentStep - 1].status_color = color.hex" :title="color.name">
+                          <svg v-if="newWorkflowStatuses[currentStep - 1].status_color === color.hex" viewBox="0 0 24 24" width="14" height="14" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" style="mix-blend-mode: difference;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </template>
             </div>
-
-            <div class="elite-form-group">
-              <label>Tiến độ (%)</label>
-              <input v-model="formData['%status']" type="text" class="elite-input" placeholder="Ví dụ: 10%" />
-            </div>
-
-            <div class="elite-form-group">
-              <label>Màu hiển thị (Tùy chọn)</label>
-              <div class="color-picker-container">
-                <button 
-                  v-for="color in PRESET_COLORS" 
-                  :key="color.hex" 
-                  class="color-swatch"
-                  :class="{ 'active': formData.status_color === color.hex }"
-                  :style="{ backgroundColor: color.hex }"
-                  @click.prevent="formData.status_color = color.hex"
-                  :title="color.name"
-                >
-                  <svg v-if="formData.status_color === color.hex" viewBox="0 0 24 24" width="16" height="16" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" style="mix-blend-mode: difference;"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </button>
+            
+            <template v-else>
+              <div class="elite-form-group">
+                <label>Tên Trạng Thái (Bước) <span class="required">*</span></label>
+                <input v-model="formData.status_name" type="text" class="elite-input" placeholder="Ví dụ: Tiếp cận khách hàng..." />
               </div>
-            </div>
+
+              <div class="elite-form-group">
+                <label>Tiến độ (%)</label>
+                <input v-model="formData['%status']" type="text" class="elite-input" placeholder="Ví dụ: 10%" />
+              </div>
+
+              <div class="elite-form-group">
+                <label>Màu hiển thị (Tùy chọn)</label>
+                <div class="color-picker-container">
+                  <button 
+                    v-for="color in PRESET_COLORS" 
+                    :key="color.hex" 
+                    class="color-swatch"
+                    :class="{ 'active': formData.status_color === color.hex }"
+                    :style="{ backgroundColor: color.hex }"
+                    @click.prevent="formData.status_color = color.hex"
+                    :title="color.name"
+                  >
+                    <svg v-if="formData.status_color === color.hex" viewBox="0 0 24 24" width="16" height="16" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" style="mix-blend-mode: difference;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  </button>
+                </div>
+              </div>
+            </template>
           </div>
         </div>
         
-        <div class="elite-modal-footer" style="justify-content: space-between;">
-          <button v-if="modalMode === 'edit_status'" class="tech-vip-btn" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);" @click="confirmDelete(formData)" :disabled="saving">
-            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-            Xóa trạng thái
-          </button>
-          <div v-else></div>
-          <div style="display: flex; gap: 1rem;">
-            <button class="tech-vip-btn bg-glass" @click="closeModal" :disabled="saving">Hủy bỏ</button>
-            <button class="tech-vip-btn bg-blue" @click="saveWorkflow" :disabled="saving">
+        <div class="elite-modal-footer" :style="modalMode === 'new_workflow' && currentStep > 0 ? 'flex-direction: column; gap: 12px;' : 'justify-content: space-between;'">
+          <!-- ROW 1 when wizard > 0 -->
+          <div v-if="modalMode === 'new_workflow' && currentStep > 0" style="display: flex; gap: 12px; width: 100%;">
+            <button class="tech-vip-btn bg-glass" style="flex: 1; justify-content: center;" @click="currentStep--" :disabled="saving">
+              Quay lại
+            </button>
+            <button class="tech-vip-btn bg-blue" style="flex: 1; justify-content: center;" @click="addNextStatus" :disabled="saving">+ Thêm tiếp</button>
+          </div>
+          
+          <!-- ROW 2 when wizard > 0 -->
+          <div v-if="modalMode === 'new_workflow' && currentStep > 0" style="width: 100%;">
+            <button class="tech-vip-btn" style="width: 100%; justify-content: center; background: #22c55e; color: white; border: none;" @click="saveWorkflow" :disabled="saving">
               <span v-if="saving" class="spinner small"></span>
-              <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-              {{ modalMode === 'edit_status' ? 'Lưu thay đổi' : 'Thêm mới' }}
+              <span v-else>Hoàn thành</span>
             </button>
           </div>
+
+          <!-- NORMAL FOOTER FOR OTHERS -->
+          <template v-if="!(modalMode === 'new_workflow' && currentStep > 0)">
+            <button v-if="modalMode === 'edit_status'" class="tech-vip-btn" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);" @click="confirmDelete(formData)" :disabled="saving">
+              <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              Xóa trạng thái
+            </button>
+            <div v-else></div>
+
+            <div style="display: flex; gap: 1rem;">
+              <button class="tech-vip-btn bg-glass" @click="closeModal" :disabled="saving">Hủy bỏ</button>
+              
+              <button v-if="modalMode === 'new_workflow' && currentStep === 0" class="tech-vip-btn bg-blue" @click="nextStep" :disabled="saving">Tiếp tục</button>
+              
+              <button v-else-if="modalMode !== 'new_workflow'" class="tech-vip-btn bg-blue" @click="saveWorkflow" :disabled="saving">
+                <span v-if="saving" class="spinner small"></span>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                {{ modalMode === 'edit_status' ? 'Lưu thay đổi' : 'Thêm mới' }}
+              </button>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- Confirm Delete Workflow Modal -->
+    <div v-if="showDeleteWorkflowModal" class="elite-modal-overlay" @click.self="showDeleteWorkflowModal = false">
+      <div class="elite-modal-content" style="max-width: 400px;">
+        <div class="elite-modal-header">
+          <h2 class="elite-modal-title" style="color: #ef4444;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+            Xác nhận xóa
+          </h2>
+          <button class="elite-modal-close" @click="showDeleteWorkflowModal = false">&times;</button>
+        </div>
+        
+        <div class="elite-modal-body">
+          <p style="color: #f8fafc; font-size: 0.95rem; line-height: 1.5; margin: 0;">
+            Bạn có chắc chắn muốn xóa toàn bộ quy trình <strong style="color: #3b82f6;">"{{ workflowToDelete?.name_workflow }}"</strong> và <strong style="color: #ef4444;">{{ workflowToDelete?.statuses?.length || 0 }}</strong> trạng thái bên trong không?
+          </p>
+          <p style="color: #94a3b8; font-size: 0.85rem; margin-top: 12px; margin-bottom: 0;">
+            ⚠️ Hành động này không thể hoàn tác.
+          </p>
+        </div>
+        
+        <div class="elite-modal-footer">
+          <button class="tech-vip-btn bg-glass" @click="showDeleteWorkflowModal = false" :disabled="saving">Hủy bỏ</button>
+          <button class="tech-vip-btn" style="background: #ef4444; color: white; border: none;" @click="executeDeleteWorkflow" :disabled="saving">
+            <span v-if="saving" class="spinner small"></span>
+            Xóa quy trình
+          </button>
         </div>
       </div>
     </div>
@@ -220,6 +300,9 @@ const showModal = ref(false)
 const modalMode = ref('new_workflow') // 'new_workflow', 'new_status', 'edit_status'
 const targetGroup = ref(null)
 
+const showDeleteWorkflowModal = ref(false)
+const workflowToDelete = ref(null)
+
 const PRESET_COLORS = [
   { hex: '#94a3b8', name: 'Xám (Mặc định)' },
   { hex: '#3b82f6', name: 'Xanh dương' },
@@ -245,6 +328,28 @@ const defaultForm = {
 
 const formData = ref({ ...defaultForm })
 
+const newWorkflowStatuses = ref([{ status_name: '', '%status': '', status_color: '#94a3b8' }])
+const currentStep = ref(0)
+
+const nextStep = () => {
+  if (currentStep.value === 0 && !formData.value.name_workflow) {
+    showToast("Vui lòng nhập Tên Quy trình", 'error')
+    return
+  }
+  currentStep.value++
+}
+
+const addNextStatus = () => {
+  if (!newWorkflowStatuses.value[currentStep.value - 1].status_name) {
+    showToast("Vui lòng nhập Tên Trạng Thái trước khi thêm", 'error')
+    return
+  }
+  if (currentStep.value === newWorkflowStatuses.value.length) {
+    newWorkflowStatuses.value.push({ status_name: '', '%status': '', status_color: '#94a3b8' })
+  }
+  currentStep.value++
+}
+
 // Group items by id_workflow
 const groupedWorkflows = computed(() => {
   const groups = {}
@@ -267,7 +372,10 @@ const groupedWorkflows = computed(() => {
 })
 
 const modalTitle = computed(() => {
-  if (modalMode.value === 'new_workflow') return 'Tạo Quy trình mới'
+  if (modalMode.value === 'new_workflow') {
+    if (currentStep.value === 0) return 'Tạo Quy trình mới'
+    return `Khai báo Trạng thái ${currentStep.value}`
+  }
   if (modalMode.value === 'new_status') return 'Thêm Trạng thái vào Quy trình'
   return 'Chỉnh sửa Trạng Thái'
 })
@@ -329,6 +437,8 @@ const fetchWorkflows = async () => {
 
 const openAddWorkflowModal = () => {
   formData.value = { ...defaultForm }
+  newWorkflowStatuses.value = [{ status_name: '', '%status': '', status_color: '#94a3b8' }]
+  currentStep.value = 0
   modalMode.value = 'new_workflow'
   targetGroup.value = null
   showModal.value = true
@@ -424,16 +534,87 @@ const closeModal = () => {
 }
 
 const saveWorkflow = async () => {
-  if (modalMode.value === 'new_workflow' && !formData.value.name_workflow) {
-    showToast("Vui lòng nhập Tên Quy trình", 'error')
-    return
+  if (modalMode.value === 'new_workflow') {
+    if (!formData.value.name_workflow) {
+      showToast("Vui lòng nhập Tên Quy trình", 'error')
+      return
+    }
+    const validStatuses = newWorkflowStatuses.value.filter(s => s.status_name.trim() !== '')
+    if (validStatuses.length === 0) {
+      showToast("Vui lòng nhập ít nhất 1 Tên Trạng Thái", 'error')
+      return
+    }
+    newWorkflowStatuses.value = validStatuses
+  } else {
+    if (!formData.value.status_name) {
+      showToast("Vui lòng nhập Tên Trạng Thái", 'error')
+      return
+    }
   }
-  if (!formData.value.status_name) {
-    showToast("Vui lòng nhập Tên Trạng Thái", 'error')
+
+  const generateWorkflowId = () => 'WF_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+  const generateStatusWorkflowId = () => 'ST_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+
+  if (modalMode.value === 'new_workflow') {
+    newWorkflowStatuses.value.forEach(s => {
+      let percentStatus = String(s['%status'] || '').trim()
+      if (percentStatus && !percentStatus.endsWith('%')) {
+        s['%status'] = percentStatus + '%'
+      }
+    })
+
+    const wfId = generateWorkflowId()
+    const payloadItems = []
+    
+    newWorkflowStatuses.value.forEach((s, idx) => {
+      const stId = generateStatusWorkflowId() + idx
+      const optimisticData = {
+        id_workflow: wfId,
+        name_workflow: formData.value.name_workflow,
+        id_status_workflow: stId,
+        status_index: idx + 1,
+        status_name: s.status_name,
+        '%status': s['%status'],
+        status_color: s.status_color
+      }
+      items.value.push(optimisticData)
+      payloadItems.push(optimisticData)
+    })
+    
+    closeModal()
+    saving.value = true
+    try {
+      let hasError = false
+      for (const st of payloadItems) {
+        const payload = {
+          sheet: 'pipeline_workflow',
+          action: 'insert',
+          ...st
+        }
+        const res = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) })
+        const result = await res.json()
+        if (result.status !== 'success') {
+          hasError = true
+          console.error("Lỗi khi thêm trạng thái:", result.message)
+        }
+      }
+      if (hasError) {
+        showToast("Có lỗi khi thêm một số trạng thái.", 'error')
+        fetchWorkflows()
+      } else {
+        showToast('Tạo quy trình thành công!')
+      }
+    } catch (err) {
+      console.error("Lỗi lưu workflow:", err)
+      showToast("Lỗi mạng khi lưu", 'error')
+      fetchWorkflows()
+    } finally {
+      saving.value = false
+    }
     return
   }
 
-  // Auto format %status
+  // --- OPTIMISTIC UI for new_status & edit_status ---
   let percentStatus = String(formData.value['%status'] || '').trim()
   if (percentStatus && !percentStatus.endsWith('%')) {
     percentStatus += '%'
@@ -441,15 +622,10 @@ const saveWorkflow = async () => {
   }
 
   const isNew = modalMode.value !== 'edit_status'
-  
-  // --- OPTIMISTIC UI ---
   const optimisticData = { ...formData.value }
+
   if (isNew) {
-    if (modalMode.value === 'new_workflow') {
-      optimisticData.id_workflow = generateWorkflowId()
-      optimisticData.id_status_workflow = generateStatusWorkflowId()
-      optimisticData.status_index = 1
-    } else if (modalMode.value === 'new_status') {
+    if (modalMode.value === 'new_status') {
       optimisticData.id_status_workflow = generateStatusWorkflowId()
       optimisticData.status_index = targetGroup.value.statuses.length + 1
     }
@@ -541,6 +717,59 @@ const confirmDelete = async (item) => {
     alert("Lỗi mạng khi xóa")
   } finally {
     saving.value = false
+  }
+}
+
+const confirmDeleteWorkflow = (group) => {
+  workflowToDelete.value = group
+  showDeleteWorkflowModal.value = true
+}
+
+const executeDeleteWorkflow = async () => {
+  if (!workflowToDelete.value) return
+  const group = workflowToDelete.value
+  showDeleteWorkflowModal.value = false
+  
+  // --- OPTIMISTIC UI ---
+  const originalItems = [...items.value]
+  items.value = items.value.filter(i => i.id_workflow !== group.id_workflow)
+
+  saving.value = true
+  try {
+    let hasError = false
+    for (const status of group.statuses) {
+      const payload = {
+        sheet: 'pipeline_workflow',
+        action: 'delete',
+        idField: 'id_status_workflow',
+        idValue: status.id_status_workflow
+      }
+      
+      const res = await fetch(SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      })
+      const result = await res.json()
+      if (result.status !== 'success') {
+        hasError = true
+        console.error("Lỗi khi xóa trạng thái:", result.message)
+      }
+    }
+    
+    if (hasError) {
+      showToast("Có lỗi khi xóa một số trạng thái, vui lòng tải lại trang.", 'error')
+      fetchWorkflows()
+    } else {
+      showToast('Đã xóa toàn bộ quy trình!')
+    }
+  } catch (err) {
+    console.error("Lỗi xóa workflow:", err)
+    showToast("Lỗi mạng khi xóa", 'error')
+    items.value = originalItems // Revert
+    fetchWorkflows()
+  } finally {
+    saving.value = false
+    workflowToDelete.value = null
   }
 }
 
@@ -812,12 +1041,13 @@ const fallbackSequentialUpdate = async (updates) => {
   content: '' !important;
   position: absolute !important;
   top: 50% !important;
-  right: -22px !important;
-  width: 12px !important;
-  height: 12px !important;
-  transform: translateY(-50%) rotate(45deg) !important;
-  border-top: 2px solid #64748b !important;
-  border-right: 2px solid #64748b !important;
+  right: -28px !important;
+  width: 24px !important;
+  height: 24px !important;
+  transform: translateY(-50%) !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='5' y1='12' x2='19' y2='12'%3E%3C/line%3E%3Cpolyline points='12 5 19 12 12 19'%3E%3C/polyline%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
   z-index: 10 !important;
 }
 
@@ -1183,7 +1413,7 @@ const fallbackSequentialUpdate = async (updates) => {
     flex-direction: column !important;
     align-items: center !important;
     padding: 1.5rem !important;
-    gap: 24px !important;
+    gap: 40px !important;
   }
   .workflow-item {
     width: 100% !important;
@@ -1192,9 +1422,9 @@ const fallbackSequentialUpdate = async (updates) => {
   }
   .workflow-item:not(:last-child)::after {
     top: auto !important;
-    bottom: -18px !important;
+    bottom: -32px !important;
     right: 50% !important;
-    transform: translateX(50%) rotate(135deg) !important;
+    transform: translateX(50%) rotate(90deg) !important;
   }
   .elite-modal-content {
     width: 95% !important;

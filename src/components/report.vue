@@ -279,6 +279,35 @@
         </div>
       </div>
 
+      <!-- Reminder Cards Section (In-board) -->
+      <div v-if="dueReminders.length > 0" style="margin-bottom: 1.5rem;">
+        <div style="font-weight: 800; font-size: 1.1rem; color: #ef4444; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 8px; text-transform: uppercase; letter-spacing: 0.05em;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+          Nhắc Nhở Cần Xử Lý
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;">
+          <div v-for="r in dueReminders" :key="'rem-' + r.id" 
+               :draggable="!isMobile"
+               @dragstart="!isMobile && onDragStartReminder($event, r)"
+               @dragend="!isMobile && onDragEndReport($event)"
+               style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; padding: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); position: relative; transition: all 0.2s; cursor: grab;" onmouseover="this.style.background='rgba(239, 68, 68, 0.1)'; this.style.borderColor='rgba(239, 68, 68, 0.5)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.05)'; this.style.borderColor='rgba(239, 68, 68, 0.3)'">
+            <button @click="hideReminder(r)" style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.2); border: none; color: #94a3b8; cursor: pointer; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'; this.style.color='#ef4444'" onmouseout="this.style.background='rgba(0,0,0,0.2)'; this.style.color='#94a3b8'" title="Ẩn nhắc nhở">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+            <div style="color: #e2e8f0; font-size: 0.95rem; line-height: 1.4; margin-bottom: 8px; padding-right: 24px;">
+              <strong style="color: #ef4444; display: block; margin-bottom: 4px; font-size: 1.05rem;">Gợi nhắc: {{ r.reminder_content }}</strong>
+              <div style="color: #94a3b8; font-size: 0.8rem; margin-top: 6px; padding-top: 6px; border-top: 1px dotted rgba(255,255,255,0.1);">
+                <div style="margin-bottom: 4px;"><span style="color: #cbd5e1; font-weight: 600;">Report gốc:</span> {{ r.noi_dung }}</div>
+                <div><span style="color: #cbd5e1; font-weight: 600;">Thời gian gốc:</span> {{ formatDisplayTime(r.thoi_gian).thu }} - {{ formatDisplayTime(r.thoi_gian).date }}</div>
+              </div>
+            </div>
+            <div style="display: flex; justify-content: flex-end; margin-top: 12px;">
+               <button @click="createReportFromReminderBtn(r)" style="background: #ef4444; color: white; border: none; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.4); transition: all 0.2s;" onmouseover="this.style.background='#dc2626'; this.style.transform='translateY(-1px)'" onmouseout="this.style.background='#ef4444'; this.style.transform='none'">Tạo Report</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Kanban Board: chỉ hiện trên desktop khi mode = detail -->
       <div v-if="!isMobile && desktopViewMode === 'detail'" class="kanban-board">
         <div v-for="col in kanbanColumns" :key="col.status" 
@@ -1060,8 +1089,19 @@
               </div>
               <textarea v-model="formData.ghi_chu" placeholder="Các ghi chú bổ sung nếu có..." class="elite-input" style="color: #ef4444 !important; font-weight: 700 !important; flex: 1; resize: vertical; min-height: 60px;"></textarea>
             </div>
-            
-            <div class="elite-form-group" style="margin-top: 1rem; display: flex; flex-direction: column; position: relative;">
+          </div>
+          </div>
+
+          <div class="pc-col pc-col-3">
+            <div class="elite-form-group" style="margin-bottom: 1rem; display: flex; flex-direction: column; position: relative;">
+              <div class="form-group-header">
+                <label style="color: #f59e0b !important; font-weight: 700 !important;">Lịch Nhắc Nhở</label>
+              </div>
+              <input type="date" v-model="formData.reminder_time" class="elite-input" style="margin-bottom: 0.5rem;" @click="e => e.target.showPicker && e.target.showPicker()" />
+              <input type="text" v-model="formData.reminder_content" placeholder="Nội dung nhắc nhở..." class="elite-input" />
+            </div>
+
+            <div class="elite-form-group" style="margin-bottom: 1rem; display: flex; flex-direction: column; position: relative;">
               <div class="form-group-header" style="display: flex; justify-content: space-between; align-items: center;">
                 <label style="color: #3b82f6 !important; font-weight: 700 !important; margin: 0;">ID Pipeline (Liên kết)</label>
                 <button type="button" class="elite-btn-primary" style="padding: 0.3rem 0.8rem; font-size: 0.75rem; border-radius: 4px; background: #3b82f6; border: none; color: white; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;" @click="isPipelineModalOpen = true">
@@ -1069,18 +1109,25 @@
                   Liên kết
                 </button>
               </div>
-              <div class="chip-input-container" style="min-height: 40px; padding: 0.4rem; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; background: #0f172a; display: flex; flex-wrap: wrap; gap: 0.4rem;">
-                 <div v-if="!formData.id_pipeline" style="color: rgba(255,255,255,0.4); padding: 0.2rem; font-size: 0.85rem;">Chưa có liên kết nào...</div>
-                 <div v-else v-for="(pId, idx) in splitPipelines(formData.id_pipeline)" :key="idx" class="report-chip" style="background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3); padding: 0.2rem 0.5rem; border-radius: 4px; display: flex; align-items: center; gap: 0.3rem; font-size: 0.8rem;">
-                    <span style="color: #3b82f6; font-weight: 600;">{{ pId }}</span>
-                    <button type="button" @click.stop="togglePipelineSelection(pId)" style="background:none; border:none; color: #ef4444; cursor:pointer;">✕</button>
+              <div class="chip-input-container" style="display: flex; flex-direction: column; gap: 0.6rem; padding-top: 0.5rem;">
+                 <div v-if="!formData.id_pipeline" style="color: rgba(255,255,255,0.4); padding: 0.2rem 0; font-size: 0.85rem;">Chưa có liên kết nào...</div>
+                 <div v-else v-for="(pId, idx) in splitPipelines(formData.id_pipeline)" :key="idx" class="pipeline-chip">
+                    <span class="pipeline-chip-text" :title="getPipelineDetails(pId).content_of_contract_po || pId">
+                      <strong>{{ getPipelineDetails(pId).content_of_contract_po || pId }}</strong>
+                      <span v-if="getPipelineDetails(pId).ten_khach_hang || getPipelineDetails(pId).ten_cong_ty" class="pipeline-chip-sub">
+                        - {{ [getPipelineDetails(pId).ten_khach_hang, getPipelineDetails(pId).ten_cong_ty].filter(Boolean).join(' | ') }}
+                      </span>
+                    </span>
+                    <div style="display: flex; align-items: center; gap: 8px; margin-left: 8px; flex-shrink: 0;">
+                      <a :href="'/pipeline?id=' + pId" target="_blank" @click.stop title="Xem Pipeline" style="color: inherit; opacity: 0.7; transition: opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                      </a>
+                      <span class="pipeline-chip-remove" @click.stop="togglePipelineSelection(pId)" title="Xóa">&times;</span>
+                    </div>
                  </div>
               </div>
             </div>
-            </div>
-          </div>
 
-          <div class="pc-col pc-col-3">
           <!-- Upload Files -->
           <div class="elite-form-group">
             <label style="display: flex; justify-content: space-between;">
@@ -2084,9 +2131,10 @@
           <div v-if="pipelineData.length === 0" style="color: rgba(255,255,255,0.5); padding: 2rem; text-align: center; font-size: 0.95rem; font-style: italic;">Đang tải dữ liệu Pipeline...</div>
           <div v-for="p in pipelineData" :key="'modal-pl-'+p.Id_pipeline" @click.stop="togglePipelineSelection(p.Id_pipeline)" style="padding: 1rem 1.25rem; border-radius: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 4px 6px rgba(0,0,0,0.1);" :style="isPipelineSelected(p.Id_pipeline) ? 'background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.4); transform: translateY(-1px); box-shadow: 0 6px 12px rgba(59,130,246,0.15);' : 'background: #1e293b;'" onmouseover="if(!this.style.background.includes('59')){this.style.background='rgba(255,255,255,0.03)'; this.style.borderColor='rgba(255,255,255,0.1)'}" onmouseout="if(!this.style.background.includes('59')){this.style.background='#1e293b'; this.style.borderColor='rgba(255,255,255,0.05)'}">
              <div style="display: flex; flex-direction: column; max-width: 85%; gap: 0.35rem;">
-                <div v-if="p.ten_khach_hang || p.ten_cong_ty" style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+                <div v-if="p.ten_khach_hang || p.ten_cong_ty || p.name_workflow" style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
                   <span v-if="p.ten_khach_hang" style="background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600;">{{ p.ten_khach_hang }}</span>
-                  <span v-if="p.ten_cong_ty" style="background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600;">{{ p.ten_cong_ty }}</span>
+                  <span v-if="p.ten_cong_ty" style="background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600;">{{ p.ten_cong_ty }}</span>
+                  <span v-if="p.name_workflow" style="background: #3b82f6; color: white; border: none; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 2px 4px rgba(59,130,246,0.3);" :title="p.name_workflow">{{ p.name_workflow }}</span>
                 </div>
                 <div v-if="p.content_of_contract_po" style="color: #f8fafc; font-size: 1.05rem; font-weight: 700; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4;">{{ p.content_of_contract_po }}</div>
                 <div v-if="p.ghi_chu_hop_dong" style="color: #94a3b8; font-size: 0.8rem; font-style: italic; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.35;">{{ p.ghi_chu_hop_dong }}</div>
@@ -2105,12 +2153,14 @@
              </div>
           </div>
         </div>
-        
+
         <div style="padding: 1.25rem 1.5rem; border-top: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: flex-end; background: #0f172a;">
           <button type="button" @click="isPipelineModalOpen = false" class="elite-btn-primary" style="padding: 0.75rem 2rem; font-weight: 700; border-radius: 8px; background: #3b82f6; border: none; color: white; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 10px rgba(59,130,246,0.3);" onmouseover="this.style.background='#2563eb'; this.style.transform='translateY(-1px)'" onmouseout="this.style.background='#3b82f6'; this.style.transform='none'">Xác nhận liên kết</button>
         </div>
       </div>
     </div>
+
+
 </template>
 
 <script setup>
@@ -2523,6 +2573,98 @@ const baseFilteredReports = computed(() => {
   return result;
 })
 
+const createReportFromReminderBtn = (r) => {
+  formData.value = {
+    id: '',
+    phan_loai: r.phan_loai || 'CÔNG VIỆC',
+    noi_dung: r.reminder_content || r.noi_dung,
+    ghi_chu: r.ghi_chu || '',
+    tag: r.tag || 'BÌNH THƯỜNG',
+    trang_thai: 'Chưa xử lý',
+    img_save: r.img_save || '',
+    link_excel_bao_gia: r.link_excel_bao_gia || '',
+    link_excel_mua_hang: r.link_excel_mua_hang || '',
+    ten_file_bao_gia: r.ten_file_bao_gia || '',
+    ten_file_mua_hang: r.ten_file_mua_hang || '',
+    id_pipeline: r.id_pipeline || '',
+    reminder_time: '',
+    reminder_content: ''
+  };
+
+  const d = new Date();
+  const dayOfWeek = d.getDay();
+  const thu = dayOfWeek === 0 ? 'CN' : (dayOfWeek + 1).toString();
+  timeInputs.value = {
+    hour: '08',
+    minute: '00',
+    thu: thu,
+    day: String(d.getDate()).padStart(2, '0'),
+    month: String(d.getMonth() + 1).padStart(2, '0'),
+    year: String(d.getFullYear())
+  };
+
+  isEditing.value = false;
+  originalData.value = { ...formData.value };
+  originalTimeInputs.value = { ...timeInputs.value };
+  isModalOpen.value = true;
+  
+  activeReminderForNewReport.value = r;
+};
+
+const hideReminder = async (report) => {
+  const original = report.reminder_visible;
+  report.reminder_visible = false;
+  
+  if (API_URL !== 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL') {
+    try {
+      const payload = {
+        action: 'hide_reminder',
+        id: report.id
+      };
+      
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      
+      const result = await response.json();
+      if (!result || result.status !== 'success') {
+        report.reminder_visible = original;
+      }
+    } catch (error) {
+      console.error("Lỗi ẩn nhắc nhở:", error);
+      report.reminder_visible = original;
+    }
+  }
+};
+
+const dueReminders = computed(() => {
+  const list = [];
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  
+  reports.value.forEach(r => {
+    if (r.reminder_time && r.reminder_visible !== false && String(r.reminder_visible).toUpperCase() !== 'FALSE') {
+      let parts;
+      if (r.reminder_time.includes('/')) {
+        parts = r.reminder_time.split('/');
+      } else {
+        parts = r.reminder_time.split('-');
+        parts.reverse(); // if YYYY-MM-DD, reverse to DD-MM-YYYY to match parts[2] = YYYY
+      }
+      
+      if (parts && parts.length === 3) {
+        const rd = new Date(parts[2], parts[1]-1, parts[0]);
+        rd.setHours(0,0,0,0);
+        if (rd <= today) {
+          list.push(r);
+        }
+      }
+    }
+  });
+  return list;
+});
+
 const filteredReports = computed(() => {
   return baseFilteredReports.value.filter(r => {
     if (filters.value.trang_thai && filters.value.trang_thai !== 'Tất cả') {
@@ -2804,6 +2946,8 @@ const dailyColumns = computed(() => {
 });
 
 const draggedReportId = ref(null);
+const draggedReminderId = ref(null);
+const activeReminderForNewReport = ref(null);
 const droppedReportId = ref(null);
 const dragOverColumn = ref(null); // track cột đang hover khi kéo
 
@@ -2813,13 +2957,20 @@ const onDragStartReport = (e, report) => {
   e.dataTransfer.setData('text/plain', report.id);
 };
 
+const onDragStartReminder = (e, reminder) => {
+  draggedReminderId.value = reminder.id;
+  e.dataTransfer.effectAllowed = 'copy';
+  e.dataTransfer.setData('text/plain', 'reminder:' + reminder.id);
+};
+
 const onDragEndReport = () => {
   draggedReportId.value = null;
+  draggedReminderId.value = null;
   dragOverColumn.value = null;
 };
 
 const onDragEnterColumn = (status, period) => {
-  if (draggedReportId.value) dragOverColumn.value = status + '-' + period;
+  if (draggedReportId.value || draggedReminderId.value) dragOverColumn.value = status + '-' + period;
 };
 
 const onDragLeaveColumn = (e, colEl) => {
@@ -2829,6 +2980,71 @@ const onDragLeaveColumn = (e, colEl) => {
 };
 
 const onDropReport = async (e, newStatus, newPeriod) => {
+  if (draggedReminderId.value) {
+    const remId = draggedReminderId.value;
+    draggedReminderId.value = null;
+    dragOverColumn.value = null;
+    
+    const sourceReminder = dueReminders.value.find(r => r.id === remId);
+    if (!sourceReminder) return;
+
+    if (API_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL') {
+      alert("Tính năng này cần cấu hình API_URL");
+      return;
+    }
+
+    const d = new Date();
+    const dayOfWeek = d.getDay();
+    const thu = dayOfWeek === 0 ? 'CN' : (dayOfWeek + 1).toString();
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    const hh = newPeriod === 'Sáng' ? '08' : '14';
+    const newThoiGian = `${hh}:00 /${thu} /${dd}/${mm}/${yyyy}`;
+
+    const newReport = {
+      action: 'add',
+      phan_loai: sourceReminder.phan_loai || 'CÔNG VIỆC',
+      thoi_gian: newThoiGian,
+      noi_dung: sourceReminder.reminder_content || sourceReminder.noi_dung,
+      ghi_chu: sourceReminder.ghi_chu || '',
+      tag: sourceReminder.tag || 'BÌNH THƯỜNG',
+      trang_thai: newStatus !== null && newStatus !== undefined ? newStatus : 'Chưa xử lý',
+      img_save: sourceReminder.img_save || '',
+      link_excel_bao_gia: sourceReminder.link_excel_bao_gia || '',
+      link_excel_mua_hang: sourceReminder.link_excel_mua_hang || '',
+      ten_file_bao_gia: sourceReminder.ten_file_bao_gia || '',
+      ten_file_mua_hang: sourceReminder.ten_file_mua_hang || '',
+      id_pipeline: sourceReminder.id_pipeline || '',
+      isFailed: '',
+      reminder_time: '',
+      reminder_content: ''
+    };
+
+    const tempId = 'temp-' + Date.now();
+    reports.value.unshift({ ...newReport, id: tempId, created_time: new Date().toISOString(), reminder_visible: "TRUE" });
+    
+    hideReminder(sourceReminder);
+
+    try {
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify(newReport)
+      });
+      const result = await response.json();
+      if (result.status === 'success') {
+        fetchReports();
+      } else {
+        alert('Lỗi tạo mới: ' + result.message);
+        reports.value = reports.value.filter(r => r.id !== tempId);
+      }
+    } catch (error) {
+      alert('Lỗi kết nối: ' + error.message);
+      reports.value = reports.value.filter(r => r.id !== tempId);
+    }
+    return;
+  }
+
   const id = draggedReportId.value;
   if (!id) return;
   const report = reports.value.find(r => r.id === id);
@@ -2933,7 +3149,9 @@ const formData = ref({
   img_save: '',
   link_excel_bao_gia: '',
   link_excel_mua_hang: '',
-  id_pipeline: ''
+  id_pipeline: '',
+  reminder_time: '',
+  reminder_content: ''
 })
 
 const isUploadingFiles = ref(false)
@@ -3153,7 +3371,9 @@ const openAddModal = () => {
     link_excel_mua_hang: '',
     ten_file_bao_gia: '',
     ten_file_mua_hang: '',
-    id_pipeline: ''
+    id_pipeline: '',
+    reminder_time: '',
+    reminder_content: ''
   }
   timeInputs.value = getNowTimeInputs();
   isModalOpen.value = true
@@ -3185,7 +3405,9 @@ const openAddModalWithSlot = (slot) => {
     link_excel_mua_hang: '',
     ten_file_bao_gia: '',
     ten_file_mua_hang: '',
-    id_pipeline: ''
+    id_pipeline: '',
+    reminder_time: '',
+    reminder_content: ''
   };
   
   const d = slot.date;
@@ -3230,6 +3452,15 @@ const openEditModal = (report) => {
   if (!formData.value.ten_file_bao_gia) formData.value.ten_file_bao_gia = ''
   if (!formData.value.ten_file_mua_hang) formData.value.ten_file_mua_hang = ''
   if (!formData.value.id_pipeline) formData.value.id_pipeline = ''
+  if (!formData.value.reminder_time) {
+    formData.value.reminder_time = ''
+  } else if (formData.value.reminder_time.includes('/')) {
+    const parts = formData.value.reminder_time.split('/');
+    if (parts.length === 3) {
+      formData.value.reminder_time = `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+  }
+  if (!formData.value.reminder_content) formData.value.reminder_content = ''
   originalData.value = { ...report }
   timeInputs.value = parseTimeString(report.thoi_gian);
   originalTimeInputs.value = { ...timeInputs.value }
@@ -3238,7 +3469,8 @@ const openEditModal = (report) => {
 
 const closeModal = () => {
   if (saving.value) return; // Không đóng khi đang lưu
-  isModalOpen.value = false
+  isModalOpen.value = false;
+  activeReminderForNewReport.value = null;
 }
 
 // --- BÁO GIÁ KHÁCH HÀNG ---
@@ -3495,6 +3727,11 @@ const saveReport = async (options = {}) => {
         }
         if (highlightedReportId.value === tempId) {
           highlightedReportId.value = result.id;
+        }
+        
+        if (activeReminderForNewReport.value) {
+          hideReminder(activeReminderForNewReport.value);
+          activeReminderForNewReport.value = null;
         }
       }
     } else {
@@ -4682,19 +4919,45 @@ const doExportExcel = () => {
 }
 
 const pipelineData = ref([]);
+const workflowsData = ref([]);
 const isPipelineDropdownOpen = ref(false);
 const isPipelineModalOpen = ref(false);
 
 const loadPipelineData = async () => {
   if (API_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL') return;
   try {
-    const url = new URL(API_URL);
-    url.searchParams.append('sheet', 'pipeline');
-    url.searchParams.append('action', 'get');
-    const response = await fetch(url.toString());
-    const result = await response.json();
-    if (result.status === 'success') {
-       pipelineData.value = result.data;
+    const urlPipeline = new URL(API_URL);
+    urlPipeline.searchParams.append('sheet', 'pipeline');
+    urlPipeline.searchParams.append('action', 'get');
+    
+    const urlWorkflow = new URL(API_URL);
+    urlWorkflow.searchParams.append('sheet', 'pipeline_workflow');
+    urlWorkflow.searchParams.append('action', 'get');
+    
+    const [resPipeline, resWorkflow] = await Promise.all([
+      fetch(urlPipeline.toString()),
+      fetch(urlWorkflow.toString())
+    ]);
+    
+    const [resultPipeline, resultWorkflow] = await Promise.all([
+      resPipeline.json(),
+      resWorkflow.json()
+    ]);
+    
+    if (resultWorkflow.status === 'success') {
+       workflowsData.value = resultWorkflow.data || [];
+    }
+    
+    if (resultPipeline.status === 'success') {
+       const wMap = new Map();
+       workflowsData.value.forEach(w => {
+         if (w.id_workflow) wMap.set(w.id_workflow, w.name_workflow);
+       });
+       
+       pipelineData.value = (resultPipeline.data || []).map(p => ({
+         ...p,
+         name_workflow: wMap.get(p.id_workflow) || 'Quy trình mặc định'
+       }));
     }
   } catch(e) {
     console.error(e);
@@ -4710,6 +4973,10 @@ const getLinkedPipelines = (report) => {
 const splitPipelines = (str) => {
   if (!str) return [];
   return String(str).split(',').map(s => s.trim()).filter(Boolean);
+};
+
+const getPipelineDetails = (id) => {
+  return pipelineData.value.find(p => p.Id_pipeline === id) || {};
 };
 
 const isPipelineSelected = (id) => {
@@ -4729,7 +4996,8 @@ const togglePipelineSelection = (id) => {
 
 const goToPipeline = (id) => {
   if (!id) return
-  router.push({ path: '/pipeline', query: { openId: id } })
+  const routeData = router.resolve({ path: '/pipeline', query: { openId: id } })
+  window.open(routeData.href, '_blank')
 }
 
 onMounted(() => {
@@ -9083,5 +9351,54 @@ span[style*="color: #334155"] {
   background: rgba(16, 185, 129, 0.15) !important;
   box-shadow: 0 0 25px rgba(16, 185, 129, 0.25) inset !important;
   transform: scale(1.02);
+}
+.pipeline-chip {
+  background: #0f172a;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 6px;
+  padding: 6px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  color: #34d399;
+  font-size: 13px;
+  width: 100%;
+}
+.pipeline-chip:hover {
+  background: #1e293b;
+  border-color: rgba(16, 185, 129, 0.5);
+}
+.pipeline-chip-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pipeline-chip-sub {
+  color: #059669;
+  font-size: 11px;
+}
+.pipeline-chip-remove {
+  color: #ef4444;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(239, 68, 68, 0.1);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.pipeline-chip-remove:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
 }
 </style>

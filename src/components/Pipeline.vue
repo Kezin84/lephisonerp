@@ -42,20 +42,13 @@
       </div>
 
       <div class="elite-filter-body">
-        <div class="elite-filter-row" style="margin-bottom: 12px; display: flex; gap: 12px; width: 100%;">
+        <div class="elite-filter-row" style="margin-bottom: 12px; display: flex; gap: 12px; width: 100%;" v-show="false">
           <div class="elite-date-group group-date" style="flex: 1; min-width: 0;">
-            <label>Tên khách hàng</label>
-            <input v-model="filterConfig.customerName" list="customer-list" class="elite-input" placeholder="Tất cả..." style="width: 100%;" />
-            <datalist id="customer-list">
-              <option v-for="c in uniqueCustomers" :key="c" :value="c"></option>
-            </datalist>
-          </div>
-          <div class="elite-date-group group-date" style="flex: 1; min-width: 0;">
-            <label>Tên công ty</label>
-            <input v-model="filterConfig.companyName" list="company-list" class="elite-input" placeholder="Tất cả..." style="width: 100%;" />
-            <datalist id="company-list">
-              <option v-for="c in uniqueCompanies" :key="c" :value="c"></option>
-            </datalist>
+            <label>Công ty / Khách hàng</label>
+            <select v-model="filterConfig.companyCustomer" class="elite-input" style="width: 100%; padding: 8px; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; background: #0f172a; color: #fff; cursor: pointer;">
+              <option value="">Tất cả</option>
+              <option v-for="c in uniqueCompanyCustomers" :key="c.key" :value="c.key">{{ c.label }}</option>
+            </select>
           </div>
         </div>
 
@@ -133,16 +126,26 @@
         <input type="text" v-model="searchQuery" placeholder="Tìm tên KH, mã hợp đồng..." class="elite-input" style="width: 100%; padding: 0.5rem 1rem 0.5rem 2.5rem; border-radius: 99px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: #fff; outline: none; transition: all 0.2s; font-size: 0.85rem;" onfocus="this.style.borderColor='#10b981'; this.style.boxShadow='0 0 0 2px rgba(16,185,129,0.2)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'; this.style.boxShadow='none'" />
       </div>
 
-      <div class="workflow-selector" style="display: flex; align-items: center; gap: 8px; margin-right: 12px;">
-        <span style="color: #94a3b8; font-size: 0.85rem; font-weight: 600;">Quy trình:</span>
-        <select v-model="selectedWorkflowId" class="elite-input" style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 4px 12px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; outline: none; min-width: 150px;">
-          <option value="WF_DEFAULT">Mặc định</option>
-          <option v-for="wf in uniqueWorkflows" :key="wf.id_workflow" :value="wf.id_workflow" style="background: #1e293b; color: #f8fafc;">{{ wf.name_workflow }}</option>
-        </select>
+      <div class="toolbar-selectors" style="display: flex; align-items: center; gap: 16px; margin-right: 12px; flex: 1; justify-content: flex-end; flex-wrap: wrap;">
+        <div class="company-selector" style="display: flex; align-items: center; gap: 8px;">
+          <span style="color: #94a3b8; font-size: 0.85rem; font-weight: 600;">Công ty / KH:</span>
+          <select v-model="filterConfig.companyCustomer" class="elite-input" style="background: #0f172a; border: 1px solid rgba(16,185,129,0.3); color: #10b981; font-weight: 600; padding: 4px 12px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; outline: none; min-width: 200px; max-width: 350px;">
+            <option value="" style="background: #0f172a; color: #10b981;">Tất cả Công ty / KH</option>
+            <option v-for="c in uniqueCompanyCustomers" :key="c.key" :value="c.key" style="background: #0f172a; color: #10b981;">{{ c.label }}</option>
+          </select>
+        </div>
+
+        <div class="workflow-selector" style="display: flex; align-items: center; gap: 8px;">
+          <span style="color: #94a3b8; font-size: 0.85rem; font-weight: 600;">Quy trình:</span>
+          <select v-model="selectedWorkflowId" class="elite-input" style="background: #0f172a; border: 1px solid rgba(16,185,129,0.3); color: #10b981; font-weight: 600; padding: 4px 12px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; outline: none; min-width: 150px;">
+            <option value="WF_DEFAULT" style="background: #0f172a; color: #10b981;">Mặc định</option>
+            <option v-for="wf in uniqueWorkflows" :key="wf.id_workflow" :value="wf.id_workflow" style="background: #0f172a; color: #10b981;">{{ wf.name_workflow }}</option>
+          </select>
+        </div>
       </div>
 
       <div class="header-actions" style="display: flex; gap: 0.75rem;">
-        <button class="tech-vip-btn" @click="exportToExcel" style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 600; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
+        <button class="tech-vip-btn" @click="showExportModal = true" style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 600; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
           Xuất Excel
         </button>
@@ -200,27 +203,27 @@
                   <template #item="{ element: child, index }">
                     <div style="position: relative;" :style="{ marginTop: index > 0 ? '24px' : '0' }">
                       <div v-if="index > 0" :style="{ position: 'absolute', left: '50%', top: '-24px', transform: 'translateX(-50%)', width: '2px', height: '24px', background: '#94a3b8' }"></div>
-                      <div class="kanban-card vip-card" @click="mergeMode ? toggleMergeSelect(child) : openEditModal(child)" :style="{ cursor: 'pointer', margin: 0, border: mergeSelected.find(i => i.Id_pipeline === child.Id_pipeline) ? '2px solid #3b82f6' : '' }">
+                      <div :id="'pipeline-card-' + child.Id_pipeline" class="kanban-card vip-card" :class="{'highlight-card': highlightedCardId === child.Id_pipeline}" @click="mergeMode ? toggleMergeSelect(child) : openEditModal(child)" :style="{ cursor: 'pointer', margin: 0, border: mergeSelected.find(i => i.Id_pipeline === child.Id_pipeline) ? '2px solid #3b82f6' : '' }">
                         <div class="tl-shimmer-border"></div>
-                        <div :style="{ background: '#475569', color: '#ffffff', padding: '6px 16px', margin: '-16px -16px 12px -16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', fontWeight: '700', borderBottom: '1px solid rgba(255,255,255,0.05)' }">
+                        <div :style="{ background: '#475569', color: '#ffffff', padding: '6px 16px', margin: '-16px -16px 6px -16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', fontWeight: '700', borderBottom: '1px solid rgba(255,255,255,0.05)' }">
                           <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
                             <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                             {{ child.finish_time || 'No Deadline' }}
                           </div>
                           <div style="display: flex; align-items: center; gap: 8px;">
-                            <span class="vip-badge tag-normal" v-if="child.tag" :class="getTagClass(child.tag)">{{ child.tag }}</span>
                             <button v-if="!mergeMode" @click.stop="startMerge(child)" title="Gộp thẻ" style="background: rgba(255,255,255,0.1); border: none; border-radius: 4px; color: #fff; cursor: pointer; padding: 2px 6px; display: flex; align-items: center; justify-content: center;">🔗</button>
                             <input v-if="mergeMode && mergeTarget?.Id_pipeline !== child.Id_pipeline" type="checkbox" :checked="!!mergeSelected.find(i => i.Id_pipeline === child.Id_pipeline)" @click.stop="toggleMergeSelect(child)" style="cursor: pointer; width: 16px; height: 16px;" />
                             <span v-if="mergeMode && mergeTarget?.Id_pipeline === child.Id_pipeline" style="font-size: 11px; color: #fbbf24; font-weight: 800;">GỐC</span>
                           </div>
                         </div>
-                        <div class="vip-card-header" style="flex-direction: column; align-items: flex-start; gap: 8px;" v-if="child.ten_khach_hang || child.ten_cong_ty">
-                          <div class="vip-badges" style="display: flex; flex-wrap: wrap; gap: 6px; width: 100%;">
-                            <span class="vip-badge" style="background: #ffffff; color: #334155; border: none; padding: 4px 8px; font-size: 11px; font-weight: 800;">{{ [child.ten_cong_ty, child.ten_khach_hang].filter(Boolean).join(' - ') }}</span>
+                        <div class="vip-card-header" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; gap: 8px; width: 100%;" v-if="child.ten_khach_hang || child.ten_cong_ty || child.tag">
+                          <div class="vip-badges" style="display: flex; flex-wrap: wrap; gap: 6px; flex: 1;" v-if="child.ten_khach_hang || child.ten_cong_ty">
+                            <span class="vip-badge" style="background: #ffffff; color: #334155; border: none; padding: 2px 6px; font-size: 9px; font-weight: 800;">{{ child.ten_cong_ty || child.ten_khach_hang }}</span>
                           </div>
+                          <span class="vip-badge tag-normal" v-if="child.tag && child.tag.toLowerCase() !== 'bình thường'" :class="getTagClass(child.tag)" style="flex-shrink: 0; font-size: 9px;">{{ child.tag }}</span>
                         </div>
           
-                        <div class="vip-content" style="margin-top: 12px;">
+                        <div class="vip-content" style="margin-top: 6px;">
                           <h4 class="vip-desc" style="color: #f8fafc; font-size: 14px; font-weight: 600; margin: 0 0 8px 0; line-height: 1.4;">{{ child.content_of_contract_po || 'Chưa có nội dung hợp đồng' }}</h4>
                           
                           <div v-if="child.quantity || child.type || child.volume" style="margin-bottom: 8px;">
@@ -229,12 +232,12 @@
                             </span>
                           </div>
           
-                          <div v-if="child.ghi_chu_hop_dong" style="color: #ef4444; font-size: 12px; font-weight: 700; margin-bottom: 4px;">
+                          <div v-if="child.ghi_chu_hop_dong" style="color: #ef4444; font-size: 12px; font-weight: 700; margin-bottom: 0px;">
                             {{ child.ghi_chu_hop_dong }}
                           </div>
                         </div>
           
-                        <div class="vip-footer" style="margin-top: 8px; display: flex; flex-direction: column; gap: 8px;">
+                        <div class="vip-footer" style="margin-top: 4px; display: flex; flex-direction: column; gap: 4px;">
                           <div v-if="child.ten_file || child.report_id" style="display: flex; flex-direction: column; gap: 8px; margin-top: 0;">
                             <details v-if="child.ten_file" class="vip-details" @click.stop>
                               <summary style="font-size: 11px; color: #ffffff; cursor: pointer; user-select: none; font-weight: 600; outline: none; margin: 0; padding: 0; margin-left: -14px; text-align: left;">
@@ -279,27 +282,27 @@
               </div>
             </div>
 
-            <div v-else class="kanban-card vip-card" v-show="matchesSearch(element)" @click="mergeMode ? toggleMergeSelect(element) : openEditModal(element)" :style="{ cursor: 'pointer', border: mergeSelected.find(i => i.Id_pipeline === element.Id_pipeline) ? '2px solid #3b82f6' : '' }">
+            <div v-else :id="'pipeline-card-' + element.Id_pipeline" class="kanban-card vip-card" :class="{'highlight-card': highlightedCardId === element.Id_pipeline}" v-show="matchesSearch(element)" @click="mergeMode ? toggleMergeSelect(element) : openEditModal(element)" :style="{ cursor: 'pointer', border: mergeSelected.find(i => i.Id_pipeline === element.Id_pipeline) ? '2px solid #3b82f6' : '' }">
               <div class="tl-shimmer-border"></div>
-              <div :style="{ background: '#475569', color: '#ffffff', padding: '6px 16px', margin: '-16px -16px 12px -16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', fontWeight: '700', borderBottom: '1px solid rgba(255,255,255,0.05)' }">
+              <div :style="{ background: '#475569', color: '#ffffff', padding: '6px 16px', margin: '-16px -16px 6px -16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', fontWeight: '700', borderBottom: '1px solid rgba(255,255,255,0.05)' }">
                 <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
                   <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                   {{ element.finish_time || 'No Deadline' }}
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
-                  <span class="vip-badge tag-normal" v-if="element.tag" :class="getTagClass(element.tag)">{{ element.tag }}</span>
                   <button v-if="!mergeMode" @click.stop="startMerge(element)" title="Gộp thẻ" style="background: rgba(255,255,255,0.1); border: none; border-radius: 4px; color: #fff; cursor: pointer; padding: 2px 6px; display: flex; align-items: center; justify-content: center;">🔗</button>
                   <input v-if="mergeMode && mergeTarget?.Id_pipeline !== element.Id_pipeline" type="checkbox" :checked="!!mergeSelected.find(i => i.Id_pipeline === element.Id_pipeline)" @click.stop="toggleMergeSelect(element)" style="cursor: pointer; width: 16px; height: 16px;" />
                   <span v-if="mergeMode && mergeTarget?.Id_pipeline === element.Id_pipeline" style="font-size: 11px; color: #fbbf24; font-weight: 800;">GỐC</span>
                 </div>
               </div>
-              <div class="vip-card-header" style="flex-direction: column; align-items: flex-start; gap: 8px;" v-if="element.ten_khach_hang || element.ten_cong_ty">
-                <div class="vip-badges" style="display: flex; flex-wrap: wrap; gap: 6px; width: 100%;">
-                  <span class="vip-badge" style="background: #ffffff; color: #334155; border: none; padding: 4px 8px; font-size: 11px; font-weight: 800;">{{ [element.ten_cong_ty, element.ten_khach_hang].filter(Boolean).join(' - ') }}</span>
+              <div class="vip-card-header" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; gap: 8px; width: 100%;" v-if="element.ten_khach_hang || element.ten_cong_ty || element.tag">
+                <div class="vip-badges" style="display: flex; flex-wrap: wrap; gap: 6px; flex: 1;" v-if="element.ten_khach_hang || element.ten_cong_ty">
+                  <span class="vip-badge" style="background: #ffffff; color: #334155; border: none; padding: 2px 6px; font-size: 9px; font-weight: 800;">{{ element.ten_cong_ty || element.ten_khach_hang }}</span>
                 </div>
+                <span class="vip-badge tag-normal" v-if="element.tag && element.tag.toLowerCase() !== 'bình thường'" :class="getTagClass(element.tag)" style="flex-shrink: 0; font-size: 9px;">{{ element.tag }}</span>
               </div>
 
-              <div class="vip-content" style="margin-top: 12px;">
+              <div class="vip-content" style="margin-top: 6px;">
                 <h4 class="vip-desc" style="color: #f8fafc; font-size: 14px; font-weight: 600; margin: 0 0 8px 0; line-height: 1.4;">{{ element.content_of_contract_po || 'Chưa có nội dung hợp đồng' }}</h4>
                 
                 <div v-if="element.quantity || element.type || element.volume" style="margin-bottom: 8px;">
@@ -308,12 +311,12 @@
                   </span>
                 </div>
 
-                <div v-if="element.ghi_chu_hop_dong" style="color: #ef4444; font-size: 12px; font-weight: 700; margin-bottom: 4px;">
+                <div v-if="element.ghi_chu_hop_dong" style="color: #ef4444; font-size: 12px; font-weight: 700; margin-bottom: 0px;">
                   {{ element.ghi_chu_hop_dong }}
                 </div>
               </div>
 
-              <div class="vip-footer" style="margin-top: 8px; display: flex; flex-direction: column; gap: 8px;">
+              <div class="vip-footer" style="margin-top: 4px; display: flex; flex-direction: column; gap: 4px;">
                 <div v-if="element.ten_file || element.report_id" style="display: flex; flex-direction: column; gap: 8px; margin-top: 0;">
                   <details v-if="element.ten_file" class="vip-details" @click.stop>
                     <summary style="font-size: 11px; color: #ffffff; cursor: pointer; user-select: none; font-weight: 600; outline: none; margin: 0; padding: 0; margin-left: -14px; text-align: left;">
@@ -404,27 +407,27 @@
                   <template #item="{ element: child, index }">
                     <div style="position: relative;" :style="{ marginTop: index > 0 ? '24px' : '0' }">
                       <div v-if="index > 0" :style="{ position: 'absolute', left: '50%', top: '-24px', transform: 'translateX(-50%)', width: '2px', height: '24px', background: (col.id === 'that_bai' || col.id === 'hoan_thanh') ? '#475569' : getColTitleColor(col.id) }"></div>
-                      <div class="kanban-card vip-card" @click="mergeMode ? toggleMergeSelect(child) : openEditModal(child)" :style="{ cursor: 'pointer', margin: 0, border: mergeSelected.find(i => i.Id_pipeline === child.Id_pipeline) ? '2px solid #3b82f6' : ((col.id === 'that_bai' || col.id === 'hoan_thanh') ? '1px solid rgba(255,255,255,0.05)' : `1px solid ${getColTitleColor(col.id)}`) }">
+                      <div :id="'pipeline-card-' + child.Id_pipeline" class="kanban-card vip-card" :class="{'highlight-card': highlightedCardId === child.Id_pipeline}" @click="mergeMode ? toggleMergeSelect(child) : openEditModal(child)" :style="{ cursor: 'pointer', margin: 0, border: mergeSelected.find(i => i.Id_pipeline === child.Id_pipeline) ? '2px solid #3b82f6' : ((col.id === 'that_bai' || col.id === 'hoan_thanh') ? '1px solid rgba(255,255,255,0.05)' : `1px solid ${getColTitleColor(col.id)}`) }">
                         <div class="tl-shimmer-border"></div>
-                        <div :style="{ background: 'transparent', color: getColTitleColor(col.id), padding: '6px 16px', margin: '-16px -16px 12px -16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', fontWeight: '700', borderBottom: '1px solid rgba(255,255,255,0.05)' }">
+                        <div :style="{ background: 'transparent', color: getColTitleColor(col.id), padding: '6px 16px', margin: '-16px -16px 6px -16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', fontWeight: '700', borderBottom: '1px solid rgba(255,255,255,0.05)' }">
                           <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
                             <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                             {{ child.finish_time || 'No Deadline' }}
                           </div>
                           <div style="display: flex; align-items: center; gap: 8px;">
-                            <span class="vip-badge tag-normal" v-if="child.tag" :class="getTagClass(child.tag)">{{ child.tag }}</span>
                             <button v-if="!mergeMode" @click.stop="startMerge(child)" title="Gộp thẻ" style="background: rgba(255,255,255,0.2); border: none; border-radius: 4px; color: #fff; cursor: pointer; padding: 2px 6px; display: flex; align-items: center; justify-content: center;">🔗</button>
                             <input v-if="mergeMode && mergeTarget?.Id_pipeline !== child.Id_pipeline" type="checkbox" :checked="!!mergeSelected.find(i => i.Id_pipeline === child.Id_pipeline)" @click.stop="toggleMergeSelect(child)" style="cursor: pointer; width: 16px; height: 16px;" />
                             <span v-if="mergeMode && mergeTarget?.Id_pipeline === child.Id_pipeline" style="font-size: 11px; color: #fbbf24; font-weight: 800;">GỐC</span>
                           </div>
                         </div>
-                        <div class="vip-card-header" style="flex-direction: column; align-items: flex-start; gap: 8px;" v-if="child.ten_khach_hang || child.ten_cong_ty">
-                          <div class="vip-badges" style="display: flex; flex-wrap: wrap; gap: 6px; width: 100%;">
-                            <span class="vip-badge" :style="{ background: '#ffffff', color: getColDarkColor(col.id), border: 'none', padding: '4px 8px', fontSize: '11px', fontWeight: '800' }">{{ [child.ten_cong_ty, child.ten_khach_hang].filter(Boolean).join(' - ') }}</span>
+                        <div class="vip-card-header" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; gap: 8px; width: 100%;" v-if="child.ten_khach_hang || child.ten_cong_ty || child.tag">
+                          <div class="vip-badges" style="display: flex; flex-wrap: wrap; gap: 6px; flex: 1;" v-if="child.ten_khach_hang || child.ten_cong_ty">
+                            <span class="vip-badge" :style="{ background: '#ffffff', color: getColDarkColor(col.id), border: 'none', padding: '2px 6px', fontSize: '9px', fontWeight: '800' }">{{ child.ten_cong_ty || child.ten_khach_hang }}</span>
                           </div>
+                          <span class="vip-badge tag-normal" v-if="child.tag && child.tag.toLowerCase() !== 'bình thường'" :class="getTagClass(child.tag)" style="flex-shrink: 0; font-size: 9px;">{{ child.tag }}</span>
                         </div>
           
-                        <div class="vip-content" style="margin-top: 12px;">
+                        <div class="vip-content" style="margin-top: 6px;">
                           <h4 class="vip-desc" style="color: #f8fafc; font-size: 14px; font-weight: 600; margin: 0 0 8px 0; line-height: 1.4;">{{ child.content_of_contract_po || 'Chưa có nội dung hợp đồng' }}</h4>
                           
                           <div v-if="child.quantity || child.type || child.volume" style="margin-bottom: 8px;">
@@ -433,12 +436,12 @@
                             </span>
                           </div>
           
-                          <div v-if="child.ghi_chu_hop_dong" style="color: #ef4444; font-size: 12px; font-weight: 700; margin-bottom: 4px;">
+                          <div v-if="child.ghi_chu_hop_dong" style="color: #ef4444; font-size: 12px; font-weight: 700; margin-bottom: 0px;">
                             {{ child.ghi_chu_hop_dong }}
                           </div>
                         </div>
           
-                        <div class="vip-footer" style="margin-top: 8px; display: flex; flex-direction: column; gap: 8px;">
+                        <div class="vip-footer" style="margin-top: 4px; display: flex; flex-direction: column; gap: 4px;">
                           <div v-if="child.ten_file || child.report_id" style="display: flex; flex-direction: column; gap: 8px; margin-top: 0;">
                             <details v-if="child.ten_file" class="vip-details" @click.stop>
                               <summary style="font-size: 11px; color: #ffffff; cursor: pointer; user-select: none; font-weight: 600; outline: none; margin: 0; padding: 0; margin-left: -14px; text-align: left;">
@@ -483,27 +486,27 @@
               </div>
             </div>
 
-            <div v-else class="kanban-card vip-card" v-show="matchesSearch(element)" @click="mergeMode ? toggleMergeSelect(element) : openEditModal(element)" :style="{ cursor: 'pointer', border: mergeSelected.find(i => i.Id_pipeline === element.Id_pipeline) ? '2px solid #3b82f6' : ((col.id === 'that_bai' || col.id === 'hoan_thanh') ? '1px solid rgba(255,255,255,0.05)' : `1px solid ${getColTitleColor(col.id)}`) }">
+            <div v-else :id="'pipeline-card-' + element.Id_pipeline" class="kanban-card vip-card" :class="{'highlight-card': highlightedCardId === element.Id_pipeline}" v-show="matchesSearch(element)" @click="mergeMode ? toggleMergeSelect(element) : openEditModal(element)" :style="{ cursor: 'pointer', border: mergeSelected.find(i => i.Id_pipeline === element.Id_pipeline) ? '2px solid #3b82f6' : ((col.id === 'that_bai' || col.id === 'hoan_thanh') ? '1px solid rgba(255,255,255,0.05)' : `1px solid ${getColTitleColor(col.id)}`) }">
               <div class="tl-shimmer-border"></div>
-              <div :style="{ background: 'transparent', color: getColTitleColor(col.id), padding: '6px 16px', margin: '-16px -16px 12px -16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', fontWeight: '700', borderBottom: '1px solid rgba(255,255,255,0.05)' }">
+              <div :style="{ background: 'transparent', color: getColTitleColor(col.id), padding: '6px 16px', margin: '-16px -16px 6px -16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', fontWeight: '700', borderBottom: '1px solid rgba(255,255,255,0.05)' }">
                 <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
                   <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                   {{ element.finish_time || 'No Deadline' }}
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
-                  <span class="vip-badge tag-normal" v-if="element.tag" :class="getTagClass(element.tag)">{{ element.tag }}</span>
                   <button v-if="!mergeMode" @click.stop="startMerge(element)" title="Gộp thẻ" style="background: rgba(255,255,255,0.2); border: none; border-radius: 4px; color: #fff; cursor: pointer; padding: 2px 6px; display: flex; align-items: center; justify-content: center;">🔗</button>
                   <input v-if="mergeMode && mergeTarget?.Id_pipeline !== element.Id_pipeline" type="checkbox" :checked="!!mergeSelected.find(i => i.Id_pipeline === element.Id_pipeline)" @click.stop="toggleMergeSelect(element)" style="cursor: pointer; width: 16px; height: 16px;" />
                   <span v-if="mergeMode && mergeTarget?.Id_pipeline === element.Id_pipeline" style="font-size: 11px; color: #fbbf24; font-weight: 800;">GỐC</span>
                 </div>
               </div>
-              <div class="vip-card-header" style="flex-direction: column; align-items: flex-start; gap: 8px;" v-if="element.ten_khach_hang || element.ten_cong_ty">
-                <div class="vip-badges" style="display: flex; flex-wrap: wrap; gap: 6px; width: 100%;">
-                  <span class="vip-badge" :style="{ background: '#ffffff', color: getColDarkColor(col.id), border: 'none', padding: '4px 8px', fontSize: '11px', fontWeight: '800' }">{{ [element.ten_cong_ty, element.ten_khach_hang].filter(Boolean).join(' - ') }}</span>
+              <div class="vip-card-header" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; gap: 8px; width: 100%;" v-if="element.ten_khach_hang || element.ten_cong_ty || element.tag">
+                <div class="vip-badges" style="display: flex; flex-wrap: wrap; gap: 6px; flex: 1;" v-if="element.ten_khach_hang || element.ten_cong_ty">
+                  <span class="vip-badge" :style="{ background: '#ffffff', color: getColDarkColor(col.id), border: 'none', padding: '2px 6px', fontSize: '9px', fontWeight: '800' }">{{ element.ten_cong_ty || element.ten_khach_hang }}</span>
                 </div>
+                <span class="vip-badge tag-normal" v-if="element.tag && element.tag.toLowerCase() !== 'bình thường'" :class="getTagClass(element.tag)" style="flex-shrink: 0; font-size: 9px;">{{ element.tag }}</span>
               </div>
 
-              <div class="vip-content" style="margin-top: 12px;">
+              <div class="vip-content" style="margin-top: 6px;">
                 <h4 class="vip-desc" style="color: #f8fafc; font-size: 14px; font-weight: 600; margin: 0 0 8px 0; line-height: 1.4;">{{ element.content_of_contract_po || 'Chưa có nội dung hợp đồng' }}</h4>
                 
                 <div v-if="element.quantity || element.type || element.volume" style="margin-bottom: 8px;">
@@ -512,12 +515,12 @@
                   </span>
                 </div>
 
-                <div v-if="element.ghi_chu_hop_dong" style="color: #ef4444; font-size: 12px; font-weight: 700; margin-bottom: 4px;">
+                <div v-if="element.ghi_chu_hop_dong" style="color: #ef4444; font-size: 12px; font-weight: 700; margin-bottom: 0px;">
                   {{ element.ghi_chu_hop_dong }}
                 </div>
               </div>
 
-              <div class="vip-footer" style="margin-top: 8px; display: flex; flex-direction: column; gap: 8px;">
+              <div class="vip-footer" style="margin-top: 4px; display: flex; flex-direction: column; gap: 4px;">
                 <div v-if="element.ten_file || element.report_id" style="display: flex; flex-direction: column; gap: 8px; margin-top: 0;">
                   <details v-if="element.ten_file" class="vip-details" @click.stop>
                     <summary style="font-size: 11px; color: #ffffff; cursor: pointer; user-select: none; font-weight: 600; outline: none; margin: 0; padding: 0; margin-left: -14px; text-align: left;">
@@ -791,6 +794,82 @@
       </div>
     </div>
 
+    <!-- Export Excel Modal -->
+    <div class="modal-overlay" v-if="showExportModal" @click.self="showExportModal = false">
+      <div class="modal-content export-modal-content" style="background: #0f172a; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; overflow: hidden;">
+        <div class="modal-header" style="padding: 1rem 1.25rem; border-bottom: 1px solid rgba(255, 255, 255, 0.08); background: linear-gradient(135deg, #10b981 0%, #059669 100%); display: flex; justify-content: space-between; align-items: center;">
+          <h2 style="margin: 0; font-size: 18px; color: #f8fafc; font-weight: 700;">Xuất Excel Pipeline</h2>
+          <button class="close-btn" @click="showExportModal = false" style="background: none; border: none; color: #ffffff; font-size: 28px; cursor: pointer; line-height: 1;">&times;</button>
+        </div>
+        <div class="modal-body export-modal-body" style="padding: 1.5rem; display: flex; gap: 24px; overflow: hidden;">
+          <!-- Left Column: Filters -->
+          <div class="export-filters" style="display: flex; flex-direction: column; gap: 1rem; border-right: 1px solid rgba(255,255,255,0.1); padding-right: 24px; width: 300px; flex-shrink: 0;">
+            <div class="elite-form-group">
+              <label style="color: #94a3b8; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem; display: block;">Quy trình (Workflow)</label>
+              <select v-model="exportFilters.id_workflow" style="width: 100%; box-sizing: border-box; padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: #fff; outline: none; color-scheme: dark;">
+                <option value="">Tất cả quy trình</option>
+                <option value="WF_DEFAULT">Mặc định</option>
+                <option v-for="wf in uniqueWorkflows" :key="wf.id_workflow" :value="wf.id_workflow">{{ wf.name_workflow }}</option>
+              </select>
+            </div>
+            <div class="elite-form-group">
+              <label style="color: #94a3b8; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem; display: block;">Từ ngày (Finish Time)</label>
+              <input type="date" v-model="exportFilters.dateFrom" @click="$event.target.showPicker && $event.target.showPicker()" style="width: 100%; box-sizing: border-box; padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: #fff; outline: none; color-scheme: dark; cursor: pointer;" />
+            </div>
+            <div class="elite-form-group">
+              <label style="color: #94a3b8; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem; display: block;">Đến ngày</label>
+              <input type="date" v-model="exportFilters.dateTo" @click="$event.target.showPicker && $event.target.showPicker()" style="width: 100%; box-sizing: border-box; padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: #fff; outline: none; color-scheme: dark; cursor: pointer;" />
+            </div>
+          </div>
+          <!-- Right Column: Preview -->
+          <div class="export-preview-container" style="display: flex; flex-direction: column; overflow: hidden; flex: 1;">
+            <h3 style="margin: 0 0 1rem 0; font-size: 1rem; color: #e2e8f0;">Xem trước danh sách ({{ exportPreviewList.length }} thẻ)</h3>
+            <div style="overflow-y: auto; flex: 1; padding-right: 8px; display: flex; flex-direction: column; gap: 8px;">
+              <div v-for="item in exportPreviewList" :key="item.Id_pipeline" style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; display: flex; flex-direction: column; gap: 4px; position: relative;">
+                <button type="button" @click.stop="removeExportCard(item.Id_pipeline)" style="position: absolute; top: 8px; right: 8px; background: rgba(239, 68, 68, 0.1); border: none; border-radius: 50%; color: #ef4444; width: 24px; height: 24px; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'; this.style.color='#f87171'" onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'; this.style.color='#ef4444'" title="Loại bỏ thẻ này khỏi danh sách xuất">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+                <div style="font-weight: 600; color: #38bdf8; font-size: 0.95rem; padding-right: 28px;">
+                  {{ item.ten_cong_ty || 'Chưa có CTy' }} - {{ item.ten_khach_hang || 'Chưa có KH' }}
+                </div>
+                <div v-if="item.content_of_contract_po" style="color: #f8fafc; font-size: 0.85rem; line-height: 1.4; margin-top: 2px;">
+                  {{ item.content_of_contract_po }}
+                </div>
+                <div v-if="item.type || item.volume || item.quantity" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; margin-top: 4px;">
+                  <span style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); padding: 2px 6px; border-radius: 4px;">
+                    {{ [item.type, formatNumber(item.volume), item.quantity].filter(Boolean).join(' - ') }}
+                  </span>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px; font-size: 0.8rem;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 4px; color: #cbd5e1; font-weight: 600;">
+                      {{ getFormattedStatus(item) }}
+                    </span>
+                    <span v-if="item.ghi_chu_hop_dong" style="color: #ef4444; font-weight: 600; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                      {{ item.ghi_chu_hop_dong }}
+                    </span>
+                  </div>
+                  <div style="display: flex; align-items: center; justify-content: flex-end; color: #fbbf24; margin-top: 2px;">
+                    <svg style="margin-right: 4px; vertical-align: text-bottom;" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    {{ item.finish_time || 'Chưa hẹn' }}
+                  </div>
+                </div>
+              </div>
+              <div v-if="exportPreviewList.length === 0" style="text-align: center; color: #64748b; padding: 2rem; font-style: italic;">
+                Không có thẻ nào phù hợp với bộ lọc.
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer export-modal-footer" style="padding: 1rem 1.5rem; border-top: 1px solid rgba(255,255,255,0.1); background: rgba(15, 23, 42, 0.4); display: flex; justify-content: flex-end;">
+          <button class="tech-vip-btn" @click="confirmExportExcel" style="background: #10b981; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 8px; cursor: pointer;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Xác nhận xuất Excel
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Confirm Action Modal -->
     <div v-if="confirmActionModal.show" class="modal-overlay" @click.self="confirmActionModal.show = false" style="z-index: 10001;">
       <div class="custom-alert-modal" style="background: #1e293b; padding: 24px; border-radius: 12px; max-width: 400px; width: 100%; text-align: center; border: 1px solid rgba(255,255,255,0.1);">
@@ -934,9 +1013,89 @@ const filterConfig = ref({
   monthTo: '',
   yearFrom: '',
   yearTo: '',
-  customerName: '',
-  companyName: ''
+  companyCustomer: ''
 })
+
+const showExportModal = ref(false)
+const removedExportIds = ref([])
+const exportFilters = ref({
+  id_workflow: '',
+  dateFrom: '',
+  dateTo: ''
+})
+
+const parseDMY = (dmyStr) => {
+  const parts = dmyStr.split('/')
+  if (parts.length === 3) {
+    return new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`).getTime()
+  }
+  return 0
+}
+
+const exportPreviewList = computed(() => {
+  let list = items.value.filter(matchesSearch)
+  
+  if (exportFilters.value.id_workflow) {
+    if (exportFilters.value.id_workflow === 'WF_DEFAULT') {
+      list = list.filter(i => !i.id_workflow || i.id_workflow === 'WF_DEFAULT')
+    } else {
+      list = list.filter(i => i.id_workflow === exportFilters.value.id_workflow)
+    }
+  }
+  
+  if (exportFilters.value.dateFrom || exportFilters.value.dateTo) {
+    const fromTime = exportFilters.value.dateFrom ? new Date(exportFilters.value.dateFrom).getTime() : 0
+    const toTime = exportFilters.value.dateTo ? new Date(exportFilters.value.dateTo).setHours(23,59,59,999) : Infinity
+    
+    list = list.filter(i => {
+      if (!i.finish_time) return false;
+      const dates = i.finish_time.split('-').map(s => s.trim())
+      const startDateStr = dates[0]
+      const itemDate = parseDMY(startDateStr)
+      if (itemDate) {
+        return itemDate >= fromTime && itemDate <= toTime
+      }
+      return false
+    })
+  }
+
+  if (removedExportIds.value.length > 0) {
+    list = list.filter(i => !removedExportIds.value.includes(i.Id_pipeline))
+  }
+
+  return list
+})
+
+const removeExportCard = (id) => {
+  if (!removedExportIds.value.includes(id)) {
+    removedExportIds.value.push(id)
+  }
+}
+
+watch(showExportModal, (val) => {
+  if (val) {
+    removedExportIds.value = []
+  }
+})
+
+const getFormattedStatus = (item) => {
+  let statusStr = item['%status'] || ''; 
+  if (typeof statusStr === 'number' || (!isNaN(statusStr) && statusStr !== '')) {
+    let num = Number(statusStr);
+    if (num <= 1 && num >= 0) {
+      statusStr = (num * 100) + '%';
+    }
+  } else if (typeof statusStr === 'string' && !statusStr.includes('%') && item.status_name) {
+    const colMatch = COLUMNS.value.find(c => c.value === item.status_name);
+    if (colMatch) statusStr = colMatch.percent;
+  }
+  return statusStr || item.status_name || '0%';
+}
+
+const confirmExportExcel = () => {
+  exportToExcel(exportPreviewList.value)
+  showExportModal.value = false
+}
 
 const resetFilters = () => {
   filterConfig.value = {
@@ -949,13 +1108,22 @@ const resetFilters = () => {
     monthTo: '',
     yearFrom: '',
     yearTo: '',
-    customerName: '',
-    companyName: ''
+    companyCustomer: ''
   }
 }
 
-const exportToExcel = async () => {
-  const filtered = items.value.filter(matchesSearch);
+const exportToExcel = async (listToExport = null) => {
+  const dataList = Array.isArray(listToExport) ? listToExport : items.value.filter(matchesSearch);
+  const filtered = dataList;
+  
+  let titleText = 'PIPELINE';
+  if (exportFilters.value.dateFrom) {
+    const year = new Date(exportFilters.value.dateFrom).getFullYear();
+    titleText = `PIPELINE ( ${year} )`;
+  } else if (exportFilters.value.dateTo) {
+    const year = new Date(exportFilters.value.dateTo).getFullYear();
+    titleText = `PIPELINE ( ${year} )`;
+  }
   
   const formatTimeline = (finishTimeStr) => {
     if (!finishTimeStr) return '';
@@ -1004,7 +1172,7 @@ const exportToExcel = async () => {
 
   try {
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Pipeline 2024');
+    const worksheet = workbook.addWorksheet('Pipeline');
     
     // Setup cột
     worksheet.columns = [
@@ -1025,7 +1193,7 @@ const exportToExcel = async () => {
       ['Công ty CP Tích hợp hệ thống Nam Trường Sơn'],
       ['55/10 Trần Đình Xu, P. Cầu Kho, Q.1, TP. HCM'],
       [],
-      [' PIPELINE 2024'], 
+      [' ' + titleText], 
       ['Stage (trạng thái)'],
       ['30% : Pipeline (khảo sát nhu cầu khách hàng)'],
       ['50%: Forecast (đã lên báo giá gởi khách hàng)'],
@@ -1043,9 +1211,9 @@ const exportToExcel = async () => {
     worksheet.getCell('A2').font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FF000000' } };
     
     // Style tiêu đề chính
-    worksheet.mergeCells('A4:J4');
     const titleCell = worksheet.getCell('A4');
-    titleCell.value = 'PIPELINE 2024';
+    worksheet.mergeCells('A4:O4');
+    titleCell.value = titleText;
     titleCell.font = { name: 'Arial', size: 16, bold: true, color: { argb: 'FF000000' } };
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
@@ -1191,14 +1359,24 @@ const exportToExcel = async () => {
   }
 };
 
-const uniqueCustomers = computed(() => {
-  const names = items.value.map(i => i.ten_khach_hang).filter(Boolean);
-  return [...new Set(names)].sort();
-});
-
-const uniqueCompanies = computed(() => {
-  const names = items.value.map(i => i.ten_cong_ty).filter(Boolean);
-  return [...new Set(names)].sort();
+const uniqueCompanyCustomers = computed(() => {
+  const map = new Map();
+  items.value.forEach(i => {
+    if (i.ten_cong_ty || i.ten_khach_hang) {
+      const company = i.ten_cong_ty || '';
+      const customer = i.ten_khach_hang || '';
+      const key = JSON.stringify({ company, customer });
+      if (!map.has(key)) {
+        map.set(key, { 
+          key, 
+          company, 
+          customer, 
+          label: company ? (customer ? `${company} - ${customer}` : company) : customer 
+        });
+      }
+    }
+  });
+  return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
 });
 
 const getWeekDateRange = (weekStr) => {
@@ -1313,6 +1491,7 @@ const getParsedFiles = (element) => {
 
 
 // State for kanban boards
+const highlightedCardId = ref(null)
 const isDragging = ref(false)
 const isMobile = ref(false)
 const mouseX = ref(0)
@@ -1418,12 +1597,12 @@ const matchesSearch = (item) => {
     if (!textMatch) return false;
   }
 
-  if (filterConfig.value.customerName && item.ten_khach_hang !== filterConfig.value.customerName) {
-    return false;
-  }
-  
-  if (filterConfig.value.companyName && item.ten_cong_ty !== filterConfig.value.companyName) {
-    return false;
+  if (filterConfig.value.companyCustomer) {
+    try {
+      const selected = JSON.parse(filterConfig.value.companyCustomer);
+      if (selected.company && item.ten_cong_ty !== selected.company) return false;
+      if (selected.customer && item.ten_khach_hang !== selected.customer) return false;
+    } catch(e) {}
   }
 
   if (filterConfig.value.filterMode !== 'all') {
@@ -1678,7 +1857,17 @@ const fetchData = async () => {
       if (route.query.openId) {
         const targetItem = items.value.find(i => String(i.Id_pipeline) === String(route.query.openId))
         if (targetItem) {
-          openEditModal(targetItem)
+          selectedWorkflowId.value = targetItem.id_workflow || 'WF_DEFAULT'
+          highlightedCardId.value = targetItem.Id_pipeline
+          
+          setTimeout(() => {
+            const el = document.getElementById('pipeline-card-' + targetItem.Id_pipeline)
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }, 100)
+
+          setTimeout(() => {
+            highlightedCardId.value = null
+          }, 2500)
         }
         router.replace({ path: '/pipeline' })
       }
@@ -2155,6 +2344,20 @@ onUnmounted(() => {
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
+@keyframes card-highlight-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.8); background-color: rgba(16, 185, 129, 0.4); transform: scale(1); }
+  50% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); background-color: rgba(16, 185, 129, 0.7); transform: scale(1.03); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); background-color: rgba(16, 185, 129, 0.4); transform: scale(1); }
+}
+
+.highlight-card {
+  animation: card-highlight-pulse 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  border: 2px solid #10b981 !important;
+  background-color: rgba(16, 185, 129, 0.4) !important;
+  z-index: 10;
+  position: relative;
+}
+
 .pipeline-page {
   padding: 24px;
   min-height: 100vh;
@@ -2469,8 +2672,8 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 4px;
-  padding-top: 8px;
+  margin-top: 0px;
+  padding-top: 4px;
   border-top: 1px solid rgba(255,255,255,0.04);
 }
 .vip-date, .vip-deadline {
@@ -3275,5 +3478,56 @@ onUnmounted(() => {
 
 .pipeline-tab-btn svg {
   stroke-width: 2.5;
+}
+
+.export-modal-content {
+  width: 1000px;
+  max-width: 95vw;
+}
+.export-modal-body {
+  min-height: 400px;
+  max-height: 70vh;
+}
+
+@media (max-width: 768px) {
+  .export-modal-content {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+  }
+  .export-modal-body {
+    flex-direction: column !important;
+    gap: 12px !important;
+    min-height: auto !important;
+    max-height: none !important;
+    flex: 1 !important;
+    overflow-y: auto !important;
+    padding: 16px !important;
+  }
+  .export-filters {
+    width: 100% !important;
+    border-right: none !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    padding-right: 0 !important;
+    padding-bottom: 16px !important;
+    flex-shrink: 0 !important;
+  }
+  .export-preview-container {
+    overflow-y: visible !important;
+  }
+  .export-preview-container > div {
+    overflow-y: visible !important;
+  }
+  .export-modal-footer {
+    padding-bottom: 90px !important;
+    justify-content: center !important;
+  }
+  .export-modal-footer .tech-vip-btn {
+    width: 100% !important;
+  }
 }
 </style>

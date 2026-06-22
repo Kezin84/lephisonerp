@@ -53,6 +53,62 @@ function invalidateCache() {
 }
 
 // ─────────────────────────────────────────────────────────────
+//  SYNC LINK: Report <-> Pipeline
+// ─────────────────────────────────────────────────────────────
+function syncLinkRefs_(sourceType, sourceId, oldLinkedIdsStr, newLinkedIdsStr) {
+  try {
+    const parseIds = function(str) {
+      return String(str || "").split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+    };
+    const oldIds = parseIds(oldLinkedIdsStr);
+    const newIds = parseIds(newLinkedIdsStr);
+    
+    const added = newIds.filter(function(id) { return oldIds.indexOf(id) === -1; });
+    const removed = oldIds.filter(function(id) { return newIds.indexOf(id) === -1; });
+    
+    if (added.length === 0 && removed.length === 0) return;
+    
+    let targetSheetName, targetColIndex;
+    if (sourceType === 'REPORT') {
+      targetSheetName = "pipeline";
+      targetColIndex = 2; // report_id is column 2 (1-based index)
+    } else if (sourceType === 'PIPELINE') {
+      targetSheetName = "REPORT";
+      targetColIndex = 15; // id_pipeline is column 15 (1-based index)
+    } else {
+      return;
+    }
+    
+    const targetSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(targetSheetName);
+    if (!targetSheet) return;
+    const lastRow = targetSheet.getLastRow();
+    if (lastRow < 2) return;
+    
+    const allToUpdate = [];
+    for (let i = 0; i < added.length; i++) if (allToUpdate.indexOf(added[i]) === -1) allToUpdate.push(added[i]);
+    for (let i = 0; i < removed.length; i++) if (allToUpdate.indexOf(removed[i]) === -1) allToUpdate.push(removed[i]);
+    
+    allToUpdate.forEach(function(targetId) {
+      const cell = targetSheet.getRange(2, 1, lastRow - 1, 1).createTextFinder(targetId).matchEntireCell(true).findNext();
+      if (!cell) return;
+      const rowNum = cell.getRow();
+      const refCell = targetSheet.getRange(rowNum, targetColIndex);
+      let currentRefs = parseIds(refCell.getValue());
+      
+      if (added.indexOf(targetId) !== -1) {
+        if (currentRefs.indexOf(sourceId) === -1) currentRefs.push(sourceId);
+      } else if (removed.indexOf(targetId) !== -1) {
+        currentRefs = currentRefs.filter(function(id) { return id !== sourceId; });
+      }
+      
+      refCell.setValue(currentRefs.join(', '));
+    });
+  } catch (e) {
+    Logger.log("syncLinkRefs_ Error: " + e.message);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 //  GET: đọc toàn bộ data – ưu tiên cache
 // ─────────────────────────────────────────────────────────────
 function getData(params) {
@@ -87,7 +143,7 @@ function getData(params) {
   }
 
   // Lấy tất cả dữ liệu 1 lần (tránh loop getRange từng row)
-  const range  = sheet.getRange(2, 1, lastRow - 1, 15);
+  const range  = sheet.getRange(2, 1, lastRow - 1, 18);
   const values = range.getValues();
 
   let rows = values
@@ -107,7 +163,10 @@ function getData(params) {
       ten_file_bao_gia: r[11] || "",
       ten_file_mua_hang: r[12] || "",
       isFailed    : r[13] === true || String(r[13]).toLowerCase() === 'true',
-      id_pipeline : r[14] || ""
+      id_pipeline : r[14] || "",
+      reminder_time : r[15] instanceof Date ? `${String(r[15].getDate()).padStart(2,'0')}/${String(r[15].getMonth()+1).padStart(2,'0')}/${r[15].getFullYear()}` : (r[15] || ""),
+      reminder_content : r[16] || "",
+      reminder_visible : r[17] !== "" ? (r[17] === true || String(r[17]).toUpperCase() === 'TRUE') : true
     }));
 
   // --- apply filters ---
@@ -131,16 +190,48 @@ function getData(params) {
 }
 
 // ─────────────────────────────────────────────────────────────
-//  POST: thêm / sửa / xoá
+//  POST: thêm / sửa / xoá / hide_reminder
 // ─────────────────────────────────────────────────────────────
+function parseReminderTime(rt) {
+  if (!rt) return "";
+  rt = String(rt).trim();
+  if (rt.includes("T")) {
+    const d = new Date(rt);
+    if (!isNaN(d.getTime())) {
+      const pad = n => String(n).padStart(2, '0');
+      return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`;
+    }
+  }
+  if (rt.includes("-")) {
+    return rt.split("-").reverse().join("/");
+  }
+  return rt;
+}
+
 function postData(payload) {
   const action = (payload.action || "add").toLowerCase();
 
   if (action === "add")    return addRow(payload);
   if (action === "update") return updateRow(payload);
   if (action === "delete") return deleteRow(payload);
+  if (action === "hide_reminder") return hideReminder(payload);
 
-  return { status: "error", message: "action không hợp lệ. Dùng: add | update | delete" };
+  return { status: "error", message: "action không hợp lệ. Dùng: add | update | delete | hide_reminder" };
+}
+
+function hideReminder(p) {
+  if (!p.id) return { status: "error", message: "id là bắt buộc" };
+  const sheet = getSheet();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { status: "error", message: "Sheet rỗng" };
+
+  const cell = sheet.getRange(2, 1, lastRow - 1, 1).createTextFinder(p.id).matchEntireCell(true).findNext();
+  if (!cell) return { status: "error", message: `Không tìm thấy ID: ${p.id}` };
+
+  const rowNum = cell.getRow();
+  sheet.getRange(rowNum, 18).setValue("FALSE"); // Cột 18 là reminder-visible
+  invalidateCache();
+  return { status: "success", action: "hide_reminder", id: p.id };
 }
 
 // --- ADD ---
@@ -170,10 +261,16 @@ function addRow(p) {
     p.ten_file_bao_gia || "",
     p.ten_file_mua_hang || "",
     p.isFailed ? true : "",
-    p.id_pipeline || ""
+    p.id_pipeline || "",
+    parseReminderTime(p.reminder_time),
+    p.reminder_content || "",
+    p.reminder_visible !== undefined ? p.reminder_visible : "TRUE"
   ]);
 
   invalidateCache();
+  if (p.id_pipeline) {
+    syncLinkRefs_('REPORT', id, "", p.id_pipeline);
+  }
   return { status: "success", action: "add", id, thoi_gian: time };
 }
 
@@ -189,9 +286,11 @@ function updateRow(p) {
   if (!cell) return { status: "error", message: `Không tìm thấy ID: ${p.id}` };
 
   const rowNum = cell.getRow();
-  const row    = sheet.getRange(rowNum, 1, 1, 15).getValues()[0];
+  const row    = sheet.getRange(rowNum, 1, 1, 18).getValues()[0];
+  const old_id_pipeline = row[14] || "";
+  const new_id_pipeline = p.id_pipeline !== undefined ? p.id_pipeline : old_id_pipeline;
 
-  sheet.getRange(rowNum, 1, 1, 15).setValues([[
+  sheet.getRange(rowNum, 1, 1, 18).setValues([[
     row[0],
     p.phan_loai  !== undefined ? p.phan_loai  : row[1],
     p.thoi_gian  !== undefined ? p.thoi_gian  : row[2],
@@ -206,10 +305,16 @@ function updateRow(p) {
     p.ten_file_bao_gia !== undefined ? p.ten_file_bao_gia : (row[11] || ""),
     p.ten_file_mua_hang !== undefined ? p.ten_file_mua_hang : (row[12] || ""),
     p.isFailed !== undefined ? p.isFailed : (row[13] || ""),
-    p.id_pipeline !== undefined ? p.id_pipeline : (row[14] || "")
+    new_id_pipeline,
+    p.reminder_time !== undefined ? parseReminderTime(p.reminder_time) : (row[15] instanceof Date ? `${String(row[15].getDate()).padStart(2,'0')}/${String(row[15].getMonth()+1).padStart(2,'0')}/${row[15].getFullYear()}` : (row[15] || "")),
+    p.reminder_content !== undefined ? p.reminder_content : (row[16] || ""),
+    p.reminder_visible !== undefined ? p.reminder_visible : (row[17] || "")
   ]]);
 
   invalidateCache();
+  if (p.id_pipeline !== undefined) {
+    syncLinkRefs_('REPORT', p.id, old_id_pipeline, new_id_pipeline);
+  }
   return { status: "success", action: "update", id: p.id };
 }
 
@@ -224,8 +329,13 @@ function deleteRow(p) {
   const cell = sheet.getRange(2, 1, lastRow - 1, 1).createTextFinder(p.id).matchEntireCell(true).findNext();
   if (!cell) return { status: "error", message: `Không tìm thấy ID: ${p.id}` };
 
-  sheet.deleteRow(cell.getRow());
+  const rowNum = cell.getRow();
+  const row = sheet.getRange(rowNum, 1, 1, 15).getValues()[0];
+  const old_id_pipeline = row[14] || "";
+
+  sheet.deleteRow(rowNum);
   invalidateCache();
+  syncLinkRefs_('REPORT', p.id, old_id_pipeline, "");
   return { status: "success", action: "delete", id: p.id };
 }
 
@@ -312,12 +422,22 @@ function buildReportMessage(label) {
     return `${label}\n\n📭 Không có dữ liệu trong sheet.`;
   }
 
-  const values = sheet.getRange(2, 1, lastRow - 1, 7).getValues();
+  const values = sheet.getRange(2, 1, lastRow - 1, 18).getValues();
 
   const all = values.filter(r => r[0] !== "" && String(r[2]).includes(today));
 
   const done    = all.filter(r => String(r[6]).trim().toLowerCase() === "hoàn thành");
   const pending = all.filter(r => String(r[6]).trim().toLowerCase() !== "hoàn thành");
+
+  const today2 = `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()}`;
+  const dueReminders = values.filter(r => {
+    if (r[0] === "") return false;
+    let rDateStr = r[15] instanceof Date ? `${pad(r[15].getDate())}/${pad(r[15].getMonth()+1)}/${r[15].getFullYear()}` : String(r[15] || "").trim();
+    let rDateStr2 = r[15] instanceof Date ? `${r[15].getDate()}/${r[15].getMonth()+1}/${r[15].getFullYear()}` : String(r[15] || "").trim();
+    if (!rDateStr) return false;
+    let rVisible = r[17] !== "" ? (r[17] === true || String(r[17]).toUpperCase() === 'TRUE') : true;
+    return (rDateStr === today || rDateStr2 === today2) && rVisible;
+  });
 
   const fmt = rows => {
     if (rows.length === 0) return "  (không có)";
@@ -342,8 +462,20 @@ function buildReportMessage(label) {
     return lines.join("\n");
   };
 
-  return [
-    `${label} ( ${today} )`,
+  let msgLines = [
+    `${label} ( ${today} )`
+  ];
+
+  if (dueReminders.length > 0) {
+    msgLines.push(`============================`);
+    msgLines.push(`🚨 REPORT NHẮC LẠI CHƯA HOÀN THÀNH (${dueReminders.length})`);
+    dueReminders.forEach((r, idx) => {
+      msgLines.push(` - ${r[16]}`);
+    });
+  }
+
+  msgLines = msgLines.concat([
+    `============================`,
     `🔰 TỔNG CỘNG : ${all.length} VIỆC`,
     `============================`,
     `✅ Hoàn thành (${done.length})`,
@@ -353,7 +485,9 @@ function buildReportMessage(label) {
     fmt(pending),
     ``,
     `👉 <a href="https://sonaierp.vercel.app/report">Truy cập Trang Báo Cáo</a>`
-  ].join("\n");
+  ]);
+
+  return msgLines.join("\n");
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -364,8 +498,22 @@ function buildFullDailyReport(targetDateObj) {
   const targetDateStr2 = `${targetDateObj.getDate()}/${targetDateObj.getMonth()+1}/${targetDateObj.getFullYear()}`;
   const targetDateStr1 = `${pad(targetDateObj.getDate())}/${pad(targetDateObj.getMonth()+1)}/${targetDateObj.getFullYear()}`;
 
+  const todayObj = new Date();
+  const todayStr1 = `${pad(todayObj.getDate())}/${pad(todayObj.getMonth()+1)}/${todayObj.getFullYear()}`;
+  const todayStr2 = `${todayObj.getDate()}/${todayObj.getMonth()+1}/${todayObj.getFullYear()}`;
+
   // 1. Công việc (REPORT sheet)
   const reportRows = getOneSheet("REPORT");
+
+  const dueReminders = reportRows.filter(r => {
+    if (r[0] === "") return false;
+    let rDateStr = r[15] instanceof Date ? `${pad(r[15].getDate())}/${pad(r[15].getMonth()+1)}/${r[15].getFullYear()}` : String(r[15] || "").trim();
+    let rDateStr2 = r[15] instanceof Date ? `${r[15].getDate()}/${r[15].getMonth()+1}/${r[15].getFullYear()}` : String(r[15] || "").trim();
+    if (!rDateStr) return false;
+    let rVisible = r[17] !== "" ? (r[17] === true || String(r[17]).toUpperCase() === 'TRUE') : true;
+    return (rDateStr === todayStr1 || rDateStr2 === todayStr2) && rVisible;
+  });
+
   const todaysWork = reportRows.filter(r => {
     const timeStr = String(r[2] || '');
     return timeStr.includes(targetDateStr1) || timeStr.includes(targetDateStr2);
@@ -376,6 +524,16 @@ function buildFullDailyReport(targetDateObj) {
   let tin1 = `<b>🔴 BÁO CÁO CÔNG VIỆC HÔM QUA ( ${targetDateStr2} )🔴</b>`;
 
   let workText = [];
+  
+  if (dueReminders.length > 0) {
+    workText.push(`============================`);
+    workText.push(`🚨 REPORT NHẮC LẠI CHƯA HOÀN THÀNH(${dueReminders.length})`);
+    dueReminders.forEach((r, idx) => {
+      workText.push(` - ${r[16]}`);
+    });
+    workText.push('');
+  }
+
   workText.push(`1. CÔNG VIỆC ${targetDateStr2}`);
   workText.push(`🔰 TỔNG CỘNG : ${todaysWork.length} VIỆC`);
   workText.push(`============================`);
@@ -774,6 +932,9 @@ function pipeline_addRow(p) {
     p.volume || "", p.ten_file || "", p.link_file || "", p.id_pipeline_lien_ket || "",
     p.id_workflow || "WF_DEFAULT"
   ]);
+  if (p.report_id) {
+    syncLinkRefs_('PIPELINE', id, "", p.report_id);
+  }
   return { status: "success", action: "add", id };
 }
 
@@ -786,9 +947,12 @@ function pipeline_updateRow(p) {
   if (!cell) return { status: "error", message: `Không tìm thấy ID: ${p.Id_pipeline}` };
   const rowNum = cell.getRow();
   const row = sheet.getRange(rowNum, 1, 1, 23).getValues()[0];
+  const old_report_id = row[1] || "";
+  const new_report_id = p.report_id !== undefined ? p.report_id : old_report_id;
+  
   sheet.getRange(rowNum, 1, 1, 23).setValues([[
     row[0],
-    p.report_id !== undefined ? p.report_id : row[1],
+    new_report_id,
     p.ma_hop_dong !== undefined ? p.ma_hop_dong : row[2],
     p.ma_khach_hang !== undefined ? p.ma_khach_hang : row[3],
     p.ten_khach_hang !== undefined ? p.ten_khach_hang : row[4],
@@ -811,6 +975,11 @@ function pipeline_updateRow(p) {
     p.id_pipeline_lien_ket !== undefined ? p.id_pipeline_lien_ket : (row[21] || ""),
     p.id_workflow !== undefined ? p.id_workflow : (row[22] || "WF_DEFAULT")
   ]]);
+  
+  if (p.report_id !== undefined) {
+    syncLinkRefs_('PIPELINE', p.Id_pipeline, old_report_id, new_report_id);
+  }
+  
   return { status: "success", action: "update", id: p.Id_pipeline };
 }
 
@@ -828,9 +997,12 @@ function pipeline_updateRows_bulk(p) {
     if (!cell) continue;
     const rowNum = cell.getRow();
     const row = sheet.getRange(rowNum, 1, 1, 23).getValues()[0];
+    const old_report_id = row[1] || "";
+    const new_report_id = item.report_id !== undefined ? item.report_id : old_report_id;
+    
     sheet.getRange(rowNum, 1, 1, 23).setValues([[
       row[0],
-      item.report_id !== undefined ? item.report_id : row[1],
+      new_report_id,
       item.ma_hop_dong !== undefined ? item.ma_hop_dong : row[2],
       item.ma_khach_hang !== undefined ? item.ma_khach_hang : row[3],
       item.ten_khach_hang !== undefined ? item.ten_khach_hang : row[4],
@@ -853,6 +1025,11 @@ function pipeline_updateRows_bulk(p) {
       item.id_pipeline_lien_ket !== undefined ? item.id_pipeline_lien_ket : (row[21] || ""),
       item.id_workflow !== undefined ? item.id_workflow : (row[22] || "WF_DEFAULT")
     ]]);
+    
+    if (item.report_id !== undefined) {
+      syncLinkRefs_('PIPELINE', item.Id_pipeline, old_report_id, new_report_id);
+    }
+    
     count++;
   }
   
@@ -867,7 +1044,15 @@ function pipeline_deleteRow(p) {
   if (lastRow < 2) return { status: "error", message: "Sheet rỗng" };
   const cell = sheet.getRange(2, 1, lastRow - 1, 1).createTextFinder(id).matchEntireCell(true).findNext();
   if (!cell) return { status: "error", message: `Không tìm thấy ID: ${id}` };
-  sheet.deleteRow(cell.getRow());
+  
+  const rowNum = cell.getRow();
+  const row = sheet.getRange(rowNum, 1, 1, 23).getValues()[0];
+  const old_report_id = row[1] || "";
+  
+  sheet.deleteRow(rowNum);
+  
+  syncLinkRefs_('PIPELINE', id, old_report_id, "");
+  
   return { status: "success", action: "delete", id };
 }
 
