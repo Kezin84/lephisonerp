@@ -3430,7 +3430,7 @@ const hasChanges = computed(() => {
   if (!isEditing.value) return true;
   if (!originalData.value || !originalTimeInputs.value) return false;
   
-  const formKeys = ['phan_loai', 'noi_dung', 'ghi_chu', 'tag', 'trang_thai', 'img_save', 'link_excel_bao_gia', 'link_excel_mua_hang', 'ten_file_bao_gia', 'ten_file_mua_hang', 'id_pipeline'];
+  const formKeys = ['phan_loai', 'noi_dung', 'ghi_chu', 'tag', 'trang_thai', 'img_save', 'link_excel_bao_gia', 'link_excel_mua_hang', 'ten_file_bao_gia', 'ten_file_mua_hang', 'id_pipeline', 'reminder_time', 'reminder_content'];
   for (const k of formKeys) {
     if (formData.value[k] !== originalData.value[k]) return true;
   }
@@ -3461,7 +3461,7 @@ const openEditModal = (report) => {
     }
   }
   if (!formData.value.reminder_content) formData.value.reminder_content = ''
-  originalData.value = { ...report }
+  originalData.value = { ...formData.value }
   timeInputs.value = parseTimeString(report.thoi_gian);
   originalTimeInputs.value = { ...timeInputs.value }
   isModalOpen.value = true
