@@ -1,5 +1,8 @@
 <template>
-  <div class="app-layout" :class="{ 'sidebar-collapsed': !isSidebarOpen }">
+  <div v-if="isLoginRoute">
+    <router-view />
+  </div>
+  <div v-else class="app-layout" :class="{ 'sidebar-collapsed': !isSidebarOpen }">
     <aside class="sidebar">
       <div class="logo">
         <div v-if="isSidebarOpen" style="display: flex; align-items: center; gap: 12px; overflow: hidden;">
@@ -81,6 +84,14 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
           <span class="nav-text">Menu</span>
         </a>
+        <router-link to="/change-password" class="nav-item hide-on-mobile" title="Đổi mật khẩu">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          <span class="nav-text">Đổi mật khẩu</span>
+        </router-link>
+        <a href="#" class="nav-item logout-btn hide-on-mobile" title="Đăng xuất" @click.prevent="handleLogout">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+          <span class="nav-text">Đăng xuất</span>
+        </a>
       </nav>
     </aside>
     <main class="main-content" ref="mainContentRef" @scroll="handleScroll">
@@ -153,13 +164,34 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
           <span>Pipeline</span>
         </router-link>
+        <router-link to="/change-password" class="drawer-item" @click="isMobileDrawerOpen = false">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          <span>Đổi mật khẩu</span>
+        </router-link>
+        <div class="drawer-divider"></div>
+        <a href="#" class="drawer-item logout-drawer-btn" @click.prevent="handleLogout">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+          <span>Đăng xuất</span>
+        </a>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+
+const route = useRoute()
+const router = useRouter()
+const isLoginRoute = computed(() => route.path === '/login')
+
+const handleLogout = () => {
+  localStorage.removeItem('auth_token')
+  sessionStorage.removeItem('auth_token')
+  isMobileDrawerOpen.value = false
+  router.push('/login')
+}
 
 const isSidebarOpen = ref(true)
 const mainContentRef = ref(null)
@@ -250,6 +282,36 @@ onUnmounted(() => {
 
 .scroll-to-top:active {
   transform: translateY(0);
+  text-decoration: none;
+}
+
+.nav-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 10px 16px;
+}
+
+.logout-btn {
+  color: #ef4444;
+}
+
+.logout-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+}
+
+.drawer-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 10px 20px;
+}
+
+.logout-drawer-btn {
+  color: #ef4444 !important;
+}
+
+.logout-drawer-btn:hover {
+  background: rgba(239, 68, 68, 0.1) !important;
 }
 
 @media (max-width: 768px) {

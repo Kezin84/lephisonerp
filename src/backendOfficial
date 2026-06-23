@@ -1222,7 +1222,48 @@ function doPost(e) {
       const payload = JSON.parse(e.postData.contents || "{}");
       const sheet   = (payload.sheet || "report").toLowerCase();
 
-      if (action === "upload_image" || payload.action === "upload_image") {
+      if (action === "login") {
+        const sheetPw = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("password");
+        if (!sheetPw) {
+          result = { status: "error", message: "Chưa cấu hình Sheet password." };
+        } else {
+          const values = sheetPw.getDataRange().getValues();
+          let found = false;
+          let isKeeplogin = false;
+          for (let i = 1; i < values.length; i++) {
+            if (String(values[i][0]).trim() === String(payload.username).trim() && String(values[i][1]).trim() === String(payload.password).trim()) {
+              found = true;
+              isKeeplogin = values[i][2];
+              break;
+            }
+          }
+          if (found) {
+            result = { status: "success", message: "Đăng nhập thành công", isKeeplogin: isKeeplogin };
+          } else {
+            result = { status: "error", message: "Sai tài khoản hoặc mật khẩu" };
+          }
+        }
+      } else if (action === "change_password") {
+        const sheetPw = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("password");
+        if (!sheetPw) {
+          result = { status: "error", message: "Chưa cấu hình Sheet password." };
+        } else {
+          const values = sheetPw.getDataRange().getValues();
+          let foundRow = -1;
+          for (let i = 1; i < values.length; i++) {
+            if (String(values[i][0]).trim() === String(payload.username).trim() && String(values[i][1]).trim() === String(payload.old_password).trim()) {
+              foundRow = i + 1; // Google Sheet row index (1-based)
+              break;
+            }
+          }
+          if (foundRow > 0) {
+            sheetPw.getRange(foundRow, 2).setValue(payload.new_password);
+            result = { status: "success", message: "Đổi mật khẩu thành công" };
+          } else {
+            result = { status: "error", message: "Mật khẩu cũ không chính xác" };
+          }
+        }
+      } else if (action === "upload_image" || payload.action === "upload_image") {
         try {
           var decodedData = Utilities.base64Decode(payload.data);
           var blob = Utilities.newBlob(decodedData, payload.mimeType || 'image/png', payload.filename || 'upload.png');

@@ -1,4 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import Login from '../components/Login.vue'
+import ChangePassword from '../components/ChangePassword.vue'
 import Report from '../components/report.vue'
 import POPreview from '../components/POPreview.vue'
 import TraCuuMST from '../components/TraCuuMST.vue'
@@ -16,6 +18,16 @@ const routes = [
   {
     path: '/',
     redirect: '/dashboard'
+  },
+  {
+    path: '/login',
+    name: 'Login',
+    component: Login
+  },
+  {
+    path: '/change-password',
+    name: 'ChangePassword',
+    component: ChangePassword
   },
   {
     path: '/dashboard',
@@ -82,6 +94,22 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes
+})
+
+router.beforeEach((to, from, next) => {
+  if (to.path === '/login') {
+    next()
+    return
+  }
+  
+  const tokenLocal = localStorage.getItem('auth_token')
+  const tokenSession = sessionStorage.getItem('auth_token')
+  
+  if (tokenLocal || tokenSession) {
+    next()
+  } else {
+    next('/login')
+  }
 })
 
 export default router
