@@ -85,7 +85,7 @@
     </aside>
     <main class="main-content" ref="mainContentRef" @scroll="handleScroll">
       <router-view v-slot="{ Component }">
-        <keep-alive include="BaoGia">
+        <keep-alive include="BaoGia,report,Report,Pipeline">
           <component :is="Component" />
         </keep-alive>
       </router-view>

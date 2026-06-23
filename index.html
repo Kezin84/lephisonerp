@@ -11,6 +11,24 @@
     <link href="https://unpkg.com/lucide-static@latest/font/lucide.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
     <title>reportcv</title>
+    <script>
+      document.addEventListener('gesturestart', function (e) {
+        e.preventDefault();
+      });
+      let lastTouchEnd = 0;
+      document.addEventListener('touchend', function (event) {
+        const now = (new Date()).getTime();
+        if (now - lastTouchEnd <= 300) {
+          event.preventDefault();
+        }
+        lastTouchEnd = now;
+      }, false);
+    </script>
+    <style>
+      html, body {
+        touch-action: manipulation;
+      }
+    </style>
   </head>
   <body>
     <div id="app"></div>
