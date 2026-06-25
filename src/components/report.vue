@@ -1104,10 +1104,16 @@
             <div class="elite-form-group" style="margin-bottom: 1rem; display: flex; flex-direction: column; position: relative;">
               <div class="form-group-header" style="display: flex; justify-content: space-between; align-items: center;">
                 <label style="color: #3b82f6 !important; font-weight: 700 !important; margin: 0;">ID Pipeline (Liên kết)</label>
-                <button type="button" class="elite-btn-primary" style="padding: 0.3rem 0.8rem; font-size: 0.75rem; border-radius: 4px; background: #3b82f6; border: none; color: white; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;" @click="isPipelineModalOpen = true">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-                  Liên kết
-                </button>
+                <div style="display: flex; gap: 0.5rem;">
+                  <button type="button" class="elite-btn-primary" style="padding: 0.3rem 0.8rem; font-size: 0.75rem; border-radius: 4px; background: #10b981; border: none; color: white; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;" @click="createPipelineFromReport">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    Tạo Pipeline
+                  </button>
+                  <button type="button" class="elite-btn-primary" style="padding: 0.3rem 0.8rem; font-size: 0.75rem; border-radius: 4px; background: #3b82f6; border: none; color: white; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;" @click="isPipelineModalOpen = true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                    Liên kết
+                  </button>
+                </div>
               </div>
               <div class="chip-input-container" style="display: flex; flex-direction: column; gap: 0.6rem; padding-top: 0.5rem;">
                  <div v-if="!formData.id_pipeline" style="color: rgba(255,255,255,0.4); padding: 0.2rem 0; font-size: 0.85rem;">Chưa có liên kết nào...</div>
@@ -3636,6 +3642,15 @@ const removeLink = (field, index) => {
 
 // Lưu (Thêm/Sửa)
 const highlightedReportId = ref(null)
+
+const createPipelineFromReport = () => {
+  const pipelineData = {
+    content: formData.value.noi_dung || '',
+    note: formData.value.ghi_chu || ''
+  }
+  sessionStorage.setItem('pendingPipelineCreate', JSON.stringify(pipelineData))
+  window.open('/pipeline', '_blank')
+}
 
 const saveReport = async (options = {}) => {
   const isContinue = !!options.continue;

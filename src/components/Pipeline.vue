@@ -120,19 +120,43 @@
     </div>
 
     <!-- Elite Toolbar -->
-    <div class="elite-filter-panel" style="margin-bottom: 1rem; padding: 0.75rem 1.5rem; display: flex; justify-content: space-between; align-items: center; background: rgba(30, 41, 59, 0.7); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); backdrop-filter: blur(10px);">
-      <div class="search-container" style="position: relative; width: 350px;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-        <input type="text" v-model="searchQuery" placeholder="Tìm tên KH, mã hợp đồng..." class="elite-input" style="width: 100%; padding: 0.5rem 1rem 0.5rem 2.5rem; border-radius: 99px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: #fff; outline: none; transition: all 0.2s; font-size: 0.85rem;" onfocus="this.style.borderColor='#10b981'; this.style.boxShadow='0 0 0 2px rgba(16,185,129,0.2)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'; this.style.boxShadow='none'" />
+    <div class="elite-filter-panel" style="margin-bottom: 1rem; padding: 0.75rem 1.5rem; display: flex; justify-content: space-between; align-items: center; background: rgba(30, 41, 59, 0.7); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); backdrop-filter: blur(10px); position: relative; z-index: 45;">
+      <div style="display: flex; gap: 12px; align-items: center; flex: 1; max-width: 500px; flex-wrap: wrap;">
+        <div class="search-container" style="position: relative; flex: 1; min-width: 250px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" v-model="searchQuery" placeholder="Tìm tên KH, mã hợp đồng..." class="elite-input" style="width: 100%; box-sizing: border-box; padding: 0.5rem 1rem 0.5rem 2.5rem; border-radius: 99px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: #fff; outline: none; transition: all 0.2s; font-size: 0.85rem;" onfocus="this.style.borderColor='#10b981'; this.style.boxShadow='0 0 0 2px rgba(16,185,129,0.2)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'; this.style.boxShadow='none'" />
+        </div>
+        <button class="tech-vip-btn" @click="openAddCustomerModal" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #10b981; border-radius: 99px; padding: 0 16px; height: 34px; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s; white-space: nowrap; font-size: 0.85rem; font-weight: 600;" onmouseover="this.style.background='rgba(16, 185, 129, 0.2)'; this.style.transform='translateY(-1px)'" onmouseout="this.style.background='rgba(16, 185, 129, 0.1)'; this.style.transform='none'" title="Thêm khách hàng nhanh">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          Thêm khách hàng
+        </button>
       </div>
 
       <div class="toolbar-selectors" style="display: flex; align-items: center; gap: 16px; margin-right: 12px; flex: 1; justify-content: flex-end; flex-wrap: wrap;">
         <div class="company-selector" style="display: flex; align-items: center; gap: 8px;">
           <span style="color: #94a3b8; font-size: 0.85rem; font-weight: 600;">Công ty / KH:</span>
-          <select v-model="filterConfig.companyCustomer" class="elite-input" style="background: #0f172a; border: 1px solid rgba(16,185,129,0.3); color: #10b981; font-weight: 600; padding: 4px 12px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; outline: none; min-width: 200px; max-width: 350px;">
-            <option value="" style="background: #0f172a; color: #10b981;">Tất cả Công ty / KH</option>
-            <option v-for="c in uniqueCompanyCustomers" :key="c.key" :value="c.key" style="background: #0f172a; color: #10b981;">{{ c.label }}</option>
-          </select>
+          <div style="position: relative; min-width: 200px; max-width: 350px; flex: 1;">
+            <!-- Nút bấm hiển thị -->
+            <div @click="showCompanyFilterDropdown = !showCompanyFilterDropdown" class="elite-input" style="background: #0f172a; border: 1px solid rgba(16,185,129,0.3); color: #10b981; font-weight: 600; padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box; min-height: 32px;">
+              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" :title="filterConfig.companyCustomer ? uniqueCompanyCustomers.find(c => c.key === filterConfig.companyCustomer)?.label : 'Tất cả Công ty / KH'">
+                {{ filterConfig.companyCustomer ? uniqueCompanyCustomers.find(c => c.key === filterConfig.companyCustomer)?.label : 'Tất cả Công ty / KH' }}
+              </span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 8px; flex-shrink: 0;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+
+            <!-- Overlay để click ra ngoài đóng dropdown -->
+            <div v-if="showCompanyFilterDropdown" class="dropdown-overlay" @click="showCompanyFilterDropdown = false"></div>
+
+            <!-- Danh sách tùy chọn -->
+            <div v-if="showCompanyFilterDropdown" style="position: absolute; top: 100%; left: 0; right: 0; margin-top: 4px; background: #0f172a; border: 1px solid rgba(16,185,129,0.3); border-radius: 6px; z-index: 50; max-height: 350px; overflow-y: auto; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);">
+              <div @click="filterConfig.companyCustomer = ''; showCompanyFilterDropdown = false" style="padding: 10px 12px; cursor: pointer; color: #10b981; font-size: 0.85rem; transition: background 0.2s;" onmouseover="this.style.background='rgba(16,185,129,0.1)'" onmouseout="this.style.background='transparent'">
+                Tất cả Công ty / KH
+              </div>
+              <div v-for="c in uniqueCompanyCustomers" :key="c.key" @click="filterConfig.companyCustomer = c.key; showCompanyFilterDropdown = false" style="padding: 10px 12px; cursor: pointer; color: #10b981; font-size: 0.85rem; transition: background 0.2s; white-space: normal; word-wrap: break-word; line-height: 1.5; border-top: 1px solid rgba(255,255,255,0.05);" onmouseover="this.style.background='rgba(16,185,129,0.1)'" onmouseout="this.style.background='transparent'">
+                {{ c.label }}
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="workflow-selector" style="display: flex; align-items: center; gap: 8px;">
@@ -151,7 +175,7 @@
         </button>
         <button class="tech-vip-btn" @click="openAddModal" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 600; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; cursor: pointer; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-          Thêm mới
+          Thêm pipeline mới
         </button>
         <button class="tech-vip-btn" @click="fetchData" :disabled="loading" style="background: rgba(255,255,255,0.1); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.1); padding: 0.5rem 1rem; border-radius: 8px; font-weight: 600; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
           <svg v-if="!loading" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 2v6h6M21.5 22v-6h-6"/><path d="M22 11.5A10 10 0 0 0 3.2 7.2M2 12.5a10 10 0 0 0 18.8 4.2"/></svg>
@@ -583,6 +607,13 @@
             <!-- Cột 1 -->
             <div style="display: flex; flex-direction: column; gap: 16px;">
               <div class="form-group">
+                <label>Quy trình (Workflow)</label>
+                <select v-model="formData.id_workflow" class="input-field" @change="onModalWorkflowChange">
+                  <option value="">Quy trình mặc định</option>
+                  <option v-for="wf in uniqueWorkflows" :key="wf.id_workflow" :value="wf.id_workflow">{{ wf.name_workflow }}</option>
+                </select>
+              </div>
+              <div class="form-group">
                 <label>Tag (Phân loại)</label>
                 <select v-model="formData.tag" class="input-field">
                   <option value="Bình thường">Bình thường</option>
@@ -593,7 +624,7 @@
               <div class="form-group">
                 <label>Trạng thái (Status Name)</label>
                 <select v-model="formData.status_name" class="input-field" @change="onStatusNameChange">
-                  <option v-for="col in COLUMNS" :key="col.id" :value="col.value">{{ col.label }}</option>
+                  <option v-for="col in MODAL_COLUMNS" :key="col.id" :value="col.value">{{ col.label }}</option>
                 </select>
               </div>
               <div class="form-group">
@@ -649,7 +680,14 @@
               </div>
               <div class="form-group">
                 <label>Volume</label>
-                <NumberInput v-model="formData.volume" class="input-field" />
+                <div style="display: flex; gap: 8px;">
+                  <NumberInput v-model="formData.volume" class="input-field" style="flex: 1;" />
+                  <button type="button" @click="triggerScanVolumeFile" class="tech-vip-btn" style="padding: 0 16px; border-radius: 8px; flex-shrink: 0; background: rgba(56, 189, 248, 0.1); border-color: rgba(56, 189, 248, 0.3); color: #38bdf8; display: flex; align-items: center; gap: 6px;" title="Quét file tìm Tổng cộng trước thuế">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    Quét File
+                  </button>
+                  <input type="file" ref="scanVolumeFileInput" @change="onScanVolumeFileChange" style="display: none;" accept=".xlsx, .xls, .pdf" />
+                </div>
               </div>
               <div class="form-group">
                 <label>Type</label>
@@ -1009,6 +1047,95 @@
       </div>
     </div>
 
+    <!-- Scan Confirm Modal -->
+    <div class="modal-overlay" v-if="showScanConfirmModal" @click.self="showScanConfirmModal = false" style="z-index: 10000;">
+      <div class="modal-content" :style="{ width: (scanConfirmPreviewUrl || scanConfirmIsExcel) ? '850px' : '450px', maxWidth: '95vw', background: '#0f172a', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', transition: 'width 0.3s ease' }">
+        <div class="modal-header" style="padding: 1rem; border-bottom: 1px solid rgba(255, 255, 255, 0.08); background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+          <h3 style="margin: 0; color: white; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            {{ scanConfirmTitle }}
+          </h3>
+        </div>
+        <div class="modal-body scan-confirm-body">
+          <!-- Cột ảnh preview -->
+          <div v-if="scanConfirmPreviewUrl || scanConfirmIsExcel" class="scan-confirm-preview">
+            <template v-if="scanConfirmPreviewUrl">
+              <img :src="scanConfirmPreviewUrl" style="width: 100%; height: auto; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); object-fit: contain; background: white;" />
+            </template>
+            <template v-else-if="scanConfirmIsExcel">
+              <div style="width: 100%; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); overflow: hidden; border: 1px solid #cbd5e1; background: white; display: flex; flex-direction: column;">
+                <div style="background: #107c41; color: white; padding: 8px 12px; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 8px;">
+                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M8 13h2"></path><path d="M8 17h2"></path><path d="M14 13h2"></path><path d="M14 17h2"></path></svg>
+                   <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ scanConfirmFileName }}</span>
+                </div>
+                <div style="overflow-x: auto; padding: 8px;" v-html="scanConfirmExcelHtml"></div>
+              </div>
+            </template>
+          </div>
+          
+          <!-- Nội dung text -->
+          <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 16px;">
+            <div v-html="scanConfirmMessage"></div>
+            
+            <!-- Phần nhập số tiền chỉnh sửa -->
+            <div v-if="scanConfirmHasEditableAmount" style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); padding: 1.25rem; border-radius: 12px; margin-top: 8px;">
+              <label style="color: #10b981; font-size: 0.9rem; font-weight: 600; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 6px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                Số tiền quét được (có thể chỉnh sửa nếu cần):
+              </label>
+              <NumberInput v-model="scanConfirmEditableAmount" placeholder="Nhập số tiền chính xác..." class="elite-input" style="width: 100%; box-sizing: border-box; padding: 0.85rem 1rem; border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.3); background: rgba(0,0,0,0.3); color: #10b981; font-size: 1.1rem; font-weight: 700; outline: none; transition: all 0.2s;" onfocus="this.style.borderColor='#10b981'; this.style.boxShadow='0 0 0 3px rgba(16, 185, 129, 0.2)'" onblur="this.style.borderColor='rgba(16, 185, 129, 0.3)'; this.style.boxShadow='none'" />
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer" style="padding: 1rem 1.5rem; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: flex-end; gap: 12px; background: rgba(15, 23, 42, 0.4);">
+          <button v-if="scanConfirmIsQuestion" type="button" class="tech-vip-btn" style="background: rgba(255,255,255,0.1); color: white; padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600;" @click="handleScanConfirm(false)">Hủy</button>
+          <button type="button" class="tech-vip-btn" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600;" @click="handleScanConfirm(true)">{{ scanConfirmIsQuestion ? 'Đồng ý' : 'Đóng' }}</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Thêm Khách Hàng Nhanh -->
+    <div class="modal-overlay" v-if="showAddCustomerModal" @click.self="showAddCustomerModal = false" style="z-index: 100000;">
+      <div class="modal-content" style="width: 450px; max-width: 95vw; background: #0f172a; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.2); overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+        <div class="modal-header" style="padding: 1rem 1.25rem; border-bottom: 1px solid rgba(255, 255, 255, 0.08); background: linear-gradient(135deg, #10b981 0%, #059669 100%); display: flex; justify-content: space-between; align-items: center;">
+          <h2 style="margin: 0; font-size: 16px; color: #f8fafc; font-weight: 700;">Thêm khách hàng nhanh</h2>
+          <button type="button" @click="showAddCustomerModal = false" style="background: none; border: none; color: #ffffff; font-size: 24px; cursor: pointer; line-height: 1; opacity: 0.8; transition: opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.8">&times;</button>
+        </div>
+        <div class="modal-body" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 16px;">
+          <div>
+            <label style="color: #94a3b8; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem; display: block;">Tên công ty <span style="color: #ef4444">*</span></label>
+            <input type="text" v-model="newCustomerForm.ten_cong_ty" class="elite-input" placeholder="Nhập tên công ty..." style="width: 100%; box-sizing: border-box; padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: #fff; outline: none; transition: all 0.2s; font-size: 0.9rem;" onfocus="this.style.borderColor='#10b981'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'" />
+          </div>
+          <div>
+            <label style="color: #94a3b8; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem; display: block;">Tên khách hàng <span style="color: #ef4444">*</span></label>
+            <input type="text" v-model="newCustomerForm.ten_khach_hang" class="elite-input" placeholder="Nhập tên khách hàng..." style="width: 100%; box-sizing: border-box; padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: #fff; outline: none; transition: all 0.2s; font-size: 0.9rem;" onfocus="this.style.borderColor='#10b981'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'" />
+          </div>
+        </div>
+        <div class="modal-footer" style="padding: 1rem 1.5rem; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: flex-end; gap: 12px; background: rgba(15, 23, 42, 0.4);">
+          <button type="button" @click="showAddCustomerModal = false" style="background: rgba(255,255,255,0.1); color: white; padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600;" :disabled="isSavingCustomer">Hủy</button>
+          <button type="button" @click="submitNewCustomer" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 6px;" :disabled="isSavingCustomer">
+            <span v-if="isSavingCustomer" style="display: inline-block; width: 12px; height: 12px; border: 2px solid white; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></span>
+            <span v-else>Thêm khách hàng</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notification Modal Center -->
+    <div v-if="notificationModal.show" class="modal-overlay" style="z-index: 1000000; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);">
+      <div style="background: #0f172a; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 24px; text-align: center; width: 400px; max-width: 90vw; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); animation: scaleIn 0.2s ease-out;">
+        <div v-if="notificationModal.type === 'success'" style="width: 64px; height: 64px; background: rgba(16,185,129,0.1); color: #10b981; border-radius: 50%; display: flex; justify-content: center; align-items: center; margin: 0 auto 16px auto;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        </div>
+        <div v-else style="width: 64px; height: 64px; background: rgba(239,68,68,0.1); color: #ef4444; border-radius: 50%; display: flex; justify-content: center; align-items: center; margin: 0 auto 16px auto;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+        </div>
+        <h3 style="color: #f8fafc; font-size: 1.25rem; font-weight: 700; margin: 0 0 8px 0;">{{ notificationModal.title }}</h3>
+        <p style="color: #94a3b8; font-size: 0.95rem; margin: 0 0 24px 0; line-height: 1.5; white-space: pre-line;">{{ notificationModal.message }}</p>
+        <button @click="notificationModal.show = false" style="background: #1e293b; color: white; border: 1px solid rgba(255,255,255,0.1); padding: 10px 32px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#334155'" onmouseout="this.style.background='#1e293b'">Đóng</button>
+      </div>
+    </div>
+
     <!-- Workflow Design Tab -->
     <PipelineWorkflow v-if="activeTab === 'workflow'" />
 
@@ -1027,6 +1154,14 @@ import { useRoute, useRouter } from 'vue-router'
 import draggable from 'vuedraggable'
 import NumberInput from './NumberInput.vue'
 import ExcelJS from 'exceljs'
+import * as XLSX from 'xlsx'
+import * as pdfjsLib from 'pdfjs-dist/build/pdf.js'
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.js?url'
+
+if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
+}
+
 import PipelineWorkflow from './PipelineWorkflow.vue'
 
 const activeTab = ref('kanban')
@@ -1093,6 +1228,38 @@ const COLUMNS = computed(() => {
   }
   return defaultColumns
 })
+
+const MODAL_COLUMNS = computed(() => {
+  const wfId = formData.value.id_workflow || 'WF_DEFAULT'
+  if (wfId === 'WF_DEFAULT') {
+    return defaultColumns
+  }
+  const wfColumns = workflowsData.value
+    .filter(wf => wf.id_workflow === wfId)
+    .sort((a, b) => parseInt(a.status_index || 0) - parseInt(b.status_index || 0))
+    .map(wf => ({
+      id: `wf_${wf.id_status_workflow}`,
+      label: wf.status_name,
+      value: wf.status_name,
+      percent: wf['%status'],
+      color: wf.status_color
+    }))
+  
+  if (wfColumns.length > 0) {
+    return [
+      ...wfColumns,
+      { id: 'hoan_thanh', label: 'THÀNH CÔNG', value: 'THÀNH CÔNG', percent: '100%' },
+      { id: 'that_bai', label: 'THẤT BẠI', value: 'THẤT BẠI', percent: '0%' }
+    ]
+  }
+  return defaultColumns
+})
+
+const onModalWorkflowChange = () => {
+  if (MODAL_COLUMNS.value.length > 0) {
+    formData.value.status_name = MODAL_COLUMNS.value[0].value
+  }
+}
 
 const items = ref([])
 const loading = ref(false)
@@ -1243,7 +1410,77 @@ const filterConfig = ref({
   companyCustomer: ''
 })
 
+const showAddCustomerModal = ref(false)
+const isSavingCustomer = ref(false)
+const newCustomerForm = ref({ ten_khach_hang: '', ten_cong_ty: '' })
+
+const openAddCustomerModal = () => {
+  showAddCustomerModal.value = true;
+  // Tải ngầm danh sách khách hàng để tối ưu tốc độ check trùng lặp khi lưu
+  if (customersList.value.length === 0) {
+    fetchCustomersData();
+  }
+}
+
+const notificationModal = ref({
+  show: false,
+  title: '',
+  message: '',
+  type: 'success'
+})
+
+const showNotification = (title, message, type = 'success') => {
+  notificationModal.value = { show: true, title, message, type }
+}
+
+const showCompanyFilterDropdown = ref(false)
 const showExportModal = ref(false)
+const showScanConfirmModal = ref(false)
+const scanConfirmTitle = ref('')
+const scanConfirmMessage = ref('')
+const scanConfirmIsQuestion = ref(false)
+const scanConfirmPreviewUrl = ref(null)
+const scanConfirmIsExcel = ref(false)
+const scanConfirmFileName = ref('')
+const scanConfirmExcelHtml = ref('')
+const scanConfirmHasEditableAmount = ref(false)
+const scanConfirmEditableAmount = ref(0)
+let scanConfirmResolve = null
+
+const customConfirm = (title, message, isQuestion = true, options = {}) => {
+  return new Promise((resolve) => {
+    scanConfirmTitle.value = title
+    scanConfirmMessage.value = message
+    scanConfirmIsQuestion.value = isQuestion
+    scanConfirmPreviewUrl.value = options.previewUrl || null
+    scanConfirmIsExcel.value = options.isExcel || false
+    scanConfirmFileName.value = options.fileName || ''
+    scanConfirmExcelHtml.value = options.excelHtml || ''
+    
+    if (options.editableAmount !== undefined) {
+      scanConfirmHasEditableAmount.value = true
+      scanConfirmEditableAmount.value = options.editableAmount
+    } else {
+      scanConfirmHasEditableAmount.value = false
+    }
+    
+    showScanConfirmModal.value = true
+    scanConfirmResolve = resolve
+  })
+}
+
+const handleScanConfirm = (result) => {
+  showScanConfirmModal.value = false
+  if (scanConfirmResolve) {
+    if (result && scanConfirmHasEditableAmount.value) {
+      scanConfirmResolve({ confirmed: true, amount: scanConfirmEditableAmount.value })
+    } else {
+      scanConfirmResolve(result)
+    }
+    scanConfirmResolve = null
+  }
+}
+
 const removedExportIds = ref([])
 const exportFilters = ref({
   id_workflow: '',
@@ -1804,6 +2041,77 @@ const genMaKH = (tenKH, congTy) => {
   return [tenClean, maCT].filter(Boolean).join('-')
 }
 
+const submitNewCustomer = async () => {
+  if (!newCustomerForm.value.ten_khach_hang || !newCustomerForm.value.ten_cong_ty) {
+    showNotification("Thiếu thông tin", "Vui lòng nhập đầy đủ tên khách hàng và tên công ty!", "error")
+    return
+  }
+  isSavingCustomer.value = true
+  try {
+    const ma_ct = genMaCT(newCustomerForm.value.ten_cong_ty)
+    const ma_kh = genMaKH(newCustomerForm.value.ten_khach_hang, newCustomerForm.value.ten_cong_ty)
+    
+    // Đảm bảo đã load danh sách khách hàng để check trùng
+    if (customersList.value.length === 0) {
+      await fetchCustomersData()
+    }
+
+    // Check for duplicates
+    const isDuplicate = customersList.value.some(c => c.Ma_khach_hang === ma_kh && c.Ma_cong_ty === ma_ct)
+    if (isDuplicate) {
+      showNotification("Phát hiện trùng lặp", `Khách hàng này đã tồn tại trong hệ thống!\n(Mã KH: ${ma_kh} - Mã CT: ${ma_ct})`, "error")
+      isSavingCustomer.value = false
+      return
+    }
+
+    const payload = {
+      sheet: 'khach_hang',
+      action: 'add',
+      ma_khach_hang: ma_kh,
+      ten_khach_hang: newCustomerForm.value.ten_khach_hang.toUpperCase(),
+      ma_cong_ty: ma_ct,
+      ten_cong_ty: newCustomerForm.value.ten_cong_ty.toUpperCase()
+    }
+
+    // Optimistic Update: Đóng modal, hiện thông báo, cập nhật list ngay lập tức
+    showAddCustomerModal.value = false
+    isSavingCustomer.value = false
+    const tempForm = { ...newCustomerForm.value }
+    newCustomerForm.value = { ten_khach_hang: '', ten_cong_ty: '' }
+    
+    customersList.value.unshift({
+      Ma_khach_hang: ma_kh,
+      Ten_khach_hang: tempForm.ten_khach_hang.toUpperCase(),
+      Ma_cong_ty: ma_ct,
+      Ten_cong_ty: tempForm.ten_cong_ty.toUpperCase()
+    })
+    
+    showNotification("Thêm thành công", "Đã thêm khách hàng mới vào hệ thống!", "success")
+
+    // Call API ngầm
+    fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+    .then(res => res.json())
+    .then(result => {
+      if (result.status !== 'success') {
+        // Rollback nếu lỗi
+        customersList.value = customersList.value.filter(c => !(c.Ma_khach_hang === ma_kh && c.Ma_cong_ty === ma_ct))
+        showNotification("Lỗi đồng bộ", "Không thể lưu KH lên máy chủ: " + result.message, "error")
+      }
+    })
+    .catch(err => {
+      // Rollback nếu lỗi
+      customersList.value = customersList.value.filter(c => !(c.Ma_khach_hang === ma_kh && c.Ma_cong_ty === ma_ct))
+      showNotification("Lỗi kết nối", "Đồng bộ KH thất bại: " + err.message, "error")
+    })
+  } catch (err) {
+    showNotification("Lỗi", err.message, "error")
+    isSavingCustomer.value = false
+  }
+}
+
 watch(
   () => [formData.value.ten_khach_hang, formData.value.ten_cong_ty],
   ([tenKH, congTy]) => {
@@ -2240,6 +2548,214 @@ const uploadCloudinary = async (file) => {
   }
 }
 
+const scanVolumeFileInput = ref(null)
+
+const triggerScanVolumeFile = () => {
+  if (scanVolumeFileInput.value) {
+    scanVolumeFileInput.value.click()
+  }
+}
+
+const onScanVolumeFileChange = async (event) => {
+  const target = event.target
+  if (!target.files || target.files.length === 0) return
+  
+  const file = target.files[0]
+  
+  try {
+    let foundTotal = 0
+    let previewUrl = null
+    let isExcelFile = false
+    let excelHtmlPreview = ''
+    const arrayBuffer = await file.arrayBuffer()
+
+    if (file.name.toLowerCase().endsWith('.pdf')) {
+      const doc = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise
+      
+      // Tạo ảnh preview cho PDF (trang 1)
+      try {
+        const page1 = await doc.getPage(1)
+        const viewport = page1.getViewport({ scale: 1.0 })
+        const canvas = document.createElement('canvas')
+        const context = canvas.getContext('2d')
+        canvas.height = viewport.height
+        canvas.width = viewport.width
+        await page1.render({ canvasContext: context, viewport: viewport }).promise
+        previewUrl = canvas.toDataURL('image/png')
+      } catch (e) {
+        console.warn('Không thể tạo preview cho PDF', e)
+      }
+      
+      let fullText = ''
+      
+      for (let i = 1; i <= doc.numPages; i++) {
+        const page = await doc.getPage(i)
+        const content = await page.getTextContent()
+        fullText += content.items.map(item => item.str).join(' ') + ' '
+      }
+      
+      const matches = fullText.match(/[\d,\.]+/g) || []
+      let nums = []
+      
+      matches.forEach(m => {
+        const clean = m.replace(/,/g, '')
+        const cleanDot = clean.replace(/\./g, '')
+        const n = Number(clean)
+        const nDot = Number(cleanDot)
+        const finalNum = (nDot > n && nDot % 1000 === 0) ? nDot : n
+        // Bỏ qua các số nhỏ (dưới 100k thường ko phải là tổng báo giá B2B) và số điện thoại / STK
+        if (!isNaN(finalNum) && finalNum >= 100000 && finalNum !== 199458149) {
+          nums.push(finalNum)
+        }
+      })
+      
+      nums = [...new Set(nums)].sort((a, b) => b - a)
+      
+      if (nums.length > 0) {
+        let found = false
+        for (let i = 0; i < nums.length; i++) {
+          for (let j = i + 1; j < nums.length; j++) {
+            let max = nums[i]
+            let min = nums[j]
+            let diff10 = Math.abs((min * 1.1) - max)
+            let diff8 = Math.abs((min * 1.08) - max)
+            // Nếu có sự chênh lệch chuẩn 8% hoặc 10% VAT, số nhỏ hơn chính là Trước Thuế
+            if (diff10 <= 10 || diff8 <= 10) {
+              foundTotal = min
+              found = true
+              break
+            }
+          }
+          if (found) break
+        }
+        
+        // Nếu không tìm thấy cặp số có thuế, lấy số lớn nhất làm tổng cộng
+        if (!found) {
+          foundTotal = nums[0]
+        }
+      }
+    } else {
+      isExcelFile = true
+      // Logic cho file Excel (Sử dụng SheetJS / XLSX để hỗ trợ cả .xls và .xlsx)
+      const data = new Uint8Array(arrayBuffer)
+      const workbook = XLSX.read(data, { type: 'array' })
+      const wsName = workbook.SheetNames[0]
+      const ws = workbook.Sheets[wsName]
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1 })
+      
+      let htmlPreview = '<table style="width: 100%; border-collapse: collapse; font-size: 11px; background: white; color: black; text-align: left;">'
+      for (let i = 0; i < Math.min(rows.length, 15); i++) {
+        htmlPreview += '<tr>'
+        const rowLen = rows[i] ? rows[i].length : 0
+        // Cố định in ra tối đa 8 cột để nhìn đẹp trên giao diện
+        for (let j = 0; j < Math.max(Math.min(rowLen, 8), 5); j++) {
+           const cellVal = rows[i] && rows[i][j] !== undefined && rows[i][j] !== null ? rows[i][j] : ''
+           let displayVal = String(cellVal)
+           if (displayVal.length > 25) displayVal = displayVal.substring(0, 25) + '...'
+           htmlPreview += `<td style="border: 1px solid #e2e8f0; padding: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90px;">${displayVal}</td>`
+        }
+        htmlPreview += '</tr>'
+      }
+      htmlPreview += '</table>'
+      if (rows.length > 15) {
+        htmlPreview += '<div style="text-align: center; font-size: 11px; color: #64748b; margin-top: 4px; padding: 4px; background: #f8fafc;">... và ' + (rows.length - 15) + ' dòng khác</div>'
+      }
+      excelHtmlPreview = htmlPreview
+      
+      let beforeTaxCol = -1
+      
+      // Lượt 1: Tìm cột "Trước thuế" hoặc "Thành tiền"
+      rows.forEach((row) => {
+        if (!row || !Array.isArray(row)) return
+        row.forEach((cell, colNumber) => {
+          const text = String(cell || '').toLowerCase()
+          if (text.includes('thành tiền trước thuế') || 
+              (text.includes('thành tiền') && !text.includes('sau thuế') && !text.includes('vat')) || 
+              text === 'thành tiền' || text.includes('amount')) {
+            if (beforeTaxCol === -1) beforeTaxCol = colNumber
+          }
+        })
+      })
+      
+      // Lượt 2: Tìm dòng tổng cộng và lấy số liệu
+      rows.forEach((row) => {
+        if (!row || !Array.isArray(row)) return
+        let isTotalRow = false
+        let rowNumbers = []
+        let colMap = {}
+        
+        row.forEach((cell, colNumber) => {
+          const val = cell
+          let text = String(val || '')
+          
+          if (typeof val === 'number') {
+            rowNumbers.push(val)
+            colMap[colNumber] = val
+          } else if (typeof val === 'string') {
+            const cleanStr = val.replace(/,/g, '')
+            if (cleanStr && !isNaN(Number(cleanStr)) && cleanStr.trim() !== '') {
+               const n = Number(cleanStr)
+               rowNumbers.push(n)
+               colMap[colNumber] = n
+            }
+          }
+          
+          text = text.toLowerCase()
+          if (text.includes('tổng cộng') || text.includes('cộng tiền hàng') || text.includes('tổng tiền') || text.includes('total') || text.includes('cộng')) {
+            isTotalRow = true
+          }
+        })
+        
+        if (isTotalRow) {
+          if (beforeTaxCol !== -1 && colMap[beforeTaxCol] !== undefined && colMap[beforeTaxCol] > 0) {
+            if (colMap[beforeTaxCol] > foundTotal) {
+              foundTotal = colMap[beforeTaxCol]
+            }
+          } else {
+            const nums = rowNumbers.filter(n => !isNaN(n) && n > 0)
+            if (nums.length >= 2) {
+               // Số đầu tiên trong dãy số (từ trái qua) thường là trước thuế
+               const firstNum = nums[0]
+               if (firstNum > foundTotal) foundTotal = firstNum
+            } else if (nums.length === 1) {
+               if (nums[0] > foundTotal) foundTotal = nums[0]
+            } else if (nums.length > 0) {
+               const rowMax = Math.max(...nums)
+               if (rowMax > foundTotal) foundTotal = rowMax
+            }
+          }
+        }
+      })
+    }
+    
+    if (foundTotal > 0) {
+      const userConfirmResult = await customConfirm(
+        'Xác nhận File & Số tiền', 
+        '', 
+        true,
+        { previewUrl, isExcel: isExcelFile, fileName: file.name, excelHtml: excelHtmlPreview, editableAmount: foundTotal }
+      )
+      if (userConfirmResult && userConfirmResult.confirmed) {
+        formData.value.volume = userConfirmResult.amount
+        await handleFileUpload({ target: { files: [file] } })
+      }
+    } else {
+      await customConfirm(
+        'Thông báo', 
+        'Không tìm thấy dữ liệu "Tổng cộng trước thuế" hoặc số tiền hợp lệ trong file này.', 
+        false,
+        { previewUrl, isExcel: isExcelFile, fileName: file.name, excelHtml: excelHtmlPreview }
+      )
+    }
+    
+  } catch (err) {
+    console.error(err)
+    await customConfirm('Lỗi', 'Lỗi khi đọc file: ' + String(err.message || err), false)
+  }
+  
+  target.value = ''
+}
+
 const handleFileUpload = async (event) => {
   const files = event.target.files
   if (!files || files.length === 0) return
@@ -2562,6 +3078,21 @@ onMounted(() => {
   window.addEventListener('resize', checkMobile)
   fetchData()
   fetchReports()
+  
+  const pendingPipeline = sessionStorage.getItem('pendingPipelineCreate')
+  if (pendingPipeline) {
+    try {
+      const parsed = JSON.parse(pendingPipeline)
+      sessionStorage.removeItem('pendingPipelineCreate')
+      setTimeout(() => {
+        openAddModal()
+        formData.value.content_of_contract_po = parsed.content || ''
+        formData.value.ghi_chu_hop_dong = parsed.note || ''
+      }, 300)
+    } catch (e) {
+      console.error('Error parsing pending pipeline data', e)
+    }
+  }
 })
 
 onUnmounted(() => {
@@ -2570,6 +3101,39 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.scan-confirm-body {
+  padding: 1.5rem;
+  color: #e2e8f0;
+  font-size: 14px;
+  line-height: 1.6;
+  display: flex;
+  gap: 24px;
+}
+.scan-confirm-preview {
+  flex: 0 0 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.2);
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.05);
+  padding: 12px;
+  gap: 12px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+@media (max-width: 768px) {
+  .scan-confirm-body {
+    flex-direction: column;
+  }
+  .scan-confirm-preview {
+    flex: none;
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 @keyframes card-highlight-pulse {

@@ -37,25 +37,74 @@ watch(() => props.modelValue, (newVal) => {
 })
 
 const onInput = (e) => {
-  let val = e.target.value
+  const target = e.target
+  let val = target.value
+  
+  // Save cursor position
+  const cursorPosition = target.selectionStart || 0
+  const beforeCursor = val.substring(0, cursorPosition)
+  const digitsBeforeCursor = beforeCursor.replace(/[^\d]/g, '').length
   
   // allow only digits, comma, dot, and minus sign
   val = val.replace(/[^0-9.,-]/g, '')
-  
   const raw = val.replace(/,/g, '')
-  
-  // store raw text so cursor doesn't jump
-  displayValue.value = val
-  e.target.value = val
 
   if (raw === '' || raw === '-') {
+    displayValue.value = val
+    target.value = val
     emit('update:modelValue', '')
     return
   }
-  
-  if (!isNaN(raw)) {
-    emit('update:modelValue', Number(raw))
+
+  const numericValue = Number(raw)
+  if (!isNaN(numericValue)) {
+    emit('update:modelValue', numericValue)
   }
+
+  // Format the number on the fly
+  let formattedString = format(raw)
+  
+  // Preserve trailing decimal dots or zeros typed by the user
+  if (val.endsWith('.')) {
+    formattedString += '.'
+  } else if (val.includes('.')) {
+    const parts = val.split('.')
+    const intPart = formattedString.split('.')[0] || '0'
+    const decPart = parts.slice(1).join('').replace(/[^\d]/g, '')
+    formattedString = intPart + '.' + decPart
+  }
+
+  displayValue.value = formattedString
+  target.value = formattedString
+  
+  // Restore cursor position
+  requestAnimationFrame(() => {
+    let newCursorPos = 0
+    let digitsCount = 0
+    
+    for (let i = 0; i < formattedString.length; i++) {
+      if (/\d/.test(formattedString[i])) {
+        digitsCount++
+      }
+      if (digitsCount === digitsBeforeCursor) {
+        newCursorPos = i + 1
+        break
+      }
+    }
+    
+    // Adjust if cursor was just after a separator or negative sign
+    if (beforeCursor.endsWith(',') || beforeCursor.endsWith('-')) {
+      newCursorPos++
+    }
+    
+    if (newCursorPos === 0 && digitsBeforeCursor > 0) {
+      newCursorPos = formattedString.length
+    } else if (digitsBeforeCursor === 0 && val.startsWith('-')) {
+      newCursorPos = 1
+    }
+    
+    target.setSelectionRange(newCursorPos, newCursorPos)
+  })
 }
 
 const onBlur = () => {
