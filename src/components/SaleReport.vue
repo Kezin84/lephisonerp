@@ -3130,35 +3130,6 @@ async function saveMultiModal() {
               ten_file_bao_gia: tenBG,
               ten_file_mua_hang: tenMH
           });
-  
-          const hdTongRow = [
-            maHD, soHD, maKHGen, item.recipient || item.customer, formatNgayTaoHopDong(),
-            tTruoc, tVat, tSau, 0, tSau, 0, 0, 0, 0,
-            'Chưa thanh toán đủ', 'Chính thức', item.content || '', 'VND', 1, '', tTruoc, formatCreatedTimeDateOnly(),
-            item.soPO || '', '', item.content || '', item.grossCom || 0, 0, (item.grossCom * (item.taxPct / 100)) || 0, item.taxPct || 0, 0, item.netCom || 0, 0
-          ];
-          
-          let hdChiTietRows = [];
-          if (item.goodsItems && item.goodsItems.length > 0) {
-            item.goodsItems.forEach((g) => {
-              hdChiTietRows.push([
-                maHD, soHD, '', g.ten || 'Hàng hóa mặc định', g.dvt || '', '', g.ncc || item.productType || '', '', '', g.moTa || item.content || '', '', '',
-                'Cái', g.soLuong || 1, g.giaBan || 0, 'VND', g.vat || 0, 0, 1, '', 0, 0, g.giaMua || 0
-              ]);
-            });
-          } else {
-            hdChiTietRows = [[
-               maHD, soHD, '', 'Hàng hóa mặc định', '', '', item.productType || '', '', '', item.content || '', '', '',
-              'Cái', tTruoc, tTruoc, 'VND', 1, 0, 1, '', 0, 0, 0
-            ]];
-          }
-  
-          bulkOfficialItems.push({
-              hd_tong_quat_row: hdTongRow,
-              hd_chi_tiet_rows: hdChiTietRows,
-              ma_khach_hang: maKHGen,
-              tong_sau_thue: (item.doanhSoBan > 0 ? item.doanhSoBan : 1) // Bypass backend zero check
-          });
         }
 
         const promises = [];
@@ -3173,23 +3144,6 @@ async function saveMultiModal() {
                         items: bulkSaleReportItems
                     })
                 }).then(r => r.json()).catch(e => console.error("Sale Report Bulk error:", e))
-            );
-        }
-
-        if (bulkOfficialItems.length > 0) {
-            const formData = new URLSearchParams();
-            formData.set('action', 'save_contract_official_bulk');
-            formData.set('payload', JSON.stringify({
-                action: 'save_contract_official_bulk',
-                items: bulkOfficialItems
-            }));
-    
-            promises.push(
-              fetch(BASE_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: formData.toString()
-              }).then(r => r.json()).catch(e => console.error("Official Bulk error:", e))
             );
         }
 

@@ -2099,27 +2099,9 @@ function lineLoiNhuanRaw(i: any) {
 }
 
 /* Chênh lệch giá "hiệu dụng" trong modal chỉnh sửa:
-   Mô phỏng kết quả sau khi save (các trường gốc đã sync).
-   Chỉ Don_gia (khi đã adjust) mới tạo ra chênh lệch. */
+   Chỉ đơn giản là sự khác biệt giữa Giá Báo Khách và Giá Thực Tế. */
 function itemChenhLechHieuDung(i: any) {
-  // Giá trị gốc "hiệu dụng" = giá trị sẽ lưu vào _goc sau khi save
-  const effDonGiaGoc = _adjustedFields.has('Don_gia')
-    ? getGocNumber(i, '_Don_gia_goc', toNum(i.Don_gia, 0))
-    : toNum(i.Don_gia, 0)
-  const effHWGoc = _adjustedFields.has('gia_hardware')
-    ? getGocNumber(i, '_gia_hardware_goc', toNum(i.gia_hardware, 0))
-    : toNum(i.gia_hardware, 0)
-  // Các trường khác luôn sync → dùng giá trị hiện tại
-  const effNhap = toNum(i.gia_nhap, 0)
-  const effOffPct = toNum(i.muc_phan_tram_off, 0)
-  const effTiGia = toNum(i.Ti_gia, 1)
-
-  const effLP = effHWGoc + effDonGiaGoc
-  const effDonGiaSauOff = effLP * (1 - effOffPct / 100) + effNhap
-  const effUnitPrice = round2(effDonGiaSauOff * effTiGia)
-  const effLineTruocThue = round2(effUnitPrice * toNum(i.So_luong, 1))
-
-  return round2(lineTruocThue(i) - effLineTruocThue)
+  return round2(lineTruocThue(i) - lineTruocThueRaw(i))
 }
 
 const totalsContract = computed(() => {
@@ -3680,15 +3662,14 @@ function lineSauThue(i: any) {
 }
 
 function lineLoiNhuan(i: any) {
-  return round2((unitPrice(i) - standardPrice(i)) * toNum(i.So_luong, 1))
+  return lineLoiNhuanRaw(i)
 }
 
 function lineLoiNhuanPct(i: any) {
-  const price = unitPrice(i)
-  if (price <= 0) return ''
-  const base = standardPrice(i)
-  return (((price - base) / price) * 100).toFixed(2)
+  return lineLoiNhuanPctRaw(i)
 }
+
+
 function lineLoiNhuanPctRaw(i: any) {
   const price = unitPriceRaw(i)
   if (price <= 0) return ''
@@ -4258,6 +4239,24 @@ function saveQuoteEditRaw() {
   closeQuoteEditRaw()
 }
 
+const quoteEditMucOffGoc = computed({
+  get() {
+    if (!quoteEdit.value) return 0;
+    return getGocNumber(quoteEdit.value, '_muc_phan_tram_off_goc', toNum(quoteEdit.value.muc_phan_tram_off, 0));
+  },
+  set(val) {
+    if (!quoteEdit.value) return;
+    // Khi user tự gõ % off mới -> Sửa thường
+    quoteEdit.value._muc_phan_tram_off_goc = undefined;
+    quoteEdit.value._Don_gia_goc = undefined;
+    quoteEdit.value._Ti_gia_goc = undefined;
+    quoteEdit.value._gia_nhap_goc = undefined;
+    quoteEdit.value._gia_hardware_goc = undefined;
+    
+    quoteEdit.value.muc_phan_tram_off = Number(val) || 0;
+  }
+});
+
 /* ======================
    ✅ ĐIỀU CHỈNH GIÁ LIC
 ====================== */
@@ -4403,38 +4402,45 @@ function applyAdjustPrice() {
       const hw = toNum(quoteEdit.value.gia_hardware, 0);
 
       if (adjustPriceModal.value.isNormalEdit) {
-        // Sửa thường: Giữ List Price, tự tính lại % Off Khách
+        // Sửa thường: Giữ List Price, tự tính lại % Off Khách. XÓA Kê giá (Chênh lệch)
         const lp = _oldDonGiaBeforeCalc + hw;
         if (lp > 0) {
-          const oldPctOff = toNum(quoteEdit.value.muc_phan_tram_off, 0);
           let newPctOff = (1 - (newDonGiaSauOff - nhap) / lp) * 100;
           newPctOff = Number(newPctOff.toFixed(6));
           quoteEdit.value.muc_phan_tram_off = newPctOff;
-          const _oldPctOffGoc = quoteEdit.value._muc_phan_tram_off_goc ?? oldPctOff;
-          quoteEdit.value._muc_phan_tram_off_goc = _oldPctOffGoc + (newPctOff - oldPctOff);
         }
         quoteEdit.value.Don_gia = _oldDonGiaBeforeCalc;
+        
+        // Xóa Kê giá (Chênh lệch)
+        quoteEdit.value._muc_phan_tram_off_goc = undefined;
+        quoteEdit.value._Don_gia_goc = undefined;
+        quoteEdit.value._Ti_gia_goc = undefined;
+        quoteEdit.value._gia_nhap_goc = undefined;
+        quoteEdit.value._gia_hardware_goc = undefined;
       } else {
-        // Kê hợp đồng: Giữ Don_gia và % Off Khách nguyên
-        // Hạ _Don_gia_goc để tạo chênh lệch (lineTruocThue - lineTruocThueRaw)
-        const currentUP = unitPrice(quoteEdit.value);
-        const targetChenhLechPerUnit = targetUPVnd - currentUP;
-        const targetUPRaw = currentUP - targetChenhLechPerUnit;
+        // Kê hợp đồng: Đổi % Off Khách để thay đổi Giá Bán, giữ nguyên Giá Gốc (Giá thực tế)
+        const oldPctOff = toNum(quoteEdit.value.muc_phan_tram_off, 0);
         
-        const tgGoc = getGocNumber(quoteEdit.value, '_Ti_gia_goc', tg);
-        const targetDonGiaSauOffGoc = targetUPRaw / tgGoc;
-        const nhapGoc = getGocNumber(quoteEdit.value, '_gia_nhap_goc', nhap);
-        const pctOffGoc = getGocNumber(quoteEdit.value, '_muc_phan_tram_off_goc', toNum(quoteEdit.value.muc_phan_tram_off, 0));
-        const hwGoc = getGocNumber(quoteEdit.value, '_gia_hardware_goc', hw);
-        const offMulGoc = 1 - pctOffGoc / 100;
-        
-        if (offMulGoc > 0) {
-          const targetLPGoc = (targetDonGiaSauOffGoc - nhapGoc) / offMulGoc;
-          quoteEdit.value._Don_gia_goc = targetLPGoc - hwGoc;
+        // Khóa giá gốc nếu chưa khóa:
+        if (quoteEdit.value._muc_phan_tram_off_goc === undefined) {
+          quoteEdit.value._muc_phan_tram_off_goc = oldPctOff;
+          quoteEdit.value._Don_gia_goc = toNum(quoteEdit.value.Don_gia, 0);
+          quoteEdit.value._Ti_gia_goc = toNum(quoteEdit.value.Ti_gia, 1);
+          quoteEdit.value._gia_nhap_goc = toNum(quoteEdit.value.gia_nhap, 0);
+          quoteEdit.value._gia_hardware_goc = toNum(quoteEdit.value.gia_hardware, 0);
         }
-        // Don_gia giữ nguyên, % off giữ nguyên, chỉ _Don_gia_goc thay đổi → chênh lệch xuất hiện
+
+        // Tính % off mới để Giá Bán = targetUPVnd
+        const lp = _oldDonGiaBeforeCalc + hw;
+        if (lp > 0) {
+          let newPctOff = (1 - (newDonGiaSauOff - nhap) / lp) * 100;
+          newPctOff = Number(newPctOff.toFixed(6));
+          quoteEdit.value.muc_phan_tram_off = newPctOff;
+        }
         quoteEdit.value.Don_gia = _oldDonGiaBeforeCalc;
       }
+
+
 
       quoteEdit.value = { ...quoteEdit.value };
       adjustPriceModal.value.show = false;
@@ -8179,7 +8185,7 @@ async function confirmImport(saveToDb: boolean) {
                 <div style="display: flex; flex-direction: column; gap: 6px;">
                   <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">% Off khách</label>
                   <div style="position: relative;">
-                    <FormattedInput id="qe-muc_phan_tram_off" v-model="quoteEdit.muc_phan_tram_off" @input="ensureNumberField(quoteEdit, 'muc_phan_tram_off')" style="width: 100%; padding: 10px 14px; padding-right: 30px; border-radius: 8px; color: #f59e0b;" />
+                    <FormattedInput id="qe-muc_phan_tram_off" v-model="quoteEditMucOffGoc" style="width: 100%; padding: 10px 14px; padding-right: 30px; border-radius: 8px; color: #f59e0b;" />
                     <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 600; color: #f59e0b; pointer-events: none;">%</span>
                   </div>
                 </div>
@@ -8208,9 +8214,12 @@ async function confirmImport(saveToDb: boolean) {
                   </div>
                 </label>
                 <div style="position: relative;">
-                  <FormattedInput id="qe-unit_price_kh" :modelValue="unitPrice(quoteEdit)" :readonly="true" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
+                  <FormattedInput id="qe-unit_price_kh" :modelValue="unitPrice(quoteEdit)" :decimals="quoteCurrency === 'USD' ? 2 : 0" :readonly="true" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
                   <i class="lucide-tag" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
                   <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #10b981; pointer-events: none;">₫</span>
+                </div>
+                <div class="muted" style="font-size: 11px; margin-top: 4px; color: #94a3b8; text-align: right; width: 100%;">
+                  (Giá gốc: {{ formatVND(unitPriceRaw(quoteEdit)) }})
                 </div>
               </div>
 
@@ -8228,14 +8237,17 @@ async function confirmImport(saveToDb: boolean) {
                   </div>
                 </label>
                 <div style="position: relative;">
-                  <FormattedInput id="qe-line_truoc_thue" :modelValue="lineTruocThue(quoteEdit)" :readonly="true" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
+                  <FormattedInput id="qe-line_truoc_thue" :modelValue="lineTruocThue(quoteEdit)" :decimals="quoteCurrency === 'USD' ? 2 : 0" :readonly="true" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
                   <i class="lucide-calculator" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
                   <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #10b981; pointer-events: none;">₫</span>
+                </div>
+                <div class="muted" style="font-size: 11px; margin-top: 4px; color: #94a3b8; text-align: right; width: 100%;">
+                  (Tổng gốc: {{ formatVND(lineTruocThueRaw(quoteEdit)) }})
                 </div>
               </div>
 
               <!-- 18: Chênh lệch giá -->
-              <div v-if="quoteEdit._Don_gia_goc != null" style="display: flex; flex-direction: column; gap: 6px; margin-top: auto;">
+              <div style="display: flex; flex-direction: column; gap: 6px; margin-top: auto;">
                 <label style="display: flex; justify-content: space-between; align-items: center;">
                   <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Chênh lệch</span>
                   <div style="display: flex; gap: 4px;">
@@ -8245,9 +8257,10 @@ async function confirmImport(saveToDb: boolean) {
                   </div>
                 </label>
                 <div style="position: relative;">
-                  <input readonly :value="(itemChenhLechHieuDung(quoteEdit) >= 0 ? '+' : '') + formatVND(itemChenhLechHieuDung(quoteEdit))" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #10b981 !important; border: 1px solid rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important; outline: none;" />
-                  <i class="lucide-trending-up" v-if="itemChenhLechHieuDung(quoteEdit) >= 0" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
-                  <i class="lucide-trending-down" v-else style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
+                  <input readonly :value="(itemChenhLechHieuDung(quoteEdit) > 0 ? '+' : '') + formatVND(itemChenhLechHieuDung(quoteEdit))" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #10b981 !important; border: 1px solid rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important; outline: none;" />
+                  <i class="lucide-trending-up" v-if="itemChenhLechHieuDung(quoteEdit) > 0" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
+                  <i class="lucide-trending-down" v-else-if="itemChenhLechHieuDung(quoteEdit) < 0" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
+                  <i class="lucide-minus" v-else style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
                   <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #10b981; pointer-events: none;">₫</span>
                 </div>
                 </div>
@@ -9147,7 +9160,7 @@ async function confirmImport(saveToDb: boolean) {
             <div v-else style="animation: fadeIn 0.3s ease;">
               <label style="display: block; font-size: 12px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.5px;">Nhập Giá Trị Mong Muốn</label>
               <div style="position: relative;">
-                <FormattedInput v-model="adjustPriceModal.numberValue" placeholder="Nhập số tiền..." style="width: 100%; padding: 14px 16px; padding-right: 48px; border-radius: 12px; background: rgba(15,23,42,0.8); border: 2px solid rgba(16,185,129,0.2); color: #fff; font-size: 18px; font-weight: 800; outline: none; transition: all 0.3s; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);" />
+                <FormattedInput v-model="adjustPriceModal.numberValue" :decimals="quoteCurrency === 'USD' ? 2 : 0" placeholder="Nhập số tiền..." style="width: 100%; padding: 14px 16px; padding-right: 48px; border-radius: 12px; background: rgba(15,23,42,0.8); border: 2px solid rgba(16,185,129,0.2); color: #fff; font-size: 18px; font-weight: 800; outline: none; transition: all 0.3s; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);" />
                 <div style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; background: rgba(16,185,129,0.1); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #10b981; font-weight: 800; font-size: 14px; pointer-events: none;">₫</div>
               </div>
             </div>

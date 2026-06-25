@@ -598,19 +598,31 @@
               </div>
               <div class="form-group">
                 <label>Finish Time (Dự kiến trong khoảng)</label>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                  <input type="date" v-model="tempStartDate" @change="updateFinishTime" class="input-field" style="color: #fff; background: rgba(0,0,0,0.2); flex: 1;" />
-                  <span style="color: #94a3b8;">-</span>
-                  <input type="date" v-model="tempEndDate" @change="updateFinishTime" class="input-field" style="color: #fff; background: rgba(0,0,0,0.2); flex: 1;" />
+                <div class="finish-time-row" style="display: flex; gap: 6px; align-items: center;">
+                  <div style="flex: 1; width: 100%; position: relative;">
+                    <div class="mobile-label" style="display: none; font-size: 12px; color: #94a3b8; margin-bottom: 4px;">Từ tháng:</div>
+                    <input type="month" v-model="tempStartDate" @change="updateFinishTime" @click="$event.target.showPicker && $event.target.showPicker()" class="input-field" style="color: #fff; background: rgba(0,0,0,0.2); width: 100%; color-scheme: dark; cursor: pointer; padding: 8px 6px; min-width: 0; font-size: 12px; box-sizing: border-box;" title="Chọn tháng bắt đầu" />
+                  </div>
+                  <span class="finish-time-separator" style="color: #94a3b8; font-weight: bold;">-</span>
+                  <div style="flex: 1; width: 100%; position: relative;">
+                    <div class="mobile-label" style="display: none; font-size: 12px; color: #94a3b8; margin-bottom: 4px;">Đến tháng:</div>
+                    <input type="month" v-model="tempEndDate" @change="updateFinishTime" @click="$event.target.showPicker && $event.target.showPicker()" class="input-field" style="color: #fff; background: rgba(0,0,0,0.2); width: 100%; color-scheme: dark; cursor: pointer; padding: 8px 6px; min-width: 0; font-size: 12px; box-sizing: border-box;" title="Chọn tháng kết thúc" />
+                  </div>
                 </div>
               </div>
               <div class="form-group">
                 <label>Tên khách hàng</label>
-                <input v-model="formData.ten_khach_hang" type="text" class="input-field" />
+                <div style="display: flex; gap: 8px;">
+                  <input v-model="formData.ten_khach_hang" type="text" class="input-field" style="flex: 1;" />
+                  <button type="button" @click="openCustomerSearch('ten_khach_hang')" style="background: #10b981; color: #ffffff; border: 1px solid #059669; padding: 0 12px; border-radius: 6px; cursor: pointer; white-space: nowrap; font-weight: 600; font-size: 13px; transition: background 0.2s;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">Tìm KH</button>
+                </div>
               </div>
               <div class="form-group">
                 <label>Tên công ty</label>
-                <input v-model="formData.ten_cong_ty" type="text" class="input-field" />
+                <div style="display: flex; gap: 8px;">
+                  <input v-model="formData.ten_cong_ty" type="text" class="input-field" style="flex: 1;" />
+                  <button type="button" @click="openCustomerSearch('ten_cong_ty')" style="background: #10b981; color: #ffffff; border: 1px solid #059669; padding: 0 12px; border-radius: 6px; cursor: pointer; white-space: nowrap; font-weight: 600; font-size: 13px; transition: background 0.2s;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">Tìm CTy</button>
+                </div>
               </div>
               <div class="form-group">
                 <label>A.M (Account Manager)</label>
@@ -630,7 +642,10 @@
             <div style="display: flex; flex-direction: column; gap: 16px;">
               <div class="form-group">
                 <label>Nội dung hợp đồng / PO</label>
-                <input v-model="formData.content_of_contract_po" type="text" class="input-field" />
+                <div style="display: flex; gap: 8px;">
+                  <input v-model="formData.content_of_contract_po" type="text" class="input-field" style="flex: 1;" />
+                  <button type="button" @click="showReportContentModal = true" style="background: #3b82f6; color: #ffffff; border: 1px solid #2563eb; padding: 0 12px; border-radius: 6px; cursor: pointer; white-space: nowrap; font-weight: 600; font-size: 13px; transition: background 0.2s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">Chọn Report</button>
+                </div>
               </div>
               <div class="form-group">
                 <label>Volume</label>
@@ -657,7 +672,7 @@
             <!-- Cột 3 -->
             <div style="display: flex; flex-direction: column; gap: 16px;">
               <div class="form-group" style="position: relative;">
-                <label>Report ID</label>
+                <label>Liên kết report</label>
                 <div class="custom-select-container" @click="showReportDropdown = !showReportDropdown">
                   <div class="custom-select-value" style="display: flex; flex-direction: column; gap: 6px; align-items: stretch; min-height: 32px; padding: 0;">
                     <template v-if="selectedReports.length > 0">
@@ -679,33 +694,7 @@
                     </button>
                   </div>
                 </div>
-                <div v-if="showReportDropdown" class="modal-overlay" @click.stop="showReportDropdown = false" style="z-index: 10005;">
-                  <div class="custom-alert-modal" style="background: #0f172a; padding: 24px; border-radius: 12px; max-width: 600px; width: 100%; border: 1px solid rgba(255,255,255,0.1); max-height: 80vh; display: flex; flex-direction: column;" @click.stop>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                      <h3 style="color: #f8fafc; font-size: 18px; margin: 0; font-weight: 700;">Chọn Report liên kết</h3>
-                      <button @click="showReportDropdown = false" style="background: none; border: none; color: #94a3b8; font-size: 24px; cursor: pointer; line-height: 1; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#94a3b8'">&times;</button>
-                    </div>
-                    
-                    <div style="overflow-y: auto; flex: 1; padding-right: 8px;">
-                      <div class="custom-option" @click.stop="selectReport('')" style="margin-bottom: 8px; border-radius: 6px;">
-                        <span style="color: #94a3b8;">-- Bỏ chọn tất cả --</span>
-                      </div>
-                      <div class="custom-option" v-for="rep in reports" :key="rep.id" 
-                           :class="{ 'is-selected': selectedReportIds.includes(rep.id) }"
-                           @click.stop="selectReport(rep.id)" style="border-radius: 6px; margin-bottom: 4px;">
-                        <div class="report-main">
-                          <svg v-if="selectedReportIds.includes(rep.id)" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px; vertical-align: middle; flex-shrink: 0;"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                          {{ rep.noi_dung || 'Không có nội dung' }}
-                        </div>
-                        <div class="report-sub" v-if="rep.ghi_chu" :style="{ marginLeft: selectedReportIds.includes(rep.id) ? '18px' : '0' }">{{ rep.ghi_chu }}</div>
-                      </div>
-                    </div>
-                    
-                    <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
-                      <button type="button" class="btn btn-primary" @click="showReportDropdown = false" style="padding: 8px 16px; border-radius: 6px; border: none; background: #3b82f6; color: #fff; cursor: pointer; font-weight: 600;">Xong</button>
-                    </div>
-                  </div>
-                </div>
+                <!-- Modal Chọn Report liên kết đã được chuyển ra ngoài form -->
               </div>
 
               <div class="form-group">
@@ -906,6 +895,120 @@
     </div>
     </div>
 
+    <!-- Modal Chọn Report liên kết (Chuyển từ trong form ra ngoài) -->
+    <div class="modal-overlay" v-if="showReportDropdown" @click.self="showReportDropdown = false" style="z-index: 10005;">
+      <div class="modal-content" style="width: 600px; max-width: 95vw; max-height: 70vh; background: #0f172a; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+        <div class="modal-header" style="padding: 1rem 1.25rem; border-bottom: 1px solid rgba(255, 255, 255, 0.08); background: linear-gradient(135deg, #10b981 0%, #059669 100%); display: flex; justify-content: space-between; align-items: center;">
+          <h2 style="margin: 0; font-size: 16px; color: #f8fafc; font-weight: 700;">Chọn Report liên kết</h2>
+          <button type="button" @click="showReportDropdown = false" style="background: none; border: none; color: #ffffff; font-size: 24px; cursor: pointer; line-height: 1; opacity: 0.8; transition: opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.8">&times;</button>
+        </div>
+        
+        <div class="modal-body" style="padding: 16px; display: flex; flex-direction: column; gap: 16px; overflow: hidden; flex: 1;">
+          <div style="display: flex; gap: 12px; align-items: center;">
+            <input v-model="reportContentSearchStr" placeholder="Nhập nội dung, ghi chú, mã report..." class="input-field" style="flex: 1;" autofocus />
+            <input type="month" v-model="reportContentFilterDate" @click="$event.target.showPicker && $event.target.showPicker()" class="input-field" style="width: 180px; background: rgba(0,0,0,0.2); color-scheme: dark; cursor: pointer; position: relative; z-index: 2005;" title="Chọn thời gian" placeholder="Chọn thời gian" />
+          </div>
+          
+          <div style="overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 8px; padding-right: 4px;">
+            <div v-for="r in paginatedReportContents" :key="r.id" @click="selectReport(r.id)" :style="{ padding: '12px', background: selectedReportIds.includes(r.id) ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255,255,255,0.05)', borderRadius: '8px', cursor: 'pointer', border: '1px solid ' + (selectedReportIds.includes(r.id) ? '#10b981' : 'transparent'), transition: 'all 0.2s', display: 'flex', flexDirection: 'column', gap: '6px' }">
+              <div v-if="r.thoi_gian" style="font-size: 11px; color: #10b981; display: flex; align-items: center; gap: 4px; font-weight: 600;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                <span>{{ formatReportTime(r.thoi_gian) }}</span>
+                <svg v-if="selectedReportIds.includes(r.id)" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left: auto; flex-shrink: 0;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </div>
+              <div style="font-weight: 600; color: #f8fafc; font-size: 14px; word-break: break-word;">
+                {{ r.noi_dung || 'Không có nội dung' }}
+              </div>
+              <div v-if="r.ghi_chu" style="font-size: 12px; color: #94a3b8; display: flex; align-items: flex-start; gap: 4px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-top: 2px; flex-shrink: 0;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                <span>{{ r.ghi_chu }}</span>
+              </div>
+            </div>
+
+            <button type="button" v-if="hasMoreReports" @click="loadMoreReports" style="background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px dashed rgba(16, 185, 129, 0.3); padding: 10px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; text-align: center; margin-top: 4px;" onmouseover="this.style.background='rgba(16, 185, 129, 0.2)'; this.style.borderColor='rgba(16, 185, 129, 0.5)'" onmouseout="this.style.background='rgba(16, 185, 129, 0.1)'; this.style.borderColor='rgba(16, 185, 129, 0.3)'">Xem tiếp</button>
+
+            <div v-if="paginatedReportContents.length === 0" style="text-align: center; padding: 30px 20px; color: #94a3b8; background: rgba(255,255,255,0.02); border-radius: 8px;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 12px; opacity: 0.5;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <div>Không tìm thấy report phù hợp.</div>
+            </div>
+          </div>
+
+          <div style="margin-top: auto; display: flex; justify-content: flex-end; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.08);">
+            <button type="button" @click="showReportDropdown = false" style="padding: 10px 24px; border-radius: 8px; border: none; background: #10b981; color: #fff; cursor: pointer; font-weight: 600; font-size: 14px; transition: background 0.2s;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">Xong</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Tìm Khách Hàng -->
+    <div class="modal-overlay" v-if="showCustomerModal" @click.self="showCustomerModal = false" style="z-index: 2000;">
+      <div class="modal-content" style="width: 600px; max-width: 95vw; max-height: 70vh; background: #0f172a; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+        <div class="modal-header" style="padding: 1rem 1.25rem; border-bottom: 1px solid rgba(255, 255, 255, 0.08); background: linear-gradient(135deg, #10b981 0%, #059669 100%); display: flex; justify-content: space-between; align-items: center;">
+          <h2 style="margin: 0; font-size: 16px; color: #f8fafc; font-weight: 700;">Tìm kiếm Khách Hàng</h2>
+          <button @click="showCustomerModal = false" style="background: none; border: none; color: #ffffff; font-size: 24px; cursor: pointer; line-height: 1; opacity: 0.8; transition: opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.8">&times;</button>
+        </div>
+        <div class="modal-body" style="padding: 16px; display: flex; flex-direction: column; gap: 16px; overflow: hidden; flex: 1;">
+          <input v-model="customerSearchStr" placeholder="Nhập tên khách hàng, tên công ty, mã KH..." class="input-field" style="width: 100%;" autofocus />
+          <div v-if="loadingCustomers" style="text-align: center; padding: 20px; color: #94a3b8;">
+            <span class="spinner" style="display: inline-block; margin-bottom: 8px;"></span>
+            <div>Đang tải danh sách khách hàng...</div>
+          </div>
+          <div v-else style="overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 8px; padding-right: 4px;">
+            <div v-for="c in filteredCustomers" :key="c.Ma_khach_hang" @click="selectCustomer(c)" style="padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; display: flex; flex-direction: column; gap: 4px;" onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.borderColor='rgba(16, 185, 129, 0.5)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.borderColor='transparent'">
+              <div style="font-weight: 600; color: #f8fafc; font-size: 14px; word-break: break-word;">
+                <span v-if="customerSearchTarget === 'ten_khach_hang'">{{ c.Ten_khach_hang || 'Chưa có tên KH' }}</span>
+                <span v-else>{{ c.Ten_cong_ty || 'Chưa có tên CTy' }}</span>
+              </div>
+              <div style="font-size: 12px; color: #94a3b8;" v-if="customerSearchTarget === 'ten_khach_hang' && c.Ten_cong_ty">CTy: {{ c.Ten_cong_ty }}</div>
+              <div style="font-size: 12px; color: #94a3b8;" v-if="customerSearchTarget === 'ten_cong_ty' && c.Ten_khach_hang">KH: {{ c.Ten_khach_hang }}</div>
+            </div>
+            <div v-if="filteredCustomers.length === 0" style="text-align: center; padding: 30px 20px; color: #94a3b8; background: rgba(255,255,255,0.02); border-radius: 8px;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 12px; opacity: 0.5;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <div>Không tìm thấy kết quả phù hợp.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Chọn Report cho Nội dung PO -->
+    <div class="modal-overlay" v-if="showReportContentModal" @click.self="showReportContentModal = false" style="z-index: 2000;">
+      <div class="modal-content" style="width: 600px; max-width: 95vw; max-height: 70vh; background: #0f172a; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+        <div class="modal-header" style="padding: 1rem 1.25rem; border-bottom: 1px solid rgba(255, 255, 255, 0.08); background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); display: flex; justify-content: space-between; align-items: center;">
+          <h2 style="margin: 0; font-size: 16px; color: #f8fafc; font-weight: 700;">Chọn Report</h2>
+          <button @click="showReportContentModal = false" style="background: none; border: none; color: #ffffff; font-size: 24px; cursor: pointer; line-height: 1; opacity: 0.8; transition: opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.8">&times;</button>
+        </div>
+        <div class="modal-body" style="padding: 16px; display: flex; flex-direction: column; gap: 16px; overflow: hidden; flex: 1;">
+          <div style="display: flex; gap: 12px; align-items: center;">
+            <input v-model="reportContentSearchStr" placeholder="Nhập nội dung, ghi chú, mã report..." class="input-field" style="flex: 1;" autofocus />
+            <input type="month" v-model="reportContentFilterDate" @click="$event.target.showPicker && $event.target.showPicker()" class="input-field" style="width: 180px; background: rgba(0,0,0,0.2); color-scheme: dark; cursor: pointer; position: relative; z-index: 2005;" title="Chọn thời gian" placeholder="Chọn thời gian" />
+          </div>
+          <div style="overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 8px; padding-right: 4px;">
+            <div v-for="r in paginatedReportContents" :key="r.id" @click="selectReportContent(r)" style="padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; display: flex; flex-direction: column; gap: 6px;" onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.borderColor='rgba(59, 130, 246, 0.5)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.borderColor='transparent'">
+              <div v-if="r.thoi_gian" style="font-size: 11px; color: #10b981; display: flex; align-items: center; gap: 4px; font-weight: 600;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                <span>{{ formatReportTime(r.thoi_gian) }}</span>
+              </div>
+              <div style="font-weight: 600; color: #f8fafc; font-size: 14px; word-break: break-word;">
+                {{ r.noi_dung || 'Không có nội dung' }}
+              </div>
+              <div v-if="r.ghi_chu" style="font-size: 12px; color: #94a3b8; display: flex; align-items: flex-start; gap: 4px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-top: 2px; flex-shrink: 0;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                <span>{{ r.ghi_chu }}</span>
+              </div>
+            </div>
+            
+            <button type="button" v-if="hasMoreReports" @click="loadMoreReports" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6; border: 1px dashed rgba(59, 130, 246, 0.3); padding: 10px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; text-align: center; margin-top: 4px;" onmouseover="this.style.background='rgba(59, 130, 246, 0.2)'; this.style.borderColor='rgba(59, 130, 246, 0.5)'" onmouseout="this.style.background='rgba(59, 130, 246, 0.1)'; this.style.borderColor='rgba(59, 130, 246, 0.3)'">Xem tiếp</button>
+
+            <div v-if="paginatedReportContents.length === 0" style="text-align: center; padding: 30px 20px; color: #94a3b8; background: rgba(255,255,255,0.02); border-radius: 8px;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 12px; opacity: 0.5;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <div>Không tìm thấy report phù hợp.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Workflow Design Tab -->
     <PipelineWorkflow v-if="activeTab === 'workflow'" />
 
@@ -998,6 +1101,129 @@ const uploadingFiles = ref(false)
 const backgroundSyncing = ref(false)
 const showModal = ref(false)
 const isEditing = ref(false)
+
+const showCustomerModal = ref(false)
+const customerSearchStr = ref('')
+const loadingCustomers = ref(false)
+const customersList = ref([])
+const customerSearchTarget = ref('')
+
+const showReportContentModal = ref(false)
+const reportContentSearchStr = ref('')
+const reportContentFilterDate = ref('')
+const reportContentPage = ref(1)
+
+watch([reportContentSearchStr, reportContentFilterDate], () => {
+  reportContentPage.value = 1;
+})
+
+const filteredReportContents = computed(() => {
+  let list = reports.value;
+
+  const kw = reportContentSearchStr.value.trim().toLowerCase()
+  if (kw) {
+    list = list.filter(r => 
+      (r.noi_dung && r.noi_dung.toLowerCase().includes(kw)) ||
+      (r.id && r.id.toLowerCase().includes(kw)) ||
+      (r.ghi_chu && r.ghi_chu.toLowerCase().includes(kw)) ||
+      (r.thoi_gian && r.thoi_gian.toLowerCase().includes(kw))
+    )
+  }
+
+  const dateFilter = reportContentFilterDate.value;
+  if (dateFilter) {
+    const parts = dateFilter.split('-'); // Format from type="month" is "YYYY-MM"
+    if (parts.length === 2) {
+      const my = `${parts[1]}/${parts[0]}`; // MM/YYYY
+      list = list.filter(r => r.thoi_gian && r.thoi_gian.includes(my));
+    }
+  }
+
+  return list;
+})
+
+const paginatedReportContents = computed(() => {
+  return filteredReportContents.value.slice(0, reportContentPage.value * 15);
+})
+
+const hasMoreReports = computed(() => {
+  return paginatedReportContents.value.length < filteredReportContents.value.length;
+})
+
+const loadMoreReports = () => {
+  reportContentPage.value++;
+}
+
+const formatReportTime = (thoi_gian) => {
+  if (!thoi_gian) return '';
+  const parts = thoi_gian.split(' /');
+  if (parts.length === 3) {
+    const timePart = parts[0].trim();
+    let thuPart = parts[1].trim();
+    const datePart = parts[2].trim();
+    
+    if (thuPart === '8' || thuPart.toUpperCase() === 'CN') {
+      thuPart = 'Chủ nhật';
+    } else {
+      thuPart = `thứ ${thuPart}`;
+    }
+    
+    return `${timePart}, ${thuPart} , ${datePart}`;
+  }
+  return thoi_gian;
+}
+
+const selectReportContent = (rep) => {
+  formData.value.content_of_contract_po = rep.noi_dung || rep.id;
+  showReportContentModal.value = false;
+}
+
+const filteredCustomers = computed(() => {
+  const kw = customerSearchStr.value.trim().toLowerCase()
+  if (!kw) return customersList.value.slice(0, 50)
+  return customersList.value.filter(c => 
+    (c.Ten_khach_hang && c.Ten_khach_hang.toLowerCase().includes(kw)) ||
+    (c.Ten_cong_ty && c.Ten_cong_ty.toLowerCase().includes(kw)) ||
+    (c.Ma_khach_hang && c.Ma_khach_hang.toLowerCase().includes(kw))
+  ).slice(0, 50)
+})
+
+const fetchCustomersData = async () => {
+  if (customersList.value.length > 0) return;
+  loadingCustomers.value = true;
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=khach_hang`);
+    const data = await res.json();
+    if (Array.isArray(data)) {
+      customersList.value = data.map(row => ({
+        Ma_khach_hang: String(row[0] ?? ''),
+        Ten_khach_hang: String(row[1] ?? ''),
+        Ma_cong_ty: String(row[4] ?? ''),
+        Ten_cong_ty: String(row[5] ?? ''),
+      }));
+    }
+  } catch (e) {
+    console.error('Lỗi khi fetch khách hàng:', e);
+  } finally {
+    loadingCustomers.value = false;
+  }
+}
+
+const openCustomerSearch = (target) => {
+  customerSearchTarget.value = target;
+  customerSearchStr.value = formData.value[target] || '';
+  showCustomerModal.value = true;
+  fetchCustomersData();
+}
+
+const selectCustomer = (c) => {
+  formData.value.ten_khach_hang = c.Ten_khach_hang;
+  formData.value.ten_cong_ty = c.Ten_cong_ty;
+  formData.value.ma_khach_hang = c.Ma_khach_hang;
+  formData.value.ma_cong_ty = c.Ma_cong_ty;
+  showCustomerModal.value = false;
+}
+
 const searchQuery = ref('')
 const confirmActionModal = ref({ show: false, item: null, action: '' })
 const tempStartDate = ref('')
@@ -2117,24 +2343,25 @@ const parseFinishTime = (ft) => {
     return
   }
   const parts = ft.split('-').map(s => s.trim())
-  const parseDate = (dStr) => {
+  const parseDateToMonth = (dStr) => {
     if (!dStr) return ''
     const [d, m, y] = dStr.split('/')
-    if (d && m && y) return `${y}-${m}-${d}`
+    if (m && y) return `${y}-${m}`
     return ''
   }
-  tempStartDate.value = parseDate(parts[0]) || ''
-  tempEndDate.value = parseDate(parts[1]) || ''
+  tempStartDate.value = parseDateToMonth(parts[0]) || ''
+  tempEndDate.value = parseDateToMonth(parts[1]) || ''
 }
 
 const updateFinishTime = () => {
-  const formatOut = (dStr) => {
-    if (!dStr) return ''
-    const [y, m, d] = dStr.split('-')
-    return `${d}/${m}/${y}`
+  const formatOutToFirstDay = (monthStr) => {
+    if (!monthStr) return ''
+    const [y, m] = monthStr.split('-')
+    if (y && m) return `01/${m}/${y}`
+    return ''
   }
-  const start = formatOut(tempStartDate.value)
-  const end = formatOut(tempEndDate.value)
+  const start = formatOutToFirstDay(tempStartDate.value)
+  const end = formatOutToFirstDay(tempEndDate.value)
   
   if (start && end) {
     formData.value.finish_time = `${start} - ${end}`
@@ -2797,6 +3024,7 @@ onUnmounted(() => {
   background: rgba(15, 23, 42, 0.6);
   color: #f8fafc;
   font-size: 0.875rem;
+  box-sizing: border-box;
 }
 .form-grid {
   display: grid;
@@ -3345,6 +3573,20 @@ onUnmounted(() => {
 }
 
 @media (max-width: 768px) {
+  .large-modal {
+    max-height: 70vh !important;
+  }
+  .finish-time-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+  .finish-time-separator {
+    display: none !important;
+  }
+  .finish-time-row .mobile-label {
+    display: block !important;
+  }
   .kanban-wrapper {
     flex-direction: row !important;
     overflow-x: auto !important;

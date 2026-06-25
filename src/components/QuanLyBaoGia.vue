@@ -252,7 +252,7 @@
     <div v-else class="groups-container">
       <!-- Grouped -->
       <section
-        v-for="(group, gi) in displayedGroupedContracts"
+        v-for="(group, gi) in paginatedGroupedContracts"
         :key="group.goc"
         class="group-section"
         :style="{ animationDelay: gi * 80 + 'ms' }"
@@ -422,6 +422,14 @@
           </div>
         </div>
       </section>
+
+      <!-- Nút xem tiếp cho Grouped -->
+      <div v-if="hasMoreGrouped" style="display: flex; justify-content: center; margin: 32px 0 16px 0;">
+        <button @click="loadMoreGroups" style="padding: 12px 32px; border-radius: 12px; font-size: 15px; font-weight: 700; background: rgba(16,185,129,0.1); color: #10b981; border: 1px solid rgba(16,185,129,0.3); cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" onmouseover="this.style.background='rgba(16,185,129,0.2)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.background='rgba(16,185,129,0.1)'; this.style.transform='translateY(0)';">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          Xem tiếp (còn {{ displayedGroupedContracts.length - displayLimit }} nhóm)
+        </button>
+      </div>
 
       <!-- STANDALONE CARDS (no ma_hop_dong_goc) -->
       <section v-if="displayedStandaloneContracts.length" class="standalone-section">
@@ -1568,7 +1576,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive, onMounted } from 'vue'
+import { ref, computed, reactive, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 
 const quoteCurrency = ref('VND');
@@ -1858,6 +1866,24 @@ const displayedGroupedContracts = computed(() => {
   if (dashboardFilter.value === 'ALL') return groupedContracts.value
   if (dashboardFilter.value === 'COMPLETED') return groupedContracts.value.filter(g => g.latest.trang_thai === 'Chính thức' && g.latest.is_completed)
   return groupedContracts.value.filter(g => g.latest.trang_thai === 'Tạm' && !g.latest.is_completed)
+})
+
+const displayLimit = ref(15)
+
+const paginatedGroupedContracts = computed(() => {
+  return displayedGroupedContracts.value.slice(0, displayLimit.value)
+})
+
+const hasMoreGrouped = computed(() => {
+  return displayLimit.value < displayedGroupedContracts.value.length
+})
+
+function loadMoreGroups() {
+  displayLimit.value += 15
+}
+
+watch(displayedGroupedContracts, () => {
+  displayLimit.value = 15
 })
 
 const displayedStandaloneContracts = computed(() => {

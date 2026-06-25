@@ -31,6 +31,10 @@ const props = defineProps({
   readonly: {
     type: Boolean,
     default: false
+  },
+  decimals: {
+    type: Number,
+    default: 2
   }
 });
 
@@ -45,7 +49,7 @@ function formatNumber(num: number | string | null | undefined): string {
   const n = Number(num);
   if (isNaN(n)) return '';
   return new Intl.NumberFormat('vi-VN', {
-    maximumFractionDigits: 2
+    maximumFractionDigits: props.decimals
   }).format(n);
 }
 
@@ -97,13 +101,15 @@ function onInput(event: Event) {
   
   // Keep trailing decimal commas or trailing decimal zeros so the user can type them
   const cleanRaw = rawValue.replace(/[^\d.,-]/g, '');
-  if (cleanRaw.endsWith(',')) {
-    formattedString += ',';
-  } else if (cleanRaw.includes(',')) {
-    const parts = cleanRaw.split(',');
-    const intPart = formattedString.split(',')[0] || '0';
-    const decPart = parts.slice(1).join('');
-    formattedString = intPart + ',' + decPart;
+  if (props.decimals > 0) {
+    if (cleanRaw.endsWith(',')) {
+      formattedString += ',';
+    } else if (cleanRaw.includes(',')) {
+      const parts = cleanRaw.split(',');
+      const intPart = formattedString.split(',')[0] || '0';
+      const decPart = parts.slice(1).join('');
+      formattedString = intPart + ',' + decPart;
+    }
   }
 
   displayValue.value = formattedString;

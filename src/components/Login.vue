@@ -9,7 +9,7 @@
         <p>Vui lòng xác thực để truy cập ERP</p>
       </div>
 
-      <form @submit.prevent="handleLogin" class="login-form">
+      <form @submit.prevent="handleLogin" class="login-form" autocomplete="off">
         <div class="form-group">
           <label>Tài khoản</label>
           <div class="input-wrapper">
@@ -22,7 +22,7 @@
           <label>Mật khẩu</label>
           <div class="input-wrapper">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-            <input type="password" v-model="password" placeholder="Nhập mật khẩu..." required />
+            <input type="password" v-model="password" placeholder="Nhập mật khẩu..." required autocomplete="new-password" />
           </div>
         </div>
 
