@@ -843,6 +843,8 @@ function doGet(e) {
         result = params.action === "delete" ? pipeline_deleteRow(params) : pipeline_getData(params);
       } else if (sheet === "pipeline_workflow") {
         result = params.action === "delete" ? pipeline_workflow_deleteRow(params) : pipeline_workflow_getData(params);
+      } else if (sheet === "kho_luu_tru") {
+        result = params.action === "delete" ? klt_deleteRow(params) : klt_getData(params);
       } else {
       result = params.action === "delete" ? deleteRow(params) : getData(params);
     }
@@ -1291,6 +1293,16 @@ function doPost(e) {
         result = pipeline_postData(payload);
       } else if (sheet === "pipeline_workflow") {
         result = pipeline_workflow_postData(payload);
+      } else if (sheet === "kho_luu_tru") {
+        if (payload.action === "bulk_add") {
+          result = klt_bulkAdd(payload);
+        } else if (payload.action === "bulk_delete") {
+          result = klt_bulkDelete(payload);
+        } else if (payload.action === "bulk_edit") {
+          result = klt_bulkEdit(payload);
+        } else {
+          result = klt_postData(payload);
+        }
       } else {
         result = postData(payload);
       }
@@ -3536,4 +3548,262 @@ function saveContractOfficialBulk_(payload) {
         total: payload.items.length,
         successCount: successCount
     };
+}
+
+// ╔═══════════════════════════════════════════════════════════╗
+// ║              KHO_LUU_TRU MODULE                           ║
+// ║  Columns (10): id, parents_id, parents_name, type,        ║
+// ║  Ma_khach_hang, Ten_khach_hang, Ma_cong_ty, Ten_cong_ty,  ║
+// ║  Ten_file, link_file                                      ║
+// ╚═══════════════════════════════════════════════════════════╝
+
+const KLT_SHEET_NAME = "kho_luu_tru";
+const KLT_CACHE_KEY  = "klt_cache";
+
+function getKLTSheet() {
+  return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(KLT_SHEET_NAME);
+}
+
+function klt_getData(params) {
+  const cache = CacheService.getScriptCache();
+  const cached = cache.get(KLT_CACHE_KEY);
+  if (cached) return JSON.parse(cached);
+
+  const sheet = getKLTSheet();
+  if (!sheet) return { status: "error", message: "Không tìm thấy sheet kho_luu_tru" };
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) {
+    const empty = { status: "success", total: 0, data: [] };
+    cache.put(KLT_CACHE_KEY, JSON.stringify(empty), CACHE_TTL);
+    return empty;
+  }
+
+  const values = sheet.getRange(2, 1, lastRow - 1, 11).getValues();
+  const data = values
+    .filter(r => r[0] !== "")
+    .map(r => ({
+      id: r[0] || "",
+      parents_id: r[1] || "",
+      parents_name: r[2] || "",
+      type: r[3] || "",
+      Ma_khach_hang: r[4] || "",
+      Ten_khach_hang: r[5] || "",
+      Ma_cong_ty: r[6] || "",
+      Ten_cong_ty: r[7] || "",
+      Ten_file: r[8] || "",
+      link_file: r[9] || "",
+      created_time: r[10] || ""
+    }));
+
+  const result = { status: "success", total: data.length, data: data };
+  cache.put(KLT_CACHE_KEY, JSON.stringify(result), CACHE_TTL);
+  return result;
+}
+
+function klt_postData(payload) {
+  const sheet = getKLTSheet();
+  if (!sheet) return { status: "error", message: "Không tìm thấy sheet kho_luu_tru" };
+
+  const id = payload.id;
+  if (!id) return { status: "error", message: "Thiếu ID" };
+
+  const action = payload.action || "add";
+
+  if (action === "edit") {
+    const lastRow = sheet.getLastRow();
+    if (lastRow >= 2) {
+      const ids = sheet.getRange(2, 1, lastRow - 1, 1).getValues().flat();
+      const rowIndex = ids.indexOf(id);
+      if (rowIndex !== -1) {
+        const rowNum = rowIndex + 2;
+        const existingRow = sheet.getRange(rowNum, 1, 1, 11).getValues()[0];
+        const existingCreatedTime = existingRow[10] || "";
+        const rowData = [
+          id,
+          payload.parents_id || "",
+          payload.parents_name || "",
+          payload.type || "",
+          payload.Ma_khach_hang || "",
+          payload.Ten_khach_hang || "",
+          payload.Ma_cong_ty || "",
+          payload.Ten_cong_ty || "",
+          payload.Ten_file || "",
+          payload.link_file || "",
+          payload.created_time || existingCreatedTime
+        ];
+        sheet.getRange(rowNum, 1, 1, 11).setValues([rowData]);
+        CacheService.getScriptCache().remove(KLT_CACHE_KEY);
+        return { status: "success", message: "Cập nhật thành công", data: payload };
+      }
+    }
+    return { status: "error", message: "Không tìm thấy item để sửa" };
+  } else {
+    const now = new Date();
+    const pad = n => String(n).padStart(2, "0");
+    const createdTimeStr = payload.created_time || `${pad(now.getHours())}:${pad(now.getMinutes())} ${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()}`;
+
+    const rowData = [
+      id,
+      payload.parents_id || "",
+      payload.parents_name || "",
+      payload.type || "",
+      payload.Ma_khach_hang || "",
+      payload.Ten_khach_hang || "",
+      payload.Ma_cong_ty || "",
+      payload.Ten_cong_ty || "",
+      payload.Ten_file || "",
+      payload.link_file || "",
+      createdTimeStr
+    ];
+    sheet.appendRow(rowData);
+    CacheService.getScriptCache().remove(KLT_CACHE_KEY);
+    return { status: "success", message: "Thêm thành công", data: payload };
+  }
+}
+
+function klt_deleteRow(params) {
+  const sheet = getKLTSheet();
+  if (!sheet) return { status: "error", message: "Không tìm thấy sheet kho_luu_tru" };
+
+  const id = params.id;
+  if (!id) return { status: "error", message: "Thiếu ID" };
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { status: "error", message: "Không có dữ liệu" };
+
+  const ids = sheet.getRange(2, 1, lastRow - 1, 1).getValues().flat();
+  const rowIndex = ids.indexOf(id);
+
+
+  if (rowIndex !== -1) {
+    sheet.deleteRow(rowIndex + 2);
+    CacheService.getScriptCache().remove(KLT_CACHE_KEY);
+    return { status: "success", message: "Đã xóa thành công" };
+  }
+  return { status: "error", message: "Không tìm thấy ID để xóa" };
+}
+
+// ── BULK ADD: Thêm nhiều dòng 1 lần ──
+function klt_bulkAdd(payload) {
+  const sheet = getKLTSheet();
+  if (!sheet) return { status: "error", message: "Không tìm thấy sheet kho_luu_tru" };
+
+  const items = payload.items;
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    return { status: "error", message: "Thiếu danh sách items" };
+  }
+
+  const now = new Date();
+  const pad = function(n) { return String(n).padStart(2, "0"); };
+  const createdTimeStr = pad(now.getHours()) + ":" + pad(now.getMinutes()) + " " + pad(now.getDate()) + "/" + pad(now.getMonth()+1) + "/" + now.getFullYear();
+
+  const rows = items.map(function(item) {
+    return [
+      item.id || "",
+      item.parents_id || "",
+      item.parents_name || "",
+      item.type || "",
+      item.Ma_khach_hang || "",
+      item.Ten_khach_hang || "",
+      item.Ma_cong_ty || "",
+      item.Ten_cong_ty || "",
+      item.Ten_file || "",
+      item.link_file || "",
+      item.created_time || createdTimeStr
+    ];
+  });
+
+  var lastRow = sheet.getLastRow();
+  sheet.getRange(lastRow + 1, 1, rows.length, 11).setValues(rows);
+  CacheService.getScriptCache().remove(KLT_CACHE_KEY);
+
+  return { status: "success", message: "Đã thêm " + rows.length + " dòng", count: rows.length };
+}
+
+// ── BULK DELETE: Xóa nhiều dòng theo danh sách IDs ──
+function klt_bulkDelete(payload) {
+  const sheet = getKLTSheet();
+  if (!sheet) return { status: "error", message: "Không tìm thấy sheet kho_luu_tru" };
+
+  const idsToDelete = payload.ids;
+  if (!idsToDelete || !Array.isArray(idsToDelete) || idsToDelete.length === 0) {
+    return { status: "error", message: "Thiếu danh sách IDs để xóa" };
+  }
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { status: "error", message: "Không có dữ liệu" };
+
+  const fullDataRange = sheet.getRange(2, 1, lastRow - 1, 11);
+  const values = fullDataRange.getValues();
+  
+  const newValues = [];
+  var deletedCount = 0;
+  
+  for (var i = 0; i < values.length; i++) {
+    if (idsToDelete.indexOf(values[i][0]) === -1) {
+      newValues.push(values[i]);
+    } else {
+      deletedCount++;
+    }
+  }
+
+  if (deletedCount > 0) {
+    fullDataRange.clearContent();
+    if (newValues.length > 0) {
+      sheet.getRange(2, 1, newValues.length, 11).setValues(newValues);
+    }
+  }
+
+  CacheService.getScriptCache().remove(KLT_CACHE_KEY);
+  return { status: "success", message: "Đã xóa " + deletedCount + " dòng", count: deletedCount };
+}
+
+// ── BULK EDIT: Sửa nhiều dòng 1 lần ──
+function klt_bulkEdit(payload) {
+  const sheet = getKLTSheet();
+  if (!sheet) return { status: "error", message: "Không tìm thấy sheet kho_luu_tru" };
+
+  const items = payload.items;
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    return { status: "error", message: "Thiếu danh sách items" };
+  }
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { status: "error", message: "Không có dữ liệu" };
+
+  const fullDataRange = sheet.getRange(2, 1, lastRow - 1, 11);
+  const values = fullDataRange.getValues();
+  var editCount = 0;
+
+  const itemMap = {};
+  for (var i = 0; i < items.length; i++) {
+    itemMap[items[i].id] = items[i];
+  }
+
+  for (var r = 0; r < values.length; r++) {
+    var rowId = values[r][0];
+    var item = itemMap[rowId];
+    if (item) {
+      values[r][0] = item.id || "";
+      values[r][1] = item.parents_id || "";
+      values[r][2] = item.parents_name || "";
+      values[r][3] = item.type || "";
+      values[r][4] = item.Ma_khach_hang || "";
+      values[r][5] = item.Ten_khach_hang || "";
+      values[r][6] = item.Ma_cong_ty || "";
+      values[r][7] = item.Ten_cong_ty || "";
+      values[r][8] = item.Ten_file || "";
+      values[r][9] = item.link_file || "";
+      values[r][10] = item.created_time || values[r][10] || "";
+      editCount++;
+    }
+  }
+
+  if (editCount > 0) {
+    fullDataRange.setValues(values);
+  }
+
+  CacheService.getScriptCache().remove(KLT_CACHE_KEY);
+  return { status: "success", message: "Đã sửa " + editCount + " dòng", count: editCount };
 }

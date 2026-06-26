@@ -13,6 +13,7 @@ import SaleReport from '../components/SaleReport.vue'
 import LicenseOldData from '../components/LicenseOldData.vue'
 import Dashboard from '../components/Dashboard.vue'
 import Pipeline from '../components/Pipeline.vue'
+import KhoLuuTru from '../components/KhoLuuTru.vue'
 
 const routes = [
   {
@@ -102,6 +103,12 @@ const routes = [
     name: 'Pipeline',
     component: Pipeline,
     meta: { title: 'Pipeline' }
+  },
+  {
+    path: '/kho-luu-tru',
+    name: 'KhoLuuTru',
+    component: KhoLuuTru,
+    meta: { title: 'Kho Lưu Trữ' }
   }
 ]
 

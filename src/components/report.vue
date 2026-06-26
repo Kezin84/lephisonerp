@@ -1136,8 +1136,12 @@
 
           <!-- Upload Files -->
           <div class="elite-form-group">
-            <label style="display: flex; justify-content: space-between;">
+            <label style="display: flex; justify-content: space-between; align-items: center;">
               <span>Đính Kèm (Ảnh / Excel)</span>
+              <button type="button" @click="openStorageModal" class="elite-btn-primary" style="padding: 0.3rem 0.8rem; font-size: 0.75rem; border-radius: 4px; background: #10b981; border: 1px solid #059669; color: white; cursor: pointer; display: flex; align-items: center; gap: 0.3rem; font-weight: 600; box-shadow: 0 2px 4px rgba(16,185,129,0.3);" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                Chọn từ kho
+              </button>
             </label>
             <div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
               <!-- Image Upload Row -->
@@ -1150,9 +1154,10 @@
                 <input type="file" accept="image/*" multiple ref="imgUploadInput" style="display: none;" @change="handleImgUpload" />
                 <div v-if="formData.img_save" class="upload-preview-gallery" style="margin-top: 0.8rem; display: flex; flex-wrap: wrap; gap: 0.8rem;">
                   <div v-for="(link, i) in formData.img_save.split('\n').filter(Boolean)" :key="i" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; width: 80px;">
-                    <a href="#" @click.prevent.stop="selectedImage = link" style="display: block; width: 80px; height: 80px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.1); overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.4); transition: transform 0.2s, border-color 0.2s;" onmouseover="this.style.transform='scale(1.05)'; this.style.borderColor='#3b82f6'" onmouseout="this.style.transform='scale(1)'; this.style.borderColor='rgba(255,255,255,0.1)'" :title="`Xem Ảnh ${i + 1}`">
+                    <a href="#" @click.prevent.stop="selectedImage = link" style="display: block; width: 80px; height: 80px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.1); overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.4); transition: transform 0.2s, border-color 0.2s;" onmouseover="this.style.transform='scale(1.05)'; this.style.borderColor='#3b82f6'" onmouseout="this.style.transform='scale(1)'; this.style.borderColor='rgba(255,255,255,0.1)'" :title="getImgFileName(formData, i)">
                       <img :src="link" style="width: 100%; height: 100%; object-fit: cover;" />
                     </a>
+                    <div style="font-size: 0.65rem; color: #cbd5e1; width: 100%; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 2px;" :title="getImgFileName(formData, i)">{{ getImgFileName(formData, i) }}</div>
                     <button type="button" @click="removeLink('img_save', i)" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #ef4444; cursor: pointer; padding: 4px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; transition: background 0.2s; width: 100%; display: flex; align-items: center; justify-content: center; gap: 4px;" onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'">
                       ✕ Xóa
                     </button>
@@ -2166,7 +2171,80 @@
       </div>
     </div>
 
+    <!-- Storage Prompt Modal -->
+    <div v-if="isStoragePromptModalOpen" class="elite-modal-overlay" @click.self="closeStoragePromptModal" style="z-index: 9999999; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);">
+      <div class="elite-modal-content" style="max-width: 450px; background: #0f172a; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); overflow: hidden; animation: slideDown 0.3s ease-out;">
+        <div style="padding: 1.5rem; text-align: center;">
+          <div style="width: 60px; height: 60px; border-radius: 50%; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2); display: flex; align-items: center; justify-content: center; color: #10b981; margin: 0 auto 1.5rem;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          </div>
+          <h3 style="color: #f8fafc; font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem;">Thêm vào Kho lưu trữ?</h3>
+          <p style="color: #cbd5e1; font-size: 0.95rem; margin-bottom: 1.5rem;">Bạn có muốn thêm <strong style="color: white;">{{ pendingStorageFiles.length }}</strong> file vừa tải lên vào Kho lưu trữ chung để có thể tái sử dụng không?</p>
+          <div style="display: flex; gap: 1rem; justify-content: center;">
+            <button type="button" @click="closeStoragePromptModal" :disabled="isAddingToStorage" style="padding: 0.6rem 1.5rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #cbd5e1; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+              Không, bỏ qua
+            </button>
+            <button type="button" @click="addPendingFilesToStorage" :disabled="isAddingToStorage" style="padding: 0.6rem 1.5rem; background: #10b981; border: none; color: white; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s; display: flex; align-items: center; gap: 0.5rem;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
+              <svg v-if="isAddingToStorage" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" style="animation: spin 0.8s linear infinite; transform-origin: center;"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" style="opacity: 0.25;"></circle><path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" style="opacity: 0.75;"></path></svg>
+              <span v-else>Có, thêm ngay</span>
+              <span v-if="isAddingToStorage">Đang lưu...</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
 
+    <!-- Storage Selection Modal -->
+    <div v-if="showStorageModal" class="elite-modal-overlay" @click.self="showStorageModal = false" style="z-index: 9999999; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);">
+      <div class="elite-modal dark-mode-modal" style="max-width: 800px; width: 95%; max-height: 85vh; display: flex; flex-direction: column; background: #0f172a !important; border: 1px solid rgba(255,255,255,0.08) !important; box-shadow: 0 25px 60px -12px rgba(0,0,0,0.7); border-radius: 12px; overflow: hidden;">
+        
+        <div class="elite-modal-header" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06); flex-shrink: 0;">
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <div style="width: 42px; height: 42px; background: linear-gradient(135deg, #8b5cf6, #7c3aed); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            </div>
+            <div>
+              <h2 style="color: #f8fafc; margin: 0; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em;">CHỌN TỪ KHO</h2>
+              <p style="color: #94a3b8; margin: 0.1rem 0 0 0; font-size: 0.8rem;">Tick chọn các file bạn muốn đính kèm vào báo cáo.</p>
+            </div>
+          </div>
+          <button @click="showStorageModal = false" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #94a3b8; font-size: 1.1rem; transition: all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.2)'; this.style.color='#f87171'" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='#94a3b8'">✕</button>
+        </div>
+
+        <div style="padding: 1rem 1.5rem; background: #1e293b; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; gap: 1rem; flex-wrap: wrap;">
+          <input type="text" v-model="storageSearchQuery" placeholder="Tìm kiếm tên file..." style="flex: 1; min-width: 200px; padding: 0.6rem 1rem; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #f8fafc; font-size: 0.9rem;" />
+          <select v-model="storageCustomerFilter" style="flex: 1; min-width: 200px; max-width: 100%; padding: 0.6rem 1rem; background: #0f172a; border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; color: #10b981; font-weight: 600; font-size: 0.9rem; outline: none; transition: all 0.2s; white-space: normal; word-wrap: break-word; text-overflow: ellipsis;" onmouseover="this.style.borderColor='rgba(16, 185, 129, 0.6)'" onmouseout="this.style.borderColor='rgba(16, 185, 129, 0.3)'">
+            <option value="">-- Lọc theo Công ty/Khách hàng --</option>
+            <option v-for="opt in uniqueStorageCustomers" :key="opt.key" :value="opt.key" style="white-space: normal; word-wrap: break-word; max-width: 100%;">{{ opt.label }}</option>
+          </select>
+        </div>
+
+        <div style="flex: 1; overflow-y: auto; padding: 1.5rem; background: #0b1118; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem;">
+          <div v-if="isFetchingStorage" style="grid-column: 1 / -1; color: rgba(255,255,255,0.5); padding: 2rem; text-align: center; font-size: 0.95rem; font-style: italic;">Đang tải dữ liệu từ Kho lưu trữ...</div>
+          <div v-else-if="filteredStorageFiles.length === 0" style="grid-column: 1 / -1; color: rgba(255,255,255,0.5); padding: 2rem; text-align: center; font-size: 0.95rem; font-style: italic;">Không tìm thấy file nào</div>
+          
+          <div v-for="f in filteredStorageFiles" :key="f.id" @click="toggleStorageFile(f.id)" style="background: #1e293b; border: 1px solid rgba(255,255,255,0.05); border-radius: 10px; padding: 1rem; cursor: pointer; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all 0.2s; position: relative;" :style="selectedStorageFiles.has(f.id) ? 'background: rgba(139,92,246,0.15); border-color: rgba(139,92,246,0.4); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(139,92,246,0.2);' : ''">
+             <div style="position: absolute; top: 10px; right: 10px; width: 20px; height: 20px; border-radius: 4px; border: 2px solid rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; transition: all 0.2s;" :style="selectedStorageFiles.has(f.id) ? 'background: #8b5cf6; border-color: #8b5cf6;' : ''">
+               <svg v-if="selectedStorageFiles.has(f.id)" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+             </div>
+             
+             <div style="height: 60px; display: flex; align-items: center; justify-content: center; margin-bottom: 0.5rem; width: 100%;">
+               <img v-if="f.link_file.match(/\.(jpeg|jpg|gif|png|webp|svg|bmp)$/i)" :src="f.link_file" style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 4px;" />
+               <svg v-else xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+             </div>
+             <div style="font-size: 0.85rem; color: #f8fafc; font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; margin-bottom: 0.3rem;">{{ f.name }}</div>
+             <div v-if="f.Ten_khach_hang || f.Ten_cong_ty" style="font-size: 0.7rem; color: #94a3b8; font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">{{ [f.Ten_cong_ty, f.Ten_khach_hang].filter(Boolean).join(' - ') }}</div>
+          </div>
+        </div>
+
+        <div style="padding: 1.25rem 1.5rem; border-top: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center; background: #0f172a;">
+          <div style="color: #94a3b8; font-size: 0.9rem;">
+            Đã chọn: <strong style="color: #f8fafc;">{{ selectedStorageFiles.size }}</strong> file
+          </div>
+          <button type="button" @click="confirmStorageSelection" class="elite-btn-primary" style="padding: 0.75rem 2rem; font-weight: 700; border-radius: 8px; background: #10b981; border: none; color: white; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 10px rgba(16,185,129,0.3);" onmouseover="this.style.background='#059669'; this.style.transform='translateY(-1px)'" onmouseout="this.style.background='#10b981'; this.style.transform='none'">Xác nhận thêm</button>
+        </div>
+      </div>
+    </div>
 </template>
 
 <script setup>
@@ -2188,6 +2266,133 @@ const isMobile = ref(window.innerWidth <= 768)
 const onResize = () => { isMobile.value = window.innerWidth <= 768 }
 const selectedImage = ref(null)
 
+// --- Storage Modal Feature ---
+const showStorageModal = ref(false)
+const storageFiles = ref([])
+const isFetchingStorage = ref(false)
+const storageSearchQuery = ref('')
+const storageCustomerFilter = ref('')
+const selectedStorageFiles = ref(new Set())
+
+const filteredStorageFiles = computed(() => {
+  let files = storageFiles.value.filter(f => f.type !== 'folder')
+  
+  if (storageSearchQuery.value) {
+    const q = storageSearchQuery.value.toLowerCase()
+    files = files.filter(f => (f.name || '').toLowerCase().includes(q))
+  }
+  
+  if (storageCustomerFilter.value) {
+    files = files.filter(f => 
+      `${f.Ten_cong_ty || ''}_${f.Ten_khach_hang || ''}` === storageCustomerFilter.value
+    )
+  }
+  
+  return files
+})
+
+const uniqueStorageCustomers = computed(() => {
+  const map = new Map()
+  storageFiles.value.forEach(c => {
+    if (!c.Ten_cong_ty && !c.Ten_khach_hang) return
+    const key = `${c.Ten_cong_ty || ''}_${c.Ten_khach_hang || ''}`
+    if (!map.has(key)) {
+      const label = [c.Ten_cong_ty, c.Ten_khach_hang].filter(Boolean).join(' - ')
+      map.set(key, { key, label })
+    }
+  })
+  return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label))
+})
+
+const openStorageModal = async () => {
+  showStorageModal.value = true
+  selectedStorageFiles.value.clear()
+  storageSearchQuery.value = ''
+  storageCustomerFilter.value = ''
+  
+  if (storageFiles.value.length === 0) {
+    isFetchingStorage.value = true
+    try {
+      const res = await fetch(`https://script.google.com/macros/s/AKfycbx1yDOQLxYgJb5w30KmxQHF8AYUZln_5q58HCKP4zlUmtJye6aJBiSt3oyT0j_3QaigdQ/exec?sheet=kho_luu_tru&action=get`)
+      const data = await res.json()
+      if (data.status === 'success') {
+        storageFiles.value = data.data.map(item => ({
+          ...item,
+          name: item.Ten_file || 'Không tên'
+        })).sort((a, b) => {
+          return new Date(b.created_time || 0) - new Date(a.created_time || 0)
+        })
+      }
+    } catch (e) {
+      console.error('Lỗi lấy dữ liệu kho:', e)
+      alert('Không thể tải dữ liệu từ Kho lưu trữ')
+    } finally {
+      isFetchingStorage.value = false
+    }
+  }
+}
+
+const toggleStorageFile = (id) => {
+  if (!id) return
+  const newSet = new Set(selectedStorageFiles.value)
+  if (newSet.has(id)) {
+    newSet.delete(id)
+  } else {
+    newSet.add(id)
+  }
+  selectedStorageFiles.value = newSet
+}
+
+const confirmStorageSelection = () => {
+  const ids = Array.from(selectedStorageFiles.value)
+  if (ids.length === 0) {
+    showStorageModal.value = false
+    return
+  }
+  
+  const images = []
+  const imageNames = []
+  const others = []
+  const otherNames = []
+  
+  ids.forEach(id => {
+    const f = storageFiles.value.find(item => item.id === id)
+    if (f && f.link_file) {
+      if (f.link_file.match(/\.(jpeg|jpg|gif|png|webp|svg|bmp)$/i)) {
+        images.push(f.link_file)
+        imageNames.push(f.name || f.Ten_file || 'Ảnh từ kho')
+      } else {
+        others.push(f.link_file)
+        otherNames.push(f.name || f.Ten_file || 'File từ kho')
+      }
+    }
+  })
+  
+  if (images.length > 0) {
+    const existingImgs = formData.value.img_save ? formData.value.img_save.split('\n').filter(Boolean) : []
+    formData.value.img_save = [...existingImgs, ...images].join('\n')
+    
+    const existingImgNames = formData.value.ten_file_img ? formData.value.ten_file_img.split('\n') : []
+    while (existingImgNames.length < existingImgs.length) {
+      existingImgNames.push('')
+    }
+    formData.value.ten_file_img = [...existingImgNames, ...imageNames].join('\n')
+  }
+  
+  if (others.length > 0) {
+    const existingExcels = formData.value.link_excel_bao_gia ? formData.value.link_excel_bao_gia.split('\n').filter(Boolean) : []
+    formData.value.link_excel_bao_gia = [...existingExcels, ...others].join('\n')
+    
+    const existingNames = formData.value.ten_file_bao_gia ? formData.value.ten_file_bao_gia.split('\n') : []
+    while (existingNames.length < existingExcels.length) {
+      existingNames.push('')
+    }
+    formData.value.ten_file_bao_gia = [...existingNames, ...otherNames].join('\n')
+  }
+  
+  showStorageModal.value = false
+}
+
 // Custom Alert System
 const customAlertState = ref({ isOpen: false, message: '', type: 'info' })
 const closeAlert = () => { customAlertState.value.isOpen = false }
@@ -2198,6 +2403,59 @@ const alert = (message) => {
   else if (msgLower.includes('thành công') || msgLower.includes('xong')) type = 'success'
   
   customAlertState.value = { isOpen: true, message, type }
+}
+
+// Storage Prompt Feature
+const isStoragePromptModalOpen = ref(false)
+const isAddingToStorage = ref(false)
+const pendingStorageFiles = ref([])
+
+const closeStoragePromptModal = () => {
+  isStoragePromptModalOpen.value = false
+  pendingStorageFiles.value = []
+}
+
+const addPendingFilesToStorage = async () => {
+  if (!pendingStorageFiles.value || pendingStorageFiles.value.length === 0) return
+  isAddingToStorage.value = true
+  
+  const generateCurrentTime = () => {
+    const d = new Date()
+    return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')} ${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`
+  }
+
+  const items = pendingStorageFiles.value.map(f => ({
+    id: 'FILE_' + Date.now() + Math.floor(Math.random() * 1000) + Math.floor(Math.random() * 1000),
+    parents_id: '',
+    parents_name: '',
+    type: 'file',
+    Ten_file: f.name,
+    link_file: f.url,
+    created_time: generateCurrentTime()
+  }))
+  
+  try {
+    const res = await fetch(`https://script.google.com/macros/s/AKfycbx1yDOQLxYgJb5w30KmxQHF8AYUZln_5q58HCKP4zlUmtJye6aJBiSt3oyT0j_3QaigdQ/exec`, {
+      method: 'POST',
+      body: JSON.stringify({
+        sheet: 'kho_luu_tru',
+        action: 'bulk_add',
+        items: items
+      })
+    })
+    const data = await res.json()
+    if (data.status === 'success') {
+      alert(`Đã thêm ${items.length} file vào Kho lưu trữ thành công!`)
+    } else {
+      alert(`Lỗi: ${data.message || 'Không rõ'}`)
+    }
+  } catch (e) {
+    console.error(e)
+    alert('Lỗi mạng khi lưu vào Kho lưu trữ')
+  }
+  
+  isAddingToStorage.value = false
+  closeStoragePromptModal()
 }
 
 const isExpandedFilters = ref(false)
@@ -3583,6 +3841,8 @@ const handleImgUpload = async (e) => {
       
       if (res.success) {
         formData.value.img_save = formData.value.img_save ? formData.value.img_save + '\n' + res.data.url : res.data.url
+        formData.value.ten_file_img = formData.value.ten_file_img ? formData.value.ten_file_img + '\n' + file.name : file.name
+        pendingStorageFiles.value.push({ name: file.name, url: res.data.url })
       } else {
         alert('Lỗi tải ảnh: ' + (res.error?.message || 'Không rõ'))
       }
@@ -3593,6 +3853,9 @@ const handleImgUpload = async (e) => {
   } finally {
     isUploadingFiles.value = false
     e.target.value = ''
+    if (pendingStorageFiles.value.length > 0) {
+      isStoragePromptModalOpen.value = true
+    }
   }
 }
 
@@ -3612,6 +3875,7 @@ const handleExcelUpload = async (e, field) => {
         formData.value[field] = formData.value[field] ? formData.value[field] + '\n' + res.secure_url : res.secure_url
         const nameField = field.replace('link_excel_', 'ten_file_')
         formData.value[nameField] = formData.value[nameField] ? formData.value[nameField] + '\n' + file.name : file.name
+        pendingStorageFiles.value.push({ name: file.name, url: res.secure_url })
       } else {
         alert('Lỗi tải file: ' + (res.error?.message || 'Không rõ'))
       }
@@ -3622,6 +3886,9 @@ const handleExcelUpload = async (e, field) => {
   } finally {
     isUploadingFiles.value = false
     e.target.value = ''
+    if (pendingStorageFiles.value.length > 0) {
+      isStoragePromptModalOpen.value = true
+    }
   }
 }
 
@@ -3630,13 +3897,20 @@ const removeLink = (field, index) => {
   links.splice(index, 1)
   formData.value[field] = links.join('\n')
 
+  let nameField = null
   if (field.startsWith('link_excel_')) {
-    const nameField = field.replace('link_excel_', 'ten_file_')
-    if (formData.value[nameField]) {
-      const names = formData.value[nameField].split('\n').filter(Boolean)
-      names.splice(index, 1)
-      formData.value[nameField] = names.join('\n')
+    nameField = field.replace('link_excel_', 'ten_file_')
+  } else if (field === 'img_save') {
+    nameField = 'ten_file_img'
+  }
+
+  if (nameField && formData.value[nameField]) {
+    const names = formData.value[nameField].split('\n')
+    while (names.length < links.length + 1) {
+      names.push('')
     }
+    names.splice(index, 1)
+    formData.value[nameField] = names.join('\n')
   }
 }
 
@@ -3999,10 +4273,18 @@ const downloadExcelFile = async (url, fileName) => {
 const getExcelFileName = (dataObj, field, index, prefix) => {
   const nameField = field.replace('link_excel_', 'ten_file_');
   if (dataObj && dataObj[nameField]) {
-    const names = String(dataObj[nameField]).split('\n').filter(Boolean);
-    if (names[index]) return names[index];
+    const names = String(dataObj[nameField]).split('\n');
+    if (names[index] && names[index].trim() !== '') return names[index];
   }
   return `${prefix} ${index + 1}`;
+}
+
+const getImgFileName = (dataObj, index) => {
+  if (dataObj && dataObj.ten_file_img) {
+    const names = String(dataObj.ten_file_img).split('\n');
+    if (names[index] && names[index].trim() !== '') return names[index];
+  }
+  return `Ảnh ${index + 1}`;
 }
 
 const getFileIconSvg = (fileName) => {
