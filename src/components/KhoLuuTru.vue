@@ -931,6 +931,10 @@ const handleTouchEnd = (event) => {
   if (touchTimer) {
     clearTimeout(touchTimer)
     touchTimer = null
+  } else if (isLongPress) {
+    setTimeout(() => {
+      isLongPress = false
+    }, 500)
   }
 }
 
@@ -965,7 +969,6 @@ const closeContextMenu = () => {
 
 const handleItemClick = (item) => {
   if (isLongPress) {
-    isLongPress = false
     return
   }
   
@@ -983,6 +986,10 @@ const handleItemClick = (item) => {
         navigateTo(item.id)
       } else {
         toggleFolder(item.id)
+      }
+    } else {
+      if (window.innerWidth <= 768) {
+        openFile(item.link_file)
       }
     }
   }
