@@ -5309,7 +5309,6 @@ onMounted(() => {
     filters.value.dateFrom = String(route.query.date)
     filters.value.dateTo = String(route.query.date)
   }
-  isPendingModalOpen.value = true
   fetchReports()
   window.addEventListener('resize', onResize)
 })
