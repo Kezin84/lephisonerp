@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Login from '../components/Login.vue'
 import ChangePassword from '../components/ChangePassword.vue'
 import Report from '../components/report.vue'
+import ReportFIREBASE from '../components/Firebase_change/reportFIREBASE.vue'
 import POPreview from '../components/POPreview.vue'
 import TraCuuMST from '../components/TraCuuMST.vue'
 import Customer from '../components/Customer.vue'
@@ -43,6 +44,12 @@ const routes = [
     name: 'Report',
     component: Report,
     meta: { title: 'Báo cáo công việc' }
+  },
+  {
+    path: '/report-firebase',
+    name: 'ReportFIREBASE',
+    component: ReportFIREBASE,
+    meta: { title: 'Báo cáo Firebase' }
   },
   {
     path: '/customer',

@@ -185,7 +185,9 @@ function getData(params) {
 
   const result = { status: "success", total, offset, limit, data: rows };
 
-  if (useCache) cache.put(CACHE_KEY, JSON.stringify(result), CACHE_TTL);
+  if (useCache) {
+    try { cache.put(CACHE_KEY, JSON.stringify(result), CACHE_TTL); } catch(e) {}
+  }
   return result;
 }
 
@@ -1455,7 +1457,9 @@ function kh_getData(params) {
   if (limit > 0) rows = rows.slice(offset, offset + limit);
 
   const result = { status: "success", total, offset, limit, data: rows };
-  if (useCache) cache.put(KH_CACHE_KEY, JSON.stringify(result), CACHE_TTL);
+  if (useCache) {
+    try { cache.put(KH_CACHE_KEY, JSON.stringify(result), CACHE_TTL); } catch(e) {}
+  }
   return result;
 }
 
@@ -2705,7 +2709,9 @@ function po_getData(params) {
   const total = rows.length;
   if (limit > 0) rows = rows.slice(offset, offset + limit);
   const result = {status:"success",total,offset,limit,data:rows};
-  if (useCache) cache.put(PO_CACHE, JSON.stringify(result), CACHE_TTL);
+  if (useCache) {
+    try { cache.put(PO_CACHE, JSON.stringify(result), CACHE_TTL); } catch(e) {}
+  }
   return result;
 }
 
@@ -2811,7 +2817,9 @@ function ctmh_getData(params) {
   const total = rows.length;
   if (limit > 0) rows = rows.slice(offset, offset + limit);
   const result = {status:"success",total,offset,limit,data:rows};
-  if (useCache) cache.put(CTMH_CACHE, JSON.stringify(result), CACHE_TTL);
+  if (useCache) {
+    try { cache.put(CTMH_CACHE, JSON.stringify(result), CACHE_TTL); } catch(e) {}
+  }
   return result;
 }
 
@@ -2959,7 +2967,9 @@ function dr_getData(params) {
   const total = rows.length;
   if (limit > 0) rows = rows.slice(offset, offset + limit);
   const result = {status:"success",total,offset,limit,data:rows};
-  if (useCache) cache.put(DR_CACHE, JSON.stringify(result), CACHE_TTL);
+  if (useCache) {
+    try { cache.put(DR_CACHE, JSON.stringify(result), CACHE_TTL); } catch(e) {}
+  }
   return result;
 }
 
@@ -3597,7 +3607,7 @@ function klt_getData(params) {
     }));
 
   const result = { status: "success", total: data.length, data: data };
-  cache.put(KLT_CACHE_KEY, JSON.stringify(result), CACHE_TTL);
+  try { cache.put(KLT_CACHE_KEY, JSON.stringify(result), CACHE_TTL); } catch (e) {}
   return result;
 }
 
