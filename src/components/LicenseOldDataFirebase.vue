@@ -445,35 +445,37 @@
     </div>
 
     <!-- AI Chat Panel -->
-    <div v-if="showAIChat" class="chat-overlay" @click.self="showAIChat = false">
-      <div class="chat-panel">
-        <div class="chat-header">
-          <div style="display:flex; align-items:center; gap:8px;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e0e7ff" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10H12V2Z"/><path d="M12 12 2.1 7.1"/></svg>
-            <h3 style="margin:0; font-size:1.1rem; color: white;">Trợ lý AI (Dữ liệu)</h3>
+    <Teleport to="body">
+      <div v-if="showAIChat" class="chat-overlay" @click.self="showAIChat = false">
+        <div class="chat-panel">
+          <div class="chat-header">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e0e7ff" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10H12V2Z"/><path d="M12 12 2.1 7.1"/></svg>
+              <h3 style="margin:0; font-size:1.1rem; color: white;">Trợ lý AI (Dữ liệu)</h3>
+            </div>
+            <button class="btn-close-chat" @click="showAIChat = false">&times;</button>
           </div>
-          <button class="btn-close-chat" @click="showAIChat = false">&times;</button>
-        </div>
-        
-        <div class="chat-body" ref="chatBody">
-          <div v-for="(msg, i) in chatHistory" :key="i" class="chat-message-wrapper" :class="msg.role">
-            <div class="chat-bubble" v-html="renderMarkdown(msg.content)"></div>
-          </div>
-          <div v-if="aiTyping" class="chat-message-wrapper assistant">
-            <div class="chat-bubble typing">
-              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          
+          <div class="chat-body" ref="chatBody">
+            <div v-for="(msg, i) in chatHistory" :key="i" class="chat-message-wrapper" :class="msg.role">
+              <div class="chat-bubble" v-html="renderMarkdown(msg.content)"></div>
+            </div>
+            <div v-if="aiTyping" class="chat-message-wrapper assistant">
+              <div class="chat-bubble typing">
+                <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+              </div>
             </div>
           </div>
-        </div>
-        
-        <div class="chat-footer">
-          <input type="text" v-model="chatInput" @keyup.enter="sendChat" placeholder="Hỏi AI về dữ liệu này..." class="chat-input" />
-          <button @click="sendChat" :disabled="!chatInput.trim() || aiTyping" class="btn-send-chat">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-          </button>
+          
+          <div class="chat-footer">
+            <input type="text" v-model="chatInput" @keyup.enter="sendChat" placeholder="Hỏi AI về dữ liệu này..." class="chat-input" />
+            <button @click="sendChat" :disabled="!chatInput.trim() || aiTyping" class="btn-send-chat">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </Teleport>
 
     <AsyncConfirmModal
       :show="asyncModal.show"
@@ -2269,8 +2271,8 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.3);
-  z-index: 1000;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999999;
   display: flex;
   justify-content: flex-end;
 }
@@ -2406,6 +2408,18 @@ onUnmounted(() => {
   .ai-chat-fab.bumped-up {
     bottom: 140px;
   }
+  
+  .chat-panel {
+    width: 100%;
+    height: 100%;
+    max-height: 100dvh;
+    animation: slideInUpMobile 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+
+@keyframes slideInUpMobile {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
 }
 </style>
 
