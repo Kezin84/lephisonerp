@@ -1,4 +1,4 @@
-export const DEEPSEEK_API_URL = '/byteplus-api/api/v3/responses';
+export const DEEPSEEK_API_URL = '/byteplus-api/api/v3/chat/completions';
 export const DEEPSEEK_API_KEY = 'VxCgNvLTE.ChthcGlrZXktMjAyNjEwMDUyMTA2MjEtN2ZzOW0Q-5_rmAsYAiCfgOwtKhAaV-B60txBRYBHBOtS7fGX.3anjjKeiObCad8KG5EhozRtIuoD2U-BFpSMbkg0T_HZW4vy4gHGiyyx5DjmiJrkVDu0bG_oO8PuNQmGsOS12HweZ';
 export const DEEPSEEK_MODEL = 'deepseek-v4-pro-ga-260813';
 
@@ -8,21 +8,26 @@ export const DEEPSEEK_MODEL = 'deepseek-v4-pro-ga-260813';
  * @param stream Bật chế độ stream trả về từng chữ (mặc định: false)
  * @param useWebSearch Bật công cụ tìm kiếm web (mặc định: false)
  */
-export const callDeepSeek = async (prompt: string, stream: boolean = false, useWebSearch: boolean = false) => {
+export const callDeepSeek = async (promptOrMessages: any, stream: boolean = false, useWebSearch: boolean = false) => {
+  let messages = [];
+  if (Array.isArray(promptOrMessages)) {
+    messages = promptOrMessages.map((msg: any) => ({
+      role: msg.role,
+      content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+    }));
+  } else {
+    messages = [
+      {
+        role: "user",
+        content: promptOrMessages
+      }
+    ];
+  }
+
   const payload: any = {
     model: DEEPSEEK_MODEL,
     stream: stream,
-    input: [
-      {
-        role: "user",
-        content: [
-          {
-            type: "input_text",
-            text: prompt
-          }
-        ]
-      }
-    ]
+    messages: messages
   };
 
   // Nếu bật web search

@@ -537,10 +537,14 @@ Nếu không tìm thấy thông tin nào, hãy để chuỗi rỗng "".`;
   try {
     const result = await callDeepSeek(prompt, false, false);
     
-    // API trả về mảng output (BytePlus ARK format)
-    const messageObj = result.output.find(item => item.type === 'message');
-    const textObj = messageObj.content.find(c => c.type === 'output_text');
-    let jsonContent = textObj.text;
+    let jsonContent = '';
+    if (result.choices && result.choices.length > 0) {
+      jsonContent = result.choices[0]?.message?.content || result.choices[0]?.text || '';
+    } else if (result.output && Array.isArray(result.output)) {
+      const messageObj = result.output.find(item => item.type === 'message');
+      const textObj = messageObj?.content?.find(c => c.type === 'output_text');
+      jsonContent = textObj ? textObj.text : '';
+    }
     
     // Xóa block code markdown nếu AI trả về
     jsonContent = jsonContent.replace(/```json/g, '').replace(/```/g, '').trim();

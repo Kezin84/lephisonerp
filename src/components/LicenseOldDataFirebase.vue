@@ -1269,19 +1269,23 @@ const sendChat = async () => {
 
   // Lấy 6 tin nhắn gần nhất để làm ngữ cảnh
   const recentHistory = chatHistory.value.slice(-6);
-  const historyText = recentHistory.map(m => (m.role === 'user' ? 'Người dùng: ' : 'Trợ lý AI: ') + m.content).join('\n');
 
-  const prompt = `Bạn là Trợ lý AI của công ty. Nhiệm vụ của bạn là phân tích và trả lời các câu hỏi về cơ sở dữ liệu phần mềm nội bộ (License).
+  const systemMessage = {
+    role: 'system',
+    content: `Bạn là Trợ lý AI của công ty. Nhiệm vụ của bạn là phân tích và trả lời các câu hỏi về cơ sở dữ liệu phần mềm nội bộ (License).
 Dữ liệu nội bộ tóm tắt (C=Khách hàng, P=Sản phẩm, E=Ngày hết hạn, N=NSX, G=Trạng thái gia hạn):
 ${JSON.stringify(compressedData)}
 
-Lịch sử trò chuyện:
-${historyText}
+Hãy trả lời câu hỏi mới nhất của người dùng một cách chính xác dựa trên dữ liệu. Trả lời bằng tiếng Việt, thân thiện, ngắn gọn và tự nhiên. KHÔNG sử dụng Markdown dạng \`\`\`, chỉ dùng in đậm (**) nếu cần.`
+  };
 
-Hãy trả lời câu hỏi mới nhất của người dùng dựa trên dữ liệu ở trên. Trả lời bằng tiếng Việt, thân thiện, ngắn gọn và tự nhiên. KHÔNG sử dụng Markdown dạng \`\`\`, chỉ dùng in đậm (**) nếu cần.`;
+  const messagesToSend = [
+    systemMessage,
+    ...recentHistory.map(m => ({ role: m.role, content: m.content }))
+  ];
 
   try {
-    const result = await callDeepSeek(prompt, false, false);
+    const result = await callDeepSeek(messagesToSend, false, false);
     let aiText = '';
     
     if (result.choices && result.choices.length > 0) {
