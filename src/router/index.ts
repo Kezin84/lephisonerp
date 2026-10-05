@@ -14,6 +14,7 @@ import SaleReport from '../components/SaleReport.vue'
 import LicenseOldData from '../components/LicenseOldData.vue'
 import Dashboard from '../components/Dashboard.vue'
 import Pipeline from '../components/Pipeline.vue'
+import LicenseOldDataFirebase from '../components/LicenseOldDataFirebase.vue'
 import KhoLuuTru from '../components/KhoLuuTru.vue'
 
 const routes = [
@@ -104,6 +105,12 @@ const routes = [
     name: 'LicenseOldData',
     component: LicenseOldData,
     meta: { title: 'License Old Data' }
+  },
+  {
+    path: '/license-old-data-firebase',
+    name: 'LicenseOldDataFirebase',
+    component: LicenseOldDataFirebase,
+    meta: { title: 'License Firebase' }
   },
   {
     path: '/pipeline',

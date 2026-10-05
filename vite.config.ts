@@ -15,4 +15,13 @@ export default defineConfig({
       }
     })
   ],
+  server: {
+    proxy: {
+      '/byteplus-api': {
+        target: 'https://ark.ap-southeast.bytepluses.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/byteplus-api/, '')
+      }
+    }
+  }
 })
