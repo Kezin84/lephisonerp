@@ -7,6 +7,7 @@ import POPreview from '../components/POPreview.vue'
 import TraCuuMST from '../components/TraCuuMST.vue'
 import Customer from '../components/Customer.vue'
 import BaoGia from '../components/BaoGia.vue'
+import BaoGiaFirebase from '../components/baogiaFirebase.vue'
 import QuanLyBaoGia from '../components/QuanLyBaoGia.vue'
 import QuanLyDieuKhoan from '../components/QuanLyDieuKhoan.vue'
 import QuanLyHangHoa from '../components/QuanLyHangHoa.vue'
@@ -63,6 +64,12 @@ const routes = [
     name: 'BaoGia',
     component: BaoGia,
     meta: { title: 'Tạo Báo giá' }
+  },
+  {
+    path: '/baogiafirebase',
+    name: 'BaoGiaFirebase',
+    component: BaoGiaFirebase,
+    meta: { title: 'Tạo Báo giá Firebase' }
   },
   {
     path: '/quanlybaogia',

@@ -1,0 +1,13773 @@
+<script lang="ts">
+export default {
+  name: 'BaoGiaFirebase'
+}
+</script>
+<script setup lang="ts">
+import { ref, reactive, computed, onMounted, onUnmounted, onActivated, watch, nextTick } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import draggable from 'vuedraggable'
+import ExcelEditor from './ExcelEditor.vue'
+import FormattedInput from './FormattedInput.vue'
+import PipelinePreviewModal from './PipelinePreviewModal.vue'
+import html2canvas from 'html2canvas'
+import * as XLSX from 'xlsx-js-style'
+import Tesseract from 'tesseract.js'
+import { initializeApp } from "firebase/app";
+import { getDatabase, ref as dbRef, get } from "firebase/database";
+
+const firebaseConfig = {
+  authDomain: "chusonproject.firebaseapp.com",
+  databaseURL: "https://chusonproject-default-rtdb.asia-southeast1.firebasedatabase.app",
+  storageBucket: "chusonproject.firebasestorage.app",
+};
+const firebaseApp = initializeApp(firebaseConfig);
+const database = getDatabase(firebaseApp);
+const route = useRoute()
+const router = useRouter()
+
+/* ======================
+   CONFIG
+====================== */
+const BASE_URL =
+  'https://script.google.com/macros/s/AKfycbx1yDOQLxYgJb5w30KmxQHF8AYUZln_5q58HCKP4zlUmtJye6aJBiSt3oyT0j_3QaigdQ/exec'
+
+/* ======================
+   TYPES
+====================== */
+type HangHoa = {
+  // ... giữ nguyên 20 field cũ ...
+  Ma_hang: string
+  Ten_hang: string
+  Main_img: string
+  Ma_nha_cung_cap: string
+  Ten_nha_cung_cap: string
+  Mo_ta_chung: string
+  Mo_ta_chi_tiet: string
+  Features: string
+  Danh_muc: string
+  License_duration: string
+  thoi_han_bao_hanh: string
+  DVT: string
+  Gia_tieu_chuan: number
+  Don_gia: number
+  Trang_thai: string
+  Don_vi_tien_te: string
+  Ti_gia: number
+  Thue_VAT: number
+  Ma_hang_lien_ket: string
+  Ten_hang_lien_ket: string
+  Ghi_chu: string
+  // ✅ 3 CỘT MỚI
+  gia_hardware: number
+  gia_nhap: number
+  muc_phan_tram_off: number
+  volume: string
+  // ✅ GIÁ GỐC (snapshot)
+  _gia_hardware_goc?: number
+  _gia_nhap_goc?: number
+  _muc_phan_tram_off_goc?: number
+  _Don_gia_goc?: number
+  _Gia_tieu_chuan_goc?: number
+  _Ti_gia_goc?: number
+  _Thue_VAT_goc?: number
+}
+
+type KhachHang = {
+  Ma_khach_hang: string
+  Ten_khach_hang: string
+  Email_ca_nhan: string
+  So_dien_thoai_ca_nhan: string
+  Ma_cong_ty: string
+  Ten_cong_ty: string
+  So_dien_thoai_cong_ty: string
+  So_fax_cong_ty: string
+  Dia_chi_cong_ty: string
+  Email_cong_ty: string
+  Website_cong_ty: string
+  Hoa_hong: string
+  Tong_chi_tieu: string
+  Trang_thai: string
+  Tong_loi_nhuan: string
+  Ghi_chu: string
+  Ten_khach_hang_phu: string
+  So_dien_thoai_ca_nhan_phu: string
+  Email_ca_nhan_phu: string
+  MST: string
+  COMPANY: string
+  ADDRESS: string
+  TEL: string
+}
+
+/* ======================
+   1. KHÁCH HÀNG
+====================== */
+const khach = ref<KhachHang>({
+  Ma_khach_hang: '',
+  Ten_khach_hang: '',
+  Email_ca_nhan: '',
+  So_dien_thoai_ca_nhan: '',
+  Ma_cong_ty: '',
+  Ten_cong_ty: '',
+  So_dien_thoai_cong_ty: '',
+  So_fax_cong_ty: '',
+  Dia_chi_cong_ty: '',
+  Email_cong_ty: '',
+  Website_cong_ty: '',
+  Hoa_hong: '',
+  Tong_chi_tieu: '',
+  Trang_thai: '',
+  Tong_loi_nhuan: '',
+  Ghi_chu: '',
+  Ten_khach_hang_phu: '',
+  So_dien_thoai_ca_nhan_phu: '',
+  Email_ca_nhan_phu: '',
+  MST: '',
+  COMPANY: '',
+  ADDRESS: '',
+  TEL: ''
+})
+
+const customers = ref<KhachHang[]>([])
+const maKHInput = ref('')
+const tenKHInput = ref('')
+
+/* ── Auto-gen Mã KH & Mã CT (giống logic Import PO) ── */
+const isExistingCustomer = ref(false) // true khi chọn KH từ danh sách có sẵn
+const originalKhach = ref<KhachHang | null>(null) // snapshot KH gốc khi chọn từ danh sách
+
+// Hiển thị nút "THÊM VÀO DB" khi KH mới có data hoặc KH cũ bị thay đổi
+const showSaveToDBBtn = computed(() => {
+  const k = khach.value
+  const ma = maKHInput.value?.trim() || k.Ma_khach_hang?.trim()
+  const ten = tenKHInput.value?.trim() || k.Ten_khach_hang?.trim()
+  if (!ma && !ten) return false // chưa có gì → ẩn
+
+  if (!isExistingCustomer.value) {
+    // KH mới → hiện nếu có tên hoặc mã
+    return !!(ma || ten)
+  }
+
+  // KH cũ → so sánh với snapshot gốc
+  if (!originalKhach.value) return false
+  const o = originalKhach.value
+  return (
+    (tenKHInput.value || '') !== (o.Ten_khach_hang || '') ||
+    (k.Email_ca_nhan || '') !== (o.Email_ca_nhan || '') ||
+    (k.So_dien_thoai_ca_nhan || '') !== (o.So_dien_thoai_ca_nhan || '') ||
+    (k.Ten_cong_ty || '') !== (o.Ten_cong_ty || '') ||
+    (k.MST || '') !== (o.MST || '') ||
+    (k.So_dien_thoai_cong_ty || '') !== (o.So_dien_thoai_cong_ty || '') ||
+    (k.So_fax_cong_ty || '') !== (o.So_fax_cong_ty || '') ||
+    (k.Dia_chi_cong_ty || '') !== (o.Dia_chi_cong_ty || '') ||
+    (k.Email_cong_ty || '') !== (o.Email_cong_ty || '') ||
+    (k.Website_cong_ty || '') !== (o.Website_cong_ty || '') ||
+    (k.Trang_thai || '') !== (o.Trang_thai || '') ||
+    (k.Tong_loi_nhuan || '') !== (o.Tong_loi_nhuan || '') ||
+    (k.Ghi_chu || '') !== (o.Ghi_chu || '') ||
+    (k.Ten_khach_hang_phu || '') !== (o.Ten_khach_hang_phu || '') ||
+    (k.So_dien_thoai_ca_nhan_phu || '') !== (o.So_dien_thoai_ca_nhan_phu || '') ||
+    (k.Email_ca_nhan_phu || '') !== (o.Email_ca_nhan_phu || '') ||
+    (k.COMPANY || '') !== (o.COMPANY || '') ||
+    (k.ADDRESS || '') !== (o.ADDRESS || '') ||
+    (k.TEL || '') !== (o.TEL || '')
+  )
+})
+
+const removeDiacritics = (str: string) => {
+  if (!str) return ''
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+}
+const genMaCT = (congTy: string) => {
+  if (!congTy) return ''
+  return removeDiacritics(congTy).toUpperCase().replace(/\s+/g, '').replace(/[^A-Z0-9]/g, '')
+}
+const genMaKH = (tenKH: string, congTy: string) => {
+  const tenClean = removeDiacritics(tenKH).toUpperCase().replace(/\s+/g, '').replace(/[^A-Z0-9]/g, '')
+  const maCT = genMaCT(congTy)
+  if (!tenClean && !maCT) return ''
+  return [tenClean, maCT].filter(Boolean).join('-')
+}
+
+// Watcher: chỉ tự động gen mã KH & mã CT khi khách hàng MỚI (nhập tay)
+watch(
+  () => [tenKHInput.value, khach.value.Ten_cong_ty],
+  ([ten, congTy]) => {
+    if (isExistingCustomer.value) return // KH đã tồn tại → giữ mã cũ
+    const newMaKH = genMaKH(ten as string, congTy as string)
+    if (newMaKH) {
+      maKHInput.value = newMaKH
+      khach.value.Ma_khach_hang = newMaKH
+    }
+    khach.value.Ma_cong_ty = genMaCT(congTy as string)
+  }
+)
+
+/* ======================
+   5. HỢP ĐỒNG
+====================== */
+const maHopDong = ref(`HD${new Date().toISOString().replace(/\D/g, '')}`)
+const soHopDong = ref('')
+const currentPO = ref('')
+const tongGiaThucTe = computed(() => {
+  let rawTotal = 0;
+  selectedItems.value.forEach(i => {
+    rawTotal += lineTruocThueRaw(i);
+  });
+  return round2(rawTotal);
+})
+const thueChenhLechPct = ref(0)
+const chietKhauTruocThuePct = ref(0)
+const ghiChuHopDong = ref('')
+const contentOfContractPO = ref('')
+const loadedMaHopDong = ref<string | null>(null)
+const loadedMaHopDongGoc = ref<string | null>(null)
+/* ======================
+   MODAL XÁC NHẬN LƯU KHÁCH TRỐNG
+====================== */
+const showConfirmSaveEmptyCustomer = ref(false)
+const pendingSaveAction = ref<'temp' | 'official' | null>(null)
+
+/* ======================
+   MODAL CHỌN SỐ HĐ SO SÁNH
+====================== */
+const showPickCompareModal = ref(false)
+const pickCompareSo = ref('')
+
+/* ======================
+   HISTORY TRACKING
+====================== */
+const historyLogs = ref<Record<string, { time: string, oldVal: number, newVal: number }[]>>({
+  chietKhauTruocThue: [],
+  thueChenhLech: [],
+  chenhLechGia: [],
+  conLai: [],
+  tongChietKhau: [],
+  tongGiaThucTe: [],
+  truoc: [],
+  vat: [],
+  sau: [],
+  loi: []
+})
+const showHistoryModal = ref(false)
+const showCustomerDetailModal = ref(false)
+
+// --- IMPORT ẢNH THUẾ LOGIC ---
+const showUploadTaxModal = ref(false)
+const showTaxModal = ref(false)
+const showTaxImageFullScreen = ref(false)
+const taxImageInput = ref<HTMLInputElement | null>(null)
+const taxInfo = ref({ mst: '', tenCongTy: '', tenCongTyEn: '', diaChi: '' })
+const taxPreviewUrl = ref('')
+
+function onTaxDragOver(e: DragEvent) {
+  e.preventDefault()
+}
+
+function onTaxDrop(e: DragEvent) {
+  e.preventDefault()
+  if (e.dataTransfer?.files && e.dataTransfer.files[0]) {
+    processTaxFile(e.dataTransfer.files[0])
+  }
+}
+
+function onTaxPaste(e: ClipboardEvent) {
+  if (!showUploadTaxModal.value) return
+  const items = e.clipboardData?.items
+  if (!items) return
+  for (let i = 0; i < items.length; i++) {
+    if (items[i].type.indexOf('image') !== -1) {
+      const blob = items[i].getAsFile()
+      if (blob) processTaxFile(blob)
+    }
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('paste', onTaxPaste)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('paste', onTaxPaste)
+})
+
+async function onTaxImageChange(e: Event) {
+  const target = e.target as HTMLInputElement
+  if (!target.files || !target.files[0]) return
+  const file = target.files[0]
+  await processTaxFile(file)
+  target.value = ''
+}
+
+async function processTaxFile(file: File) {
+  showUploadTaxModal.value = false
+  if (taxPreviewUrl.value) URL.revokeObjectURL(taxPreviewUrl.value)
+  taxPreviewUrl.value = URL.createObjectURL(file)
+  showAsyncLoading('Đang quét ảnh (OCR)...')
+  try {
+    const { data: { text } } = await Tesseract.recognize(file, 'vie')
+    
+    // 1. MST
+    const mstMatch = text.match(/Mã số thu[êế]\s*([\d\-]+)/i)
+    const mst = mstMatch ? mstMatch[1] : ''
+    
+    // 2. Address
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l)
+    let address = ''
+    for (const line of lines) {
+      if (line.match(/Đ[iị]a chỉ/i) && !line.match(/Thu[ếê]/i)) {
+        address = line.replace(/.*?Đ[iị]a chỉ\s*/i, '').trim()
+        break
+      }
+    }
+    
+    // 3. Company name
+    let companyName = ''
+    for (const line of lines) {
+      if (line.toUpperCase() === line && line.length > 10 && !line.match(/Mã số/i)) {
+        companyName = line.replace(/^['"\-\*\s]+/, '').trim()
+        break
+      }
+    }
+    
+    // Google Translate for Company Name
+    let companyNameEn = ''
+    if (companyName) {
+      try {
+        const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=vi&tl=en&dt=t&q=${encodeURIComponent(companyName)}`)
+        const json = await res.json()
+        if (json && json[0] && json[0][0] && json[0][0][0]) {
+          companyNameEn = json[0][0][0]
+        }
+      } catch (err) {
+        console.error('Lỗi dịch Google:', err)
+      }
+    }
+    
+    taxInfo.value = { mst, tenCongTy: companyName, tenCongTyEn: companyNameEn, diaChi: address }
+    asyncResultModal.value.show = false
+    showTaxModal.value = true
+  } catch (err: any) {
+    console.error(err)
+    showAsyncError('Lỗi', 'Lỗi khi quét ảnh: ' + String(err.message || err))
+  }
+}
+
+function closeTaxModal() {
+  showTaxModal.value = false
+  if (taxPreviewUrl.value) {
+    URL.revokeObjectURL(taxPreviewUrl.value)
+    taxPreviewUrl.value = ''
+  }
+}
+
+function confirmTaxInfo() {
+  khach.value.MST = taxInfo.value.mst
+  khach.value.Ten_cong_ty = taxInfo.value.tenCongTy
+  khach.value.COMPANY = taxInfo.value.tenCongTyEn
+  khach.value.Dia_chi_cong_ty = taxInfo.value.diaChi
+  closeTaxModal()
+  showAsyncSuccess('Thành công', 'Đã cập nhật thông tin khách hàng từ ảnh thuế.')
+}
+// -----------------------------
+
+const historyTitle = ref('')
+const currentHistory = ref<{ time: string, oldVal: number, newVal: number }[]>([])
+
+const actionHistory = ref<{ time: string, reason: string, oldVal?: number, newVal?: number }[]>([])
+const isGlobalHistory = ref(false)
+
+function addAction(reason: string, oldVal?: number, newVal?: number) {
+  actionHistory.value.unshift({
+    time: formatTimeOnly(new Date()),
+    reason,
+    oldVal,
+    newVal
+  })
+}
+
+function openHistory(key: string, title: string) {
+  isGlobalHistory.value = false
+  historyTitle.value = title
+  currentHistory.value = historyLogs.value[key] || []
+  showHistoryModal.value = true
+}
+
+function openGlobalHistory() {
+  isGlobalHistory.value = true
+  historyTitle.value = 'Lịch sử thao tác'
+  currentHistory.value = actionHistory.value.map(a => ({
+    time: a.time,
+    oldVal: a.oldVal ?? 0,
+    newVal: a.newVal ?? 0,
+    reason: a.reason,
+    metric: ''
+  }))
+  showHistoryModal.value = true
+}
+
+function hasHistory(key: string) {
+  return historyLogs.value[key] && historyLogs.value[key].length > 0
+}
+
+function formatTimeOnly(d: Date) {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+
+function trackHistory(key: string, source: () => number) {
+  watch(source, (newVal, oldVal) => {
+    if (newVal === oldVal) return
+    if (!historyLogs.value[key]) {
+      historyLogs.value[key] = []
+    }
+    historyLogs.value[key].unshift({
+      time: formatTimeOnly(new Date()),
+      oldVal: oldVal,
+      newVal: newVal
+    })
+  })
+}
+
+
+/* ======================
+   HÀNG HÓA
+====================== */
+const products = ref<HangHoa[]>([])
+const keyword = ref('')
+const userVolumeFilter = ref('')
+
+const recentSearches = ref<string[]>([])
+const showRecentSearches = ref(false)
+
+onMounted(() => {
+  try {
+    const saved = localStorage.getItem('recentSearches')
+    if (saved) {
+      recentSearches.value = JSON.parse(saved)
+    }
+  } catch (e) {}
+})
+
+function saveRecentSearch(kw: string) {
+  const t = String(kw || '').trim();
+  if (!t) return;
+  const idx = recentSearches.value.indexOf(t);
+  if (idx > -1) {
+    recentSearches.value.splice(idx, 1);
+  }
+  recentSearches.value.unshift(t);
+  if (recentSearches.value.length > 4) {
+    recentSearches.value = recentSearches.value.slice(0, 4);
+  }
+  localStorage.setItem('recentSearches', JSON.stringify(recentSearches.value));
+}
+
+let searchTimeout: any;
+watch(keyword, (newVal) => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    saveRecentSearch(newVal);
+  }, 1500);
+})
+const supplierFilter = ref('ALL')
+const selectedItems = ref<(HangHoa & { So_luong: number, uid?: string })[]>([])
+
+// --- DATA LOADING FLAGS: 'loading' | 'loaded' | 'ready' ---
+const productsState = ref<'loading'|'loaded'|'ready'>('loading')
+const customersState = ref<'loading'|'loaded'|'ready'>('loading')
+const contractsState = ref<'loading'|'loaded'|'ready'>('loading')
+const termsState = ref<'loading'|'loaded'|'ready'>('loading')
+const invoiceListState = ref<'loading'|'loaded'|'ready'>('ready')
+const pipelineListState = ref<'loading'|'loaded'|'ready'>('ready')
+
+// Compat refs (for old usage)
+const loadingProducts = computed(() => productsState.value === 'loading')
+const loadingCustomers = computed(() => customersState.value === 'loading')
+const loadingContracts = computed(() => contractsState.value === 'loading')
+const loadingTerms = computed(() => termsState.value === 'loading')
+
+function markLoaded(stateRef: typeof productsState) {
+  stateRef.value = 'loaded'
+  setTimeout(() => { stateRef.value = 'ready' }, 1500)
+}
+
+// --- TOAST STATE ---
+const toastMsg = ref('')
+const showToast = ref(false)
+let toastTimeout: any = null
+
+function triggerToast(msg: string) {
+  if (window.innerWidth <= 768 && msg === 'Đã thêm sản phẩm thành công!') return;
+  toastMsg.value = msg
+  showToast.value = true
+  if (toastTimeout) clearTimeout(toastTimeout)
+  toastTimeout = setTimeout(() => {
+    showToast.value = false
+  }, 2500)
+}
+
+// --- ASYNC RESULT MODAL STATE ---
+const asyncResultModal = ref<{ show: boolean, type: 'loading' | 'success' | 'error', title: string, msg: string }>({
+  show: false, type: 'loading', title: '', msg: ''
+})
+let asyncResultTimeout: any = null
+
+function showAsyncLoading(title: string) {
+  if (asyncResultTimeout) clearTimeout(asyncResultTimeout)
+  asyncResultModal.value = { show: true, type: 'loading', title, msg: '' }
+}
+
+function showAsyncSuccess(title: string, msg: string = '') {
+  asyncResultModal.value = { show: true, type: 'success', title, msg }
+  asyncResultTimeout = setTimeout(() => { asyncResultModal.value.show = false }, 3000)
+}
+
+function showAsyncError(title: string, msg: string = '') {
+  asyncResultModal.value = { show: true, type: 'error', title, msg }
+  // Error stays until user closes it
+}
+
+// --- STATE FOR DRAG & DROP ---
+const flatQuoteRows = ref<any[]>([])
+const existingCategories = computed(() => {
+  const cats = new Set<string>()
+  products.value.forEach((it: any) => {
+    if (it.Danh_muc) cats.add(it.Danh_muc.trim().toUpperCase())
+  })
+  selectedItems.value.forEach((it: any) => {
+    if (it.Danh_muc) cats.add(it.Danh_muc.trim().toUpperCase())
+  })
+  return Array.from(cats).sort()
+})
+let isSyncingFromDrag = false
+const draggingGroupKey = ref<string | null>(null)
+
+function syncFlatRows() {
+  const rows: any[] = []
+  let currentGroupKey = null
+  let groupIndex = 0
+  let stt = 0
+  
+  selectedItems.value.forEach((it, idx) => {
+    if (!it.uid) it.uid = Math.random().toString(36).substr(2, 9)
+    const sup = (it.Ten_nha_cung_cap || it.Ma_nha_cung_cap || '').trim() || 'NCC'
+    const cat = (it.Danh_muc || '').trim()
+    const gKey = cat.toUpperCase()
+    
+    if (gKey !== currentGroupKey) {
+      currentGroupKey = gKey
+      groupIndex++
+      stt = 0
+      rows.push({
+        type: 'group',
+        key: gKey,
+        title: cat,
+        roman: toRoman(groupIndex),
+        uniqueId: 'group-' + gKey + '-' + groupIndex
+      })
+    }
+    
+    stt++
+    rows.push({
+      type: 'item',
+      item: it,
+      idx: idx,
+      stt: stt,
+      groupKey: gKey,
+      uniqueId: 'item-' + it.uid
+    })
+  })
+  flatQuoteRows.value = rows
+}
+
+watch(selectedItems, () => {
+  if (!isSyncingFromDrag) {
+    syncFlatRows()
+  }
+}, { deep: true, immediate: true });
+
+function onFlatDragStart(event: any) {
+  const r = flatQuoteRows.value[event.oldIndex];
+  if (r && r.type === 'group') {
+    draggingGroupKey.value = r.key;
+  }
+}
+
+function hideDragImage(dataTransfer: any) {
+  const emptyImage = new Image();
+  emptyImage.src = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+  dataTransfer.setDragImage(emptyImage, 0, 0);
+}
+
+function onFlatDragEnd(event: any) {
+  isSyncingFromDrag = true
+  const newItems: any[] = []
+  let draggedItemIdx = -1
+  
+  if (draggingGroupKey.value) {
+    const finalGroupKeys: string[] = [];
+    flatQuoteRows.value.forEach(r => {
+      if (r.type === 'group' && !finalGroupKeys.includes(r.key)) {
+        finalGroupKeys.push(r.key);
+      }
+    });
+
+    finalGroupKeys.forEach(gKey => {
+      flatQuoteRows.value.forEach(r => {
+        if (r.type === 'item' && r.groupKey === gKey) {
+          newItems.push(r.item);
+        }
+      });
+    });
+  } else {
+    flatQuoteRows.value.forEach((r, idxInFlat) => {
+      if (r.type === 'item') {
+        newItems.push(r.item)
+        if (idxInFlat === event.newIndex) {
+          draggedItemIdx = newItems.length - 1
+        }
+      }
+    })
+  }
+
+  draggingGroupKey.value = null;
+  
+  setTimeout(() => {
+    selectedItems.value = newItems
+    syncFlatRows()
+    nextTick(() => { 
+      isSyncingFromDrag = false 
+      if (draggedItemIdx >= 0) {
+        scrollToAndHighlightRow(draggedItemIdx, false)
+      }
+    })
+  }, 50)
+}
+
+function checkMove(evt: any) {
+  const dragged = evt.draggedContext.element;
+  const related = evt.relatedContext.element;
+
+  if (!dragged || !related) return true;
+
+  if (dragged.type === 'item') {
+    if (related.type === 'group') {
+      return false;
+    }
+    if (related.type === 'item' && dragged.groupKey !== related.groupKey) {
+      return false;
+    }
+  }
+
+  return true;
+}
+// ----------------------------
+
+/* qty realtime trong card */
+const qtyMap = reactive<Record<string, number>>({})
+const addedStatus = reactive<Record<string, boolean>>({})
+
+/* ======================
+   MODAL - NHẬP TAY / CHI TIẾT CARD / XEM BÁO GIÁ
+====================== */
+const showManualModal = ref(false)
+const showCardModal = ref(false)
+const showPreviewRawModal = ref(false)
+const showSaveModal = ref(false)
+const showExportExcelModal = ref(false)
+const showExportInfoModal = ref(false)
+const showLoadInfoModal = ref(false)
+const showPipelineModal = ref(false)
+const showSelectCustomerModal = ref(false)
+const pipelineExchangeRate = ref(25400)
+const pipelineSearchStr = ref('')
+
+// Custom Excel template
+interface CustomTemplate {
+  id: string;
+  name: string;
+  data: string;
+  content?: string;
+  mappingConfig?: any[];
+}
+const customTemplates = ref<CustomTemplate[]>([])
+const editingTemplateId = ref<string | null>(null)
+const tempMappingConfig = ref<any[]>([])
+
+// ---- EXCEL MAPPING CONFIG ----
+const showExcelConfigModal = ref(false)
+
+const availableExcelFields = [
+  { value: 'pn', label: 'MÃ HÀNG' },
+  { value: 'ten_hang', label: 'TÊN HÀNG' },
+  { value: 'hang', label: 'HÃNG' },
+  { value: 'danh_muc', label: 'DANH MỤC' },
+  { value: 'don_vi_tien_te', label: 'ĐƠN VỊ TIỀN TỆ' },
+  { value: 'ti_gia', label: 'TỈ GIÁ' },
+  { value: 'dvt', label: 'DVT' },
+  { value: 'license_duration', label: 'LICENSE DURATION' },
+  { value: 'thoi_gian_bao_hanh', label: 'THỜI GIAN BẢO HÀNH' },
+  { value: 'features', label: 'DIỄN GIẢI' },
+  { value: 'ghi_chu', label: 'GHI CHÚ' },
+  { value: 'list_price', label: 'LIST PRICE' },
+  { value: 'don_gia_nhap', label: 'GIÁ NHẬP' },
+  { value: 'muc_off_hang', label: '% OFF HÃNG' },
+  { value: 'gia_tieu_chuan', label: 'GIÁ OFF HÃNG' },
+  { value: 'so_luong', label: 'SỐ LƯỢNG' },
+  { value: 'volume', label: 'VOLUME' },
+  { value: 'muc_off', label: '% OFF' },
+  { value: 'don_gia', label: 'GIÁ OFF' },
+  { value: 'thue_vat', label: '%VAT' },
+  { value: 'vat', label: 'GIÁ VAT' },
+  { value: 'don_gia_kh', label: 'ĐƠN GIÁ KH' },
+  { value: 'truoc_thue', label: 'TT TRƯỚC THUẾ' },
+  { value: 'sau_thue', label: 'TT SAU THUẾ' },
+  { value: 'stt', label: 'SỐ THỨ TỰ' },
+  { value: 'empty', label: '(BỎ TRỐNG)' }
+]
+
+const defaultExcelConfig = [
+  { header: 'STT', field: 'stt' },
+  { header: 'TÊN HÀNG', field: 'ten_hang' },
+  { header: 'Diễn Giải', field: 'features' },
+  { header: 'Đơn vị tính', field: 'dvt' },
+  { header: 'Thời hạn', field: 'license_duration' },
+  { header: 'S.L', field: 'so_luong' },
+  { header: 'ĐƠN GIÁ', field: 'don_gia_kh' },
+  { header: 'THÀNH TIỀN', field: 'truoc_thue' },
+  { header: 'VAT', field: 'vat' },
+  { header: 'THÀNH TIỀN + VAT', field: 'sau_thue' }
+]
+
+const excelMappingConfig = ref(JSON.parse(JSON.stringify(defaultExcelConfig)))
+const useDynamicExcelMapping = ref(true)
+
+function loadExcelConfig() {
+  try {
+    const saved = localStorage.getItem('baogia_excelMappingConfig')
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      if (Array.isArray(parsed) && parsed.length >= 3) {
+        excelMappingConfig.value = parsed
+      }
+    }
+    const savedDynamic = localStorage.getItem('baogia_useDynamicExcelMapping')
+    if (savedDynamic !== null) {
+      useDynamicExcelMapping.value = savedDynamic === 'true'
+    }
+  } catch (e) {
+    console.error('Lỗi load cấu hình excel', e)
+  }
+}
+loadExcelConfig()
+
+function saveExcelConfig() {
+  localStorage.setItem('baogia_excelMappingConfig', JSON.stringify(excelMappingConfig.value))
+  localStorage.setItem('baogia_useDynamicExcelMapping', String(useDynamicExcelMapping.value))
+  showExcelConfigModal.value = false
+}
+
+function resetExcelConfig() {
+  if (editingTemplateId.value) {
+    tempMappingConfig.value = JSON.parse(JSON.stringify(defaultExcelConfig))
+  } else {
+    tempMappingConfig.value = JSON.parse(JSON.stringify(defaultExcelConfig))
+    excelMappingConfig.value = JSON.parse(JSON.stringify(defaultExcelConfig))
+  }
+}
+
+function applyCurrencyToHeaders(config: any[], targetCurrency?: string) {
+  const currency = (targetCurrency || quoteCurrency.value || 'VND').toUpperCase();
+  const currLabel = currency.includes('USD') ? 'USD' : 'VND';
+  config.forEach(col => {
+    if (['don_gia_kh', 'truoc_thue', 'vat', 'sau_thue'].includes(col.field)) {
+      let baseHeader = col.header.replace(/\s*\(\s*(VND|VNĐ|USD)\s*\)/ig, '').trim();
+      col.header = `${baseHeader} (${currLabel})`;
+    }
+  });
+}
+
+async function openTemplateConfigModal(tpl: any) {
+  editingTemplateId.value = tpl.id
+  if (tpl.mappingConfig && tpl.mappingConfig.length > 0) {
+    tempMappingConfig.value = JSON.parse(JSON.stringify(tpl.mappingConfig))
+    applyCurrencyToHeaders(tempMappingConfig.value)
+    showExcelConfigModal.value = true
+  } else {
+    try {
+      showAsyncLoading('Đang phân tích cấu trúc file...')
+      const response = await fetch(tpl.data)
+      const buffer = await response.arrayBuffer()
+      const wb = new ExcelJS.Workbook()
+      await wb.xlsx.load(buffer)
+      const ws0 = wb.worksheets[0]
+      const extractedConfig = extractHeadersFromWorksheet(ws0)
+      if (extractedConfig.length > 0) {
+        tempMappingConfig.value = extractedConfig
+      } else {
+        tempMappingConfig.value = JSON.parse(JSON.stringify(excelMappingConfig.value))
+      }
+      applyCurrencyToHeaders(tempMappingConfig.value)
+      showAsyncSuccess('', '')
+      showExcelConfigModal.value = true
+    } catch (err) {
+      showAsyncError('Lỗi', 'Không thể đọc file mẫu.')
+      tempMappingConfig.value = JSON.parse(JSON.stringify(excelMappingConfig.value))
+      applyCurrencyToHeaders(tempMappingConfig.value)
+      showExcelConfigModal.value = true
+    }
+  }
+}
+
+function extractHeadersFromWorksheet(ws0: any): any[] {
+  let found = false
+  let extractedConfig: any[] = []
+  
+  ws0.eachRow((row: any, rowNumber: number) => {
+    if (found) return
+    
+    // Build set of secondary merged columns on this row
+    const mergedSecondary = new Set<number>()
+    try {
+      const mergesObj = (ws0 as any)._merges || {}
+      Object.values(mergesObj).forEach((m: any) => {
+        const model = m.model || m
+        if (model.top <= rowNumber && model.bottom >= rowNumber) {
+          for (let c = model.left + 1; c <= model.right; c++) {
+            mergedSecondary.add(c)
+          }
+        }
+      })
+    } catch (e) {}
+    
+    // Count non-empty, non-merged-secondary cells
+    let nonEmpty = 0
+    for (let c = 1; c <= 20; c++) {
+      if (mergedSecondary.has(c)) continue
+      const v = row.getCell(c).value
+      if (v !== null && v !== undefined && excelCellText(v).trim()) nonEmpty++
+    }
+    
+    if (nonEmpty >= 3) {
+      // Verify at least 1 recognized field
+      let recognized = 0
+      for (let c = 1; c <= 20; c++) {
+        if (mergedSecondary.has(c)) continue
+        const v = row.getCell(c).value
+        if (v !== null && v !== undefined && identifyExcelCol(excelCellText(v))) recognized++
+      }
+      if (recognized >= 1) {
+        found = true
+        // Find last non-empty, non-merged-secondary column
+        let lastCol = 1
+        for (let c = 50; c >= 1; c--) {
+          if (mergedSecondary.has(c)) continue
+          const v = row.getCell(c).value
+          if (v !== null && v !== undefined && excelCellText(v).trim()) {
+            lastCol = c
+            break
+          }
+          // Also check if this col is the end of a merge that started with content
+          if (mergedSecondary.has(c)) {
+            lastCol = c
+            break
+          }
+        }
+        // Also consider: the actual last column might be the right edge of a merge
+        try {
+          const mergesObj = (ws0 as any)._merges || {}
+          Object.values(mergesObj).forEach((m: any) => {
+            const model = m.model || m
+            if (model.top <= rowNumber && model.bottom >= rowNumber && model.right > lastCol) {
+              lastCol = model.right
+            }
+          })
+        } catch (e) {}
+        
+        // Extract columns, skipping secondary merged cells
+        for (let c = 1; c <= lastCol; c++) {
+          if (mergedSecondary.has(c)) continue
+          const v = row.getCell(c).value
+          const text = excelCellText(v).trim()
+          const field = text ? (identifyExcelCol(text) || 'empty') : 'empty'
+          extractedConfig.push({ header: text || `(Cột ${c})`, field: field, colIndex: c })
+        }
+      }
+    }
+  })
+  
+  return extractedConfig
+}
+
+function openDefaultConfigModal() {
+  editingTemplateId.value = null
+  tempMappingConfig.value = JSON.parse(JSON.stringify(excelMappingConfig.value))
+  applyCurrencyToHeaders(tempMappingConfig.value)
+  showExcelConfigModal.value = true
+}
+
+async function saveExcelConfigModal() {
+  if (editingTemplateId.value) {
+    const tpl = customTemplates.value.find(t => t.id === editingTemplateId.value)
+    if (tpl) {
+      tpl.mappingConfig = JSON.parse(JSON.stringify(tempMappingConfig.value))
+      
+      const payload = {
+        sheet: 'upload_file_mau',
+        action: 'update',
+        id: tpl.id,
+        structure: JSON.stringify(tpl.mappingConfig)
+      }
+      
+      try {
+        showAsyncLoading('Đang lưu cấu hình...')
+        await fetch(BASE_URL, {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        })
+        showAsyncSuccess('Thành công', 'Đã lưu cấu hình Data Mapping riêng cho template.')
+      } catch (err) {
+        showAsyncError('Lỗi', 'Không thể lưu cấu hình')
+      }
+    }
+  } else {
+    excelMappingConfig.value = JSON.parse(JSON.stringify(tempMappingConfig.value))
+    saveExcelConfig()
+  }
+  showExcelConfigModal.value = false
+}
+
+// ---- Native column drag-and-drop (professional animation) ----
+const colDragIdx = ref(-1)
+const colDragOverIdx = ref(-1)
+const colJustDropped = ref(-1)
+let _dragGhostEl: HTMLElement | null = null
+
+function colDragStart(idx: number, e: DragEvent) {
+  // Don't drag when interacting with form elements
+  const target = e.target as HTMLElement
+  if (target.closest('input, select, button, textarea')) {
+    e.preventDefault()
+    return
+  }
+  colDragIdx.value = idx
+
+  // Create custom drag ghost: clone the header cell
+  const cell = target.closest('th, td') as HTMLElement
+  if (cell && e.dataTransfer) {
+    const ghost = cell.cloneNode(true) as HTMLElement
+    ghost.style.cssText = `
+      position: fixed; top: -9999px; left: -9999px;
+      width: ${cell.offsetWidth}px;
+      opacity: 0.85;
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      border: 2px solid #10b981;
+      border-radius: 10px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.25), 0 0 0 1px rgba(16,185,129,0.3);
+      transform: rotate(2deg) scale(1.04);
+      pointer-events: none;
+      z-index: 99999;
+      overflow: hidden;
+    `
+    document.body.appendChild(ghost)
+    _dragGhostEl = ghost
+    e.dataTransfer.setDragImage(ghost, cell.offsetWidth / 2, 30)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', String(idx))
+  }
+}
+
+function colDragOver(idx: number, e: DragEvent) {
+  if (colDragIdx.value === -1) return
+  e.preventDefault()
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+  colDragOverIdx.value = idx
+}
+
+function colDrop(idx: number) {
+  if (colDragIdx.value === -1 || colDragIdx.value === idx) {
+    colDragIdx.value = -1
+    colDragOverIdx.value = -1
+    return
+  }
+  const item = tempMappingConfig.value.splice(colDragIdx.value, 1)[0]
+  tempMappingConfig.value.splice(idx, 0, item)
+  colDragIdx.value = -1
+  colDragOverIdx.value = -1
+  // Trigger drop animation
+  colJustDropped.value = idx
+  setTimeout(() => { colJustDropped.value = -1 }, 900)
+}
+
+function colDragEnd() {
+  colDragIdx.value = -1
+  colDragOverIdx.value = -1
+  // Clean up ghost element
+  if (_dragGhostEl) {
+    _dragGhostEl.remove()
+    _dragGhostEl = null
+  }
+}
+
+// Helper: get drag-over indicator CSS class for a cell at column index i
+function colDragCellClass(i: number) {
+  if (colJustDropped.value === i) return 'col-just-dropped'
+  if (colDragIdx.value === -1) return ''
+  if (colDragIdx.value === i) return 'col-dragging'
+  if (colDragOverIdx.value === i && colDragOverIdx.value !== colDragIdx.value) {
+    return colDragIdx.value < i ? 'col-drop-target col-drop-right' : 'col-drop-target col-drop-left'
+  }
+  return ''
+}
+
+function getPreviewCellValue(r: any, field: string) {
+  if (!r || r.type === 'group' || !r.item) return '';
+  const i = r.item;
+  const tg = toNum(i.Ti_gia, 1) || 1;
+  const isUsdExport = quoteCurrency.value === 'USD';
+  
+  switch (field) {
+    case 'stt': return r.stt;
+    case 'pn': return i.Ma_hang || '';
+    case 'ten_hang': return i.Ten_hang || '';
+    case 'hang': return i.Ten_nha_cung_cap || '';
+    case 'danh_muc': return i.Danh_muc || '';
+    case 'don_vi_tien_te': return i.Don_vi_tien_te || '';
+    case 'ti_gia': return formatCurrencyPreview(toNum(i.Ti_gia, 1), false);
+    case 'dvt': return i.DVT || '';
+    case 'license_duration': return i.License_duration || '';
+    case 'thoi_gian_bao_hanh': return i.thoi_han_bao_hanh || '';
+    case 'volume': return (i as any).volume || '';
+    case 'features': return i.Features || i.Ten_hang || '';
+    case 'ghi_chu': return i.Ghi_chu || '';
+    
+    case 'list_price': {
+      const lpVND = round2(donGiaLP(i) * tg);
+      const val = isUsdExport ? round2(lpVND / tg) : (Number(lpVND) || 0);
+      return formatCurrencyPreview(val, isUsdExport);
+    }
+    case 'don_gia_nhap': {
+      const nhapVND = round2(toNum(i.gia_nhap, 0) * tg);
+      const val = isUsdExport ? round2(nhapVND / tg) : (Number(nhapVND) || 0);
+      return formatCurrencyPreview(val, isUsdExport);
+    }
+    case 'muc_off_hang': return `${displayGiaTieuChuanPct(i)}%`;
+    case 'gia_tieu_chuan': {
+      const stdVND = standardPrice(i);
+      const val = isUsdExport ? round2(stdVND / tg) : (Number(stdVND) || 0);
+      return formatCurrencyPreview(val, isUsdExport);
+    }
+    case 'so_luong': return Number(i.So_luong) || 0;
+    case 'muc_off': return `${toNum(i.muc_phan_tram_off, 0)}%`;
+    case 'don_gia': {
+      const donGiaVND = unitPrice(i);
+      const val = isUsdExport ? round2(donGiaVND / tg) : (Number(donGiaVND) || 0);
+      return formatCurrencyPreview(val, isUsdExport);
+    }
+    case 'thue_vat': return `${toNum(i.Thue_VAT, 0)}%`;
+    case 'vat': {
+      const val = isUsdExport ? round2(lineVAT(i) / tg) : (Number(lineVAT(i)) || 0);
+      return formatCurrencyPreview(val, isUsdExport);
+    }
+    case 'don_gia_kh': {
+      const donGiaVND = unitPrice(i);
+      const val = isUsdExport ? round2(donGiaVND / tg) : (Number(donGiaVND) || 0);
+      return formatCurrencyPreview(val, isUsdExport);
+    }
+    case 'truoc_thue': {
+      const val = isUsdExport ? round2(lineTruocThue(i) / tg) : (Number(lineTruocThue(i)) || 0);
+      return formatCurrencyPreview(val, isUsdExport);
+    }
+    case 'sau_thue': {
+      const val = isUsdExport ? round2(lineSauThue(i) / tg) : (Number(lineSauThue(i)) || 0);
+      return formatCurrencyPreview(val, isUsdExport);
+    }
+    case 'empty': return '';
+    default: return '';
+  }
+}
+
+function formatCurrencyPreview(val: number, isUsd: boolean) {
+  if (isUsd) {
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(val);
+  }
+  return formatVND(val);
+}
+
+function getPreviewCellTotal(field: string) {
+  const isUsdExport = quoteCurrency.value === 'USD';
+  const t = isUsdExport ? totalsUSD.value : totals.value;
+  switch (field) {
+    case 'truoc_thue': return formatCurrencyPreview(Number(t.truoc) || 0, isUsdExport);
+    case 'vat': return formatCurrencyPreview(Number(t.vat) || 0, isUsdExport);
+    case 'sau_thue': return formatCurrencyPreview(Number(t.sau) || 0, isUsdExport);
+    default: return '';
+  }
+}
+
+const selectedPipelineKhach = ref<KhachHang | null>(null)
+
+const filteredPipelineCustomers = computed(() => {
+  if (!pipelineSearchStr.value) return customers.value
+  const kw = pipelineSearchStr.value.toLowerCase().trim()
+  return customers.value.filter(c => 
+    c.Ma_khach_hang.toLowerCase().includes(kw) || 
+    c.Ten_khach_hang.toLowerCase().includes(kw)
+  ).slice(0, 50)
+})
+
+const pipelineExcelBlob = ref<Blob | null>(null)
+
+const handleAddNewPipelineCustomer = async () => {
+  selectedPipelineKhach.value = {
+    ...khach.value,
+    Ma_khach_hang: '',
+    Ten_khach_hang: '',
+    Ten_cong_ty: '',
+    Dia_chi_cong_ty: '',
+    So_dien_thoai_ca_nhan: '',
+    Email_ca_nhan: '',
+    MST: ''
+  }
+}
+
+function onTenKhachHangChange() {
+  const val = khach.value.Ten_khach_hang;
+  if (!val) return;
+  const found = customers.value.find(c => c.Ten_khach_hang === val);
+  if (found) {
+    isExistingCustomer.value = true;
+    originalKhach.value = JSON.parse(JSON.stringify(found));
+    Object.assign(khach.value, found);
+    maKHInput.value = found.Ma_khach_hang;
+    tenKHInput.value = found.Ten_khach_hang;
+  }
+}
+
+function onTenCongTyChange() {
+  const val = khach.value.Ten_cong_ty;
+  if (!val) return;
+  const found = customers.value.find(c => c.Ten_cong_ty === val);
+  if (found) {
+    isExistingCustomer.value = true;
+    originalKhach.value = JSON.parse(JSON.stringify(found));
+    Object.assign(khach.value, found);
+    maKHInput.value = found.Ma_khach_hang;
+    tenKHInput.value = found.Ten_khach_hang;
+  }
+}
+
+function onMSTChange() {
+  const val = khach.value.MST;
+  if (!val) return;
+  const found = customers.value.find(c => c.MST === val);
+  if (found) {
+    isExistingCustomer.value = true;
+    originalKhach.value = JSON.parse(JSON.stringify(found));
+    Object.assign(khach.value, found);
+    maKHInput.value = found.Ma_khach_hang;
+    tenKHInput.value = found.Ten_khach_hang;
+  }
+}
+
+const handleContinuePipeline = async () => {
+  if (!selectedPipelineKhach.value && filteredPipelineCustomers.value.length === 1) {
+    selectedPipelineKhach.value = filteredPipelineCustomers.value[0];
+  }
+  if (!selectedPipelineKhach.value && filteredPipelineCustomers.value.length > 1 && !khach.value.Ma_khach_hang) {
+    window.alert('Vui lòng chọn khách hàng hoặc ấn Thêm mới!');
+    return;
+  }
+  if (!selectedPipelineKhach.value) {
+    selectedPipelineKhach.value = khach.value;
+  }
+  showSelectCustomerModal.value = false;
+  
+  showAsyncLoading('Đang chuẩn bị dữ liệu Pipeline...');
+  try {
+    pipelineExcelBlob.value = await generateQuoteExcelBlob(selectedPipelineKhach.value, undefined, previewEditor.value?.getToolbarFont())
+  } catch (e) {
+    console.error('Không thể tạo file báo giá nền', e)
+  }
+  asyncResultModal.value.show = false;
+  
+  showPipelineModal.value = true;
+};
+
+async function openPipelineSelectCustomerModal() {
+  selectedPipelineKhach.value = khach.value;
+  showAsyncLoading('Đang chuẩn bị dữ liệu Pipeline...');
+  try {
+    pipelineExcelBlob.value = await generateQuoteExcelBlob(selectedPipelineKhach.value, undefined, previewEditor.value?.getToolbarFont());
+  } catch (e) {
+    console.error('Không thể tạo file báo giá nền', e);
+  }
+  asyncResultModal.value.show = false;
+  showPipelineModal.value = true;
+}
+
+const isExportingImage = ref(false)
+const exportImageContainer = ref<HTMLElement | null>(null)
+
+// ================= IMAGE KIT OPTIONS =================
+const showImageKitModal = ref(false)
+const kitOptions = reactive({
+  fontSize: 13,
+  padding: 40,
+  logoScale: 100,
+  tableMarginBottom: 25,
+  descWidth: 40 // percentage
+})
+
+const openImageKitModal = () => {
+  if (selectedItems.value.length === 0) {
+    triggerToast('Chưa có hàng trong báo giá.')
+    return
+  }
+  showImageKitModal.value = true
+}
+
+const exportToImage = async () => {
+  if (selectedItems.value.length === 0) {
+    triggerToast('Chưa có hàng trong báo giá.')
+    return
+  }
+  
+  isExportingImage.value = true
+  showAsyncLoading('Đang xử lý ảnh, vui lòng đợi...')
+  try {
+    await nextTick()
+    await new Promise(r => setTimeout(r, 800))
+    if (!exportImageContainer.value) {
+      showAsyncError('Lỗi', 'Không tìm thấy khung chứa ảnh.')
+      return
+    }
+    const canvas = await html2canvas(exportImageContainer.value, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff'
+    })
+    const dataUrl = canvas.toDataURL('image/png')
+    
+    const link = document.createElement('a')
+    link.download = `BaoGia_${soHopDong.value || maHopDong.value || 'Image'}.png`
+    link.href = dataUrl
+    link.click()
+
+    showAsyncSuccess('Thành công', 'Đã tải ảnh báo giá về máy.')
+  } catch (err) {
+    console.error('Lỗi khi xuất ảnh', err)
+    showAsyncError('Lỗi', 'Không thể tạo ảnh, vui lòng thử lại.')
+  } finally {
+    isExportingImage.value = false
+    showImageKitModal.value = false
+  }
+}
+
+const isMaHangEdited = ref(false)
+const isCardMaHangEdited = ref(false)
+const isMaNccEdited = ref(false)
+const isCardMaNccEdited = ref(false)
+
+function updateMaNcc() {
+  if (isMaNccEdited.value) return;
+  const t = (itemForm.value.Ten_nha_cung_cap || '').trim();
+  let id = t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');
+  id = id.toUpperCase().replace(/\s+/g, '').replace(/[^A-Z0-9]/g, '');
+  itemForm.value.Ma_nha_cung_cap = id;
+}
+
+function updateCardMaNcc() {
+  if (isCardMaNccEdited.value) return;
+  if (!cardEdit.value) return;
+  const t = (cardEdit.value.Ten_nha_cung_cap || '').trim();
+  let id = t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');
+  id = id.toUpperCase().replace(/\s+/g, '').replace(/[^A-Z0-9]/g, '');
+  cardEdit.value.Ma_nha_cung_cap = id;
+}
+
+function updateCardMaHang() {
+  if (isCardMaHangEdited.value) return;
+  if (!cardEdit.value) return;
+  if (cardEdit.value.Danh_muc) {
+    cardEdit.value.Danh_muc = cardEdit.value.Danh_muc.toUpperCase();
+  }
+  const ten = (cardEdit.value.Ten_hang || '').trim();
+  const danhMuc = (cardEdit.value.Danh_muc || '').trim();
+  
+  let id = '';
+  if (danhMuc && ten) {
+    id = `${danhMuc}-${ten}`;
+  } else if (danhMuc) {
+    id = danhMuc;
+  } else if (ten) {
+    id = ten;
+  }
+
+  id = id.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');
+  id = id.toUpperCase().replace(/\s+/g, '-').replace(/[^A-Z0-9\-]/g, '');
+  id = id.replace(/-+/g, '-').replace(/^-+/, '').replace(/-+$/, '');
+  
+  cardEdit.value.Ma_hang = id;
+}
+
+function updateMaHang() {
+  if (itemForm.value.Danh_muc) {
+    itemForm.value.Danh_muc = itemForm.value.Danh_muc.toUpperCase();
+  }
+  if (isMaHangEdited.value) return;
+  const ten = (itemForm.value.Ten_hang || '').trim();
+  const danhMuc = (itemForm.value.Danh_muc || '').trim();
+  
+  let id = '';
+  if (danhMuc && ten) {
+    id = `${danhMuc}-${ten}`;
+  } else if (danhMuc) {
+    id = danhMuc;
+  } else if (ten) {
+    id = ten;
+  }
+
+  id = id.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');
+  id = id.toUpperCase().replace(/\s+/g, '-').replace(/[^A-Z0-9\-]/g, '');
+  id = id.replace(/-+/g, '-').replace(/^-+/, '').replace(/-+$/, '');
+  
+  itemForm.value.Ma_hang = id;
+}
+
+const itemForm = ref<HangHoa & { So_luong: number }>({
+  Ma_hang: '',
+  Ten_hang: '',
+  Main_img: '',
+  Ma_nha_cung_cap: '',
+  Ten_nha_cung_cap: '',
+  Mo_ta_chung: '',
+  Mo_ta_chi_tiet: '',
+  Features: '',
+  Danh_muc: '',
+  License_duration: '',
+  thoi_han_bao_hanh: '',
+  DVT: '',
+  Gia_tieu_chuan: 0,
+  Don_gia: 0,
+  Trang_thai: 'Hiển thị',
+  Don_vi_tien_te: 'VND',
+  Ti_gia: 1,
+  Thue_VAT: 0,
+  Ma_hang_lien_ket: '',
+  Ten_hang_lien_ket: '',
+  Ghi_chu: '',
+    gia_hardware: 0,
+  gia_nhap: 0,
+  muc_phan_tram_off: 0,
+  volume: '',
+  So_luong: 1
+})
+
+const cardEdit = ref<HangHoa & { So_luong: number } | null>(null)
+
+/* ======================
+   SIDEBAR TOGGLE
+====================== */
+const showProductSidebar = ref(true)
+const showContractSidebar = ref(true)
+const mobileStep = ref(1)
+const setMobileStep = (step) => {
+  mobileStep.value = step
+}
+
+/* ======================
+   HELPERS
+====================== */
+const termsRaw = ref<any[][]>([])
+const contractTerms = computed(() => {
+  return termsRaw.value.map(r => ({
+    id: String(r[0] || ''),
+    mau: String(r[1] || ''),
+    maKH: String(r[2] || ''),
+    tenKH: String(r[3] || ''),
+    maCT: String(r[4] || ''),
+    tenCT: String(r[5] || ''),
+    noiDung: String(r[6] || '')
+  })).filter(i => i.id)
+})
+const importedTermsHtml = ref('')
+const selectedTermId = ref('')
+const editableTermContent = ref('')
+const previewEditor = ref<any>(null)
+
+watch(selectedTermId, (newId) => {
+  if (newId === 'custom_import') {
+    editableTermContent.value = importedTermsHtml.value
+  } else if (newId) {
+    const term = contractTerms.value.find(t => t.id === newId)
+    editableTermContent.value = term ? term.noiDung : ''
+  } else {
+    editableTermContent.value = ''
+  }
+})
+
+/* ======================
+   ✅ LOAD HÓA ĐƠN / HỢP ĐỒNG
+====================== */
+const showLoadInvoiceModal = ref(false)
+/* ======================
+   <i class="lucide-search"></i> SO SÁNH HỢP ĐỒNG
+====================== */
+const showCompareModal = ref(false)
+const compareSoHopDong = ref('')
+
+const compareDetails = ref<any[][]>([]) // toàn bộ hop_dong_chi_tiet của SỐ HĐ
+
+const loadMode = ref<'SO' | 'MA' | 'PO'>('SO') // SO = số hợp đồng, MA = mã hợp đồng, PO = số PO
+const loadKey = ref('')
+const loadingInvoice = ref(false)
+const loadMsg = ref('')
+
+// list hợp đồng để chọn
+const contractsRaw = ref<any[][]>([])
+
+/* datalist options */
+const contractOptionsBySo = computed(() => {
+  const set = new Set<string>()
+  contractsRaw.value.forEach(r => {
+    const so = String(r?.[1] ?? '').trim()
+    if (so) set.add(so)
+  })
+  return Array.from(set).sort((a, b) => a.localeCompare(b))
+})
+const contractOptionsByMa = computed(() => {
+  const set = new Set<string>()
+  contractsRaw.value.forEach(r => {
+    const ma = String(r?.[0] ?? '').trim()
+    if (ma) set.add(ma)
+  })
+  return Array.from(set).sort((a, b) => a.localeCompare(b))
+})
+
+/* map 1 row hop_dong_chi_tiet -> item selectedItems */
+function mapHopDongChiTietRowToItem(row: any[]) {
+  // tolerate length
+  // buildHopDongChiTietRows() của mày đang trả:
+  // [0]ma_hop_dong [1]so_hop_dong [2]Ma_hang [3]Ten_hang [4]Main_img
+  // [5]Ma_ncc [6]Ten_ncc [7]Mo_ta_chung [8]Mo_ta_chi_tiet [9]Features [10]Danh_muc
+  // [11]License_duration [12]DVT [13]Gia_tieu_chuan [14]Don_gia [15]Don_vi_tien_te
+  // [16]Ti_gia [17]Thue_VAT [18]So_luong [19]Ghi_chu
+  const maHang = String(row?.[2] ?? '')
+  const baseProduct = products.value.find(p => p.Ma_hang === maHang)
+
+  const item: HangHoa & { So_luong: number } = {
+    Ma_hang: maHang,
+    Ten_hang: String(row?.[3] ?? ''),
+    Main_img: String(row?.[4] ?? ''),
+    Ma_nha_cung_cap: String(row?.[5] ?? ''),
+    Ten_nha_cung_cap: String(row?.[6] ?? ''),
+    Mo_ta_chung: String(row?.[7] ?? ''),
+    Mo_ta_chi_tiet: String(row?.[8] ?? ''),
+    Features: String(row?.[9] ?? ''),
+    Danh_muc: String(row?.[10] ?? '').toUpperCase(),
+    License_duration: String(row?.[11] ?? ''),
+    DVT: String(row?.[12] ?? ''),
+    Gia_tieu_chuan: toNum(row?.[13], 0),
+    Don_gia: toNum(row?.[14], 0),
+    Trang_thai: 'Hiển thị',
+    Don_vi_tien_te: String(row?.[15] ?? 'VND'),
+    Ti_gia: toNum(row?.[16], 1),
+    Thue_VAT: toNum(row?.[17], 0),
+    Ma_hang_lien_ket: '',
+    Ten_hang_lien_ket: '',
+    Ghi_chu: String(row?.[19] ?? ''),
+    So_luong: Math.max(1, toNum(row?.[18], 1)),
+    // ✅ 3 CỘT MỚI
+    gia_hardware: toNum(row?.[20], 0),
+    gia_nhap: toNum(row?.[21], 0),
+    muc_phan_tram_off: toNum(row?.[22], 0),
+    // ✅ snapshot giá gốc từ products catalog để giữ chênh lệch giá
+    _gia_hardware_goc: baseProduct ? toNum(baseProduct.gia_hardware, 0) : toNum(row?.[20], 0),
+    _gia_nhap_goc: baseProduct ? toNum(baseProduct.gia_nhap, 0) : toNum(row?.[21], 0),
+    _muc_phan_tram_off_goc: baseProduct ? toNum(baseProduct.muc_phan_tram_off, 0) : toNum(row?.[22], 0),
+    _Don_gia_goc: baseProduct ? toNum(baseProduct.Don_gia, 0) : toNum(row?.[14], 0),
+    _Gia_tieu_chuan_goc: baseProduct ? toNum(baseProduct.Gia_tieu_chuan, 0) : toNum(row?.[13], 0),
+    _Ti_gia_goc: baseProduct ? toNum(baseProduct.Ti_gia, 1) : toNum(row?.[16], 1),
+    _Thue_VAT_goc: baseProduct ? toNum(baseProduct.Thue_VAT, 0) : toNum(row?.[17], 0)
+  } as any
+
+  // ✅ Preserve start_date / end_date / thoi_han_bao_hanh / volume from indices 28-32
+  item.start_date = String(row?.[28] ?? '')
+  item.end_date = String(row?.[29] ?? '')
+  ;(item as any).thoi_han_bao_hanh = String(row?.[31] ?? '')
+  ;(item as any).volume = String(row?.[32] ?? '')
+
+  // ✅ Restore USD-based values if available (saved as VND with Ti_gia=1, but original USD data at index 24-27)
+  const tiGiaUSD = toNum(row?.[24], 0)
+  if (tiGiaUSD > 1) {
+    item.Ti_gia = tiGiaUSD
+    item.Don_gia = toNum(row?.[26], 0)          // Don_giaUS (giá USD gốc)
+    item.Gia_tieu_chuan = toNum(row?.[25], 0)   // Gia_tieu_chuanUSD (giá USD gốc)
+    item.gia_nhap = toNum(row?.[27], 0)         // gia_nhapUSD (giá USD gốc)
+    item.Don_vi_tien_te = 'USD'
+    // Update _goc snapshots to match restored USD values
+    if (!baseProduct) {
+      item._Don_gia_goc = item.Don_gia
+      item._Gia_tieu_chuan_goc = item.Gia_tieu_chuan
+      item._Ti_gia_goc = item.Ti_gia
+      item._gia_nhap_goc = item.gia_nhap
+    }
+  }
+
+  return item
+}
+
+/* tìm row tổng quát theo số/mã */
+function findContractRow() {
+  const keyRaw = loadKey.value.trim()
+  if (!keyRaw) return null
+  // Xóa phần ngày tháng (vd: " - 14:30:00 14/05/2024" hoặc " - 14/05/2024") nếu có
+  const key = keyRaw.replace(/\s*-\s*(?:\d{2}:\d{2}:\d{2}\s+)?\d{1,2}\/\d{1,2}\/\d{4}$/, '')
+  
+  if (loadMode.value === 'SO') {
+    return contractsRaw.value.find(r => String(r?.[1] ?? '').trim() === key) || null
+  }
+  if (loadMode.value === 'PO') {
+    return contractsRaw.value.find(r => String(r?.[22] ?? '').trim() === key) || null
+  }
+  return contractsRaw.value.find(r => String(r?.[0] ?? '').trim() === key) || null
+}
+
+async function openLoadInvoiceModal() {
+  loadSortBy.value = 'desc';
+  loadStatusFilter.value = '';
+  loadFromDate.value = '';
+  loadToDate.value = '';
+  loadSearchQuery.value = '';
+  showLoadInvoiceModal.value = true;
+  invoiceListState.value = 'loading'
+  try {
+    const ts = Date.now();
+    const [hdRows, khRows] = await Promise.all([
+      fetch(`${BASE_URL}?action=hop_dong_tong_quat&t=${ts}`).then(r => r.json()),
+      fetch(`${BASE_URL}?action=khach_hang&t=${ts}`).then(r => r.json())
+    ]);
+    contractsRaw.value = Array.isArray(hdRows) ? hdRows : [];
+    customers.value = (Array.isArray(khRows) ? khRows : []).map(mapKhachRow);
+    markLoaded(invoiceListState)
+  } catch (e) {
+    console.error('Error fetching latest contracts for load modal:', e);
+    invoiceListState.value = 'ready'
+  }
+}
+
+async function loadInvoiceToFE() {
+  loadMsg.value = ''
+  const row = findContractRow()
+  if (!row) {
+    loadMsg.value = '❌ Không tìm thấy hóa đơn/hợp đồng theo mã/số đã chọn.'
+    showAsyncError('Lỗi', 'Không tìm thấy hóa đơn/hợp đồng theo mã/số đã chọn.')
+    return
+  }
+
+  try {
+    loadingInvoice.value = true
+    showAsyncLoading('Đang load hóa đơn...')
+
+const ma = String(row?.[0] ?? '').trim()
+const so = String(row?.[1] ?? '').trim()
+
+loadedMaHopDong.value = ma              // ✅ GHI NHỚ HỢP ĐỒNG CŨ
+loadedMaHopDongGoc.value = String(row?.[32] ?? '').trim() || ma  // ✅ GHI NHỚ MÃ GỐC
+soHopDong.value = so || soHopDong.value // số hợp đồng GIỮ NGUYÊN
+currentPO.value = String(row?.[22] ?? '').trim() // ✅ Lấy Số PO từ index 22
+
+// ⚠️ KHÔNG dùng lại mã cũ
+maHopDong.value = `HD${Date.now()}`
+
+
+    // ghi chú (tolerant)
+    ghiChuHopDong.value = String(row?.[16] ?? '').trim()
+    contentOfContractPO.value = String(row?.[24] ?? '').trim()
+    
+    chietKhauTruocThuePct.value = toNum(row?.[26], 0)
+    thueChenhLechPct.value = toNum(row?.[28], 0)
+
+    // ====== load data mapping structure ======
+    try {
+      const structStr = String(row?.[36] || '').trim()
+      if (structStr && structStr.startsWith('[')) {
+        excelMappingConfig.value = JSON.parse(structStr)
+      }
+    } catch (err) {
+      console.warn('Cannot parse structure JSON from hop_dong_tong_quat', err)
+    }
+
+    // ====== load customer ======
+    const maKH = String(row?.[2] ?? '').trim()
+    if (maKH) {
+      fillCustomerByMa(maKH) // sẽ set khach + maKHInput + tenKHInput
+    } else {
+      // fallback: set tên nếu có
+      const tenKH = String(row?.[3] ?? '').trim()
+      if (tenKH) fillCustomerByTen(tenKH)
+    }
+
+    // ====== load chi tiết ======
+    const ts = Date.now();
+    const detailRows = await fetch(`${BASE_URL}?action=hop_dong_chi_tiet&t=${ts}`).then(r => r.json())
+    const all = Array.isArray(detailRows) ? detailRows : []
+    const mine = all.filter((r: any[]) => String(r?.[0] ?? '').trim() === ma)
+
+    // đổ vào selectedItems
+    selectedItems.value = mine.map(mapHopDongChiTietRowToItem)
+
+    // sync qtyMap (để card qty đúng nếu add tiếp)
+    selectedItems.value.forEach(it => {
+      if (it.Ma_hang) qtyMap[it.Ma_hang] = Math.max(1, toNum(it.So_luong, 1))
+    })
+
+    showLoadInvoiceModal.value = false
+    loadKey.value = ''
+    loadMsg.value = '✅ Đã load hóa đơn/hợp đồng lên FE.'
+    showAsyncSuccess('Load thành công', 'Hóa đơn đã được load lên.')
+  } catch (e: any) {
+    loadMsg.value = '❌ Lỗi load: ' + String(e?.message || e)
+    showAsyncError('Load thất bại', String(e?.message || e))
+  } finally {
+    loadingInvoice.value = false
+  }
+}
+
+async function generateNewQuoteIds() {
+  try {
+    const [hdRows, poData] = await Promise.all([
+      fetch(`${BASE_URL}?action=hop_dong_tong_quat`).then(r => r.json()),
+      fetch(`${BASE_URL}?action=po_dxmh`).then(r => r.json())
+    ])
+    
+    contractsRaw.value = Array.isArray(hdRows) ? hdRows : []
+    const hdLen = contractsRaw.value.length
+    soHopDong.value = `HD${hdLen + 1}`
+
+    let maxPO = 0
+    if (Array.isArray(poData)) {
+      poData.forEach((row: any) => {
+        const soPo = parseInt(String(row[2] || '').replace(/\D/g, ''))
+        if (!isNaN(soPo) && soPo > maxPO) maxPO = soPo
+      })
+    }
+    currentPO.value = String(maxPO + 1)
+  } catch (e) {
+    console.error('Lỗi khi tính toán số HĐ/PO mới:', e)
+  }
+}
+
+async function cloneInvoiceToFE() {
+  loadMsg.value = ''
+  const row = findContractRow()
+  if (!row) {
+    loadMsg.value = '❌ Không tìm thấy hóa đơn/hợp đồng theo mã/số đã chọn.'
+    showAsyncError('Lỗi', 'Không tìm thấy hóa đơn/hợp đồng theo mã/số đã chọn.')
+    return
+  }
+
+  try {
+    loadingInvoice.value = true
+    showAsyncLoading('Đang nhân bản hàng hóa...')
+
+    const ma = String(row?.[0] ?? '').trim()
+    maHopDong.value = `HD${Date.now()}` // only generate new ID, don't link old
+
+    // Generate new contract and PO numbers
+    await generateNewQuoteIds()
+
+    // Load percentages
+    chietKhauTruocThuePct.value = toNum(row?.[26], 0)
+    thueChenhLechPct.value = toNum(row?.[28], 0)
+
+    // ====== load data mapping structure ======
+    try {
+      const structStr = String(row?.[36] || '').trim()
+      if (structStr && structStr.startsWith('[')) {
+        excelMappingConfig.value = JSON.parse(structStr)
+      }
+    } catch (err) {
+      console.warn('Cannot parse structure JSON from hop_dong_tong_quat', err)
+    }
+
+    // clear customer info, notes, PO as requested
+    maKHInput.value = ''
+    tenKHInput.value = ''
+    isExistingCustomer.value = false
+    ghiChuHopDong.value = ''
+    contentOfContractPO.value = ''
+    loadedMaHopDong.value = ''
+    loadedMaHopDongGoc.value = ''
+    // do not clear currentPO because it was just generated
+
+    // load chi tiết
+    const ts = Date.now();
+    const detailRows = await fetch(`${BASE_URL}?action=hop_dong_chi_tiet&t=${ts}`).then(r => r.json())
+    const all = Array.isArray(detailRows) ? detailRows : []
+    const mine = all.filter((r: any[]) => String(r?.[0] ?? '').trim() === ma)
+
+    selectedItems.value = mine.map(mapHopDongChiTietRowToItem)
+
+    selectedItems.value.forEach(it => {
+      if (it.Ma_hang) qtyMap[it.Ma_hang] = Math.max(1, toNum(it.So_luong, 1))
+    })
+
+    showLoadInvoiceModal.value = false
+    loadKey.value = ''
+    loadMsg.value = '✅ Đã nhân bản hàng hóa.'
+    
+    // push route without id to clear URL
+    router.push('/baogia?clone=true')
+    
+    showAsyncSuccess('Thành công', 'Đã đổ dữ liệu hàng hóa sang báo giá mới')
+    triggerToast('Đã nhân bản hàng hóa thành công!')
+  } catch (e: any) {
+    loadMsg.value = '❌ Lỗi nhân bản: ' + String(e?.message || e)
+    showAsyncError('Nhân bản thất bại', String(e?.message || e))
+  } finally {
+    loadingInvoice.value = false
+  }
+}
+
+// --- PIPELINE LOAD STATE ---
+const showLoadPipelineModal = ref(false)
+const poDxmhList = ref<any[]>([])
+const loadPipelineFilter = ref('')
+const loadingPipeline = ref(false)
+const loadPipelineMsg = ref('')
+const loadPipelineSearch = ref('')
+const ctmhList = ref<any[]>([])
+const hdChiTietList = ref<any[]>([])
+
+const loadedPipelineExtraData = ref<any>(null)
+
+const filteredPoDxmhList = computed(() => {
+  let list = [...poDxmhList.value].reverse()
+  if (loadPipelineSearch.value) {
+    const kw = loadPipelineSearch.value.trim().toLowerCase()
+    list = list.filter(r => 
+      String(r?.[2] ?? '').toLowerCase().includes(kw) || // so_po
+      String(r?.[3] ?? '').toLowerCase().includes(kw) || // ten_po
+      String(r?.[0] ?? '').toLowerCase().includes(kw) || // ma_hop_dong
+      String(r?.[7] ?? '').toLowerCase().includes(kw)    // company
+    )
+  }
+  
+  return list.map(r => {
+    const so_po = String(r?.[2] ?? '').trim()
+    const so_hd = String(r?.[1] ?? '').trim()
+    const maHD = String(r?.[0] ?? '').trim()
+    
+    // Tìm chi tiết mua hàng theo ma_hop_dong
+    const items = ctmhList.value.filter((c: any[]) => 
+      String(c?.[0] ?? '').trim() === maHD
+    )
+    
+    // Map chi tiết: ten_hang_hoa[6], sl[9], list_price_usd[10]
+    const hangHoaList = items.map(c => ({
+      ten: String(c?.[6] ?? '').trim(),
+      sl: String(c?.[9] ?? '').trim(),
+      listPrice: String(c?.[10] ?? '').trim()
+    })).filter(h => h.ten)
+
+    // Tìm created_time từ hợp đồng tổng quát (index 4 = ngày tạo)
+    const contract = contractsRaw.value.find((cr: any[]) => String(cr?.[0] ?? '').trim() === maHD)
+    const createdTime = contract ? String(contract?.[4] ?? '').trim() : ''
+
+    return {
+      ma_hop_dong: maHD,
+      so_hop_dong: so_hd,
+      so_po: so_po,
+      ten_po: String(r?.[3] ?? '').trim(),
+      trang_thai: String(r?.[5] ?? '').trim(),
+      company: String(r?.[7] ?? '').trim(),
+      contact: String(r?.[11] ?? '').trim(),
+      created_time: createdTime,
+      hang_hoa_list: hangHoaList,
+      raw: r
+    }
+  })
+})
+
+async function openLoadPipelineModal() {
+  showLoadPipelineModal.value = true
+  loadPipelineMsg.value = ''
+  pipelineListState.value = 'loading'
+  try {
+    const ts = Date.now()
+    const [poRows, ctmhRows, hdctRows] = await Promise.all([
+      fetch(`${BASE_URL}?action=po_dxmh&t=${ts}`).then(r => r.json()),
+      fetch(`${BASE_URL}?action=chi_tiet_mua_hang&t=${ts}`).then(r => r.json()),
+      fetch(`${BASE_URL}?action=hop_dong_chi_tiet&t=${ts}`).then(r => r.json())
+    ])
+    poDxmhList.value = Array.isArray(poRows) ? poRows : []
+    ctmhList.value = Array.isArray(ctmhRows) ? ctmhRows : []
+    hdChiTietList.value = Array.isArray(hdctRows) ? hdctRows : []
+    markLoaded(pipelineListState)
+  } catch (e) {
+    console.error('Error fetching POs:', e)
+    pipelineListState.value = 'ready'
+  }
+}
+
+async function loadPipelineToFE() {
+  const kw = loadPipelineFilter.value.trim()
+  if (!kw) return
+
+  const keyRaw = kw.replace(/\s*-\s*(?:\d{2}:\d{2}:\d{2}\s+)?\d{1,2}\/\d{1,2}\/\d{4}$/, '')
+  const searchKey = keyRaw.toLowerCase()
+
+  const poRow = poDxmhList.value.find(r => {
+    const s0 = String(r?.[0] ?? '').trim().toLowerCase() // ma_hop_dong
+    const s1 = String(r?.[1] ?? '').trim().toLowerCase() // so_hop_dong
+    const s2 = String(r?.[2] ?? '').trim().toLowerCase() // so_po
+    const s3 = String(r?.[3] ?? '').trim().toLowerCase() // ten_po
+    const compositeKey = `${s2} - ${s0}`
+    return compositeKey === searchKey || s0 === searchKey || s1 === searchKey || s2 === searchKey || s3 === searchKey
+  })
+  if (!poRow) {
+    loadPipelineMsg.value = '❌ Không tìm thấy PO tương ứng.'
+    return
+  }
+
+  const so_po = String(poRow[2] || '').trim()
+  const so_hd = String(poRow[1] || '').trim()
+  const ma_hd = String(poRow[0] || '').trim()
+
+  currentPO.value = so_po
+
+  try {
+    loadingPipeline.value = true
+    loadPipelineMsg.value = 'Đang tải dữ liệu, vui lòng đợi...'
+    showAsyncLoading('Đang load Pipeline...')
+
+    const ts = Date.now();
+    const allData = await fetch(`${BASE_URL}?action=all&fresh=1&t=${ts}`).then(r => r.json())
+    
+    contractsRaw.value = allData.hop_dong_tong_quat || []
+    customers.value = (allData.khach_hang || []).map(mapKhachRow)
+    
+    let contractRow = null
+    if (ma_hd) {
+      contractRow = contractsRaw.value.find(r => String(r?.[0] ?? '').trim().toLowerCase() === ma_hd.toLowerCase())
+    }
+    if (!contractRow && so_hd) {
+      contractRow = contractsRaw.value.find(r => String(r?.[1] ?? '').trim().toLowerCase() === so_hd.toLowerCase())
+    }
+    if (!contractRow && so_po) {
+      contractRow = contractsRaw.value.find(r => String(r?.[22] ?? '').trim().toLowerCase() === so_po.toLowerCase())
+    }
+
+    // Nếu vẫn không tìm thấy, có thể do cache của action=all. Fetch fresh data cho hợp đồng
+    if (!contractRow) {
+      const freshContracts = await fetch(`${BASE_URL}?action=hop_dong_tong_quat&t=${Date.now()}`).then(r => r.json())
+      if (Array.isArray(freshContracts)) {
+        contractsRaw.value = freshContracts
+        if (ma_hd) contractRow = contractsRaw.value.find(r => String(r?.[0] ?? '').trim().toLowerCase() === ma_hd.toLowerCase())
+        if (!contractRow && so_hd) contractRow = contractsRaw.value.find(r => String(r?.[1] ?? '').trim().toLowerCase() === so_hd.toLowerCase())
+        if (!contractRow && so_po) contractRow = contractsRaw.value.find(r => String(r?.[22] ?? '').trim().toLowerCase() === so_po.toLowerCase())
+      }
+    }
+
+    if (!contractRow) {
+      loadPipelineMsg.value = '❌ Đã tìm thấy PO nhưng không tìm thấy Hợp đồng tương ứng!'
+      loadingPipeline.value = false
+      return
+    }
+
+    const ma = String(contractRow?.[0] ?? '').trim()
+    const so = String(contractRow?.[1] ?? '').trim()
+
+    loadedMaHopDong.value = ma
+    loadedMaHopDongGoc.value = String(contractRow?.[32] ?? '').trim() || ma  // ✅ GHI NHỚ MÃ GỐC
+    soHopDong.value = so || soHopDong.value
+    maHopDong.value = `HD${Date.now()}`
+    ghiChuHopDong.value = String(contractRow?.[16] ?? '').trim()
+    contentOfContractPO.value = String(contractRow?.[24] ?? '').trim()
+    
+    chietKhauTruocThuePct.value = toNum(contractRow?.[26], 0)
+    thueChenhLechPct.value = toNum(contractRow?.[28], 0)
+
+    // ====== load data mapping structure ======
+    try {
+      const structStr = String(contractRow?.[36] || '').trim()
+      if (structStr && structStr.startsWith('[')) {
+        excelMappingConfig.value = JSON.parse(structStr)
+      }
+    } catch (err) {
+      console.warn('Cannot parse structure JSON from hop_dong_tong_quat', err)
+    }
+
+    const maKH = String(contractRow?.[2] ?? '').trim()
+    if (maKH) fillCustomerByMa(maKH)
+    else {
+      const tenKH = String(contractRow?.[3] ?? '').trim()
+      if (tenKH) fillCustomerByTen(tenKH)
+    }
+
+    let allCT = allData.hop_dong_chi_tiet || []
+    let mineCT = allCT.filter((r: any[]) => String(r?.[0] ?? '').trim() === ma)
+    
+    if (mineCT.length === 0) {
+      allCT = await fetch(`${BASE_URL}?action=hop_dong_chi_tiet&t=${Date.now()}`).then(r => r.json())
+      if (Array.isArray(allCT)) {
+        mineCT = allCT.filter((r: any[]) => String(r?.[0] ?? '').trim() === ma)
+      }
+    }
+
+    selectedItems.value = mineCT.map(mapHopDongChiTietRowToItem)
+
+    selectedItems.value.forEach(it => {
+      if (it.Ma_hang) qtyMap[it.Ma_hang] = Math.max(1, toNum(it.So_luong, 1))
+    })
+
+    let allCTMH = allData.chi_tiet_mua_hang || []
+    let myCTMH = allCTMH.filter((r: any[]) => String(r?.[2] ?? '').trim().toLowerCase() === so_po.toLowerCase() || (so_hd && String(r?.[1] ?? '').trim().toLowerCase() === so_hd.toLowerCase()))
+
+    if (myCTMH.length === 0) {
+      allCTMH = await fetch(`${BASE_URL}?action=chi_tiet_mua_hang&t=${Date.now()}`).then(r => r.json())
+      if (Array.isArray(allCTMH)) {
+        myCTMH = allCTMH.filter((r: any[]) => String(r?.[2] ?? '').trim().toLowerCase() === so_po.toLowerCase() || (so_hd && String(r?.[1] ?? '').trim().toLowerCase() === so_hd.toLowerCase()))
+      }
+    }
+
+    let allDR = allData.deal_reg || []
+    let myDR = allDR.filter((r: any[]) => String(r?.[2] ?? '').trim().toLowerCase() === so_po.toLowerCase() || (so_hd && String(r?.[1] ?? '').trim().toLowerCase() === so_hd.toLowerCase()))
+
+    if (myDR.length === 0) {
+      allDR = await fetch(`${BASE_URL}?action=deal_reg&t=${Date.now()}`).then(r => r.json())
+      if (Array.isArray(allDR)) {
+        myDR = allDR.filter((r: any[]) => String(r?.[2] ?? '').trim().toLowerCase() === so_po.toLowerCase() || (so_hd && String(r?.[1] ?? '').trim().toLowerCase() === so_hd.toLowerCase()))
+      }
+    }
+
+    loadedPipelineExtraData.value = {
+      po: poRow,
+      contract: contractRow,
+      chiTietMuaHang: myCTMH,
+      dealReg: myDR
+    }
+
+    showLoadPipelineModal.value = false
+    loadingPipeline.value = false
+    loadPipelineFilter.value = ''
+    showAsyncSuccess('Load Pipeline thành công', `PO: ${so_po}`)
+    
+    showPipelineModal.value = true
+
+  } catch (e: any) {
+    console.error(e)
+    loadPipelineMsg.value = '❌ Lỗi load: ' + String(e?.message || e)
+    showAsyncError('Load Pipeline thất bại', String(e?.message || e))
+    loadingPipeline.value = false
+  }
+}
+
+function unitPrice(i: any) {
+  const gia = donGiaSauOff(i)
+  const tg = toNum(i.Ti_gia, 1)
+  return round2(gia * tg)
+}
+
+function standardPrice(i: any) {
+  const gt = toNum(i.Gia_tieu_chuan, 0)
+  const tg = toNum(i.Ti_gia, 1)
+  return round2(gt * tg)
+}
+
+const quoteCurrency = ref('VND')
+function onEditDonGiaVND(item: any, e: Event) {
+  const vnd = Number((e.target as HTMLInputElement).value || 0)
+  const tg = toNum(item.Ti_gia, 1)
+  item.Don_gia = tg > 0 ? vnd / tg : vnd
+}
+
+function toNum(v: any, fallback = 0) {
+  const n = Number(v)
+  return Number.isFinite(n) ? n : fallback
+}
+
+function round2(n: number) {
+  return Math.round((n + Number.EPSILON) * 100) / 100
+}
+
+function roundPrice(n: number, item?: any) {
+  // If currency is VND or exchange rate > 100, round to nearest 1,000 like Excel ROUND(..., -3)
+  const isVND = !item || !item.Don_vi_tien_te || item.Don_vi_tien_te.toUpperCase() === 'VND' || toNum(item.Ti_gia, 1) > 100;
+  if (isVND) {
+    return Math.round(n / 1000) * 1000;
+  }
+  return round2(n);
+}
+
+function formatVND(n: number) {
+  return new Intl.NumberFormat('vi-VN', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(Math.round(n))
+}
+
+function formatUSD(n: number) {
+  return new Intl.NumberFormat('vi-VN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(round2(n))
+}
+
+function formatCurrency(n: number, cur: string) {
+  if ((cur || '').trim().toUpperCase() === 'VND') return formatVND(n)
+  return formatUSD(n)
+}
+
+/** Format a VND amount according to current quoteCurrency mode. If USD, divide by tiGia. */
+function fmtPrice(vndAmount: number, tiGia?: number) {
+  if (quoteCurrency.value === 'USD') {
+    const tg = tiGia || 1
+    return formatUSD(tg > 0 ? vndAmount / tg : vndAmount)
+  }
+  return formatVND(vndAmount)
+}
+
+function withOriginalPriceFields(item: HangHoa & { So_luong: number }) {
+  const it = item as any
+  if (it._Don_gia_goc == null) it._Don_gia_goc = toNum(it.Don_gia, 0)
+  if (it._Gia_tieu_chuan_goc == null) it._Gia_tieu_chuan_goc = toNum(it.Gia_tieu_chuan, 0)
+  if (it._Ti_gia_goc == null) it._Ti_gia_goc = toNum(it.Ti_gia, 1)
+  if (it._Thue_VAT_goc == null) it._Thue_VAT_goc = toNum(it.Thue_VAT, 0)
+  if (it._gia_hardware_goc == null) it._gia_hardware_goc = toNum(it.gia_hardware, 0)
+  if (it._gia_nhap_goc == null) it._gia_nhap_goc = toNum(it.gia_nhap, 0)
+  if (it._muc_phan_tram_off_goc == null) it._muc_phan_tram_off_goc = toNum(it.muc_phan_tram_off, 0)
+  return item
+}
+
+function cloneHang(h: HangHoa, qty = 1): HangHoa & { So_luong: number } {
+  const item = {
+    ...JSON.parse(JSON.stringify(h)),
+    So_luong: Math.max(1, toNum(qty, 1))
+  }
+  return withOriginalPriceFields(item)
+}
+
+function getGocNumber(i: any, key: string, fallback = 0) {
+  const v = i?.[key]
+  return Number.isFinite(Number(v)) ? Number(v) : fallback
+}
+
+function donGiaLPGoc(i: any) {
+  const hardware = getGocNumber(i, '_gia_hardware_goc', toNum(i.gia_hardware, 0))
+  const donGiaGoc = getGocNumber(i, '_Don_gia_goc', toNum(i.Don_gia, 0))
+  return hardware + donGiaGoc
+}
+
+function donGiaSauOffGoc(i: any) {
+  const lp = donGiaLPGoc(i)
+  const pctOff = getGocNumber(i, '_muc_phan_tram_off_goc', toNum(i.muc_phan_tram_off, 0))
+  const discounted = lp * (1 - pctOff / 100)
+  const nhap = getGocNumber(i, '_gia_nhap_goc', toNum(i.gia_nhap, 0))
+  return discounted + nhap
+}
+
+function vatGoc(i: any) {
+  return getGocNumber(i, '_Thue_VAT_goc', toNum(i.Thue_VAT, 0))
+}
+
+function unitPriceRaw(i: any) {
+  const tg = getGocNumber(i, '_Ti_gia_goc', toNum(i.Ti_gia, 1))
+  return round2(donGiaSauOffGoc(i) * tg)
+}
+
+function standardPriceRaw(i: any) {
+  const tg = getGocNumber(i, '_Ti_gia_goc', toNum(i.Ti_gia, 1))
+  return round2(toNum(i.Gia_tieu_chuan, 0) * tg)
+}
+
+function lineTruocThueRaw(i: any) {
+  return round2(unitPriceRaw(i) * toNum(i.So_luong, 1))
+}
+
+function lineVATRaw(i: any) {
+  const vat = getGocNumber(i, '_Thue_VAT_goc', toNum(i.Thue_VAT, 0))
+  return round2((lineTruocThueRaw(i) * vat) / 100)
+}
+
+function lineSauThueRaw(i: any) {
+  return round2(lineTruocThueRaw(i) + lineVATRaw(i))
+}
+
+function lineLoiNhuanRaw(i: any) {
+  return round2((unitPriceRaw(i) - standardPriceRaw(i)) * toNum(i.So_luong, 1))
+}
+
+/* Chênh lệch giá "hiệu dụng" trong modal chỉnh sửa:
+   Chỉ đơn giản là sự khác biệt giữa Giá Báo Khách và Giá Thực Tế. */
+function itemChenhLechHieuDung(i: any) {
+  return round2(lineTruocThue(i) - lineTruocThueRaw(i))
+}
+
+const totalsContract = computed(() => {
+  let truoc = 0, vat = 0, loi = 0, off = 0
+  selectedItems.value.forEach(i => {
+    truoc += lineTruocThueRaw(i)
+    vat += lineVATRaw(i)
+    loi += lineLoiNhuanRaw(i)
+
+    const tg = getGocNumber(i, '_Ti_gia_goc', toNum(i.Ti_gia, 1))
+    const lpVnd = donGiaLPGoc(i) * tg
+    const pctOff = getGocNumber(i, '_muc_phan_tram_off_goc', toNum(i.muc_phan_tram_off, 0))
+    off += lpVnd * (pctOff / 100) * toNum(i.So_luong, 1)
+  })
+  return {
+    truoc: round2(truoc),
+    vat: round2(vat),
+    sau: round2(truoc + vat),
+    loi: round2(loi),
+    off: round2(off)
+  }
+})
+
+
+/* ======================
+   SAVE CONTRACT (POST no-cors)
+====================== */
+const saving = ref(false)
+const saveMsg = ref('')
+
+async function postApi(action: string, payload: any) {
+  const body = new URLSearchParams()
+  body.set('action', action)
+  body.set('payload', JSON.stringify(payload || {}))
+
+  const res = await fetch(BASE_URL, {
+    method: 'POST',
+    body
+  })
+  const data = await res.json()
+  if (!data.ok) throw new Error(data.error || 'Lỗi server')
+  return data
+}
+
+/* ======================
+   BUILD ROWS (đúng thứ tự sheet)
+====================== */
+
+/** hop_dong_tong_quat (17 cột)
+ *  0 ma_hop_dong
+ *  1 so_hop_dong
+ *  2 ma_khach_hang
+ *  3 ten_khach_hang
+ *  4 ngay_tao_hop_dong
+ *  5 Tong_tien_truoc_thueVAT
+ *  6 Tong_thueVAT
+ *  7 Tong_tien_sau_thueVAT
+ *  8 Tong_giam_gia
+ *  9 Tong_cong
+ * 10 Tong_thanh_toan
+ * 11 Tong_hoa_hong_khach_hang
+ * 12 Tong_hoa_hong_ca_nhan
+ * 13 Cong_no_cu
+ * 14 Trang_thai_thanh_toan
+ * 15 Trang_thai_hop_dong
+ * 16 Ghi_chu
+ */
+function formatDateTimeVN(d = new Date()) {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const hh = pad(d.getHours())
+  const mm = pad(d.getMinutes())
+  const ss = pad(d.getSeconds())
+  const DD = pad(d.getDate())
+  const MM = pad(d.getMonth() + 1)
+  const YYYY = d.getFullYear()
+  return `${hh}:${mm}:${ss} ${DD}/${MM}/${YYYY}`
+}
+
+function formatCreatedTimeVN(d = new Date()) {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const hh = pad(d.getHours())
+  const mm = pad(d.getMinutes())
+  const DD = pad(d.getDate())
+  const MM = pad(d.getMonth() + 1)
+  const YYYY = d.getFullYear()
+  return `${hh}:${mm}, ${DD}/${MM}/${YYYY}`
+}
+
+function buildHopDongTongQuatRow(
+  statusHopDong: 'Tạm' | 'Chính thức',
+  maHopDongCu: string | null,
+  soPO: string = '',
+  tenPO: string = '',
+  maHopDongGoc: string | null = null,
+  tenFileBaoGia: string = '',
+  linkBaoGia: string = ''
+) {
+  const ngay = formatDateTimeVN(new Date())
+
+  // ✅ totals: theo VND
+  const t = totals.value
+
+  const truoc = round2(t.truoc)
+  const vat   = round2(t.vat)
+  const sau   = round2(t.sau)
+
+  const tongGiamGia = 0
+  const tongCong = sau
+  const tongThanhToan = 0
+  const hhKhach = 0
+  const hhCaNhan = 0
+  const tongLoiNhuanCu = toNum(khach.value.Tong_loi_nhuan, 0)
+  const trangThaiThanhToan = 'Chưa thanh toán đủ'
+  const ghiChu = (ghiChuHopDong.value || '').trim()
+
+  // ✅ luôn lưu VND + tiGia = 1
+  const donVi = 'VND'
+  const tiGia = 1
+
+  // ✅ ma_hop_dong_goc: lấy từ bản cũ hoặc chính nó nếu là bản đầu tiên
+  const goc = maHopDongGoc || maHopDong.value
+
+  return [
+    maHopDong.value,
+    soHopDong.value,
+    (khach.value.Ma_khach_hang || '').trim(),
+    (khach.value.Ten_khach_hang || '').trim(),
+    ngay,
+    truoc,
+    vat,
+    sau,
+    tongGiamGia,
+    tongCong,
+    tongThanhToan,
+    hhKhach,
+    hhCaNhan,
+    tongLoiNhuanCu,
+    trangThaiThanhToan,
+    statusHopDong,
+    ghiChu,
+    donVi,
+    tiGia,
+      maHopDongCu || ''  ,   // ✅ CỘT index 19
+      toNum(tongGiaThucTe.value, 0),  // ✅ index 20 - tong_gia_thuc_te
+      formatCreatedTimeVN(new Date()), // ✅ index 21 - created_time
+      soPO,                            // ✅ index 22 - So_PO
+      tenPO,                           // ✅ index 23 - Ten_PO
+      contentOfContractPO.value.trim(),    // ✅ index 24 - content_of_contract_po
+      toNum(chietKhauTruocThue.value, 0),       // 25
+      toNum(chietKhauTruocThuePct.value, 0),    // 26
+      toNum(thueChenhLech.value, 0),            // 27
+      toNum(thueChenhLechPct.value, 0),         // 28
+      toNum(chenhLechGia.value, 0),             // 29
+      toNum(conLai.value, 0),                   // 30
+      toNum(tongChietKhau.value, 0),            // 31
+      goc,                                      // ✅ index 32 - ma_hop_dong_goc
+      statusHopDong === 'Chính thức' ? 'TRUE' : 'FALSE', // ✅ index 33 - isCompleted
+      tenFileBaoGia,                            // ✅ index 34 - ten_file
+      linkBaoGia,                               // ✅ index 35 - link_file
+      JSON.stringify(excelMappingConfig.value)  // ✅ index 36 - structure
+  ]
+}
+
+
+/** hop_dong_chi_tiet (18 cột)
+ *  ma_hop_dong, so_hop_dong,
+ *  Ma_hang, Ten_hang, Main_img,
+ *  Ma_nha_cung_cap, Ten_nha_cung_cap,
+ *  Mo_ta_chung, Mo_ta_chi_tiet, Features, Danh_muc,
+ *  License_duration, DVT, Gia_tieu_chuan, Don_gia,
+ *  Don_vi_tien_te, Ti_gia, Thue_VAT
+ *
+ *  (sheet này CHƯA có So_luong theo schema mày gửi)
+ *  => nếu muốn lưu số lượng thì phải thêm cột So_luong trong sheet + update BE.
+ */
+function buildHopDongChiTietRows() {
+  return selectedItems.value.map(it => {
+    const tg = toNum(it.Ti_gia, 1)
+
+    const donGiaToSave = toNum(it.Don_gia, 0) * tg
+    const giaTCToSave  = toNum(it.Gia_tieu_chuan, 0) * tg
+
+    return [
+      maHopDong.value,
+      soHopDong.value,
+      it.Ma_hang || '',
+      it.Ten_hang || '',
+      it.Main_img || '',
+      it.Ma_nha_cung_cap || '',
+      it.Ten_nha_cung_cap || '',
+      it.Mo_ta_chung || '',
+      it.Mo_ta_chi_tiet || '',
+      it.Features || '',
+      it.Danh_muc || '',
+      it.License_duration || '',
+      it.DVT || '',
+      giaTCToSave,                 // [13] Gia_tieu_chuan (VND)
+      donGiaToSave,                // [14] Don_gia (VND)
+      'VND',                       // [15] Don_vi_tien_te
+      1,                           // [16] Ti_gia (lưu VND thì ti_gia=1)
+      toNum(it.Thue_VAT, 0),       // [17] Thue_VAT
+      Math.max(1, toNum((it as any).So_luong, 1)), // [18] So_luong
+      '',                          // [19] Trang_thai_hop_dong
+      // ✅ 3 CỘT MỚI
+      toNum(it.gia_hardware, 0),   // [20] gia_hardware
+      toNum(it.gia_nhap, 0),       // [21] gia_nhap
+      toNum(it.muc_phan_tram_off, 0), // [22] muc_%_off
+      // ✅ 5 CỘT USD
+      'USD',                              // [23] don_vi_tien_te_USD
+      tg,                                 // [24] Ti_giaUSD
+      toNum(it.Gia_tieu_chuan, 0),        // [25] Gia_tieu_chuanUSD (giá gốc USD)
+      toNum(it.Don_gia, 0),               // [26] Don_giaUS (giá gốc USD)
+      toNum(it.gia_nhap, 0),              // [27] gia_nhapUSD (giá gốc USD)
+      // ✅ 2 CỘT DATE
+      (it as any).start_date || '',       // [28] start_date
+      (it as any).end_date || '',         // [29] end_date
+      (it as any).is_giahan || '',        // [30] is_giahan
+      (it as any).thoi_han_bao_hanh || '', // [31] thoi_gian_bao_hanh
+      (it as any).volume || ''             // [32] volume
+    ]
+  })
+}
+
+
+function canSaveContractBasic() {
+  if (!selectedItems.value.length) return 'Chưa có hàng trong báo giá.'
+  return ''
+}
+
+function confirmSaveEmptyCustomer() {
+  showConfirmSaveEmptyCustomer.value = false
+  if (pendingSaveAction.value === 'temp') {
+    saveContractTemp(true)
+  } else if (pendingSaveAction.value === 'official') {
+    saveContractOfficialAndSaleReport(true)
+  }
+  pendingSaveAction.value = null
+}
+
+async function saveContractTemp(force = false) {
+  saveMsg.value = ''
+  const err = canSaveContractBasic()
+  if (err) {
+    saveMsg.value = err
+    showAsyncError('⚠️ Lỗi', err)
+    return
+  }
+
+  if (!force && (!khach.value.Ma_khach_hang?.trim() || !khach.value.Ten_khach_hang?.trim())) {
+    pendingSaveAction.value = 'temp'
+    showConfirmSaveEmptyCustomer.value = true
+    return
+  }
+
+  // Optimistic: show success immediately
+  const tenFileBaoGia = `BaoGia_${soHopDong.value || maHopDong.value}.xlsx`
+  const payload = {
+    hd_tong_quat_row: buildHopDongTongQuatRow(
+      'Tạm',
+      loadedMaHopDong.value,
+      currentPO.value || '',
+      soHopDong.value || '',
+      loadedMaHopDongGoc.value,
+      tenFileBaoGia,
+      ''
+    ),
+    hd_chi_tiet_rows: buildHopDongChiTietRows()
+  }
+
+  saveMsg.value = '✅ Đã lưu Hợp đồng TẠM thành công!'
+  showAsyncLoading('Đang đồng bộ lưu tạm...')
+
+  // Fire-and-forget POST
+  postApi('save_contract_temp', payload)
+    .then(() => {
+      isDataSaved.value = true
+      showAsyncSuccess('Lưu tạm thành công', 'Dữ liệu đã được đồng bộ lên hệ thống.')
+      setTimeout(() => { router.replace('/baogia'); setTimeout(() => window.location.reload(), 100) }, 1500)
+    })
+    .catch((e: any) => {
+      showAsyncError('Lưu tạm thất bại', 'Lỗi: ' + String(e?.message || e) + '. Vui lòng thử lại.')
+    })
+}
+
+
+
+async function saveContractOfficialAndSaleReport(force = false) {
+  saveMsg.value = ''
+  const err = canSaveContractBasic()
+  if (err) {
+    saveMsg.value = err
+    showAsyncError('⚠️ Lỗi', err)
+    return
+  }
+
+  if (!force && (!khach.value.Ma_khach_hang?.trim() || !khach.value.Ten_khach_hang?.trim())) {
+    pendingSaveAction.value = 'official'
+    showConfirmSaveEmptyCustomer.value = true
+    return
+  }
+
+  try {
+    saving.value = true
+    showAsyncLoading('Đang lưu chính thức & Sale Report...')
+    const tongSauThue = round2(totals.value.sau)
+
+    // Auto-gen So_PO
+    let nextPO = ''
+    try {
+      const poData = await fetch(`${BASE_URL}?action=po_dxmh`).then(r => r.json())
+      let maxPO = 0
+      if (Array.isArray(poData)) {
+        poData.forEach(row => {
+          const soPo = parseInt(String(row[2] || '').replace(/\D/g, ''))
+          if (!isNaN(soPo) && soPo > maxPO) maxPO = soPo
+        })
+      }
+      nextPO = String(maxPO + 1)
+    } catch {}
+
+    // Upload file báo giá lên Cloudinary trước khi lưu
+    let linkBaoGia = ''
+    const tenFileBaoGia = `BaoGia_${soHopDong.value || maHopDong.value}.xlsx`
+    try {
+      const blob = await generateQuoteExcelBlob(undefined, undefined, previewEditor.value?.getToolbarFont())
+      const formData = new FormData()
+      formData.append('upload_preset', 'upload_file')
+      formData.append('file', blob, tenFileBaoGia)
+      const uploadRes = await fetch('https://api.cloudinary.com/v1_1/db6fzs3rh/auto/upload', {
+        method: 'POST',
+        body: formData
+      }).then(r => r.json())
+      linkBaoGia = uploadRes.secure_url || ''
+    } catch (e) {
+      console.error('Lỗi upload file báo giá lên Cloudinary:', e)
+    }
+
+    const payload = {
+      hd_tong_quat_row: buildHopDongTongQuatRow(
+        'Chính thức',
+        loadedMaHopDong.value,
+        nextPO,
+        soHopDong.value,
+        loadedMaHopDongGoc.value,
+        tenFileBaoGia,
+        linkBaoGia
+      ),
+      hd_chi_tiet_rows: buildHopDongChiTietRows(),
+      ma_khach_hang: (khach.value.Ma_khach_hang || '').trim(),
+      tong_sau_thue: tongSauThue
+    }
+
+    // 1) Lưu chính thức
+    await postApi('save_contract_official', payload)
+
+    // 2) Lưu vào sale_report (dùng format giống pipeline)
+    const t = totals.value
+    const firstItem = selectedItems.value[0] || {} as any
+
+    const srPayload = {
+      sheet: 'sale_report',
+      action: 'add',
+      ma_hop_dong: maHopDong.value,
+      so_hop_dong: soHopDong.value,
+      So_PO: nextPO,
+      content_of_contract_PO: contentOfContractPO.value.trim() || soHopDong.value,
+      Ma_khach_hang: (khach.value.Ma_khach_hang || '').trim(),
+      Ten_khach_hang: (khach.value.Ten_khach_hang || '').trim(),
+      Ma_cong_ty: (khach.value.Ma_cong_ty || '').trim(),
+      Ten_cong_ty: (khach.value.Ten_cong_ty || '').trim(),
+      MST: (khach.value.MST || '').trim(),
+      Ma_nha_cung_cap: firstItem.Ma_nha_cung_cap || '',
+      Ten_nha_cung_cap: firstItem.Ten_nha_cung_cap || '',
+      Tong_tien_truoc_thueVAT: round2(t.truoc),
+      Tong_thueVAT: round2(t.vat),
+      Tong_tien_sau_thueVAT: round2(t.sau),
+      chiet_khau_tong_truoc_thue: toNum(chietKhauTruocThue.value, 0),
+      phan_tram_chiet_khau_tong_truoc_thue: toNum(chietKhauTruocThuePct.value, 0),
+      thue_chenh_lech_gia: toNum(thueChenhLech.value, 0),
+      phan_tram_thue_chenh_lech_gia: toNum(thueChenhLechPct.value, 0),
+      chenh_lech_gia: toNum(chenhLechGia.value, 0),
+      con_lai: toNum(conLai.value, 0),
+      tong_chiet_khau: toNum(tongChietKhau.value, 0),
+      Tong_thanh_tien_chua_VAT_mua_hang: 0,
+      Tong_CP_don_hang: 0,
+      account_manager_name: 'LÊ PHI SƠN',
+      link_excel_bao_gia: linkBaoGia,
+      ten_file_bao_gia: tenFileBaoGia
+    }
+
+    try {
+      await fetch(BASE_URL, { method: 'POST', body: JSON.stringify(srPayload) })
+    } catch (e2) {
+      console.warn('Lỗi lưu sale_report:', e2)
+    }
+
+    // 3) Lưu vào PO_DXMH
+    if (contentOfContractPO.value.trim()) {
+      const poPayload = {
+        sheet: 'po_dxmh',
+        action: 'add',
+        ma_hop_dong: maHopDong.value,
+        so_hop_dong: soHopDong.value,
+        so_po: nextPO,
+        content_of_contract_po: contentOfContractPO.value.trim(),
+        ma_khach_hang: (khach.value.Ma_khach_hang || '').trim(),
+        company: (khach.value.Ten_cong_ty || '').trim(),
+        mst: (khach.value.MST || '').trim(),
+        address: (khach.value.Dia_chi_cong_ty || khach.value.ADDRESS || '').trim(),
+        tel: (khach.value.So_dien_thoai_cong_ty || khach.value.TEL || '').trim(),
+        contact: (khach.value.Ten_khach_hang || '').trim(),
+        email: (khach.value.Email_cong_ty || '').trim()
+      }
+      try {
+        await fetch(BASE_URL, { method: 'POST', body: JSON.stringify(poPayload) })
+      } catch (e3) {
+        console.warn('Lỗi lưu PO_DXMH:', e3)
+      }
+
+      // 4) Lưu vào chi_tiet_mua_hang (mỗi item 1 row)
+      const ctmhItems = selectedItems.value.map(it => ({
+        ma_hop_dong: maHopDong.value,
+        so_hop_dong: soHopDong.value,
+        so_po: nextPO,
+        ten_po: contentOfContractPO.value.trim(),
+        ma_hang_hoa: it.Ma_hang || '',
+        ten_hang_hoa: it.Ten_hang || '',
+        ma_nha_cung_cap: it.Ma_nha_cung_cap || '',
+        ten_nha_cung_cap: it.Ten_nha_cung_cap || '',
+        sl: Number(it.So_luong) || 1,
+        don_gia: Number(it.Don_gia) || 0,
+        thanh_tien: (Number(it.So_luong) || 1) * (Number(it.Don_gia) || 0),
+        content_of_contract_po: contentOfContractPO.value.trim()
+      }))
+      if (ctmhItems.length) {
+        try {
+          await fetch(BASE_URL, { method: 'POST', body: JSON.stringify({
+            sheet: 'chi_tiet_mua_hang',
+            action: 'add_bulk',
+            items: ctmhItems
+          }) })
+        } catch (e4) {
+          console.warn('Lỗi lưu chi_tiet_mua_hang:', e4)
+        }
+      }
+    }
+
+    saveMsg.value = '✅ Đã lưu CHÍNH THỨC + SALE REPORT thành công!'
+    isDataSaved.value = true
+    showAsyncSuccess('Lưu thành công', 'Hợp đồng + Sale Report đã được đồng bộ.')
+    loadedMaHopDong.value = null
+    setTimeout(() => { router.replace('/baogia'); setTimeout(() => window.location.reload(), 100) }, 1500)
+  } catch (e: any) {
+    saveMsg.value = '❌ Lỗi: ' + String(e?.message || e)
+    showAsyncError('Lưu thất bại', String(e?.message || e))
+  } finally {
+    saving.value = false
+  }
+}
+
+/* BE trả về mảng -> map về object theo index (tolerant) */
+function mapHangHoaRow(row: any[]): HangHoa {
+  // Nếu sheet có Mo_ta_chi_tiet (>=20 cột): dùng mapping extended
+  if (row.length >= 20) {
+    return {
+      Ma_hang: String(row[0] ?? ''),
+      Ten_hang: String(row[1] ?? ''),
+      Main_img: String(row[2] ?? ''),
+      Ma_nha_cung_cap: String(row[3] ?? ''),
+      Ten_nha_cung_cap: String(row[4] ?? ''),
+      Mo_ta_chung: String(row[5] ?? ''),
+      Mo_ta_chi_tiet: String(row[6] ?? ''),
+      Features: String(row[7] ?? ''),
+      Danh_muc: String(row[8] ?? '').toUpperCase(),
+      License_duration: String(row[9] ?? ''),
+      DVT: String(row[10] ?? ''),
+      Gia_tieu_chuan: toNum(row[11], 0),
+      Don_gia: toNum(row[12], 0),
+      Trang_thai: String(row[13] ?? ''),
+      Don_vi_tien_te: String(row[14] ?? 'VND'),
+      Ti_gia: toNum(row[15], 1),
+      Thue_VAT: toNum(row[16], 0),
+      Ma_hang_lien_ket: String(row[17] ?? ''),
+      Ten_hang_lien_ket: String(row[18] ?? ''),
+      Ghi_chu: String(row[19] ?? ''),
+      gia_hardware: toNum(row[20], 0),
+      gia_nhap: toNum(row[21], 0),
+      muc_phan_tram_off: toNum(row[22], 0),
+      Type: String(row[23] ?? '').trim(),
+      thoi_han_bao_hanh: String(row[24] ?? ''),
+      volume: String(row[25] ?? '')
+    }
+  }
+
+  // Nếu sheet cũ (>=19 cột): không có Mo_ta_chi_tiet
+  return {
+    Ma_hang: String(row[0] ?? ''),
+    Ten_hang: String(row[1] ?? ''),
+    Main_img: String(row[2] ?? ''),
+    Ma_nha_cung_cap: String(row[3] ?? ''),
+    Ten_nha_cung_cap: String(row[4] ?? ''),
+    Mo_ta_chung: String(row[5] ?? ''),
+    Mo_ta_chi_tiet: '',
+    Features: String(row[6] ?? ''),
+    Danh_muc: String(row[7] ?? '').toUpperCase(),
+    License_duration: String(row[8] ?? ''),
+    DVT: String(row[9] ?? ''),
+    Gia_tieu_chuan: toNum(row[10], 0),
+    Don_gia: toNum(row[11], 0),
+    Trang_thai: String(row[12] ?? ''),
+    Don_vi_tien_te: String(row[13] ?? 'VND'),
+    Ti_gia: toNum(row[14], 1),
+    Thue_VAT: toNum(row[15], 0),
+    Ma_hang_lien_ket: String(row[16] ?? ''),
+    Ten_hang_lien_ket: String(row[17] ?? ''),
+      Ghi_chu: String(row[18] ?? ''),
+    // ✅ THÊM 4 field (default 0 vì sheet cũ không có)
+    gia_hardware: 0,
+    gia_nhap: 0,
+    muc_phan_tram_off: 0,
+    Type: '',
+    thoi_han_bao_hanh: '',
+    volume: ''
+  }
+}
+const IDX_TIME = 4
+
+function parseDateStr(str: string) {
+  if (!str) return 0;
+  const parts = str.trim().split(' ');
+  let dPart = parts.length > 1 ? parts[1] : parts[0];
+  const dSplit = dPart.split('/');
+  if (dSplit.length === 3) {
+    const timePart = parts.length > 1 ? parts[0] : '00:00:00';
+    return new Date(`${dSplit[2]}-${dSplit[1]}-${dSplit[0]}T${timePart}`).getTime();
+  }
+  return 0;
+}
+
+const contractsSortedDesc = computed(() => {
+  const uniqueMap = new Map()
+  contractsRaw.value.forEach(r => {
+    const ma = String(r?.[0] ?? '').trim()
+    if (ma && !uniqueMap.has(ma)) {
+      uniqueMap.set(ma, r)
+    }
+  })
+  return Array.from(uniqueMap.values()).sort((a, b) => {
+    const ta = parseDateStr(String(a?.[IDX_TIME] ?? ''))
+    const tb = parseDateStr(String(b?.[IDX_TIME] ?? ''))
+    return tb - ta
+  })
+})
+
+const loadCustomerFilter = ref('')
+const filteredContractsForLoad = computed(() => {
+  let list = contractsSortedDesc.value
+  if (loadCustomerFilter.value) {
+    const kw = loadCustomerFilter.value.trim().toLowerCase()
+    const matchedCustomer = customers.value.find(c => {
+      const fullStr = `${c.Ten_khach_hang}${c.Ten_cong_ty ? ' - ' + c.Ten_cong_ty : ''}`.trim().toLowerCase()
+      return fullStr === kw || c.Ten_khach_hang.trim().toLowerCase() === kw || c.Ma_khach_hang.trim().toLowerCase() === kw
+    })
+
+    if (matchedCustomer) {
+      list = list.filter(r => String(r?.[2] ?? '').trim() === matchedCustomer.Ma_khach_hang)
+    } else {
+      list = list.filter(r => 
+        String(r?.[3] ?? '').toLowerCase().includes(kw) || 
+        String(r?.[2] ?? '').toLowerCase().includes(kw)
+      )
+    }
+  }
+  return list
+})
+watch(loadCustomerFilter, () => {
+  loadKey.value = ''
+})
+
+const loadSearchQuery = ref('')
+const loadFromDate = ref('')
+const loadToDate = ref('')
+const loadStatusFilter = ref('')
+const loadSortBy = ref('desc')
+
+const contractCards = computed(() => {
+  let list = contractsSortedDesc.value
+  
+  if (loadSortBy.value === 'asc') {
+    list = [...list].reverse()
+  }
+
+  if (loadStatusFilter.value) {
+    list = list.filter(r => String(r?.[15] ?? '').trim() === loadStatusFilter.value)
+  }
+
+  if (loadFromDate.value || loadToDate.value) {
+    const fromTime = loadFromDate.value ? new Date(loadFromDate.value + 'T00:00:00').getTime() : 0;
+    const toTime = loadToDate.value ? new Date(loadToDate.value + 'T23:59:59').getTime() : Infinity;
+    list = list.filter(r => {
+      const t = parseDateStr(String(r?.[4] ?? ''))
+      if (!t) return true;
+      return t >= fromTime && t <= toTime;
+    })
+  }
+
+  if (loadSearchQuery.value) {
+    const kw = loadSearchQuery.value.trim().toLowerCase()
+    list = list.filter(r => {
+      const maHD = String(r?.[0] ?? '').toLowerCase()
+      const soHD = String(r?.[1] ?? '').toLowerCase()
+      const maKH = String(r?.[2] ?? '').toLowerCase()
+      const tenKH = String(r?.[3] ?? '').toLowerCase()
+      const soPO = String(r?.[22] ?? '').toLowerCase()
+      
+      const c = customers.value.find(x => x.Ma_khach_hang === String(r?.[2] ?? '').trim())
+      const tenCongTy = c ? String(c.Ten_cong_ty || '').toLowerCase() : ''
+
+      return maHD.includes(kw) || soHD.includes(kw) || maKH.includes(kw) || tenKH.includes(kw) || soPO.includes(kw) || tenCongTy.includes(kw)
+    })
+  }
+  
+  // Map thêm thông tin khách hàng và format data cho dễ dùng trên template
+  return list.slice(0, 100).map(r => {
+    const maKH = String(r?.[2] ?? '').trim()
+    const c = customers.value.find(x => x.Ma_khach_hang === maKH)
+    return {
+      _raw: r,
+      maHD: String(r?.[0] ?? ''),
+      soHD: String(r?.[1] ?? ''),
+      maKH: maKH,
+      tenKH: String(r?.[3] ?? ''),
+      ngay: String(r?.[4] ?? ''),
+      truocThue: toNum(r?.[5], 0),
+      sauThue: toNum(r?.[7], 0),
+      trangThai: String(r?.[15] ?? 'Không rõ'),
+      soPO: String(r?.[22] ?? ''),
+      mst: c ? c.MST : '',
+      tenCongTy: c ? c.Ten_cong_ty : '',
+      tongGiaThucTe: toNum(r?.[20], 0),
+      chenhLechGia: toNum(r?.[29], 0),
+      conLai: toNum(r?.[30], 0),
+      tongChietKhau: toNum(r?.[31], 0)
+    }
+  })
+})
+
+function mapKhachRow(row: any[]): KhachHang {
+  // khach_hang chuẩn A->P (16 cột)
+  return {
+    Ma_khach_hang: String(row[0] ?? ''),
+    Ten_khach_hang: String(row[1] ?? ''),
+    Email_ca_nhan: String(row[2] ?? ''),
+    So_dien_thoai_ca_nhan: String(row[3] ?? ''),
+    Ma_cong_ty: String(row[4] ?? ''),
+    Ten_cong_ty: String(row[5] ?? ''),
+    So_dien_thoai_cong_ty: String(row[6] ?? ''),
+    So_fax_cong_ty: String(row[7] ?? ''),
+    Dia_chi_cong_ty: String(row[8] ?? ''),
+    Email_cong_ty: String(row[9] ?? ''),
+    Website_cong_ty: String(row[10] ?? ''),
+    Hoa_hong: String(row[11] ?? ''),
+    Tong_chi_tieu: String(row[12] ?? ''),
+    Tong_loi_nhuan: String(row[13] ?? ''),
+    Trang_thai: String(row[14] ?? ''),
+    Ghi_chu: String(row[15] ?? ''),
+    Ten_khach_hang_phu: String(row[16] ?? ''),
+    So_dien_thoai_ca_nhan_phu: String(row[17] ?? ''),
+    Email_ca_nhan_phu: String(row[18] ?? ''),
+    MST: String(row[19] ?? ''),
+    COMPANY: String(row[20] ?? ''),
+    ADDRESS: String(row[21] ?? ''),
+    TEL: String(row[22] ?? '')
+  }
+}
+
+/* ======================
+   INIT
+====================== */
+onMounted(async () => {
+  // hop_dong_tong_quat
+  contractsState.value = 'loading'
+  const hdRows = await fetch(`${BASE_URL}?action=hop_dong_tong_quat`).then(r => r.json())
+  contractsRaw.value = Array.isArray(hdRows) ? hdRows : []
+  const hdLen = contractsRaw.value.length
+  soHopDong.value = `HĐ${hdLen + 1}`
+  markLoaded(contractsState)
+
+  // hang_hoa
+  productsState.value = 'loading'
+  let mappedProducts: any[] = []
+  try {
+    const hangHoaSnapshot = await get(dbRef(database, 'hang_hoa'))
+    const hangHoaData = hangHoaSnapshot.val() || {}
+    
+    Object.values(hangHoaData).forEach((item: any) => {
+      mappedProducts.push({
+        Ma_hang: String(item.Ma_hang ?? ''),
+        Ten_hang: String(item.Ten_hang ?? ''),
+        Main_img: String(item.Main_img ?? ''),
+        Ma_nha_cung_cap: String(item.Ma_nha_cung_cap ?? ''),
+        Ten_nha_cung_cap: String(item.Ten_nha_cung_cap ?? ''),
+        Mo_ta_chung: String(item.Mo_ta_chung ?? ''),
+        Mo_ta_chi_tiet: String(item.Mo_ta_chi_tiet ?? ''),
+        Features: String(item.Features ?? ''),
+        Danh_muc: String(item.Danh_muc ?? '').toUpperCase(),
+        License_duration: String(item.License_duration ?? ''),
+        DVT: String(item.DVT ?? ''),
+        Gia_tieu_chuan: Number(item.Gia_tieu_chuan) || 0,
+        Don_gia: Number(item.Don_gia) || 0,
+        Trang_thai: String(item.Trang_thai ?? ''),
+        Don_vi_tien_te: String(item.Don_vi_tien_te ?? 'VND'),
+        Ti_gia: Number(item.Ti_gia) || 1,
+        Thue_VAT: Number(item.Thue_VAT) || 0,
+        Ma_hang_lien_ket: String(item.Ma_hang_lien_ket ?? ''),
+        Ten_hang_lien_ket: String(item.Ten_hang_lien_ket ?? ''),
+        Ghi_chu: String(item.Ghi_chu ?? ''),
+        gia_hardware: Number(item.gia_hardware) || 0,
+        gia_nhap: Number(item.gia_nhap) || 0,
+        muc_phan_tram_off: Number(item['muc_%_off'] ?? item.muc_phan_tram_off ?? 0),
+        Type: String(item.TYPE ?? item.Type ?? '').trim(),
+        thoi_han_bao_hanh: String(item.thoi_han_bao_hanh ?? ''),
+        volume: String(item.volume ?? '')
+      })
+    })
+    products.value = mappedProducts
+  } catch (error) {
+    console.error('Error fetching hang_hoa from Firebase:', error)
+    products.value = []
+  }
+  markLoaded(productsState)
+
+  // init qtyMap
+  mappedProducts.forEach(p => {
+    if (!qtyMap[p.Ma_hang]) qtyMap[p.Ma_hang] = 1
+  })
+
+  // khach_hang
+  customersState.value = 'loading'
+  const khRows = await fetch(`${BASE_URL}?action=khach_hang`).then(r => r.json())
+  customers.value = (Array.isArray(khRows) ? khRows : []).map(mapKhachRow)
+  markLoaded(customersState)
+
+  // dieu_khoan
+  termsState.value = 'loading'
+  const dkRows = await fetch(`${BASE_URL}?action=dieu_khoan`).then(r => r.json())
+  termsRaw.value = Array.isArray(dkRows) ? dkRows : []
+  markLoaded(termsState)
+
+  // upload_file_mau
+  try {
+    const ufmRows = await fetch(`${BASE_URL}?action=upload_file_mau`).then(r => r.json())
+    if (Array.isArray(ufmRows)) {
+      customTemplates.value = ufmRows.map(row => ({
+        id: String(row[0] || ''),
+        name: String(row[1] || ''),
+        data: String(row[2] || ''), // Cloudinary URL
+        mappingConfig: row[3] ? JSON.parse(row[3]) : [], // Structure
+        content: String(row[4] || '') // Ghi chú
+      }))
+    }
+  } catch (err) { console.error('Lỗi lấy template tùy chỉnh:', err) }
+
+  if (route.query.ma) {
+    loadMode.value = 'MA'
+    loadKey.value = String(route.query.ma)
+    await loadInvoiceToFE()
+  }
+
+  const cloneData = localStorage.getItem('cloneQuoteProducts')
+  if (cloneData) {
+    try {
+      selectedItems.value = JSON.parse(cloneData)
+      triggerToast('Đã nhân bản hàng hóa thành công!')
+    } catch (e) {
+      console.error(e)
+    }
+    localStorage.removeItem('cloneQuoteProducts')
+  }
+
+  // Tự động load Số PO tiếp theo từ po_dxmh nếu chưa có
+  if (!currentPO.value) {
+    try {
+      const poData = await fetch(`${BASE_URL}?action=po_dxmh`).then(r => r.json())
+      let maxPO = 0
+      if (Array.isArray(poData)) {
+        poData.forEach((row: any) => {
+          const soPo = parseInt(String(row[2] || '').replace(/\D/g, ''))
+          if (!isNaN(soPo) && soPo > maxPO) maxPO = soPo
+        })
+      }
+      currentPO.value = String(maxPO + 1)
+    } catch (e) {
+      console.error('Không thể load số PO:', e)
+    }
+  }
+})
+
+// ✅ Handle keep-alive reactivation with ?ma= query param (from QuanLyBaoGia)
+onActivated(async () => {
+  // Tránh đụng độ với onMounted trong lần tải trang đầu tiên
+  if (contractsState.value === 'loading') return
+
+  if (route.query.ma) {
+    const ma = String(route.query.ma)
+    // Nếu đã load đúng mã này rồi thì skip
+    if (loadedMaHopDong.value === ma) return
+
+    showAsyncLoading('Đang chuẩn bị dữ liệu...')
+
+    // Refresh contractsRaw trước khi load
+    try {
+      const hdRows = await fetch(`${BASE_URL}?action=hop_dong_tong_quat`).then(r => r.json())
+      contractsRaw.value = Array.isArray(hdRows) ? hdRows : []
+    } catch (e) { console.error(e) }
+
+    loadMode.value = 'MA'
+    loadKey.value = ma
+    await loadInvoiceToFE()
+  }
+
+  const cloneDataRaw = localStorage.getItem('cloneQuoteProductsRaw')
+  if (cloneDataRaw) {
+    try {
+      showAsyncLoading('Đang nhân bản hàng hóa...')
+      
+      // Đặt lại state như một báo giá mới
+      maHopDong.value = `HD${Date.now()}`
+      maKHInput.value = ''
+      tenKHInput.value = ''
+      isExistingCustomer.value = false
+      ghiChuHopDong.value = ''
+      contentOfContractPO.value = ''
+      loadedMaHopDong.value = ''
+      loadedMaHopDongGoc.value = ''
+      
+      // Tính toán Số HĐ và Số PO mới
+      await generateNewQuoteIds()
+
+      setTimeout(() => {
+        const parsedRaw = JSON.parse(cloneDataRaw)
+        selectedItems.value = parsedRaw.map(mapHopDongChiTietRowToItem)
+        
+        const metaRaw = localStorage.getItem('cloneQuoteMeta')
+        if (metaRaw) {
+          const meta = JSON.parse(metaRaw)
+          chietKhauTruocThuePct.value = meta.chietKhauTruocThuePct || 0
+          thueChenhLechPct.value = meta.thueChenhLechPct || 0
+          
+          if (meta.structure && String(meta.structure).trim().startsWith('[')) {
+            try {
+              excelMappingConfig.value = JSON.parse(meta.structure)
+            } catch (err) {
+              console.warn('Cannot parse structure JSON from cloned quote', err)
+            }
+          }
+          
+          localStorage.removeItem('cloneQuoteMeta')
+        }
+
+        showAsyncSuccess('Thành công', 'Đã đổ dữ liệu hàng hóa sang báo giá mới')
+        triggerToast('Đã nhân bản hàng hóa thành công!')
+      }, 1200)
+    } catch (e: any) {
+      console.error(e)
+      showAsyncError('Lỗi', 'Không thể nhân bản: ' + String(e?.message || e))
+    }
+    localStorage.removeItem('cloneQuoteProductsRaw')
+  }
+})
+/* ======================
+   AUTO FILL KHÁCH (theo mã hoặc tên)
+====================== */
+function fillCustomerByMa(val: string) {
+  const found = customers.value.find(c => c.Ma_khach_hang === val)
+  if (!found) return
+  isExistingCustomer.value = true
+  originalKhach.value = JSON.parse(JSON.stringify(found))
+  khach.value = JSON.parse(JSON.stringify(found))
+  maKHInput.value = found.Ma_khach_hang
+  tenKHInput.value = found.Ten_khach_hang
+}
+
+function fillCustomerByTen(val: string) {
+  const found = customers.value.find(c => c.Ten_khach_hang === val)
+  if (!found) return
+  isExistingCustomer.value = true
+  originalKhach.value = JSON.parse(JSON.stringify(found))
+  khach.value = JSON.parse(JSON.stringify(found))
+  maKHInput.value = found.Ma_khach_hang
+  tenKHInput.value = found.Ten_khach_hang
+}
+
+/* nếu user gõ tay rồi blur */
+function onBlurMaKH() {
+  if (maKHInput.value?.trim()) fillCustomerByMa(maKHInput.value.trim())
+}
+function onBlurTenKH() {
+  if (tenKHInput.value?.trim()) fillCustomerByTen(tenKHInput.value.trim())
+}
+function fillCustomerByCongTy(val: string) {
+  const found = customers.value.find(c => c.Ten_cong_ty === val)
+  if (!found) return
+  isExistingCustomer.value = true
+  originalKhach.value = JSON.parse(JSON.stringify(found))
+  khach.value = JSON.parse(JSON.stringify(found))
+  maKHInput.value = found.Ma_khach_hang
+  tenKHInput.value = found.Ten_khach_hang
+}
+function onBlurCongTy() {
+  if (khach.value.Ten_cong_ty?.trim()) fillCustomerByCongTy(khach.value.Ten_cong_ty.trim())
+}
+
+/* ======================
+   AUTO FILL PRODUCT (manual modal)
+====================== */
+function autoFillProduct(val: string) {
+  const v = (val || '').trim()
+  if (!v) return
+  const p = products.value.find(i => i.Ma_hang === v || i.Ten_hang === v)
+  if (!p) return
+  const keepQty = itemForm.value.So_luong
+  itemForm.value = { ...JSON.parse(JSON.stringify(p)), So_luong: Math.max(1, toNum(keepQty, 1)) }
+}
+
+/* ======================
+   FILTERS
+====================== */
+const supplierOptions = computed(() => {
+  const set = new Set<string>()
+  products.value.forEach(p => {
+    const key = p.Ten_nha_cung_cap?.trim() || p.Ma_nha_cung_cap?.trim()
+    if (key) set.add(key)
+  })
+  return Array.from(set).sort((a, b) => a.localeCompare(b))
+})
+
+const normalizeString = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9\u00C0-\u024F\u1E00-\u1EFF]/gi, '')
+
+function checkVolumeMatch(volumeStr: string, userCount: number): boolean {
+  if (!volumeStr) return false;
+  const str = volumeStr.toLowerCase();
+  
+  // 1. Range: A-B or A - B
+  const rangeMatch = str.match(/(\d+)\s*-\s*(\d+)/);
+  if (rangeMatch) {
+    const min = parseInt(rangeMatch[1], 10);
+    const max = parseInt(rangeMatch[2], 10);
+    return userCount >= min && userCount <= max;
+  }
+  
+  // 2. Less than: < 50
+  const lessMatch = str.match(/<\s*(\d+)/);
+  if (lessMatch) {
+    const val = parseInt(lessMatch[1], 10);
+    return userCount < val;
+  }
+  
+  // 3. Greater than: > 1000 or 1000+
+  const greaterMatch1 = str.match(/>\s*(\d+)/);
+  if (greaterMatch1) {
+    const val = parseInt(greaterMatch1[1], 10);
+    return userCount > val;
+  }
+  const greaterMatch2 = str.match(/(\d+)\s*\+/);
+  if (greaterMatch2) {
+    const val = parseInt(greaterMatch2[1], 10);
+    return userCount >= val;
+  }
+  
+  return false;
+}
+
+const filteredProducts = computed(() => {
+  const kw = keyword.value.trim()
+  const uCount = parseInt(userVolumeFilter.value, 10)
+  const hasVolumeFilter = userVolumeFilter.value !== '' && !isNaN(uCount)
+
+  if (!kw && !hasVolumeFilter) {
+    return products.value.filter(p => {
+      return supplierFilter.value === 'ALL' || p.Ten_nha_cung_cap === supplierFilter.value || p.Ma_nha_cung_cap === supplierFilter.value
+    })
+  }
+  
+  const words = kw.toLowerCase().split(/\s+/).filter(Boolean)
+  
+  return products.value.filter(p => {
+    let okKw = true;
+    if (words.length > 0) {
+      const ma = (p.Ma_hang || '').toLowerCase()
+      const ten = (p.Ten_hang || '').toLowerCase()
+      const ncc = (p.Ten_nha_cung_cap || '').toLowerCase()
+      
+      const maN = normalizeString(ma)
+      const tenN = normalizeString(ten)
+      const nccN = normalizeString(ncc)
+      
+      okKw = words.every(w => {
+        const wN = normalizeString(w)
+        return ma.includes(w) || maN.includes(wN) ||
+               ten.includes(w) || tenN.includes(wN) ||
+               ncc.includes(w) || nccN.includes(wN)
+      })
+    }
+
+    const okSupplier =
+      supplierFilter.value === 'ALL' ||
+      p.Ten_nha_cung_cap === supplierFilter.value ||
+      p.Ma_nha_cung_cap === supplierFilter.value
+
+    let okVolume = true;
+    if (hasVolumeFilter) {
+      okVolume = checkVolumeMatch(p.volume || '', uCount);
+    }
+
+    return okKw && okSupplier && okVolume
+  })
+})
+
+const displayLimit = ref(15)
+
+watch([keyword, supplierFilter], () => {
+  displayLimit.value = 15
+})
+
+const displayedProducts = computed(() => {
+  return filteredProducts.value.slice(0, displayLimit.value)
+})
+
+function loadMoreProducts() {
+  displayLimit.value += 15
+}
+
+/* ======================
+   CARD QTY realtime
+====================== */
+function incQty(ma: string) {
+  qtyMap[ma] = Math.max(1, toNum(qtyMap[ma], 1) + 1)
+}
+function decQty(ma: string) {
+  qtyMap[ma] = Math.max(1, toNum(qtyMap[ma], 1) - 1)
+}
+
+/* ======================
+   ADD / RESET
+====================== */
+function resolveMaHang(item: HangHoa) {
+  if (!item.Ma_hang) return item.Ma_hang;
+  const exactMatch = selectedItems.value.find(
+    it => it.Ten_hang === item.Ten_hang && 
+         (it.Ma_hang === item.Ma_hang || it.Ma_hang.startsWith(item.Ma_hang + '-V'))
+  );
+  if (exactMatch) return exactMatch.Ma_hang;
+
+  const collision = selectedItems.value.find(it => it.Ma_hang === item.Ma_hang);
+  if (collision && collision.Ten_hang !== item.Ten_hang) {
+    let maxV = 0;
+    selectedItems.value.forEach(it => {
+      if (it.Ma_hang.startsWith(item.Ma_hang + '-V')) {
+        const vNum = parseInt(it.Ma_hang.split('-V').pop() || '0');
+        if (!isNaN(vNum) && vNum > maxV) maxV = vNum;
+      }
+    });
+    return `${item.Ma_hang}-V${maxV + 1}`;
+  }
+  return item.Ma_hang;
+}
+function insertItemIntoGroup(cloned: any) {
+  const targetCat = (cloned.Danh_muc || '').trim().toUpperCase();
+  
+  let insertIdx = -1;
+  for (let i = selectedItems.value.length - 1; i >= 0; i--) {
+    const cat = (selectedItems.value[i].Danh_muc || '').trim().toUpperCase();
+    if (cat === targetCat) {
+      insertIdx = i + 1;
+      break;
+    }
+  }
+
+  if (insertIdx !== -1) {
+    selectedItems.value.splice(insertIdx, 0, cloned);
+    return insertIdx;
+  } else {
+    selectedItems.value.push(cloned);
+    return selectedItems.value.length - 1;
+  }
+}
+
+function addItemFromCard(p: HangHoa) {
+  const qty = Math.max(1, qtyMap[p.Ma_hang] || 1)
+  const resolvedMaHang = resolveMaHang(p);
+
+  const foundIdx = selectedItems.value.findIndex(
+    it => it.Ma_hang === resolvedMaHang
+  )
+
+  let highlightIdx = -1;
+  if (foundIdx >= 0) {
+    selectedItems.value[foundIdx].So_luong += qty
+    highlightIdx = foundIdx;
+  } else {
+    const cloned = cloneHang(p, qty);
+    cloned.Ma_hang = resolvedMaHang;
+    highlightIdx = insertItemIntoGroup(cloned);
+  }
+  
+  scrollToAndHighlightRow(highlightIdx);
+  triggerToast('Đã thêm sản phẩm thành công!');
+  addedStatus[p.Ma_hang] = true;
+  setTimeout(() => { addedStatus[p.Ma_hang] = false; }, 1500);
+}
+
+function getLinkedItems(p: HangHoa) {
+  if (!p.Ma_hang_lien_ket) return [];
+  const codes = String(p.Ma_hang_lien_ket).split(/[,\n]+/).map(c => c.trim()).filter(Boolean);
+  const names = p.Ten_hang_lien_ket ? String(p.Ten_hang_lien_ket).split(/[,\n]+/).map(n => n.trim()) : [];
+  
+  return codes.map((code, idx) => {
+    let name = names[idx];
+    if (!name) {
+      const found = products.value.find(x => x.Ma_hang === code);
+      name = found ? found.Ten_hang : code;
+    }
+    return { code, name };
+  });
+}
+
+function addLinkedItem(code: string) {
+  const foundProduct = products.value.find(x => x.Ma_hang === code);
+  if (foundProduct) {
+    addItemFromCard(foundProduct);
+  }
+}
+
+
+function scrollToAndHighlightRow(idx: number, scroll = true) {
+  setTimeout(() => {
+    const rowEl = document.getElementById(`quote-row-${idx}`);
+    if (rowEl) {
+      if (scroll) {
+        rowEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      rowEl.classList.remove('highlight-pulse');
+      void rowEl.offsetWidth; // trigger reflow
+      rowEl.classList.add('highlight-pulse');
+
+      // Ensure highlight turns off and clean up any stuck drag classes
+      setTimeout(() => {
+        if (rowEl) {
+          rowEl.classList.remove('highlight-pulse');
+          rowEl.classList.remove('ghost-item');
+          rowEl.classList.remove('sortable-chosen');
+          rowEl.classList.remove('sortable-ghost');
+        }
+      }, 900);
+    }
+  }, 100);
+}
+
+function addItem(item: HangHoa & { So_luong: number }) {
+  addAction(`Thêm hàng "${item.Ten_hang}"`)
+  const resolvedMaHang = resolveMaHang(item);
+
+  const foundIdx = selectedItems.value.findIndex(
+    it => it.Ma_hang === resolvedMaHang
+  )
+
+  let highlightIdx = -1;
+  if (foundIdx >= 0) {
+    selectedItems.value[foundIdx].So_luong += Math.max(1, toNum(item.So_luong, 1))
+    highlightIdx = foundIdx;
+  } else {
+    const cloned = withOriginalPriceFields(JSON.parse(JSON.stringify(item)));
+    cloned.Ma_hang = resolvedMaHang;
+    highlightIdx = insertItemIntoGroup(cloned);
+  }
+  
+  // Rebuild liên kết cho TẤT CẢ hàng cùng danh mục (cả hàng mới lẫn hàng cũ)
+  const addedCat = (item.Danh_muc || '').trim().toUpperCase();
+  if (addedCat) rebuildCategoryLinks(addedCat);
+  
+  scrollToAndHighlightRow(highlightIdx);
+  triggerToast('Đã thêm sản phẩm thành công!');
+  addedStatus[code] = true;
+  setTimeout(() => { addedStatus[code] = false; }, 1500);
+}
+
+/**
+ * Rebuild Ma_hang_lien_ket + Ten_hang_lien_ket cho TẤT CẢ item
+ * trong selectedItems có cùng danh mục.
+ * Mỗi item sẽ liên kết tới tất cả item khác cùng danh mục
+ * (từ cả selectedItems + products database).
+ */
+function rebuildCategoryLinks(category: string) {
+  const cat = category.trim().toUpperCase();
+  if (!cat) return;
+
+  // Thu thập tất cả item cùng danh mục trong bảng báo giá
+  const itemsInCat = selectedItems.value.filter(
+    it => (it.Danh_muc || '').trim().toUpperCase() === cat
+  );
+  
+  // Thu thập tất cả item cùng danh mục trong kho sản phẩm (database)
+  const productsInCat = products.value.filter(
+    p => (p.Danh_muc || '').trim().toUpperCase() === cat
+  );
+
+  // Merge tất cả (Ma_hang -> Ten_hang), ưu tiên selectedItems
+  const allMap = new Map<string, string>();
+  itemsInCat.forEach(it => allMap.set(it.Ma_hang, it.Ten_hang));
+  productsInCat.forEach(p => {
+    if (!allMap.has(p.Ma_hang)) allMap.set(p.Ma_hang, p.Ten_hang);
+  });
+
+  // Với mỗi item trong bảng báo giá cùng danh mục, gán liên kết = tất cả item KHÁC
+  itemsInCat.forEach(it => {
+    const others = new Map(allMap);
+    others.delete(it.Ma_hang); // loại chính nó
+    if (others.size > 0) {
+      it.Ma_hang_lien_ket = Array.from(others.keys()).join('\n');
+      it.Ten_hang_lien_ket = Array.from(others.values()).join('\n');
+    }
+   });
+}
+
+const showConfirmAddDbModal = ref(false);
+const pendingAddedItem = ref<any>(null);
+
+async function handleAddManualItem() {
+  const item = itemForm.value;
+  
+  // Thêm vào bảng báo giá trước (addItem sẽ tự rebuild liên kết danh mục)
+  addItem(item);
+  
+  // Sau khi addItem, item trong selectedItems đã có Ma_hang_lien_ket được rebuild
+  // Tìm item vừa thêm để lấy liên kết đã cập nhật
+  const addedItem = selectedItems.value.find(it => it.Ma_hang === item.Ma_hang) || item;
+
+  pendingAddedItem.value = addedItem;
+  showConfirmAddDbModal.value = true;
+  
+  // Reset form sau khi thêm
+  showManualModal.value = false;
+  resetItem();
+}
+
+function confirmAddToDb() {
+  showConfirmAddDbModal.value = false;
+  const addedItem = pendingAddedItem.value;
+  if (!addedItem) return;
+
+  const payloadRow = [
+    addedItem.Ma_hang || '',           // [0]
+    addedItem.Ten_hang || '',           // [1]
+    addedItem.Main_img || '',           // [2]
+    addedItem.Ma_nha_cung_cap || '',    // [3]
+    addedItem.Ten_nha_cung_cap || '',   // [4]
+    addedItem.Mo_ta_chung || '',        // [5]
+    addedItem.Mo_ta_chi_tiet || '',     // [6]
+    addedItem.Features || '',           // [7]
+    addedItem.Danh_muc || '',           // [8]
+    addedItem.License_duration || '',   // [9]
+    addedItem.DVT || '',               // [10]
+    toNum(addedItem.Gia_tieu_chuan, 0), // [11]
+    toNum(addedItem.Don_gia, 0),        // [12]
+    addedItem.Trang_thai || '',         // [13]
+    addedItem.Don_vi_tien_te || 'VND',  // [14]
+    toNum(addedItem.Ti_gia, 1),         // [15]
+    toNum(addedItem.Thue_VAT, 0),       // [16]
+    addedItem.Ma_hang_lien_ket || '',   // [17]
+    addedItem.Ten_hang_lien_ket || '',  // [18]
+    addedItem.Ghi_chu || '',            // [19]
+    toNum(addedItem.gia_hardware, 0),   // [20]
+    toNum(addedItem.gia_nhap, 0),       // [21]
+    toNum(addedItem.muc_phan_tram_off, 0), // [22] muc_%_off
+    addedItem.Type || '',               // [23] TYPE
+    addedItem.thoi_han_bao_hanh || '',  // [24] thoi_han_bao_hanh
+    (addedItem as any).volume || ''     // [25] volume
+  ];
+
+  // Optimistic: show toast + loading immediately
+  triggerToast('Đã thêm hàng vào DATABASE thành công!');
+  showAsyncLoading('Đang đồng bộ hàng hóa...');
+
+  // Fire-and-forget POST
+  postApi('addHangHoa', payloadRow)
+    .then(() => {
+      showAsyncSuccess('Thêm hàng hóa thành công', `Mã hàng: ${addedItem.Ma_hang}`)
+    })
+    .catch((err: any) => {
+      showAsyncError('Thêm hàng hóa thất bại', 'Lỗi: ' + err.message + '. Vui lòng thử lại.')
+    })
+}
+
+function cancelAddToDb() {
+  showConfirmAddDbModal.value = false;
+  pendingAddedItem.value = null;
+}
+
+function resetItem() {
+  isMaHangEdited.value = false;
+  isMaNccEdited.value = false;
+  const keepCurrency = itemForm.value.Don_vi_tien_te || 'VND'
+  itemForm.value = {
+    Ma_hang: '',
+    Ten_hang: '',
+    Main_img: '',
+    Ma_nha_cung_cap: '',
+    Ten_nha_cung_cap: '',
+    Mo_ta_chung: '',
+    Mo_ta_chi_tiet: '',
+    Features: '',
+    Danh_muc: '',
+    License_duration: '',
+    DVT: '',
+    Gia_tieu_chuan: 0,
+    Don_gia: 0,
+    Trang_thai: 'Hiển thị',
+    Don_vi_tien_te: keepCurrency,
+    Ti_gia: 1,
+    Thue_VAT: 0,
+    Ma_hang_lien_ket: '',
+    Ten_hang_lien_ket: '',
+    Ghi_chu: '',
+       gia_hardware: 0,
+    gia_nhap: 0,
+    muc_phan_tram_off: 0,
+    volume: '',
+    So_luong: 1
+  }
+}
+
+function resetCustomer() {
+  isExistingCustomer.value = false
+  originalKhach.value = null
+  khach.value = {
+    Ma_khach_hang: '',
+    Ten_khach_hang: '',
+    Email_ca_nhan: '',
+    So_dien_thoai_ca_nhan: '',
+    Ma_cong_ty: '',
+    Ten_cong_ty: '',
+    So_dien_thoai_cong_ty: '',
+    So_fax_cong_ty: '',
+    Dia_chi_cong_ty: '',
+    Email_cong_ty: '',
+    Website_cong_ty: '',
+    Trang_thai: '',
+    Tong_loi_nhuan: '',
+    Ghi_chu: ''
+  }
+  maKHInput.value = ''
+  tenKHInput.value = ''
+}
+
+const savingCustomer = ref(false)
+
+async function saveCustomerToDB() {
+  const k = khach.value
+  const ma = maKHInput.value?.trim() || k.Ma_khach_hang?.trim()
+  if (!ma) {
+    alert('Vui lòng nhập hoặc tự động tạo Mã KH trước!')
+    return
+  }
+
+  const isUpdate = isExistingCustomer.value
+  const payload: Record<string, any> = {
+    sheet: 'khach_hang',
+    action: isUpdate ? 'update' : 'add',
+    ma_khach_hang: ma,
+    ten_khach_hang: tenKHInput.value || k.Ten_khach_hang || '',
+    email_ca_nhan: k.Email_ca_nhan || '',
+    so_dien_thoai_ca_nhan: k.So_dien_thoai_ca_nhan || '',
+    ma_cong_ty: k.Ma_cong_ty || '',
+    ten_cong_ty: k.Ten_cong_ty || '',
+    so_dien_thoai_cong_ty: k.So_dien_thoai_cong_ty || '',
+    so_fax_cong_ty: k.So_fax_cong_ty || '',
+    dia_chi_cong_ty: k.Dia_chi_cong_ty || '',
+    email_cong_ty: k.Email_cong_ty || '',
+    website_cong_ty: k.Website_cong_ty || '',
+    hoa_hong: k.Hoa_hong || '',
+    tong_chi_tieu: k.Tong_chi_tieu || 0,
+    tong_loi_nhuan: k.Tong_loi_nhuan || 0,
+    trang_thai: k.Trang_thai || '',
+    ghi_chu: k.Ghi_chu || '',
+    ten_khach_hang_phu: k.Ten_khach_hang_phu || '',
+    so_dien_thoai_ca_nhan_phu: k.So_dien_thoai_ca_nhan_phu || '',
+    email_ca_nhan_phu: k.Email_ca_nhan_phu || '',
+    mst: k.MST || '',
+    company: k.COMPANY || '',
+    address: k.ADDRESS || '',
+    tel: k.TEL || '',
+  }
+
+  // Optimistic: update FE immediately
+  isExistingCustomer.value = true
+  originalKhach.value = JSON.parse(JSON.stringify(k))
+  savingCustomer.value = false
+  showAsyncLoading(`Đang ${isUpdate ? 'cập nhật' : 'thêm'} khách hàng...`)
+
+  // Fire-and-forget POST
+  fetch(BASE_URL, { method: 'POST', body: JSON.stringify(payload) })
+    .then(r => r.json())
+    .then(async (result) => {
+      if (result.status === 'success') {
+        showCustomerDetailModal.value = false;
+        showAsyncSuccess(
+          `${isUpdate ? 'Cập nhật' : 'Thêm'} KH thành công`,
+          `Mã KH: ${ma}`
+        )
+        // Refresh customer list ngầm
+        try {
+          const khRows = await fetch(`${BASE_URL}?action=khach_hang`).then(r => r.json())
+          if (Array.isArray(khRows)) {
+            customers.value = khRows.map((row: any) => ({
+              Ma_khach_hang: String(row[0] ?? ''),
+              Ten_khach_hang: String(row[1] ?? ''),
+              Email_ca_nhan: String(row[2] ?? ''),
+              So_dien_thoai_ca_nhan: String(row[3] ?? ''),
+              Ma_cong_ty: String(row[4] ?? ''),
+              Ten_cong_ty: String(row[5] ?? ''),
+              So_dien_thoai_cong_ty: String(row[6] ?? ''),
+              So_fax_cong_ty: String(row[7] ?? ''),
+              Dia_chi_cong_ty: String(row[8] ?? ''),
+              Email_cong_ty: String(row[9] ?? ''),
+              Website_cong_ty: String(row[10] ?? ''),
+              Hoa_hong: String(row[11] ?? ''),
+              Tong_chi_tieu: String(row[12] ?? ''),
+              Tong_loi_nhuan: String(row[13] ?? ''),
+              Trang_thai: String(row[14] ?? ''),
+              Ghi_chu: String(row[15] ?? ''),
+              Ten_khach_hang_phu: String(row[16] ?? ''),
+              So_dien_thoai_ca_nhan_phu: String(row[17] ?? ''),
+              Email_ca_nhan_phu: String(row[18] ?? ''),
+              MST: String(row[19] ?? ''),
+              COMPANY: String(row[20] ?? ''),
+              ADDRESS: String(row[21] ?? ''),
+              TEL: String(row[22] ?? ''),
+            }))
+          }
+        } catch {}
+      } else {
+        showAsyncError('Lưu KH thất bại', 'Lỗi: ' + (result.message || 'Không rõ'))
+      }
+    })
+    .catch((err: any) => {
+      showAsyncError('Lưu KH thất bại', 'Lỗi kết nối: ' + err.message)
+    })
+}
+
+/* ======================
+   CARD MODAL (full fields)
+====================== */
+function openCardModal(p: HangHoa) {
+  isCardMaHangEdited.value = false;
+  isCardMaNccEdited.value = false;
+  const qty = qtyMap[p.Ma_hang] || 1
+  cardEdit.value = cloneHang(p, qty)
+  showCardModal.value = true
+}
+
+function openSuggestedCardModal(code: string) {
+  const found = products.value.find(x => x.Ma_hang === code)
+  if (found) {
+    openCardModal(found)
+  }
+}
+
+function addFromCardModal() {
+  if (!cardEdit.value) return
+
+  const resolvedMaHang = resolveMaHang(cardEdit.value);
+
+  const foundIdx = selectedItems.value.findIndex(
+    it => it.Ma_hang === resolvedMaHang
+  )
+
+  let highlightIdx = -1;
+  if (foundIdx >= 0) {
+    selectedItems.value[foundIdx].So_luong += Math.max(1, toNum(cardEdit.value.So_luong, 1))
+    highlightIdx = foundIdx;
+  } else {
+    const cloned = withOriginalPriceFields(JSON.parse(JSON.stringify(cardEdit.value)));
+    cloned.Ma_hang = resolvedMaHang;
+    highlightIdx = insertItemIntoGroup(cloned);
+  }
+  
+  scrollToAndHighlightRow(highlightIdx);
+  triggerToast('Đã thêm sản phẩm thành công!');
+
+  qtyMap[cardEdit.value.Ma_hang] = Math.max(1, toNum(cardEdit.value.So_luong, 1))
+  showCardModal.value = false
+}
+
+
+/* ======================
+   PREVIEW MODAL (quote)
+   - editable like excel: qty, don_gia, VAT
+====================== */
+/* ✅ Đơn giá LP = hardware + Don_gia gốc */
+function donGiaLP(i: any) {
+  const hardware = toNum(i.gia_hardware, 0)
+  const donGiaGoc = toNum(i.Don_gia, 0)
+  return hardware + donGiaGoc
+}
+
+/* ✅ Đơn giá sau chiết khấu = (LP × (1 - %off/100)) + giá nhập */
+function donGiaSauOff(i: any) {
+  const lp = donGiaLP(i)
+  const pctOff = toNum(i.muc_phan_tram_off, 0)
+  const discounted = lp * (1 - pctOff / 100)
+  const nhap = toNum(i.gia_nhap, 0)
+  return discounted + nhap
+}
+
+/* ✅ Hiển thị Giá Tiêu Chuẩn (theo mode VND) */
+function displayGiaTieuChuan(i: any) {
+  const tc = toNum(i.Gia_tieu_chuan, 0)
+  const tg = toNum(i.Ti_gia, 1)
+  return fmtPrice(tc * tg, tg)
+}
+function displayGiaTieuChuanRaw(i: any) {
+  const tc = toNum(i.Gia_tieu_chuan, 0)
+  const tg = getGocNumber(i, '_Ti_gia_goc', toNum(i.Ti_gia, 1))
+  return formatVND(tc * tg)
+}
+
+function displayGiaTieuChuanPct(i: any) {
+  const lp = donGiaLP(i)
+  const tc = toNum(i.Gia_tieu_chuan, 0)
+  if (!lp || lp === 0) return 0
+  return round2((1 - tc / lp) * 100)
+}
+
+function displayGiaTieuChuanPctRaw(i: any) {
+  const lp = donGiaLPGoc(i)
+  const tc = toNum(i.Gia_tieu_chuan, 0)
+  if (!lp || lp === 0) return 0
+  return round2((1 - tc / lp) * 100)
+}
+
+/* ✅ Hiển thị Đơn giá LP (theo mode VND) */
+function displayDonGiaLP(i: any) {
+  const lp = donGiaLP(i)
+  const tg = toNum(i.Ti_gia, 1)
+  return fmtPrice(lp * tg, tg)
+}
+
+/* ✅ Hiển thị Đơn giá sau Off (theo mode VND) */
+function displayQuoteDonGia(i: any) {
+  const gia = donGiaSauOff(i)
+  const tg = toNum(i.Ti_gia, 1)
+  return fmtPrice(gia * tg, tg)
+}
+function displayDonGiaLPRaw(i: any) {
+  const tg = getGocNumber(i, '_Ti_gia_goc', toNum(i.Ti_gia, 1))
+  const lpVnd = donGiaLPGoc(i) * tg
+  return formatVND(lpVnd)
+}
+
+function displayQuoteDonGiaRaw(i: any) {
+  const tg = getGocNumber(i, '_Ti_gia_goc', toNum(i.Ti_gia, 1))
+  const giaVnd = donGiaSauOffGoc(i) * tg
+  return formatVND(giaVnd)
+}
+
+function displayMucOffAmount(i: any) {
+  const lp = donGiaLP(i)
+  const pctOff = toNum(i.muc_phan_tram_off, 0)
+  const tg = toNum(i.Ti_gia, 1)
+  return fmtPrice(lp * (pctOff / 100) * tg, tg)
+}
+
+function displayMucOffAmountRaw(i: any) {
+  const tg = getGocNumber(i, '_Ti_gia_goc', toNum(i.Ti_gia, 1))
+  const lpVnd = donGiaLPGoc(i) * tg
+  const pctOff = getGocNumber(i, '_muc_phan_tram_off_goc', toNum(i.muc_phan_tram_off, 0))
+  return formatVND(lpVnd * (pctOff / 100))
+}
+function ensureNumberField(item: any, key: string) {
+  item[key] = toNum(item[key], 0)
+}
+
+function lineTruocThue(i: any) {
+  return round2(unitPrice(i) * toNum(i.So_luong, 1))
+}
+
+function lineVAT(i: any) {
+  return round2((lineTruocThue(i) * toNum(i.Thue_VAT, 0)) / 100)
+}
+
+function lineSauThue(i: any) {
+  return round2(lineTruocThue(i) + lineVAT(i))
+}
+
+function lineLoiNhuan(i: any) {
+  return lineLoiNhuanRaw(i)
+}
+
+function lineLoiNhuanPct(i: any) {
+  return lineLoiNhuanPctRaw(i)
+}
+
+
+function lineLoiNhuanPctRaw(i: any) {
+  const price = unitPriceRaw(i)
+  if (price <= 0) return ''
+  const base = standardPriceRaw(i)
+  return (((price - base) / price) * 100).toFixed(2)
+}
+
+/* ======================
+   TOTALS
+====================== */
+const totals = computed(() => {
+  let truoc = 0,
+    vat = 0,
+    loi = 0,
+    off = 0
+
+  selectedItems.value.forEach(i => {
+    truoc += lineTruocThue(i)
+    vat += lineVAT(i)
+    loi += lineLoiNhuan(i)
+
+    const lp = donGiaLP(i)
+    const pctOff = toNum(i.muc_phan_tram_off, 0)
+    const tg = toNum(i.Ti_gia, 1)
+    off += lp * (pctOff / 100) * tg * toNum(i.So_luong, 1)
+  })
+
+  return {
+    truoc: round2(truoc),
+    vat: round2(vat),
+    sau: round2(truoc + vat),
+    loi: round2(loi),
+    off: round2(off)
+  }
+})
+
+const mainTiGia = computed(() => {
+  const first = selectedItems.value[0]
+  return first ? toNum(first.Ti_gia, 1) : 1
+})
+
+const totalsUSD = computed(() => {
+  let truoc = 0, vat = 0, loi = 0, off = 0
+  selectedItems.value.forEach(i => {
+    const tg = toNum(i.Ti_gia, 1) || 1
+    truoc += lineTruocThue(i) / tg
+    vat += lineVAT(i) / tg
+    loi += lineLoiNhuan(i) / tg
+    const lp = donGiaLP(i)
+    const pctOff = toNum(i.muc_phan_tram_off, 0)
+    off += lp * (pctOff / 100) * toNum(i.So_luong, 1)
+  })
+  return {
+    truoc: round2(truoc),
+    vat: round2(vat),
+    sau: round2(truoc + vat),
+    loi: round2(loi),
+    off: round2(off)
+  }
+})
+
+const chenhLechGia = computed(() => {
+  const truoc = toNum(totals.value.truoc, 0)
+  const thucTe = toNum(tongGiaThucTe.value, 0)
+  return round2(truoc - thucTe)
+})
+const thueChenhLech = computed(() => {
+  const pct = toNum(thueChenhLechPct.value, 0)
+  return round2((chenhLechGia.value * pct) / 100)
+})
+const conLai = computed(() => {
+  return round2(chenhLechGia.value - thueChenhLech.value)
+})
+
+const chietKhauTruocThue = computed(() => {
+  const pct = toNum(chietKhauTruocThuePct.value, 0)
+  return round2((toNum(tongGiaThucTe.value, 0) * pct) / 100)
+})
+const tongChietKhau = computed(() => {
+  return round2(conLai.value + chietKhauTruocThue.value)
+})
+const chenhLechGiaRaw = computed(() => {
+  const truoc = toNum(totalsContract.value.truoc, 0)
+  const thucTe = toNum(tongGiaThucTe.value, 0)
+  return round2(truoc - thucTe)
+})
+const thueChenhLechRaw = computed(() => {
+  const pct = toNum(thueChenhLechPct.value, 0)
+  return round2((chenhLechGiaRaw.value * pct) / 100)
+})
+const conLaiRaw = computed(() => {
+  return round2(chenhLechGiaRaw.value - thueChenhLechRaw.value)
+})
+const chietKhauTruocThueRaw = computed(() => {
+  const pct = toNum(chietKhauTruocThuePct.value, 0)
+  return round2((toNum(tongGiaThucTe.value, 0) * pct) / 100)
+})
+/* ======================
+  PRICE DISPLAY
+====================== */
+function highlightText(text: string, query: string) {
+  if (!query || !text) return text;
+  const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.length) return text;
+  
+  const safeWords = words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const regex = new RegExp(`(${safeWords.join('|')})`, 'gi');
+  return text.replace(regex, '<span style="background-color: #eab308; color: #0f172a; font-weight: bold; padding: 0 2px; border-radius: 2px;">$1</span>');
+}
+
+
+function displayPrice(p: HangHoa) {
+  const vnd = donGiaLP(p) * toNum(p.Ti_gia, 1)
+  return formatVND(vnd)
+}
+
+function displayOriginalPrice(p: HangHoa) {
+  const cur = (p.Don_vi_tien_te || '').trim()
+  if (cur.toUpperCase() !== 'VND') {
+     return `${formatCurrency(donGiaLP(p), cur)} ${cur}`
+  }
+  return ''
+}
+
+/* keep card qty stable when filter changes */
+watch(
+  () => products.value.length,
+  () => {
+    products.value.forEach(p => {
+      if (!qtyMap[p.Ma_hang]) qtyMap[p.Ma_hang] = 1
+    })
+  }
+)
+
+/* ======================
+   ✅ GROUPING FOR QUOTE MODAL
+   - cùng NCC + cùng Danh_muc => thêm 1 dòng DANH MỤC
+====================== */
+type QuoteRow =
+  | {
+      type: 'group'
+      key: string
+      title: string
+      roman: string
+    }
+  | {
+      type: 'item'
+      key: string
+      item: HangHoa & { So_luong: number }
+      idx: number
+      stt?: number   // 👈 BẮT BUỘC
+    }
+
+
+
+const quoteRows = computed<QuoteRow[]>(() => {
+  const rows: QuoteRow[] = []
+  const seen = new Set<string>()
+  let groupIndex = 0   // ✅ STT danh mục
+
+  selectedItems.value.forEach((it, idx) => {
+    const sup = (it.Ten_nha_cung_cap || it.Ma_nha_cung_cap || '').trim() || 'NCC'
+    const cat = (it.Danh_muc || '').trim()
+    const gKey = cat.toUpperCase()
+
+    if (!seen.has(gKey)) {
+      seen.add(gKey)
+      groupIndex++
+
+      rows.push({
+        type: 'group',
+        supplier: sup,
+        category: cat,
+        key: gKey,
+        title: cat,
+        roman: toRoman(groupIndex)   // ✅ THÊM
+      } as any)
+    }
+
+    rows.push({ type: 'item', item: it, idx, key: `item-${idx}` })
+  })
+
+  return rows
+})
+
+/* ======================
+   ✅ QUOTE EDIT MODAL (click row -> edit)
+====================== */
+const showQuoteEditModal = ref(false)
+const hiddenCols = ref({ c1: false, c2: false, c3: false, c4: false })
+const quoteEditGridCols = computed(() => {
+  return [
+    hiddenCols.value.c1 ? 'auto' : '1.1fr',
+    hiddenCols.value.c2 ? 'auto' : '1.1fr',
+    hiddenCols.value.c3 ? 'auto' : '1.7fr',
+    hiddenCols.value.c4 ? 'auto' : '1.2fr'
+  ].join(' ')
+})
+const quoteEdit = ref<(HangHoa & { So_luong: number }) | null>(null)
+const quoteEditIdx = ref(-1)
+const pendingQuoteEditFocusField = ref('')
+const showQuoteEditRawModal = ref(false)
+const quoteEditRaw = ref<(HangHoa & { So_luong: number }) | null>(null)
+const quoteEditRawIdx = ref(-1)
+
+const quoteEditTieuChuanPct = computed(() => {
+  if (!quoteEdit.value) return 0;
+  const lp = donGiaLP(quoteEdit.value);
+  const tc = toNum(quoteEdit.value.Gia_tieu_chuan, 0);
+  if (!lp || lp === 0) return 0;
+  return round2((1 - tc / lp) * 100);
+});
+
+function updateTieuChuanPct(val: number) {
+  if (!quoteEdit.value) return;
+  const lp = donGiaLP(quoteEdit.value);
+  quoteEdit.value.Gia_tieu_chuan = lp * (1 - val / 100);
+  quoteEdit.value = { ...quoteEdit.value };
+}
+
+// KASPERSKY CALCULATOR
+const showKasperskyCalculatorModal = ref(false)
+const showKasperskyImageFullscreen = ref(false)
+const listFileGiaOff = ref<any[]>([])
+const selectedFileGiaOffIndex = ref(-1)
+
+const previewImageLink = computed(() => {
+  if (selectedFileGiaOffIndex.value >= 0 && listFileGiaOff.value[selectedFileGiaOffIndex.value]) {
+    return listFileGiaOff.value[selectedFileGiaOffIndex.value][3] // link_file
+  }
+  return ''
+})
+
+const fetchFileGiaOffList = async () => {
+  if (listFileGiaOff.value.length > 0) return
+  try {
+    const ts = Date.now()
+    const res = await fetch(`${BASE_URL}?action=file_gia_off&t=${ts}`)
+    const data = await res.json()
+    if (Array.isArray(data)) {
+      listFileGiaOff.value = data
+      if (data.length > 0) {
+        selectedFileGiaOffIndex.value = data.length - 1
+      }
+    }
+  } catch (err) {
+    console.error('Lỗi khi fetch file_gia_off:', err)
+  }
+}
+
+watch(showKasperskyCalculatorModal, (val) => {
+  if (val) {
+    fetchFileGiaOffList()
+  }
+})
+
+const kaspProduct = ref<string>('')
+const kaspLicenseType = ref<string>('')
+const kaspUsersStr = ref('')
+const kaspDuration = ref<number | string>('') // years
+
+function openKasperskyCalculator() {
+  kaspProduct.value = '';
+  kaspUsersStr.value = '';
+  kaspLicenseType.value = '';
+  kaspDuration.value = '';
+
+  if (userVolumeFilter.value) {
+    kaspUsersStr.value = userVolumeFilter.value;
+  }
+
+  if (quoteEdit.value) {
+    const typeStr = (quoteEdit.value.Ten_hang || '').toLowerCase();
+    const moTa = (quoteEdit.value.Mo_ta_chung || '').toLowerCase();
+    
+    if (typeStr.includes('renewal') || moTa.includes('renewal')) {
+      kaspLicenseType.value = 'Renewal Plus';
+    } else if (typeStr.includes('base') || moTa.includes('base')) {
+      kaspLicenseType.value = 'Base Plus';
+    }
+    
+    const duration = quoteEdit.value.License_duration || '';
+    const match = String(duration).match(/(\d+)/);
+    if (match) {
+      kaspDuration.value = parseInt(match[1], 10);
+    }
+  }
+  
+  showKasperskyCalculatorModal.value = true;
+}
+const kaspCalculatedOff = computed(() => {
+  if (selectedFileGiaOffIndex.value === -1 || !kaspProduct.value || !kaspLicenseType.value || !kaspDuration.value || !kaspUsersStr.value || String(kaspUsersStr.value).trim() === '') {
+    return null;
+  }
+  let baseOff = 0;
+  
+  const uCount = parseInt(String(kaspUsersStr.value), 10);
+  const n = isNaN(uCount) ? 0 : uCount;
+  
+  let rangeStr = '';
+  if (n < 50) rangeStr = '< 50 users';
+  else if (n < 100) rangeStr = '50 - 99 users';
+  else if (n < 150) rangeStr = '100 - 149 users';
+  else if (n < 250) rangeStr = '150 - 249 users';
+  else if (n < 500) rangeStr = '250 - 499 users';
+  else rangeStr = '500 - 999 users';
+
+  if (kaspProduct.value === 'NEXT Foundations / EDR Optimum') {
+    if (kaspLicenseType.value === 'Base Plus') {
+      if (rangeStr === '< 50 users') baseOff = 56;
+      else if (rangeStr === '50 - 99 users') baseOff = 59;
+      else if (rangeStr === '100 - 149 users') baseOff = 60;
+      else if (rangeStr === '150 - 249 users') baseOff = 62;
+      else if (rangeStr === '250 - 499 users') baseOff = 63;
+      else if (rangeStr === '500 - 999 users') baseOff = 64;
+    } else if (kaspLicenseType.value === 'Renewal Plus') {
+      if (rangeStr === '< 50 users') baseOff = 55;
+      else if (rangeStr === '50 - 99 users') baseOff = 58;
+      else if (rangeStr === '100 - 149 users') baseOff = 59;
+      else if (rangeStr === '150 - 249 users') baseOff = 61;
+      else if (rangeStr === '250 - 499 users') baseOff = 62;
+      else if (rangeStr === '500 - 999 users') baseOff = 63;
+    }
+  } else if (kaspProduct.value === 'XDR Optimum') {
+    if (kaspLicenseType.value === 'Base Plus') {
+      if (rangeStr === '< 50 users') baseOff = 67;
+      else if (rangeStr === '50 - 99 users') baseOff = 70;
+      else if (rangeStr === '100 - 149 users') baseOff = 71;
+      else if (rangeStr === '150 - 249 users') baseOff = 72;
+      else if (rangeStr === '250 - 499 users') baseOff = 73;
+      else if (rangeStr === '500 - 999 users') baseOff = 74;
+    } else if (kaspLicenseType.value === 'Renewal Plus') {
+      if (rangeStr === '< 50 users') baseOff = 66;
+      else if (rangeStr === '50 - 99 users') baseOff = 69;
+      else if (rangeStr === '100 - 149 users') baseOff = 70;
+      else if (rangeStr === '150 - 249 users') baseOff = 71;
+      else if (rangeStr === '250 - 499 users') baseOff = 72;
+      else if (rangeStr === '500 - 999 users') baseOff = 73;
+    }
+  }
+
+  let durationBonus = 0;
+  if (kaspDuration.value === 2) {
+    durationBonus = 2;
+  } else if (kaspDuration.value >= 3 && kaspDuration.value <= 5) {
+    durationBonus = 3;
+  }
+  
+  return baseOff + durationBonus;
+})
+
+const applyKaspOff = () => {
+  if (kaspCalculatedOff.value === null) return;
+  updateTieuChuanPct(kaspCalculatedOff.value)
+  showKasperskyCalculatorModal.value = false
+}
+
+function openQuoteEdit(idx: number, focusField?: string) {
+  const it = selectedItems.value[idx]
+  if (!it) return
+  closeQuoteEditRaw()
+  withOriginalPriceFields(it)
+  quoteEdit.value = JSON.parse(JSON.stringify(it))
+  quoteEditIdx.value = idx
+  pendingQuoteEditFocusField.value = focusField || ''
+
+  // Phát hiện Don_gia / gia_hardware đã bị thay đổi trước đó (ví dụ: điều chỉnh tổng/nhóm/item)
+  // → giữ lại chênh lệch, không cho saveQuoteEdit sync _goc
+  _adjustedFields.clear()
+  if (toNum((it as any)._Don_gia_goc, 0) !== toNum(it.Don_gia, 0)) {
+    _adjustedFields.add('Don_gia')
+  }
+  if (toNum((it as any)._gia_hardware_goc, 0) !== toNum(it.gia_hardware, 0)) {
+    _adjustedFields.add('gia_hardware')
+  }
+
+  showQuoteEditModal.value = true
+}
+
+function closeQuoteEdit() {
+  showQuoteEditModal.value = false
+  quoteEdit.value = null
+  quoteEditIdx.value = -1
+}
+
+watch(showQuoteEditModal, (val) => {
+  console.log('[watch showQuoteEditModal] val=', val, 'pendingFocusField=', pendingQuoteEditFocusField.value)
+  if (val && pendingQuoteEditFocusField.value) {
+    const field = pendingQuoteEditFocusField.value
+    pendingQuoteEditFocusField.value = ''
+    const tryFocus = (attempts = 0) => {
+      if (attempts > 20) {
+        console.warn('[watch showQuoteEditModal] tryFocus failed after 20 attempts for field:', field)
+        return
+      }
+      const el = document.getElementById('qe-' + field)
+      console.log('[watch showQuoteEditModal] attempt=', attempts, 'field=', field, 'found el=', !!el)
+      if (!el) {
+        setTimeout(() => tryFocus(attempts + 1), 100)
+        return
+      }
+      const input = (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')
+        ? el as HTMLInputElement
+        : el.querySelector('input, textarea') as HTMLInputElement | null
+      console.log('[watch showQuoteEditModal] input element=', input?.tagName, 'readonly=', input?.readOnly)
+      if (input) {
+        input.focus()
+        if (typeof input.select === 'function') input.select()
+        input.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      }
+    }
+    setTimeout(tryFocus, 200)
+  }
+})
+
+const pendingFocusField = ref('')
+
+function openQuoteEditRaw(idx: number, focusField?: string) {
+  console.log('[openQuoteEditRaw] idx=', idx, 'focusField=', focusField)
+  const it = selectedItems.value[idx]
+  if (!it) return
+  closeQuoteEdit()
+  withOriginalPriceFields(it)
+  quoteEditRaw.value = JSON.parse(JSON.stringify(it))
+  quoteEditRawIdx.value = idx
+  pendingFocusField.value = focusField || ''
+  showQuoteEditRawModal.value = true
+}
+
+watch(showQuoteEditRawModal, (val) => {
+  console.log('[watch showQuoteEditRawModal]', val, 'pendingField=', pendingFocusField.value)
+  if (val && pendingFocusField.value) {
+    const field = pendingFocusField.value
+    pendingFocusField.value = ''
+    
+    // Đợi DOM render xong rồi mới focus
+    const tryFocus = (attempts = 0) => {
+      if (attempts > 20) return
+      
+      const el = document.getElementById('qeraw-' + field)
+      console.log('[tryFocus] attempt=', attempts, 'field=', field, 'found=', !!el)
+      if (!el) {
+        setTimeout(() => tryFocus(attempts + 1), 100)
+        return
+      }
+      
+      const input = (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') 
+        ? el as HTMLInputElement
+        : el.querySelector('input, textarea') as HTMLInputElement | null
+      
+      console.log('[tryFocus] input=', input?.tagName, 'id=', el.id)
+      if (input) {
+        input.focus()
+        if (typeof input.select === 'function') input.select()
+        input.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      }
+    }
+    
+    setTimeout(tryFocus, 200)
+  }
+})
+
+function closeQuoteEditRaw() {
+  showQuoteEditRawModal.value = false
+  quoteEditRaw.value = null
+  quoteEditRawIdx.value = -1
+}
+
+const _adjustedFields = new Set<string>()
+
+function saveQuoteEdit() {
+  if (!quoteEdit.value) return
+  const idx = quoteEditIdx.value
+  if (idx < 0) return
+
+  const old = selectedItems.value[idx]
+  const cur = quoteEdit.value
+  const fieldLabels: Record<string, string> = {
+    So_luong: 'Số lượng',
+    Don_gia: 'Đơn giá',
+    gia_hardware: 'Giá Hardware',
+    gia_nhap: 'Giá Nhập',
+    Thue_VAT: 'VAT',
+    muc_phan_tram_off: 'Chiết khấu'
+  }
+  for (const [key, label] of Object.entries(fieldLabels)) {
+    if (_adjustedFields.has(key)) continue  // đã ghi từ applyAdjustPrice
+    const oldV = toNum((old as any)[key], 0)
+    const newV = toNum((cur as any)[key], 0)
+    if (oldV !== newV) {
+      addAction(`Sửa ${label} của hàng "${cur.Ten_hang}" từ ${formatVND(oldV)} → ${formatVND(newV)}`, oldV, newV)
+    }
+  }
+  // ⚠️ KHÔNG clear _adjustedFields ở đây! Cần giữ lại để sync checks bên dưới
+
+  // ép số an toàn
+  quoteEdit.value.So_luong = Math.max(1, toNum(quoteEdit.value.So_luong, 1))
+  quoteEdit.value.Don_gia = Math.max(0, toNum(quoteEdit.value.Don_gia, 0))
+  quoteEdit.value.Gia_tieu_chuan = Math.max(0, toNum(quoteEdit.value.Gia_tieu_chuan, 0))
+  quoteEdit.value.Ti_gia = Math.max(0, toNum(quoteEdit.value.Ti_gia, 1))
+  quoteEdit.value.Thue_VAT = Math.max(0, toNum(quoteEdit.value.Thue_VAT, 0))
+
+  // Đồng bộ các trường gốc = giá trị hiện tại
+  // → thay đổi trực tiếp (SL, mức off, giá nhập, VAT...) KHÔNG tạo chênh lệch giá
+  // → chỉ nút "Điều chỉnh" (applyAdjustPrice) mới tạo chênh lệch
+  if (!_adjustedFields.has('Don_gia')) {
+    quoteEdit.value._Don_gia_goc = toNum(quoteEdit.value.Don_gia, 0)
+  }
+  if (!_adjustedFields.has('gia_hardware')) {
+    quoteEdit.value._gia_hardware_goc = toNum(quoteEdit.value.gia_hardware, 0)
+  }
+  quoteEdit.value._gia_nhap_goc = toNum(quoteEdit.value.gia_nhap, 0)
+  if (!_adjustedFields.has('muc_phan_tram_off')) {
+    quoteEdit.value._muc_phan_tram_off_goc = toNum(quoteEdit.value.muc_phan_tram_off, 0)
+  }
+  quoteEdit.value._Ti_gia_goc = toNum(quoteEdit.value.Ti_gia, 1)
+  quoteEdit.value._Thue_VAT_goc = toNum(quoteEdit.value.Thue_VAT, 0)
+
+  // ✅ Clear adjustedFields SAU sync checks
+  _adjustedFields.clear()
+
+  // replace item -> totals tự tính lại vì totals là computed
+  const updatedItem = JSON.parse(JSON.stringify(quoteEdit.value))
+  const oldCat = (old.Danh_muc || '').trim().toUpperCase()
+  const newCat = (updatedItem.Danh_muc || '').trim().toUpperCase()
+
+  if (oldCat !== newCat) {
+    selectedItems.value.splice(idx, 1)
+    insertItemIntoGroup(updatedItem)
+  } else {
+    selectedItems.value[idx] = updatedItem
+  }
+  
+  closeQuoteEdit()
+}
+
+function saveQuoteEditRaw() {
+  if (!quoteEditRaw.value) return
+  const idx = quoteEditRawIdx.value
+  if (idx < 0) return
+  const dst = selectedItems.value[idx]
+  if (!dst) return
+
+  addAction(`Sửa giá trị gốc của hàng "${dst.Ten_hang}"`)
+
+  withOriginalPriceFields(dst)
+
+  quoteEditRaw.value._Don_gia_goc = Math.max(0, toNum(quoteEditRaw.value._Don_gia_goc, 0))
+  quoteEditRaw.value._Gia_tieu_chuan_goc = Math.max(0, toNum(quoteEditRaw.value._Gia_tieu_chuan_goc, 0))
+  quoteEditRaw.value._Ti_gia_goc = Math.max(0, toNum(quoteEditRaw.value._Ti_gia_goc, 1))
+  quoteEditRaw.value._Thue_VAT_goc = Math.max(0, toNum(quoteEditRaw.value._Thue_VAT_goc, 0))
+  quoteEditRaw.value._gia_hardware_goc = Math.max(0, toNum(quoteEditRaw.value._gia_hardware_goc, 0))
+  quoteEditRaw.value._gia_nhap_goc = Math.max(0, toNum(quoteEditRaw.value._gia_nhap_goc, 0))
+  quoteEditRaw.value._muc_phan_tram_off_goc = Math.max(0, toNum(quoteEditRaw.value._muc_phan_tram_off_goc, 0))
+
+  dst._Don_gia_goc = quoteEditRaw.value._Don_gia_goc
+  dst._Gia_tieu_chuan_goc = quoteEditRaw.value._Gia_tieu_chuan_goc
+  dst._Ti_gia_goc = quoteEditRaw.value._Ti_gia_goc
+  dst._Thue_VAT_goc = quoteEditRaw.value._Thue_VAT_goc
+  dst._gia_hardware_goc = quoteEditRaw.value._gia_hardware_goc
+  dst._gia_nhap_goc = quoteEditRaw.value._gia_nhap_goc
+  dst._muc_phan_tram_off_goc = quoteEditRaw.value._muc_phan_tram_off_goc
+  dst.Mo_ta_chung = quoteEditRaw.value.Mo_ta_chung
+  dst.Mo_ta_chi_tiet = quoteEditRaw.value.Mo_ta_chi_tiet
+  dst.Features = quoteEditRaw.value.Features
+
+  closeQuoteEditRaw()
+}
+
+const quoteEditMucOffGoc = computed({
+  get() {
+    if (!quoteEdit.value) return 0;
+    return getGocNumber(quoteEdit.value, '_muc_phan_tram_off_goc', toNum(quoteEdit.value.muc_phan_tram_off, 0));
+  },
+  set(val) {
+    if (!quoteEdit.value) return;
+    // Khi user tự gõ % off mới -> Sửa thường
+    quoteEdit.value._muc_phan_tram_off_goc = undefined;
+    quoteEdit.value._Don_gia_goc = undefined;
+    quoteEdit.value._Ti_gia_goc = undefined;
+    quoteEdit.value._gia_nhap_goc = undefined;
+    quoteEdit.value._gia_hardware_goc = undefined;
+    
+    quoteEdit.value.muc_phan_tram_off = Number(val) || 0;
+  }
+});
+
+/* ======================
+   ✅ ĐIỀU CHỈNH GIÁ LIC
+====================== */
+const adjustPriceModal = ref({
+  show: false,
+  mode: 'item' as 'item'|'group'|'all'|'field',
+  targetId: '', // item idx, group key, or ''
+  targetName: '',
+  targetField: '', // field key like Don_gia, gia_hardware
+  currentTotal: 0,
+  adjustType: 'percent' as 'percent' | 'number',
+  percentValue: 0,
+  numberValue: 0,
+  isNormalEdit: false, // true = sửa thường (cập nhật giá thực tế, không tạo chênh lệch)
+})
+
+function openAdjustPrice(mode: 'item'|'group'|'all'|'field', id: string, name: string, field?: string, isNormal?: boolean) {
+  let total = 0;
+  if (mode === 'item') {
+    const item = selectedItems.value[Number(id)];
+    total = lineTruocThue(item);
+  } else if (mode === 'group') {
+    const items = selectedItems.value.filter(it => {
+      const cat = (it.Danh_muc || '').trim();
+      return cat.toUpperCase() === id;
+    });
+    total = items.reduce((sum, it) => sum + lineTruocThue(it), 0);
+  } else if (mode === 'field') {
+    if (!quoteEdit.value || !field) return;
+    if (field === 'unit_price_kh') {
+      total = unitPrice(quoteEdit.value);
+    } else if (field === 'line_truoc_thue') {
+      total = lineTruocThue(quoteEdit.value);
+    } else if (field === 'item_chenh_lech') {
+      total = lineTruocThue(quoteEdit.value) - lineTruocThueRaw(quoteEdit.value);
+    } else {
+      let tg = 1;
+      if (['Don_gia', 'gia_hardware', 'gia_nhap'].includes(field)) {
+        tg = toNum(quoteEdit.value.Ti_gia, 1) || 1;
+      }
+      total = toNum((quoteEdit.value as any)[field], 0) * tg;
+    }
+  } else if (mode === 'all') {
+    if (field === 'total_chenh_lech') {
+      total = chenhLechGia.value;
+    } else {
+      total = totals.value.truoc;
+    }
+  } else {
+    total = totals.value.truoc;
+  }
+  
+  adjustPriceModal.value = {
+    show: true,
+    mode,
+    targetId: id,
+    targetName: name,
+    targetField: field || '',
+    currentTotal: total,
+    adjustType: 'percent',
+    percentValue: 0,
+    numberValue: total,
+    isNormalEdit: !!isNormal,
+  };
+}
+
+function applyAdjustPrice() {
+  const { mode, targetId, targetField, currentTotal, adjustType, percentValue, numberValue } = adjustPriceModal.value;
+  
+  // Tính giá trị cũ trước khi thay đổi
+  let oldTotal = currentTotal;
+  let actionName = ''
+  let fieldLabel = ''
+  if (mode === 'field') {
+    fieldLabel = targetField === 'Don_gia' ? 'Đơn giá' : targetField === 'gia_hardware' ? 'Giá Hardware' : targetField === 'line_truoc_thue' ? 'Tổng Trước Thuế' : 'Giá Nhập'
+  }
+
+  let factor = 1;
+  let splitAmount = 0;
+  
+  if (adjustType === 'percent') {
+    factor = 1 + (percentValue / 100);
+  } else {
+    if (currentTotal === 0) {
+      let count = 0;
+      if (mode === 'item' || mode === 'field') {
+        count = 1;
+      } else if (mode === 'group') {
+        count = selectedItems.value.filter(it => {
+          const cat = (it.Danh_muc || '').trim();
+          return cat.toUpperCase() === targetId;
+        }).length;
+      } else if (mode === 'all') {
+        count = selectedItems.value.length;
+      }
+      if (count > 0) {
+        splitAmount = numberValue / count;
+      }
+    } else {
+      factor = numberValue / currentTotal;
+    }
+  }
+  
+  if (mode === 'field') {
+    if (!quoteEdit.value) return;
+
+    // Xử lý đặc biệt: Đơn giá (KH), Thành tiền trước thuế, và Chênh lệch giá → reverse-calc về Don_gia
+    if (targetField === 'unit_price_kh' || targetField === 'line_truoc_thue' || targetField === 'item_chenh_lech') {
+      const isUP = targetField === 'unit_price_kh';
+      const isCL = targetField === 'item_chenh_lech';
+      
+      let oldValVnd = 0;
+      if (isUP) oldValVnd = unitPrice(quoteEdit.value);
+      else if (isCL) oldValVnd = lineTruocThue(quoteEdit.value) - lineTruocThueRaw(quoteEdit.value);
+      else oldValVnd = lineTruocThue(quoteEdit.value);
+
+      let newValVnd = adjustType === 'percent' ? (oldValVnd * factor) : numberValue;
+
+      const label = isUP ? 'Đơn giá (KH)' : (isCL ? 'Chênh lệch giá' : 'Thành tiền trước thuế');
+      const editTypeLabel = adjustPriceModal.value.isNormalEdit ? '[Sửa thường]' : '[Điều chỉnh]';
+      addAction(`${editTypeLabel} Sửa ${label} của hàng "${quoteEdit.value.Ten_hang}" từ ${formatVND(oldValVnd)} → ${formatVND(newValVnd)}`, oldValVnd, newValVnd);
+      _adjustedFields.add('Don_gia');
+      _adjustedFields.add('muc_phan_tram_off');
+
+      // Ghi nhớ Don_gia cũ trước khi reverse calc thay đổi
+      const _oldDonGiaBeforeCalc = toNum(quoteEdit.value.Don_gia, 0);
+
+      // Reverse: unitPrice = donGiaSauOff * Ti_gia, donGiaSauOff = LP*(1-%off/100) + gia_nhap, LP = Don_gia + gia_hardware
+      let targetUPVnd = 0;
+      const qty = Math.max(1, toNum(quoteEdit.value.So_luong, 1));
+      if (isUP) {
+        targetUPVnd = newValVnd;
+      } else if (isCL) {
+        const rawLine = lineTruocThueRaw(quoteEdit.value);
+        const newLine = rawLine + newValVnd;
+        targetUPVnd = newLine / qty;
+      } else {
+        targetUPVnd = newValVnd / qty;
+      }
+      const tg = toNum(quoteEdit.value.Ti_gia, 1) || 1;
+      const newDonGiaSauOff = targetUPVnd / tg;
+      const nhap = toNum(quoteEdit.value.gia_nhap, 0);
+      const hw = toNum(quoteEdit.value.gia_hardware, 0);
+
+      if (adjustPriceModal.value.isNormalEdit) {
+        // Sửa thường: Giữ List Price, tự tính lại % Off Khách. XÓA Kê giá (Chênh lệch)
+        const lp = _oldDonGiaBeforeCalc + hw;
+        if (lp > 0) {
+          let newPctOff = (1 - (newDonGiaSauOff - nhap) / lp) * 100;
+          newPctOff = Number(newPctOff.toFixed(6));
+          quoteEdit.value.muc_phan_tram_off = newPctOff;
+        }
+        quoteEdit.value.Don_gia = _oldDonGiaBeforeCalc;
+        
+        // Xóa Kê giá (Chênh lệch)
+        quoteEdit.value._muc_phan_tram_off_goc = undefined;
+        quoteEdit.value._Don_gia_goc = undefined;
+        quoteEdit.value._Ti_gia_goc = undefined;
+        quoteEdit.value._gia_nhap_goc = undefined;
+        quoteEdit.value._gia_hardware_goc = undefined;
+      } else {
+        // Kê hợp đồng: Đổi % Off Khách để thay đổi Giá Bán, giữ nguyên Giá Gốc (Giá thực tế)
+        const oldPctOff = toNum(quoteEdit.value.muc_phan_tram_off, 0);
+        
+        // Khóa giá gốc nếu chưa khóa:
+        if (quoteEdit.value._muc_phan_tram_off_goc === undefined) {
+          quoteEdit.value._muc_phan_tram_off_goc = oldPctOff;
+          quoteEdit.value._Don_gia_goc = toNum(quoteEdit.value.Don_gia, 0);
+          quoteEdit.value._Ti_gia_goc = toNum(quoteEdit.value.Ti_gia, 1);
+          quoteEdit.value._gia_nhap_goc = toNum(quoteEdit.value.gia_nhap, 0);
+          quoteEdit.value._gia_hardware_goc = toNum(quoteEdit.value.gia_hardware, 0);
+        }
+
+        // Tính % off mới để Giá Bán = targetUPVnd
+        const lp = _oldDonGiaBeforeCalc + hw;
+        if (lp > 0) {
+          let newPctOff = (1 - (newDonGiaSauOff - nhap) / lp) * 100;
+          newPctOff = Number(newPctOff.toFixed(6));
+          quoteEdit.value.muc_phan_tram_off = newPctOff;
+        }
+        quoteEdit.value.Don_gia = _oldDonGiaBeforeCalc;
+      }
+
+
+
+      quoteEdit.value = { ...quoteEdit.value };
+      adjustPriceModal.value.show = false;
+      return;
+    }
+
+    let tg = 1;
+    if (['Don_gia', 'gia_hardware', 'gia_nhap'].includes(targetField)) {
+      tg = toNum(quoteEdit.value.Ti_gia, 1) || 1;
+    }
+    const oldValUSD = toNum((quoteEdit.value as any)[targetField], 0);
+    const oldValVnd = oldValUSD * tg;
+    
+    let newValVnd = 0;
+    if (adjustType === 'percent') {
+      newValVnd = oldValVnd * factor;
+    } else {
+      newValVnd = numberValue;
+    }
+    newValVnd = round2(newValVnd);
+    
+    // Ghi lịch sử với giá trị cũ → mới
+    const editTypeLabelField = adjustPriceModal.value.isNormalEdit ? '[Sửa thường]' : '[Điều chỉnh]';
+    addAction(`${editTypeLabelField} Sửa ${fieldLabel} của hàng "${quoteEdit.value.Ten_hang}" từ ${formatVND(oldValVnd)} → ${formatVND(newValVnd)}`, oldValVnd, newValVnd)
+    _adjustedFields.add(targetField)
+
+    const newValUSD = newValVnd / tg;
+
+    // Cập nhật field mới
+    if (targetField === 'Don_gia') { quoteEdit.value.Don_gia = newValUSD; }
+    else if (targetField === 'gia_hardware') { quoteEdit.value.gia_hardware = newValUSD; }
+    else if (targetField === 'gia_nhap') { quoteEdit.value.gia_nhap = newValUSD; }
+    else { (quoteEdit.value as any)[targetField] = newValUSD; }
+
+    // Sửa thường: cập nhật _goc theo cùng delta → giữ nguyên chênh lệch cũ
+    if (adjustPriceModal.value.isNormalEdit) {
+      const deltaUSD = newValUSD - oldValUSD;
+      if (targetField === 'Don_gia') {
+        quoteEdit.value._Don_gia_goc = (quoteEdit.value._Don_gia_goc ?? oldValUSD) + deltaUSD;
+      } else if (targetField === 'gia_hardware') {
+        quoteEdit.value._gia_hardware_goc = (quoteEdit.value._gia_hardware_goc ?? oldValUSD) + deltaUSD;
+      }
+    }
+    
+    // Force Vue to detect changes
+    quoteEdit.value = { ...quoteEdit.value };
+    
+    adjustPriceModal.value.show = false;
+    return;
+  }
+  
+  const initialTotalTruoc = totals.value.truoc;
+  const initialCount = selectedItems.value.length;
+
+  const adjustItem = (it: HangHoa & { So_luong: number }) => {
+     const currentLineTotal = lineTruocThue(it);
+     let newLineTotal = currentLineTotal * factor;
+     
+     if (targetField === 'total_chenh_lech') {
+       let targetDiff = adjustType === 'percent' ? (oldTotal * factor) : numberValue;
+       const delta = targetDiff - oldTotal;
+       if (initialTotalTruoc > 0) {
+         newLineTotal = currentLineTotal + delta * (currentLineTotal / initialTotalTruoc);
+       } else {
+         newLineTotal = currentLineTotal + delta / Math.max(1, initialCount);
+       }
+     } else {
+       if (adjustType === 'number' && currentTotal === 0) {
+         newLineTotal = splitAmount;
+       }
+     }
+     
+     const qty = Math.max(1, toNum(it.So_luong, 1));
+     const tg = toNum(it.Ti_gia, 1) || 1;
+     const requiredDonGiaSauOff = newLineTotal / (qty * tg);
+     const hw = toNum(it.gia_hardware, 0);
+     const nhap = toNum(it.gia_nhap, 0);
+     const oldDonGia = toNum(it.Don_gia, 0);
+
+     if (adjustPriceModal.value.isNormalEdit) {
+       // Sửa thường: Giữ List Price, tự tính lại % Off Khách
+       const lp = oldDonGia + hw;
+       if (lp > 0) {
+         const oldPctOff = toNum(it.muc_phan_tram_off, 0);
+         let newPctOff = (1 - (requiredDonGiaSauOff - nhap) / lp) * 100;
+         newPctOff = Number(newPctOff.toFixed(6));
+         it.muc_phan_tram_off = newPctOff;
+         const _oldPctOffGoc = it._muc_phan_tram_off_goc ?? oldPctOff;
+         it._muc_phan_tram_off_goc = _oldPctOffGoc + (newPctOff - oldPctOff);
+       }
+       it.Don_gia = oldDonGia;
+     } else {
+       // Kê hợp đồng: Giữ Don_gia và % Off Khách nguyên
+       // Hạ _Don_gia_goc để tạo chênh lệch
+       const currentLineTotal = lineTruocThue(it);
+       const targetChenhLech = newLineTotal - currentLineTotal;
+       const targetLineTruocThueRaw = currentLineTotal - targetChenhLech;
+       const targetUPRaw = targetLineTruocThueRaw / qty;
+       
+       const tgGoc = getGocNumber(it, '_Ti_gia_goc', tg);
+       const targetDonGiaSauOffGoc = targetUPRaw / tgGoc;
+       const nhapGoc = getGocNumber(it, '_gia_nhap_goc', nhap);
+       const pctOffGoc = getGocNumber(it, '_muc_phan_tram_off_goc', toNum(it.muc_phan_tram_off, 0));
+       const hwGoc = getGocNumber(it, '_gia_hardware_goc', hw);
+       const offMulGoc = 1 - pctOffGoc / 100;
+       
+       if (offMulGoc > 0) {
+         const targetLPGoc = (targetDonGiaSauOffGoc - nhapGoc) / offMulGoc;
+         it._Don_gia_goc = targetLPGoc - hwGoc;
+       }
+       // Don_gia giữ nguyên, % off giữ nguyên
+       it.Don_gia = oldDonGia;
+     }
+  };
+
+  if (mode === 'item') {
+    adjustItem(selectedItems.value[Number(targetId)]);
+  } else if (mode === 'group') {
+    selectedItems.value.forEach(it => {
+      const cat = (it.Danh_muc || '').trim();
+      if (cat.toUpperCase() === targetId) {
+        adjustItem(it);
+      }
+    });
+  } else {
+    selectedItems.value.forEach(it => adjustItem(it));
+  }
+
+  // Tính giá trị mới sau thay đổi
+  let newTotal = 0;
+  if (mode === 'item') {
+    newTotal = lineTruocThue(selectedItems.value[Number(targetId)]);
+  } else if (mode === 'group') {
+    selectedItems.value.forEach(it => {
+      const cat = (it.Danh_muc || '').trim();
+      if (cat.toUpperCase() === targetId) newTotal += lineTruocThue(it);
+    });
+  } else {
+    if (targetField === 'total_chenh_lech') {
+      newTotal = totals.value.truoc - tongGiaThucTe.value;
+    } else {
+      selectedItems.value.forEach(it => { newTotal += lineTruocThue(it); });
+    }
+  }
+  newTotal = round2(newTotal);
+  
+  // Ghi lịch sử chi tiết
+  if (mode === 'item') {
+    const itemName = selectedItems.value[Number(targetId)]?.Ten_hang || ''
+    addAction(`Sửa tổng giá hàng "${itemName}" từ ${formatVND(oldTotal)} → ${formatVND(newTotal)}`, oldTotal, newTotal)
+  } else if (mode === 'group') {
+    addAction(`Sửa giá nhóm "${targetId.split('||').join(' - ')}" từ ${formatVND(oldTotal)} → ${formatVND(newTotal)}`, oldTotal, newTotal)
+  } else {
+    if (targetField === 'total_chenh_lech') {
+      addAction(`Sửa Tổng chênh lệch giá từ ${formatVND(oldTotal)} → ${formatVND(newTotal)}`, oldTotal, newTotal)
+    } else {
+      addAction(`Sửa giá Toàn bộ báo giá từ ${formatVND(oldTotal)} → ${formatVND(newTotal)}`, oldTotal, newTotal)
+    }
+  }
+  
+  adjustPriceModal.value.show = false;
+}
+
+function removeSelected(idx: number) {
+  if (idx < 0 || idx >= selectedItems.value.length) return
+  addAction(`Xóa hàng "${selectedItems.value[idx]?.Ten_hang}"`)
+  const removedQuoteEdit = quoteEditIdx.value === idx
+  const removedQuoteEditRaw = quoteEditRawIdx.value === idx
+  selectedItems.value.splice(idx, 1)
+
+  // nếu đang edit đúng item bị xóa -> đóng
+  if (removedQuoteEdit) {
+    closeQuoteEdit()
+  }
+  if (removedQuoteEditRaw) {
+    closeQuoteEditRaw()
+  }
+  // nếu đang edit item phía sau -> shift index
+  if (quoteEditIdx.value > idx) {
+    quoteEditIdx.value -= 1
+  }
+  if (quoteEditRawIdx.value > idx) {
+    quoteEditRawIdx.value -= 1
+  }
+}
+
+/* sửa đơn giá khi đang bật mode VND */
+function onEditQuoteDonGiaVND(e: Event) {
+  if (!quoteEdit.value) return
+  const vnd = Number((e.target as HTMLInputElement).value || 0)
+  const tg = toNum(quoteEdit.value.Ti_gia, 1)
+  quoteEdit.value.Don_gia = tg > 0 ? vnd / tg : vnd
+}
+
+/* hiển thị đơn giá trong bảng quote (không còn input) */
+
+
+async function loadCompareBySoHopDong(so: string) {
+  compareDetails.value = []
+
+  // 1️⃣ Lấy toàn bộ MÃ HĐ thuộc SỐ HĐ
+  const maList = contractsRaw.value
+    .filter(r => String(r?.[1] ?? '').trim() === so)
+    .map(r => String(r?.[0] ?? '').trim())
+
+  if (!maList.length) return
+
+  // 2️⃣ Load toàn bộ chi tiết
+  const detailRows = await fetch(`${BASE_URL}?action=hop_dong_chi_tiet`).then(r => r.json())
+  const all = Array.isArray(detailRows) ? detailRows : []
+
+  // 3️⃣ Lọc theo danh sách mã HĐ
+  compareDetails.value = all.filter(r =>
+    maList.includes(String(r?.[0] ?? '').trim())
+  )
+}
+const compareSummary = computed(() => {
+  let truoc = 0
+  let tieuChuan = 0
+
+  compareDetails.value.forEach(r => {
+    const giaTC = toNum(r?.[13], 0)
+    const donGia = toNum(r?.[14], 0)
+    const sl = Math.max(1, toNum(r?.[18], 1))
+
+    truoc += donGia * sl
+    tieuChuan += giaTC * sl
+  })
+
+  const diff = truoc - tieuChuan
+  const pct = tieuChuan > 0 ? (diff / tieuChuan) * 100 : 0
+
+  return {
+    truoc,
+    tieuChuan,
+    diff,
+    pct
+  }
+})
+const compareByProduct = computed(() => {
+  const map = new Map<string, any>()
+
+  compareDetails.value.forEach(r => {
+    const ma = String(r?.[2] ?? '')
+    const ten = String(r?.[3] ?? '')
+    const giaTC = toNum(r?.[13], 0)
+    const donGia = toNum(r?.[14], 0)
+    const sl = Math.max(1, toNum(r?.[18], 1))
+
+    if (!map.has(ma)) {
+      map.set(ma, {
+        Ma_hang: ma,
+        Ten_hang: ten,
+        truoc: 0,
+        tieuChuan: 0
+      })
+    }
+
+    const it = map.get(ma)
+    it.truoc += donGia * sl
+    it.tieuChuan += giaTC * sl
+  })
+
+  return Array.from(map.values()).map(it => {
+    const diff = it.truoc - it.tieuChuan
+    return {
+      ...it,
+      diff,
+      pct: it.tieuChuan > 0 ? (diff / it.tieuChuan) * 100 : 0
+    }
+  })
+})
+const compareMaHopDongs = computed(() => {
+  const set = new Set<string>()
+  compareDetails.value.forEach(r => {
+    const ma = String(r?.[0] ?? '').trim()
+    if (ma) set.add(ma)
+  })
+  return Array.from(set)
+})
+const compareMatrix = computed(() => {
+  const map = new Map<string, any>()
+
+  compareDetails.value.forEach(r => {
+    const maHD = String(r?.[0] ?? '').trim()
+    const maHang = String(r?.[2] ?? '').trim()
+    const tenHang = String(r?.[3] ?? '').trim()
+
+    const giaTC = toNum(r?.[13], 0)
+    const donGia = toNum(r?.[14], 0)
+    const sl = Math.max(1, toNum(r?.[18], 1))
+
+    if (!map.has(maHang)) {
+      map.set(maHang, {
+        Ma_hang: maHang,
+        Ten_hang: tenHang,
+        byHD: {}
+      })
+    }
+
+    const row = map.get(maHang)
+
+    if (!row.byHD[maHD]) {
+      row.byHD[maHD] = { truoc: 0, tieuChuan: 0 }
+    }
+
+    row.byHD[maHD].truoc += donGia * sl
+    row.byHD[maHD].tieuChuan += giaTC * sl
+  })
+
+  return Array.from(map.values()).map(r => {
+    compareMaHopDongs.value.forEach(maHD => {
+      const cell = r.byHD[maHD]
+      if (!cell) {
+        r.byHD[maHD] = null
+      } else {
+        const diff = cell.truoc - cell.tieuChuan
+        r.byHD[maHD] = {
+          diff,
+          pct: cell.tieuChuan > 0 ? (diff / cell.tieuChuan) * 100 : 0
+        }
+      }
+    })
+    return r
+  })
+})
+const compareByContract = computed(() => {
+  const map = new Map<string, any>()
+
+  compareDetails.value.forEach(r => {
+    const maHD = String(r?.[0] ?? '').trim()
+
+    const giaTC = toNum(r?.[13], 0)
+    const donGia = toNum(r?.[14], 0)
+    const sl = Math.max(1, toNum(r?.[18], 1))
+
+    if (!map.has(maHD)) {
+      map.set(maHD, {
+        Ma_hop_dong: maHD,
+        truoc: 0,
+        tieuChuan: 0
+      })
+    }
+
+    const it = map.get(maHD)
+    it.truoc += donGia * sl
+    it.tieuChuan += giaTC * sl
+  })
+
+  return Array.from(map.values()).map(it => {
+    const diff = it.truoc - it.tieuChuan
+    return {
+      ...it,
+      diff,
+      pct: it.tieuChuan > 0 ? (diff / it.tieuChuan) * 100 : 0
+    }
+  })
+})
+
+import ExcelJS from 'exceljs'
+
+function toRoman(num: number) {
+  const map: [number, string][] = [
+    [1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'],
+    [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'],
+    [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']
+  ]
+  let res = ''
+  for (const [v, s] of map) {
+    while (num >= v) {
+      res += s
+      num -= v
+    }
+  }
+  return res
+}
+
+function identifyExcelCol(text: string): string | null {
+  const t = String(text || '').toUpperCase().trim()
+  if (!t) return null
+  if (t === 'STT' || t === 'SỐ TT' || t === 'NO.' || t === 'TT') return 'stt'
+  if (t.includes('TÊN HÀNG') || t.includes('HÀNG HÓA') || t.includes('DỊCH VỤ') || t.includes('SẢN PHẨM') || t === 'MODEL') return 'ten_hang'
+  if (t.includes('DIỄN GIẢI') || t.includes('DIEN GIAI') || t.includes('MÔ TẢ') || t.includes('ĐẶC TÍNH') || t.includes('THÔNG SỐ') || t.includes('NỘI DUNG') || t.includes('HẠNG MỤC') || t.includes('DESCRIPTION') || t.includes('SPEC')) return 'mo_ta'
+  if (t === 'ĐVT' || t === 'DVT' || t.includes('ĐƠN VỊ TÍNH') || t.includes('DON VI TINH') || t === 'UNIT') return 'dvt'
+  if (t.includes('THỜI HẠN') || t.includes('THOI HAN')) return 'license_duration'
+  if (t.includes('SỐ LƯỢNG') || t.includes('S.LƯỢNG') || t === 'SL' || t === 'S.L' || t === 'S.L.' || t.includes('SO LUONG') || t === 'QTY') return 'so_luong'
+  if (t.includes('ĐƠN GIÁ') || t.includes('DON GIA') || t.includes('UNIT PRICE')) return 'don_gia'
+  if (t.includes('TRƯỚC THUẾ') || t.includes('TRUOC THUE')) return 'truoc_thue'
+  if (t.includes('SAU THUẾ') || t.includes('SAU THUE')) return 'sau_thue'
+  if (t.includes('VAT') || (t.includes('THUẾ') && !t.includes('TRƯỚC') && !t.includes('SAU') && !t.includes('THÀNH TIỀN'))) return 'vat'
+  if (t.includes('THÀNH TIỀN') || t.includes('THANH TIEN') || t.includes('AMOUNT')) return 'sau_thue'
+  return null
+}
+
+function excelCellText(v: any): string {
+  if (v === null || v === undefined) return ''
+  if (typeof v === 'string') return v
+  if (typeof v === 'number') return String(v)
+  if (v.richText && Array.isArray(v.richText)) return v.richText.map((r: any) => r.text || '').join('')
+  if (v.text) return String(v.text)
+  if (v.result !== undefined) return String(v.result)
+  return String(v)
+}
+
+function toDescriptionRichText(text: string, baseFont: any): any {
+  if (!text) return '';
+  const lines = text.split('\n').map(l => l.replace(/\r/g, '').trim());
+  
+  const firstNonEmptyIdx = lines.findIndex(l => l.length > 0);
+  if (firstNonEmptyIdx === -1) return '';
+  
+  const firstLine = lines[firstNonEmptyIdx];
+  const remainingLines = lines.slice(firstNonEmptyIdx + 1);
+  
+  // Remove any leading empty lines in the remaining array to avoid blank line gaps
+  while (remainingLines.length > 0 && remainingLines[0].length === 0) {
+    remainingLines.shift();
+  }
+  
+  const richText: any[] = [];
+  richText.push({
+    text: firstLine,
+    font: Object.assign({}, baseFont, { bold: true })
+  });
+  
+  if (remainingLines.length > 0) {
+    richText.push({
+      text: '\n' + remainingLines.join('\n'),
+      font: Object.assign({}, baseFont, { bold: false })
+    });
+  }
+  
+  return { richText };
+}
+
+async function generateQuoteExcelBlob(targetKhach: any = khach.value, specificTemplateData?: string, customDefaultFont?: { name: string, size: number }, mappingConfig?: any[]): Promise<Blob> {
+  const workbook = new ExcelJS.Workbook()
+  
+  let dataToUse = specificTemplateData
+
+  // Load template (custom or default)
+  if (dataToUse) {
+    if (dataToUse.startsWith('http')) {
+      const response = await fetch(dataToUse)
+      const buffer = await response.arrayBuffer()
+      await workbook.xlsx.load(buffer)
+    } else {
+      const binary = atob(dataToUse)
+      const bytes = new Uint8Array(binary.length)
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+      await workbook.xlsx.load(bytes.buffer)
+    }
+  } else {
+    const response = await fetch('/template_goc.xlsx')
+    const buffer = await response.arrayBuffer()
+    await workbook.xlsx.load(buffer)
+  }
+  
+  const ws = workbook.worksheets[0]
+  const contractName = contentOfContractPO.value.trim()
+  if (contractName) ws.name = contractName
+  
+  // Force all columns to fit within 1 page width (no horizontal page break)
+  ws.pageSetup.fitToPage = true
+  ws.pageSetup.fitToWidth = 1
+  ws.pageSetup.fitToHeight = 0
+
+  const isUsdExport = quoteCurrency.value === 'USD';
+
+  let headerRowIdx = -1;
+  let totalRowIdx = -1;
+  let origTermStart = -1;
+  let origSigStart = -1;
+  const colMap: Record<string, number> = {}
+  let maxCol = 9
+
+  const actualMappingConfig = mappingConfig || (useDynamicExcelMapping.value ? excelMappingConfig.value : [])
+
+  ws.eachRow((row, rowNumber) => {
+    // Flexible header detection: scan all cells for known column keywords
+    if (headerRowIdx === -1) {
+      const rm: Record<string, number> = {}
+      let mc = 0
+      for (let c = 1; c <= 20; c++) {
+        const v = row.getCell(c).value
+        if (v === null || v === undefined) continue
+        const f = identifyExcelCol(excelCellText(v))
+        if (f && !rm[f]) { rm[f] = c; mc++ }
+      }
+      if (mc >= 3) {
+        headerRowIdx = rowNumber
+        if (actualMappingConfig.length > 0) {
+          const oldMaxCol = Math.max(...Object.values(rm));
+          const newColMap: Record<string, number> = {}
+          
+          const origWidths: Record<string, number> = {};
+          Object.keys(rm).forEach(k => {
+             origWidths[k] = ws.getColumn(rm[k]).width || 15;
+          });
+          origWidths['features'] = Math.max(origWidths['mo_ta'] || 0, 45);
+          origWidths['don_gia_kh'] = origWidths['don_gia'] || 15;
+          origWidths['gia_tieu_chuan'] = origWidths['don_gia'] || 15;
+          origWidths['list_price'] = origWidths['don_gia'] || 15;
+          origWidths['don_gia_nhap'] = origWidths['don_gia'] || 15;
+          origWidths['muc_off'] = 10;
+          origWidths['muc_off_hang'] = 10;
+          origWidths['thue_vat'] = 10;
+          origWidths['pn'] = 15;
+          origWidths['hang'] = 15;
+          origWidths['danh_muc'] = 15;
+          origWidths['don_vi_tien_te'] = 12;
+          origWidths['ti_gia'] = 12;
+          origWidths['license_duration'] = 15;
+          origWidths['thoi_gian_bao_hanh'] = 15;
+          origWidths['ghi_chu'] = 25;
+          // Ensure monetary columns have enough width to avoid ########
+          origWidths['don_gia_kh'] = Math.max(origWidths['don_gia_kh'] || 0, 18);
+          origWidths['gia_tieu_chuan'] = Math.max(origWidths['gia_tieu_chuan'] || 0, 18);
+          origWidths['list_price'] = Math.max(origWidths['list_price'] || 0, 18);
+          origWidths['don_gia_nhap'] = Math.max(origWidths['don_gia_nhap'] || 0, 18);
+          origWidths['truoc_thue'] = Math.max(origWidths['truoc_thue'] || 0, 18);
+          origWidths['sau_thue'] = Math.max(origWidths['sau_thue'] || 0, 18);
+          origWidths['vat_amount'] = Math.max(origWidths['vat_amount'] || 0, 15);
+          
+          // Apply dynamic currency suffix to headers before rendering
+          applyCurrencyToHeaders(actualMappingConfig, targetKhach?.Don_vi_tien_te);
+          
+          if (!dataToUse) {
+            // Default template: Rebuild headers completely
+            actualMappingConfig.forEach((col: any, idx: number) => {
+              const colIndex = idx + 1;
+              newColMap[col.field] = colIndex;
+              row.getCell(colIndex).value = col.header;
+              if (!row.getCell(colIndex).style || Object.keys(row.getCell(colIndex).style).length === 0) {
+                row.getCell(colIndex).style = row.getCell(Math.min(colIndex, oldMaxCol)).style;
+              }
+              ws.getColumn(colIndex).width = origWidths[col.field] || 15;
+            });
+            Object.assign(colMap, newColMap)
+            maxCol = actualMappingConfig.length
+          } else {
+            // Custom template: Use colIndex from mapping config, DO NOT rebuild headers
+            let customMaxCol = oldMaxCol;
+            actualMappingConfig.forEach((col: any, idx: number) => {
+              if (col.field === 'empty') return; // Skip empty/unmapped columns
+              const cIdx = col.colIndex || (idx + 1);
+              newColMap[col.field] = cIdx;
+              if (cIdx > customMaxCol) customMaxCol = cIdx;
+            });
+            Object.assign(colMap, newColMap)
+            maxCol = customMaxCol
+          }
+        } else {
+          Object.assign(colMap, rm)
+          maxCol = Math.max(...Object.values(rm))
+        }
+      }
+      return
+    }
+
+    const cell1Val = excelCellText(row.getCell(1).value);
+    const cell2Val = excelCellText(row.getCell(2).value);
+    const rowText = cell1Val + ' ' + cell2Val;
+
+    if (totalRowIdx === -1 && (rowText.includes('TỔNG CỘNG + THUẾ') || rowText.includes('TỔNG CỘNG'))) {
+      totalRowIdx = rowNumber;
+    }
+    
+    if (totalRowIdx !== -1 && rowNumber > totalRowIdx) {
+      const rtLower = rowText.toLowerCase();
+      if ((rtLower.includes('thuế vat') || rtLower.includes('điều khoản') || rtLower.includes('điều kiện')) && origTermStart === -1) {
+        if (rtLower.includes('điều khoản thương mại') || rtLower.includes('các điều khoản') || rtLower.includes('điều kiện thương mại')) {
+          origTermStart = rowNumber + 1;
+        } else {
+          origTermStart = rowNumber;
+        }
+      }
+      // Detect signature section: check each cell individually
+      // Only match short text (< 50 chars) to avoid false positives from long term sentences
+      // that happen to contain keywords like "Xác nhận" in the middle
+      if (origSigStart === -1) {
+        const sigKeywords = ['Người lập', 'ĐẠI DIỆN', 'Trân Trọng', 'Trân trọng', 'TRÂN TRỌNG', 'BÊN MUA', 'BÊN BÁN'];
+        // Check cells 1..maxCol for signature markers
+        const cellTexts: string[] = [];
+        for (let cc = 1; cc <= Math.min(maxCol, 10); cc++) {
+          cellTexts.push(excelCellText(row.getCell(cc).value).trim());
+        }
+        
+        const isSigRow = sigKeywords.some(kw => 
+          cellTexts.some(ct => ct.includes(kw))
+        ) || (
+          // "Xác nhận" chỉ match khi nằm ở đầu cell hoặc cell ngắn (header chữ ký)
+          cellTexts.some(ct => ct.startsWith('Xác nhận') || (ct.includes('Xác nhận') && ct.length < 50))
+        );
+        
+        // Chỉ nhận signature nếu nó nằm sau origTermStart (nếu đã tìm thấy origTermStart)
+        if (isSigRow && (origTermStart === -1 || rowNumber > origTermStart)) {
+          origSigStart = rowNumber;
+        }
+      }
+    }
+  });
+
+
+  // Fallback logic cho custom template
+  if (origTermStart !== -1 && origSigStart === -1) {
+    origSigStart = ws.rowCount + 1;
+  } else if (origTermStart === -1) {
+    if (origSigStart !== -1) {
+      origTermStart = origSigStart; // Chèn ngay trước chữ ký
+    } else {
+      origTermStart = totalRowIdx !== -1 ? totalRowIdx + 1 : ws.rowCount + 1;
+      origSigStart = origTermStart; // Chèn ngay sau tổng cộng nếu ko có chữ ký
+    }
+  }
+
+  // Fallback to default mapping if detection failed
+  if (Object.keys(colMap).length < 3) {
+    Object.assign(colMap, { stt: 1, ten_hang: 2, mo_ta: 3, dvt: 4, so_luong: 5, don_gia: 6, truoc_thue: 7, vat: 8, sau_thue: 9 })
+    maxCol = 9
+  }
+
+  if (!dataToUse && useDynamicExcelMapping.value && excelMappingConfig.value.length > 0) {
+    const baseCol = 9; // use last column of default template as style fallback
+    for (let c = 1; c <= maxCol; c++) {
+      if (!ws.getColumn(c).width) {
+        ws.getColumn(c).width = ws.getColumn(baseCol).width || 15;
+      }
+      const r1 = ws.getRow(headerRowIdx + 1);
+      if (!r1.getCell(c).style || Object.keys(r1.getCell(c).style).length === 0) r1.getCell(c).style = r1.getCell(baseCol).style;
+      
+      const r2 = ws.getRow(headerRowIdx + 2);
+      if (!r2.getCell(c).style || Object.keys(r2.getCell(c).style).length === 0) r2.getCell(c).style = r2.getCell(baseCol).style;
+      
+      if (totalRowIdx !== -1) {
+        const rt = ws.getRow(totalRowIdx);
+        if (!rt.getCell(c).style || Object.keys(rt.getCell(c).style).length === 0) rt.getCell(c).style = rt.getCell(baseCol).style;
+      }
+    }
+    
+    // Clear unused columns completely (no borders, no backgrounds, no values)
+    // We don't use ws.spliceColumns because it might break merged cells like "BẢNG BÁO GIÁ" at the top of the template.
+    for (let c = maxCol + 1; c <= 20; c++) {
+      ws.getRow(headerRowIdx).getCell(c).style = {};
+      ws.getRow(headerRowIdx).getCell(c).value = null;
+      ws.getRow(headerRowIdx + 1).getCell(c).style = {};
+      ws.getRow(headerRowIdx + 1).getCell(c).value = null;
+      ws.getRow(headerRowIdx + 2).getCell(c).style = {};
+      ws.getRow(headerRowIdx + 2).getCell(c).value = null;
+      if (totalRowIdx !== -1) {
+        ws.getRow(totalRowIdx).getCell(c).style = {};
+        ws.getRow(totalRowIdx).getCell(c).value = null;
+      }
+    }
+  }
+
+  const groupStyle: any = {};
+  for (let c = 1; c <= maxCol; c++) groupStyle[c] = ws.getRow(headerRowIdx + 1).getCell(c).style;
+  const groupRowHeight = ws.getRow(headerRowIdx + 1).height;
+  const dataRowStyle: any = {};
+  for (let c = 1; c <= maxCol; c++) dataRowStyle[c] = ws.getRow(headerRowIdx + 2).getCell(c).style;
+  const dataRowHeight = ws.getRow(headerRowIdx + 2).height;
+  const totalRowStyle: any = {};
+  for (let c = 1; c <= maxCol; c++) totalRowStyle[c] = ws.getRow(totalRowIdx).getCell(c).style;
+  const totalRowHeight = ws.getRow(totalRowIdx).height;
+
+  // Format số cho các cột giá: VNĐ dùng #,##0 (không thập phân), USD dùng #,##0.00
+  const priceColumns = [colMap.don_gia, colMap.don_gia_kh, colMap.gia_tieu_chuan, colMap.don_gia_nhap, colMap.truoc_thue, colMap.vat, colMap.sau_thue, colMap.list_price, colMap.ti_gia].filter(Boolean);
+  if (isUsdExport) {
+    if (headerRowIdx !== -1) {
+      ws.getRow(headerRowIdx).eachCell(cell => {
+        if (typeof cell.value === 'string') {
+          cell.value = cell.value.replace(/VNĐ|VND/gi, 'USD');
+        }
+      });
+    }
+    const usdFormat = '#,##0.00';
+    priceColumns.forEach(c => {
+      if (dataRowStyle[c]) dataRowStyle[c] = { ...dataRowStyle[c], numFmt: usdFormat };
+      if (totalRowStyle[c]) totalRowStyle[c] = { ...totalRowStyle[c], numFmt: usdFormat };
+    });
+  } else {
+    const vndFormat = '#,##0';
+    priceColumns.forEach(c => {
+      if (dataRowStyle[c]) dataRowStyle[c] = { ...dataRowStyle[c], numFmt: vndFormat };
+      if (totalRowStyle[c]) totalRowStyle[c] = { ...totalRowStyle[c], numFmt: vndFormat };
+    });
+  }
+
+  const footerMerges: any[] = [];
+  const footerRowProps: any[] = [];
+  const maxRow = ws.rowCount;
+  for (let r = totalRowIdx + 1; r <= maxRow; r++) {
+    footerRowProps.push({
+      height: ws.getRow(r).height,
+      hidden: ws.getRow(r).hidden,
+      outlineLevel: ws.getRow(r).outlineLevel
+    });
+  }
+
+  const merges = Object.values((ws as any)._merges || {});
+  merges.forEach((merge: any) => {
+    if (merge.model.top > totalRowIdx) {
+      footerMerges.push(merge.model);
+    }
+    if (merge.model.top >= headerRowIdx) {
+      ws.unMergeCells(merge.model.top, merge.model.left, merge.model.bottom, merge.model.right);
+    }
+  });
+
+  let numRowsToRemove = 0;
+  if (totalRowIdx !== -1) {
+    if (!dataToUse) {
+      numRowsToRemove = totalRowIdx - headerRowIdx;
+    } else {
+      numRowsToRemove = totalRowIdx - headerRowIdx - 1;
+    }
+  } else {
+    numRowsToRemove = 2; // assume 2 mock data rows to clear if no total row found
+  }
+  if (numRowsToRemove < 0) numRowsToRemove = 0;
+  
+  ws.spliceRows(headerRowIdx + 1, numRowsToRemove);
+
+  // Clear heights below header to prevent dirty inherited heights
+  for (let r = headerRowIdx + 1; r <= maxRow + 200; r++) {
+    (ws.getRow(r) as any).height = undefined;
+    ws.getRow(r).hidden = false;
+  }
+
+  let insertIdx = headerRowIdx + 1;
+
+  quoteRowsWithSTT.value.forEach((r: any) => {
+    ws.spliceRows(insertIdx, 0, []);
+    const row = ws.getRow(insertIdx);
+
+    if (r.type === 'group') {
+      if (colMap.stt) row.getCell(colMap.stt).value = r.roman;
+      for (let c = 1; c <= maxCol; c++) {
+        row.getCell(c).style = groupStyle[c];
+        row.getCell(c).alignment = Object.assign({}, row.getCell(c).alignment || {}, { vertical: 'middle' });
+      }
+      row.height = 30; // padding cho hàng danh mục
+      // Merge tất cả ô ngoại trừ cột STT
+      const sttCol = colMap.stt || 1;
+      const mergeStart = sttCol + 1;
+      if (mergeStart <= maxCol) {
+        row.getCell(mergeStart).value = String(r.title).toUpperCase();
+        ws.mergeCells(insertIdx, mergeStart, insertIdx, maxCol);
+        // Set full style after merge - ExcelJS requires this for merged cells
+        const mergedCell = row.getCell(mergeStart);
+        const baseStyle = JSON.parse(JSON.stringify(groupStyle[mergeStart] || {}));
+        baseStyle.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
+        mergedCell.style = baseStyle;
+      }
+    } else {
+      const i = r.item;
+      const donGiaVND = unitPrice(i);
+      const truoc = lineTruocThue(i);
+      const vat = lineVAT(i);
+      const sau = lineSauThue(i);
+      const tg = toNum(i.Ti_gia, 1) || 1;
+
+      if (colMap.stt) row.getCell(colMap.stt).value = r.stt;
+      if (colMap.pn) row.getCell(colMap.pn).value = i.Ma_hang || '';
+      if (colMap.ten_hang) row.getCell(colMap.ten_hang).value = i.Ten_hang || '';
+      if (colMap.danh_muc) row.getCell(colMap.danh_muc).value = i.Danh_muc || '';
+      if (colMap.don_vi_tien_te) row.getCell(colMap.don_vi_tien_te).value = i.Don_vi_tien_te || '';
+      if (colMap.ti_gia) row.getCell(colMap.ti_gia).value = toNum(i.Ti_gia, 1);
+      if (colMap.license_duration) row.getCell(colMap.license_duration).value = i.License_duration || '';
+      if (colMap.thoi_gian_bao_hanh) row.getCell(colMap.thoi_gian_bao_hanh).value = i.thoi_han_bao_hanh || '';
+      if (colMap.ghi_chu) row.getCell(colMap.ghi_chu).value = i.Ghi_chu || '';
+      
+      const featuresField = colMap.features || colMap.mo_ta;
+      if (featuresField) {
+        const text = i.Features || i.Ten_hang || '';
+        const baseFont = dataRowStyle[featuresField]?.font || {};
+        row.getCell(featuresField).value = toDescriptionRichText(text, baseFont);
+      }
+      
+      if (colMap.hang) row.getCell(colMap.hang).value = i.Ten_nha_cung_cap || '';
+      if (colMap.dvt) row.getCell(colMap.dvt).value = i.DVT || '';
+      if (colMap.so_luong) row.getCell(colMap.so_luong).value = Number(i.So_luong) || 0;
+      
+      if (colMap.list_price) {
+        const lpVND = round2(donGiaLP(i) * tg);
+        row.getCell(colMap.list_price).value = isUsdExport ? round2(lpVND / tg) : (Number(lpVND) || 0);
+      }
+      if (colMap.gia_tieu_chuan) {
+        const stdVND = standardPrice(i);
+        row.getCell(colMap.gia_tieu_chuan).value = isUsdExport ? round2(stdVND / tg) : (Number(stdVND) || 0);
+      }
+      if (colMap.don_gia_nhap) {
+        const nhapVND = round2(toNum(i.gia_nhap, 0) * tg);
+        row.getCell(colMap.don_gia_nhap).value = isUsdExport ? round2(nhapVND / tg) : (Number(nhapVND) || 0);
+      }
+      if (colMap.don_gia) row.getCell(colMap.don_gia).value = isUsdExport ? round2(donGiaVND / tg) : (Number(donGiaVND) || 0);
+      if (colMap.don_gia_kh) row.getCell(colMap.don_gia_kh).value = isUsdExport ? round2(donGiaVND / tg) : (Number(donGiaVND) || 0);
+      if (colMap.truoc_thue) row.getCell(colMap.truoc_thue).value = isUsdExport ? round2(truoc / tg) : (Number(truoc) || 0);
+      if (colMap.vat) row.getCell(colMap.vat).value = isUsdExport ? round2(vat / tg) : (Number(vat) || 0);
+      if (colMap.sau_thue) row.getCell(colMap.sau_thue).value = isUsdExport ? round2(sau / tg) : (Number(sau) || 0);
+
+      if (colMap.muc_off_hang) row.getCell(colMap.muc_off_hang).value = `${displayGiaTieuChuanPct(i)}%`;
+      if (colMap.muc_off) row.getCell(colMap.muc_off).value = `${toNum(i.muc_phan_tram_off, 0)}%`;
+      if (colMap.thue_vat) row.getCell(colMap.thue_vat).value = `${toNum(i.Thue_VAT, 0)}%`;
+
+      for (let c = 1; c <= maxCol; c++) {
+        const cell = row.getCell(c);
+        cell.style = dataRowStyle[c];
+        // Override vertical alignment to middle and enable wrapText for auto-fit height
+        cell.alignment = Object.assign({}, cell.alignment || {}, { vertical: 'middle', wrapText: true });
+      }
+      // Cột diễn giải (features/mo_ta) dùng top align
+      const descCol = colMap.features || colMap.mo_ta;
+      if (descCol) {
+        row.getCell(descCol).alignment = Object.assign({}, row.getCell(descCol).alignment || {}, { vertical: 'top', wrapText: true });
+      }
+      // Cột TÊN HÀNG HÓA luôn middle align (full style override)
+      if (colMap.ten_hang) {
+        const thCell = row.getCell(colMap.ten_hang);
+        const thStyle = JSON.parse(JSON.stringify(dataRowStyle[colMap.ten_hang] || {}));
+        thStyle.alignment = { vertical: 'middle', wrapText: true };
+        thCell.style = thStyle;
+      }
+      const numCols = [colMap.so_luong, colMap.don_gia, colMap.don_gia_kh, colMap.gia_tieu_chuan, colMap.don_gia_nhap, colMap.truoc_thue, colMap.vat, colMap.sau_thue, colMap.list_price, colMap.muc_off_hang, colMap.muc_off, colMap.thue_vat].filter(Boolean) as number[];
+      numCols.forEach(nc => {
+        const cell = row.getCell(nc);
+        cell.font = Object.assign({}, cell.font || {}, { bold: true });
+        cell.alignment = Object.assign({}, cell.alignment || {}, { vertical: 'middle', horizontal: 'right' });
+      });
+      // Don't set fixed row height - let Excel auto-fit based on content
+    }
+    insertIdx++;
+  });
+
+  if (!dataToUse) {
+    ws.spliceRows(insertIdx, 0, []);
+    const totRow = ws.getRow(insertIdx);
+    totRow.getCell(1).value = 'TỔNG CỘNG + THUẾ';
+    if (colMap.truoc_thue) totRow.getCell(colMap.truoc_thue).value = isUsdExport ? Number(totalsUSD.value.truoc) || 0 : Number(totals.value.truoc) || 0;
+    if (colMap.vat) totRow.getCell(colMap.vat).value = isUsdExport ? Number(totalsUSD.value.vat) || 0 : Number(totals.value.vat) || 0;
+    if (colMap.sau_thue) totRow.getCell(colMap.sau_thue).value = isUsdExport ? Number(totalsUSD.value.sau) || 0 : Number(totals.value.sau) || 0;
+    
+    const totalNumCols = new Set([colMap.don_gia, colMap.don_gia_kh, colMap.gia_tieu_chuan, colMap.don_gia_nhap, colMap.truoc_thue, colMap.vat, colMap.sau_thue, colMap.list_price, colMap.ti_gia, colMap.so_luong].filter(Boolean));
+    for (let c = 1; c <= maxCol; c++) {
+      totRow.getCell(c).style = totalRowStyle[c];
+      const hAlign = totalNumCols.has(c) ? 'right' : 'center';
+      totRow.getCell(c).alignment = Object.assign({}, totRow.getCell(c).alignment || {}, { vertical: 'middle', horizontal: hAlign });
+    }
+    totRow.height = 35; // padding cho hàng tổng cộng
+    const firstNumCol = Math.min(...([colMap.truoc_thue, colMap.vat, colMap.sau_thue].filter(Boolean) as number[]));
+    ws.mergeCells(insertIdx, 1, insertIdx, firstNumCol > 1 ? firstNumCol - 1 : maxCol);
+  } else if (totalRowIdx !== -1) {
+    // Custom templates: the total row was pushed down and is currently exactly at insertIdx!
+    const totRow = ws.getRow(insertIdx);
+    if (colMap.truoc_thue) totRow.getCell(colMap.truoc_thue).value = isUsdExport ? Number(totalsUSD.value.truoc) || 0 : Number(totals.value.truoc) || 0;
+    if (colMap.vat) totRow.getCell(colMap.vat).value = isUsdExport ? Number(totalsUSD.value.vat) || 0 : Number(totals.value.vat) || 0;
+    if (colMap.sau_thue) totRow.getCell(colMap.sau_thue).value = isUsdExport ? Number(totalsUSD.value.sau) || 0 : Number(totals.value.sau) || 0;
+    // Right-align cho các ô số trong hàng tổng cộng
+    const customTotalNumCols = [colMap.truoc_thue, colMap.vat, colMap.sau_thue, colMap.don_gia, colMap.don_gia_kh, colMap.gia_tieu_chuan, colMap.don_gia_nhap, colMap.list_price, colMap.ti_gia, colMap.so_luong].filter(Boolean);
+    customTotalNumCols.forEach(c => {
+      const cell = totRow.getCell(c);
+      cell.alignment = Object.assign({}, cell.alignment || {}, { horizontal: 'right' });
+    });
+  }
+
+  const diff = insertIdx - totalRowIdx;
+  let termsDiff = 0;
+  if (selectedTermId.value && origTermStart !== -1 && origSigStart !== -1) {
+    if (editableTermContent.value) {
+      const currentTermStart = origTermStart + diff;
+      const currentSigStart = origSigStart + diff;
+      const rowsToDelete = currentSigStart - currentTermStart; // xóa TOÀN BỘ rows cũ từ termStart đến sigStart
+      
+      // Parse original HTML DOM directly (no regex mangling that causes duplicates)
+      const temp = document.createElement('div');
+      temp.innerHTML = editableTermContent.value;
+
+      const rgbToArgb = (rgbStr: string) => {
+        if (!rgbStr) return undefined;
+        const match = rgbStr.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+        if (match) {
+          const r = parseInt(match[1]).toString(16).padStart(2, '0');
+          const g = parseInt(match[2]).toString(16).padStart(2, '0');
+          const b = parseInt(match[3]).toString(16).padStart(2, '0');
+          return 'FF' + r.toUpperCase() + g.toUpperCase() + b.toUpperCase();
+        }
+        if (rgbStr.startsWith('#')) {
+           let hex = rgbStr.replace('#', '');
+           if (hex.length === 3) hex = hex.split('').map(c => c+c).join('');
+           return 'FF' + hex.toUpperCase();
+        }
+        return undefined;
+      };
+
+      // Block-level tags that should cause a line break
+      const blockTags = new Set(['p', 'div', 'br', 'li', 'ul', 'ol', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'tr', 'blockquote', 'hr']);
+
+      const allNodes: any[] = [];
+      const traverse = (node: Node, currentFont: any) => {
+        if (node.nodeType === Node.TEXT_NODE) {
+          if (node.textContent) {
+            allNodes.push({ text: node.textContent, font: { ...currentFont } });
+          }
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+          const el = node as HTMLElement;
+          const newFont = { ...currentFont };
+          const tag = el.tagName.toLowerCase();
+          
+          // Insert a line-break marker BEFORE block-level elements
+          if (blockTags.has(tag) && tag !== 'br') {
+            allNodes.push({ text: '\n', font: { ...currentFont } });
+          }
+          
+          if (tag === 'br') {
+            allNodes.push({ text: '\n', font: { ...currentFont } });
+            return; // <br> has no children
+          }
+          
+          if (tag === 'li') {
+            allNodes.push({ text: '- ', font: { ...currentFont } });
+          }
+          
+          if (tag === 'b' || tag === 'strong') newFont.bold = true;
+          if (tag === 'i' || tag === 'em') newFont.italic = true;
+          if (tag === 'u') newFont.underline = true;
+          if (tag === 's' || tag === 'strike') newFont.strike = true;
+          
+          if (el.style) {
+            const fw = el.style.fontWeight;
+            if (fw === 'bold' || fw === 'bolder' || parseInt(fw) >= 700) {
+              newFont.bold = true;
+            }
+            const fs = el.style.fontStyle;
+            if (fs === 'italic' || fs === 'oblique') {
+              newFont.italic = true;
+            }
+            const td = el.style.textDecoration;
+            if (td && td.includes('underline')) {
+              newFont.underline = true;
+            }
+            if (td && td.includes('line-through')) {
+              newFont.strike = true;
+            }
+            
+            if (el.style.color) {
+              const argb = rgbToArgb(el.style.color);
+              if (argb) newFont.color = { argb };
+            }
+            if (el.style.fontFamily) {
+              newFont.name = el.style.fontFamily.split(',')[0].replace(/['"]/g, '').trim();
+            }
+            if (el.style.fontSize) {
+              const pt = parseInt(el.style.fontSize);
+              if (!isNaN(pt)) newFont.size = pt;
+            }
+          }
+          
+          if (tag === 'font') {
+            if (el.hasAttribute('face')) newFont.name = el.getAttribute('face') || newFont.name;
+            if (el.hasAttribute('color')) {
+              const argb = rgbToArgb(el.getAttribute('color') || '');
+              if (argb) newFont.color = { argb };
+            }
+          }
+          
+          el.childNodes.forEach(child => traverse(child, newFont));
+        }
+      };
+      
+      const defaultExportFont = customDefaultFont || { name: 'Calibri', size: 12 };
+      traverse(temp, defaultExportFont);
+
+      const linesRT: any[][] = [[]];
+      allNodes.forEach(node => {
+        const parts = node.text.split('\n');
+        for (let i = 0; i < parts.length; i++) {
+          if (i > 0) linesRT.push([]);
+          if (parts[i]) {
+            linesRT[linesRT.length - 1].push({ text: parts[i], font: node.font });
+          }
+        }
+      });
+
+      const cleanLinesRT = linesRT.filter(l => l.some(n => n.text.trim().length > 0));
+      
+      if (rowsToDelete > 0) {
+        ws.spliceRows(currentTermStart, rowsToDelete);
+      }
+      if (cleanLinesRT.length > 0) {
+        ws.spliceRows(currentTermStart, 0, ...Array(cleanLinesRT.length).fill([]));
+      }
+      
+      termsDiff = cleanLinesRT.length - rowsToDelete;
+      
+      for (let i = 0; i < cleanLinesRT.length; i++) {
+        const row = ws.getRow(currentTermStart + i);
+        const lineArr = cleanLinesRT[i];
+        
+        // Clear tất cả cells trên row để không bị sót data cũ từ template
+        for (let c = 1; c <= maxCol; c++) {
+          row.getCell(c).value = null;
+          row.getCell(c).style = {};
+        }
+        
+        let bulletNumber: number | null = null;
+        if (lineArr.length > 0 && lineArr[0].text) {
+           const match = lineArr[0].text.match(/^(\s*\d+)[\.:\)\s]+(.*)/)  ;
+           if (match) {
+             bulletNumber = Number(match[1]);
+             lineArr[0].text = match[2];
+           }
+        }
+        
+        const finalArr = lineArr.filter(n => n.text !== '');
+        
+        if (bulletNumber !== null) {
+          row.getCell(1).value = bulletNumber;
+          const defaultExportFont = customDefaultFont || { name: 'Calibri', size: 12 };
+          row.getCell(1).font = { name: defaultExportFont.name, size: defaultExportFont.size, bold: true };
+          row.getCell(1).alignment = { horizontal: 'center', vertical: 'top' };
+        }
+        
+        const defaultExportFont = customDefaultFont || { name: 'Calibri', size: 12 };
+        if (finalArr.length > 0) {
+          row.getCell(2).value = { richText: finalArr };
+        } else {
+          row.getCell(2).value = '';
+        }
+        row.getCell(2).font = { name: defaultExportFont.name, size: defaultExportFont.size };
+        
+        // Merge from Col 2 to maxCol and style
+        ws.mergeCells(currentTermStart + i, 2, currentTermStart + i, maxCol);
+        const cell2 = row.getCell(2);
+        cell2.alignment = { wrapText: true, vertical: 'top', horizontal: 'left' };
+      }
+    }
+  } else if (!selectedTermId.value && origTermStart !== -1 && origSigStart !== -1) {
+    const currentTermStart = origTermStart + diff;
+    const currentSigStart = origSigStart + diff;
+    const rowsToDelete = currentSigStart - currentTermStart;
+    
+    if (rowsToDelete > 0) {
+      ws.spliceRows(currentTermStart, rowsToDelete);
+      termsDiff -= rowsToDelete;
+    }
+  }
+
+
+  footerMerges.forEach(m => {
+    let mergeDiff = diff;
+    if (m.top >= origSigStart) {
+      mergeDiff += termsDiff;
+    } else if (m.top >= origTermStart && termsDiff !== 0) {
+      return; // ignore merges in deleted old terms (only when terms are being rewritten)
+    }
+    try {
+      ws.mergeCells(m.top + mergeDiff, m.left, m.bottom + mergeDiff, m.right);
+    } catch(e) {}
+  });
+  
+  // Apply footer row props (heights)
+  let currentFooterIdx = insertIdx + 1;
+  let origRowIdx = totalRowIdx + 1;
+  footerRowProps.forEach(props => {
+    let targetIdx = currentFooterIdx;
+    if (origRowIdx >= origSigStart) {
+      targetIdx += termsDiff;
+    } else if (origRowIdx >= origTermStart && termsDiff !== 0) {
+      origRowIdx++;
+      currentFooterIdx++;
+      return; // skip old terms (only when terms are being rewritten)
+    }
+    const rObj = ws.getRow(targetIdx);
+    if (props.height !== undefined) rObj.height = props.height;
+    if (props.hidden !== undefined) rObj.hidden = props.hidden;
+    if (props.outlineLevel !== undefined) rObj.outlineLevel = props.outlineLevel;
+    
+    origRowIdx++;
+    currentFooterIdx++;
+  });
+  
+  const now = new Date();
+  const dd = now.getDate().toString().padStart(2, '0');
+  const mm = (now.getMonth() + 1).toString().padStart(2, '0');
+  const yyyy = now.getFullYear();
+
+  let foundKinhGoi = false;
+  let foundDiaChi = false;
+  let foundNguoiNhan = false;
+  let foundNgay = false;
+
+  for (let r = 1; r <= 30; r++) {
+    const row = ws.getRow(r);
+    row.eachCell((cell) => {
+      const val = typeof cell.value === 'string' ? cell.value : (cell.value?.richText ? cell.value.richText.map((rt: any) => rt.text).join('') : '');
+      if (val) {
+        const lower = val.toLowerCase().trim();
+        if (lower.startsWith('kính gởi') || lower.startsWith('kính gửi')) {
+          cell.value = `Kính gởi: ${targetKhach?.Ten_cong_ty || ''}`;
+          foundKinhGoi = true;
+        } else if (lower.startsWith('địa chỉ') && !lower.includes('giao hàng') && !lower.includes('công ty')) {
+          cell.value = `Địa chỉ: ${targetKhach?.Dia_chi_cong_ty || targetKhach?.ADDRESS || ''}`;
+          cell.font = { ...cell.font, italic: true };
+          foundDiaChi = true;
+        } else if (lower.startsWith('người nhận') && !lower.includes('hàng')) {
+          cell.value = `Người nhận: ${targetKhach?.Ten_khach_hang || targetKhach?.CUS_CONTACT || ''}`;
+          cell.font = { ...cell.font, italic: true };
+          foundNguoiNhan = true;
+        } else if (lower.startsWith('ngày :') || lower.startsWith('ngày:')) {
+          cell.value = `Ngày : ${dd}/${mm}/${yyyy}`;
+          foundNgay = true;
+        }
+      }
+    });
+  }
+
+  if (!specificTemplateData) {
+    if (!foundKinhGoi) ws.getCell('A7').value = `Kính gởi: ${targetKhach?.Ten_cong_ty || ''}`;
+    if (!foundDiaChi) {
+      const cellA8 = ws.getCell('A8');
+      cellA8.value = `Địa chỉ: ${targetKhach?.Dia_chi_cong_ty || targetKhach?.ADDRESS || ''}`;
+      cellA8.font = { ...cellA8.font, italic: true };
+    }
+    if (!foundNguoiNhan) {
+      const cellA9 = ws.getCell('A9');
+      cellA9.value = `Người nhận: ${targetKhach?.Ten_khach_hang || targetKhach?.CUS_CONTACT || ''}`;
+      cellA9.font = { ...cellA9.font, italic: true };
+    }
+    if (!foundNgay) ws.getCell('G7').value = `Ngày : ${dd}/${mm}/${yyyy}`;
+  }
+  
+  // The colored line above the footer is actually an Image in the Excel template.
+  // ExcelJS spliceRows shifts cell values but DOES NOT shift images.
+  // We must manually shift the footer image down by the total number of rows added/removed.
+  const totalShift = diff + termsDiff;
+  if (totalShift !== 0) {
+    const images = ws.getImages();
+    images.forEach((img: any) => {
+      // If the image is located below the header, it's the footer line.
+      if (img.range && img.range.tl && img.range.tl.row > headerRowIdx) {
+        img.range.tl.row += totalShift;
+        img.range.br.row += totalShift;
+      }
+    });
+  }
+  
+  const outBuffer = await workbook.xlsx.writeBuffer();
+  return new Blob([outBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+
+async function handleCustomTemplateUpload(event: Event) {
+  const files = (event.target as HTMLInputElement).files
+  if (!files || files.length === 0) return
+  try {
+    showAsyncLoading('Đang tải lên Cloudinary...')
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      
+      const formData = new FormData()
+      formData.append('upload_preset', 'upload_file')
+      formData.append('file', file)
+      
+      const uploadRes = await fetch('https://api.cloudinary.com/v1_1/db6fzs3rh/auto/upload', {
+        method: 'POST',
+        body: formData
+      }).then(r => r.json())
+      
+      if (!uploadRes.secure_url) throw new Error('Upload Cloudinary thất bại')
+      
+      // Extract structure from file
+      const buffer = await file.arrayBuffer()
+      const wb = new ExcelJS.Workbook()
+      await wb.xlsx.load(buffer)
+      const ws0 = wb.worksheets[0]
+      const extractedConfig = extractHeadersFromWorksheet(ws0)
+
+
+      const newId = Date.now().toString() + i
+      
+      const payload = {
+        sheet: 'upload_file_mau',
+        action: 'add',
+        id: newId,
+        ten_file: file.name,
+        link_file: uploadRes.secure_url,
+        structure: JSON.stringify(extractedConfig),
+        ghi_chu: ''
+      }
+      
+      await fetch(BASE_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      })
+      
+      customTemplates.value.push({ 
+        id: newId, 
+        name: file.name, 
+        data: uploadRes.secure_url,
+        mappingConfig: extractedConfig,
+        content: ''
+      })
+    }
+    showAsyncSuccess('Thành công!', `Đã tải lên các template mới.`)
+  } catch(e: any) {
+    showAsyncError('Lỗi tải file', e.message || String(e))
+  }
+  (event.target as HTMLInputElement).value = ''
+}
+
+async function saveCustomTemplates() {
+  for (const tpl of customTemplates.value) {
+    await fetch(BASE_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        sheet: 'upload_file_mau',
+        action: 'update',
+        id: tpl.id,
+        ghi_chu: tpl.content || ''
+      })
+    })
+  }
+}
+
+async function removeCustomTemplate(id: string) {
+  customTemplates.value = customTemplates.value.filter(t => t.id !== id)
+  await fetch(BASE_URL, {
+    method: 'POST',
+    body: JSON.stringify({
+      sheet: 'upload_file_mau',
+      action: 'delete',
+      id: id
+    })
+  })
+}
+
+async function downloadCustomTemplate(tpl: any) {
+  try {
+    if (tpl.data && tpl.data.startsWith('http')) {
+      const a = document.createElement('a')
+      a.href = tpl.data
+      a.download = tpl.name || 'template.xlsx'
+      a.target = '_blank'
+      a.click()
+    } else {
+      const rawData = atob(tpl.data)
+      const array = new Uint8Array(rawData.length)
+      for (let i = 0; i < rawData.length; i++) {
+        array[i] = rawData.charCodeAt(i)
+      }
+      const blob = new Blob([array], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = tpl.name || 'template.xlsx'
+      a.click()
+      window.URL.revokeObjectURL(url)
+    }
+  } catch(e) {
+    console.error('Không thể tải file mẫu', e)
+  }
+}
+
+const pendingExportTemplateData = ref<string | null>(null);
+
+const pendingExportMappingConfig = ref<any[] | null>(null)
+
+function openExportExcelModal(templateData?: string, mappingConfig?: any[]) {
+  maKHInput.value = khach.value.Ma_khach_hang || '';
+  tenKHInput.value = khach.value.Ten_khach_hang || '';
+  pendingExportTemplateData.value = templateData || null;
+  pendingExportMappingConfig.value = mappingConfig || null;
+  showExportExcelModal.value = true;
+}
+
+async function exportQuoteExcel(templateData?: string | null) {
+  try {
+    showAsyncLoading('Đang xuất file Excel...')
+    const blob = await generateQuoteExcelBlob(khach.value, templateData || undefined, previewEditor.value?.getToolbarFont(), pendingExportMappingConfig.value || undefined);
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const normalFileName = contentOfContractPO.value.trim() || `BaoGia_${soHopDong.value || maHopDong.value || 'NTS'}`;
+    a.download = `${normalFileName}.xlsx`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+    showAsyncSuccess('Xuất Excel thành công', 'File đã được tải về.')
+  } catch(e: any) {
+    console.error('Lỗi xuất Excel:', e)
+    showAsyncError('Xuất Excel thất bại', String(e?.message || e))
+  }
+}
+
+async function exportAgencyExcel() {
+  try {
+    showAsyncLoading('Đang xuất file Excel Đại lý...')
+    
+    const response = await fetch('/bao_gia_dl_template.xlsx')
+    if (!response.ok) {
+      throw new Error('Không thể tải file template Excel Đại lý từ máy chủ.')
+    }
+    const arrayBuffer = await response.arrayBuffer()
+    
+    const workbook = new ExcelJS.Workbook()
+    await workbook.xlsx.load(arrayBuffer)
+    
+    const sheet = workbook.worksheets[0]
+    const agencyContractName = contentOfContractPO.value.trim()
+    if (agencyContractName) sheet.name = agencyContractName
+    
+    // Lấy style từ template TRƯỚC khi xóa
+    const styleDataRow: any = {}
+    const styleTotalRow: any = {}
+    for (let c = 1; c <= 13; c++) {
+      styleDataRow[c] = sheet.getRow(3).getCell(c).style
+      styleTotalRow[c] = sheet.getRow(5).getCell(c).style
+    }
+    
+    // Xóa merge cells trong vùng data + total trước khi thao tác
+    const merges = Object.values((sheet as any)._merges || {})
+    merges.forEach((merge: any) => {
+      if (merge.model.top >= 3) {
+        sheet.unMergeCells(merge.model.top, merge.model.left, merge.model.bottom, merge.model.right)
+      }
+    })
+    
+    const items = quoteRows.value.filter((r: any) => r.type === 'item').map((r: any) => r.item)
+    
+    // Template có rows 3..rowCount (data mẫu + total + footer)
+    // Ta cần: items.length hàng data + 1 hàng total = items.length + 1
+    const templateDataRows = sheet.rowCount - 2 // Số hàng từ row 3 trở đi
+    const neededRows = items.length + 1 // data + total
+    
+    if (templateDataRows > neededRows) {
+      // Xóa bớt hàng thừa
+      sheet.spliceRows(3, templateDataRows - neededRows)
+    } else if (templateDataRows < neededRows) {
+      // Thêm hàng thiếu
+      const toInsert = neededRows - templateDataRows
+      sheet.spliceRows(3, 0, ...Array(toInsert).fill([]))
+    }
+    
+    // Clear toàn bộ data + height trong vùng data (row 3 trở đi)
+    const clearUpTo = sheet.rowCount + 2
+    for (let r = 3; r <= clearUpTo; r++) {
+      const row = sheet.getRow(r);
+      (row as any).height = undefined
+      row.hidden = false
+      for (let c = 1; c <= 13; c++) {
+        row.getCell(c).value = null
+        row.getCell(c).style = {}
+      }
+    }
+    
+    let currentRow = 3
+    let stt = 1
+    
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i]
+      const row = sheet.getRow(currentRow)
+      
+      const qty = toNum(it.So_luong, 1)
+      const lp = toNum(it.Don_gia, 0)
+      const offPct = toNum(it.muc_phan_tram_off, 0)
+      const nk = toNum(it.gia_nhap, 0)
+      const tyGia = toNum(it.Ti_gia, 26600)
+      const vatPct = toNum(it.Thue_VAT, 8)
+      
+      const dienGiai = [it.Mo_ta_chung, it.Mo_ta_chi_tiet, it.Features].filter(Boolean).join('\n') || it.Ten_hang || ''
+      
+      row.getCell(1).value = stt++
+      row.getCell(2).value = it.Ten_hang || ''
+      row.getCell(3).value = toDescriptionRichText(dienGiai, styleDataRow[3]?.font || {});
+      row.getCell(4).value = qty
+      row.getCell(5).value = nk
+      row.getCell(6).value = lp
+      row.getCell(7).value = offPct / 100
+      
+      const hResult = lp * (1 - offPct/100) + nk
+      const iResult = hResult * qty
+      const kResult = iResult * tyGia
+      const lResult = kResult * (vatPct/100)
+      const mResult = kResult + lResult
+
+      row.getCell(8).value = { formula: `F${currentRow}*(1-G${currentRow})+E${currentRow}`, result: hResult }
+      row.getCell(9).value = { formula: `H${currentRow}*D${currentRow}`, result: iResult }
+      row.getCell(10).value = tyGia
+      row.getCell(11).value = { formula: `J${currentRow}*I${currentRow}`, result: kResult }
+      row.getCell(12).value = { formula: `K${currentRow}*${vatPct/100}`, result: lResult }
+      row.getCell(13).value = { formula: `L${currentRow}+K${currentRow}`, result: mResult }
+      
+      for (let c = 1; c <= 13; c++) {
+        row.getCell(c).style = styleDataRow[c]
+      }
+      
+      row.commit()
+      currentRow++
+    }
+    
+    // TOTAL ROW
+    const totalRow = sheet.getRow(currentRow)
+    totalRow.height = 42
+    totalRow.getCell(1).value = 'TỔNG CỘNG'
+    for (let c = 2; c <= 8; c++) {
+      totalRow.getCell(c).value = 'TỔNG CỘNG'
+    }
+    
+    if (items.length > 0) {
+      totalRow.getCell(9).value = { formula: `SUM(I3:I${currentRow - 1})` }
+      totalRow.getCell(10).value = null
+      totalRow.getCell(11).value = { formula: `SUM(K3:K${currentRow - 1})` }
+      totalRow.getCell(12).value = { formula: `SUM(L3:L${currentRow - 1})` }
+      totalRow.getCell(13).value = { formula: `SUM(M3:M${currentRow - 1})` }
+    } else {
+      totalRow.getCell(9).value = 0
+      totalRow.getCell(10).value = null
+      totalRow.getCell(11).value = 0
+      totalRow.getCell(12).value = 0
+      totalRow.getCell(13).value = 0
+    }
+    
+    for (let c = 1; c <= 13; c++) {
+      totalRow.getCell(c).style = styleTotalRow[c]
+    }
+    sheet.mergeCells(currentRow, 1, currentRow, 8)
+    totalRow.commit()
+    
+    const outBuffer = await workbook.xlsx.writeBuffer()
+    const blob = new Blob([outBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    const dlFileName = contentOfContractPO.value.trim() ? contentOfContractPO.value.trim() : `BaoGia_DaiLy_${soHopDong.value || maHopDong.value || 'NTS'}`
+    a.download = `${dlFileName}.xlsx`
+    a.click()
+    window.URL.revokeObjectURL(url)
+    showAsyncSuccess('Xuất Excel thành công', 'File báo giá Đại lý đã được tải về.')
+  } catch(e: any) {
+    console.error('Lỗi xuất Excel Đại lý:', e)
+    showAsyncError('Xuất Excel thất bại', String(e?.message || e))
+  }
+}
+
+function exportPDF() {
+  setTimeout(() => {
+    window.print()
+  }, 100)
+}
+
+const quoteRowsWithSTT = computed(() => {
+  let stt = 0
+
+  return quoteRows.value.map(r => {
+    if (r.type === 'group') {
+      stt = 0
+      return r
+    }
+
+    // r.type === 'item'
+    stt++
+
+    return {
+      ...r,
+      stt
+    }
+  })
+})
+
+// Theo dõi lịch sử sau khi tất cả các biến đã được khởi tạo
+trackHistory('chietKhauTruocThue', () => chietKhauTruocThue.value)
+trackHistory('thueChenhLech', () => thueChenhLech.value)
+trackHistory('chenhLechGia', () => chenhLechGia.value)
+trackHistory('conLai', () => conLai.value)
+trackHistory('tongChietKhau', () => tongChietKhau.value)
+trackHistory('tongGiaThucTe', () => tongGiaThucTe.value)
+trackHistory('truoc', () => totals.value.truoc)
+trackHistory('vat', () => totals.value.vat)
+trackHistory('sau', () => totals.value.sau)
+trackHistory('loi', () => totals.value.loi)
+
+function resetToanBoBaoGia() {
+  selectedItems.value = [];
+  flatQuoteRows.value = [];
+
+  chietKhauTruocThuePct.value = 0;
+  thueChenhLechPct.value = 0;
+  ghiChuHopDong.value = '';
+  contentOfContractPO.value = '';
+  selectedTermId.value = '';
+  editableTermContent.value = '';
+
+  actionHistory.value = [];
+  for (const key in historyLogs.value) {
+    historyLogs.value[key] = [];
+  }
+
+  triggerToast('Đã xóa trắng thông tin báo giá');
+}
+
+async function createNewQuote() {
+  resetToanBoBaoGia()
+
+  loadedMaHopDong.value = ''
+  loadedMaHopDongGoc.value = ''
+  maHopDong.value = `HD${Date.now()}`
+
+  maKHInput.value = ''
+  tenKHInput.value = ''
+  isExistingCustomer.value = false
+
+  await generateNewQuoteIds()
+
+  triggerToast('Đã bắt đầu một báo giá mới!')
+}
+
+const fabPos = ref({ x: 12, y: 90 });
+let isDraggingFab = false;
+let isFabMoved = false;
+let startMouseX = 0;
+let startMouseY = 0;
+let startX = 0;
+let startY = 0;
+
+function startDragFab(e: MouseEvent | TouchEvent) {
+  const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+  const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
+  
+  isDraggingFab = true;
+  isFabMoved = false;
+  startMouseX = clientX;
+  startMouseY = clientY;
+  startX = clientX - fabPos.value.x;
+  startY = clientY - fabPos.value.y;
+
+  document.addEventListener('mousemove', dragFab);
+  document.addEventListener('mouseup', stopDragFab);
+  document.addEventListener('touchmove', dragFab, { passive: false });
+  document.addEventListener('touchend', stopDragFab);
+}
+
+function dragFab(e: MouseEvent | TouchEvent) {
+  if (!isDraggingFab) return;
+  
+  const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+  const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
+  
+  if (Math.abs(clientX - startMouseX) > 5 || Math.abs(clientY - startMouseY) > 5) {
+    isFabMoved = true;
+    if (e.cancelable) e.preventDefault();
+  }
+
+  if (isFabMoved) {
+    let newX = clientX - startX;
+    let newY = clientY - startY;
+    
+    newX = Math.max(0, Math.min(newX, window.innerWidth - 76));
+    newY = Math.max(0, Math.min(newY, window.innerHeight - 76));
+    
+    fabPos.value.x = newX;
+    fabPos.value.y = newY;
+  }
+}
+
+function stopDragFab() {
+  isDraggingFab = false;
+  document.removeEventListener('mousemove', dragFab);
+  document.removeEventListener('mouseup', stopDragFab);
+  document.removeEventListener('touchmove', dragFab);
+  document.removeEventListener('touchend', stopDragFab);
+}
+
+function onFabClick() {
+  if (!isFabMoved) {
+    showProductSidebar.value = true;
+  }
+}
+
+// ===== CẢNH BÁO KHI ĐÓNG TRANG (TRÌNH DUYỆT) =====
+const isDataSaved = ref(false)
+
+watch([khach, selectedItems], () => {
+  isDataSaved.value = false
+}, { deep: true })
+
+const onPipelineSaved = () => {
+  isDataSaved.value = true
+  setTimeout(() => { router.replace('/baogia'); setTimeout(() => window.location.reload(), 100) }, 1500)
+}
+
+const hasUnsavedChanges = () => {
+  if (isDataSaved.value) return false
+  return (flatQuoteRows.value?.length || 0) > 0 || (khach.value?.ten || '').trim() !== '' || (khach.value?.congTy || '').trim() !== ''
+}
+
+const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+  if (hasUnsavedChanges()) {
+    e.preventDefault()
+    e.returnValue = ''
+  }
+}
+
+const isMobileDevice = ref(window.innerWidth <= 768)
+const handleResizeMobile = () => {
+  isMobileDevice.value = window.innerWidth <= 768
+}
+
+onMounted(() => {
+  window.addEventListener('resize', handleResizeMobile)
+  window.addEventListener('beforeunload', handleBeforeUnload)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResizeMobile)
+  window.removeEventListener('beforeunload', handleBeforeUnload)
+})
+
+// --- IMPORT THEO MẪU BÁO GIÁ ---
+const importTemplateFileInput = ref<HTMLInputElement | null>(null);
+const showImportConfirmModal = ref(false);
+const pendingImportItems = ref<any[]>([]);
+
+const importMuaHangFileInput = ref<HTMLInputElement | null>(null);
+
+function triggerImportMuaHangFile() {
+  if (importMuaHangFileInput.value) {
+    importMuaHangFileInput.value.click();
+  }
+}
+
+async function onImportMuaHangFileChange(event: Event) {
+  const target = event.target as HTMLInputElement;
+  if (!target.files || target.files.length === 0) return;
+  
+  const file = target.files[0];
+  showAsyncLoading('Đang đọc file mua hàng...');
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const data = new Uint8Array(arrayBuffer);
+    const workbook = XLSX.read(data, { type: 'array' });
+    const wsName = workbook.SheetNames[0];
+    const ws = workbook.Sheets[wsName];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+    
+    let headerRowIndex = -1;
+    let colMap: Record<string, number> = {};
+    const purchaseItems: any[] = [];
+    
+    for (let i = 0; i < Math.min(rows.length, 500); i++) {
+      const row = rows[i] as any[];
+      if (!row || row.length === 0) continue;
+      
+      if (headerRowIndex === -1) {
+        // Find header row
+        const rowStr = row.map(c => excelCellText(c).toUpperCase()).join('|');
+        if (rowStr.includes('MÔ TẢ') || rowStr.includes('PRICES LIST') || rowStr.includes('DISCOUNT') || rowStr.includes('ĐƠN GIÁ')) {
+          headerRowIndex = i;
+          // Map columns
+          row.forEach((cell, idx) => {
+            const header = excelCellText(cell).toUpperCase().trim();
+            if (header.includes('MÔ TẢ') || header.includes('TÊN HÀNG') || header.includes('DIỄN GIẢI')) colMap['mota'] = idx;
+            else if (header.includes('PS') || header.includes('MODEL') || header.includes('PART NUMBER') || header.includes('MÃ HÀNG')) colMap['ps'] = idx;
+            else if (header.includes('PRICES LIST') || header.includes('LIST PRICE')) colMap['listPrice'] = idx;
+            else if (header.includes('DISCOUNT') || header.includes('OFF HÃNG')) colMap['discount'] = idx;
+            else if (header.includes('ĐƠN GIÁ') || header.includes('GIÁ VỐN')) colMap['giaVon'] = idx;
+          });
+        }
+        continue;
+      }
+      
+      const motaVal = colMap['mota'] !== undefined ? excelCellText(row[colMap['mota']]).trim() : '';
+      const psVal = colMap['ps'] !== undefined ? excelCellText(row[colMap['ps']]).trim() : '';
+      const mota = (psVal + ' ' + motaVal).trim();
+      
+      if (!mota || mota.toUpperCase().includes('TỔNG CỘNG') || mota.toUpperCase().includes('ĐIỀU KHOẢN') || mota.toUpperCase() === 'STT') continue;
+      
+      const listPriceStr = colMap['listPrice'] !== undefined ? String(excelCellText(row[colMap['listPrice']])).replace(/,/g, '') : '0';
+      const listPrice = parseFloat(listPriceStr) || 0;
+      
+      const giaVonStr = colMap['giaVon'] !== undefined ? String(excelCellText(row[colMap['giaVon']])).replace(/,/g, '') : '0';
+      const giaVon = parseFloat(giaVonStr) || 0;
+      
+      if (listPrice === 0 && giaVon === 0) continue;
+
+      purchaseItems.push({ mota, listPrice, giaVon });
+    }
+    
+    if (purchaseItems.length === 0) {
+      showAsyncError('Lỗi', 'Không tìm thấy dữ liệu hợp lệ trong file mua hàng.');
+      return;
+    }
+    
+    let matchCount = 0;
+    
+    const tokenize = (str: string) => {
+      return removeDiacritics(str).toLowerCase().replace(/[^a-z0-9]/g, ' ').split(/\s+/).filter(w => w.length > 2);
+    };
+
+    selectedItems.value.forEach((quoteItem) => {
+      const qTokens = tokenize(quoteItem.Ten_hang + ' ' + (quoteItem.Features || ''));
+      
+      let bestMatch: any = null;
+      let maxScore = 0;
+      
+      purchaseItems.forEach(pItem => {
+        const pTokens = tokenize(pItem.mota);
+        let matches = 0;
+        pTokens.forEach((pt: string) => {
+          if (qTokens.includes(pt)) matches++;
+        });
+        
+        const score = matches / Math.max(pTokens.length, 1);
+        if (score > maxScore) {
+          maxScore = score;
+          bestMatch = pItem;
+        }
+      });
+      
+      if (bestMatch && maxScore > 0.3) {
+        const oldLP = (parseFloat(String(quoteItem.Don_gia)) || 0) + (parseFloat(String(quoteItem.gia_hardware)) || 0);
+        const oldPctOff = parseFloat(String(quoteItem.muc_phan_tram_off)) || 0;
+        const oldGiaNhap = parseFloat(String(quoteItem.gia_nhap)) || 0;
+        const oldSellingPrice = oldLP * (1 - oldPctOff / 100) + oldGiaNhap;
+
+        quoteItem.Don_gia = bestMatch.listPrice;
+        quoteItem.Gia_tieu_chuan = bestMatch.giaVon;
+        
+        const newLP = bestMatch.listPrice + (parseFloat(String(quoteItem.gia_hardware)) || 0);
+        if (newLP > 0) {
+          let newPctOff = (1 - (oldSellingPrice - oldGiaNhap) / newLP) * 100;
+          // Do not round to 2 decimals to prevent Đơn giá KH from deviating
+          quoteItem.muc_phan_tram_off = Number(newPctOff.toFixed(6));
+        }
+
+        matchCount++;
+      }
+    });
+    
+    asyncResultModal.value.show = false;
+    showAsyncSuccess('Thành công', `Đã cập nhật thành công giá cho ${matchCount}/${selectedItems.value.length} mặt hàng.`);
+    
+  } catch (err: any) {
+    console.error(err);
+    showAsyncError('Lỗi', 'Lỗi khi đọc file mua hàng: ' + String(err.message || err));
+  } finally {
+    target.value = '';
+  }
+}
+
+function triggerImportTemplateFile() {
+  if (importTemplateFileInput.value) {
+    importTemplateFileInput.value.click();
+  }
+}
+
+async function onImportTemplateFileChange(event: Event) {
+  const target = event.target as HTMLInputElement;
+  if (!target.files || target.files.length === 0) return;
+  
+  const file = target.files[0];
+  showAsyncLoading('Đang đọc file mẫu...');
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const data = new Uint8Array(arrayBuffer);
+    const workbook = XLSX.read(data, { type: 'array' });
+    const wsName = workbook.SheetNames[0];
+    const ws = workbook.Sheets[wsName];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+    
+    const newItems: any[] = [];
+    let readingTerms = false;
+    let termsHtml = '';
+    
+    let headerRowIndex = -1;
+    let colMap: Record<string, number> = {};
+    
+    for (let i = 0; i < Math.min(rows.length, 500); i++) {
+      const row = rows[i] as any[];
+      if (!row || row.length === 0) continue;
+      
+      if (headerRowIndex === -1) {
+        // Find header row
+        const rowStr = row.map(c => excelCellText(c).toUpperCase()).join('|');
+        if (rowStr.includes('STT') && (rowStr.includes('TÊN HÀNG') || rowStr.includes('MODEL'))) {
+          headerRowIndex = i;
+          // Map columns
+          row.forEach((cell, idx) => {
+            const header = excelCellText(cell).toUpperCase().trim();
+            if (header.includes('STT')) colMap['stt'] = idx;
+            else if (header.includes('TÊN HÀNG') || header.includes('MODEL')) colMap['tenHang'] = idx;
+            else if (header.includes('DIỄN GIẢI')) colMap['features'] = idx;
+            else if (header.includes('ĐƠN VỊ TÍNH') || header === 'DVT') colMap['dvt'] = idx;
+            else if (header.includes('THỜI HẠN')) colMap['license_duration'] = idx;
+            else if (header === 'S.L' || header.includes('SỐ LƯỢNG') || header === 'SL') colMap['sl'] = idx;
+            else if (header.includes('ĐƠN GIÁ')) colMap['donGia'] = idx;
+            else if (header.includes('THÀNH TIỀN') && !header.includes('VAT')) colMap['truocThue'] = idx;
+            else if (header === 'VAT' || header.includes('THUẾ')) colMap['vat'] = idx;
+          });
+        }
+        continue;
+      }
+      
+      // If we are reading data
+      const stt = colMap['stt'] !== undefined ? excelCellText(row[colMap['stt']]).trim().toUpperCase() : '';
+      const tenHang = colMap['tenHang'] !== undefined ? excelCellText(row[colMap['tenHang']]).trim() : '';
+      const features = colMap['features'] !== undefined ? excelCellText(row[colMap['features']]).trim() : '';
+      
+      if (!readingTerms && (stt.includes('TỔNG CỘNG') || tenHang.toUpperCase().includes('TỔNG CỘNG') || 
+          stt.includes('ĐIỀU KHOẢN') || tenHang.toUpperCase().includes('ĐIỀU KHOẢN') || features.toUpperCase().includes('ĐIỀU KHOẢN'))) {
+        readingTerms = true;
+      }
+      
+      if (readingTerms) {
+        const arr = [];
+        for (let c = 0; c < row.length; c++) {
+          const v = excelCellText(row[c]).trim();
+          if (v) arr.push(v);
+        }
+        if (arr.length > 0) {
+          const lineText = arr.join(' ');
+          if (!lineText.toUpperCase().includes('TỔNG CỘNG') && !lineText.toUpperCase().includes('VAT') && !lineText.toUpperCase().includes('THÀNH TIỀN') && !lineText.match(/^[\d\.\,]+$/)) {
+             termsHtml += `<p style="margin: 0; padding-bottom: 4px;">${lineText}</p>`;
+          }
+        }
+        continue;
+      }
+      
+      if (!tenHang) {
+        continue;
+      }
+      
+      const dvt = colMap['dvt'] !== undefined ? excelCellText(row[colMap['dvt']]).trim() : '';
+      const license_duration = colMap['license_duration'] !== undefined ? excelCellText(row[colMap['license_duration']]).trim() : '';
+      
+      const slStr = colMap['sl'] !== undefined ? excelCellText(row[colMap['sl']]).replace(/,/g, '') : '1';
+      const sl = parseFloat(slStr) || 1;
+      
+      const donGiaStr = colMap['donGia'] !== undefined ? excelCellText(row[colMap['donGia']]).replace(/,/g, '') : '0';
+      const donGia = parseFloat(donGiaStr) || 0;
+      
+      const truocThueStr = colMap['truocThue'] !== undefined ? excelCellText(row[colMap['truocThue']]).replace(/,/g, '') : '';
+      const truocThue = parseFloat(truocThueStr) || (sl * donGia);
+      
+      const vatStr = colMap['vat'] !== undefined ? excelCellText(row[colMap['vat']]).replace(/,/g, '') : '0';
+      const vatVal = parseFloat(vatStr) || 0;
+      
+      let vatPct = 0;
+      if (vatVal > 0 && truocThue > 0) {
+        vatPct = Math.round((vatVal / truocThue) * 100);
+      }
+      
+      const generatedMaHang = removeDiacritics(tenHang).toUpperCase().replace(/\s+/g, '').replace(/[^A-Z0-9]/g, '');
+
+      const item = {
+        uid: Math.random().toString(36).substr(2, 9),
+        Ten_hang: tenHang,
+        Features: features,
+        DVT: dvt || 'Bản quyền',
+        License_duration: license_duration || '1 Năm',
+        So_luong: sl,
+        Don_gia: donGia,
+        Gia_tieu_chuan: donGia,
+        Thue_VAT: vatPct,
+        Ma_hang: generatedMaHang, Main_img: '', Ma_nha_cung_cap: '', Ten_nha_cung_cap: '',
+        Mo_ta_chung: '', Mo_ta_chi_tiet: '', Danh_muc: '', thoi_han_bao_hanh: '',
+        Trang_thai: '', Don_vi_tien_te: quoteCurrency.value || 'VND', Ti_gia: 1,
+        Ma_hang_lien_ket: '', Ten_hang_lien_ket: '', Ghi_chu: '',
+        gia_hardware: 0, gia_nhap: 0, muc_phan_tram_off: 0, volume: ''
+      };
+      
+      newItems.push(item as any);
+    }
+    
+    if (termsHtml) {
+      importedTermsHtml.value = termsHtml;
+      selectedTermId.value = 'custom_import';
+      editableTermContent.value = termsHtml;
+    }
+    
+    if (newItems.length > 0) {
+      asyncResultModal.value.show = false;
+      pendingImportItems.value = newItems;
+      showImportConfirmModal.value = true;
+    } else {
+      showAsyncError('Lỗi', 'Không tìm thấy dữ liệu hợp lệ trong file mẫu.');
+    }
+    
+  } catch (err: any) {
+    console.error(err);
+    showAsyncError('Lỗi', 'Lỗi khi đọc file: ' + String(err.message || err));
+  } finally {
+    target.value = '';
+  }
+}
+
+
+async function confirmImport(saveToDb: boolean) {
+  showImportConfirmModal.value = false;
+  const items = pendingImportItems.value;
+  if (!items || items.length === 0) return;
+
+  if (saveToDb) {
+    showAsyncLoading('Đang lưu hàng hóa vào Database...');
+    try {
+      for (const addedItem of items) {
+        const payloadRow = [
+          addedItem.Ma_hang || '',           // [0]
+          addedItem.Ten_hang || '',           // [1]
+          addedItem.Main_img || '',           // [2]
+          addedItem.Ma_nha_cung_cap || '',    // [3]
+          addedItem.Ten_nha_cung_cap || '',   // [4]
+          addedItem.Mo_ta_chung || '',        // [5]
+          addedItem.Mo_ta_chi_tiet || '',     // [6]
+          addedItem.Features || '',           // [7]
+          addedItem.Danh_muc || '',           // [8]
+          addedItem.License_duration || '',   // [9]
+          addedItem.DVT || '',               // [10]
+          toNum(addedItem.Gia_tieu_chuan, 0), // [11]
+          toNum(addedItem.Don_gia, 0),        // [12]
+          addedItem.Trang_thai || '',         // [13]
+          addedItem.Don_vi_tien_te || 'VND',  // [14]
+          toNum(addedItem.Ti_gia, 1),         // [15]
+          toNum(addedItem.Thue_VAT, 0),       // [16]
+          addedItem.Ma_hang_lien_ket || '',   // [17]
+          addedItem.Ten_hang_lien_ket || '',  // [18]
+          addedItem.Ghi_chu || '',            // [19]
+          toNum(addedItem.gia_hardware, 0),   // [20]
+          toNum(addedItem.gia_nhap, 0),       // [21]
+          toNum(addedItem.muc_phan_tram_off, 0), // [22]
+          addedItem.Type || '',               // [23]
+          addedItem.thoi_han_bao_hanh || '',  // [24]
+          addedItem.volume || ''     // [25] volume
+        ];
+        await postApi('addHangHoa', payloadRow);
+      }
+      showAsyncSuccess('Thành công', `Đã lưu ${items.length} sản phẩm vào Database và thêm vào báo giá.`);
+    } catch (err: any) {
+      console.error(err);
+      showAsyncError('Lỗi', 'Có lỗi khi lưu vào Database: ' + err.message);
+    }
+  } else {
+    showAsyncSuccess('Thành công', `Đã thêm ${items.length} sản phẩm vào bảng báo giá.`);
+  }
+
+  selectedItems.value.push(...items);
+  pendingImportItems.value = [];
+}
+
+</script>
+
+<template>
+  <div class="page">
+    <!-- MOBILE PROGRESS BAR -->
+    <div class="mobile-progress-wrapper">
+      <div class="mobile-steps">
+        <button class="m-step" :class="{ active: mobileStep === 1, completed: mobileStep > 1 }" @click="setMobileStep(1)">
+          <div class="step-circle"><span v-if="mobileStep > 1">✓</span><span v-else>1</span></div>
+          <span class="step-label">Sản phẩm</span>
+        </button>
+        <button class="m-step" :class="{ active: mobileStep === 2, completed: mobileStep > 2 }" @click="setMobileStep(2)">
+          <div class="step-circle" style="position: relative;">
+            <span v-if="mobileStep > 2">✓</span><span v-else>2</span>
+            <span v-if="selectedItems.length > 0" style="position: absolute; top: -6px; right: -6px; background: #ef4444; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid #0b1118; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">{{ selectedItems.length }}</span>
+          </div>
+          <span class="step-label">Báo giá</span>
+        </button>
+        <button class="m-step" :class="{ active: mobileStep === 3, completed: mobileStep > 3 }" @click="setMobileStep(3)">
+          <div class="step-circle"><span v-if="mobileStep > 3">✓</span><span v-else>3</span></div>
+          <span class="step-label">Tổng kết</span>
+        </button>
+        <button class="m-step" :class="{ active: mobileStep === 4, completed: mobileStep > 4 }" @click="setMobileStep(4)">
+          <div class="step-circle"><span v-if="mobileStep > 4">✓</span><span v-else>4</span></div>
+          <span class="step-label">Khách hàng</span>
+        </button>
+        <button class="m-step" :class="{ active: mobileStep === 5, completed: mobileStep > 5 }" @click="setMobileStep(5)">
+          <div class="step-circle"><span v-if="mobileStep > 5">✓</span><span v-else>5</span></div>
+          <span class="step-label">Thao tác</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="main-grid" :class="'mobile-step-' + mobileStep">
+
+      <!-- ================== LEFT SIDEBAR ================== -->
+      <aside class="product-sidebar sidebar-left" :class="{ closed: !showProductSidebar }">
+        <div class="sidebar-head sidebar-head-product">
+          <div class="sidebar-title-row">
+            <h3><i class="lucide-package"></i> Kho sản phẩm</h3>
+            <span class="product-count">{{ filteredProducts.length }} SP</span>
+            <button class="btn-manual-circle" @click="showManualModal = true" title="Nhập tay">+</button>
+          </div>
+          <button class="icon-btn" @click="showProductSidebar = false">✕</button>
+        </div>
+        <div class="top-bar">
+          <div class="search-wrap" style="position: relative;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input v-model="keyword" placeholder="Tìm mã / tên hàng / NCC..." class="search-input" style="padding-right: 36px !important;" @focus="showRecentSearches = true" @blur="showRecentSearches = false" @keydown.enter="saveRecentSearch(keyword)" />
+            <button v-if="keyword" @mousedown.prevent="keyword = ''" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border: none; border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; font-size: 10px; cursor: pointer; padding: 0; z-index: 10; font-weight: bold;" title="Xóa">✕</button>
+            <div v-if="showRecentSearches && !keyword.trim() && recentSearches.length > 0" style="position: absolute; top: 100%; left: 0; right: 0; background: #1e293b; border: 1px solid #334155; border-radius: 8px; margin-top: 4px; z-index: 50; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); overflow: hidden;">
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid #334155;">
+                <span style="font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Lịch sử tìm kiếm</span>
+                <button @mousedown.prevent="showRecentSearches = false" style="background: transparent; border: none; color: #94a3b8; cursor: pointer; padding: 0; font-size: 14px; display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 4px;" onmouseover="this.style.color='#ef4444'; this.style.backgroundColor='rgba(239, 68, 68, 0.1)'" onmouseout="this.style.color='#94a3b8'; this.style.backgroundColor='transparent'" title="Đóng">✕</button>
+              </div>
+              <div v-for="(rs, idx) in recentSearches" :key="idx" @mousedown.prevent="keyword = rs; showRecentSearches = false; saveRecentSearch(rs)" style="padding: 10px 12px; cursor: pointer; color: #e2e8f0; font-size: 13px; display: flex; align-items: center; gap: 8px;" onmouseover="this.style.backgroundColor='#334155'" onmouseout="this.style.backgroundColor='transparent'">
+                <i class="fas fa-history" style="width: 14px; height: 14px; color: #64748b;"></i>
+                {{ rs }}
+              </div>
+            </div>
+          </div>
+          <div class="search-wrap" style="margin-top: 8px; position: relative;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            <input type="text" inputmode="numeric" v-model="userVolumeFilter" placeholder="Số lượng user (Volume)..." class="search-input" style="padding-right: 36px !important;" />
+            <button v-if="userVolumeFilter" @mousedown.prevent="userVolumeFilter = ''" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border: none; border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; font-size: 10px; cursor: pointer; padding: 0; z-index: 10; font-weight: bold;" title="Xóa">✕</button>
+          </div>
+        </div>
+
+        <div class="product-grid">
+          <!-- LOADING SKELETON -->
+          <template v-if="productsState === 'loading'">
+            <div class="skeleton-card" v-for="n in 6" :key="'sk-'+n">
+              <div class="skeleton-badges">
+                <div class="skeleton-line" style="width: 60px; height: 14px;"></div>
+                <div class="skeleton-line" style="width: 45px; height: 14px;"></div>
+              </div>
+              <div class="skeleton-line" style="width: 90%; height: 16px; margin-top: 10px;"></div>
+              <div class="skeleton-line" style="width: 65%; height: 14px; margin-top: 6px;"></div>
+              <div class="skeleton-line" style="width: 50%; height: 20px; margin-top: 12px;"></div>
+              <div class="skeleton-footer">
+                <div class="skeleton-line" style="width: 80px; height: 28px; border-radius: 6px;"></div>
+                <div class="skeleton-line" style="width: 60px; height: 28px; border-radius: 6px;"></div>
+              </div>
+            </div>
+          </template>
+          <!-- ACTUAL CARDS -->
+          <template v-else>
+          <div class="card" v-for="p in displayedProducts" :key="p.Ma_hang" @click="openCardModal(p)">
+            <div class="card-body">
+              <div class="card-badges">
+                <span class="card-ncc-badge" v-if="p.Ten_nha_cung_cap">{{ p.Ten_nha_cung_cap }}</span>
+                <span class="card-vat-badge-img" v-if="p.Thue_VAT">VAT {{ p.Thue_VAT }}%</span>
+              </div>
+              <h4 class="clamp2" v-html="highlightText(p.Ten_hang, keyword)"></h4>
+              <p class="card-license clamp1" v-if="p.License_duration">{{ p.License_duration }}</p>
+              <p class="card-license clamp1" v-if="p.thoi_han_bao_hanh" style="color: #10b981;">Bảo hành: {{ p.thoi_han_bao_hanh }}</p>
+              <p class="card-license clamp1" v-if="p.volume" style="color: #38bdf8;">Volume: {{ p.volume }}</p>
+              <div class="card-price-row">
+                <span class="price">{{ displayPrice(p) }}</span>
+                <span class="price-unit">/ {{ p.DVT }}</span>
+              </div>
+              <p v-if="displayOriginalPrice(p)" class="card-orig-price">(~ {{ displayOriginalPrice(p) }})</p>
+            </div>
+            <div class="card-footer" @click.stop>
+              <div class="qty">
+                <button @click="decQty(p.Ma_hang)">&#x2212;</button>
+                <span>{{ qtyMap[p.Ma_hang] || 1 }}</span>
+                <button @click="incQty(p.Ma_hang)">+</button>
+              </div>
+              <button class="btn-add" :class="{'added': addedStatus[p.Ma_hang]}" :style="addedStatus[p.Ma_hang] ? { background: '#10b981', color: 'white', transform: 'scale(0.96)' } : {}" @click="addItemFromCard(p)">
+                <span v-if="addedStatus[p.Ma_hang]" style="display: flex; align-items: center; justify-content: center; gap: 4px;"><i class="fas fa-check"></i> Đã thêm</span>
+                <template v-else><span class="btn-add-icon">+</span> Thêm</template>
+              </button>
+            </div>
+            <!-- SUGGESTIONS -->
+            <div v-if="p.Ma_hang_lien_ket" class="card-suggestions" @click.stop style="margin-top: 12px; padding-top: 10px; border-top: 1px dashed rgba(255,255,255,0.1);">
+              <div style="font-size: 10.5px; color: #94a3b8; font-weight: 700; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;"><i class="lucide-sparkles" style="font-size: 12px; margin-right: 4px; color: #fbbf24;"></i>Combo đi kèm:</div>
+              <div v-for="link in getLinkedItems(p)" :key="link.code" @click.stop="openSuggestedCardModal(link.code)" style="background: rgba(15,23,42,0.6); padding: 8px; border-radius: 6px; margin-bottom: 6px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 8px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.borderColor='rgba(16,185,129,0.4)';" onmouseout="this.style.borderColor='rgba(255,255,255,0.05)';">
+                <span :title="link.name || link.code" style="font-size: 11.5px; color: #e2e8f0; font-weight: 600; text-align: center; line-height: 1.4; word-break: break-word;">{{ link.name || link.code }}</span>
+                <div class="qty" style="justify-content: center; margin-bottom: -2px;">
+                  <button @click.stop="decQty(link.code)">&#x2212;</button>
+                  <span>{{ qtyMap[link.code] || 1 }}</span>
+                  <button @click.stop="incQty(link.code)">+</button>
+                </div>
+                <button @click.stop="addLinkedItem(link.code)" style="width: 100% !important; padding: 6px; border-radius: 4px; font-size: 11.5px; font-weight: 700; cursor: pointer; transition: all 0.2s;" :style="addedStatus[link.code] ? { background: '#10b981', color: '#fff', border: '1px solid #10b981', transform: 'scale(0.96)' } : { background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px dashed rgba(16,185,129,0.4)' }" onmouseover="this.style.background='#10b981'; this.style.color='#fff';" onmouseout="if(this.innerText.includes('VÀO BÁO GIÁ')){this.style.background='rgba(16,185,129,0.15)'; this.style.color='#10b981';}">
+                  <span v-if="addedStatus[link.code]"><i class="fas fa-check"></i> ĐÃ THÊM</span>
+                  <span v-else>+ THÊM VÀO BÁO GIÁ</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <button v-if="filteredProducts.length > displayLimit" 
+                  @click="loadMoreProducts" 
+                  style="width: 100%; margin-top: 10px; padding: 12px; background: rgba(56, 189, 248, 0.1); border: 1px dashed rgba(56, 189, 248, 0.4); color: #38bdf8; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s;"
+                  onmouseover="this.style.background='rgba(56, 189, 248, 0.2)';" 
+                  onmouseout="this.style.background='rgba(56, 189, 248, 0.1)';">
+            <i class="lucide-chevron-down" style="font-size: 14px; margin-right: 4px;"></i> 
+            Xem thêm (còn {{ filteredProducts.length - displayLimit }} sản phẩm)
+          </button>
+          
+          </template>
+        </div>
+      </aside>
+      <button v-if="!showProductSidebar" class="open-tab metallic-border-btn" @mousedown="startDragFab" @touchstart="startDragFab" @click.stop="onFabClick" :style="{ left: fabPos.x + 'px', top: fabPos.y + 'px', cursor: isDraggingFab ? 'grabbing' : 'grab' }">
+        <i class="lucide-shopping-cart" style="font-size: 20px; pointer-events: none; z-index: 2;"></i> 
+        <span style="font-size: 10px; font-weight: 700; line-height: 1.15; text-align: center; white-space: normal; pointer-events: none; z-index: 2;">KHO<br>SẢN PHẨM</span>
+      </button>
+
+      <!-- ================== CENTER: BẢNG BÁO GIÁ VÀ TỔNG TIỀN ================== -->
+      <section class="box center quote-center">
+        <div class="quote-table-container">
+          <div class="sidebar-head table-header-box" style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap; width: 100%;">
+              <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <h3 style="margin: 0; white-space: nowrap; width: auto; flex-shrink: 0;"><i class="lucide-file-text"></i> Bảng báo giá chi tiết</h3>
+                <button v-show="selectedItems.length > 0" @click="resetToanBoBaoGia" style="background: #ef4444; color: #ffffff; border: none; padding: 4px 10px; border-radius: 6px; font-weight: 700; display: flex; align-items: center; gap: 6px; transition: all 0.2s; box-shadow: 0 1px 3px rgba(239, 68, 68, 0.4); font-size: 12px; white-space: nowrap; flex-shrink: 0; width: max-content; cursor: pointer; height: fit-content;" title="Xóa toàn bộ hàng hóa trong báo giá" onmouseover="this.style.background='#dc2626'; this.style.boxShadow='0 2px 5px rgba(239,68,68,0.5)';" onmouseout="this.style.background='#ef4444'; this.style.boxShadow='0 1px 3px rgba(239,68,68,0.4)';">
+                  <i class="lucide-rotate-ccw" style="font-size: 13px; color: #ffffff;"></i> Làm mới
+                </button>
+                <button v-if="loadedMaHopDong" @click="createNewQuote" style="background: #3b82f6; color: #ffffff; border: none; padding: 4px 10px; border-radius: 6px; font-weight: 700; display: flex; align-items: center; gap: 6px; transition: all 0.2s; box-shadow: 0 1px 3px rgba(59, 130, 246, 0.4); font-size: 12px; white-space: nowrap; flex-shrink: 0; width: max-content; cursor: pointer; height: fit-content;" title="Hủy bỏ hợp đồng đang sửa và tạo báo giá mới hoàn toàn" onmouseover="this.style.background='#2563eb'; this.style.boxShadow='0 2px 5px rgba(59,130,246,0.5)';" onmouseout="this.style.background='#3b82f6'; this.style.boxShadow='0 1px 3px rgba(59,130,246,0.4)';">
+                  <i class="lucide-plus-circle" style="font-size: 13px; color: #ffffff;"></i> Tạo báo giá mới
+                </button>
+                <div class="vip-currency-switch" @click="quoteCurrency = quoteCurrency === 'VND' ? 'USD' : 'VND'" style="display: inline-flex; align-items: center; background: #0f172a; padding: 4px; border-radius: 30px; position: relative; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5), 0 1px 1px rgba(255,255,255,0.05); cursor: pointer; user-select: none; border: 1px solid #1e293b; height: 30px;">
+                  <div :style="{ position: 'absolute', top: '3px', bottom: '3px', width: '52px', background: quoteCurrency === 'VND' ? 'linear-gradient(135deg, #10b981, #059669)' : 'linear-gradient(135deg, #3b82f6, #2563eb)', borderRadius: '24px', transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)', left: quoteCurrency === 'VND' ? '4px' : '56px', boxShadow: '0 2px 4px rgba(0,0,0,0.4)' }"></div>
+                  <div :style="{ position: 'relative', width: '52px', textAlign: 'center', fontSize: '11px', fontWeight: 800, color: quoteCurrency === 'VND' ? '#ffffff' : '#64748b', transition: 'color 0.3s', zIndex: 2, letterSpacing: '0.5px' }">VND</div>
+                  <div :style="{ position: 'relative', width: '52px', textAlign: 'center', fontSize: '11px', fontWeight: 800, color: quoteCurrency === 'USD' ? '#ffffff' : '#64748b', transition: 'color 0.3s', zIndex: 2, letterSpacing: '0.5px' }">USD</div>
+                </div>
+              </div>
+              <div class="header-contract-info">
+                <span class="contract-badge">Mã HĐ: <b>{{ maHopDong }}</b></span>
+                <span class="contract-badge" v-if="loadedMaHopDong">Mã Cũ: <b>{{ loadedMaHopDong }}</b></span>
+                <span class="contract-badge" v-if="loadedMaHopDongGoc">Mã Gốc: <b>{{ loadedMaHopDongGoc }}</b></span>
+                <span class="contract-badge">Số HĐ: <b>{{ soHopDong }}</b></span>
+                <span class="contract-badge">Số PO: <b>{{ currentPO }}</b></span>
+              </div>
+              <span class="hint" style="margin-left: auto;">Click vào ô <b>SL / MỨC OFF / VAT</b> để sửa trực tiếp.</span>
+            </div>
+          </div>
+          <div class="quote-table-wrap">
+            <table>
+              <thead>
+                <tr style="color: #ffffff !important; font-weight: 800 !important;">
+                  <th class="col-stt" style="border-top-left-radius: 6px;">STT</th>
+                  <th class="col-pn">P/N</th>
+                  <th class="col-name">Tên hàng</th>
+                  <th class="col-desc">Diễn giải</th>
+                  <th class="col-hang">Hãng</th>
+                  <th class="col-dvt">ĐVT</th>
+                  <th class="col-sl">SL</th>
+                  <th v-if="quoteCurrency === 'USD'" class="col-dg" style="min-width: 70px;">TỈ GIÁ</th>
+                  <th class="col-dg">GIÁ OFF HÃNG</th>
+                  <th class="col-dg">LIST PRICE</th> 
+                  <th class="col-dg">GIÁ NHẬP</th>
+                  <th class="col-dg">MỨC OFF</th>
+                  <th class="col-dg">ĐƠN GIÁ (KH)</th>
+                  <th class="col-tt">TT trước thuế ({{ quoteCurrency }})</th>
+                  <th class="col-vat">VAT</th>
+                  <th class="col-tt">TT sau thuế ({{ quoteCurrency }})</th>
+                  <th class="col-tt" style="color: #ffffff !important;">Net Margin</th>
+                  <th class="col-del" style="border-top-right-radius: 6px;">Xóa</th>
+                </tr>
+              </thead>
+              <draggable 
+                tag="tbody" 
+                v-model="flatQuoteRows" 
+                item-key="uniqueId" 
+                handle=".drag-handle" 
+                ghost-class="ghost-item"
+                drag-class="drag-item"
+                chosen-class="chosen-item"
+                :animation="400"
+                easing="cubic-bezier(0.175, 0.885, 0.32, 1.15)"
+                filter="button, input, textarea, .btn-del"
+                :preventOnFilter="false"
+                :disabled="isMobileDevice"
+                :set-data="hideDragImage"
+                :move="checkMove"
+                @start="onFlatDragStart"
+                @end="onFlatDragEnd"
+              >
+                <template #item="{ element: r }">
+                  <tr v-if="r.type === 'group'" :class="['group-row', isMobileDevice ? '' : 'drag-handle']" style="cursor: grab;" title="Kéo thả danh mục">
+                    <td class="group-stt">
+                      <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
+                        <i class="lucide-grip-vertical" style="opacity: 0.5;"></i> {{ r.roman }}
+                      </div>
+                    </td>
+                    <td :colspan="quoteCurrency === 'USD' ? 17 : 16" class="group-title">
+                      <div style="display: flex; align-items: center;">
+                        <span>{{ r.title }}</span>
+                        <button class="util-btn small inline-normal-edit" style="margin-left: 6px; padding: 2px 6px; font-size: 11px;" @click.stop="openAdjustPrice('group', r.key, r.title, undefined, true)" title="Sửa thường - cập nhật giá thực tế">
+                          <i class="ri-edit-line"></i>
+                        </button>
+                        <button class="util-btn small inline-adjust" style="margin-left: 4px; padding: 2px 6px; font-size: 11px;" @click.stop="openAdjustPrice('group', r.key, r.title)">
+                          <i class="ri-arrow-up-down-fill"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr v-else-if="r.type === 'item'" v-show="!draggingGroupKey" :class="['quote-item-row', isMobileDevice ? '' : 'drag-handle']" style="cursor: grab;" title="Nhấn giữ để kéo thả sản phẩm" :id="'quote-row-' + r.idx" @click="openQuoteEdit(r.idx)">
+                    <td data-label="STT" style="color: #ffffff; font-weight: 700;">
+                      <div style="display: flex; justify-content: center; align-items: center; gap: 4px;">
+                        <i class="lucide-grip-vertical" style="opacity: 0.3;"></i>
+                        {{ r.stt }}
+                      </div>
+                    </td>
+                    <td data-label="P/N" class="col-pn-cell" :title="r.item.Ma_hang" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Ma_hang')">{{ r.item.Ma_hang }}</td>
+                    <td data-label="Tên hàng" class="nowrap" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Ten_hang')">{{ r.item.Ten_hang }}</td>
+                    <td data-label="Diễn giải" class="col-desc-cell" :title="[r.item.Mo_ta_chung, r.item.Mo_ta_chi_tiet, r.item.Features].filter(Boolean).join(' - ')" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Features')">
+                      <div class="preline">
+                        <div v-if="r.item.Mo_ta_chung">{{ r.item.Mo_ta_chung }}</div>
+                        <div v-if="r.item.Mo_ta_chi_tiet">{{ r.item.Mo_ta_chi_tiet }}</div>
+                        <div v-if="r.item.Features">{{ r.item.Features }}</div>
+                      </div>
+                    </td>
+                    <td data-label="Hãng" class="col-hang-cell" :title="r.item.Ten_nha_cung_cap" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Ten_nha_cung_cap')">{{ r.item.Ten_nha_cung_cap }}</td>
+                    <td data-label="ĐVT" class="col-dvt-cell" :title="r.item.DVT" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'DVT')">{{ r.item.DVT }}</td>
+                    <td data-label="SL" class="center" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'So_luong')">{{ r.item.So_luong }}</td>
+                    <td data-label="Tỉ giá" v-if="quoteCurrency === 'USD'" class="center" style="line-height: 1.3;" @click.stop="openQuoteEdit(r.idx, 'Ti_gia')">
+                      <div style="color: #fbbf24; font-weight: 800; font-size: 13px;">{{ formatVND(toNum(r.item.Ti_gia, 1)) }}</div>
+                      <div style="font-size: 10px; color: #94a3b8; font-weight: 700;">USD</div>
+                    </td>
+                    <td data-label="Giá off hãng" class="right" style="line-height: 1.3; font-weight: 700; color: #10b981;" @click.stop="openQuoteEdit(r.idx, 'Gia_tieu_chuan')">
+                      <div>{{ displayGiaTieuChuan(r.item) }}</div>
+                      <div class="muted" style="font-size: 11px; margin-top: 2px; color: #10b981 !important;">({{ displayGiaTieuChuanPct(r.item) }}%)</div>
+                    </td>
+                    <td data-label="List Price" class="right" style="color: #10b981; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Don_gia')">{{ displayDonGiaLP(r.item) }}</td> 
+                    <td data-label="Giá nhập" class="right" style="color: #ef4444; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'gia_nhap')">{{ fmtPrice(toNum(r.item.gia_nhap, 0) * toNum(r.item.Ti_gia, 1), toNum(r.item.Ti_gia, 1)) }}</td>
+                    <td data-label="Mức off" class="right" style="line-height: 1.3; font-weight: 700; color: #ef4444;" @click.stop="openQuoteEdit(r.idx, 'muc_phan_tram_off')">
+                      <div>{{ displayMucOffAmount(r.item) }}</div>
+                      <div class="muted" style="font-size: 11px; margin-top: 2px; color: #ef4444 !important;">(-{{ toNum(r.item.muc_phan_tram_off, 0) }}%)</div>
+                    </td>
+                    <td data-label="Đơn giá (KH)" class="right" style="color: #10b981; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'unit_price_kh')">{{ fmtPrice(unitPrice(r.item), toNum(r.item.Ti_gia, 1)) }}</td>
+                    <td data-label="TT trước thuế" class="right" style="color: #10b981; font-weight: 800;" @click.stop="openQuoteEdit(r.idx, 'line_truoc_thue')">{{ fmtPrice(lineTruocThue(r.item), toNum(r.item.Ti_gia, 1)) }}</td>
+                    <td data-label="VAT" class="right" style="line-height: 1.3; color: #10b981; font-weight: 800;" @click.stop="openQuoteEdit(r.idx, 'Thue_VAT')">
+                      <div>{{ fmtPrice(lineVAT(r.item), toNum(r.item.Ti_gia, 1)) }}</div>
+                      <div class="muted" style="font-size: 11px; margin-top: 2px; color: #34d399 !important;">({{ toNum(r.item.Thue_VAT, 0) }}%)</div>
+                    </td>
+                    <td data-label="TT sau thuế" class="right" style="color: #10b981; font-weight: 800;" @click.stop="openQuoteEdit(r.idx, 'Thue_VAT')">{{ fmtPrice(lineSauThue(r.item), toNum(r.item.Ti_gia, 1)) }}</td>
+                    <td data-label="Net Margin" class="right" :style="{ color: lineLoiNhuan(r.item) >= 0 ? '#10b981' : '#ef4444', fontWeight: 800 }">
+                      <div style="display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
+                        <span v-if="lineLoiNhuan(r.item) >= 0" style="font-size: 12px; margin-right: 2px;">▲</span>
+                        <span v-else style="font-size: 12px; margin-right: 2px;">▼</span>
+                        {{ fmtPrice(Math.abs(lineLoiNhuan(r.item)), toNum(r.item.Ti_gia, 1)) }}
+                      </div>
+                    </td>
+                    <td data-label="Thao tác" class="center">
+                      <div style="display: flex; gap: 4px; justify-content: center;">
+                        <button class="btn-del" @click.stop="removeSelected(r.idx)" title="Xóa">✕</button>
+                      </div>
+                    </td>
+                  </tr>
+                </template>
+                <template #footer>
+                  <tr class="spacer-row"><td :colspan="quoteCurrency === 'USD' ? 18 : 17" style="padding: 0; border: none; background: transparent;"></td></tr>
+                </template>
+              </draggable>
+              <tfoot>
+                <tr class="table-footer-sticky" style="background: #fadb14; font-weight: 700; color: #000000; white-space: nowrap;">
+                  <td :colspan="quoteCurrency === 'USD' ? 11 : 10" class="center" style="font-size: 14px; color: #15803d; font-weight: 900;">TỔNG CỘNG + THUẾ</td>
+                  <td class="right">
+                    <span class="fast-tooltip-container" data-tooltip="Tổng Mức OFF" style="display: inline-block; padding: 2px 6px; border-radius: 12px; background: #dc2626; color: #fff; font-size: 12px; font-weight: 800; white-space: nowrap;">-{{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.off) : formatVND(totals.off) }}</span>
+                  </td>
+                  <td></td>
+                  <td class="right">
+                    <span class="fast-tooltip-container" data-tooltip="Tổng TT trước thuế" style="display: inline-block; padding: 2px 6px; border-radius: 12px; background: #1d4ed8; color: #fff; font-size: 12px; font-weight: 800; white-space: nowrap;">{{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.truoc) : formatVND(totals.truoc) }}</span>
+                  </td>
+                  <td class="center">
+                    <span class="fast-tooltip-container" data-tooltip="Tổng VAT" style="display: inline-block; padding: 2px 6px; border-radius: 12px; background: #1d4ed8; color: #fff; font-size: 12px; font-weight: 800; white-space: nowrap;">{{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.vat) : formatVND(totals.vat) }}</span>
+                  </td>
+                  <td class="right">
+                    <span class="fast-tooltip-container" data-tooltip="Tổng TT sau thuế" style="display: inline-block; padding: 2px 6px; border-radius: 12px; background: #2563eb; color: #fff; font-size: 12px; font-weight: 800; white-space: nowrap;">{{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.sau) : formatVND(totals.sau) }}</span>
+                  </td>
+                  <td class="right">
+                    <div class="fast-tooltip-container" data-tooltip="Tổng Net Margin" :style="{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px', padding: '2px 6px', borderRadius: '12px', background: totals.loi >= 0 ? '#10b981' : '#ef4444', color: '#fff', fontSize: '12px', fontWeight: 800, whiteSpace: 'nowrap' }">
+                      <span v-if="totals.loi >= 0" style="font-size: 10px;">▲</span>
+                      <span v-else style="font-size: 10px;">▼</span>
+                      {{ quoteCurrency === 'USD' ? formatUSD(Math.abs(totalsUSD.loi)) : formatVND(Math.abs(totals.loi)) }}
+                    </div>
+                  </td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+        <div class="bottom-totals">
+          <!-- KHỐI 0 : KHÁCH HÀNG -->
+          <div class="totals-box step-customer">
+            <div class="totals-header" style="background: linear-gradient(135deg, #064e3b 0%, #065f46 100%); position: relative;">
+              <span class="totals-icon"><i class="lucide-user"></i></span>
+              <span style="display: flex; align-items: center; gap: 8px;">
+                Khách hàng
+                <span v-if="khach.MST || khach.Ten_cong_ty || khach.Ten_khach_hang || khach.Dia_chi_cong_ty" style="cursor: pointer; background: #ef4444; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 1px 3px rgba(239,68,68,0.3); line-height: 1.2;" @click="resetCustomer" onmouseover="this.style.background='#dc2626'; this.style.transform='translateY(-1px)'" onmouseout="this.style.background='#ef4444'; this.style.transform='translateY(0)'">Reset</span>
+                <span style="cursor: pointer; background: #3b82f6; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 1px 3px rgba(59,130,246,0.3); line-height: 1.2; margin-left: 4px;" @click="showUploadTaxModal = true" onmouseover="this.style.background='#2563eb'; this.style.transform='translateY(-1px)'" onmouseout="this.style.background='#3b82f6'; this.style.transform='translateY(0)'">Import Ảnh Thuế</span>
+              </span>
+              <span style="margin-left: auto; cursor: pointer; color: #4ade80; font-size: 13px; font-weight: 800; text-decoration: underline; text-underline-offset: 3px; transition: all 0.2s; text-shadow: 0 0 6px rgba(74, 222, 128, 0.4);" @click="showCustomerDetailModal = true" onmouseover="this.style.color='#bbf7d0'; this.style.textShadow='0 0 10px rgba(187, 247, 208, 0.8)'" onmouseout="this.style.color='#4ade80'; this.style.textShadow='0 0 6px rgba(74, 222, 128, 0.4)'">Xem chi tiết ›</span>
+            </div>
+            <div class="totals-body" style="padding: 8px;">
+              <!-- Row 1: MST + SĐT -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px;">
+                <div>
+                  <div style="font-size: 11px; color: #e2e8f0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; padding-left: 2px; text-align: left;">MST</div>
+                  <div :class="{ 'input-loading': customersState === 'loading', 'input-loaded': customersState === 'loaded', 'input-ready': customersState === 'ready' }">
+                  <input v-model="khach.MST" class="cell-input" placeholder="—" list="dl-mst-modal" style="width: 100%; background: rgba(15,23,42,0.7); border: 1px solid #1e3a2f; border-radius: 8px; padding: 5px 8px; color: #10b981; font-size: 13px; font-weight: 600; outline: none; box-sizing: border-box;" @change="onMSTChange" />
+                  </div>
+                  <datalist id="dl-mst-modal"><option v-for="k in customers" :key="'mst_'+k.Ma_khach_hang" :value="k.MST" /></datalist>
+                </div>
+                <div>
+                  <div style="font-size: 11px; color: #e2e8f0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; padding-left: 2px; text-align: left;">SĐT</div>
+                  <input v-model="khach.So_dien_thoai_ca_nhan" class="cell-input" placeholder="—" style="width: 100%; background: rgba(15,23,42,0.7); border: 1px solid #1e3a2f; border-radius: 8px; padding: 5px 8px; color: #10b981; font-size: 13px; font-weight: 600; outline: none; box-sizing: border-box;" />
+                </div>
+              </div>
+              <!-- Row 2: Công ty -->
+              <div style="margin-bottom: 6px;">
+                <div style="font-size: 11px; color: #e2e8f0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; padding-left: 2px; text-align: left;">Công ty</div>
+                <div :class="{ 'input-loading': customersState === 'loading', 'input-loaded': customersState === 'loaded', 'input-ready': customersState === 'ready' }">
+                <input v-model="khach.Ten_cong_ty" class="cell-input" placeholder="—" list="dl-ten-cong-ty-modal" style="width: 100%; background: rgba(15,23,42,0.7); border: 1px solid #1e3a2f; border-radius: 8px; padding: 5px 8px; color: #10b981; font-size: 13px; font-weight: 600; outline: none; box-sizing: border-box;" @change="onTenCongTyChange" />
+                </div>
+                <datalist id="dl-ten-cong-ty-modal"><option v-for="k in customers" :key="'cty_'+k.Ma_khach_hang" :value="k.Ten_cong_ty" /></datalist>
+              </div>
+              <!-- Row 3: Người nhận -->
+              <div style="margin-bottom: 6px;">
+                <div style="font-size: 11px; color: #e2e8f0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; padding-left: 2px; text-align: left;">Người nhận</div>
+                <div :class="{ 'input-loading': customersState === 'loading', 'input-loaded': customersState === 'loaded', 'input-ready': customersState === 'ready' }">
+                <input v-model="khach.Ten_khach_hang" class="cell-input" placeholder="—" list="dl-nguoi-nhan-main" style="width: 100%; background: rgba(15,23,42,0.7); border: 1px solid #1e3a2f; border-radius: 8px; padding: 5px 8px; color: #10b981; font-size: 13px; font-weight: 600; outline: none; box-sizing: border-box;" @change="onTenKhachHangChange" />
+                </div>
+                <datalist id="dl-nguoi-nhan-main"><option v-for="k in customers" :key="'nn_'+k.Ma_khach_hang" :value="k.Ten_khach_hang" /></datalist>
+              </div>
+              <!-- Row 4: Địa chỉ -->
+              <div>
+                <div style="font-size: 11px; color: #e2e8f0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; padding-left: 2px; text-align: left;">Địa chỉ</div>
+                <input v-model="khach.Dia_chi_cong_ty" class="cell-input" placeholder="—" style="width: 100%; background: rgba(15,23,42,0.7); border: 1px solid #1e3a2f; border-radius: 8px; padding: 5px 8px; color: #10b981; font-size: 13px; font-weight: 600; outline: none; box-sizing: border-box;" />
+              </div>
+            </div>
+          </div>
+
+          <!-- KHỐI 1 : CHIẾT KHẤU & CHÊNH LỆCH -->
+          <div class="totals-box step-summary">
+            <div class="totals-header">
+              <span class="totals-icon"><i class="lucide-trending-down"></i></span>
+              <span>Chiết khấu & Chênh lệch</span>
+            </div>
+            <div class="totals-body">
+              <div class="totals-row">
+                <span class="totals-label" style="display: flex; align-items: center; gap: 6px;">
+                  Chiết khấu tổng trước thuế
+                  <FormattedInput v-model="chietKhauTruocThuePct" placeholder="0" style="width: 48px; padding: 2px 4px; height: 24px; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; font-weight: 600; color: #ef4444; font-size: 13px; background: #fff;" /> %
+                </span>
+                <span class="totals-value">
+                  {{ formatVND(chietKhauTruocThue) }}
+                  <span class="history-icon" @click="openHistory('chietKhauTruocThue', 'Chiết khấu tổng trước thuế')"><i class="ri-history-line" style="font-size: 14px;"></i></span>
+                </span>
+              </div>
+              <div class="totals-row">
+                <span class="totals-label" style="display: flex; align-items: center; gap: 6px;">
+                  Thuế chênh lệch giá
+                  <FormattedInput v-model="thueChenhLechPct" placeholder="0" style="width: 48px; padding: 2px 4px; height: 24px; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; font-weight: 600; color: #ef4444; font-size: 13px; background: #fff;" /> %
+                </span>
+                <span class="totals-value">
+                  {{ formatVND(thueChenhLech) }}
+                  <span class="history-icon" @click="openHistory('thueChenhLech', 'Thuế chênh lệch giá')"><i class="ri-history-line" style="font-size: 14px;"></i></span>
+                </span>
+              </div>
+              <div class="totals-row">
+                <span class="totals-label" style="display: flex; align-items: center; gap: 8px;">
+                  Chênh lệch giá
+                  <button class="util-btn small inline-adjust" style="padding: 2px 6px; font-size: 11px; white-space: nowrap; border-radius: 4px; background: rgba(16,185,129,0.1); color: #10b981; border: 1px solid rgba(16,185,129,0.3);" @click="openAdjustPrice('all', '', 'Tổng chênh lệch giá', 'total_chenh_lech')" title="Điều chỉnh tổng chênh lệch">
+                    <i class="ri-arrow-up-down-fill"></i>
+                  </button>
+                </span>
+                <span class="totals-value" :style="{ color: chenhLechGia >= 0 ? '#10b981' : '#ef4444' }">
+                  {{ chenhLechGia >= 0 ? '+' : '' }}{{ formatVND(chenhLechGia) }}
+                  <span class="history-icon" @click="openHistory('chenhLechGia', 'Chênh lệch giá')"><i class="ri-history-line" style="font-size: 14px;"></i></span>
+                </span>
+              </div>
+              <div class="totals-row">
+                <span class="totals-label">Còn lại</span>
+                <span class="totals-value">
+                  {{ formatVND(conLai) }}
+                  <span class="history-icon" @click="openHistory('conLai', 'Còn lại')"><i class="ri-history-line" style="font-size: 14px;"></i></span>
+                </span>
+              </div>
+              <div class="totals-row totals-highlight" style="margin-top: 8px; border-top: 1px dashed #cbd5e1; padding-top: 8px;">
+                <span class="totals-label">Tổng Chiết khấu</span>
+                <span class="totals-value">
+                  {{ formatVND(tongChietKhau) }}
+                  <span class="history-icon" @click="openHistory('tongChietKhau', 'Tổng Chiết khấu')"><i class="ri-history-line" style="font-size: 14px;"></i></span>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- KHỐI 2 : TỔNG HỢP TÀI CHÍNH -->
+          <div class="totals-box step-summary">
+            <div class="totals-header totals-header-primary">
+              <span class="totals-icon"><i class="lucide-wallet"></i></span>
+              <span>Tổng hợp tài chính</span>
+            </div>
+            <div class="totals-body">
+              <div class="totals-row">
+                <span class="totals-label">Tổng giá thực tế</span>
+                <span class="totals-value">
+                  {{ formatVND(tongGiaThucTe) }}
+                  <span class="history-icon" @click="openHistory('tongGiaThucTe', 'Tổng giá thực tế')"><i class="ri-history-line" style="font-size: 14px;"></i></span>
+                </span>
+              </div>
+              <div class="totals-row">
+                <span class="totals-label" style="display: flex; align-items: center; gap: 6px;">
+                  Tổng trước thuế ( HĐ)
+                  <button class="util-btn small inline-adjust" style="padding: 2px 6px; font-size: 11px;" @click="openAdjustPrice('all', '', 'Toàn bộ báo giá')">
+                    <i class="ri-arrow-up-down-fill"></i>
+                  </button>
+                </span>
+                <span class="totals-value">
+                  {{ formatVND(totals.truoc) }}
+                  <span class="history-icon" @click="openHistory('truoc', 'Tổng trước thuế ( HĐ)')"><i class="ri-history-line" style="font-size: 14px;"></i></span>
+                </span>
+              </div>
+              <div class="totals-row">
+                <span class="totals-label">Tổng VAT</span>
+                <span class="totals-value text-warn">
+                  {{ formatVND(totals.vat) }}
+                  <span class="history-icon" @click="openHistory('vat', 'Tổng VAT')"><i class="ri-history-line" style="font-size: 14px;"></i></span>
+                </span>
+              </div>
+              <div class="totals-row totals-highlight-blue">
+                <span class="totals-label">Tổng sau thuế</span>
+                <span class="totals-value">
+                  {{ formatVND(totals.sau) }}
+                  <span class="history-icon" @click="openHistory('sau', 'Tổng sau thuế')"><i class="ri-history-line" style="font-size: 14px;"></i></span>
+                </span>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- KHỐI 3 : THAO TÁC -->
+          <div class="totals-box step-actions" style="border: 1px solid rgba(255,255,255,0.08); background: rgba(15,23,42,0.6); box-shadow: 0 8px 32px rgba(0,0,0,0.2);">
+            <div class="totals-header" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+              <span class="totals-icon" style="color: #38bdf8;"><i class="lucide-settings"></i></span>
+              <span style="font-weight: 700; color: #f8fafc; letter-spacing: 0.5px;">THAO TÁC</span>
+            </div>
+            <div class="totals-body" style="padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <label style="font-size: 11px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px;">Content of Contract / PO</label>
+                  <textarea v-model="contentOfContractPO" placeholder="Nội dung Contract/PO..." style="width: 100%; min-height: 44px; padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); font-size: 12.5px; font-family: inherit; resize: vertical; background: rgba(0,0,0,0.2); color: #f8fafc; transition: all 0.2s;" onfocus="this.style.borderColor='#f59e0b'; this.style.boxShadow='0 0 0 3px rgba(245,158,11,0.1)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'; this.style.boxShadow='none'" />
+                </div>
+                
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <label style="font-size: 11px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px;">Ghi chú hợp đồng</label>
+                  <textarea v-model="ghiChuHopDong" placeholder="Nhập ghi chú..." style="width: 100%; min-height: 44px; padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); font-size: 12.5px; font-family: inherit; resize: vertical; background: rgba(0,0,0,0.2); color: #f8fafc; transition: all 0.2s;" onfocus="this.style.borderColor='#38bdf8'; this.style.boxShadow='0 0 0 3px rgba(56,189,248,0.1)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'; this.style.boxShadow='none'" />
+                </div>
+              </div>
+
+              <div class="action-buttons-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <button class="action-btn" @click="showPreviewRawModal = true" style="margin: 0; padding: 10px 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; flex-direction: row; justify-content: center; min-height: 38px; background: #2563eb; border: none; color: #ffffff;">
+                  <i class="lucide-eye" style="margin-right: 6px; font-size: 16px;"></i> Xem báo giá gốc
+                </button>
+                <button class="action-btn" @click="openGlobalHistory" style="margin: 0; padding: 10px 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; flex-direction: row; justify-content: center; min-height: 38px; background: #9333ea; border: none; color: #ffffff;">
+                  <i class="lucide-history" style="margin-right: 6px; font-size: 16px;"></i> Lịch sử
+                </button>
+                <button class="action-btn" @click="showLoadInfoModal = true" style="margin: 0; padding: 10px 8px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; flex-direction: row; justify-content: center; min-height: 38px; background: #eab308; border: none; color: #1e3a8a;">
+                  <i class="lucide-download" style="margin-right: 6px; font-size: 16px;"></i> Nạp dữ liệu
+                </button>
+                <button class="action-btn" @click="showExportInfoModal = true" style="margin: 0; padding: 10px 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; flex-direction: row; justify-content: center; min-height: 38px; background: #16a34a; border: none; color: #ffffff;">
+                  <i class="lucide-upload" style="margin-right: 6px; font-size: 16px;"></i> Xuất dữ liệu
+                </button>
+
+                <input type="file" ref="importTemplateFileInput" accept=".xlsx, .xls, .csv" style="display: none" @change="onImportTemplateFileChange" />
+                <button class="action-btn" @click="triggerImportTemplateFile" style="grid-column: 1 / -1; margin: 0; padding: 10px 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; flex-direction: row; justify-content: center; min-height: 38px; background: #0ea5e9; border: none; color: #ffffff;">
+                  <i class="lucide-file-input" style="margin-right: 6px; font-size: 16px;"></i> Import Báo Giá
+                </button>
+
+                <input type="file" ref="importMuaHangFileInput" accept=".xlsx, .xls, .csv" style="display: none" @change="onImportMuaHangFileChange" />
+                <button class="action-btn" @click="triggerImportMuaHangFile" style="grid-column: 1 / -1; margin: 0; padding: 10px 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; flex-direction: row; justify-content: center; min-height: 38px; background: #f59e0b; border: none; color: #ffffff;">
+                  <i class="lucide-file-input" style="margin-right: 6px; font-size: 16px;"></i> Import Mua Hàng
+                </button>
+
+                <button class="action-btn action-save" :disabled="saving || !hasUnsavedChanges()" @click="showSaveModal = true" style="grid-column: 1 / -1; margin: 0; padding: 14px; font-size: 14px; font-weight: 800; flex-direction: row; justify-content: center; min-height: 46px; letter-spacing: 1px; text-transform: uppercase; background: #dc2626 !important; border: none; color: #ffffff !important; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);">
+                  <i class="lucide-save" style="margin-right: 8px; font-size: 18px;"></i> {{ saving ? 'Đang lưu...' : 'Lưu báo giá' }}
+                </button>
+
+                <button v-if="loadedPipelineExtraData" class="util-btn" @click="showPipelineModal = true" style="grid-column: 1 / -1; margin: 0; padding: 8px; font-size: 11.5px; justify-content: center; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); color: #34d399; border-radius: 8px; display: flex; align-items: center; cursor: pointer; min-height: 36px;">
+                  <i class="lucide-eye" style="margin-right: 6px;"></i> Pipeline đã load
+                </button>
+              </div>
+              <p v-if="saveMsg" class="save-msg" style="margin: 0; font-size: 11px; color: #10b981; text-align: center;">{{ saveMsg }}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ================== MODAL: TẢI ẢNH THUẾ LÊN ================== -->
+    <div v-if="showUploadTaxModal" class="modal vip-modal-overlay" @click.self="showUploadTaxModal = false" style="z-index: 10001;" @dragover="onTaxDragOver" @drop="onTaxDrop">
+      <div class="modal-content vip-modal" style="max-width: 600px; padding: 0; background: #ffffff; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+        <div class="modal-header" style="background: #f8fafc; padding: 16px 24px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; border-top-left-radius: 8px; border-top-right-radius: 8px;">
+          <div style="color: #1e293b; font-weight: 700; font-size: 16px;">Quét Dữ Liệu Từ Ảnh Thuế (OCR)</div>
+          <button class="x" @click="showUploadTaxModal = false" style="color: #64748b; background: transparent; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; font-size: 18px;">✕</button>
+        </div>
+        <div class="modal-body" style="padding: 24px;">
+          <p style="color: #64748b; font-size: 13px; margin-bottom: 16px;">Tải lên hình ảnh thông tin thuế, hệ thống sẽ tự động quét thông tin Mã số thuế, Tên công ty và Địa chỉ.</p>
+          <div style="border: 2px dashed #cbd5e1; border-radius: 8px; padding: 40px 20px; text-align: center; cursor: pointer; background: #f8fafc; transition: all 0.2s;" @click="taxImageInput?.click()" onmouseover="this.style.borderColor='#3b82f6'; this.style.background='#eff6ff'" onmouseout="this.style.borderColor='#cbd5e1'; this.style.background='#f8fafc'">
+            <i class="lucide-image" style="font-size: 48px; color: #94a3b8; margin-bottom: 12px; display: inline-block;"></i>
+            <div style="color: #64748b; font-size: 14px;">Kéo thả ảnh hoặc paste (Ctrl+V) vào đây, hoặc <span style="color: #3b82f6; font-weight: 700;">Nhấn để chọn ảnh</span></div>
+            <input type="file" ref="taxImageInput" accept="image/*" style="display: none" @change="onTaxImageChange" />
+          </div>
+        </div>
+        <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px; background: #ffffff; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;">
+          <button @click="showUploadTaxModal = false" style="padding: 8px 16px; border-radius: 6px; font-weight: 600; font-size: 13px; color: #475569; background: #ffffff; border: 1px solid #cbd5e1; cursor: pointer; transition: all 0.2s;">Hủy</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================== MODAL: IMPORT ẢNH THUẾ ================== -->
+    <div v-if="showTaxModal" class="modal vip-modal-overlay" @click.self="closeTaxModal" style="z-index: 10002;">
+      <div class="modal-content vip-modal" style="max-width: 1100px; padding: 0; background: #0b1118; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid #1e293b;">
+        <div class="modal-header" style="background: linear-gradient(135deg, #1e293b, #0f172a); padding: 16px 24px; border-bottom: 1px solid #334155; display: flex; align-items: center; justify-content: space-between; border-top-left-radius: 12px; border-top-right-radius: 12px;">
+          <div style="color: #fff; text-transform: uppercase; font-weight: 900; font-size: 16px; letter-spacing: 0.5px;"><i class="lucide-scan" style="margin-right: 8px;"></i>XÁC NHẬN THÔNG TIN THUẾ</div>
+          <button class="x" @click="closeTaxModal" style="color: #fff; background: rgba(0,0,0,0.15); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;">✕</button>
+        </div>
+        <div class="modal-body" style="padding: 24px; max-height: calc(100vh - 120px); overflow-y: auto; display: flex; gap: 24px;">
+          <div style="flex: 0 0 420px;">
+            <div style="margin-bottom: 20px;">
+              <label style="font-size: 12px; text-transform: uppercase; color: #94a3b8; font-weight: 700; margin-bottom: 8px; display: block;">Mã số thuế</label>
+              <input v-model="taxInfo.mst" class="cell-input" style="width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px 16px; color: #fff; font-size: 15px;" />
+            </div>
+            <div style="margin-bottom: 20px;">
+              <label style="font-size: 12px; text-transform: uppercase; color: #94a3b8; font-weight: 700; margin-bottom: 8px; display: block;">Tên công ty (Tiếng Việt)</label>
+              <textarea v-model="taxInfo.tenCongTy" class="cell-input" style="width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px 16px; color: #fff; font-size: 15px; min-height: 80px;"></textarea>
+            </div>
+            <div style="margin-bottom: 20px;">
+              <label style="font-size: 12px; text-transform: uppercase; color: #38bdf8; font-weight: 700; margin-bottom: 8px; display: block;">Tên công ty (Tiếng Anh - Tự động dịch)</label>
+              <textarea v-model="taxInfo.tenCongTyEn" class="cell-input" style="width: 100%; background: rgba(14, 165, 233, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 12px 16px; color: #38bdf8; font-size: 15px; min-height: 80px;"></textarea>
+            </div>
+            <div style="margin-bottom: 20px;">
+              <label style="font-size: 12px; text-transform: uppercase; color: #94a3b8; font-weight: 700; margin-bottom: 8px; display: block;">Địa chỉ công ty</label>
+              <textarea v-model="taxInfo.diaChi" class="cell-input" style="width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px 16px; color: #fff; font-size: 15px; min-height: 80px;"></textarea>
+            </div>
+          </div>
+          <div style="flex: 1; border-left: 1px solid #334155; padding-left: 24px; display: flex; flex-direction: column;">
+            <label style="font-size: 12px; text-transform: uppercase; color: #94a3b8; font-weight: 700; margin-bottom: 8px; display: block;">Ảnh Thuế Đã Tải Lên (Nhấn để phóng to)</label>
+            <div style="flex: 1; border: 1px dashed #475569; border-radius: 8px; background: #0f172a; display: flex; align-items: center; justify-content: center; overflow: hidden; min-height: 300px; cursor: pointer;" @click="showTaxImageFullScreen = true" onmouseover="this.style.borderColor='#3b82f6'" onmouseout="this.style.borderColor='#475569'">
+              <img v-if="taxPreviewUrl" :src="taxPreviewUrl" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid #334155; display: flex; justify-content: flex-end; gap: 12px; background: #1e293b; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
+          <button @click="closeTaxModal" style="padding: 12px 24px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #fff; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); cursor: pointer; transition: all 0.25s;">Hủy</button>
+          <button @click="confirmTaxInfo" style="padding: 12px 24px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #fff; background: #3b82f6; border: none; cursor: pointer; transition: all 0.25s;">Đồng ý & Cập nhật</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================== MODAL: XEM ẢNH THUẾ TO ================== -->
+    <div v-if="showTaxImageFullScreen" class="modal vip-modal-overlay" @click.self="showTaxImageFullScreen = false" style="z-index: 10003; background: rgba(0,0,0,0.85);">
+      <div style="position: relative; max-width: 90vw; max-height: 90vh; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+        <button @click="showTaxImageFullScreen = false" style="position: absolute; top: -40px; right: 0; background: transparent; color: #fff; font-size: 24px; border: none; cursor: pointer;">✕</button>
+        <img v-if="taxPreviewUrl" :src="taxPreviewUrl" style="max-width: 100%; max-height: 90vh; object-fit: contain; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.8);" />
+      </div>
+    </div>
+
+    <!-- ================== MODAL: THÔNG TIN KHÁCH HÀNG ================== -->
+    <div v-if="showCustomerDetailModal" class="modal vip-modal-overlay" @click.self="showCustomerDetailModal = false">
+      <div class="modal-card modal-wide vip-modal-card" style="width: 1060px; max-width: 95vw;">
+        <div class="modal-head" style="background: linear-gradient(135deg, #34d399, #10b981) !important; justify-content: center; position: relative; padding: 16px 24px; border-bottom: none; border-radius: 12px 12px 0 0;">
+          <div style="color: #fff; text-transform: uppercase; font-weight: 900; font-size: 16px; letter-spacing: 0.5px;">CHI TIẾT KHÁCH HÀNG</div>
+          <button class="x" @click="showCustomerDetailModal = false" style="color: #fff; position: absolute; right: 18px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.15); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;">✕</button>
+        </div>
+        <div style="padding: 24px; overflow-y: auto; max-height: calc(95vh - 140px);">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <!-- LEFT: KHÁCH HÀNG -->
+          <div style="background: rgba(16,185,129,0.04); border: 1px solid rgba(16,185,129,0.12); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+            <div style="display: flex; justify-content: flex-start; align-items: center; gap: 10px; margin-bottom: 2px;">
+              <div style="font-size: 12px; text-transform: uppercase; font-weight: 800; color: #34d399; letter-spacing: 1px; white-space: nowrap;">KHÁCH HÀNG</div>
+              <button @click="resetCustomer" style="padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 800; text-transform: uppercase; background: #ef4444; color: #ffffff; border: none; cursor: pointer; white-space: nowrap; width: fit-content; flex-shrink: 0; line-height: 1; box-shadow: 0 2px 4px rgba(239,68,68,0.3);">Reset</button>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Mã KH</label>
+                <input v-model="maKHInput" list="dl-ma-kh-modal-2" placeholder="Mã KH" @change="fillCustomerByMa(maKHInput)" @blur="onBlurMaKH" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+                <datalist id="dl-ma-kh-modal-2"><option v-for="k in customers" :key="k.Ma_khach_hang" :value="k.Ma_khach_hang" /></datalist>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Tên người liên hệ</label>
+                <input v-model="tenKHInput" list="dl-ten-kh-modal-2" placeholder="Tên KH" @change="fillCustomerByTen(tenKHInput)" @blur="onBlurTenKH" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+                <datalist id="dl-ten-kh-modal-2"><option v-for="k in customers" :key="k.Ma_khach_hang + '_' + k.Ten_khach_hang" :value="k.Ten_khach_hang" /></datalist>
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Email</label>
+                <input v-model="khach.Email_ca_nhan" placeholder="Email" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">SĐT</label>
+                <input v-model="khach.So_dien_thoai_ca_nhan" placeholder="SĐT" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Trạng thái</label>
+                <input v-model="khach.Trang_thai" placeholder="Trạng thái" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Lợi nhuận</label>
+                <input v-model="khach.Tong_loi_nhuan" placeholder="Lợi nhuận" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+              </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 3px;">
+              <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Ghi chú</label>
+              <input v-model="khach.Ghi_chu" placeholder="Ghi chú" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+            </div>
+          </div>
+          <!-- ═══ GROUP 2: THÔNG TIN CÔNG TY ═══ -->
+          <!-- RIGHT: CÔNG TY -->
+          <div style="background: rgba(56,189,248,0.04); border: 1px solid rgba(56,189,248,0.12); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+            <div style="font-size: 12px; text-transform: uppercase; font-weight: 800; color: #38bdf8; letter-spacing: 1px;">THÔNG TIN CÔNG TY</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Tên công ty</label>
+                <input v-model="khach.Ten_cong_ty" list="dl-cty-modal-2" placeholder="Tên CT" @change="fillCustomerByCongTy(khach.Ten_cong_ty)" @blur="onBlurCongTy" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+                <datalist id="dl-cty-modal-2"><option v-for="k in [...new Set(customers.filter(c => c.Ten_cong_ty).map(c => c.Ten_cong_ty))]" :key="k" :value="k" /></datalist>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">MST</label>
+                <input v-model="khach.MST" list="dl-mst-modal-2" @change="onMSTChange" placeholder="Mã số thuế" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+                <datalist id="dl-mst-modal-2"><option v-for="k in customers" :key="'mst_2_'+k.Ma_khach_hang" :value="k.MST" /></datalist>
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">SĐT công ty</label>
+                <input v-model="khach.So_dien_thoai_cong_ty" placeholder="SĐT" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Email</label>
+                <input v-model="khach.Email_cong_ty" placeholder="Email CT" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Địa chỉ</label>
+                <input v-model="khach.Dia_chi_cong_ty" placeholder="Địa chỉ" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Website</label>
+                <input v-model="khach.Website_cong_ty" placeholder="Website" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">COMPANY</label>
+                <input v-model="khach.COMPANY" placeholder="COMPANY" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">TEL</label>
+                <input v-model="khach.TEL" placeholder="TEL" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Fax</label>
+                <input v-model="khach.So_fax_cong_ty" placeholder="Fax" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+              </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 3px;">
+              <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">ADDRESS</label>
+              <input v-model="khach.ADDRESS" placeholder="ADDRESS" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+            </div>
+          </div>
+          </div>
+          <!-- KH PHỤ — full width -->
+          <div style="margin-top: 16px; background: rgba(148,163,184,0.04); border: 1px solid rgba(148,163,184,0.1); border-radius: 10px; padding: 14px 16px;">
+            <div style="font-size: 10px; text-transform: uppercase; font-weight: 800; color: #ffffff; letter-spacing: 1px; margin-bottom: 10px;">KHÁCH HÀNG PHỤ</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Tên</label>
+                <input v-model="khach.Ten_khach_hang_phu" placeholder="Tên KH phụ" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">SĐT</label>
+                <input v-model="khach.So_dien_thoai_ca_nhan_phu" placeholder="SĐT phụ" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Email</label>
+                <input v-model="khach.Email_ca_nhan_phu" placeholder="Email phụ" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- ACTIONS -->
+        <div style="padding: 16px 24px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: flex-end; gap: 12px;">
+          <button v-if="showSaveToDBBtn" @click="saveCustomerToDB" :disabled="savingCustomer" style="padding: 12px 20px; border-radius: 8px; font-weight: 700; font-size: 14px; color: #fff; background: linear-gradient(135deg, #10b981, #059669); border: none; cursor: pointer; transition: all 0.25s; letter-spacing: 0.3px; box-shadow: 0 2px 8px rgba(16,185,129,0.25); display: flex; align-items: center; gap: 6px;" onmouseover="this.style.boxShadow='0 4px 16px rgba(16,185,129,0.4)'; this.style.transform='translateY(-1px)'" onmouseout="this.style.boxShadow='0 2px 8px rgba(16,185,129,0.25)'; this.style.transform='translateY(0)'">
+            <span v-if="savingCustomer">⏳ Đang lưu...</span>
+            <span v-else>💾 THÊM VÀO DB</span>
+          </button>
+          <button @click="showCustomerDetailModal = false" style="padding: 12px 20px; border-radius: 8px; font-weight: 700; font-size: 14px; color: #fff; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); cursor: pointer; transition: all 0.25s; letter-spacing: 0.3px;">Đóng</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================== MODAL: XUẤT THÔNG TIN ================== -->
+    <div v-if="showExportInfoModal" class="modal" @click.self="showExportInfoModal = false">
+      <div class="modal-card export-vip-modal">
+        <div class="export-vip-head">
+          <div class="export-vip-head-glow"></div>
+          <div class="export-vip-title">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m8 17 4 4 4-4"/></svg>
+            Xuất dữ liệu
+          </div>
+          <button class="export-vip-close" @click="showExportInfoModal = false">&times;</button>
+        </div>
+
+        <div class="export-vip-body">
+          <!-- CỘT 1: Upload Template -->
+          <div class="export-vip-col export-vip-col-upload">
+            <div class="export-vip-col-label">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+              Template tùy chỉnh
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 12px;">
+              <!-- Danh sách các template đã upload -->
+              <div v-for="tpl in customTemplates" :key="tpl.id" class="export-tpl-loaded" style="margin-bottom: 0; display: flex; flex-direction: column;">
+                <div class="export-tpl-loaded-icon">
+                  <img src="/excel-icon.png" alt="Excel" style="width: 32px; height: 32px;" />
+                </div>
+                <div class="export-tpl-loaded-name" style="text-align: center; text-decoration: underline; cursor: pointer; margin-bottom: 6px;" @click="downloadCustomTemplate(tpl)">{{ tpl.name }}</div>
+
+                <textarea v-model="tpl.content" @change="saveCustomTemplates" placeholder="Nội dung lưu kèm..." style="width: 100%; min-height: 50px; font-size: 11px; padding: 6px; border-radius: 6px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 8px; resize: vertical;"></textarea>
+
+                <div class="export-tpl-actions" style="margin-top: auto; width: 100%; display: flex; gap: 8px;">
+                  <button @click="showExportInfoModal = false; openExportExcelModal(tpl.data, tpl.mappingConfig)" class="export-tpl-change-btn" style="flex: 1; padding: 6px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <b>Tải về</b>
+                  </button>
+                  <button @click="openTemplateConfigModal(tpl)" class="export-tpl-change-btn" style="flex: 1; padding: 6px; border-color: #3b82f6; color: #3b82f6;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    <b>Cấu hình</b>
+                  </button>
+                  <button @click="removeCustomTemplate(tpl.id)" class="export-tpl-remove-btn" style="flex: 1; justify-content: center; padding: 8px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                    Xoá
+                  </button>
+                </div>
+              </div>
+
+              <!-- Upload thêm template mới -->
+              <label class="export-tpl-dropzone" style="margin-top: 0; padding: 20px 15px; height: 100%; min-height: 200px;">
+                <input type="file" multiple accept=".xlsx" @change="handleCustomTemplateUpload" style="display: none;" />
+                <div class="export-tpl-dropzone-icon" style="margin-bottom: 5px;">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                </div>
+                <div class="export-tpl-dropzone-text" style="font-size: 13px; text-align: center;">Tải lên template <b>.xlsx</b><br><span style="font-size: 11px; opacity: 0.7;">(Hỗ trợ chọn nhiều)</span></div>
+              </label>
+            </div>
+
+            <div class="export-tpl-note">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+              Template cần chứa header: STT, Tên hàng, Đơn giá...
+            </div>
+          </div>
+
+          <!-- CỘT 2: Các nút xuất -->
+          <div class="export-vip-col export-vip-col-actions">
+            <div class="export-vip-col-label">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M8 5H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-4"/></svg>
+              Xuất file
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+              <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                <button class="export-vip-btn export-vip-btn-excel" @click="showExportInfoModal = false; openExportExcelModal()" style="margin-bottom: 0 !important; flex: 1;">
+                  <div class="export-vip-btn-icon">
+                    <img src="/excel-icon.png" alt="Excel" style="width: 26px; height: 26px;" />
+                  </div>
+                  <div class="export-vip-btn-text">
+                    <span class="export-vip-btn-label">Xuất Excel</span>
+                    <span class="export-vip-btn-desc">Báo giá chuẩn</span>
+                  </div>
+                  <svg class="export-vip-btn-arrow" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </button>
+                <button @click="openDefaultConfigModal" class="export-vip-btn export-vip-btn-excel" style="margin-bottom: 0 !important; flex: 0 0 auto; width: 68px !important; padding: 0 !important; display: flex !important; justify-content: center !important; align-items: center !important; gap: 0 !important;" title="Cấu hình Data Mapping">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #34d399;"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+
+              <button class="export-vip-btn export-vip-btn-agency" @click="showExportInfoModal = false; exportAgencyExcel()">
+                <div class="export-vip-btn-icon">
+                  <img src="/excel-icon.png" alt="Excel" style="width: 26px; height: 26px;" />
+                </div>
+                <div class="export-vip-btn-text">
+                  <span class="export-vip-btn-label">Excel Đại Lý</span>
+                  <span class="export-vip-btn-desc">Báo giá đại lý</span>
+                </div>
+                <svg class="export-vip-btn-arrow" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              </button>
+
+              <button class="export-vip-btn export-vip-btn-pipeline" @click="showExportInfoModal = false; openPipelineSelectCustomerModal()">
+                <div class="export-vip-btn-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="3"/><circle cx="18" cy="12" r="3"/><line x1="9" y1="12" x2="15" y2="12"/></svg>
+                </div>
+                <div class="export-vip-btn-text">
+                  <span class="export-vip-btn-label">Xuất Pipeline</span>
+                  <span class="export-vip-btn-desc">Gửi qua Pipeline</span>
+                </div>
+                <svg class="export-vip-btn-arrow" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+              </button>
+
+              <button v-if="false" class="export-vip-btn export-vip-btn-image" @click="showExportInfoModal = false; openImageKitModal()">
+                <div class="export-vip-btn-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                </div>
+                <div class="export-vip-btn-text">
+                  <span class="export-vip-btn-label">Xuất Ảnh</span>
+                  <span class="export-vip-btn-desc">Ảnh bảng báo giá</span>
+                </div>
+                <svg class="export-vip-btn-arrow" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+              </button>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================== CONTAINER XUẤT ẢNH ================== -->
+    <div v-show="isExportingImage || showImageKitModal" ref="exportImageContainer" :style="{ position: 'absolute', top: '-10000px', left: '-10000px', background: '#fff', width: '1100px', padding: kitOptions.padding + 'px', zIndex: -9999, color: '#000', fontFamily: 'Arial, sans-serif' }">
+      
+      <!-- PHẦN 1: LOGO -->
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 5px;">
+        <div style="width: 70%; transform-origin: bottom left;" :style="{ transform: `scale(${kitOptions.logoScale / 100})` }"><img src="/logo1.png" style="max-width: 100%; height: auto;" /></div>
+        <div style="width: 25%; text-align: right; transform-origin: bottom right;" :style="{ transform: `scale(${kitOptions.logoScale / 100})` }"><img src="/logo2.png" style="max-width: 100%; height: auto;" /></div>
+      </div>
+      <div style="display: flex; height: 3px; width: 100%; margin-bottom: 20px;">
+        <div style="width: 15%; background: #0070c0;"></div>
+        <div style="width: 85%; background: #ed7d31;"></div>
+      </div>
+
+      <!-- PHẦN 2: THÔNG TIN KHÁCH HÀNG -->
+      <table style="width: 100%; border: none; margin-bottom: 25px; border-collapse: collapse; color: #000;" :style="{ fontSize: (kitOptions.fontSize + 2) + 'px' }">
+        <tr>
+          <td style="padding: 4px 0;"><strong>Kính gởi: <span style="text-transform: uppercase;">{{ khach.Ten_cong_ty }}</span></strong></td>
+          <td style="text-align: right; font-style: italic; padding: 4px 0;">Ngày : {{ new Date().toLocaleDateString('vi-VN', {day: '2-digit', month: '2-digit', year: 'numeric'}) }}</td>
+        </tr>
+        <tr>
+          <td colspan="2" style="font-style: italic; padding: 4px 0;">Địa chỉ: {{ khach.Dia_chi_cong_ty || khach.ADDRESS || '' }}</td>
+        </tr>
+        <tr>
+          <td colspan="2" style="font-style: italic; padding: 4px 0;">Người nhận: {{ khach.Ten_khach_hang }}</td>
+        </tr>
+      </table>
+
+      <!-- PHẦN 3: BẢNG BÁO GIÁ -->
+      <div style="text-align: center; margin-bottom: 8px;">
+        <h2 style="color: #0000ff; font-weight: bold; margin: 0;" :style="{ fontSize: (kitOptions.fontSize + 5) + 'px' }">BẢNG BÁO GIÁ</h2>
+      </div>
+      <div style="margin-bottom: 8px;" :style="{ fontSize: kitOptions.fontSize + 'px' }">
+        Công ty Nam Trường Sơn trân trọng gởi đến Quý khách hàng bảng báo giá như sau:
+      </div>
+      
+      <table style="width: 100%; border-collapse: collapse; table-layout: auto; color: #000;" :style="{ fontSize: kitOptions.fontSize + 'px', marginBottom: kitOptions.tableMarginBottom + 'px' }">
+        <tbody>
+          <!-- Tiêu đề bảng: Dùng td thay vì th, và đặt trong tbody để tránh lỗi html2canvas -->
+          <tr style="background: #c6e0b4; font-weight: bold; text-align: center;">
+            <td v-for="(col, i) in excelMappingConfig" :key="'img_h' + i" style="border: 1px solid #000; padding: 6px 4px; color: #000;">
+              {{ col.header }}
+            </td>
+          </tr>
+          <tr v-for="r in quoteRowsWithSTT" :key="'img' + r.idx" :style="r.type === 'group' ? 'background: #ffff00; font-weight: bold;' : 'background: #fff;'">
+            <td v-for="(col, i) in excelMappingConfig" :key="'img_c' + col.field + i" :style="{ border: '1px solid #000', padding: '6px 4px', textAlign: r.type === 'group' ? (col.field === 'stt' ? 'center' : 'left') : (['stt', 'so_luong'].includes(col.field) ? 'center' : (['don_gia', 'don_gia_kh', 'truoc_thue', 'vat', 'sau_thue', 'gia_tieu_chuan', 'don_gia_nhap'].includes(col.field) ? 'right' : 'left')), whiteSpace: 'pre-wrap' }">
+              <template v-if="r.type === 'group'">
+                <template v-if="col.field === 'stt'">{{ r.roman }}</template>
+                <template v-else-if="i === 1">{{ String(r.title).toUpperCase() }}</template>
+              </template>
+              <template v-else>
+                {{ getPreviewCellValue(r, col.field) }}
+              </template>
+            </td>
+          </tr>
+          <tr v-if="quoteRowsWithSTT.length > 0" style="background: #ffff00; font-weight: bold;">
+            <td v-for="(col, i) in excelMappingConfig" :key="'imgt'+i" :style="{ border: '1px solid #000', padding: '8px 4px', textAlign: ['truoc_thue', 'vat', 'sau_thue'].includes(col.field) ? 'right' : 'center' }">
+              <template v-if="['truoc_thue', 'vat', 'sau_thue'].includes(col.field)">
+                {{ getPreviewCellTotal(col.field) }}
+              </template>
+              <template v-else-if="excelMappingConfig.slice(i+1).findIndex(c => ['truoc_thue', 'vat', 'sau_thue'].includes(c.field)) === 0">
+                TỔNG CỘNG + THUẾ
+              </template>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- PHẦN 4: ĐIỀU KHOẢN -->
+      <div style="margin-bottom: 40px; font-size: 14px; line-height: 1.4;">
+        <div v-html="editableTermContent"></div>
+      </div>
+
+      <!-- PHẦN 5: CHỮ KÝ & THÔNG TIN NTS -->
+      <table style="width: 100%; border: none; font-size: 14px; border-collapse: collapse;">
+        <tr>
+          <td style="font-weight: bold; vertical-align: top;">Trân Trọng,</td>
+          <td style="font-weight: bold; text-align: center; width: 200px; vertical-align: top;">Xác nhận đặt hàng</td>
+        </tr>
+        <tr>
+          <td style="height: 120px;"></td>
+          <td style="height: 120px;"></td>
+        </tr>
+        <tr>
+          <td colspan="2" style="color: #0000ff; font-weight: bold; padding-bottom: 4px;">
+            Lê Phi Sơn - 090 813 7488
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2">
+            <div style="display: flex; height: 2px; width: 350px; margin-bottom: 4px;">
+              <div style="background: #4b88cf; width: 60%;"></div>
+              <div style="background: #f48a53; width: 40%;"></div>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2" style="color: #0056b3; font-size: 13px; line-height: 1.4;">
+            <strong>NTS System Integration Corp.</strong><br>
+            Add: 20 Tang Bat Ho Street, Ward 11, Binh Thanh District, Ho Chi Minh City, VN<br>
+            T: (028) 3841 8080 | F: (028) 3841 5555 | E: <u style="cursor:pointer; color:#0000ff;">info@ntssi.vn</u> | W: <u style="cursor:pointer; color:#0000ff;">www.ntssi.vn</u>
+          </td>
+        </tr>
+      </table>
+
+    </div>
+
+    <!-- ================== MODAL: LOAD THÔNG TIN ================== -->
+    <div v-if="showLoadInfoModal" class="modal" @click.self="showLoadInfoModal = false">
+      <div class="modal-card" style="max-width: 400px;">
+        <div class="modal-head">
+          <h3><i class="lucide-download"></i> Chọn loại load dữ liệu</h3>
+          <button class="icon-btn" @click="showLoadInfoModal = false">&times;</button>
+        </div>
+        <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px; padding: 24px;">
+          <button class="action-btn action-danger" @click="showLoadInfoModal = false; openLoadInvoiceModal()" style="padding: 16px; font-size: 20px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; width: 100%; flex-direction: row; min-height: 64px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 12px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg> LOAD BÁO GIÁ
+          </button>
+          <button class="action-btn action-pipeline" @click="showLoadInfoModal = false; openLoadPipelineModal()" style="padding: 16px; font-size: 20px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; width: 100%; flex-direction: row; min-height: 64px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 12px;"><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="12" r="3"></circle><line x1="9" y1="12" x2="15" y2="12"></line></svg> LOAD PO-DXMH-DR-BÁO GIÁ
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================== MODAL: NHẬP TAY (FULL FIELDS) ================== -->
+    <div v-if="showManualModal" class="modal vip-modal-overlay" @click.self="showManualModal = false">
+      <div class="modal-card modal-wide vip-modal-card" style="width: 960px; max-width: 95vw;">
+        <div class="modal-head" style="background: linear-gradient(135deg, #34d399, #10b981) !important; justify-content: center; position: relative; padding: 14px 20px; border-bottom: none; border-radius: 12px 12px 0 0;">
+          <div style="color: #ffffff; text-transform: uppercase; font-weight: 900; font-size: 15px; margin: 0; display: flex; align-items: center; gap: 8px; letter-spacing: 0.5px;">⊕ THÊM MỚI NHANH</div>
+          <button class="x" @click="showManualModal = false" style="color: #fff; transition: all 0.2s; position: absolute; right: 16px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.15); border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;" onmouseover="this.style.background='rgba(0,0,0,0.3)'" onmouseout="this.style.background='rgba(0,0,0,0.15)'">✕</button>
+        </div>
+
+        <!-- Hidden inputs for reactivity -->
+        <div v-if="false">
+          <input v-model="itemForm.Ma_hang" />
+          <input v-model="itemForm.Ma_nha_cung_cap" />
+          <input v-model="itemForm.Trang_thai" />
+          <input v-model="itemForm.Main_img" />
+          <textarea v-model="itemForm.Mo_ta_chung" />
+          <textarea v-model="itemForm.Mo_ta_chi_tiet" />
+          <input v-model="itemForm.License_duration" />
+          <input v-model="itemForm.Ma_hang_lien_ket" />
+          <input v-model="itemForm.Ten_hang_lien_ket" />
+          <FormattedInput :modelValue="itemForm.Gia_tieu_chuan" @update:modelValue="itemForm.Gia_tieu_chuan = $event" />
+          <textarea v-model="itemForm.Ghi_chu" />
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px; padding: 24px; padding-bottom: 12px; overflow-y: auto; max-height: calc(95vh - 150px);">
+          <!-- COLUMN 1: THÔNG TIN CHUNG -->
+          <div class="modal-group" style="margin: 0; display: flex; flex-direction: column; gap: 20px;">
+            <h4 class="modal-group-title" style="display: flex; align-items: center; gap: 8px;">
+              Thông tin chung
+            </h4>
+            
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <div style="display: flex; align-items: center; justify-content: flex-start; gap: 8px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px; margin: 0 !important; width: auto !important; white-space: nowrap; flex: none;">Tên hàng <span style="color: #ef4444;">*</span></label>
+                <button style="background: #ef4444; border: none; color: #fff; font-size: 10px; font-weight: 700; cursor: pointer; display: flex; align-items: center; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; transition: all 0.2s; width: auto !important; flex: none; box-shadow: 0 0 10px rgba(239,68,68,0.3);" @click="resetItem" onmouseover="this.style.background='#dc2626'; this.style.boxShadow='0 0 15px rgba(239,68,68,0.5)'" onmouseout="this.style.background='#ef4444'; this.style.boxShadow='0 0 10px rgba(239,68,68,0.3)'">
+                  RESET
+                </button>
+              </div>
+              <div style="position: relative;" :class="{ 'input-loading': productsState === 'loading', 'input-loaded': productsState === 'loaded', 'input-ready': productsState === 'ready' }">
+                <input v-model="itemForm.Ten_hang" list="dl-hh-ten" placeholder="Nhập tên hàng hóa..." @input="updateMaHang" @blur="autoFillProduct(itemForm.Ten_hang)" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 500;" />
+                <i class="lucide-package" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
+              </div>
+              <datalist id="dl-hh-ten">
+                <option v-for="p in products" :key="p.Ma_hang + '_t'" :value="p.Ten_hang" />
+              </datalist>
+              <datalist id="dl-hh-ma">
+                <option v-for="p in products" :key="p.Ma_hang" :value="p.Ma_hang" />
+              </datalist>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Danh mục</label>
+                <input v-model="itemForm.Danh_muc" list="category-list" placeholder="HW, SW, SVR..." @input="updateMaHang" style="width: 100%; padding: 10px 14px; border-radius: 8px;" />
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">ĐVT</label>
+                <input v-model="itemForm.DVT" list="dvt-options" placeholder="CÁI, BỘ, BẢN QUYỀN..." style="width: 100%; padding: 10px 14px; border-radius: 8px;" />
+              </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Hãng</label>
+                <div style="position: relative;">
+                  <input v-model="itemForm.Ten_nha_cung_cap" placeholder="Nhà cung cấp..." @input="updateMaNcc" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px;" />
+                  <i class="lucide-truck" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
+                </div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Bảo hành</label>
+                <div style="position: relative;">
+                  <input v-model="itemForm.thoi_han_bao_hanh" placeholder="VD: 12 tháng..." style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px;" />
+                  <i class="lucide-shield-check" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
+                </div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Volume</label>
+                <div style="position: relative;">
+                  <input v-model="itemForm.volume" placeholder="VD: 1Dvc, 3Dvc, 10Dvc..." style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px;" />
+                  <i class="lucide-layers" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
+                </div>
+              </div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Diễn giải</label>
+              <textarea v-model="itemForm.Features" rows="3" placeholder="Mô tả cấu hình, thông số nổi bật..." style="width: 100%; padding: 10px 14px; border-radius: 8px; resize: vertical; min-height: 70px;" />
+            </div>
+          </div>
+
+          <!-- COLUMN 2: TÀI CHÍNH & GIÁ CẢ -->
+          <div class="modal-group" style="margin: 0; display: flex; flex-direction: column; gap: 20px;">
+            <h4 class="modal-group-title" style="display: flex; align-items: center; gap: 8px; color: #10b981 !important;">
+              <span style="color: #10b981;">Tài chính & Giá cả</span>
+            </h4>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Đơn vị tiền tệ</label>
+                <select v-model="itemForm.Don_vi_tien_te" style="width: 100%; padding: 10px 14px; border-radius: 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #f8fafc; font-weight: 600; font-size: 13px; cursor: pointer;">
+                  <option value="VND" style="background: #1e293b;">VND</option>
+                  <option value="USD" style="background: #1e293b;">USD</option>
+                </select>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Tỉ giá</label>
+                <div style="position: relative;">
+                  <FormattedInput v-model="itemForm.Ti_gia" placeholder="1" :disabled="!itemForm.Don_vi_tien_te || itemForm.Don_vi_tien_te.toUpperCase() === 'VND'" style="width: 100%; padding: 10px 14px; border-radius: 8px;" />
+                  <span v-if="itemForm.Don_vi_tien_te && itemForm.Don_vi_tien_te.toUpperCase() !== 'VND'" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 10px; font-weight: 600; color: #f59e0b; pointer-events: none;">₫/{{ itemForm.Don_vi_tien_te }}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">ĐƠN GIÁ BÁN ({{ itemForm.Don_vi_tien_te || 'VND' }})</label>
+              <div style="position: relative;">
+                <FormattedInput
+                  v-if="!itemForm.Don_vi_tien_te || itemForm.Don_vi_tien_te.toUpperCase() === 'VND'"
+                  :modelValue="(itemForm.Don_gia || 0) * (Number(itemForm.Ti_gia) || 1)"
+                  @update:modelValue="itemForm.Don_gia = $event / (Number(itemForm.Ti_gia) || 1)"
+                  placeholder="Nhập đơn giá xuất..."
+                  style="width: 100%; padding: 12px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 16px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
+                <FormattedInput
+                  v-else
+                  v-model="itemForm.Don_gia"
+                  placeholder="Nhập đơn giá xuất..."
+                  style="width: 100%; padding: 12px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 16px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
+                <i class="lucide-tag" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
+                <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #10b981; pointer-events: none;">{{ (!itemForm.Don_vi_tien_te || itemForm.Don_vi_tien_te.toUpperCase() === 'VND') ? '₫' : '$' }}</span>
+              </div>
+              <div v-if="itemForm.Don_vi_tien_te && itemForm.Don_vi_tien_te.toUpperCase() !== 'VND' && itemForm.Ti_gia > 1" style="font-size: 11px; color: #10b981; margin-top: 2px;">
+                ≈ {{ ((itemForm.Don_gia || 0) * (Number(itemForm.Ti_gia) || 1)).toLocaleString('vi-VN') }} VND
+              </div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Giá Nhập ({{ itemForm.Don_vi_tien_te || 'VND' }})</label>
+              <div style="position: relative;">
+                <FormattedInput
+                  v-if="!itemForm.Don_vi_tien_te || itemForm.Don_vi_tien_te.toUpperCase() === 'VND'"
+                  :modelValue="(itemForm.gia_nhap || 0) * (Number(itemForm.Ti_gia) || 1)"
+                  @update:modelValue="itemForm.gia_nhap = $event / (Number(itemForm.Ti_gia) || 1)"
+                  placeholder="0"
+                  style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px;" />
+                <FormattedInput
+                  v-else
+                  v-model="itemForm.gia_nhap"
+                  placeholder="0"
+                  style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px;" />
+                <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #64748b; pointer-events: none;">{{ (!itemForm.Don_vi_tien_te || itemForm.Don_vi_tien_te.toUpperCase() === 'VND') ? '₫' : '$' }}</span>
+              </div>
+              <div v-if="itemForm.Don_vi_tien_te && itemForm.Don_vi_tien_te.toUpperCase() !== 'VND' && itemForm.Ti_gia > 1" style="font-size: 11px; color: #64748b; margin-top: 2px;">
+                ≈ {{ ((itemForm.gia_nhap || 0) * (Number(itemForm.Ti_gia) || 1)).toLocaleString('vi-VN') }} VND
+              </div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <div v-if="false" style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Mức % Off</label>
+                <div style="position: relative;">
+                  <FormattedInput v-model="itemForm.muc_phan_tram_off" placeholder="0" style="width: 100%; padding: 10px 14px; padding-right: 30px; border-radius: 8px; color: #f59e0b;" />
+                  <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 600; color: #f59e0b; pointer-events: none;">%</span>
+                </div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Thuế VAT</label>
+                <div style="position: relative;">
+                  <FormattedInput v-model="itemForm.Thue_VAT" placeholder="VAT" style="width: 100%; padding: 10px 14px; padding-right: 30px; border-radius: 8px; color: #3b82f6;" />
+                  <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 600; color: #3b82f6; pointer-events: none;">%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- SUMMARY BOX INSIDE COL 2 -->
+            <div style="margin-top: auto; display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.3); border: 1px dashed rgba(16,185,129,0.3); border-radius: 12px; padding: 16px;">
+              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px; margin: 0;">Số lượng xuất</label>
+              <div class="qty" style="transform: scale(1.1); transform-origin: right center;">
+                <button type="button" @click="itemForm.So_luong = Math.max(1, toNum(itemForm.So_luong, 1) - 1)">&#x2212;</button>
+                <FormattedInput v-model="itemForm.So_luong" placeholder="1" style="width: 36px; background: transparent !important; border: none !important; text-align: center; border-radius: 0; font-weight: 800; font-size: 14px; padding: 0; color: #fff; box-shadow: none;" />
+                <button type="button" @click="itemForm.So_luong = toNum(itemForm.So_luong, 1) + 1">+</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions" style="display: flex; justify-content: flex-end; gap: 12px; align-items: center; padding: 0 24px 24px 24px; border-top: none; margin-top: auto;">
+
+          <button style="padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 14px; color: #94a3b8; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#f8fafc'" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='#94a3b8'" @click="showManualModal = false">
+            Đóng
+          </button>
+          <button style="background: linear-gradient(135deg, #10b981, #059669); border: none; box-shadow: 0 4px 15px rgba(16,185,129,0.3); padding: 12px 36px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" onmouseover="this.style.boxShadow='0 6px 20px rgba(16,185,129,0.5)'; this.style.transform='translateY(-1px)';" onmouseout="this.style.boxShadow='0 4px 15px rgba(16,185,129,0.3)'; this.style.transform='translateY(0)';" @click="handleAddManualItem()">
+            Thêm vào báo giá
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================== MODAL: XÁC NHẬN THÊM VÀO DATABASE ================== -->
+    <div v-if="showConfirmAddDbModal" class="modal" style="z-index: 10005;" @click.self="cancelAddToDb">
+      <div class="modal-card" style="max-width: 450px; text-align: center; padding: 32px 24px;">
+        <div style="margin-bottom: 24px; color: #fbbf24;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+        </div>
+        <h3 style="margin-bottom: 12px; font-size: 20px; color: #f8fafc;">Thêm hàng vào Database?</h3>
+        <p style="color: #94a3b8; font-size: 15px; margin-bottom: 32px; line-height: 1.5;">
+          Bạn có muốn lưu <strong style="color: #fff;">{{ pendingAddedItem?.Ten_hang || 'hàng này' }}</strong> vào kho sản phẩm chung (Database) để sử dụng cho các lần sau không?
+        </p>
+        <div style="display: flex; gap: 16px; justify-content: center;">
+          <button @click="cancelAddToDb" style="padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 15px; color: #fff; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); cursor: pointer; transition: all 0.2s;">
+            Không, chỉ thêm tạm
+          </button>
+          <button @click="confirmAddToDb" style="padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 15px; color: #fff; background: linear-gradient(135deg, #10b981, #059669); border: none; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(16,185,129,0.3);">
+            Có, lưu vào DB
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================== MODAL: CARD DETAIL (FULL FIELDS) ================== -->
+    <div v-if="showCardModal && cardEdit" class="modal vip-modal-overlay" @click.self="showCardModal = false">
+      <div class="modal-card modal-wide vip-modal-card" style="width: 1100px; max-width: 95vw;">
+        <div class="modal-head" style="background: linear-gradient(135deg, #34d399, #10b981) !important; justify-content: center; position: relative; padding: 18px 24px; border-bottom: none; border-radius: 12px 12px 0 0;">
+          <div style="color: #ffffff; text-transform: uppercase; font-weight: 900; font-size: 18px; margin: 0; display: flex; align-items: center; gap: 10px; letter-spacing: 0.5px;"><i class="lucide-clipboard-list" style="color: #fff; width: 24px; height: 24px;"></i> CHI TIẾT HÀNG</div>
+          <button class="x" @click="showCardModal = false" style="color: #fff; transition: all 0.2s; position: absolute; right: 20px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.15); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;" onmouseover="this.style.background='rgba(0,0,0,0.3)'" onmouseout="this.style.background='rgba(0,0,0,0.15)'">✕</button>
+        </div>
+
+        <!-- Hidden inputs for reactivity -->
+        <div v-if="false">
+          <input v-model="cardEdit.Mo_ta_chung" />
+          <input v-model="cardEdit.Main_img" />
+          <input v-model="cardEdit.Ma_hang" @input="isCardMaHangEdited = true" />
+          <input v-model="cardEdit.Trang_thai" />
+          <textarea v-model="cardEdit.Mo_ta_chi_tiet" />
+          <FormattedInput :modelValue="cardEdit.Gia_tieu_chuan" @update:modelValue="cardEdit.Gia_tieu_chuan = $event" />
+          <FormattedInput :modelValue="cardEdit.gia_hardware" @update:modelValue="cardEdit.gia_hardware = $event" />
+          <input v-model="cardEdit.Ma_nha_cung_cap" @input="isCardMaNccEdited = true" />
+          <input v-model="cardEdit.Ma_hang_lien_ket" />
+          <input v-model="cardEdit.Ten_hang_lien_ket" />
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px; padding: 24px; padding-bottom: 12px; overflow-y: auto; max-height: calc(95vh - 150px);">
+          <!-- COLUMN 1: THÔNG TIN CHUNG -->
+          <div class="modal-group" style="margin: 0; display: flex; flex-direction: column; gap: 20px;">
+            <h4 class="modal-group-title" style="display: flex; align-items: center; gap: 8px;">
+              Thông tin chung
+            </h4>
+            
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Tên hàng <span style="color: #ef4444;">*</span></label>
+              <div style="position: relative;" :class="{ 'input-loading': productsState === 'loading', 'input-loaded': productsState === 'loaded', 'input-ready': productsState === 'ready' }">
+                <input v-model="cardEdit.Ten_hang" list="dl-hh-ten-card" placeholder="Nhập tên hàng hóa..." @input="updateCardMaHang" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 500;" />
+                <i class="lucide-package" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
+              </div>
+              <datalist id="dl-hh-ten-card">
+                <option v-for="p in products" :key="p.Ma_hang + '_t'" :value="p.Ten_hang" />
+              </datalist>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Danh mục</label>
+                <input v-model="cardEdit.Danh_muc" list="category-list" placeholder="HW, SW, SVR..." style="width: 100%; padding: 10px 14px; border-radius: 8px;" />
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">ĐVT</label>
+                <input v-model="cardEdit.DVT" list="dvt-options" placeholder="CÁI, BỘ, BẢN QUYỀN..." style="width: 100%; padding: 10px 14px; border-radius: 8px;" />
+              </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Hãng</label>
+                <div style="position: relative;">
+                  <input v-model="cardEdit.Ten_nha_cung_cap" placeholder="Nhà cung cấp..." @input="updateCardMaNcc" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px;" />
+                  <i class="lucide-truck" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
+                </div>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">License duration</label>
+                <div style="position: relative;">
+                  <input v-model="cardEdit.License_duration" placeholder="Thời hạn (vd: 1 Year, Perpetual...)" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px;" />
+                  <i class="lucide-clock" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
+                </div>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Thời gian bảo hành</label>
+                <div style="position: relative;">
+                  <input v-model="cardEdit.thoi_han_bao_hanh" placeholder="VD: 12 tháng, 24 tháng..." style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px;" />
+                  <i class="lucide-shield-check" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
+                </div>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Volume</label>
+                <div style="position: relative;">
+                  <input v-model="cardEdit.volume" placeholder="VD: 1Dvc, 3Dvc, 10Dvc..." style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px;" />
+                  <i class="lucide-layers" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
+                </div>
+              </div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Diễn giải</label>
+              <textarea v-model="cardEdit.Features" rows="3" placeholder="Mô tả cấu hình, thông số nổi bật..." style="width: 100%; padding: 10px 14px; border-radius: 8px; resize: vertical; min-height: 70px;" />
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Ghi chú</label>
+              <textarea v-model="cardEdit.Ghi_chu" rows="2" style="width: 100%; padding: 10px 14px; border-radius: 8px; resize: vertical;" />
+            </div>
+          </div>
+
+          <!-- COLUMN 2: TÀI CHÍNH & GIÁ CẢ -->
+          <div class="modal-group" style="margin: 0; display: flex; flex-direction: column; gap: 20px;">
+            <h4 class="modal-group-title" style="display: flex; align-items: center; gap: 8px; color: #10b981 !important;">
+              <span style="color: #10b981;">Tài chính & Giá cả</span>
+            </h4>
+            
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">ĐƠN GIÁ BÁN (VND)</label>
+              <div style="position: relative;">
+                <FormattedInput :modelValue="(cardEdit.Don_gia || 0) * (Number(cardEdit.Ti_gia) || 1)" @update:modelValue="cardEdit.Don_gia = $event / (Number(cardEdit.Ti_gia) || 1)" placeholder="Nhập đơn giá xuất..." style="width: 100%; padding: 12px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 16px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
+                <i class="lucide-tag" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
+                <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #10b981; pointer-events: none;">₫</span>
+              </div>
+              <div v-if="cardEdit.Don_vi_tien_te && cardEdit.Don_vi_tien_te.toUpperCase() !== 'VND' && cardEdit.Ti_gia > 1" style="font-size: 11px; color: #10b981; margin-top: 2px;">
+                ≈ {{ Number(cardEdit.Don_gia || 0).toLocaleString('vi-VN') }} {{ cardEdit.Don_vi_tien_te }}
+              </div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Giá Nhập (VND)</label>
+              <div style="position: relative;">
+                <FormattedInput :modelValue="(cardEdit.gia_nhap || 0) * (Number(cardEdit.Ti_gia) || 1)" @update:modelValue="cardEdit.gia_nhap = $event / (Number(cardEdit.Ti_gia) || 1)" placeholder="0" style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px;" />
+                <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #64748b; pointer-events: none;">₫</span>
+              </div>
+              <div v-if="cardEdit.Don_vi_tien_te && cardEdit.Don_vi_tien_te.toUpperCase() !== 'VND' && cardEdit.Ti_gia > 1" style="font-size: 11px; color: #64748b; margin-top: 2px;">
+                ≈ {{ Number(cardEdit.gia_nhap || 0).toLocaleString('vi-VN') }} {{ cardEdit.Don_vi_tien_te }}
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Đơn vị tiền tệ</label>
+                <div style="position: relative;">
+                  <input v-model="cardEdit.Don_vi_tien_te" placeholder="VND, USD..." style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px;" />
+                  <i class="lucide-coins" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
+                </div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Tỉ giá</label>
+                <FormattedInput v-model="cardEdit.Ti_gia" placeholder="1" style="width: 100%; padding: 10px 14px; border-radius: 8px;" />
+              </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Mức % Off</label>
+                <div style="position: relative;">
+                  <FormattedInput v-model="cardEdit.muc_phan_tram_off" placeholder="0" style="width: 100%; padding: 10px 14px; padding-right: 30px; border-radius: 8px; color: #f59e0b;" />
+                  <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 600; color: #f59e0b; pointer-events: none;">%</span>
+                </div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Thuế VAT</label>
+                <div style="position: relative;">
+                  <FormattedInput v-model="cardEdit.Thue_VAT" placeholder="VAT" style="width: 100%; padding: 10px 14px; padding-right: 30px; border-radius: 8px; color: #3b82f6;" />
+                  <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 600; color: #3b82f6; pointer-events: none;">%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- SUMMARY BOX INSIDE COL 2 -->
+            <div style="margin-top: auto; display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.3); border: 1px dashed rgba(16,185,129,0.3); border-radius: 12px; padding: 16px;">
+              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px; margin: 0;">Số lượng xuất</label>
+              <div class="qty" style="transform: scale(1.1); transform-origin: right center;">
+                <button type="button" @click="cardEdit.So_luong = Math.max(1, toNum(cardEdit.So_luong, 1) - 1)">&#x2212;</button>
+                <FormattedInput v-model="cardEdit.So_luong" placeholder="1" style="width: 36px; background: transparent !important; border: none !important; text-align: center; border-radius: 0; font-weight: 800; font-size: 14px; padding: 0; color: #fff; box-shadow: none;" />
+                <button type="button" @click="cardEdit.So_luong = toNum(cardEdit.So_luong, 1) + 1">+</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions" style="display: flex; justify-content: flex-end; gap: 12px; align-items: center; padding: 0 24px 24px 24px; border-top: none; margin-top: auto;">
+          <button style="padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 14px; color: #94a3b8; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#f8fafc'" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='#94a3b8'" @click="showCardModal = false">
+            Đóng
+          </button>
+          <button style="background: linear-gradient(135deg, #10b981, #059669); border: none; box-shadow: 0 4px 15px rgba(16,185,129,0.3); padding: 12px 40px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" onmouseover="this.style.boxShadow='0 6px 20px rgba(16,185,129,0.5)'; this.style.transform='translateY(-1px)';" onmouseout="this.style.boxShadow='0 4px 15px rgba(16,185,129,0.3)'; this.style.transform='translateY(0)';" @click="addFromCardModal(); showCardModal = false;">
+            Thêm
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================== MODAL: XEM BÁO GIÁ GỐC (GROUP THEO NCC + DANH MỤC) ================== -->
+    <div v-if="showPreviewRawModal" class="modal" @click.self="showPreviewRawModal = false">
+      <div class="modal-card modal-wide modal-quote vip-modal-card" style="width: 1500px; max-width: 98vw;">
+        <div class="modal-head">
+          <h3><i class="lucide-file-text"></i> Báo giá gốc</h3>
+          <button class="x" @click="showPreviewRawModal = false">✕</button>
+        </div>
+
+        <div class="header-contract-info" style="margin-bottom: 12px;">
+          <span class="contract-badge">Mã HĐ: <b>{{ maHopDong }}</b></span>
+          <span class="contract-badge">Số HĐ: <b>{{ soHopDong }}</b></span>
+          <span class="contract-badge" v-if="khach.Ten_khach_hang">Khách hàng: <b>{{ khach.Ten_khach_hang }}</b></span>
+          <span class="contract-badge" v-if="khach.Ten_cong_ty">Công ty: <b>{{ khach.Ten_cong_ty }}</b></span>
+          <span class="contract-badge" v-if="khach.Dia_chi_cong_ty">Địa chỉ: <b>{{ khach.Dia_chi_cong_ty }}</b></span>
+        </div>
+
+        <div class="hint">Click vào ô <b>SL / MỨC OFF / VAT</b> để sửa như Excel (tự tính lại ngay).</div>
+
+        <div class="quote-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th class="col-stt">STT</th>
+                <th class="col-pn">P/N</th>
+                <th class="col-name">Tên hàng</th>
+                <th class="col-desc">Diễn giải</th>
+                <th class="col-dvt">ĐVT</th>
+                <th class="col-sl">SL</th>
+                <th class="col-dg">GIÁ OFF HÃNG</th>
+                <th class="col-dg">LIST PRICE</th>
+                <th class="col-dg">GIÁ NHẬP</th>
+                <th class="col-dg">MỨC OFF</th>
+                <th class="col-tt">TT trước thuế (VND)</th>
+                <th class="col-vat">VAT</th>
+                <th class="col-tt">TT sau thuế (VND)</th>
+                <th class="col-tt" style="color: #ffffff !important;">Net Margin</th>
+                <th class="col-del">Xóa</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template v-for="r in quoteRowsWithSTT" :key="r.key">
+                <tr v-if="r.type === 'group'" class="group-row">
+                  <td class="group-stt">{{ r.roman }}</td>
+                  <td colspan="14" class="group-title">{{ r.title }}</td>
+                </tr>
+                <tr v-else class="quote-item-row" @click="openQuoteEditRaw(r.idx)">
+                  <td>{{ r.stt }}</td>
+                  <td class="col-pn-cell" :title="r.item.Ma_hang" @click.stop="openQuoteEditRaw(r.idx, 'Ma_hang')">{{ r.item.Ma_hang }}</td>
+                  <td class="nowrap" @click.stop="openQuoteEditRaw(r.idx, 'Ten_hang')">{{ r.item.Ten_hang }}</td>
+                  <td class="col-desc-cell" :title="[r.item.Mo_ta_chung, r.item.Mo_ta_chi_tiet, r.item.Features].filter(Boolean).join(' - ')">
+                    <div class="preline">
+                      <div v-if="r.item.Mo_ta_chung">{{ r.item.Mo_ta_chung }}</div>
+                      <div v-if="r.item.Mo_ta_chi_tiet">{{ r.item.Mo_ta_chi_tiet }}</div>
+                      <div v-if="r.item.Features">{{ r.item.Features }}</div>
+                    </div>
+                  </td>
+                  <td class="col-dvt-cell" :title="r.item.DVT" @click.stop="openQuoteEditRaw(r.idx, 'DVT')">{{ r.item.DVT }}</td>
+                  <td class="center" style="font-weight: 700;" @click.stop="openQuoteEditRaw(r.idx, 'So_luong')">{{ r.item.So_luong }}</td>
+                  <td data-label="Giá off hãng" class="right" style="line-height: 1.3; font-weight: 700; color: #10b981;" @click.stop="openQuoteEditRaw(r.idx, 'Don_gia_goc')">
+                    <div>{{ displayGiaTieuChuanRaw(r.item) }}</div>
+                    <div class="muted" style="font-size: 11px; margin-top: 2px; color: #10b981 !important;">({{ displayGiaTieuChuanPctRaw(r.item) }}%)</div>
+                  </td>
+                  <td data-label="List Price" class="right" style="color: #10b981; font-weight: 700;">{{ displayDonGiaLPRaw(r.item) }}</td>
+                  <td data-label="Giá nhập" class="right" style="color: #ef4444; font-weight: 700;" @click.stop="openQuoteEditRaw(r.idx, 'gia_nhap_goc')">{{ formatVND(getGocNumber(r.item, '_gia_nhap_goc', toNum(r.item.gia_nhap, 0)) * getGocNumber(r.item, '_Ti_gia_goc', toNum(r.item.Ti_gia, 1))) }}</td>
+                  <td data-label="Mức off" class="right" style="line-height: 1.3; font-weight: 700; color: #ef4444;" @click.stop="openQuoteEditRaw(r.idx, 'muc_off')">
+                    <div>{{ displayMucOffAmountRaw(r.item) }}</div>
+                    <div class="muted" style="font-size: 11px; margin-top: 2px; color: #ef4444 !important;">(-{{ toNum(r.item.muc_phan_tram_off, 0) }}%)</div>
+                  </td>
+                  <td data-label="TT trước thuế" class="right" style="color: #10b981; font-weight: 800;">{{ formatVND(lineTruocThueRaw(r.item)) }}</td>
+                  <td data-label="VAT" class="right" style="line-height: 1.3; color: #10b981; font-weight: 800;" @click.stop="openQuoteEditRaw(r.idx, 'Thue_VAT')">
+                    <div>{{ formatVND(lineVATRaw(r.item)) }}</div>
+                    <div class="muted" style="font-size: 11px; margin-top: 2px; color: #34d399 !important;">({{ vatGoc(r.item) }}%)</div>
+                  </td>
+                  <td class="right" style="color: #10b981; font-weight: 800;">{{ formatVND(lineSauThueRaw(r.item)) }}</td>
+                  <td class="right" :style="{ color: lineLoiNhuanRaw(r.item) >= 0 ? '#10b981' : '#ef4444', fontWeight: 800 }">
+                    <div style="display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
+                      <span v-if="lineLoiNhuanRaw(r.item) >= 0" style="font-size: 12px; margin-right: 2px;">▲</span>
+                      <span v-else style="font-size: 12px; margin-right: 2px;">▼</span>
+                      {{ formatVND(Math.abs(lineLoiNhuanRaw(r.item))) }}
+                    </div>
+                  </td>
+                  <td class="center">
+                    <button class="btn-del" @click.stop="removeSelected(r.idx)">✕</button>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+            <tfoot>
+              <tr style="background: #e2e8f0; font-weight: 700; color: #0f172a; white-space: nowrap;">
+                <td colspan="9" class="center" style="font-size: 13px;">TỔNG CỘNG + THUẾ</td>
+                <td class="right">
+                  <span style="display: inline-block; padding: 2px 6px; border-radius: 12px; background: #ef4444; color: #fff; font-size: 12px; font-weight: 800; white-space: nowrap;">-{{ formatVND(totalsContract.off) }}</span>
+                </td>
+                <td class="right">
+                  <span style="display: inline-block; padding: 2px 6px; border-radius: 12px; background: #475569; color: #fff; font-size: 12px; font-weight: 800; white-space: nowrap;">{{ formatVND(totalsContract.truoc) }}</span>
+                </td>
+                <td class="center">
+                  <span style="display: inline-block; padding: 2px 6px; border-radius: 12px; background: #eab308; color: #fff; font-size: 12px; font-weight: 800; white-space: nowrap;">{{ formatVND(totalsContract.vat) }}</span>
+                </td>
+                <td class="right">
+                  <span style="display: inline-block; padding: 2px 6px; border-radius: 12px; background: #2563eb; color: #fff; font-size: 12px; font-weight: 800; white-space: nowrap;">{{ formatVND(totalsContract.sau) }}</span>
+                </td>
+                <td class="right">
+                  <div :style="{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px', padding: '2px 6px', borderRadius: '12px', background: totalsContract.loi >= 0 ? '#10b981' : '#ef4444', color: '#fff', fontSize: '12px', fontWeight: 800, whiteSpace: 'nowrap' }">
+                    <span v-if="totalsContract.loi >= 0" style="font-size: 10px;">▲</span>
+                    <span v-else style="font-size: 10px;">▼</span>
+                    {{ formatVND(Math.abs(totalsContract.loi)) }}
+                  </div>
+                </td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+
+
+        <div class="modal-actions">
+          <button class="primary" @click="showPreviewRawModal = false">Đóng</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================== MODAL: CHỈNH SỬA ITEM BÁO GIÁ ================== -->
+    <div v-if="showQuoteEditModal && quoteEdit" class="modal vip-modal-overlay" @click.self="closeQuoteEdit()">
+      <div class="modal-card modal-wide vip-modal-card" style="width: 1350px; max-width: 95vw;">
+        <div class="modal-head" style="background: linear-gradient(135deg, #34d399, #10b981) !important; justify-content: center; position: relative; padding: 18px 24px; border-bottom: none; border-radius: 12px 12px 0 0;">
+          <div style="color: #ffffff; text-transform: uppercase; font-weight: 900; font-size: 18px; margin: 0; display: flex; align-items: center; gap: 10px; letter-spacing: 0.5px;">
+            <i class="lucide-pencil" style="color: #fff; width: 24px; height: 24px;"></i> CHỈNH SỬA HÀNG TRONG BÁO GIÁ
+          </div>
+          <button class="x" @click="closeQuoteEdit()" style="color: #fff; transition: all 0.2s; position: absolute; right: 20px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.15); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;" onmouseover="this.style.background='rgba(0,0,0,0.3)'" onmouseout="this.style.background='rgba(0,0,0,0.15)'">✕</button>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 24px; padding: 24px; padding-bottom: 16px; overflow-y: auto; max-height: calc(95vh - 200px);">
+          <div v-if="false">
+            <input v-model="quoteEdit.Ma_nha_cung_cap" />
+            <input v-model="quoteEdit.Ma_hang_lien_ket" />
+            <input v-model="quoteEdit.Ten_hang_lien_ket" />
+            <textarea v-model="quoteEdit.Mo_ta_chung" />
+            <textarea v-model="quoteEdit.Mo_ta_chi_tiet" />
+          </div>
+          
+          <div :style="{ display: 'grid', gridTemplateColumns: quoteEditGridCols, gap: '24px' }">
+            <!-- COLUMN 1 -->
+            <div :style="{ display: 'flex', flexDirection: 'column', gap: hiddenCols.c1 ? '0' : '16px', background: 'rgba(0,0,0,0.15)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '16px', padding: hiddenCols.c1 ? '16px 12px' : '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }">
+              <div :style="{ paddingBottom: hiddenCols.c1 ? '0' : '12px', borderBottom: hiddenCols.c1 ? 'none' : '1px dashed rgba(255,255,255,0.1)', marginBottom: hiddenCols.c1 ? '0' : '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <i class="ri-information-line" style="color: #10b981; font-size: 16px; flex-shrink: 0;"></i>
+                  <span v-show="!hiddenCols.c1" style="font-size: 13px; text-transform: uppercase; color: #fff; font-weight: 800; letter-spacing: 0.5px; white-space: nowrap;">Thông tin chung</span>
+                </div>
+                <i :class="hiddenCols.c1 ? 'ri-eye-line' : 'ri-eye-off-line'" @click="hiddenCols.c1 = !hiddenCols.c1" style="font-size: 16px; color: #94a3b8; cursor: pointer; flex-shrink: 0; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#94a3b8'" title="Ẩn/Hiện cột"></i>
+              </div>
+              <div v-show="!hiddenCols.c1" style="display: flex; flex-direction: column; gap: 16px;">
+              <!-- 1: Mã hàng -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Mã hàng</label>
+                <div style="position: relative;">
+                  <input id="qe-Ma_hang" v-model="quoteEdit.Ma_hang" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 500;" />
+                  <i class="lucide-tag" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
+                </div>
+              </div>
+
+              <!-- 2: Tên hàng -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Tên hàng <span style="color: #ef4444;">*</span></label>
+                <div style="position: relative;">
+                  <input id="qe-Ten_hang" v-model="quoteEdit.Ten_hang" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 500;" />
+                  <i class="lucide-package" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
+                </div>
+              </div>
+
+              <!-- Type -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Type</label>
+                <div style="position: relative;">
+                  <input id="qe-Type" v-model="quoteEdit.Type" placeholder="Base, Renewal..." style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 500;" />
+                  <i class="lucide-layers" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
+                </div>
+              </div>
+
+              <!-- 3: Hãng -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Hãng</label>
+                <div style="position: relative;">
+                  <input id="qe-Ten_nha_cung_cap" v-model="quoteEdit.Ten_nha_cung_cap" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px;" />
+                  <i class="lucide-truck" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
+                </div>
+              </div>
+
+              <!-- 4: Danh mục -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Danh mục</label>
+                <input id="qe-Danh_muc" v-model="quoteEdit.Danh_muc" list="category-list" placeholder="HW, SW, SVR..." style="width: 100%; padding: 10px 14px; border-radius: 8px;" />
+              </div>
+
+              <!-- 9 & 10: Đơn vị tiền tệ, Tỉ giá -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                  <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Đơn vị tiền tệ</label>
+                  <div style="position: relative;">
+                    <input v-model="quoteEdit.Don_vi_tien_te" readonly style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; background: rgba(255,255,255,0.05); color: #94a3b8;" />
+                    <i class="lucide-coins" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
+                  </div>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                  <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Tỉ giá</label>
+                  <FormattedInput v-model="quoteEdit.Ti_gia" @input="ensureNumberField(quoteEdit, 'Ti_gia')" style="width: 100%; padding: 10px 14px; border-radius: 8px;" />
+                </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- COLUMN 2 -->
+            <div :style="{ display: 'flex', flexDirection: 'column', gap: hiddenCols.c2 ? '0' : '16px', background: 'rgba(0,0,0,0.15)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '16px', padding: hiddenCols.c2 ? '16px 12px' : '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }">
+              <div :style="{ paddingBottom: hiddenCols.c2 ? '0' : '12px', borderBottom: hiddenCols.c2 ? 'none' : '1px dashed rgba(255,255,255,0.1)', marginBottom: hiddenCols.c2 ? '0' : '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <i class="ri-file-list-3-line" style="color: #10b981; font-size: 16px; flex-shrink: 0;"></i>
+                  <span v-show="!hiddenCols.c2" style="font-size: 13px; text-transform: uppercase; color: #fff; font-weight: 800; letter-spacing: 0.5px; white-space: nowrap;">Chi tiết kỹ thuật</span>
+                </div>
+                <i :class="hiddenCols.c2 ? 'ri-eye-line' : 'ri-eye-off-line'" @click="hiddenCols.c2 = !hiddenCols.c2" style="font-size: 16px; color: #94a3b8; cursor: pointer; flex-shrink: 0; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#94a3b8'" title="Ẩn/Hiện cột"></i>
+              </div>
+              <div v-show="!hiddenCols.c2" style="display: flex; flex-direction: column; gap: 16px;">
+              <!-- 5: ĐVT -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">ĐVT</label>
+                <input id="qe-DVT" v-model="quoteEdit.DVT" list="dvt-options" style="width: 100%; padding: 10px 14px; border-radius: 8px; font-weight: 500;" />
+              </div>
+
+              <!-- 6: License duration -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">License duration</label>
+                <div style="position: relative;">
+                  <input id="qe-License_duration" v-model="quoteEdit.License_duration" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px;" />
+                  <i class="lucide-clock" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
+                </div>
+              </div>
+
+              <!-- 6.5: Bảo hành -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Thời gian bảo hành</label>
+                <div style="position: relative;">
+                  <input id="qe-thoi_han_bao_hanh" v-model="quoteEdit.thoi_han_bao_hanh" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px;" />
+                  <i class="lucide-shield-check" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
+                </div>
+              </div>
+
+              <!-- 6.6: Volume -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Volume</label>
+                <div style="position: relative;">
+                  <input id="qe-volume" v-model="quoteEdit.volume" placeholder="VD: 1Dvc, 3Dvc..." style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px;" />
+                  <i class="lucide-layers" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
+                </div>
+              </div>
+
+              <!-- 7: Tính năng / Features -->
+              <div class="modal-form-group" style="grid-column: 1 / -1;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Diễn giải</label>
+                <textarea id="qe-Features" v-model="quoteEdit.Features" rows="3" style="width: 100%; padding: 10px 14px; border-radius: 8px; resize: vertical;" />
+              </div>
+              
+              <!-- 8: Ghi chú -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Ghi chú</label>
+                <textarea id="qe-Ghi_chu" v-model="quoteEdit.Ghi_chu" rows="2" style="width: 100%; padding: 10px 14px; border-radius: 8px; resize: vertical;" />
+              </div>
+            </div>
+          </div>
+
+            <!-- COLUMN 3 -->
+            <div :style="{ display: 'flex', flexDirection: 'column', gap: hiddenCols.c3 ? '0' : '16px', background: 'rgba(0,0,0,0.15)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '16px', padding: hiddenCols.c3 ? '0 0 16px 0' : '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }">
+              <div :style="{ background: 'linear-gradient(135deg, #fb7185, #e11d48)', padding: '14px 16px', borderRadius: hiddenCols.c3 ? '15px' : '15px 15px 0 0', margin: hiddenCols.c3 ? '0' : '-20px -20px 0 -20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', boxShadow: '0 2px 10px rgba(225,29,72,0.2)' }">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <i class="ri-coins-line" style="color: #fff; font-size: 16px; flex-shrink: 0;"></i>
+                  <span v-show="!hiddenCols.c3" style="font-size: 14px; text-transform: uppercase; color: #fff; font-weight: 800; letter-spacing: 0.5px; text-shadow: 0 1px 2px rgba(0,0,0,0.2); white-space: nowrap;">Giá mua & Chi phí</span>
+                </div>
+                <i :class="hiddenCols.c3 ? 'ri-eye-line' : 'ri-eye-off-line'" @click="hiddenCols.c3 = !hiddenCols.c3" style="font-size: 16px; color: rgba(255,255,255,0.7); cursor: pointer; flex-shrink: 0; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.7)'" title="Ẩn/Hiện cột"></i>
+              </div>
+              <div v-show="!hiddenCols.c3" style="display: flex; flex-direction: column; gap: 16px;">
+
+              <!-- 13: % OFF Hãng & Giá Vốn VND -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">% Off Hãng</span>
+                </label>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="position: relative; flex: 1; min-width: 0;">
+                    <FormattedInput :modelValue="quoteEditTieuChuanPct" @update:modelValue="updateTieuChuanPct" style="width: 100%; padding: 10px 14px; padding-right: 30px; border-radius: 8px; font-weight: 600; color: #a78bfa; border: 1px solid rgba(139,92,246,0.5); background: rgba(139,92,246,0.1);" />
+                    <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 600; color: #a78bfa; pointer-events: none;">%</span>
+                  </div>
+                  <button class="btn btn-sm btn-primary" style="width: auto !important; flex: none; padding: 6px 12px; font-size: 11px; background: #8b5cf6; border: none; border-radius: 6px; color: white; cursor: pointer; white-space: nowrap;" @click.prevent="openKasperskyCalculator" title="Tính toán % off Kaspersky">
+                    <i class="fas fa-calculator"></i> Tính
+                  </button>
+                </div>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Giá Vốn (VND)</span>
+                </label>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="position: relative; flex: 1;">
+                    <FormattedInput id="qe-Gia_tieu_chuan" :modelValue="(quoteEdit.Gia_tieu_chuan || 0) * (Number(quoteEdit.Ti_gia) || 1)" @update:modelValue="quoteEdit.Gia_tieu_chuan = $event / (Number(quoteEdit.Ti_gia) || 1)" @input="ensureNumberField(quoteEdit, 'Gia_tieu_chuan')" style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px; font-weight: 500; color: #8b5cf6;" />
+                    <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #8b5cf6; pointer-events: none;">₫</span>
+                  </div>
+                  <template v-if="quoteEdit.Don_vi_tien_te && quoteEdit.Don_vi_tien_te.toUpperCase() !== 'VND' && quoteEdit.Ti_gia > 1">
+                    <span style="font-size: 12px; color: #8b5cf6; font-weight: 600;">≈</span>
+                    <div style="position: relative; width: 110px;">
+                      <FormattedInput id="qe-Gia_tieu_chuan_usd" v-model="quoteEdit.Gia_tieu_chuan" @input="ensureNumberField(quoteEdit, 'Gia_tieu_chuan')" style="width: 100%; padding: 10px 10px; padding-right: 32px; border-radius: 8px; font-weight: 600; font-size: 13px; border: 1px dashed rgba(139,92,246,0.3); background: rgba(139,92,246,0.05); color: #a78bfa;" />
+                      <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #8b5cf6; pointer-events: none;">{{ quoteEdit.Don_vi_tien_te }}</span>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              <!-- 12: Giá nhập VND -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Giá Nhập (VND)</span>
+                </label>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="position: relative; flex: 1;">
+                    <FormattedInput id="qe-gia_nhap" :modelValue="(quoteEdit.gia_nhap || 0) * (Number(quoteEdit.Ti_gia) || 1)" @update:modelValue="quoteEdit.gia_nhap = $event / (Number(quoteEdit.Ti_gia) || 1)" @input="ensureNumberField(quoteEdit, 'gia_nhap')" style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px; font-weight: 500;" />
+                    <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #94a3b8; pointer-events: none;">₫</span>
+                  </div>
+                  <template v-if="quoteEdit.Don_vi_tien_te && quoteEdit.Don_vi_tien_te.toUpperCase() !== 'VND' && quoteEdit.Ti_gia > 1">
+                    <span style="font-size: 12px; color: #64748b; font-weight: 600;">≈</span>
+                    <div style="position: relative; width: 110px;">
+                      <FormattedInput id="qe-gia_nhap_usd" v-model="quoteEdit.gia_nhap" @input="ensureNumberField(quoteEdit, 'gia_nhap')" style="width: 100%; padding: 10px 10px; padding-right: 32px; border-radius: 8px; font-weight: 600; font-size: 13px; border: 1px dashed rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); color: #e2e8f0;" />
+                      <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #94a3b8; pointer-events: none;">{{ quoteEdit.Don_vi_tien_te }}</span>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              <!-- 11: Đơn giá bán (VND) -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">List Price</span>
+                  <div style="display: flex; gap: 4px;">
+                    <button class="util-btn small inline-normal-edit" style="padding: 2px 6px; font-size: 10px; white-space: nowrap; border-radius: 4px;" @click="openAdjustPrice('field', '', 'Đơn giá', 'Don_gia', true)" title="Sửa thường - cập nhật giá thực tế">
+                      <i class="ri-edit-line"></i>
+                    </button>
+                    <button class="util-btn small inline-adjust" style="padding: 2px 6px; font-size: 10px; white-space: nowrap; border-radius: 4px; background: rgba(16,185,129,0.2); color: #10b981; border: 1px solid rgba(16,185,129,0.4);" @click="openAdjustPrice('field', '', 'Đơn giá', 'Don_gia')" title="Điều chỉnh - tạo chênh lệch giá">
+                      <i class="ri-arrow-up-down-fill"></i>
+                    </button>
+                  </div>
+                </label>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="position: relative; flex: 1;">
+                    <FormattedInput id="qe-Don_gia" :modelValue="(quoteEdit.Don_gia || 0) * (Number(quoteEdit.Ti_gia) || 1)" @update:modelValue="quoteEdit.Don_gia = $event / (Number(quoteEdit.Ti_gia) || 1)" @input="ensureNumberField(quoteEdit, 'Don_gia')" :readonly="true" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
+                    <i class="lucide-tag" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
+                    <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #10b981; pointer-events: none;">₫</span>
+                  </div>
+                  <template v-if="quoteEdit.Don_vi_tien_te && quoteEdit.Don_vi_tien_te.toUpperCase() !== 'VND' && quoteEdit.Ti_gia > 1">
+                    <span style="font-size: 12px; color: #10b981; font-weight: 600;">≈</span>
+                    <div style="position: relative; width: 110px;">
+                      <FormattedInput id="qe-Don_gia_usd" v-model="quoteEdit.Don_gia" @input="ensureNumberField(quoteEdit, 'Don_gia')" style="width: 100%; padding: 10px 10px; padding-right: 32px; border-radius: 8px; font-weight: 600; font-size: 13px; border: 1px dashed rgba(16,185,129,0.3); background: rgba(16,185,129,0.05); color: #10b981;" />
+                      <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #10b981; pointer-events: none;">{{ quoteEdit.Don_vi_tien_te }}</span>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              <div v-if="false" style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Giá Hardware (VND)</span>
+                </label>
+                <div style="position: relative;">
+                  <FormattedInput :modelValue="(quoteEdit.gia_hardware || 0) * (Number(quoteEdit.Ti_gia) || 1)" @update:modelValue="quoteEdit.gia_hardware = $event / (Number(quoteEdit.Ti_gia) || 1)" @input="ensureNumberField(quoteEdit, 'gia_hardware')" :readonly="true" style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px; background: rgba(255,255,255,0.05); color: #94a3b8;" />
+                  <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #64748b; pointer-events: none;">₫</span>
+                </div>
+              </div>
+
+              <!-- 19: Số lượng -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.25); border-radius: 8px; padding: 6px 10px;">
+                  <span style="font-size: 13px; font-weight: 700; color: #10b981;"><i class="lucide-layers" style="width: 16px; height: 16px; margin-right: 4px; vertical-align: text-bottom;"></i> QTY</span>
+                  <div class="qty" style="margin: 0; transform-origin: right;">
+                    <button type="button" @click="quoteEdit.So_luong = Math.max(1, toNum(quoteEdit.So_luong, 1) - 1)">&#x2212;</button>
+                    <FormattedInput id="qe-So_luong" v-model="quoteEdit.So_luong" @input="ensureNumberField(quoteEdit, 'So_luong')" style="width: 36px; background: transparent !important; border: none !important; text-align: center; border-radius: 0; font-weight: 800; font-size: 14px; padding: 0; color: #fff; box-shadow: none;" />
+                    <button type="button" @click="quoteEdit.So_luong = toNum(quoteEdit.So_luong, 1) + 1">+</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+            <!-- COLUMN 4 -->
+            <div :style="{ display: 'flex', flexDirection: 'column', gap: hiddenCols.c4 ? '0' : '16px', background: 'rgba(0,0,0,0.15)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '16px', padding: hiddenCols.c4 ? '0 0 16px 0' : '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }">
+              <div :style="{ background: 'linear-gradient(135deg, #34d399, #10b981)', padding: '14px 16px', borderRadius: hiddenCols.c4 ? '15px' : '15px 15px 0 0', margin: hiddenCols.c4 ? '0' : '-20px -20px 0 -20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', boxShadow: '0 2px 10px rgba(16,185,129,0.2)' }">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <i class="ri-pie-chart-line" style="color: #fff; font-size: 16px; flex-shrink: 0;"></i>
+                  <span v-show="!hiddenCols.c4" style="font-size: 14px; text-transform: uppercase; color: #fff; font-weight: 800; letter-spacing: 0.5px; text-shadow: 0 1px 2px rgba(0,0,0,0.2); white-space: nowrap;">Bán hàng & Lợi nhuận</span>
+                </div>
+                <i :class="hiddenCols.c4 ? 'ri-eye-line' : 'ri-eye-off-line'" @click="hiddenCols.c4 = !hiddenCols.c4" style="font-size: 16px; color: rgba(255,255,255,0.7); cursor: pointer; flex-shrink: 0; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.7)'" title="Ẩn/Hiện cột"></i>
+              </div>
+              <div v-show="!hiddenCols.c4" style="display: flex; flex-direction: column; gap: 16px;">
+              <!-- 14 & 15: Mức % OFF & Thuế VAT -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <!-- 14: Mức % OFF -->
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                  <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">% Off khách</label>
+                  <div style="position: relative;">
+                    <FormattedInput id="qe-muc_phan_tram_off" v-model="quoteEditMucOffGoc" style="width: 100%; padding: 10px 14px; padding-right: 30px; border-radius: 8px; color: #f59e0b;" />
+                    <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 600; color: #f59e0b; pointer-events: none;">%</span>
+                  </div>
+                </div>
+
+                <!-- 15: Thuế VAT -->
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                  <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Thuế VAT</label>
+                  <div style="position: relative;">
+                    <FormattedInput id="qe-Thue_VAT" v-model="quoteEdit.Thue_VAT" @input="ensureNumberField(quoteEdit, 'Thue_VAT')" style="width: 100%; padding: 10px 14px; padding-right: 30px; border-radius: 8px; color: #3b82f6;" />
+                    <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 600; color: #3b82f6; pointer-events: none;">%</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 16: Đơn giá KH -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Đơn giá (KH)</span>
+                  <div style="display: flex; gap: 4px;">
+                    <button class="util-btn small inline-normal-edit" style="padding: 2px 6px; font-size: 10px; white-space: nowrap; border-radius: 4px;" @click="openAdjustPrice('field', '', 'Đơn giá (KH)', 'unit_price_kh', true)" title="Sửa thường">
+                      <i class="ri-edit-line"></i>
+                    </button>
+                    <button class="util-btn small inline-adjust" style="padding: 2px 6px; font-size: 10px; white-space: nowrap; border-radius: 4px; background: rgba(16,185,129,0.2); color: #10b981; border: 1px solid rgba(16,185,129,0.4);" @click="openAdjustPrice('field', '', 'Đơn giá (KH)', 'unit_price_kh')" title="Điều chỉnh">
+                      <i class="ri-arrow-up-down-fill"></i>
+                    </button>
+                  </div>
+                </label>
+                <div style="position: relative;">
+                  <FormattedInput id="qe-unit_price_kh" :modelValue="unitPrice(quoteEdit)" :decimals="quoteCurrency === 'USD' ? 2 : 0" :readonly="true" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
+                  <i class="lucide-tag" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
+                  <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #10b981; pointer-events: none;">₫</span>
+                </div>
+                <div class="muted" style="font-size: 11px; margin-top: 4px; color: #94a3b8; text-align: right; width: 100%;">
+                  (Giá gốc: {{ formatVND(unitPriceRaw(quoteEdit)) }})
+                </div>
+              </div>
+
+              <!-- 17: TT trước thuế -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">TT Trước thuế</span>
+                  <div style="display: flex; gap: 4px;">
+                    <button class="util-btn small inline-normal-edit" style="padding: 2px 6px; font-size: 10px; white-space: nowrap; border-radius: 4px;" @click="openAdjustPrice('field', '', 'Thành tiền trước thuế', 'line_truoc_thue', true)" title="Sửa thường">
+                      <i class="ri-edit-line"></i>
+                    </button>
+                    <button class="util-btn small inline-adjust" style="padding: 2px 6px; font-size: 10px; white-space: nowrap; border-radius: 4px; background: rgba(16,185,129,0.2); color: #10b981; border: 1px solid rgba(16,185,129,0.4);" @click="openAdjustPrice('field', '', 'Thành tiền trước thuế', 'line_truoc_thue')" title="Điều chỉnh">
+                      <i class="ri-arrow-up-down-fill"></i>
+                    </button>
+                  </div>
+                </label>
+                <div style="position: relative;">
+                  <FormattedInput id="qe-line_truoc_thue" :modelValue="lineTruocThue(quoteEdit)" :decimals="quoteCurrency === 'USD' ? 2 : 0" :readonly="true" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
+                  <i class="lucide-calculator" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
+                  <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #10b981; pointer-events: none;">₫</span>
+                </div>
+                <div class="muted" style="font-size: 11px; margin-top: 4px; color: #94a3b8; text-align: right; width: 100%;">
+                  (Tổng gốc: {{ formatVND(lineTruocThueRaw(quoteEdit)) }})
+                </div>
+              </div>
+
+              <!-- 18: Chênh lệch giá -->
+              <div style="display: flex; flex-direction: column; gap: 6px; margin-top: auto;">
+                <label style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Chênh lệch</span>
+                  <div style="display: flex; gap: 4px;">
+                    <button class="util-btn small inline-adjust" style="padding: 2px 6px; font-size: 10px; white-space: nowrap; border-radius: 4px; background: rgba(16,185,129,0.2); color: #10b981; border: 1px solid rgba(16,185,129,0.4);" @click="openAdjustPrice('field', '', 'Chênh lệch giá', 'item_chenh_lech')" title="Điều chỉnh">
+                      <i class="ri-arrow-up-down-fill"></i>
+                    </button>
+                  </div>
+                </label>
+                <div style="position: relative;">
+                  <input readonly :value="(itemChenhLechHieuDung(quoteEdit) > 0 ? '+' : '') + formatVND(itemChenhLechHieuDung(quoteEdit))" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #10b981 !important; border: 1px solid rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important; outline: none;" />
+                  <i class="lucide-trending-up" v-if="itemChenhLechHieuDung(quoteEdit) > 0" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
+                  <i class="lucide-trending-down" v-else-if="itemChenhLechHieuDung(quoteEdit) < 0" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
+                  <i class="lucide-minus" v-else style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
+                  <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #10b981; pointer-events: none;">₫</span>
+                </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        
+
+
+        <div class="modal-actions" style="display: flex; justify-content: flex-end; gap: 12px; align-items: center; padding: 16px 24px 24px 24px; border-top: none; margin-top: 12px;">
+          <button class="btn-del" @click="removeSelected(quoteEditIdx)" style="margin-right: auto; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer;">✕ Xóa item</button>
+          
+          <button style="padding: 12px 36px; border-radius: 8px; font-weight: 600; font-size: 15px; color: #94a3b8; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#f8fafc'" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='#94a3b8'" @click="closeQuoteEdit()">
+            Hủy
+          </button>
+          <button style="background: linear-gradient(135deg, #10b981, #059669); border: none; box-shadow: 0 4px 15px rgba(16,185,129,0.3); padding: 12px 40px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" onmouseover="this.style.boxShadow='0 6px 20px rgba(16,185,129,0.5)'; this.style.transform='translateY(-1px)';" onmouseout="this.style.boxShadow='0 4px 15px rgba(16,185,129,0.3)'; this.style.transform='translateY(0)';" @click="saveQuoteEdit()">
+            Lưu
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================== MODAL: CẤU HÌNH EXCEL MAPPING ================== -->
+    <div v-if="showExcelConfigModal" class="modal" @click.self="showExcelConfigModal = false" style="align-items: center; justify-content: center; display: flex;">
+      <div class="modal-card modal-wide" style="width: 98vw; max-width: none; height: 98vh; display: flex; flex-direction: column; margin: 0;">
+        <div class="modal-head">
+          <h3><i class="lucide-settings"></i> Cấu hình Data Mapping (Xuất Excel)</h3>
+          <button class="x" @click="showExcelConfigModal = false">×</button>
+        </div>
+        
+        <!-- Fixed header area -->
+        <div style="padding: 20px 20px 0 20px; flex-shrink: 0;">
+          <p style="color: #94a3b8; font-size: 13px; margin-bottom: 20px; line-height: 1.5;">
+            Cấu hình các cột sẽ xuất ra file Excel. Bạn có thể thêm, xóa hoặc thay đổi thứ tự các cột.
+            <br/>Lưu ý: Template Excel tải lên cần có các Header khớp với "Tên cột trong Excel" bên dưới.
+          </p>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding: 16px; background: rgba(15, 23, 42, 0.4); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px;">
+            <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; color: #f8fafc;">
+              <div style="position: relative; width: 44px; height: 24px; background: rgba(0,0,0,0.3); border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; padding: 2px; transition: all 0.3s;" :style="useDynamicExcelMapping ? 'background: #10b981; border-color: #10b981;' : ''">
+                <input type="checkbox" v-model="useDynamicExcelMapping" style="opacity: 0; position: absolute; width: 100%; height: 100%; cursor: pointer; margin: 0;" />
+                <div style="width: 18px; height: 18px; background: #fff; border-radius: 50%; transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1); box-shadow: 0 2px 4px rgba(0,0,0,0.2);" :style="useDynamicExcelMapping ? 'transform: translateX(20px);' : 'transform: translateX(0);'"></div>
+              </div>
+              <span style="font-weight: 600; font-size: 14px; letter-spacing: 0.3px;" :style="useDynamicExcelMapping ? 'color: #10b981;' : 'color: #94a3b8;'">Kích hoạt Cấu hình Mapping Dữ liệu</span>
+            </label>
+            
+            <button class="action-secondary" @click="tempMappingConfig.push({ header: 'NEW_COLUMN', field: 'empty' })" style="padding: 10px 20px; font-size: 13px; font-weight: 600; border-radius: 8px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: #fff; border: none; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25); display: flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 16px rgba(59, 130, 246, 0.35)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.25)';">
+              <i class="lucide-plus" style="width: 16px; height: 16px;"></i> Thêm cột
+            </button>
+          </div>
+        </div>
+
+        <!-- Scrollable table area (kéo thả bất kỳ ô nào trong cột) -->
+        <div v-if="useDynamicExcelMapping" style="flex: 1; min-height: 0; overflow: hidden; margin: 0 20px; border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; background: #fff; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2); display: flex; flex-direction: column;">
+          <div style="flex: 1; min-height: 0; overflow: auto;">
+            <table class="mapping-config-table" style="width: 100%; border-collapse: separate; border-spacing: 0; font-family: 'Inter', Arial, sans-serif; font-size: 13px; color: #334155; white-space: nowrap; table-layout: fixed; min-width: 1200px;">
+              <thead style="position: sticky; top: 0; z-index: 2;">
+                <tr>
+                  <th v-for="(col, i) in tempMappingConfig" :key="'h' + col.field + i"
+                    draggable="true" @dragstart="colDragStart(i, $event)" @dragover="colDragOver(i, $event)" @drop="colDrop(i)" @dragend="colDragEnd"
+                    :class="colDragCellClass(i)"
+                    :style="{ borderRight: '1px solid #94a3b8', borderBottom: '2px solid #94a3b8', padding: 0, position: 'relative', backgroundColor: '#f8fafc', verticalAlign: 'top', width: '180px', cursor: 'grab' }"
+                    title="Kéo thả để di chuyển cột">
+                    <!-- Header Row 1 (Input & Delete) -->
+                    <div style="display: flex; align-items: center; justify-content: space-between; height: 50px; width: 100%; padding: 0 8px; background-color: #2ea255;">
+                      <input v-model="col.header" placeholder="Tên cột" style="flex: 1; height: 34px; min-width: 0; padding: 0 10px; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px; font-weight: 700; text-align: center; font-size: 13px; outline: none; background: #ffffff; color: #1e293b; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05); font-family: 'Inter', Arial, sans-serif;" />
+                      <button @click="tempMappingConfig.splice(i, 1)" style="height: 34px; width: 34px; min-width: 34px; margin-left: 8px; background: #ef4444; border: none; border-radius: 6px; color: #ffffff; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" title="Xóa cột">
+                        <span style="font-size: 16px; color: #ffffff; font-weight: bold; line-height: 1;">✖</span>
+                      </button>
+                    </div>
+                    <!-- Header Row 2 (Field Select) -->
+                    <div style="padding: 10px; height: 50px;">
+                      <select v-model="col.field" style="width: 100%; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; color: #334155; font-size: 12px; font-weight: 500; outline: none; cursor: pointer;">
+                        <option v-for="opt in availableExcelFields" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                      </select>
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Dynamic Rows -->
+                <tr v-for="r in quoteRowsWithSTT" :key="'mock' + r.idx" :style="r.type === 'group' ? 'background: #fef08a;' : 'background: #fff;'">
+                  <td v-for="(col, i) in tempMappingConfig" :key="col.field + i"
+                    draggable="true" @dragstart="colDragStart(i, $event)" @dragover="colDragOver(i, $event)" @drop="colDrop(i)" @dragend="colDragEnd"
+                    :class="colDragCellClass(i)"
+                    :style="{
+                    borderRight: '1px solid #cbd5e1',
+                    borderBottom: '1px solid #cbd5e1',
+                    padding: '12px 10px',
+                    textAlign: r.type === 'group'
+                      ? (col.field === 'stt' ? 'center' : 'left')
+                      : (['don_gia', 'don_gia_kh', 'truoc_thue', 'vat', 'sau_thue', 'gia_tieu_chuan', 'don_gia_nhap', 'list_price', 'ti_gia', 'muc_off_hang', 'muc_off', 'thue_vat'].includes(col.field) ? 'right' : (['stt', 'so_luong'].includes(col.field) ? 'center' : 'left')),
+                    verticalAlign: 'middle',
+                    whiteSpace: 'pre-wrap',
+                    fontWeight: r.type === 'group' || (r.type !== 'group' && ['so_luong', 'don_gia', 'don_gia_kh', 'truoc_thue', 'vat', 'sau_thue', 'gia_tieu_chuan', 'don_gia_nhap', 'list_price', 'muc_off_hang', 'muc_off', 'thue_vat'].includes(col.field)) ? '700' : 'normal',
+                    color: r.type === 'group' ? '#854d0e' : (r.type !== 'group' && ['don_gia', 'don_gia_kh', 'truoc_thue', 'vat', 'sau_thue', 'gia_tieu_chuan', 'don_gia_nhap', 'list_price', 'so_luong', 'muc_off_hang', 'muc_off', 'thue_vat'].includes(col.field) ? '#0f172a' : 'inherit'),
+                    cursor: 'grab'
+                  }">
+                    <template v-if="r.type === 'group'">
+                      <template v-if="col.field === 'stt'">{{ r.roman }}</template>
+                      <template v-else-if="i === 1">{{ String(r.title).toUpperCase() }}</template>
+                    </template>
+                    <template v-else>
+                      {{ getPreviewCellValue(r, col.field) }}
+                    </template>
+                  </td>
+                </tr>
+              </tbody>
+              <tfoot style="position: sticky; bottom: 0; z-index: 2;">
+                <!-- Total Row (giống Excel: merge ô bên trái, hiện số bên phải) -->
+                <tr v-if="quoteRowsWithSTT.length > 0" style="background: #fde047;">
+                  <!-- Merged label -->
+                  <td :colspan="Math.max(1, tempMappingConfig.findIndex(c => ['truoc_thue', 'vat', 'sau_thue'].includes(c.field)))"
+                    draggable="true" @dragstart="colDragStart(0, $event)" @dragover="colDragOver(0, $event)" @drop="colDrop(0)" @dragend="colDragEnd"
+                    :style="{ borderRight: '1px solid #cbd5e1', borderTop: '2px solid #94a3b8', padding: '12px 10px', textAlign: 'center', verticalAlign: 'middle', fontWeight: '700', color: '#854d0e', background: '#fde047', cursor: 'grab' }">
+                    TỔNG CỘNG + THUẾ
+                  </td>
+                  <!-- Remaining columns after merge -->
+                  <template v-for="(col, i) in tempMappingConfig" :key="'t'+i">
+                    <td v-if="i >= Math.max(1, tempMappingConfig.findIndex(c => ['truoc_thue', 'vat', 'sau_thue'].includes(c.field)))"
+                      draggable="true" @dragstart="colDragStart(i, $event)" @dragover="colDragOver(i, $event)" @drop="colDrop(i)" @dragend="colDragEnd"
+                      :class="colDragCellClass(i)"
+                      :style="{ borderRight: '1px solid #cbd5e1', borderTop: '2px solid #94a3b8', padding: '12px 10px', textAlign: 'right', verticalAlign: 'middle', fontWeight: '700', color: '#854d0e', background: '#fde047', cursor: 'grab' }">
+                      <template v-if="['truoc_thue', 'vat', 'sau_thue'].includes(col.field)">
+                        {{ getPreviewCellTotal(col.field) }}
+                      </template>
+                    </td>
+                  </template>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+        <!-- Fixed footer buttons -->
+        <div style="display: flex; gap: 12px; justify-content: flex-end; padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.1); flex-shrink: 0;">
+          <button @click="resetExcelConfig" style="padding: 10px 16px; border-radius: 8px; font-weight: 600; font-size: 14px; background: rgba(255,255,255,0.05); color: #94a3b8; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: all 0.2s;">
+            Khôi phục mặc định
+          </button>
+          <button @click="saveExcelConfigModal" style="padding: 10px 24px; border-radius: 8px; font-weight: 700; font-size: 14px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #fff; border: none; cursor: pointer; box-shadow: 0 4px 15px rgba(16,185,129,0.3); transition: all 0.2s;">
+            Lưu cấu hình
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================== MODAL: CHỈNH SỬA ITEM BÁO GIÁ GỐC ================== -->
+<div v-if="showQuoteEditRawModal && quoteEditRaw" class="modal" @click.self="closeQuoteEditRaw()">
+  <div class="modal-card modal-wide">
+    <div class="modal-head">
+      <h3><i class="lucide-pencil"></i> Chỉnh sửa hàng trong báo giá gốc</h3>
+      <button class="x" @click="closeQuoteEditRaw()">✕</button>
+    </div>
+
+    <div class="modal-group">
+      <h4 class="modal-group-title"><i class="lucide-info"></i> Thông tin cơ bản</h4>
+      <div class="grid2">
+        <div>
+          <label>Mã hàng</label>
+          <input id="qeraw-Ma_hang" v-model="quoteEditRaw.Ma_hang" readonly />
+        </div>
+        <div>
+          <label>Tên hàng</label>
+          <input id="qeraw-Ten_hang" v-model="quoteEditRaw.Ten_hang" />
+        </div>
+      </div>
+
+    <div class="grid3">
+      <div>
+        <label>SL</label>
+        <input id="qeraw-So_luong" type="number" :value="quoteEditRaw.So_luong" readonly />
+      </div>
+
+      <div>
+        <label>VAT gốc (%)</label>
+        <FormattedInput
+          id="qeraw-Thue_VAT"
+          v-model="quoteEditRaw._Thue_VAT_goc"
+          @input="ensureNumberField(quoteEditRaw, '_Thue_VAT_goc')"
+        />
+      </div>
+
+      <div>
+        <label>Đơn vị (ĐVT)</label>
+        <input id="qeraw-DVT" v-model="quoteEditRaw.DVT" list="dvt-options" />
+      </div>
+    </div>
+
+    <div class="grid3">
+      <div>
+        <label>Đơn vị tiền tệ</label>
+        <input v-model="quoteEditRaw.Don_vi_tien_te" readonly />
+      </div>
+
+      <div>
+        <label>Tỉ giá gốc</label>
+        <FormattedInput
+          v-model="quoteEditRaw._Ti_gia_goc"
+          @input="ensureNumberField(quoteEditRaw, '_Ti_gia_goc')"
+        />
+      </div>
+
+      <div>
+        <label>ĐƠN GIÁ GỐC (VND)</label>
+        <FormattedInput
+          id="qeraw-Don_gia_goc"
+          :modelValue="(quoteEditRaw._Don_gia_goc || 0) * (Number(quoteEditRaw._Ti_gia_goc) || 1)"
+          @update:modelValue="quoteEditRaw._Don_gia_goc = $event / (Number(quoteEditRaw._Ti_gia_goc) || 1)"
+          @input="ensureNumberField(quoteEditRaw, '_Don_gia_goc')"
+        />
+        <div v-if="quoteEditRaw.Don_vi_tien_te && quoteEditRaw.Don_vi_tien_te.toUpperCase() !== 'VND' && quoteEditRaw._Ti_gia_goc > 1" style="font-size: 11px; color: #64748b; margin-top: 4px;">
+          ≈ {{ Number(quoteEditRaw._Don_gia_goc || 0).toLocaleString('vi-VN') }} {{ quoteEditRaw.Don_vi_tien_te }}
+        </div>
+      </div>
+    </div>
+    </div> <!-- close modal-group for thong tin co ban -->
+
+    <div class="modal-group">
+      <h4 class="modal-group-title"><i class="lucide-align-left"></i> Mô tả sản phẩm</h4>
+      <div class="grid3">
+        <div>
+          <label>Mô tả chung</label>
+          <textarea v-model="quoteEditRaw.Mo_ta_chung" rows="2" placeholder="Nhập mô tả chung..."></textarea>
+        </div>
+        <div>
+          <label>Mô tả chi tiết</label>
+          <textarea v-model="quoteEditRaw.Mo_ta_chi_tiet" rows="2" placeholder="Nhập mô tả chi tiết..."></textarea>
+        </div>
+        <div>
+          <label>Diễn giải</label>
+          <textarea v-model="quoteEditRaw.Features" rows="2" placeholder="Nhập diễn giải..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-group">
+      <h4 class="modal-group-title"><i class="lucide-dollar-sign"></i> Giá gốc & Chiết khấu</h4>
+      <div class="grid3">
+        <div>
+          <label>Giá Hardware gốc (VND)</label>
+          <FormattedInput id="qeraw-gia_hardware_goc" :modelValue="(quoteEditRaw._gia_hardware_goc || 0) * (Number(quoteEditRaw._Ti_gia_goc) || 1)" @update:modelValue="quoteEditRaw._gia_hardware_goc = $event / (Number(quoteEditRaw._Ti_gia_goc) || 1)" @input="ensureNumberField(quoteEditRaw, '_gia_hardware_goc')" />
+          <div v-if="quoteEditRaw.Don_vi_tien_te && quoteEditRaw.Don_vi_tien_te.toUpperCase() !== 'VND' && quoteEditRaw._Ti_gia_goc > 1" style="font-size: 11px; color: #64748b; margin-top: 4px;">
+            ≈ {{ Number(quoteEditRaw._gia_hardware_goc || 0).toLocaleString('vi-VN') }} {{ quoteEditRaw.Don_vi_tien_te }}
+          </div>
+        </div>
+        <div>
+          <label>Giá Nhập gốc (VND)</label>
+          <FormattedInput id="qeraw-gia_nhap_goc" :modelValue="(quoteEditRaw._gia_nhap_goc || 0) * (Number(quoteEditRaw._Ti_gia_goc) || 1)" @update:modelValue="quoteEditRaw._gia_nhap_goc = $event / (Number(quoteEditRaw._Ti_gia_goc) || 1)" @input="ensureNumberField(quoteEditRaw, '_gia_nhap_goc')" />
+          <div v-if="quoteEditRaw.Don_vi_tien_te && quoteEditRaw.Don_vi_tien_te.toUpperCase() !== 'VND' && quoteEditRaw._Ti_gia_goc > 1" style="font-size: 11px; color: #64748b; margin-top: 4px;">
+            ≈ {{ Number(quoteEditRaw._gia_nhap_goc || 0).toLocaleString('vi-VN') }} {{ quoteEditRaw.Don_vi_tien_te }}
+          </div>
+        </div>
+        <div>
+          <label>Mức % Off gốc</label>
+          <FormattedInput id="qeraw-muc_off" v-model="quoteEditRaw._muc_phan_tram_off_goc" @input="ensureNumberField(quoteEditRaw, '_muc_phan_tram_off_goc')" />
+        </div>
+      </div>
+    </div>
+
+    <div class="totals">
+      <div class="mini"><b>Trước thuế:</b> {{ formatVND(lineTruocThueRaw(quoteEditRaw)) }}</div>
+      <div class="mini"><b>VAT:</b> {{ formatVND(lineVATRaw(quoteEditRaw)) }}</div>
+      <div class="mini"><b>Sau thuế:</b> {{ formatVND(lineSauThueRaw(quoteEditRaw)) }}</div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="primary" @click="saveQuoteEditRaw()">Lưu</button>
+      <button @click="closeQuoteEditRaw()">Hủy</button>
+      <button class="btn-del" @click="removeSelected(quoteEditRawIdx)">✕ Xóa item</button>
+    </div>
+  </div>
+</div>
+
+    <!-- ================== MODAL: LOAD PIPELINE ================== -->
+<div v-if="showLoadPipelineModal" class="modal load-invoice-modal-overlay" @click.self="showLoadPipelineModal = false">
+  <div class="modal-card load-invoice-modal" style="width: min(1500px, 98vw); display: flex; flex-direction: column; max-height: 90vh;">
+    <div class="modal-head">
+      <h3><i class="lucide-folder-input"></i> Load PO-DXMH-DR-Báo giá</h3>
+      <button class="x" @click="showLoadPipelineModal = false">×</button>
+    </div>
+    
+    <div class="load-invoice-search" style="padding: 16px; padding-bottom: 8px;">
+       <input v-model="loadPipelineSearch" placeholder="🔍 Tìm kiếm theo Số PO, Tên dự án, Mã Hợp đồng..." class="search-input" style="width: 100%; padding: 12px 16px; border-radius: 8px; border: 1px solid #334155; background: #1e293b; color: #f8fafc; font-size: 15px;" />
+    </div>
+
+    <div class="load-invoice-grid" style="flex: 1; overflow-y: auto; padding: 0 16px 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 16px; align-content: start;">
+      
+      <template v-if="pipelineListState === 'loading'">
+        <div class="skeleton-card" v-for="n in 6" :key="'sk-pl-'+n">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+            <div class="skeleton-line" style="width: 120px; height: 18px;"></div>
+            <div class="skeleton-line" style="width: 80px; height: 14px;"></div>
+          </div>
+          <div class="skeleton-line" style="width: 60%; height: 20px; margin-bottom: 12px;"></div>
+          <div class="skeleton-line" style="width: 100%; height: 1px; margin-bottom: 12px;"></div>
+          <div class="skeleton-line" style="width: 70%; height: 16px; margin-bottom: 8px;"></div>
+          <div class="skeleton-line" style="width: 50%; height: 16px; margin-bottom: 16px;"></div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+            <div class="skeleton-line" style="width: 40%; height: 14px;"></div>
+            <div class="skeleton-line" style="width: 20%; height: 14px;"></div>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <div class="skeleton-line" style="width: 30%; height: 14px;"></div>
+            <div class="skeleton-line" style="width: 25%; height: 14px;"></div>
+          </div>
+        </div>
+      </template>
+
+      <template v-else>
+        <div v-for="po in filteredPoDxmhList" :key="po.ma_hop_dong" 
+             class="invoice-card"
+             :class="{ 'selected': loadPipelineFilter === (po.so_po + ' - ' + po.ma_hop_dong) }"
+             @click="loadPipelineFilter = (po.so_po + ' - ' + po.ma_hop_dong)"
+             @dblclick="loadPipelineFilter = (po.so_po + ' - ' + po.ma_hop_dong); loadPipelineToFE()">
+          
+          <div class="invoice-card-header">
+            <span class="invoice-ma-hd"><i class="lucide-file-text" style="width: 14px; height: 14px;"></i> {{ po.ma_hop_dong || 'N/A' }}</span>
+            <span class="invoice-date">{{ po.created_time || '' }}</span>
+          </div>
+          <div class="invoice-card-body">
+            <p class="invoice-po" style="font-size: 15px; font-weight: 700; color: #60a5fa;">PO: {{ po.so_po || 'N/A' }}</p>
+            
+            <hr class="invoice-divider" />
+            
+            <p class="invoice-text" v-if="po.company"><i class="ri-building-line" style="margin-right: 4px; color: #64748b;"></i>{{ po.company }}</p>
+            <p class="invoice-text" v-if="po.contact"><i class="ri-user-line" style="margin-right: 4px; color: #64748b;"></i>{{ po.contact }}</p>
+            
+            <div class="invoice-totals" v-if="po.hang_hoa_list && po.hang_hoa_list.length > 0">
+              <div v-for="(hh, idx) in po.hang_hoa_list" :key="idx" style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px;">
+                <span style="flex: 1; color: #cbd5e1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ hh.ten }}</span>
+                <span style="color: #94a3b8; white-space: nowrap; font-size: 12px;">x{{ hh.sl }}</span>
+                <span style="color: #10b981; white-space: nowrap; font-weight: 600;">${{ parseFloat(Number(hh.listPrice).toFixed(3)) }}</span>
+              </div>
+            </div>
+            <p v-else class="invoice-text" style="color: #475569; font-style: italic;">Chưa có hàng hóa</p>
+          </div>
+        </div>
+        
+        <div v-if="filteredPoDxmhList.length === 0" class="no-results" style="grid-column: 1 / -1; text-align: center; padding: 32px; color: #94a3b8; font-style: italic;">
+          Không tìm thấy Pipeline nào phù hợp.
+        </div>
+      </template>
+    </div>
+      
+    <p v-if="loadPipelineMsg" class="muted" style="text-align: center; margin: 8px 0; padding: 0 16px;" :style="{color: loadPipelineMsg.includes('Lỗi') || loadPipelineMsg.includes('Đã') ? 'red' : 'green'}">
+      {{ loadPipelineMsg }}
+    </p>
+
+    <div class="modal-actions" style="justify-content: center; padding: 16px; border-top: 1px solid #334155;">
+      <button @click="showLoadPipelineModal = false" style="padding: 10px 32px;">Đóng</button>
+      <button class="btn-load-fe" :disabled="loadingPipeline || !loadPipelineFilter" @click="loadPipelineToFE">
+        {{ loadingPipeline ? 'Đang nạp...' : 'Nạp dữ liệu' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+    <!-- ================== MODAL: LOAD HÓA ĐƠN / HỢP ĐỒNG ================== -->
+<div v-if="showLoadInvoiceModal" class="modal load-invoice-modal-overlay" @click.self="showLoadInvoiceModal = false">
+  <div class="modal-card load-invoice-modal" style="width: min(1500px, 98vw); display: flex; flex-direction: column; max-height: 90vh;">
+    <div class="modal-head">
+      <h3><i class="lucide-download"></i> Load hóa đơn / hợp đồng</h3>
+      <button class="x" @click="showLoadInvoiceModal = false">✕</button>
+    </div>
+
+    <div class="load-invoice-search" style="padding: 16px; padding-bottom: 8px;">
+       <input v-model="loadSearchQuery" placeholder="🔍 Tìm kiếm theo Số HĐ, Mã HĐ, Số PO, Tên khách hàng, Tên công ty..." class="search-input" style="width: 100%; padding: 12px 16px; border-radius: 8px; border: 1px solid #334155; background: #1e293b; color: #f8fafc; font-size: 15px;" />
+    </div>
+
+    <div class="load-invoice-filters" style="display: flex; gap: 12px; padding: 0 16px 16px; align-items: center; justify-content: flex-start; flex-wrap: wrap;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="color: #94a3b8; font-size: 13px; white-space: nowrap;">Từ:</label>
+        <input type="date" v-model="loadFromDate" class="filter-input" />
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="color: #94a3b8; font-size: 13px; white-space: nowrap;">Đến:</label>
+        <input type="date" v-model="loadToDate" class="filter-input" />
+      </div>
+      <select v-model="loadStatusFilter" class="filter-select" style="min-width: 150px;">
+        <option value="">Tất cả trạng thái</option>
+        <option value="Tạm">Tạm</option>
+        <option value="Chính thức">Chính thức</option>
+      </select>
+      <select v-model="loadSortBy" class="filter-select" style="min-width: 160px;">
+        <option value="desc">Mới nhất ➔ Cũ nhất</option>
+        <option value="asc">Cũ nhất ➔ Mới nhất</option>
+      </select>
+    </div>
+
+    <div class="load-invoice-grid" style="flex: 1; overflow-y: auto; padding: 0 16px 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 16px; align-content: start;">
+      <template v-if="invoiceListState === 'loading'">
+        <div class="skeleton-card" v-for="n in 6" :key="'sk-iv-'+n">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+            <div class="skeleton-line" style="width: 140px; height: 18px;"></div>
+            <div class="skeleton-line" style="width: 80px; height: 14px;"></div>
+          </div>
+          <div class="skeleton-line" style="width: 50%; height: 16px; margin-bottom: 8px;"></div>
+          <div class="skeleton-line" style="width: 70%; height: 16px; margin-bottom: 12px;"></div>
+          <div class="skeleton-line" style="width: 100%; height: 1px; margin-bottom: 12px;"></div>
+          <div class="skeleton-line" style="width: 80%; height: 16px; margin-bottom: 8px;"></div>
+          <div class="skeleton-line" style="width: 60%; height: 16px; margin-bottom: 16px;"></div>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div class="skeleton-line" style="width: 100%; height: 16px;"></div>
+            <div class="skeleton-line" style="width: 90%; height: 16px;"></div>
+            <div class="skeleton-line" style="width: 95%; height: 16px;"></div>
+          </div>
+        </div>
+      </template>
+
+      <template v-else>
+      <div 
+        v-for="r in contractCards" 
+        :key="r.maHD" 
+        class="invoice-card"
+        :class="{ 'selected': loadMode === 'MA' && loadKey === r.maHD }"
+        @click="loadMode = 'MA'; loadKey = r.maHD;"
+        @dblclick="loadMode = 'MA'; loadKey = r.maHD; loadInvoiceToFE()"
+      >
+        <div class="invoice-card-header">
+          <span class="invoice-ma-hd"><i class="lucide-file-text" style="width: 14px; height: 14px;"></i> {{ r.maHD || 'Chưa có Mã HĐ' }}</span>
+          <span class="invoice-date">{{ r.ngay }}</span>
+        </div>
+        <div class="invoice-card-body">
+          <p v-if="r.soPO" class="invoice-po">Số PO: {{ r.soPO }}</p>
+          <p class="invoice-status">Trạng thái hợp đồng: <span class="status-badge" :class="{'badge-temp': r.trangThai === 'Tạm', 'badge-official': r.trangThai === 'Chính thức'}">{{ r.trangThai }}</span></p>
+          
+          <hr class="invoice-divider" />
+          
+          <p v-if="r.mst" class="invoice-text">MST: {{ r.mst }}</p>
+          <p v-if="r.tenCongTy" class="invoice-text">Tên công ty: {{ r.tenCongTy }}</p>
+          <p class="invoice-customer">Tên khách hàng: {{ r.tenKH }}</p>
+          
+          <div class="invoice-totals">
+            <p style="color: #ef4444;">Tổng giá thực tế: <span>{{ formatVND(r.tongGiaThucTe) }}</span></p>
+            <p>Tổng tiền trước thuế: <span>{{ formatVND(r.truocThue) }}</span></p>
+            <p class="highlight" style="border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 8px; margin-bottom: 4px;">Tổng tiền sau thuế: <span>{{ formatVND(r.sauThue) }}</span></p>
+            <p>Chênh lệch giá: <span style="color: #10b981">{{ r.chenhLechGia > 0 ? '+' : '' }}{{ formatVND(r.chenhLechGia) }}</span></p>
+            <p>Còn lại: <span>{{ formatVND(r.conLai) }}</span></p>
+            <p style="color: #eab308; margin-top: 4px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.2);">Tổng chiết khấu: <span>{{ formatVND(r.tongChietKhau) }}</span></p>
+          </div>
+        </div>
+      </div>
+      <div v-if="contractCards.length === 0" class="no-results" style="grid-column: 1 / -1; text-align: center; padding: 32px; color: #94a3b8; font-style: italic;">
+        Không tìm thấy hợp đồng/hóa đơn nào phù hợp.
+      </div>
+      </template>
+    </div>
+
+    <p v-if="loadMsg" class="muted" style="text-align: center; margin: 8px 0;">{{ loadMsg }}</p>
+
+    <div class="modal-actions" style="justify-content: center; padding: 16px; border-top: 1px solid #334155; gap: 12px; display: flex;">
+      <button @click="showLoadInvoiceModal = false" style="padding: 10px 32px; background: rgba(255,255,255,0.05); color: #f1f5f9; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;">Đóng</button>
+      <button class="btn-load-fe" :disabled="loadingInvoice || !loadKey" @click="cloneInvoiceToFE" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+        {{ loadingInvoice ? 'Đang nhân bản...' : 'Nhân bản' }}
+      </button>
+      <button class="btn-load-fe" :disabled="loadingInvoice || !loadKey" @click="loadInvoiceToFE" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+        {{ loadingInvoice ? 'Đang load...' : 'Chỉnh sửa báo giá' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ================== MODAL: CHỌN SỐ HỢP ĐỒNG SO SÁNH ================== -->
+<div v-if="showPickCompareModal" class="modal" @click.self="showPickCompareModal = false">
+  <div class="modal-card" style="width:min(520px,96vw)">
+    <div class="modal-head">
+      <h3><i class="lucide-bar-chart-3"></i> Chọn SỐ hợp đồng để so sánh</h3>
+      <button class="x" @click="showPickCompareModal = false">✕</button>
+    </div>
+
+    <label>Số hợp đồng</label>
+    <input
+      v-model="pickCompareSo"
+      list="dl-compare-so"
+      placeholder="VD: HĐ9"
+    />
+
+    <datalist id="dl-compare-so">
+      <option
+        v-for="r in filteredContractsForLoad"
+        :key="'cmp-' + r[1]"
+        :value="String(r?.[1] ?? '').trim()"
+      >
+        {{ String(r?.[1] ?? '').trim() }}
+        -
+        {{ String(r?.[0] ?? '').trim() }}
+        -
+        {{ String(r?.[IDX_TIME] ?? '').trim() }}
+      </option>
+    </datalist>
+
+    <div class="modal-actions">
+      <button
+        class="primary"
+        :disabled="!pickCompareSo"
+        @click="
+          compareSoHopDong = pickCompareSo;
+          loadCompareBySoHopDong(pickCompareSo);
+          showPickCompareModal = false;
+          showCompareModal = true;
+        "
+      >
+        So sánh
+      </button>
+      <button @click="showPickCompareModal = false">Hủy</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================== MODAL: BẢNG SO SÁNH ================== -->
+<div v-if="showCompareModal" class="modal" @click.self="showCompareModal = false">
+  <div class="modal-card modal-wide">
+    <div class="modal-head">
+      <h3><i class="lucide-bar-chart-3"></i> So sánh hợp đồng – {{ compareSoHopDong }}</h3>
+      <button class="x" @click="showCompareModal = false">✕</button>
+    </div>
+
+    <!-- ===== TỔNG HÓA ĐƠN ===== -->
+   <h4>🔹 So sánh tổng hóa đơn (theo mã hợp đồng)</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th>Mã hợp đồng</th>
+      <th class="right">Tổng trước thuế</th>
+      <th class="right">Tổng tiêu chuẩn</th>
+      <th class="right">Chênh lệch</th>
+      <th class="right">%</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <tr v-for="r in compareByContract" :key="r.Ma_hop_dong">
+      <td>{{ r.Ma_hop_dong }}</td>
+
+      <td class="right">{{ formatVND(r.truoc) }}</td>
+      <td class="right">{{ formatVND(r.tieuChuan) }}</td>
+
+      <td
+        class="right"
+        :style="{ color: r.diff >= 0 ? 'green' : 'red' }"
+      >
+        {{ formatVND(r.diff) }}
+      </td>
+
+      <td class="right">{{ r.pct.toFixed(2) }}%</td>
+    </tr>
+  </tbody>
+</table>
+
+
+
+
+    <hr />
+
+    <!-- ===== THEO MÃ HÀNG ===== -->
+   
+   <h4>🔹 So sánh mã hàng </h4>
+
+<table>
+  <thead>
+    <tr>
+      <th>Mã hàng</th>
+      <th>Tên hàng</th>
+      <th v-for="maHD in compareMaHopDongs" :key="maHD">
+        {{ maHD }}
+      </th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <tr v-for="r in compareMatrix" :key="r.Ma_hang">
+      <td>{{ r.Ma_hang }}</td>
+      <td>{{ r.Ten_hang }}</td>
+
+      <td
+        v-for="maHD in compareMaHopDongs"
+        :key="maHD"
+        class="right"
+        :style="{
+          color: r.byHD[maHD]?.diff >= 0 ? 'green' : 'red'
+        }"
+      >
+        <template v-if="r.byHD[maHD]">
+          {{ formatVND(r.byHD[maHD].diff) }}
+          <span class="muted">
+            ({{ r.byHD[maHD].pct.toFixed(2) }}%)
+          </span>
+        </template>
+        <template v-else>—</template>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+
+    <div class="modal-actions">
+      <button class="primary" @click="showCompareModal = false">Đóng</button>
+    </div>
+  </div>
+</div>
+
+    <!-- ================== MODAL: CHỌN KIỂU LƯU HỢP ĐỒNG ================== -->
+    <div v-if="showSaveModal" class="modal vip-modal-overlay" @click.self="showSaveModal = false">
+      <div class="modal-card modal-wide vip-modal-card" style="width: 1060px; max-width: 95vw;">
+        <div class="modal-head" style="background: linear-gradient(135deg, #34d399, #10b981) !important; justify-content: center; position: relative; padding: 16px 24px; border-bottom: none; border-radius: 12px 12px 0 0;">
+          <div style="color: #fff; text-transform: uppercase; font-weight: 900; font-size: 16px; letter-spacing: 0.5px;">THÔNG TIN KHÁCH HÀNG & LƯU BÁO GIÁ</div>
+          <button class="x" @click="showSaveModal = false" style="color: #fff; position: absolute; right: 18px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.15); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;">✕</button>
+        </div>
+        <div style="padding: 24px; overflow-y: auto; max-height: calc(95vh - 140px);">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <!-- LEFT: KHÁCH HÀNG -->
+          <div style="background: rgba(16,185,129,0.04); border: 1px solid rgba(16,185,129,0.12); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+            <div style="display: flex; justify-content: flex-start; align-items: center; gap: 10px; margin-bottom: 2px;">
+              <div style="font-size: 12px; text-transform: uppercase; font-weight: 800; color: #34d399; letter-spacing: 1px; white-space: nowrap;">KHÁCH HÀNG</div>
+              <button @click="resetCustomer" style="padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 800; text-transform: uppercase; background: #ef4444; color: #ffffff; border: none; cursor: pointer; white-space: nowrap; width: fit-content; flex-shrink: 0; line-height: 1; box-shadow: 0 2px 4px rgba(239,68,68,0.3);">Reset</button>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Mã KH</label>
+                <input v-model="maKHInput" list="dl-ma-kh-modal" placeholder="Mã KH" @change="fillCustomerByMa(maKHInput)" @blur="onBlurMaKH" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+                <datalist id="dl-ma-kh-modal"><option v-for="k in customers" :key="k.Ma_khach_hang" :value="k.Ma_khach_hang" /></datalist>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Tên KH</label>
+                <input v-model="tenKHInput" list="dl-ten-kh-modal" placeholder="Tên KH" @change="fillCustomerByTen(tenKHInput)" @blur="onBlurTenKH" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+                <datalist id="dl-ten-kh-modal"><option v-for="k in customers" :key="k.Ma_khach_hang + '_' + k.Ten_khach_hang" :value="k.Ten_khach_hang" /></datalist>
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Email</label>
+                <input v-model="khach.Email_ca_nhan" placeholder="Email" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">SĐT</label>
+                <input v-model="khach.So_dien_thoai_ca_nhan" placeholder="SĐT" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Trạng thái</label>
+                <input v-model="khach.Trang_thai" placeholder="Trạng thái" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Lợi nhuận</label>
+                <input v-model="khach.Tong_loi_nhuan" placeholder="Lợi nhuận" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+              </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 3px;">
+              <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Ghi chú</label>
+              <input v-model="khach.Ghi_chu" placeholder="Ghi chú" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+            </div>
+          </div>
+          <!-- ═══ GROUP 2: THÔNG TIN CÔNG TY ═══ -->
+          <!-- RIGHT: CÔNG TY -->
+          <div style="background: rgba(56,189,248,0.04); border: 1px solid rgba(56,189,248,0.12); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+            <div style="font-size: 12px; text-transform: uppercase; font-weight: 800; color: #38bdf8; letter-spacing: 1px;">THÔNG TIN CÔNG TY</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Tên công ty</label>
+                <input v-model="khach.Ten_cong_ty" list="dl-cty-modal" placeholder="Tên CT" @change="fillCustomerByCongTy(khach.Ten_cong_ty)" @blur="onBlurCongTy" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+                <datalist id="dl-cty-modal"><option v-for="k in [...new Set(customers.filter(c => c.Ten_cong_ty).map(c => c.Ten_cong_ty))]" :key="k" :value="k" /></datalist>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">MST</label>
+                <input v-model="khach.MST" list="dl-mst-modal-3" @change="onMSTChange" placeholder="Mã số thuế" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+                <datalist id="dl-mst-modal-3"><option v-for="k in customers" :key="'mst_3_'+k.Ma_khach_hang" :value="k.MST" /></datalist>
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">SĐT công ty</label>
+                <input v-model="khach.So_dien_thoai_cong_ty" placeholder="SĐT" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Email</label>
+                <input v-model="khach.Email_cong_ty" placeholder="Email CT" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Địa chỉ</label>
+                <input v-model="khach.Dia_chi_cong_ty" placeholder="Địa chỉ" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Website</label>
+                <input v-model="khach.Website_cong_ty" placeholder="Website" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">COMPANY</label>
+                <input v-model="khach.COMPANY" placeholder="COMPANY" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">TEL</label>
+                <input v-model="khach.TEL" placeholder="TEL" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Fax</label>
+                <input v-model="khach.So_fax_cong_ty" placeholder="Fax" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+              </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 3px;">
+              <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">ADDRESS</label>
+              <input v-model="khach.ADDRESS" placeholder="ADDRESS" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+            </div>
+          </div>
+          </div>
+          <!-- KH PHỤ — full width -->
+          <div style="margin-top: 16px; background: rgba(148,163,184,0.04); border: 1px solid rgba(148,163,184,0.1); border-radius: 10px; padding: 14px 16px;">
+            <div style="font-size: 10px; text-transform: uppercase; font-weight: 800; color: #ffffff; letter-spacing: 1px; margin-bottom: 10px;">KHÁCH HÀNG PHỤ</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Tên</label>
+                <input v-model="khach.Ten_khach_hang_phu" placeholder="Tên KH phụ" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">SĐT</label>
+                <input v-model="khach.So_dien_thoai_ca_nhan_phu" placeholder="SĐT phụ" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Email</label>
+                <input v-model="khach.Email_ca_nhan_phu" placeholder="Email phụ" style="padding: 9px 12px; border-radius: 8px; font-size: 13px;" />
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- ACTIONS -->
+        <div class="save-modal-actions" style="padding: 16px 24px; border-top: 1px solid rgba(255,255,255,0.06); display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <button @click="() => { showSaveModal = false; saveContractTemp(); }" style="padding: 12px 20px; border-radius: 8px; font-weight: 700; font-size: 14px; color: #fff; background: linear-gradient(135deg, #3b82f6, #2563eb); border: none; cursor: pointer; transition: all 0.25s; letter-spacing: 0.3px; box-shadow: 0 2px 8px rgba(59,130,246,0.25);" onmouseover="this.style.boxShadow='0 4px 16px rgba(59,130,246,0.4)'; this.style.transform='translateY(-1px)'" onmouseout="this.style.boxShadow='0 2px 8px rgba(59,130,246,0.25)'; this.style.transform='translateY(0)'">Lưu tạm & chờ duyệt</button>
+          <button @click="() => { showSaveModal = false; saveContractOfficialAndSaleReport(); }" style="padding: 12px 20px; border-radius: 8px; font-weight: 800; font-size: 14px; text-transform: uppercase; color: #fff; background: linear-gradient(135deg, #ef4444, #dc2626); border: none; cursor: pointer; transition: all 0.25s; letter-spacing: 0.5px; box-shadow: 0 2px 8px rgba(239,68,68,0.25);" onmouseover="this.style.boxShadow='0 4px 16px rgba(239,68,68,0.4)'; this.style.transform='translateY(-1px)'" onmouseout="this.style.boxShadow='0 2px 8px rgba(239,68,68,0.25)'; this.style.transform='translateY(0)'">CHỐT DEAL & CẬP NHẬT SALE REPORT</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================== MODAL: XUẤT EXCEL ================== -->
+    <div v-if="showExportExcelModal" class="modal" @click.self="showExportExcelModal = false">
+      <div class="modal-card modal-wide">
+        <div class="modal-head">
+          <h3><i class="lucide-file-spreadsheet"></i> Chọn khách hàng & Xuất Excel</h3>
+          <button class="x" @click="showExportExcelModal = false">✕</button>
+        </div>
+        
+        <div class="grid2">
+          <div>
+            <label>Mã khách hàng</label>
+            <input
+              v-model="maKHInput"
+              list="dl-ma-kh-export"
+              placeholder="Chọn / nhập mã KH"
+              @change="fillCustomerByMa(maKHInput)"
+              @blur="onBlurMaKH"
+            />
+            <datalist id="dl-ma-kh-export">
+              <option v-for="k in customers" :key="k.Ma_khach_hang" :value="k.Ma_khach_hang" />
+            </datalist>
+
+            <label>Tên khách hàng</label>
+            <input
+              v-model="tenKHInput"
+              list="dl-ten-kh-export"
+              placeholder="Chọn / nhập tên KH"
+              @change="fillCustomerByTen(tenKHInput)"
+              @blur="onBlurTenKH"
+            />
+            <datalist id="dl-ten-kh-export">
+              <option v-for="k in customers" :key="k.Ma_khach_hang + '_' + k.Ten_khach_hang" :value="k.Ten_khach_hang" />
+            </datalist>
+            <label style="margin-top: 16px; display: block;">Chọn Điều khoản thương mại</label>
+            <select v-model="selectedTermId" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #cbd5e1; background: #f8fafc; color: #1e293b; margin-bottom: 12px;">
+              <option value="">-- Không chèn điều khoản (chỉ giữ tiêu đề) --</option>
+              <option value="custom_import" v-if="importedTermsHtml">-- Điều khoản từ file Import --</option>
+              <option v-for="t in contractTerms" :key="t.id" :value="t.id">
+                {{ t.mau ? `[${t.mau}] ${t.tenCT || t.tenKH || 'Mẫu chung'}` : (t.tenCT || t.tenKH || 'Điều khoản chưa đặt tên') }}
+              </option>
+            </select>
+            
+          </div>
+          <div>
+            <label>Kính gởi (Tên công ty)</label>
+            <input
+              v-model="khach.Ten_cong_ty"
+              list="dl-cty-export"
+              placeholder="Chọn / nhập tên công ty"
+              @change="fillCustomerByCongTy(khach.Ten_cong_ty)"
+              @blur="onBlurCongTy"
+            />
+            <datalist id="dl-cty-export">
+              <option v-for="k in [...new Set(customers.filter(c => c.Ten_cong_ty).map(c => c.Ten_cong_ty))]" :key="k" :value="k" />
+            </datalist>
+            <label>Địa chỉ</label>
+            <input v-model="khach.Dia_chi_cong_ty" readonly />
+            <label>Người nhận</label>
+            <input v-model="khach.Ten_khach_hang" readonly />
+          </div>
+        </div>
+
+        <div v-if="selectedTermId" class="term-preview" style="margin-top: 16px;">
+          <label>Chỉnh sửa nội dung điều khoản (chỉ cho báo giá này):</label>
+          <ExcelEditor ref="previewEditor" v-model="editableTermContent" class="preview-editor" style="margin-top: 8px;" />
+        </div>
+
+        <div class="modal-actions">
+          <button class="primary action-success" @click="exportQuoteExcel(pendingExportTemplateData); showExportExcelModal = false">
+            <i class="lucide-file-spreadsheet"></i> Xác nhận Xuất Excel
+          </button>
+          <button @click="showExportExcelModal = false">Hủy</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================== MODAL: ĐIỀU CHỈNH GIÁ LIC (VIP) ================== -->
+    <div v-if="adjustPriceModal.show" class="modal" @click.self="adjustPriceModal.show = false">
+      <div class="modal-card" :style="{ width: '460px', padding: '0', background: '#0f172a', border: '1px solid ' + (adjustPriceModal.isNormalEdit ? 'rgba(59,130,246,0.25)' : 'rgba(16,185,129,0.25)'), boxShadow: '0 25px 50px -12px rgba(0,0,0,0.7), 0 0 0 1px ' + (adjustPriceModal.isNormalEdit ? 'rgba(59,130,246,0.1)' : 'rgba(16,185,129,0.1)'), borderRadius: '20px', overflow: 'hidden', animation: 'popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }">
+        
+        <!-- Header -->
+        <div class="modal-head" :style="{ background: 'linear-gradient(135deg, ' + (adjustPriceModal.isNormalEdit ? 'rgba(59,130,246,0.12)' : 'rgba(16,185,129,0.12)') + ' 0%, rgba(15,23,42,0.95) 100%)', padding: '20px 24px', borderBottom: '1px solid ' + (adjustPriceModal.isNormalEdit ? 'rgba(59,130,246,0.15)' : 'rgba(16,185,129,0.15)'), display: 'flex', justifyContent: 'space-between', alignItems: 'center' }">
+          <h3 style="color: #fff; font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 12px; margin: 0; letter-spacing: 0.3px;">
+            <div :style="{ width: '36px', height: '36px', borderRadius: '10px', background: adjustPriceModal.isNormalEdit ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 15px ' + (adjustPriceModal.isNormalEdit ? 'rgba(59,130,246,0.4)' : 'rgba(16,185,129,0.4)') }">
+              <i :class="adjustPriceModal.isNormalEdit ? 'ri-edit-line' : 'ri-arrow-up-down-fill'" style="color: #fff; font-size: 18px;"></i>
+            </div>
+            {{ adjustPriceModal.isNormalEdit ? 'Sửa Thường' : 'Điều Chỉnh Giá' }}
+          </h3>
+          <button class="x" @click="adjustPriceModal.show = false" style="background: rgba(255,255,255,0.05); color: #94a3b8; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; font-size: 16px;">✕</button>
+        </div>
+        
+        <div style="padding: 24px;">
+          <!-- Note giải thích -->
+          <div v-if="adjustPriceModal.isNormalEdit" style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; margin-bottom: 16px; border-radius: 10px; background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.2);">
+            <i class="ri-information-line" style="color: #3b82f6; font-size: 16px; flex-shrink: 0;"></i>
+            <span style="font-size: 12px; color: #93c5fd; line-height: 1.5;">Sửa thường sẽ cập nhật <b>giá thực tế</b>, không tạo chênh lệch giá hay chiết khấu.</span>
+          </div>
+          <div v-else-if="adjustPriceModal.mode === 'field'" style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; margin-bottom: 16px; border-radius: 10px; background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.2);">
+            <i class="ri-information-line" style="color: #10b981; font-size: 16px; flex-shrink: 0;"></i>
+            <span style="font-size: 12px; color: #6ee7b7; line-height: 1.5;">Điều chỉnh sẽ tạo <b>chênh lệch giá</b> (giá bán thay đổi, giá thực tế giữ nguyên).</span>
+          </div>
+          <!-- Target Info Card -->
+          <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 16px; margin-bottom: 24px; position: relative; overflow: hidden;">
+            <div style="position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, #10b981, transparent); opacity: 0.5;"></div>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+              <span style="color: #64748b; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Phạm vi áp dụng</span>
+              <span style="color: #e2e8f0; font-weight: 700; font-size: 14px; text-align: right; max-width: 60%; line-height: 1.4;">{{ adjustPriceModal.targetName || (adjustPriceModal.mode === 'all' ? 'Toàn bộ báo giá' : '') }}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="color: #64748b; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Giá trị gốc</span>
+              <span style="color: #10b981; font-weight: 800; font-size: 20px; text-shadow: 0 0 15px rgba(16,185,129,0.25);">{{ formatVND(adjustPriceModal.currentTotal) }} <span style="font-size: 16px;">₫</span></span>
+            </div>
+          </div>
+          
+          <!-- Segmented Control -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 24px; background: rgba(0,0,0,0.4); padding: 4px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); position: relative;">
+            <button 
+              :style="{ 
+                borderRadius: '10px', padding: '10px', fontWeight: '700', fontSize: '13px', textAlign: 'center', transition: 'all 0.3s ease', border: 'none', 
+                background: adjustPriceModal.adjustType === 'percent' ? 'rgba(16,185,129,0.15)' : 'transparent', 
+                color: adjustPriceModal.adjustType === 'percent' ? '#10b981' : '#64748b', 
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                boxShadow: adjustPriceModal.adjustType === 'percent' ? '0 2px 10px rgba(0,0,0,0.2), inset 0 1px 0 rgba(16,185,129,0.2)' : 'none'
+              }" 
+              @click="adjustPriceModal.adjustType = 'percent'"
+            >
+              <i class="ri-percent-line" style="font-size: 16px;"></i> Tăng/Giảm theo %
+            </button>
+            <button 
+              :style="{ 
+                borderRadius: '10px', padding: '10px', fontWeight: '700', fontSize: '13px', textAlign: 'center', transition: 'all 0.3s ease', border: 'none', 
+                background: adjustPriceModal.adjustType === 'number' ? 'rgba(16,185,129,0.15)' : 'transparent', 
+                color: adjustPriceModal.adjustType === 'number' ? '#10b981' : '#64748b', 
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                boxShadow: adjustPriceModal.adjustType === 'number' ? '0 2px 10px rgba(0,0,0,0.2), inset 0 1px 0 rgba(16,185,129,0.2)' : 'none'
+              }" 
+              @click="adjustPriceModal.adjustType = 'number'"
+            >
+              <i class="ri-money-dollar-circle-line" style="font-size: 16px;"></i> Nhập giá trị
+            </button>
+          </div>
+          
+          <!-- Input Area -->
+          <div style="margin-bottom: 32px;">
+            <div v-if="adjustPriceModal.adjustType === 'percent'" style="animation: fadeIn 0.3s ease;">
+              <label style="display: block; font-size: 12px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.5px;">Mức Điều Chỉnh (VD: 10 Tăng, -5 Giảm)</label>
+              <div style="position: relative;">
+                <FormattedInput v-model="adjustPriceModal.percentValue" placeholder="0" style="width: 100%; padding: 14px 16px; padding-right: 48px; border-radius: 12px; background: rgba(15,23,42,0.8); border: 2px solid rgba(16,185,129,0.2); color: #fff; font-size: 18px; font-weight: 800; outline: none; transition: all 0.3s; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);" />
+                <div style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; background: rgba(16,185,129,0.1); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #10b981; font-weight: 800; font-size: 14px; pointer-events: none;">%</div>
+              </div>
+              <div style="margin-top: 16px; display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: linear-gradient(90deg, rgba(16,185,129,0.1) 0%, rgba(16,185,129,0.02) 100%); border-radius: 10px; border-left: 3px solid #10b981;">
+                <span style="color: #cbd5e1; font-size: 13px; font-weight: 600;">Dự kiến mới:</span>
+                <span style="color: #10b981; font-weight: 800; font-size: 16px; letter-spacing: 0.5px;">{{ formatVND(adjustPriceModal.currentTotal * (1 + (adjustPriceModal.percentValue || 0) / 100)) }} ₫</span>
+              </div>
+            </div>
+            
+            <div v-else style="animation: fadeIn 0.3s ease;">
+              <label style="display: block; font-size: 12px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.5px;">Nhập Giá Trị Mong Muốn</label>
+              <div style="position: relative;">
+                <FormattedInput v-model="adjustPriceModal.numberValue" :decimals="quoteCurrency === 'USD' ? 2 : 0" placeholder="Nhập số tiền..." style="width: 100%; padding: 14px 16px; padding-right: 48px; border-radius: 12px; background: rgba(15,23,42,0.8); border: 2px solid rgba(16,185,129,0.2); color: #fff; font-size: 18px; font-weight: 800; outline: none; transition: all 0.3s; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);" />
+                <div style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; background: rgba(16,185,129,0.1); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #10b981; font-weight: 800; font-size: 14px; pointer-events: none;">₫</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Actions -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <button @click.prevent="adjustPriceModal.show = false" style="padding: 14px; border-radius: 12px; font-weight: 700; font-size: 14px; background: rgba(255,255,255,0.05); color: #94a3b8; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: all 0.2s;">Hủy Bỏ</button>
+            <button @click.prevent="applyAdjustPrice()" :style="{ padding: '14px', borderRadius: '12px', fontWeight: '700', fontSize: '15px', background: adjustPriceModal.isNormalEdit ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: '#fff', border: 'none', cursor: 'pointer', boxShadow: adjustPriceModal.isNormalEdit ? '0 4px 15px rgba(59,130,246,0.3)' : '0 4px 15px rgba(16,185,129,0.3)', transition: 'all 0.2s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }">
+              <i class="lucide-check"></i> Xác Nhận
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================== MODAL: LỊCH SỬ THAY ĐỔI ================== -->
+    <div v-if="showHistoryModal" class="modal" @click.self="showHistoryModal = false">
+      <div class="modal-card history-modal-card">
+        <!-- Header -->
+        <div class="history-modal-header">
+          <div class="history-modal-header-left">
+            <div class="history-modal-icon-wrap">
+              <i class="lucide-clock" style="font-size: 20px;"></i>
+            </div>
+            <div>
+              <h3 class="history-modal-title">Lịch sử thay đổi</h3>
+              <p class="history-modal-subtitle">{{ historyTitle }}</p>
+            </div>
+          </div>
+          <button class="x" @click="showHistoryModal = false">✕</button>
+        </div>
+
+        <!-- Summary Stats -->
+        <div v-if="currentHistory.length" class="history-summary">
+          <div class="history-stat">
+            <span class="history-stat-label">Tổng thay đổi</span>
+            <span class="history-stat-value">{{ currentHistory.length }} lần</span>
+          </div>
+          <div class="history-stat">
+            <span class="history-stat-label">Giá trị hiện tại</span>
+            <span class="history-stat-value" style="color: #2563eb; font-size: 15px;">{{ formatVND(currentHistory[0]?.newVal ?? 0) }}</span>
+          </div>
+          <div class="history-stat">
+            <span class="history-stat-label">Giá trị ban đầu</span>
+            <span class="history-stat-value" style="color: #ffffff;">{{ formatVND(currentHistory[currentHistory.length - 1]?.oldVal ?? 0) }}</span>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="history-table-wrap">
+          <table v-if="currentHistory.length" class="history-table">
+            <thead>
+              <tr>
+                <th style="width: 40px; text-align: center;">#</th>
+                <th style="width: 110px; text-align: center;">Thời gian</th>
+                <th style="text-align: left;">Nội dung thay đổi</th>
+                <th style="text-align: right;">Giá trị cũ</th>
+                <th style="width: 40px; text-align: center;"></th>
+                <th style="text-align: right;">Giá trị mới</th>
+                <th style="text-align: right;">Chênh lệch</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(h, i) in currentHistory" :key="i" class="history-row">
+                <td style="text-align: center; color: #94a3b8; font-size: 12px; font-weight: 600;">{{ i + 1 }}</td>
+                <td style="text-align: center;">
+                  <span class="history-time-badge">{{ h.time }}</span>
+                </td>
+                <td style="text-align: left; font-size: 13px; color: #ffffff; line-height: 1.4;">
+                  <template v-if="isGlobalHistory && h.reason">
+                    {{ h.reason }}
+                  </template>
+                  <template v-else>
+                    <b>{{ h.metric || historyTitle }}</b> thay đổi từ <span style="color: #ef4444; font-weight: 500;">{{ formatVND(h.oldVal) }}</span> → <b>{{ formatVND(h.newVal) }}</b>
+                  </template>
+                </td>
+                <td style="text-align: right;">
+                  <span class="history-old-val">{{ formatVND(h.oldVal) }}</span>
+                </td>
+                <td style="text-align: center;">
+                  <span
+                    class="history-arrow"
+                    :class="h.newVal > h.oldVal ? 'arrow-up' : h.newVal < h.oldVal ? 'arrow-down' : 'arrow-same'"
+                  >
+                    {{ h.newVal > h.oldVal ? '▲' : h.newVal < h.oldVal ? '▼' : '━' }}
+                  </span>
+                </td>
+                <td style="text-align: right;">
+                  <span
+                    class="history-new-val"
+                    :class="h.newVal > h.oldVal ? 'val-up' : h.newVal < h.oldVal ? 'val-down' : ''"
+                  >{{ formatVND(h.newVal) }}</span>
+                </td>
+                <td style="text-align: right;">
+                  <span
+                    class="history-diff"
+                    :class="h.newVal - h.oldVal > 0 ? 'diff-up' : h.newVal - h.oldVal < 0 ? 'diff-down' : ''"
+                  >
+                    {{ h.newVal - h.oldVal > 0 ? '+' : '' }}{{ formatVND(h.newVal - h.oldVal) }}
+                    <span style="font-size: 11px; opacity: 0.85; margin-left: 3px; font-weight: 600;">
+                      ({{ h.oldVal ? ((h.newVal - h.oldVal) / h.oldVal * 100).toFixed(1) : 100 }}%)
+                    </span>
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Empty state -->
+          <div v-else class="history-empty">
+            <div class="history-empty-icon">📋</div>
+            <p class="history-empty-title">Chưa có thay đổi</p>
+            <p class="history-empty-desc">Khi giá trị thay đổi, lịch sử sẽ được ghi nhận tại đây.</p>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="history-modal-footer">
+          <button class="ghost" @click="showHistoryModal = false">Đóng</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- VÙNG ẨN DÙNG CHUYÊN CHO IN PDF -->
+    <div class="print-only">
+      <table class="pdf-table">
+        <thead>
+          <tr>
+            <th style="width: 5%">STT</th>
+            <th style="width: 15%">TÊN HÀNG HÓA</th>
+            <th style="width: 25%">DIỄN GIẢI</th>
+            <th style="width: 5%">DVT</th>
+            <th style="width: 5%">S.L</th>
+            <th style="width: 10%">ĐƠN GIÁ (VND)</th>
+            <th style="width: 11%">THÀNH TIỀN TRƯỚC THUẾ</th>
+            <th style="width: 9%">THUẾ VAT</th>
+            <th style="width: 15%">THÀNH TIỀN SAU THUẾ</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template v-for="(r, idx) in quoteRowsWithSTT" :key="idx">
+            <tr v-if="r.type === 'group'" class="pdf-group-row">
+              <td></td>
+              <td colspan="8" class="text-left"><strong>{{ r.title.toUpperCase() }}</strong></td>
+            </tr>
+            <tr v-else>
+              <td class="text-center">{{ r.stt }}</td>
+              <td><strong>{{ r.item.Ten_hang }}</strong></td>
+              <td style="white-space: pre-wrap;" class="text-left">{{ [r.item.Mo_ta_chung, r.item.Mo_ta_chi_tiet, r.item.Features].filter(Boolean).join('\n') }}</td>
+              <td class="text-center">{{ r.item.DVT }}</td>
+              <td class="text-center">{{ r.item.So_luong }}</td>
+              <td class="text-right">{{ formatVND(unitPrice(r.item)).replace(' ₫', '') }}</td>
+              <td class="text-right">{{ formatVND(lineTruocThue(r.item)).replace(' ₫', '') }}</td>
+              <td class="text-right">{{ formatVND(lineVAT(r.item)).replace(' ₫', '') }}</td>
+              <td class="text-right">{{ formatVND(lineSauThue(r.item)).replace(' ₫', '') }}</td>
+            </tr>
+          </template>
+          
+          <tr class="pdf-total-row">
+            <td colspan="6" class="text-center"><strong>TỔNG CỘNG + THUẾ</strong></td>
+            <td class="text-right"><strong>{{ formatVND(totals.truoc).replace(' ₫', '') }}</strong></td>
+            <td class="text-right"><strong>{{ formatVND(totals.vat).replace(' ₫', '') }}</strong></td>
+            <td class="text-right"><strong>{{ formatVND(totals.sau).replace(' ₫', '') }}</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+  <!-- SELECT CUSTOMER MODAL FOR PIPELINE -->
+  <div v-if="showSelectCustomerModal" class="modal" @click.self="showSelectCustomerModal = false">
+    <div class="modal-card" style="max-width: 550px;">
+      <div class="modal-head">
+        <h3><i class="lucide-users"></i> Chọn khách hàng cho Pipeline</h3>
+        <button class="x" @click="showSelectCustomerModal = false">✕</button>
+      </div>
+      <div class="modal-body" style="padding-top: 10px;">
+        <label style="font-size: 0.85rem; font-weight: 600; color: #475569; display: block; margin-bottom: 8px;">Khách hàng hiện tại hoặc tìm kiếm:</label>
+        <div style="position: relative;">
+          <i class="lucide-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 16px;"></i>
+          <input 
+            type="text" 
+            v-model="pipelineSearchStr"
+            placeholder="Nhập mã hoặc tên khách hàng..." 
+            style="width: 100%; padding: 12px 12px 12px 36px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.95rem; box-sizing: border-box;"
+          />
+        </div>
+        
+        <div style="margin-top: 16px; height: 260px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc;">
+          <template v-if="filteredPipelineCustomers.length > 0">
+            <div 
+              v-for="c in filteredPipelineCustomers" 
+              :key="c.Ma_khach_hang"
+              @click="triggerToast(`Đã chọn: ${c.Ten_khach_hang}`); selectedPipelineKhach = c"
+              style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 4px; transition: background 0.15s;"
+              :style="{ background: selectedPipelineKhach?.Ma_khach_hang === c.Ma_khach_hang ? '#e0e7ff' : (filteredPipelineCustomers.length === 1 && pipelineSearchStr && !selectedPipelineKhach ? '#f1f5f9' : 'transparent') }"
+            >
+              <div style="font-weight: 600; color: #0f172a; font-size: 0.9rem;">{{ c.Ten_khach_hang }}</div>
+              <div style="font-size: 0.75rem; color: #64748b;">Mã: {{ c.Ma_khach_hang }} • MST: {{ c.MST || '---' }}</div>
+            </div>
+          </template>
+          <div v-else style="padding: 20px; text-align: center; color: #64748b; font-size: 0.85rem;">
+            Không tìm thấy khách hàng nào.
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 12px; margin-top: 20px;">
+          <button 
+            class="ghost" 
+            style="flex: 1; padding: 12px; font-size: 1rem; border-radius: 8px;"
+            @click="handleAddNewPipelineCustomer"
+          >
+            <i class="lucide-user-plus" style="margin-right: 6px;"></i>
+            Thêm mới KH
+          </button>
+          <button 
+            class="primary" 
+            style="flex: 1; padding: 12px; font-size: 1rem; border-radius: 8px;"
+            @click="handleContinuePipeline"
+          >
+            Tiếp tục
+            <i class="lucide-arrow-right" style="margin-left: 6px;"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+
+  <PipelinePreviewModal 
+    v-if="showPipelineModal" 
+    @close="showPipelineModal = false"
+    @saved="onPipelineSaved"
+    :khach="selectedPipelineKhach || khach"
+    :excelMappingConfig="excelMappingConfig"
+    :customers="customers"
+    :soHopDong="soHopDong"
+    :maHopDong="maHopDong"
+    :maHopDongCu="loadedMaHopDong || ''"
+    :maHopDongGoc="loadedMaHopDongGoc || ''"
+    :selectedItems="selectedItems"
+    :ghiChuHopDong="ghiChuHopDong"
+    :contentOfContractPO="contentOfContractPO"
+    :exchangeRate="pipelineExchangeRate"
+    :loadedData="loadedPipelineExtraData"
+    :excelBlob="pipelineExcelBlob"
+    :quoteTotals="totals"
+    :quoteTongGiaThucTe="tongGiaThucTe"
+    :quoteFinancials="{
+      chietKhauTruocThue: chietKhauTruocThue,
+      chietKhauTruocThuePct: chietKhauTruocThuePct,
+      thueChenhLech: thueChenhLech,
+      thueChenhLechPct: thueChenhLechPct,
+      chenhLechGia: chenhLechGia,
+      conLai: conLai,
+      tongChietKhau: tongChietKhau
+    }"
+  />
+
+  <Transition name="toast-slide">
+    <div v-if="showToast" class="success-toast">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+      </svg>
+      <span>{{ toastMsg }}</span>
+    </div>
+  </Transition>
+
+  <!-- ASYNC RESULT MODAL -->
+  <Transition name="async-modal">
+    <div v-if="asyncResultModal.show" class="async-overlay" @click.self="asyncResultModal.type !== 'loading' && (asyncResultModal.show = false)">
+      <div class="async-card" :class="'async-' + asyncResultModal.type">
+        <!-- LOADING -->
+        <template v-if="asyncResultModal.type === 'loading'">
+          <div class="async-spinner-wrap">
+            <svg class="async-spinner" viewBox="0 0 50 50">
+              <defs>
+                <linearGradient id="async-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#38bdf8"/>
+                  <stop offset="50%" stop-color="#a78bfa"/>
+                  <stop offset="100%" stop-color="#38bdf8"/>
+                </linearGradient>
+              </defs>
+              <circle cx="25" cy="25" r="20" fill="none" stroke-width="4" stroke-linecap="round" stroke="url(#async-gradient)"/>
+            </svg>
+          </div>
+          <div class="async-title">{{ asyncResultModal.title }}</div>
+          <div class="async-subtitle">Vui lòng đợi trong giây lát...</div>
+        </template>
+        <!-- SUCCESS -->
+        <template v-else-if="asyncResultModal.type === 'success'">
+          <div class="async-icon-wrap async-icon-success">
+            <svg viewBox="0 0 52 52" class="async-checkmark">
+              <circle cx="26" cy="26" r="25" fill="none"/>
+              <path fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+            </svg>
+          </div>
+          <div class="async-title">{{ asyncResultModal.title }}</div>
+          <div v-if="asyncResultModal.msg" class="async-subtitle">{{ asyncResultModal.msg }}</div>
+        </template>
+        <!-- ERROR -->
+        <template v-else>
+          <div class="async-icon-wrap async-icon-error">
+            <svg viewBox="0 0 52 52" class="async-xmark">
+              <circle cx="26" cy="26" r="25" fill="none"/>
+              <path fill="none" d="M16 16 36 36 M36 16 16 36"/>
+            </svg>
+          </div>
+          <div class="async-title">{{ asyncResultModal.title }}</div>
+          <div v-if="asyncResultModal.msg" class="async-subtitle">{{ asyncResultModal.msg }}</div>
+          <button class="async-close-btn" @click="asyncResultModal.show = false">Đóng</button>
+        </template>
+      </div>
+    </div>
+  </Transition>
+
+  <!-- MODAL XÁC NHẬN LƯU KHÁCH TRỐNG -->
+  <div v-if="showConfirmSaveEmptyCustomer" class="modal modal-overlay" style="z-index: 10000; display: flex; align-items: center; justify-content: center;" @click.self="showConfirmSaveEmptyCustomer = false">
+    <div class="modal-card" style="width: min(400px, 90vw); text-align: center; padding: 24px; border-radius: 12px; background: #1e293b; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.3);">
+      <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(245, 158, 11, 0.1); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+        <i class="lucide-alert-triangle" style="width: 32px; height: 32px; color: #f59e0b;"></i>
+      </div>
+      <h3 style="margin-bottom: 12px; color: #f8fafc; font-size: 18px; font-weight: 700;">Thiếu thông tin khách hàng!</h3>
+      <p style="color: #94a3b8; font-size: 14.5px; margin-bottom: 24px; line-height: 1.5;">
+        Bạn chưa nhập thông tin khách hàng. Bạn có chắc chắn muốn tiếp tục lưu báo giá với thông tin khách hàng để trống không?
+      </p>
+      <div style="display: flex; gap: 12px; justify-content: center;">
+        <button style="flex: 1; padding: 10px 16px; border-radius: 8px; background: #334155; color: #f8fafc; border: none; font-weight: 600; cursor: pointer;" @click="showConfirmSaveEmptyCustomer = false">Huỷ</button>
+        <button style="flex: 1; padding: 10px 16px; border-radius: 8px; background: #f59e0b; color: #fff; border: none; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;" @click="confirmSaveEmptyCustomer()">
+          <i class="lucide-check" style="width: 16px; height: 16px;"></i> Tiếp tục lưu
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <datalist id="category-list">
+    <option v-for="cat in existingCategories" :key="cat" :value="cat"></option>
+  </datalist>
+
+  <datalist id="dvt-options">
+    <option value="CÁI"></option>
+    <option value="BẢN QUYỀN"></option>
+    <option value="BỘ"></option>
+    <option value="GÓI"></option>
+    <option value="CHIẾC"></option>
+  </datalist>
+
+
+
+    <!-- ================== MODAL: IMAGE KIT ================== -->
+    <div v-if="showImageKitModal" class="modal-overlay" @click.self="showImageKitModal = false" style="z-index: 9999;">
+      <div class="modal-content" style="max-width: 1200px; width: 95vw; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; max-height: 90vh; background: #f8fafc;">
+        <div class="modal-header" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="color: #fff; margin: 0; font-size: 18px; font-weight: 600; font-family: 'Inter', sans-serif;">Bộ Kit Cấu Hình Báo Giá</h3>
+          <button class="modal-close" @click="showImageKitModal = false" style="background: rgba(255,255,255,0.1); border: none; border-radius: 50%; width: 32px; height: 32px; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+        
+        <div style="display: flex; flex: 1; overflow: hidden;">
+          <!-- Left: Controls -->
+          <div style="width: 350px; background: #ffffff; border-right: 1px solid #e2e8f0; padding: 24px; overflow-y: auto;">
+            <h4 style="margin: 0 0 20px 0; font-size: 16px; color: #334155;">Tùy chỉnh thông số</h4>
+            
+            <div style="margin-bottom: 20px;">
+              <label style="display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: 600; color: #475569; font-size: 14px;">
+                <span>Cỡ chữ bảng (px)</span>
+                <span style="color: #3b82f6;">{{ kitOptions.fontSize }}px</span>
+              </label>
+              <input type="range" v-model.number="kitOptions.fontSize" min="10" max="20" step="1" style="width: 100%; cursor: pointer;" />
+            </div>
+
+            <div style="margin-bottom: 20px;">
+              <label style="display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: 600; color: #475569; font-size: 14px;">
+                <span>Khoảng cách lề (px)</span>
+                <span style="color: #3b82f6;">{{ kitOptions.padding }}px</span>
+              </label>
+              <input type="range" v-model.number="kitOptions.padding" min="0" max="80" step="4" style="width: 100%; cursor: pointer;" />
+            </div>
+
+            <div style="margin-bottom: 20px;">
+              <label style="display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: 600; color: #475569; font-size: 14px;">
+                <span>Độ lớn Logo (%)</span>
+                <span style="color: #3b82f6;">{{ kitOptions.logoScale }}%</span>
+              </label>
+              <input type="range" v-model.number="kitOptions.logoScale" min="50" max="150" step="5" style="width: 100%; cursor: pointer;" />
+            </div>
+
+            <div style="margin-bottom: 20px;">
+              <label style="display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: 600; color: #475569; font-size: 14px;">
+                <span>Khoảng cách dưới bảng (px)</span>
+                <span style="color: #3b82f6;">{{ kitOptions.tableMarginBottom }}px</span>
+              </label>
+              <input type="range" v-model.number="kitOptions.tableMarginBottom" min="0" max="100" step="5" style="width: 100%; cursor: pointer;" />
+            </div>
+            
+            <div style="margin-top: 40px; padding: 15px; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe;">
+              <p style="margin: 0; font-size: 13px; color: #1e3a8a; line-height: 1.5;">
+                <strong style="display: block; margin-bottom: 4px;">Lưu ý:</strong>
+                Sau khi điều chỉnh cấu trúc ưng ý, bấm <strong>"Chụp & Sửa Ảnh"</strong> để chụp lại giao diện này và chuyển sang không gian vẽ, cắt xén, thêm chữ.
+              </p>
+            </div>
+          </div>
+          
+          <!-- Right: Preview Container -->
+          <div style="flex: 1; background: #e2e8f0; display: flex; justify-content: center; align-items: flex-start; padding: 20px; overflow: hidden; position: relative;">
+            <div style="width: 100%; height: 100%; overflow: auto; display: flex; justify-content: center;">
+              <!-- Mini Preview Wrapper -->
+              <div style="transform-origin: top center; transform: scale(0.65); transition: transform 0.2s;">
+                <!-- We duplicate the output visually, or we could just use a portal. 
+                     Since exportImageContainer is already v-show="showImageKitModal" but positioned off-screen,
+                     we can't easily show the real one here unless we move it. 
+                     Wait, actually moving it breaks html2canvas. Let's just mirror the HTML structure here. -->
+                <div style="background: #fff; width: 1100px; padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); color: #000; font-family: Arial, sans-serif;" :style="{ padding: kitOptions.padding + 'px' }">
+                  <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 5px;">
+                    <div style="width: 70%; transform-origin: bottom left;" :style="{ transform: `scale(${kitOptions.logoScale / 100})` }"><img src="/logo1.png" style="max-width: 100%; height: auto;" /></div>
+                    <div style="width: 25%; text-align: right; transform-origin: bottom right;" :style="{ transform: `scale(${kitOptions.logoScale / 100})` }"><img src="/logo2.png" style="max-width: 100%; height: auto;" /></div>
+                  </div>
+                  <div style="display: flex; height: 3px; width: 100%; margin-bottom: 20px;">
+                    <div style="width: 15%; background: #0070c0;"></div>
+                    <div style="width: 85%; background: #ed7d31;"></div>
+                  </div>
+                  <table style="width: 100%; border: none; margin-bottom: 25px; border-collapse: collapse; color: #000;" :style="{ fontSize: (kitOptions.fontSize + 2) + 'px' }">
+                    <tr><td style="padding: 4px 0;"><strong>Kính gởi: <span style="text-transform: uppercase;">{{ khach.Ten_cong_ty }}</span></strong></td><td style="text-align: right; font-style: italic; padding: 4px 0;">Ngày : {{ new Date().toLocaleDateString('vi-VN', {day: '2-digit', month: '2-digit', year: 'numeric'}) }}</td></tr>
+                    <tr><td colspan="2" style="font-style: italic; padding: 4px 0;">Địa chỉ: {{ khach.Dia_chi_cong_ty || khach.ADDRESS || '' }}</td></tr>
+                    <tr><td colspan="2" style="font-style: italic; padding: 4px 0;">Người nhận: {{ khach.Ten_khach_hang }}</td></tr>
+                  </table>
+                  <div style="text-align: center; margin-bottom: 8px;"><h2 style="color: #0000ff; font-weight: bold; margin: 0;" :style="{ fontSize: (kitOptions.fontSize + 5) + 'px' }">BẢNG BÁO GIÁ</h2></div>
+                  <div style="margin-bottom: 8px;" :style="{ fontSize: kitOptions.fontSize + 'px' }">Công ty Nam Trường Sơn trân trọng gởi đến Quý khách hàng bảng báo giá như sau:</div>
+                  <table style="width: 100%; border-collapse: collapse; table-layout: auto; color: #000;" :style="{ fontSize: kitOptions.fontSize + 'px', marginBottom: kitOptions.tableMarginBottom + 'px' }">
+                    <tbody>
+                      <tr style="background: #c6e0b4; font-weight: bold; text-align: center;">
+                        <td v-for="(col, i) in excelMappingConfig" :key="'pimg_h' + i" style="border: 1px solid #000; padding: 6px 4px; color: #000;">{{ col.header }}</td>
+                      </tr>
+                      <tr v-for="r in quoteRowsWithSTT.slice(0, 5)" :key="'pimg' + r.idx" :style="r.type === 'group' ? 'background: #ffff00; font-weight: bold;' : 'background: #fff;'">
+                        <td v-for="(col, i) in excelMappingConfig" :key="'pimg_c' + col.field + i" :style="{ border: '1px solid #000', padding: '6px 4px', textAlign: r.type === 'group' ? (col.field === 'stt' ? 'center' : 'left') : (['stt', 'so_luong'].includes(col.field) ? 'center' : (['don_gia', 'don_gia_kh', 'truoc_thue', 'vat', 'sau_thue', 'gia_tieu_chuan', 'don_gia_nhap'].includes(col.field) ? 'right' : 'left')), whiteSpace: 'pre-wrap' }">
+                          <template v-if="r.type === 'group'">
+                            <template v-if="col.field === 'stt'">{{ r.roman }}</template>
+                            <template v-else-if="i === 1">{{ String(r.title).toUpperCase() }}</template>
+                          </template>
+                          <template v-else>
+                            {{ getPreviewCellValue(r, col.field) }}
+                          </template>
+                        </td>
+                      </tr>
+                      <tr><td :colspan="excelMappingConfig.length" style="text-align: center; font-style: italic; border: 1px solid #000; padding: 10px;">(Hiển thị minh họa 5 dòng đầu...)</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div style="padding: 16px 24px; background: #fff; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px;">
+          <button @click="showImageKitModal = false" style="padding: 10px 20px; font-weight: 600; border-radius: 8px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#e2e8f0';" onmouseout="this.style.background='#f1f5f9';">Đóng</button>
+          
+          <button @click="exportToImage" style="padding: 10px 20px; font-weight: 600; border-radius: 8px; background: #10b981; color: #fff; border: none; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2); transition: all 0.2s;" onmouseover="this.style.background='#059669';" onmouseout="this.style.background='#10b981';">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
+            Chụp & Sửa Ảnh
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- KASPERSKY CALCULATOR MODAL -->
+    <div v-if="showKasperskyCalculatorModal" class="modal-overlay" @click.self="showKasperskyCalculatorModal = false" style="z-index: 1000000; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; padding: 20px;">
+      <div class="modal-content" style="max-width: 1300px; max-height: 95vh; width: 100%; border-radius: 12px; padding: 0; display: flex; flex-direction: column; background: #1e293b; border: 1px solid #334155; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); overflow: hidden;">
+        <div style="padding: 16px 20px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; background: #0f172a;">
+          <h3 style="margin: 0; font-size: 16px; color: #fff; font-weight: 600;">Tra cứu & Tính toán % OFF Hãng</h3>
+          <button style="background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 16px;" @click="showKasperskyCalculatorModal = false"><i class="fas fa-times"></i></button>
+        </div>
+        
+        <div class="kasp-modal-body" style="display: flex; flex: 1; min-height: 450px;">
+          <!-- Cột 1: Options -->
+          <div class="kasp-modal-col-1" style="flex: 1; padding: 24px; border-right: 1px solid #334155; display: flex; flex-direction: column; gap: 16px; max-width: 400px; overflow-y: auto;">
+            <div>
+              <label style="display: block; color: #cbd5e1; font-size: 13px; margin-bottom: 8px; font-weight: 500;">Bảng giá / Option (Tên file)</label>
+              <select v-model="selectedFileGiaOffIndex" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #fff; outline: none; font-size: 14px;">
+                <option v-for="(file, idx) in listFileGiaOff" :key="idx" :value="idx">{{ file[2] }} ({{ String(file[1]).substring(0, 10) }})</option>
+              </select>
+            </div>
+            <div style="height: 1px; background: #334155; margin: 8px 0;"></div>
+            <div>
+              <label style="display: block; color: #cbd5e1; font-size: 13px; margin-bottom: 8px; font-weight: 500;">Product</label>
+              <select v-model="kaspProduct" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #fff; outline: none; font-size: 14px;">
+                <option value="" disabled>-- Chọn Product --</option>
+                <option value="NEXT Foundations / EDR Optimum">NEXT Foundations / EDR Optimum</option>
+                <option value="XDR Optimum">XDR Optimum</option>
+              </select>
+            </div>
+            <div>
+              <label style="display: block; color: #cbd5e1; font-size: 13px; margin-bottom: 8px; font-weight: 500;">License Type</label>
+              <select v-model="kaspLicenseType" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #fff; outline: none; font-size: 14px;">
+                <option value="" disabled>-- Chọn License Type --</option>
+                <option value="Base Plus">Base Plus</option>
+                <option value="Renewal Plus">Renewal Plus</option>
+              </select>
+            </div>
+            <div>
+              <label style="display: block; color: #cbd5e1; font-size: 13px; margin-bottom: 8px; font-weight: 500;">User (Số lượng người dùng)</label>
+              <input type="number" v-model="kaspUsersStr" placeholder="Nhập số lượng user..." style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #fff; outline: none; font-size: 14px;" />
+            </div>
+            <div style="margin-bottom: auto;">
+              <label style="display: block; color: #cbd5e1; font-size: 13px; margin-bottom: 8px; font-weight: 500;">Thời hạn (Năm)</label>
+              <select v-model.number="kaspDuration" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #fff; outline: none; font-size: 14px;">
+                <option value="" disabled>-- Chọn thời hạn --</option>
+                <option value="1">1 Năm (+0%)</option>
+                <option value="2">2 Năm (+2%)</option>
+                <option value="3">3 Năm (+3%)</option>
+                <option value="4">4 Năm (+3%)</option>
+                <option value="5">5 Năm (+3%)</option>
+              </select>
+            </div>
+            
+            <div style="padding: 16px; background: rgba(139,92,246,0.1); border-radius: 10px; border: 1px solid rgba(139,92,246,0.3); text-align: center;">
+              <div style="font-size: 13px; color: #a78bfa; margin-bottom: 6px; font-weight: 500;">Kết quả % Off Hãng:</div>
+              <div style="font-size: 32px; font-weight: 800; color: #fff;">{{ kaspCalculatedOff !== null ? kaspCalculatedOff + ' %' : '--' }}</div>
+            </div>
+          </div>
+          
+          <!-- Cột 2: Preview -->
+          <div class="kasp-modal-col-2" style="flex: 2; padding: 24px; background: #0f172a; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden;">
+            <div style="color: #94a3b8; margin-bottom: 12px; font-size: 14px; font-weight: 500; align-self: flex-start;">Ảnh minh họa bảng giá</div>
+            <div class="kasp-preview-box" style="width: 100%; height: 100%; min-height: 600px; border: 1px solid #334155; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #64748b; background: rgba(0,0,0,0.2); overflow: auto;">
+              <img v-if="previewImageLink" :src="previewImageLink" @click="showKasperskyImageFullscreen = true" style="max-width: 100%; display: block; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.02)';" onmouseout="this.style.transform='scale(1)';" alt="Preview" title="Nhấn để phóng to" />
+              <div v-else style="text-align: center;">
+                <i class="fas fa-image" style="font-size: 48px; opacity: 0.5; margin-bottom: 12px;"></i>
+                <div style="font-size: 13px; opacity: 0.7;">Vui lòng chọn bảng giá ở cột bên</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div style="padding: 16px 24px; border-top: 1px solid #334155; display: flex; justify-content: flex-end; gap: 12px; background: #0f172a;">
+          <button style="padding: 10px 20px; border-radius: 8px; border: 1px solid #334155; background: transparent; color: #cbd5e1; cursor: pointer; font-weight: 500; font-size: 14px;" @click="showKasperskyCalculatorModal = false">Hủy</button>
+          <button :disabled="kaspCalculatedOff === null" :style="{ opacity: kaspCalculatedOff === null ? 0.5 : 1, cursor: kaspCalculatedOff === null ? 'not-allowed' : 'pointer', padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#8b5cf6', color: '#fff', fontWeight: '600', fontSize: '14px' }" @click="applyKaspOff">Áp dụng ({{ kaspCalculatedOff !== null ? kaspCalculatedOff + '%' : '--' }})</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- IMPORT CONFIRM MODAL -->
+    <div class="modal" v-if="showImportConfirmModal" style="z-index: 10005;">
+      <div class="modal-card" style="max-width: 600px; padding: 24px;">
+        <h3 style="display: flex; align-items: center; gap: 8px; color: #10b981; margin-bottom: 16px;">
+          <i class="lucide-database"></i> Xác nhận lưu Database
+        </h3>
+        <p style="font-size: 14px; margin-bottom: 12px; color: #f8fafc;">
+          Bạn vừa đọc thành công <strong>{{ pendingImportItems.length }}</strong> sản phẩm từ file Excel mẫu.
+        </p>
+        <p style="font-size: 14px; margin-bottom: 16px; color: #94a3b8;">
+          Bạn có muốn lưu các sản phẩm này vào cơ sở dữ liệu (sheet hang_hoa) để tái sử dụng ở các báo giá sau không?
+        </p>
+        
+        <div style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; margin-bottom: 20px; padding: 8px;">
+          <div v-for="(it, idx) in pendingImportItems.slice(0, 5)" :key="idx" style="font-size: 12px; padding: 6px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #cbd5e1; display: flex; justify-content: space-between;">
+            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 70%;">{{ it.Ten_hang }}</span>
+            <span style="color: #38bdf8; font-weight: 600;">{{ formatVND(it.Don_gia) }}</span>
+          </div>
+          <div v-if="pendingImportItems.length > 5" style="font-size: 12px; padding: 6px; color: #64748b; text-align: center; font-style: italic;">
+            ...và {{ pendingImportItems.length - 5 }} sản phẩm khác
+          </div>
+        </div>
+
+        <div class="modal-actions" style="display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap;">
+          <button style="background: #475569; color: #fff; padding: 8px 16px; border: none; border-radius: 6px;" @click="showImportConfirmModal = false; pendingImportItems = []">Hủy bỏ</button>
+          <button style="background: #3b82f6; color: #fff; padding: 8px 16px; border: none; border-radius: 6px;" @click="confirmImport(false)">Chỉ thêm vào Báo giá</button>
+          <button class="primary action-success" style="padding: 8px 16px; border-radius: 6px;" @click="confirmImport(true)"><i class="lucide-save"></i> Có (Lưu Db & Báo giá)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- KASPERSKY IMAGE FULLSCREEN MODAL -->
+    <div v-if="showKasperskyImageFullscreen && previewImageLink" class="modal-overlay" @click.self="showKasperskyImageFullscreen = false" style="z-index: 1000001; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; padding: 20px;">
+      <div style="position: relative; max-width: 95vw; max-height: 95vh; display: flex; justify-content: center; align-items: center;">
+        <button style="position: absolute; top: -40px; right: 0; background: none; border: none; color: #fff; cursor: pointer; font-size: 24px; z-index: 10;" @click="showKasperskyImageFullscreen = false" title="Đóng"><i class="fas fa-times"></i></button>
+        <img :src="previewImageLink" style="max-width: 100%; max-height: 90vh; border-radius: 8px; box-shadow: 0 0 40px rgba(0,0,0,0.5);" />
+      </div>
+    </div>
+</template>
+
+<style scoped>
+@media (max-width: 768px) {
+  .kasp-modal-body {
+    flex-direction: column-reverse !important;
+  }
+  .kasp-modal-col-1 {
+    max-width: 100% !important;
+    border-right: none !important;
+    border-top: 1px solid #334155 !important;
+  }
+  .kasp-modal-col-2 {
+    padding-bottom: 12px !important;
+  }
+  .kasp-preview-box {
+    min-height: 250px !important;
+  }
+}
+
+.ghost-col-item {
+  opacity: 0.5;
+  background-color: #f1f5f9 !important;
+}
+.drag-col-item {
+  box-shadow: 0 15px 30px rgba(0,0,0,0.2) !important;
+  transform: scale(1.02);
+  z-index: 100;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #ffffff;
+}
+.chosen-col-item {
+  background-color: #f8fafc;
+  outline: 2px dashed #10b981;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Column Drag-and-Drop — Professional Animation System
+   ═══════════════════════════════════════════════════════ */
+
+/* — Source column: ghost-slot placeholder — */
+.col-dragging {
+  opacity: 0.25 !important;
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(148, 163, 184, 0.06),
+    rgba(148, 163, 184, 0.06) 6px,
+    rgba(148, 163, 184, 0.015) 6px,
+    rgba(148, 163, 184, 0.015) 12px
+  ) !important;
+  filter: grayscale(0.6);
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              filter 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* — Drop target: lift + glow + indicator — */
+.col-drop-target {
+  position: relative;
+  z-index: 3;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.25s ease,
+              background-color 0.2s ease;
+  transform: translateY(-2px);
+  background-color: rgba(99, 102, 241, 0.03) !important;
+}
+
+/* Indicator line: solid gradient bar on the insert side */
+.col-drop-left::before,
+.col-drop-right::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #818cf8 0%, #6366f1 40%, #4f46e5 100%);
+  z-index: 10;
+  animation: colIndicatorPulse 1.2s ease-in-out infinite;
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.5), 0 0 20px rgba(99, 102, 241, 0.2);
+}
+.col-drop-left::before { left: -2px; }
+.col-drop-right::before { right: -2px; }
+
+/* Shimmer sweep overlay */
+.col-drop-target::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(99, 102, 241, 0.06) 45%,
+    rgba(99, 102, 241, 0.10) 50%,
+    rgba(99, 102, 241, 0.06) 55%,
+    transparent 70%
+  );
+  background-size: 250% 100%;
+  animation: colShimmerSweep 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+  z-index: 1;
+  border-radius: inherit;
+}
+
+/* Direction-specific glow */
+.col-drop-left {
+  box-shadow: inset 3px 0 12px -4px rgba(99, 102, 241, 0.25),
+              0 4px 16px -4px rgba(99, 102, 241, 0.12) !important;
+}
+.col-drop-right {
+  box-shadow: inset -3px 0 12px -4px rgba(99, 102, 241, 0.25),
+              0 4px 16px -4px rgba(99, 102, 241, 0.12) !important;
+}
+
+/* — Drop success: radiate ring + flash — */
+.col-just-dropped {
+  position: relative;
+  z-index: 50;
+  animation: colDropFlash 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.col-just-dropped::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 4px;
+  border: 2px solid rgba(16, 185, 129, 0.7);
+  animation: colDropRing 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* ── Keyframes ── */
+@keyframes colIndicatorPulse {
+  0%, 100% { opacity: 1; transform: scaleY(1); }
+  50% { opacity: 0.6; transform: scaleY(0.96); }
+}
+
+@keyframes colShimmerSweep {
+  0% { background-position: 250% 0; }
+  100% { background-position: -250% 0; }
+}
+
+@keyframes colDropFlash {
+  0% {
+    background-color: rgba(16, 185, 129, 0.20) !important;
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
+  }
+  30% {
+    background-color: rgba(16, 185, 129, 0.12) !important;
+    transform: scale(1.025);
+    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+  }
+  60% {
+    transform: scale(0.995);
+  }
+  100% {
+    background-color: transparent !important;
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+@keyframes colDropRing {
+  0% {
+    border-color: rgba(16, 185, 129, 0.8);
+    outline: 0px solid rgba(16, 185, 129, 0.6);
+    outline-offset: 0px;
+    opacity: 1;
+  }
+  40% {
+    border-color: rgba(16, 185, 129, 0.5);
+    outline: 8px solid rgba(16, 185, 129, 0);
+    outline-offset: 8px;
+    opacity: 1;
+  }
+  100% {
+    border-color: transparent;
+    outline: 14px solid rgba(16, 185, 129, 0);
+    outline-offset: 14px;
+    opacity: 0;
+  }
+}
+.mapping-col:hover {
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  z-index: 10;
+}
+.metallic-border-btn {
+  border-radius: 50% !important;
+  width: 76px !important;
+  height: 76px !important;
+  color: #ffffff;
+  border: none !important;
+  box-shadow: 0 4px 16px -2px rgba(22, 163, 74, 0.4), 0 0 20px rgba(22, 163, 74, 0.1);
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 !important;
+  user-select: none;
+  transition: box-shadow 0.25s, transform 0.25s;
+  position: relative;
+  overflow: hidden;
+  background: transparent !important;
+}
+
+.metallic-border-btn:hover {
+  box-shadow: 0 8px 24px -2px rgba(22, 163, 74, 0.5), 0 0 30px rgba(22, 163, 74, 0.15);
+}
+
+.metallic-border-btn::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(
+    #ffffff 0%,
+    #ffffff 75%,
+    #fef08a 85%,
+    #eab308 90%,
+    #fef08a 95%,
+    #ffffff 100%
+  );
+  animation: rotate-metallic 2.5s linear infinite;
+  z-index: -2;
+}
+
+.metallic-border-btn::after {
+  content: '';
+  position: absolute;
+  inset: 1.5px;
+  background: #16a34a;
+  border-radius: 50%;
+  z-index: -1;
+}
+
+@keyframes rotate-metallic {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ===== INPUT INLINE 3-STATE: loading → loaded → ready ===== */
+.input-loading,
+.input-loaded,
+.input-ready {
+  position: relative;
+}
+.input-loading > input,
+.input-loading > .cell-input,
+.input-loaded > input,
+.input-loaded > .cell-input,
+.input-ready > input,
+.input-ready > .cell-input {
+  padding-right: 36px !important;
+}
+
+/* — SHARED ICON POSITION (inside the input, right-center) — */
+.input-loading::after,
+.input-loaded::after,
+.input-ready::after {
+  content: '';
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* — STATE 1: LOADING SPINNER — */
+.input-loading::after {
+  border: 2.5px solid rgba(56,189,248,0.15);
+  border-top-color: #38bdf8;
+  border-radius: 50%;
+  animation: input-spin 0.7s linear infinite;
+  filter: drop-shadow(0 0 4px rgba(56,189,248,0.3));
+  /* override transform since we need both rotate + translateY */
+  animation: input-spin-centered 0.7s linear infinite;
+}
+@keyframes input-spin-centered {
+  0% { transform: translateY(-50%) rotate(0deg); }
+  100% { transform: translateY(-50%) rotate(360deg); }
+}
+.input-loading > input,
+.input-loading > .cell-input {
+  border-color: rgba(56,189,248,0.25) !important;
+  animation: input-pulse-border 1.5s ease-in-out infinite;
+}
+@keyframes input-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes input-pulse-border {
+  0%, 100% { border-color: rgba(56,189,248,0.15); }
+  50% { border-color: rgba(56,189,248,0.4); }
+}
+
+/* — STATE 2: LOADED CHECKMARK — */
+.input-loaded::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2310b981' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  animation: input-check-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  filter: drop-shadow(0 0 6px rgba(16,185,129,0.5));
+}
+.input-loaded > input,
+.input-loaded > .cell-input {
+  border-color: rgba(16,185,129,0.4) !important;
+  transition: border-color 0.3s;
+}
+@keyframes input-check-pop {
+  0% { transform: translateY(-50%) scale(0) rotate(-20deg); opacity: 0; }
+  60% { transform: translateY(-50%) scale(1.3) rotate(5deg); opacity: 1; }
+  100% { transform: translateY(-50%) scale(1) rotate(0deg); opacity: 1; }
+}
+
+/* — STATE 3: READY DROPDOWN ARROW — */
+.input-ready::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  animation: input-arrow-fade 0.4s ease-out;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+.input-ready:hover::after {
+  opacity: 1;
+  filter: drop-shadow(0 0 4px rgba(148,163,184,0.3));
+}
+.input-ready > input,
+.input-ready > .cell-input {
+  border-color: rgba(30,58,47,1) !important;
+  transition: border-color 0.3s;
+}
+@keyframes input-arrow-fade {
+  0% { opacity: 0; transform: translateY(-50%) translateY(-4px); }
+  100% { opacity: 0.7; transform: translateY(-50%); }
+}
+
+/* ===== TOAST ===== */
+.success-toast {
+  position: fixed;
+  top: 30px;
+  right: 30px;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  padding: 14px 24px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 99999;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+.toast-slide-enter-active,
+.toast-slide-leave-active {
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.toast-slide-enter-from,
+.toast-slide-leave-to {
+  transform: translateX(120%);
+  opacity: 0;
+}
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* ===== RESET & SCROLLBAR ===== */
+*, *::before, *::after { box-sizing: border-box; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+/* ===== PAGE ===== */
+.page {
+  font-family: 'Inter', 'Plus Jakarta Sans', system-ui, sans-serif;
+  padding: 12px;
+  background:
+    radial-gradient(ellipse 80% 50% at 10% 0%, rgba(14,165,233,0.12) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 40% at 90% 100%, rgba(16,185,129,0.08) 0%, transparent 50%),
+    #09090b;
+  min-height: 100vh;
+  color: #f8fafc;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+
+/* ===== MAIN GRID ===== */
+.main-grid {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  position: relative;
+  align-items: start;
+  overflow: hidden;
+}
+
+/* ===== VIP SIDEBAR ===== */
+.product-sidebar {
+  background: linear-gradient(160deg, rgba(15, 23, 42, 0.75) 0%, rgba(30, 41, 59, 0.85) 100%);
+  border-radius: 20px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: 1px solid rgba(56, 189, 248, 0.2);
+  border-left: 1px solid rgba(56, 189, 248, 0.2);
+  box-shadow:
+    0 20px 40px -10px rgba(0,0,0,0.8),
+    inset 0 0 30px rgba(56, 189, 248, 0.05);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  position: sticky;
+  top: 12px;
+  height: calc(100vh - 24px);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: 380px;
+  min-width: 380px;
+  overflow: hidden;
+}
+.sidebar-left { transition: margin-left .25s ease, opacity .25s ease; }
+.sidebar-right { transition: margin-right .25s ease, opacity .25s ease; overflow-y: auto; }
+.sidebar-left.closed { margin-left: -400px; opacity: 0; pointer-events: none; }
+.sidebar-right.closed { margin-right: -400px; opacity: 0; pointer-events: none; }
+
+.sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+.sidebar-head h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #f8fafc, #38bdf8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.table-header-box h3 {
+  background: transparent !important;
+  -webkit-background-clip: border-box !important;
+  -webkit-text-fill-color: #16a34a !important;
+  color: #16a34a !important; /* Xanh lá cây đậm */
+  text-transform: uppercase !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.05em;
+}
+
+.icon-btn {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: #94a3b8;
+  font-size: 12px;
+  padding: 0;
+  transition: all .15s;
+}
+.icon-btn:hover { background: rgba(255,255,255,0.1); color: #f8fafc; }
+
+/* ===== LUCIDE ICONS ===== */
+[class^="lucide-"], [class*=" lucide-"] {
+  font-size: 15px;
+  vertical-align: -2px;
+  margin-right: 2px;
+}
+h3 [class^="lucide-"] {
+  font-size: 16px;
+  vertical-align: -3px;
+  margin-right: 4px;
+  opacity: 0.85;
+}
+.totals-icon [class^="lucide-"] {
+  font-size: 14px;
+  margin-right: 0;
+  vertical-align: 0;
+}
+
+/* ===== RIGHT SIDEBAR CONTRACT ===== */
+.sidebar-head-contract {
+  background: linear-gradient(135deg, rgba(30,41,59,0.9), rgba(15,23,42,0.95));
+  margin: -16px -16px 14px;
+  padding: 14px 16px;
+  border-radius: 20px 20px 0 0;
+  border-bottom: 1px solid rgba(56,189,248,0.1);
+  position: relative;
+}
+.sidebar-head-contract::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(56,189,248,0.3), transparent);
+}
+.sidebar-head-contract h3 {
+  color: #f1f5f9 !important;
+  font-size: 14px !important;
+  background: linear-gradient(135deg, #f8fafc, #38bdf8) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+.sidebar-head-contract .icon-btn {
+  color: #94a3b8;
+}
+.sidebar-head-contract .icon-btn:hover {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+}
+.contract-section {
+  margin-bottom: 14px;
+}
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.section-label [class^="lucide-"] {
+  font-size: 13px;
+  color: #64748b;
+  vertical-align: 0;
+  margin-right: 0;
+}
+.contract-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field-group label {
+  margin-top: 0;
+  margin-bottom: 2px;
+}
+.contract-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  margin: 14px 0;
+}
+.action-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 12px 8px !important;
+  border-radius: 10px !important;
+  font-size: 11px !important;
+  font-weight: 600;
+  border: 1px solid #334155;
+  background: #18181b;
+  color: #94a3b8;
+  transition: all 0.2s;
+  line-height: 1.2;
+  text-align: center;
+  width: 100%;
+}
+.action-btn [class^="lucide-"] {
+  font-size: 18px;
+  margin-right: 0;
+  vertical-align: 0;
+}
+.action-btn:hover {
+  background: #27272a;
+  border-color: #475569;
+  color: #f8fafc;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.action-btn:disabled {
+  opacity: 0.4;
+  transform: none !important;
+  box-shadow: none !important;
+}
+.action-primary {
+  background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+  color: white !important;
+  border-color: transparent !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25), 0 0 0 1px rgba(59,130,246,0.1);
+}
+.action-primary:hover {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35), 0 0 20px rgba(59,130,246,0.1) !important;
+  transform: translateY(-2px) !important;
+}
+.action-success {
+  background: linear-gradient(135deg, #22c55e, #16a34a) !important;
+  color: white !important;
+  border-color: transparent !important;
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25), 0 0 0 1px rgba(34,197,94,0.1);
+}
+.action-success:hover {
+  background: linear-gradient(135deg, #16a34a, #15803d) !important;
+  box-shadow: 0 8px 20px rgba(22, 163, 74, 0.35), 0 0 20px rgba(34,197,94,0.1) !important;
+  transform: translateY(-2px) !important;
+}
+.action-danger {
+  background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+  color: white !important;
+  border-color: transparent !important;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25), 0 0 0 1px rgba(239,68,68,0.1);
+}
+.action-danger:hover {
+  background: linear-gradient(135deg, #dc2626, #b91c1c) !important;
+  box-shadow: 0 8px 20px rgba(220, 38, 38, 0.35), 0 0 20px rgba(239,68,68,0.1) !important;
+  transform: translateY(-2px) !important;
+}
+.action-save {
+  grid-column: 1 / -1;
+  flex-direction: row !important;
+  padding: 10px 16px !important;
+  background: linear-gradient(135deg, #7c3aed, #6d28d9) !important;
+  color: white !important;
+  border-color: transparent !important;
+  box-shadow: 0 4px 12px rgba(109, 40, 217, 0.25), 0 0 0 1px rgba(124,58,237,0.1);
+}
+.action-save:hover {
+  background: linear-gradient(135deg, #6d28d9, #5b21b6) !important;
+  box-shadow: 0 8px 20px rgba(109, 40, 217, 0.35), 0 0 20px rgba(124,58,237,0.1) !important;
+  transform: translateY(-2px) !important;
+}
+.action-pipeline {
+  grid-column: 1 / -1;
+  flex-direction: row !important;
+  padding: 10px 16px !important;
+  background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+  color: white !important;
+  border-color: rgba(255,255,255,0.08) !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+.action-pipeline:hover {
+  background: linear-gradient(135deg, #60a5fa, #3b82f6) !important;
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4), 0 0 12px rgba(59, 130, 246, 0.1) !important;
+  border-color: rgba(59, 130, 246, 0.15) !important;
+  transform: translateY(-2px) !important;
+}
+.save-msg {
+  font-size: 11.5px;
+  color: #94a3b8;
+  margin: 6px 0 0;
+  padding: 6px 10px;
+  background: rgba(15,23,42,.5);
+  border-radius: 8px;
+  border: 1px solid #1e293b;
+}
+.action-utils {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.util-btn {
+  width: 100%;
+  padding: 9px 14px !important;
+  font-size: 12px !important;
+  font-weight: 500;
+  background: #18181b;
+  color: #94a3b8;
+  border: 1px solid #334155;
+  border-radius: 8px !important;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s;
+}
+.util-btn [class^="lucide-"] {
+  font-size: 14px;
+  color: #64748b;
+  margin-right: 0;
+}
+.util-btn:hover {
+  background: #27272a;
+  border-color: #475569;
+  color: #f8fafc;
+}
+.util-btn:hover [class^="lucide-"] {
+  color: #38bdf8;
+}
+
+.inline-adjust {
+  background-color: #ef4444 !important;
+  color: #ffffff !important;
+  border-color: #ef4444 !important;
+  font-weight: 700 !important;
+  width: max-content !important;
+}
+.inline-normal-edit {
+  background-color: #3b82f6 !important;
+  color: #ffffff !important;
+  border-color: #2563eb !important;
+  font-weight: 700 !important;
+  width: max-content !important;
+}
+.inline-adjust [class^="lucide-"] {
+  color: #ffffff !important;
+}
+.inline-normal-edit [class^="lucide-"] {
+  color: #ffffff !important;
+}
+.inline-adjust:hover {
+  background-color: #dc2626 !important;
+  border-color: #dc2626 !important;
+  color: #ffffff !important;
+}
+.inline-normal-edit:hover {
+  background-color: #2563eb !important;
+  border-color: #1d4ed8 !important;
+  color: #ffffff !important;
+}
+.inline-adjust:hover [class^="lucide-"] {
+  color: #ffffff !important;
+}
+.inline-normal-edit:hover [class^="lucide-"] {
+  color: #ffffff !important;
+}
+
+
+/* ===== MODAL GROUPS ===== */
+.modal-group {
+  background: rgba(15,23,42,.5);
+  border: 1px solid #1e293b;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.modal-group-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #e2e8f0;
+  margin-top: 0;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid #1e293b;
+  padding-bottom: 8px;
+}
+.modal-group-title [class^="lucide-"] {
+  font-size: 14px;
+  color: #3b82f6;
+}
+/* ===== OPEN TABS ===== */
+.open-tab {
+  position: fixed; top: 90px; z-index: 9991;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: linear-gradient(135deg, rgba(79,70,229,0.9) 0%, rgba(59,130,246,0.9) 100%);
+  color: #fff;
+  cursor: pointer;
+  font-weight: 600; font-size: 12px;
+  box-shadow: 0 4px 16px -2px rgba(79, 70, 229, 0.4), 0 0 20px rgba(79,70,229,0.1);
+  width: auto;
+  backdrop-filter: blur(8px);
+}
+.open-tab:hover { transform: translateY(-2px); box-shadow: 0 8px 24px -2px rgba(79, 70, 229, 0.5), 0 0 30px rgba(79,70,229,0.15); }
+.open-tab.left { left: 12px; }
+.open-tab.right { right: 12px; }
+
+/* ===== CENTER COLUMN ===== */
+.quote-center {
+  flex: 1;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  height: calc(100vh - 24px) !important;
+  overflow: hidden !important;
+  min-width: 0; /* KEY: prevents grid blowout */
+}
+
+/* ===== FORMS ===== */
+label {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #94a3b8;
+  margin: 8px 0 3px;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+input, textarea, select {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  margin-bottom: 4px;
+  font-size: 13px;
+  font-family: inherit;
+  border-radius: 10px;
+  border: 1px solid #334155;
+  background-color: #0f172a;
+  color: #f8fafc;
+  box-sizing: border-box;
+  transition: all .2s;
+}
+input:focus, textarea:focus, select:focus {
+  border-color: #38bdf8;
+  background-color: #0f172a;
+  box-shadow: 0 0 0 3px rgba(56,189,248,.15);
+  outline: none;
+}
+textarea { min-height: 60px; resize: both; }
+
+/* ===== BUTTONS ===== */
+button {
+  padding: 0.75rem 1.5rem;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: inherit;
+  margin-bottom: 6px;
+  border-radius: 10px;
+  border: none;
+  background-color: #18181b;
+  cursor: pointer;
+  color: #e2e8f0;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  line-height: 1.4;
+}
+button:hover { background-color: #27272a; color: #f8fafc; }
+button:active { transform: translateY(0); }
+button:disabled { opacity: .7; cursor: not-allowed; }
+
+button.primary {
+  background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+  color: white;
+  box-shadow: 0 4px 12px -2px rgba(79, 70, 229, 0.3);
+}
+button.primary:hover { 
+  background: linear-gradient(135deg, #4338ca 0%, #2563eb 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px -2px rgba(79, 70, 229, 0.4);
+}
+
+button.ghost {
+  background-color: transparent;
+  color: #94a3b8;
+  border: 1px solid #334155;
+}
+button.ghost:hover { background-color: rgba(255,255,255,0.05); color: #f8fafc; }
+
+hr { border: none; border-top: 1px solid #1e293b; margin: 12px 0; }
+
+/* ===== TOP BAR ===== */
+.top-bar {
+  display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; flex-shrink: 0;
+}
+.sidebar-head-product {
+  background: transparent;
+  margin: -16px -16px 16px;
+  padding: 16px 20px;
+  border-radius: 20px 20px 0 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  position: relative;
+}
+.sidebar-head-product::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(56,189,248,0.5), transparent);
+}
+.sidebar-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.sidebar-head-product h3 {
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #fff !important;
+  background: linear-gradient(135deg, #fff, #7dd3fc) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  margin: 0;
+}
+.sidebar-head-product .icon-btn {
+  color: #64748b;
+  border-radius: 50%;
+  background: rgba(15,23,42,0.4);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+.sidebar-head-product .icon-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+  transform: rotate(90deg);
+}
+.product-count {
+  background: rgba(14, 165, 233, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(14, 165, 233, 0.3);
+  box-shadow: 0 0 10px rgba(14, 165, 233, 0.1);
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.5px;
+}
+.btn-manual-circle {
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 50% !important;
+  background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+  color: #ffffff !important;
+  font-size: 24px !important;
+  font-weight: 800 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: none !important;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+  transition: all 0.25s !important;
+  padding: 0 !important;
+  margin: 0 0 0 4px !important;
+  line-height: 1 !important;
+}
+.btn-manual-circle:hover {
+  transform: scale(1.15) rotate(90deg) !important;
+  background: linear-gradient(135deg, #60a5fa, #3b82f6) !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.6) !important;
+}
+.search-wrap {
+  position: relative;
+}
+.search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  stroke: #ffffff !important;
+  stroke-width: 3px !important;
+  fill: none !important;
+  pointer-events: none;
+  z-index: 10;
+}
+.search-input {
+  padding-left: 40px !important;
+  background: rgba(15, 23, 42, 0.6) !important;
+  border: 1px solid #065f46 !important;
+  border-radius: 30px !important;
+  color: #f8fafc !important;
+  font-size: 13.5px !important;
+  font-weight: 700 !important;
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+}
+.search-input::placeholder {
+  color: rgba(255, 255, 255, 0.8) !important;
+  font-weight: 700 !important;
+}
+.search-input:focus {
+  background: rgba(15, 23, 42, 0.8) !important;
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2) !important;
+}
+.filter-select {
+  font-size: 12.5px;
+  color: #94a3b8 !important;
+  background: rgba(15, 23, 42, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 10px !important;
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+}
+.filter-select:focus {
+  background: rgba(15, 23, 42, 0.8) !important;
+  border-color: rgba(56, 189, 248, 0.5) !important;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15) !important;
+}
+
+/* ===== PRODUCT GRID ===== */
+.product-grid {
+  display: flex; flex-direction: column; gap: 12px;
+  overflow-y: auto; flex: 1; 
+  margin: -10px -8px -10px -10px;
+  padding: 10px 12px 20px 10px;
+}
+.product-grid::-webkit-scrollbar { width: 4px; }
+.product-grid::-webkit-scrollbar-track { background: transparent; }
+.product-grid::-webkit-scrollbar-thumb { background: rgba(56,189,248,0.15); border-radius: 4px; }
+.product-grid::-webkit-scrollbar-thumb:hover { background: rgba(56,189,248,0.3); }
+
+/* ===== SKELETON LOADING CARDS ===== */
+.skeleton-card {
+  background: rgba(15,23,42,0.6);
+  border: 1px solid rgba(255,255,255,0.04);
+  border-radius: 14px;
+  padding: 16px;
+  animation: skeleton-fade-in 0.3s ease-out;
+}
+.skeleton-badges {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.skeleton-line {
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0.04) 0%,
+    rgba(255,255,255,0.08) 40%,
+    rgba(255,255,255,0.04) 80%
+  );
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+.skeleton-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,0.04);
+}
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@keyframes skeleton-fade-in {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ═══════════════════════════════════════════════════
+   PREMIUM HORIZONTAL CARD — VIP Design System
+   ═══════════════════════════════════════════════════ */
+
+.card {
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 3px solid #10b981;
+  border-radius: 16px;
+  background: linear-gradient(160deg, rgba(30,41,59,0.8) 0%, rgba(15,23,42,0.95) 100%);
+  cursor: pointer;
+  display: flex; flex-direction: column;
+  padding: 14px 16px 12px 14px;
+  transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(16, 185, 129, 0.15);
+  overflow: hidden;
+  position: relative;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.card::before { display: none; }
+.card::after { display: none; }
+.card:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  border-top-color: #34d399;
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.35),
+    0 0 25px rgba(16, 185, 129, 0.25),
+    inset 0 1px 0 rgba(16, 185, 129, 0.3);
+  transform: translateY(-4px) scale(1.01);
+  background: linear-gradient(160deg, rgba(30,41,59,0.9) 0%, rgba(15,23,42,1) 100%);
+}
+
+/* ── Left: Image (full bleed with rounded left side) ── */
+.card-left {
+  width: 42%; min-width: 42%;
+  display: flex; align-items: stretch;
+  padding: 0;
+  flex-shrink: 0;
+}
+.card-img-wrap {
+  position: relative;
+  width: 100%; height: 100%;
+  border-radius: 0;
+  overflow: hidden;
+  background: linear-gradient(135deg, #1a2332, #111827);
+  padding: 0; flex-shrink: 0;
+  box-shadow: none;
+}
+.card-img-overlay { display: none; }
+.card-img-wrap img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  border-radius: 0;
+  display: block;
+  transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1), filter 0.35s ease;
+  filter: brightness(0.95);
+  min-height: 100%;
+}
+.card:hover .card-img-wrap img {
+  transform: scale(1.06);
+  filter: brightness(1.05);
+}
+
+/* ── Badges row ── */
+.card-badges {
+  display: flex; align-items: center; gap: 5px;
+  flex-wrap: wrap;
+  margin-bottom: 2px;
+}
+.card-ncc-badge {
+  position: static;
+  display: inline-block;
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  font-size: 7.5px; font-weight: 700;
+  padding: 2px 7px; border-radius: 4px;
+  letter-spacing: 0.4px; text-transform: uppercase;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  border: none; max-width: 100px;
+}
+.card-vat-badge-img {
+  position: static;
+  display: inline-block;
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  font-size: 7.5px; font-weight: 800;
+  padding: 2px 7px; border-radius: 4px;
+  letter-spacing: 0.3px;
+  box-shadow: none; text-transform: uppercase;
+}
+
+/* ── Right: Content ── */
+.card-right {
+  flex: 1; display: flex; flex-direction: column;
+  min-width: 0; padding: 12px 14px 10px 12px;
+  justify-content: space-between;
+  position: relative;
+}
+.card-body {
+  display: flex; flex-direction: column;
+  gap: 2px; padding: 0;
+}
+.card h4 {
+  margin: 0; font-size: 12.5px; font-weight: 700;
+  color: #f8fafc; line-height: 1.4; letter-spacing: -0.01em;
+}
+.clamp2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.clamp1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.card-license { font-size: 10px; color: #475569; margin: 0; font-style: normal; font-weight: 500; }
+.card-desc { font-size: 10.5px; color: #94a3b8; margin: 0; line-height: 1.3; }
+.card-price-row {
+  display: flex; align-items: baseline;
+  gap: 4px; margin-top: 5px; flex-wrap: wrap;
+}
+.price {
+  font-weight: 800; font-size: 15px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  margin: 0; letter-spacing: -0.03em;
+  color: #10b981;
+  -webkit-text-fill-color: unset;
+  background: none; -webkit-background-clip: unset; background-clip: unset;
+}
+.price-unit { font-size: 10px; color: #ffffff; font-weight: 500; }
+.card-orig-price { font-size: 9.5px; color: #ffffff; margin: 1px 0 0; }
+.card-vat-badge {
+  display: inline-block; width: fit-content;
+  background: rgba(16, 185, 129, 0.15); color: #34d399;
+  font-size: 10px; font-weight: 700; padding: 2px 8px;
+  border-radius: 6px; border: none; margin-top: 2px;
+}
+.muted { color: #64748b; font-size: 11.5px; margin: 0; }
+.small { font-size: 11px; }
+
+/* ── Footer: Qty + Add (stacked) ── */
+.card-footer {
+  display: flex; flex-direction: column;
+  align-items: stretch; gap: 6px;
+  padding: 8px 0 0;
+  margin-top: 6px;
+  border-top: 1px solid rgba(51, 65, 85, 0.3);
+  position: relative; z-index: 1;
+}
+.qty {
+  display: flex; align-items: center; gap: 8px;
+  justify-content: center;
+  border: none; overflow: visible;
+  height: auto; background: transparent;
+  box-shadow: none; border-radius: 0;
+}
+.qty button {
+  width: 28px; height: 28px; padding: 0; margin: 0;
+  border-radius: 50%;
+  background: rgba(51, 65, 85, 0.5);
+  border: 1px solid rgba(71, 85, 105, 0.4);
+  font-size: 14px; color: #94a3b8;
+  min-width: 28px; box-shadow: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s ease; font-weight: 600; line-height: 1;
+}
+.qty button:hover {
+  background: rgba(99, 102, 241, 0.2); color: #c7d2fe;
+  border-color: rgba(99, 102, 241, 0.35);
+  transform: scale(1.08);
+}
+.qty button:active {
+  background: rgba(99, 102, 241, 0.3); transform: scale(0.94);
+}
+.qty button:last-child {
+  background: #10b981;
+  border-color: #10b981;
+  color: #fff;
+}
+.qty button:last-child:hover {
+  background: #059669;
+  border-color: #059669;
+  transform: scale(1.08);
+}
+.qty button:last-child:active {
+  background: #047857;
+  transform: scale(0.94);
+}
+.qty span {
+  width: 24px; font-weight: 800; font-size: 14px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  text-align: center; border: none; background: transparent;
+  display: flex; align-items: center; justify-content: center;
+  color: #f1f5f9;
+}
+.btn-add {
+  width: 100%;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  color: white !important; font-weight: 800;
+  padding: 0 12px !important; font-size: 11px !important;
+  border-radius: 8px !important; border: 1px solid rgba(255,255,255,0.1);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3), inset 0 1px 0 rgba(255,255,255,0.2);
+  letter-spacing: 0.5px; text-transform: uppercase;
+  height: 30px; position: relative; overflow: hidden;
+}
+.btn-add::after { display: none; }
+.btn-add:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45), 0 0 20px rgba(16,185,129,0.2), inset 0 1px 0 rgba(255,255,255,0.3);
+  background: linear-gradient(135deg, #34d399 0%, #10b981 100%) !important;
+}
+.btn-add:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 3px rgba(16, 185, 129, 0.15);
+}
+.btn-add-icon { font-size: 12px; font-weight: 800; }
+
+.btn-del {
+  width: 28px; height: 28px; padding: 0;
+  background: #ef4444; color: #ffffff;
+  border: none; border-radius: 6px;
+  transition: all .2s; min-width: 28px;
+  box-shadow: none;
+  font-weight: bold;
+  font-size: 14px;
+}
+.btn-del:hover { background: #dc2626; color: #ffffff; transform: none; }
+
+/* ===== TABLE WRAPPER ===== */
+.quote-table-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(160deg, rgba(0, 61, 77, 0.25) 0%, rgba(15, 23, 34, 0.75) 100%);
+  border-radius: 20px;
+  box-shadow:
+    0 20px 40px -10px rgba(0,0,0,0.6),
+    inset 0 1px 0 rgba(255,255,255,0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 12px;
+  min-height: 0;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transition: all 0.35s ease;
+  overflow: hidden;
+}
+.quote-table-container:hover {
+  border-color: rgba(56, 189, 248, 0.12);
+  box-shadow:
+    0 20px 50px -10px rgba(0,0,0,0.7),
+    0 0 30px rgba(56,189,248,0.04),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+}
+.quote-table-wrap {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  will-change: scroll-position;
+}
+.table-header-box {
+  padding: 16px 20px 12px;
+  background: rgba(9,9,11,0.92);
+  backdrop-filter: blur(12px);
+  z-index: 3;
+  margin-bottom: 0;
+  position: relative;
+}
+.table-header-box::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 20px; right: 20px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(56,189,248,0.25), transparent);
+}
+.table-header-box h3 {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  background: linear-gradient(135deg, #f8fafc, #38bdf8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.table-header-box .hint, .hint {
+  font-size: 11.5px; color: #64748b; font-weight: 400;
+}
+.header-contract-info {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin: 4px 0 2px;
+}
+.contract-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(15,23,42,0.6);
+  color: #94a3b8;
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  border: 1px solid rgba(255,255,255,0.06);
+  backdrop-filter: blur(8px);
+}
+.contract-badge b {
+  color: #10b981;
+  font-weight: 700;
+}
+
+/* ===== TABLE ===== */
+table {
+  width: 100%;
+  min-width: 1200px;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  table-layout: fixed; /* KEY: fixed layout for predictable column widths */
+}
+th, td {
+  padding: 12px 10px;
+  vertical-align: top;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.45;
+}
+td { color: #cbd5e1; }
+
+/* Description column: allow wrap but clamp height */
+td.desc {
+  white-space: normal;
+  overflow: hidden;
+  color: #94a3b8;
+  font-size: 11.5px;
+  line-height: 1.5;
+  max-height: 72px; /* ~4 lines max */
+  position: relative;
+}
+td.desc .preline {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: pre-line;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+td.desc .preline > div { margin-bottom: 2px; }
+
+thead th {
+  position: sticky; top: 0; z-index: 10;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid #047857;
+  z-index: 2;
+  white-space: normal;
+  line-height: 1.3;
+  vertical-align: middle;
+  padding: 10px;
+}
+
+tfoot td {
+  position: sticky; bottom: 0;
+  background-color: #fadb14;
+  color: #000000;
+  z-index: 5;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.15);
+}
+
+/* Zebra + Hover */
+tbody tr.quote-item-row:nth-child(odd) { background: rgba(30, 41, 59, 0.5); }
+tbody tr.quote-item-row:nth-child(even) { background: rgba(15, 23, 42, 0.3); }
+tbody tr.quote-item-row { cursor: pointer; transition: background .1s; }
+tbody tr.quote-item-row:hover td { background-color: rgba(56,189,248,0.1) !important; }
+
+.right {
+  text-align: right;
+  font-size: 12px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+.center {
+  text-align: center;
+  font-size: 12px;
+}
+.nowrap { white-space: normal; }
+td.dvt { font-family: inherit; white-space: normal; }
+
+/* ===== GROUP ROW ===== */
+.group-row td {
+  background: #172554;
+  border-bottom: 1px solid rgba(56,189,248,0.3);
+  font-weight: 800; color: #ffffff; font-size: 15px;
+  vertical-align: middle;
+}
+.group-stt { text-align: center; }
+.group-title { padding-left: 12px; text-align: left; }
+
+/* ===== COLUMN WIDTHS (table-layout: fixed) ===== */
+.col-stt  { width: 36px; text-align: center; }
+.col-pn   { width: 80px; }
+.col-pn-cell {
+  max-width: 80px;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.col-desc-cell {
+  max-width: 220px;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.col-desc-cell .preline {
+  display: inline;
+  white-space: nowrap;
+}
+.col-desc-cell .preline div {
+  display: inline;
+}
+.col-desc-cell .preline div::after {
+  content: " - ";
+}
+.col-desc-cell .preline div:last-child::after {
+  content: "";
+}
+.col-hang-cell {
+  max-width: 70px;
+  font-size: 9px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+}
+.col-dvt-cell {
+  max-width: 55px;
+  font-size: 9px;
+  text-align: center;
+  word-break: break-word;
+}
+.col-name { width: 130px; }
+.col-desc { width: 220px; } /* wider for description */
+.col-hang { width: 70px; }
+.col-sl   { width: 36px; text-align: center; }
+.col-dvt  { width: 55px; }
+.col-dg   { width: 100px; text-align: right; }
+.col-tt   { width: 105px; text-align: right; }
+.col-vat  { width: 85px; text-align: right; }
+.col-loi  { width: 110px; text-align: right; color: #059669; }
+.col-del  { width: 36px; text-align: center; }
+
+/* Cell Input */
+.quote-center {
+  display: flex;
+  flex-direction: column;
+}
+.quote-table-wrap {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+.quote-table-wrap table {
+  height: 100%;
+}
+.spacer-row {
+  height: 100%;
+}
+
+.cell-input {
+  width: 100%; padding: 5px 7px;
+  border-radius: 6px; border: 1px solid #334155;
+  font-size: 12px;
+  margin: 0; box-sizing: border-box; background: #0f172a; color: #f8fafc;
+}
+.cell-input:focus { border-color: #38bdf8; box-shadow: 0 0 0 3px rgba(56,189,248,.15); }
+
+/* ===== TOTALS ===== */
+.bottom-totals {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  flex-shrink: 0;
+  padding: 0 4px;
+}
+.totals-box {
+  background: linear-gradient(160deg, rgba(0, 61, 77, 0.35) 0%, rgba(15, 23, 34, 0.8) 100%);
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 20px 40px -10px rgba(0,0,0,0.6),
+    inset 0 1px 0 rgba(255,255,255,0.04);
+  transition: all 0.35s ease;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+.totals-box:hover {
+  box-shadow:
+    0 20px 50px -10px rgba(0,0,0,0.7),
+    0 0 30px rgba(56,189,248,0.06),
+    inset 0 1px 2px rgba(255,255,255,0.06);
+  border-color: rgba(56, 189, 248, 0.15);
+  transform: translateY(-2px);
+}
+.totals-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, rgba(51,65,85,0.5), rgba(30,41,59,0.7));
+  color: #f1f5f9;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: 0.3px;
+  border-bottom: 1px solid rgba(56,189,248,0.08);
+  position: relative;
+}
+.totals-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 16px; right: 16px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(56,189,248,0.25), transparent);
+}
+.totals-header-primary {
+  background: linear-gradient(135deg, rgba(30,58,95,0.6), rgba(12,74,110,0.7));
+}
+.totals-header-primary::after {
+  background: linear-gradient(90deg, transparent, rgba(56,189,248,0.35), transparent) !important;
+}
+.totals-icon {
+  font-size: 15px;
+  line-height: 1;
+}
+.totals-body {
+  padding: 4px 0;
+}
+.totals-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 16px;
+  font-size: 12.5px;
+  transition: background 0.15s ease;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+.totals-row:last-child {
+  border-bottom: none;
+}
+.totals-row:hover {
+  background: rgba(56,189,248,0.05);
+}
+.totals-label {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+  color: #ffffff;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+.totals-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  font-size: 13px;
+  color: #f8fafc;
+  text-align: right;
+  letter-spacing: 0.2px;
+}
+.totals-value small {
+  font-weight: 400;
+  font-size: 11px;
+  color: #64748b;
+  margin-left: 4px;
+}
+.totals-value.text-warn {
+  color: #fbbf24;
+  text-shadow: 0 0 10px rgba(251,191,36,0.2);
+}
+/* Highlighted total rows */
+.totals-highlight {
+  background: rgba(245,158,11,0.1);
+  border-bottom: none !important;
+  margin-top: 2px;
+  border-top: 1px dashed rgba(245,158,11,0.3);
+}
+.totals-highlight .totals-label {
+  font-weight: 700;
+  color: #fbbf24;
+  font-size: 12.5px;
+}
+.totals-highlight .totals-value {
+  font-weight: 700;
+  color: #f59e0b;
+  font-size: 14px;
+}
+.totals-highlight-blue {
+  background: rgba(56,189,248,0.08);
+  border-bottom: none !important;
+  margin-top: 2px;
+  border-top: 1px dashed rgba(56,189,248,0.3);
+}
+.totals-highlight-blue .totals-label {
+  font-weight: 700;
+  color: #38bdf8;
+  font-size: 12.5px;
+}
+.totals-highlight-blue .totals-value {
+  font-weight: 700;
+  color: #38bdf8;
+  font-size: 14px;
+}
+.totals-highlight-green {
+  background: rgba(16,185,129,0.08);
+  border-bottom: none !important;
+}
+.totals-highlight-green .totals-label {
+  font-weight: 700;
+  color: #34d399;
+  font-size: 12.5px;
+}
+.totals-highlight-green .totals-value {
+  font-weight: 700;
+  color: #10b981;
+  font-size: 14px;
+}
+
+/* ===== MODAL ===== */
+.modal {
+  position: fixed; inset: 0;
+  background: rgba(2,6,23,.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999; padding: 20px;
+  animation: fadeIn .2s ease forwards;
+}
+@keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+.modal-card {
+  background: #020617; color: #f8fafc;
+  padding: 24px; width: 580px;
+  max-height: 90vh; overflow: auto;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-top: 1px solid rgba(255,255,255,0.12);
+  box-shadow:
+    0 25px 60px rgba(0,0,0,.6),
+    0 0 40px rgba(56,189,248,0.03),
+    inset 0 1px 0 rgba(255,255,255,0.04);
+  animation: slideUp 0.3s cubic-bezier(.16,1,.3,1) forwards;
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.modal-card.modal-wide { width: min(1200px, 96vw); }
+.modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #1e293b;
+}
+.modal-head h3 { margin: 0; font-size: 16px; font-weight: 700; color: #f8fafc; }
+.modal-head .x {
+  width: 32px; height: 32px;
+  border-radius: 50%; background: #ef4444 !important;
+  border: none !important; font-size: 14px; padding: 0;
+  color: #ffffff !important;
+  display: flex; align-items: center; justify-content: center;
+}
+.modal-head .x:hover { background: #dc2626 !important; color: #ffffff !important; transform: rotate(90deg); }
+
+/* Áp dụng chung cho tất cả các nút đóng modal khác (nếu có class khác) */
+.export-vip-close, .history-modal-header .x, .modal-close, button.x {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+.export-vip-close:hover, .history-modal-header .x:hover, .modal-close:hover, button.x:hover {
+  background: #dc2626 !important;
+  color: #ffffff !important;
+}
+
+.preview {
+  width: 100%; height: 200px; object-fit: contain;
+  background: #0f172a; border-radius: 12px;
+  border: 1px solid #1e293b; margin-bottom: 12px;
+}
+
+.modal-actions {
+  display: flex; justify-content: flex-end; gap: 10px;
+  margin-top: 20px; padding-top: 16px;
+  border-top: 1px solid #1e293b;
+}
+.modal-actions button { width: auto; }
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 1100px) {
+  .main-grid { grid-template-columns: 1fr; }
+  .product-sidebar { position: relative; height: auto; top: 0; max-height: 50vh; }
+  .quote-center { height: auto !important; }
+  .sidebar-left.closed, .sidebar-right.closed { display: none; }
+  .open-tab { top: auto; bottom: 20px; }
+}
+
+/* ==============================================================
+   CSS RIÊNG CHO IN ẤN (PDF)
+============================================================== */
+.print-only {
+  display: none;
+}
+
+@media print {
+  /* ẨN TOÀN BỘ GIAO DIỆN APP */
+  .page > *:not(.main-grid) { display: none !important; }
+  .main-grid > *:not(.quote-center) { display: none !important; }
+  .quote-center > *:not(.print-only) { display: none !important; }
+  
+  /* Cài đặt trang A4 */
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  body, html {
+    margin: 0;
+    padding: 0;
+    background: #fff;
+    color: #000;
+  }
+
+  /* HIỂN THỊ VÙNG IN */
+  .print-only {
+    display: block !important;
+    font-family: "Times New Roman", Times, serif;
+    font-size: 11pt; /* Giảm font size để vừa 9 cột */
+    line-height: 1.3;
+    width: 100%;
+  }
+
+  /* Bảng Báo Giá PDF */
+  .pdf-table {
+    width: 100%;
+    table-layout: fixed; /* Cố định width theo % để full trang A4 */
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    word-wrap: break-word;
+  }
+  .pdf-table th, .pdf-table td {
+    border: 1px solid #000;
+    padding: 6px 4px;
+    vertical-align: middle;
+  }
+  .pdf-table th {
+    background-color: #CCFFCC !important; /* Xanh lá giống Excel */
+    -webkit-print-color-adjust: exact;
+    text-align: center;
+    font-weight: bold;
+    font-size: 10pt;
+  }
+  .pdf-group-row td {
+    background-color: #FFFF00 !important; /* Vàng giống Excel */
+    -webkit-print-color-adjust: exact;
+  }
+  .pdf-total-row td {
+    background-color: #FFFF00 !important; /* Vàng giống Excel */
+    -webkit-print-color-adjust: exact;
+  }
+  
+  /* Tiện ích text */
+  .text-center { text-align: center; }
+  .text-left { text-align: left; }
+  .text-right { text-align: right; }
+}
+
+.term-preview {
+  margin-top: 10px;
+  background: rgba(15,23,42,.5);
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.term-preview label {
+  font-weight: 600;
+  color: #f8fafc;
+  margin-bottom: 8px;
+  display: block;
+}
+
+
+
+.history-icon {
+  margin-left: 6px;
+  cursor: pointer;
+  font-size: 15px;
+  display: inline-flex;
+  align-items: center;
+  transition: opacity 0.2s, transform 0.2s;
+  vertical-align: middle;
+  opacity: 0.7;
+}
+.history-icon:hover {
+  opacity: 1;
+  transform: scale(1.15);
+}
+
+/* ===== HISTORY MODAL ===== */
+.history-modal-card {
+  width: min(1200px, 96vw) !important;
+  padding: 0 !important;
+  overflow: hidden;
+}
+.history-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  color: white;
+}
+.history-modal-header .x {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #e2e8f0 !important;
+  border: none;
+}
+.history-modal-header .x:hover {
+  background: rgba(255, 255, 255, 0.25) !important;
+  color: #fff !important;
+}
+.history-modal-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.history-modal-icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(56, 189, 248, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #38bdf8;
+  flex-shrink: 0;
+}
+.history-modal-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #f1f5f9;
+  letter-spacing: 0.2px;
+}
+.history-modal-subtitle {
+  margin: 3px 0 0;
+  font-size: 13px;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+/* Summary Stats */
+.history-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  padding: 16px 24px;
+  background: #0f172a;
+  border-bottom: 1px solid #1e293b;
+}
+.history-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 8px;
+  background: #1e293b;
+  border-radius: 10px;
+  border: 1px solid #334155;
+}
+.history-stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.history-stat-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f8fafc;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Table Wrap */
+.history-table-wrap {
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 0;
+}
+
+/* Table */
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0;
+  table-layout: fixed;
+  min-width: auto !important;
+}
+.history-table th {
+  position: sticky;
+  top: 0;
+  background: #0f172a !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  font-size: 11px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 10px 12px !important;
+  border-bottom: 1px solid #1e293b !important;
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  z-index: 2;
+}
+.history-table td {
+  padding: 10px 12px !important;
+  border: none !important;
+  border-bottom: 1px solid #1e293b !important;
+  font-size: 13px;
+  vertical-align: middle !important;
+  color: #cbd5e1;
+}
+.history-row {
+  transition: background 0.15s ease;
+}
+.history-row:hover td {
+  background: rgba(56,189,248,0.05) !important;
+}
+.history-row:nth-child(even) td {
+  background: rgba(15,23,42,0.3);
+}
+
+/* Time badge */
+.history-time-badge {
+  display: inline-block;
+  background: #1e293b;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  white-space: nowrap;
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.3px;
+  border: 1px solid #334155;
+}
+
+/* Old value */
+.history-old-val {
+  color: #ef4444;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+/* Arrow indicators */
+.history-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+}
+.arrow-up {
+  background: #ecfdf5;
+  color: #059669;
+}
+.arrow-down {
+  background: #fef2f2;
+  color: #dc2626;
+}
+.arrow-same {
+  background: #f1f5f9;
+  color: #94a3b8;
+}
+
+/* New value */
+.history-new-val {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f8fafc;
+  font-family: 'JetBrains Mono', monospace;
+}
+.val-up { color: #059669; }
+.val-down { color: #dc2626; }
+
+/* Difference */
+.history-diff {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  display: inline-block;
+}
+.diff-up {
+  background: #ecfdf5;
+  color: #059669;
+}
+.diff-down {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+/* Empty state */
+.history-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+}
+.history-empty-icon {
+  font-size: 40px;
+  margin-bottom: 12px;
+  opacity: 0.6;
+}
+.history-empty-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #e2e8f0;
+  margin: 0 0 6px;
+}
+.history-empty-desc {
+  font-size: 13px;
+  color: #94a3b8;
+  margin: 0;
+  max-width: 280px;
+  line-height: 1.5;
+}
+
+/* Footer */
+.history-modal-footer {
+  padding: 14px 24px;
+  border-top: 1px solid #1e293b;
+  display: flex;
+  justify-content: flex-end;
+  background: #0f172a;
+}
+.history-modal-footer button {
+  width: auto !important;
+  padding: 8px 20px !important;
+}
+@keyframes highlightRowPulse {
+  0% { background-color: rgba(16, 185, 129, 0.4); }
+  50% { background-color: rgba(16, 185, 129, 0.15); }
+  100% { background-color: transparent; }
+}
+.highlight-pulse td {
+  animation: highlightRowPulse 0.8s ease-out;
+}
+.ghost-group {
+  opacity: 0.5;
+  background-color: rgba(56, 189, 248, 0.1);
+}
+@keyframes vipPulseGhost {
+  0% { background-color: rgba(56, 189, 248, 0.05); border-color: rgba(56, 189, 248, 0.4); }
+  50% { background-color: rgba(56, 189, 248, 0.15); border-color: rgba(56, 189, 248, 0.8); }
+  100% { background-color: rgba(56, 189, 248, 0.05); border-color: rgba(56, 189, 248, 0.4); }
+}
+@keyframes vipFloatGlow {
+  0% { box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5), 0 0 15px rgba(56, 189, 248, 0.4); }
+  50% { box-shadow: 0 25px 45px rgba(0, 0, 0, 0.6), 0 0 30px rgba(56, 189, 248, 0.7); }
+  100% { box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5), 0 0 15px rgba(56, 189, 248, 0.4); }
+}
+
+.ghost-item {
+  opacity: 0.4 !important;
+}
+.ghost-item td {
+  border-top: 2px dashed #38bdf8 !important;
+  border-bottom: 2px dashed #38bdf8 !important;
+  animation: vipPulseGhost 1.5s infinite;
+}
+.ghost-item td:first-child {
+  border-left: 2px dashed #38bdf8 !important;
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+}
+.ghost-item td:last-child {
+  border-right: 2px dashed #38bdf8 !important;
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+
+.hidden-drag-preview {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.drag-item {
+  opacity: 0 !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  z-index: 9999 !important;
+}
+.drag-item td {
+  border-top: 1px solid #38bdf8 !important;
+  border-bottom: 1px solid #38bdf8 !important;
+  animation: vipFloatGlow 2s infinite ease-in-out;
+}
+.drag-item td:first-child {
+  border-left: 1px solid #38bdf8 !important;
+}
+.drag-item td:last-child {
+  border-right: 1px solid #38bdf8 !important;
+}
+
+.chosen-item {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+}
+.chosen-item td {
+  border-top: 1px solid #10b981 !important;
+  border-bottom: 1px solid #10b981 !important;
+  box-shadow: inset 0 0 25px rgba(16, 185, 129, 0.25) !important;
+}
+.group-drag-handle:hover, .item-drag-handle:hover {
+  color: #38bdf8;
+}
+
+/* ==============================================================
+   VIP MODAL (MANUAL ENTRY)
+============================================================== */
+.vip-modal-overlay {
+  background: rgba(10, 15, 30, 0.75) !important;
+  backdrop-filter: blur(10px) !important;
+}
+.vip-modal-card {
+  background: rgba(15, 23, 42, 0.85) !important;
+  backdrop-filter: blur(25px) !important;
+  border: 1px solid rgba(56, 189, 248, 0.3) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 0 40px rgba(56, 189, 248, 0.05) !important;
+  border-radius: 16px !important;
+  overflow: hidden;
+  padding: 0 !important;
+}
+.vip-modal-card .modal-head {
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.1), transparent) !important;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.2) !important;
+  padding: 20px 24px !important;
+}
+.vip-modal-card .modal-head h3 {
+  background: linear-gradient(to right, #38bdf8, #818cf8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  font-size: 18px;
+}
+.vip-modal-card .modal-group {
+  background: rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-radius: 12px;
+  padding: 24px;
+  margin: 24px;
+  transition: all 0.3s ease;
+}
+.vip-modal-card .modal-group:hover {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(56, 189, 248, 0.3) !important;
+  box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+}
+.vip-modal-card .modal-group-title {
+  color: #38bdf8 !important;
+  font-size: 14px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.vip-modal-card input, .vip-modal-card textarea, .vip-modal-card select {
+  background: rgba(0, 0, 0, 0.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #f8fafc !important;
+  transition: all 0.3s ease;
+  border-radius: 8px;
+}
+.vip-modal-card input:focus, .vip-modal-card textarea:focus {
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2) !important;
+  background: rgba(0, 0, 0, 0.4) !important;
+}
+.vip-modal-card .modal-actions {
+  background: rgba(0, 0, 0, 0.2) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+  padding: 16px 24px !important;
+  border-bottom-left-radius: 16px;
+  border-bottom-right-radius: 16px;
+}
+.vip-modal-card .primary {
+  background: linear-gradient(135deg, #0ea5e9, #3b82f6) !important;
+  border: none !important;
+  box-shadow: 0 4px 15px rgba(14, 165, 233, 0.4) !important;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.vip-modal-card .primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(14, 165, 233, 0.6) !important;
+}
+
+/* ═══ ASYNC RESULT MODAL — VIP PREMIUM ═══ */
+.async-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(12px) saturate(1.2);
+}
+.async-card {
+  background: linear-gradient(160deg, rgba(30,41,59,0.95), rgba(15,23,42,0.98));
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 24px;
+  padding: 48px 56px 40px;
+  text-align: center;
+  min-width: 340px;
+  max-width: 440px;
+  box-shadow:
+    0 32px 100px rgba(0,0,0,0.6),
+    0 0 0 1px rgba(255,255,255,0.04),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+  position: relative;
+  overflow: hidden;
+}
+.async-card::before {
+  content: '';
+  position: absolute;
+  top: -2px; left: -2px; right: -2px; bottom: -2px;
+  border-radius: 26px;
+  background: conic-gradient(from 0deg, transparent 0%, rgba(56,189,248,0.3) 25%, transparent 50%, rgba(16,185,129,0.3) 75%, transparent 100%);
+  z-index: -1;
+  animation: async-border-spin 4s linear infinite;
+  opacity: 0.5;
+}
+.async-loading .async-card::before { opacity: 1; }
+@keyframes async-border-spin {
+  to { transform: rotate(360deg); }
+}
+.async-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #f8fafc;
+  margin-top: 20px;
+  letter-spacing: 0.4px;
+  line-height: 1.4;
+}
+.async-subtitle {
+  font-size: 13.5px;
+  color: #94a3b8;
+  margin-top: 10px;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
+/* ═══ PREMIUM SPINNER ═══ */
+.async-spinner-wrap {
+  display: flex;
+  justify-content: center;
+  position: relative;
+  width: 80px;
+  height: 80px;
+  margin: 0 auto;
+}
+.async-spinner {
+  width: 80px;
+  height: 80px;
+  animation: async-spin 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  filter: drop-shadow(0 0 8px rgba(56,189,248,0.4));
+}
+.async-spinner circle {
+  stroke: url(#async-gradient);
+  stroke-dasharray: 80, 200;
+  stroke-dashoffset: 0;
+  animation: async-dash 1.5s ease-in-out infinite;
+}
+@keyframes async-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes async-dash {
+  0% { stroke-dasharray: 1, 200; stroke-dashoffset: 0; }
+  50% { stroke-dasharray: 80, 200; stroke-dashoffset: -30; }
+  100% { stroke-dasharray: 80, 200; stroke-dashoffset: -120; }
+}
+/* Orbiting dots */
+.async-spinner-wrap::before,
+.async-spinner-wrap::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  top: 50%; left: 50%;
+  margin: -4px 0 0 -4px;
+}
+.async-spinner-wrap::before {
+  background: #38bdf8;
+  box-shadow: 0 0 12px rgba(56,189,248,0.6);
+  animation: async-orbit 2s linear infinite;
+}
+.async-spinner-wrap::after {
+  background: #a78bfa;
+  box-shadow: 0 0 12px rgba(167,139,250,0.6);
+  animation: async-orbit 2s linear infinite reverse;
+  animation-delay: -1s;
+}
+@keyframes async-orbit {
+  0% { transform: rotate(0deg) translateX(44px) rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) translateX(44px) rotate(-180deg) scale(0.6); }
+  100% { transform: rotate(360deg) translateX(44px) rotate(-360deg) scale(1); }
+}
+
+/* Pulse ring under spinner */
+.async-spinner-wrap .async-spinner {
+  position: relative;
+  z-index: 2;
+}
+
+/* ═══ SUCCESS CHECKMARK — PREMIUM ═══ */
+.async-icon-wrap {
+  display: flex;
+  justify-content: center;
+  position: relative;
+  width: 80px;
+  height: 80px;
+  margin: 0 auto;
+}
+.async-checkmark {
+  width: 80px;
+  height: 80px;
+  position: relative;
+  z-index: 2;
+}
+.async-checkmark circle {
+  stroke: #10b981;
+  stroke-width: 2.5;
+  stroke-dasharray: 166;
+  stroke-dashoffset: 166;
+  animation: async-circle-draw 0.7s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+  filter: drop-shadow(0 0 6px rgba(16,185,129,0.5));
+}
+.async-checkmark path {
+  stroke: #34d399;
+  stroke-width: 3.5;
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: async-check-draw 0.5s 0.5s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+  filter: drop-shadow(0 0 4px rgba(52,211,153,0.6));
+}
+@keyframes async-circle-draw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes async-check-draw {
+  to { stroke-dashoffset: 0; }
+}
+/* Success glow ring burst */
+.async-icon-success {
+  animation: async-pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.async-icon-success::before {
+  content: '';
+  position: absolute;
+  inset: -12px;
+  border-radius: 50%;
+  border: 2px solid rgba(16,185,129,0.3);
+  animation: async-ring-burst 0.8s 0.3s ease-out forwards;
+  opacity: 0;
+}
+.async-icon-success::after {
+  content: '';
+  position: absolute;
+  inset: -24px;
+  border-radius: 50%;
+  border: 1px solid rgba(16,185,129,0.15);
+  animation: async-ring-burst 1s 0.5s ease-out forwards;
+  opacity: 0;
+}
+@keyframes async-ring-burst {
+  0% { transform: scale(0.5); opacity: 1; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+/* ═══ ERROR X-MARK — PREMIUM ═══ */
+.async-xmark {
+  width: 80px;
+  height: 80px;
+  position: relative;
+  z-index: 2;
+}
+.async-xmark circle {
+  stroke: #ef4444;
+  stroke-width: 2.5;
+  stroke-dasharray: 166;
+  stroke-dashoffset: 166;
+  animation: async-circle-draw 0.7s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+  filter: drop-shadow(0 0 6px rgba(239,68,68,0.5));
+}
+.async-xmark path {
+  stroke: #f87171;
+  stroke-width: 3.5;
+  stroke-dasharray: 56;
+  stroke-dashoffset: 56;
+  animation: async-check-draw 0.4s 0.5s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+  filter: drop-shadow(0 0 4px rgba(248,113,113,0.6));
+}
+.async-icon-error {
+  animation: async-shake-vip 0.6s 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+.async-icon-error::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(239,68,68,0.15) 0%, transparent 70%);
+  animation: async-error-pulse 1.5s 0.5s ease-in-out infinite;
+}
+@keyframes async-shake-vip {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  15% { transform: translateX(-10px) rotate(-2deg); }
+  30% { transform: translateX(10px) rotate(2deg); }
+  45% { transform: translateX(-7px) rotate(-1deg); }
+  60% { transform: translateX(7px) rotate(1deg); }
+  75% { transform: translateX(-3px); }
+  90% { transform: translateX(3px); }
+}
+@keyframes async-error-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+@keyframes async-pop {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.15); }
+  70% { transform: scale(0.95); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ═══ CLOSE BUTTON — PREMIUM ═══ */
+.async-close-btn {
+  margin-top: 24px;
+  padding: 12px 36px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(239,68,68,0.15), rgba(239,68,68,0.08));
+  border: 1px solid rgba(239,68,68,0.25);
+  color: #f87171;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: 0.3px;
+}
+.async-close-btn:hover {
+  background: linear-gradient(135deg, rgba(239,68,68,0.25), rgba(239,68,68,0.15));
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(239,68,68,0.2);
+}
+
+/* ═══ TRANSITION — PREMIUM ═══ */
+.async-modal-enter-active {
+  animation: async-modal-in 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.async-modal-leave-active {
+  animation: async-modal-out 0.25s cubic-bezier(0.4, 0, 1, 1);
+}
+@keyframes async-modal-in {
+  0% { opacity: 0; transform: scale(0.7) translateY(20px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes async-modal-out {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.85) translateY(10px); }
+}
+
+/* Custom Tooltip cho hàng Tổng cộng */
+.fast-tooltip-container {
+  position: relative;
+  cursor: help;
+}
+.fast-tooltip-container::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(5px);
+  background: #1e293b;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: all 0.2s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  z-index: 9999;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.fast-tooltip-container::before {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%) translateY(5px);
+  border: 6px solid transparent;
+  border-top-color: #1e293b;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: all 0.2s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  z-index: 9999;
+}
+.fast-tooltip-container:hover::after,
+.fast-tooltip-container:hover::before {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+</style>
+
+<style>
+/* ==============================================================
+   CSS GLOBAL DÙNG CHUYÊN CHO IN ẤN (PDF) - TRỊ LỖI TRẮNG TRANG
+============================================================== */
+@media print {
+  /* Ẩn Sidebar của App.vue */
+  .sidebar, .product-sidebar, .scroll-to-top { display: none !important; }
+
+  /* Phá vỡ layout Flex/Scroll của App.vue để trình duyệt in đủ trang */
+  .app-layout, .main-content, #app, body, html {
+    display: block !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    position: static !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+}
+
+/* Tùy chỉnh Header của Modal Load Hóa Đơn thành màu Xanh Lá Cây Đặc */
+.load-invoice-modal .modal-head {
+  background-color: #10b981 !important;
+  border-bottom: none !important;
+  color: white !important;
+  margin: -24px -24px 20px -24px !important;
+  padding: 20px 24px !important;
+  border-radius: 20px 20px 0 0 !important;
+}
+.load-invoice-modal .modal-head h3 {
+  color: white !important;
+}
+.load-invoice-modal .modal-head .x {
+  color: white !important;
+}
+.load-invoice-modal .modal-head .x:hover {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Tùy chỉnh màu Xanh Lá Cây Đặc cho bộ lọc trong Modal Load Hóa Đơn */
+.load-invoice-filters .filter-input,
+.load-invoice-filters .filter-select {
+  padding: 8px 12px !important;
+  border-radius: 6px !important;
+  border: 1px solid #065f46 !important;
+  background: rgba(15, 23, 42, 0.6) !important;
+  color: #10b981 !important;
+  font-size: 13px !important;
+  outline: none !important;
+  cursor: pointer !important;
+  width: auto !important;
+  max-width: 200px !important;
+  transition: all 0.2s ease !important;
+}
+.load-invoice-filters .filter-input::-webkit-calendar-picker-indicator {
+  filter: invert(0.8) sepia(1) hue-rotate(90deg) saturate(3) !important;
+  cursor: pointer;
+}
+.load-invoice-filters .filter-input:hover,
+.load-invoice-filters .filter-select:hover {
+  border-color: #059669 !important;
+}
+.load-invoice-filters .filter-input:focus,
+.load-invoice-filters .filter-select:focus {
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2) !important;
+}
+
+.invoice-card {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.invoice-card:hover {
+  border-color: #10b981;
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.25), 0 0 12px rgba(16, 185, 129, 0.15);
+}
+
+.invoice-card.selected {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 1px #3b82f6;
+}
+
+.invoice-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 8px;
+}
+
+.invoice-ma-hd {
+  font-weight: 700;
+  color: #38bdf8;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.invoice-date {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.invoice-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.invoice-card-body p {
+  margin: 0;
+  line-height: 1.5;
+  font-size: 13px;
+  color: #cbd5e1;
+}
+
+.invoice-po {
+  color: #f59e0b !important;
+  font-weight: 600;
+}
+
+.invoice-status {
+  margin-bottom: 4px !important;
+}
+.status-badge {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-left: 4px;
+}
+.badge-temp {
+  background: rgba(234, 179, 8, 0.15);
+  color: #eab308;
+}
+.badge-official {
+  font-weight: 800;
+}
+
+.invoice-divider {
+  border: 0;
+  border-top: 1px dashed #334155;
+  margin: 8px 0;
+}
+
+.invoice-text {
+  color: #ffffff !important;
+}
+
+.invoice-customer {
+  font-size: 14px !important;
+  color: #f8fafc !important;
+  margin-bottom: 8px !important;
+}
+
+.invoice-totals {
+  margin-top: 4px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 8px 12px;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.invoice-totals p {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.invoice-totals p.highlight {
+  color: #10b981;
+  font-weight: 700;
+  font-size: 14px;
+}
+.invoice-totals p.highlight span {
+  font-size: 15px;
+}
+
+.btn-load-fe {
+  background-color: #10b981 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  font-size: 15px !important;
+  padding: 12px 60px !important;
+  border-radius: 8px !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3) !important;
+}
+.btn-load-fe:hover:not(:disabled) {
+  background-color: #059669 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4) !important;
+}
+.btn-load-fe:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
+/* ======================================================
+   EXPORT VIP MODAL — Premium 2-Column Layout
+====================================================== */
+.modal .modal-card.export-vip-modal {
+  width: 1350px !important;
+  max-width: 98vw !important;
+  border-radius: 20px !important;
+  overflow: hidden;
+  border: 1px solid rgba(56, 189, 248, 0.3) !important;
+  background: rgba(15, 23, 42, 0.85) !important;
+  backdrop-filter: blur(25px) !important;
+  -webkit-backdrop-filter: blur(25px) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 0 40px rgba(56, 189, 248, 0.05) !important;
+  animation: exportVipIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes exportVipIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.export-vip-head {
+  position: relative;
+  padding: 20px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, rgba(16,185,129,0.12) 0%, rgba(5,150,105,0.06) 100%);
+  border-bottom: 1px solid rgba(16,185,129,0.15);
+  overflow: hidden;
+}
+
+.export-vip-head-glow {
+  position: absolute;
+  top: -30px; right: -30px;
+  width: 120px; height: 120px;
+  background: radial-gradient(circle, rgba(16,185,129,0.2) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.export-vip-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  position: relative;
+  z-index: 1;
+}
+.export-vip-title svg {
+  color: #10b981;
+  filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.4));
+  animation: vipIconPulse 2s infinite ease-in-out;
+}
+@keyframes vipIconPulse {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.1); opacity: 1; }
+}
+
+.export-vip-close {
+  background: rgba(255,255,255,0.04) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  color: #94a3b8 !important;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  max-width: 32px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 50% !important;
+  font-size: 18px !important;
+  cursor: pointer !important;
+  transition: all 0.25s cubic-bezier(0.16,1,0.3,1) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
+  z-index: 1 !important;
+  line-height: 1 !important;
+}
+.export-vip-close:hover {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #fca5a5 !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+  transform: rotate(90deg) scale(1.05) !important;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.25);
+}
+
+.export-vip-body {
+  display: grid;
+  grid-template-columns: 1.8fr 1fr;
+  gap: 0;
+  min-height: 360px;
+}
+
+.export-vip-col {
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+}
+
+.export-vip-col-upload {
+  background: transparent;
+  border-right: 1px solid rgba(16,185,129,0.15);
+}
+
+.export-vip-col-actions {
+  background: transparent;
+}
+
+.export-vip-col-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: #ffffff;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.export-vip-col-label svg { opacity: 0.6; }
+
+/* ── Dropzone (empty state) ── */
+.export-tpl-dropzone {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  border: 2px dashed rgba(16,185,129,0.25);
+  border-radius: 14px;
+  padding: 32px 20px;
+  transition: all 0.3s ease;
+  background: rgba(16,185,129,0.03);
+  position: relative;
+  overflow: hidden;
+}
+.export-tpl-dropzone::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  background: radial-gradient(ellipse at center, rgba(16,185,129,0.08) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.export-tpl-dropzone:hover {
+  border-color: rgba(16,185,129,0.5);
+  background: rgba(16,185,129,0.08);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(16,185,129,0.12);
+}
+.export-tpl-dropzone:hover::before { opacity: 1; }
+
+.export-tpl-dropzone-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #10b981;
+  transition: all 0.3s;
+  animation: floatUpDown 3s ease-in-out infinite;
+  margin-bottom: 4px;
+}
+.export-tpl-dropzone:hover .export-tpl-dropzone-icon {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  transform: scale(1.1);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+}
+
+@keyframes floatUpDown {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+.export-tpl-dropzone-text {
+  color: #a7f3d0;
+  font-size: 14px;
+  font-weight: 600;
+  position: relative;
+}
+.export-tpl-dropzone-text b { color: #34d399; }
+
+.export-tpl-dropzone-hint {
+  color: #475569;
+  font-size: 11px;
+  font-weight: 500;
+  position: relative;
+}
+
+/* ── Loaded template state ── */
+.export-tpl-loaded {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(16, 185, 129, 0.01) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  box-shadow: inset 0 0 12px rgba(16, 185, 129, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.export-tpl-loaded-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  background: rgba(16, 185, 129, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+  animation: floatUpDown 3s ease-in-out infinite;
+  box-shadow: 0 8px 16px rgba(16, 185, 129, 0.1);
+}
+
+.export-tpl-loaded-name {
+  color: #e2e8f0;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  word-break: break-all;
+  line-height: 1.3;
+}
+
+.export-tpl-loaded-status {
+  color: #34d399;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  background: rgba(16,185,129,0.1);
+  padding: 2px 10px;
+  border-radius: 100px;
+}
+
+.export-tpl-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.export-tpl-change-btn,
+.export-tpl-remove-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  padding: 8px 16px !important;
+  border-radius: 10px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  transition: all 0.25s cubic-bezier(0.16,1,0.3,1) !important;
+  border: 1px solid transparent !important;
+  width: auto !important;
+  margin: 0 !important;
+  line-height: 1.2 !important;
+  box-sizing: border-box !important;
+}
+
+.export-tpl-change-btn {
+  background: #ffffff !important;
+  color: #10b981 !important;
+  border: 1px solid #10b981 !important;
+  flex: 1 !important;
+}
+.export-tpl-change-btn:hover {
+  background: #f0fdf4 !important;
+  color: #059669 !important;
+  border-color: #059669 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+}
+
+.export-tpl-remove-btn {
+  background: rgba(244, 63, 94, 0.1) !important;
+  color: #fb7185 !important;
+  border: 1px solid rgba(244, 63, 94, 0.2) !important;
+}
+.export-tpl-remove-btn:hover {
+  background: rgba(244, 63, 94, 0.2) !important;
+  color: #ffffff !important;
+  border-color: rgba(244, 63, 94, 0.5) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(244, 63, 94, 0.15);
+}
+
+.export-tpl-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.02);
+  color: #475569;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.export-tpl-note svg { flex-shrink: 0; opacity: 0.5; }
+
+/* ── Export Buttons (right column) ── */
+.export-vip-btn {
+  display: flex !important;
+  align-items: center !important;
+  gap: 20px !important;
+  padding: 22px 24px !important;
+  border-radius: 16px !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  background: rgba(30, 41, 59, 0.2) !important;
+  cursor: pointer !important;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  text-align: left !important;
+  position: relative !important;
+  overflow: hidden !important;
+  margin-bottom: 12px !important;
+  width: 100% !important;
+}
+.export-vip-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: 0;
+}
+.export-vip-btn:hover {
+  transform: translateY(-2px) scale(1.01) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+.export-vip-btn:hover::before { opacity: 1; }
+.export-vip-btn:active { transform: translateY(0) scale(0.99) !important; }
+
+.export-vip-btn-icon {
+  width: 56px !important;
+  height: 56px !important;
+  border-radius: 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  transition: all 0.3s !important;
+  position: relative !important;
+  z-index: 1 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.export-vip-btn-text {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 3px !important;
+  position: relative !important;
+  z-index: 1 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.export-vip-btn-label {
+  font-size: 17px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.3px !important;
+}
+
+.export-vip-btn-desc {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  opacity: 0.6 !important;
+}
+
+.export-vip-btn-arrow {
+  opacity: 0.3;
+  transform: translateX(-4px);
+  transition: all 0.3s;
+  position: relative;
+  z-index: 1;
+}
+.export-vip-btn:hover .export-vip-btn-arrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* -- Excel Button -- */
+.export-vip-btn-excel {
+  border-color: rgba(16,185,129,0.15) !important;
+}
+.export-vip-btn-excel::before {
+  background: linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(52,211,153,0.02) 100%);
+}
+.export-vip-btn-excel .export-vip-btn-icon {
+  background: rgba(16,185,129,0.1) !important;
+  color: #34d399 !important;
+}
+.export-vip-btn-excel .export-vip-btn-label { color: #34d399 !important; }
+.export-vip-btn-excel .export-vip-btn-desc { color: #a7f3d0 !important; }
+.export-vip-btn-excel .export-vip-btn-arrow { color: #34d399 !important; }
+.export-vip-btn-excel:hover {
+  border-color: rgba(16,185,129,0.4) !important;
+  box-shadow: 0 12px 30px rgba(16,185,129,0.15) !important;
+}
+.export-vip-btn-excel:hover .export-vip-btn-icon {
+  background: rgba(16,185,129,0.2) !important;
+  transform: scale(1.05) rotate(-5deg) !important;
+}
+
+/* -- Agency Button -- */
+.export-vip-btn-agency {
+  border-color: rgba(234,179,8,0.15) !important;
+}
+.export-vip-btn-agency::before {
+  background: linear-gradient(135deg, rgba(234,179,8,0.08) 0%, rgba(250,204,21,0.02) 100%);
+}
+.export-vip-btn-agency .export-vip-btn-icon {
+  background: rgba(234,179,8,0.1) !important;
+  color: #fbbf24 !important;
+}
+.export-vip-btn-agency .export-vip-btn-label { color: #fbbf24 !important; }
+.export-vip-btn-agency .export-vip-btn-desc { color: #fde047 !important; }
+.export-vip-btn-agency .export-vip-btn-arrow { color: #fbbf24 !important; }
+.export-vip-btn-agency:hover {
+  border-color: rgba(234,179,8,0.4) !important;
+  box-shadow: 0 12px 30px rgba(234,179,8,0.12) !important;
+}
+.export-vip-btn-agency:hover .export-vip-btn-icon {
+  background: rgba(234,179,8,0.2) !important;
+  transform: scale(1.05) rotate(5deg) !important;
+}
+
+/* -- Pipeline Button -- */
+.export-vip-btn-pipeline {
+  border-color: rgba(59,130,246,0.15) !important;
+}
+.export-vip-btn-pipeline::before {
+  background: linear-gradient(135deg, rgba(59,130,246,0.08) 0%, rgba(96,165,250,0.02) 100%);
+}
+.export-vip-btn-pipeline .export-vip-btn-icon {
+  background: rgba(59,130,246,0.1) !important;
+  color: #60a5fa !important;
+}
+.export-vip-btn-pipeline .export-vip-btn-label { color: #60a5fa !important; }
+.export-vip-btn-pipeline .export-vip-btn-desc { color: #93c5fd !important; }
+.export-vip-btn-pipeline .export-vip-btn-arrow { color: #60a5fa !important; }
+.export-vip-btn-pipeline:hover {
+  border-color: rgba(59,130,246,0.4) !important;
+  box-shadow: 0 12px 30px rgba(59,130,246,0.12) !important;
+}
+.export-vip-btn-pipeline:hover .export-vip-btn-icon {
+  background: rgba(59,130,246,0.2) !important;
+  transform: scale(1.05) translateY(-2px) !important;
+}
+
+/* -- Image Button -- */
+.export-vip-btn-image {
+  border-color: rgba(236,72,153,0.15) !important;
+}
+.export-vip-btn-image::before {
+  background: linear-gradient(135deg, rgba(236,72,153,0.08) 0%, rgba(244,114,182,0.02) 100%);
+}
+.export-vip-btn-image .export-vip-btn-icon {
+  background: rgba(236,72,153,0.1) !important;
+  color: #ec4899 !important;
+}
+.export-vip-btn-image .export-vip-btn-label { color: #ec4899 !important; }
+.export-vip-btn-image .export-vip-btn-desc { color: #f472b6 !important; }
+.export-vip-btn-image .export-vip-btn-arrow { color: #ec4899 !important; }
+.export-vip-btn-image:hover {
+  border-color: rgba(236,72,153,0.4) !important;
+  box-shadow: 0 12px 30px rgba(236,72,153,0.12) !important;
+}
+.export-vip-btn-image:hover .export-vip-btn-icon {
+  background: rgba(236,72,153,0.2) !important;
+  transform: scale(1.05) translateY(-2px) !important;
+}
+
+/* ── Responsive: Stack columns on small screens ── */
+@media (max-width: 580px) {
+  .export-vip-body {
+    grid-template-columns: 1fr;
+  }
+  .export-vip-col-upload {
+    border-right: none;
+    border-bottom: 1px solid rgba(16, 185, 129, 0.15);
+  }
+  .export-tpl-dropzone {
+    padding: 20px 14px;
+  }
+}
+/* ================== MOBILE PROGRESS STEPS ================== */
+.mobile-progress-wrapper {
+  display: none;
+}
+
+@media (max-width: 1100px) {
+  .mobile-progress-wrapper {
+    display: block;
+    position: sticky;
+    top: 0;
+    z-index: 990;
+    background: radial-gradient(circle at 80% 10%, #132a3e 0%, #0e1c2b 30%, #0a1520 100%) !important;
+    padding: 16px 16px 12px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    margin: -15px -15px 16px -15px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  }
+
+  .mobile-steps {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    position: relative;
+    max-width: 100%;
+    margin: 0 auto;
+  }
+
+  /* Đường line đứt khúc chìm ở dưới */
+  .mobile-steps::before {
+    content: '';
+    position: absolute;
+    top: 13px;
+    left: 10%;
+    right: 10%;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    z-index: 0;
+  }
+
+  .m-step {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    cursor: pointer;
+    position: relative;
+    z-index: 1;
+    padding: 0 !important;
+    min-width: 0 !important;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Đường line xanh nổi lên khi hoàn thành */
+  .m-step::after {
+    content: '';
+    position: absolute;
+    top: 13px;
+    left: 50%;
+    width: 100%;
+    height: 2px;
+    background: transparent;
+    z-index: -1;
+    transition: background 0.4s ease;
+  }
+  .m-step:last-child::after {
+    display: none;
+  }
+  .m-step.completed::after {
+    background: linear-gradient(90deg, #10b981 0%, rgba(16, 185, 129, 0.5) 100%);
+  }
+
+  .step-circle {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #1e293b;
+    border: 2px solid #334155;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: #94a3b8;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-sizing: border-box;
+    z-index: 2;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  }
+
+  .step-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748b;
+    white-space: nowrap;
+    text-align: center;
+    transition: all 0.4s ease;
+    letter-spacing: 0.2px;
+  }
+
+  @keyframes pulse-ring-mobile {
+    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
+    70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+  }
+
+  .m-step.active .step-circle {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    border-color: #059669;
+    color: #fff;
+    transform: scale(1.15);
+    animation: pulse-ring-mobile 2s infinite;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  }
+  .m-step.active .step-label {
+    color: #10b981;
+    font-weight: 800;
+    transform: translateY(1px);
+  }
+
+  .m-step.completed .step-circle {
+    background: #10b981;
+    border-color: #10b981;
+    color: #fff;
+  }
+  .m-step.completed .step-label {
+    color: #94a3b8;
+  }
+
+  /* LOGIC ẨN HIỆN THEO BƯỚC */
+  .main-grid.mobile-step-1 .quote-center,
+  .main-grid.mobile-step-1 .bottom-totals { display: none !important; }
+  .main-grid.mobile-step-1 .sidebar-left { display: flex !important; max-height: unset; margin-left: 0; opacity: 1; pointer-events: auto; }
+
+  .main-grid.mobile-step-2 .sidebar-left,
+  .main-grid.mobile-step-2 .bottom-totals { display: none !important; }
+  .main-grid.mobile-step-2 .quote-center { display: flex !important; }
+  .main-grid.mobile-step-2 .quote-table-container { display: block !important; }
+
+  .main-grid.mobile-step-3 .sidebar-left,
+  .main-grid.mobile-step-3 .quote-table-container { display: none !important; }
+  .main-grid.mobile-step-3 .quote-center { display: flex !important; }
+  .main-grid.mobile-step-3 .bottom-totals { display: flex !important; flex-direction: column !important; }
+  .main-grid.mobile-step-3 .bottom-totals .step-customer,
+  .main-grid.mobile-step-3 .bottom-totals .step-actions { display: none !important; }
+  .main-grid.mobile-step-3 .bottom-totals .step-summary { display: flex !important; flex-direction: column !important; }
+
+  .main-grid.mobile-step-4 .sidebar-left,
+  .main-grid.mobile-step-4 .quote-table-container { display: none !important; }
+  .main-grid.mobile-step-4 .quote-center { display: flex !important; }
+  .main-grid.mobile-step-4 .bottom-totals { display: flex !important; flex-direction: column !important; }
+  .main-grid.mobile-step-4 .bottom-totals .step-summary,
+  .main-grid.mobile-step-4 .bottom-totals .step-actions { display: none !important; }
+  .main-grid.mobile-step-4 .bottom-totals .step-customer { display: flex !important; flex-direction: column !important; }
+
+  .main-grid.mobile-step-5 .sidebar-left,
+  .main-grid.mobile-step-5 .quote-table-container { display: none !important; }
+  .main-grid.mobile-step-5 .quote-center { display: flex !important; }
+  .main-grid.mobile-step-5 .bottom-totals { display: flex !important; flex-direction: column !important; }
+  .main-grid.mobile-step-5 .bottom-totals .step-summary,
+  .main-grid.mobile-step-5 .bottom-totals .step-customer { display: none !important; }
+  .main-grid.mobile-step-5 .bottom-totals .step-actions { display: flex !important; flex-direction: column !important; }
+
+  /* ================= NATIVE APP MOBILE LAYOUT ================= */
+  html, body {
+    overflow-x: hidden !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  .page { 
+    padding: 0 !important; 
+    margin: 0 !important;
+    width: 100% !important;
+    min-height: 100vh !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Khôi phục lại lề của thanh tiến trình để không bị tràn màn hình */
+  .mobile-progress-wrapper {
+    margin: 0 0 16px 0 !important;
+    padding: 12px 2px 10px 2px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .step-label {
+    font-size: 9px !important;
+    letter-spacing: -0.2px !important;
+    white-space: nowrap !important;
+  }
+
+  .main-grid { 
+    gap: 0 !important; 
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    display: block !important;
+    box-sizing: border-box !important;
+  }
+
+  .sidebar-left, .quote-center, .bottom-totals, .totals-box {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    border-radius: 0 !important;
+  }
+
+  /* 1. KHO SẢN PHẨM */
+  .sidebar-left {
+    height: calc(100vh - 110px) !important; 
+    padding: 16px !important;
+    background: transparent !important;
+    overflow-y: auto !important;
+    padding-bottom: 80px !important; /* Space for system bottom navigation */
+  }
+
+  /* Cột sản phẩm 1 cột, card đẹp hơn */
+  .product-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+    padding-bottom: 40px !important;
+  }
+
+  /* 2. BÁO GIÁ TABLE */
+  .quote-table-container {
+    height: calc(100vh - 110px) !important;
+    border: none !important;
+    background: transparent !important;
+    overflow-y: auto !important;
+    padding: 16px !important;
+  }
+  .quote-table-container,
+  .quote-table-container *,
+  .bottom-totals,
+  .bottom-totals * {
+    box-sizing: border-box !important;
+  }
+  .header-contract-info {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    margin-top: 6px !important;
+    width: 100% !important;
+  }
+  .contract-badge {
+    margin-bottom: 2px !important;
+  }
+  .quote-table-wrap {
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow-x: hidden !important;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  /* RESPONSIVE TABLE CARDS */
+  .quote-table-wrap table, 
+  .quote-table-wrap tbody {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    background: transparent !important;
+  }
+  .quote-table-wrap thead {
+    display: none !important;
+  }
+  .quote-table-wrap tr.quote-item-row {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    background: rgba(30, 41, 59, 0.8) !important;
+    backdrop-filter: blur(16px);
+    border-radius: 16px !important;
+    margin-bottom: 16px !important;
+    padding: 16px !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.2) !important;
+    gap: 12px;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    touch-action: pan-y !important; /* Force allow vertical scrolling */
+  }
+  .quote-table-wrap tr.quote-item-row td {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    text-align: left !important;
+    padding: 10px 8px !important;
+    border: none !important;
+    border-bottom: 1px solid rgba(255,255,255,0.05) !important;
+    width: calc(50% - 6px) !important;
+    max-width: calc(50% - 6px) !important;
+    flex: 0 0 calc(50% - 6px) !important;
+    min-height: auto;
+    box-sizing: border-box !important;
+  }
+  .quote-table-wrap tr.quote-item-row td:last-child {
+    border-bottom: none !important;
+  }
+  
+  .quote-table-wrap tr.quote-item-row td[data-label="Thao tác"] {
+    align-items: flex-start !important;
+    padding-top: 16px !important;
+  }
+  
+  .quote-table-wrap tr.quote-item-row td::before {
+    content: attr(data-label);
+    font-size: 11px;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+    display: block;
+    white-space: normal;
+  }
+  
+  /* Các ô text dài và thao tác chiếm trọn 100% chiều ngang thẻ */
+  .quote-table-wrap tr.quote-item-row td.col-pn-cell,
+  .quote-table-wrap tr.quote-item-row td.col-desc-cell,
+  .quote-table-wrap tr.quote-item-row td.nowrap,
+  .quote-table-wrap tr.quote-item-row td[data-label="Giá off hãng"],
+  .quote-table-wrap tr.quote-item-row td[data-label="Giá nhập"],
+  .quote-table-wrap tr.quote-item-row td[data-label="VAT"],
+  .quote-table-wrap tr.quote-item-row td[data-label="Thao tác"],
+  .quote-table-wrap tr.quote-item-row td[data-label="STT"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 0 0 100% !important;
+    padding: 10px 0 !important;
+  }
+  
+  /* Căn lề text và bẻ dòng cho nội dung dài */
+  .col-pn-cell,
+  .col-desc-cell,
+  .col-hang-cell,
+  .col-dvt-cell {
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
+  
+  /* Các ô text dài chiếm trọn 100% chiều ngang thẻ */
+  .col-pn-cell,
+  .col-desc-cell {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  /* Bẻ dòng từng dòng mô tả sản phẩm */
+  .col-desc-cell .preline {
+    display: block !important;
+    white-space: normal !important;
+    width: 100% !important;
+  }
+  .col-desc-cell .preline div {
+    display: block !important;
+    white-space: normal !important;
+    width: 100% !important;
+    margin-bottom: 4px;
+  }
+  .col-desc-cell .preline div::after {
+    display: none !important;
+  }
+
+  /* Reset alignment cho các cột số */
+  .quote-table-wrap tr.quote-item-row td.right,
+  .quote-table-wrap tr.quote-item-row td.center {
+    align-items: flex-start !important;
+    text-align: left !important;
+  }
+  .quote-table-wrap tr.quote-item-row td.right::before,
+  .quote-table-wrap tr.quote-item-row td.center::before {
+    align-self: flex-start !important;
+  }
+  
+  /* Danh mục (Group Row) */
+  .quote-table-wrap tr.group-row {
+    display: flex !important;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%) !important;
+    border-radius: 12px !important;
+    margin-bottom: 16px !important;
+    padding: 12px 16px !important;
+    border: 1px dashed rgba(16, 185, 129, 0.4) !important;
+    align-items: center;
+    touch-action: pan-y !important; /* Force allow vertical scrolling */
+  }
+  .quote-table-wrap tr.group-row td {
+    display: block !important;
+    border: none !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+  .quote-table-wrap tr.group-row td.group-stt {
+    width: auto !important;
+    margin-right: 12px;
+  }
+  .quote-table-wrap tr.group-row td.group-title {
+    flex: 1;
+    width: auto !important;
+  }
+
+  /* Table Footer (Tổng cộng) */
+  .quote-table-wrap tfoot {
+    display: block !important;
+    margin-top: 24px;
+    margin-bottom: 30px;
+  }
+  .quote-table-wrap tfoot tr {
+    display: flex !important;
+    flex-direction: column !important;
+    background: rgba(250, 204, 21, 0.95) !important;
+    border-radius: 16px !important;
+    padding: 16px !important;
+    gap: 12px;
+    box-shadow: 0 8px 30px rgba(250, 204, 21, 0.2);
+    box-sizing: border-box !important;
+    width: 100% !important;
+  }
+  .quote-table-wrap tfoot td {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+    border: none !important;
+    padding: 0 !important;
+    white-space: normal !important;
+    box-sizing: border-box !important;
+  }
+  .quote-table-wrap tfoot td:empty,
+  .quote-table-wrap tfoot td.center:first-child {
+    display: none !important;
+  }
+  /* Show only the fields with values */
+  .quote-table-wrap tfoot td:nth-child(2)::before { content: "Tiền OFF:"; font-weight: 800; color: #854d0e; font-size: 13px; }
+  .quote-table-wrap tfoot td:nth-child(4)::before { content: "Tổng trước thuế:"; font-weight: 800; color: #854d0e; font-size: 13px; }
+  .quote-table-wrap tfoot td:nth-child(5)::before { content: "Tiền VAT:"; font-weight: 800; color: #854d0e; font-size: 13px; }
+  .quote-table-wrap tfoot td:nth-child(6)::before { content: "TỔNG THANH TOÁN:"; font-weight: 900; color: #15803d; font-size: 15px; }
+  .quote-table-wrap tfoot td:nth-child(7)::before { content: "Net Margin:"; font-weight: 800; color: #854d0e; font-size: 13px; }
+  
+  /* 3, 4, 5. TỔNG KẾT, KHÁCH HÀNG, THAO TÁC */
+  .bottom-totals {
+    padding: 16px !important;
+    height: calc(100vh - 110px) !important;
+    overflow-y: auto !important;
+    display: block !important;
+    background: transparent !important;
+  }
+  
+  .totals-box {
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 0 !important;
+    border-radius: 20px !important; 
+    margin-bottom: 20px !important;
+    width: 100% !important;
+    background: rgba(30, 41, 59, 0.7) !important;
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    overflow: hidden !important;
+  }
+  
+  /* FORMS & INPUTS: Force 1 column */
+  .step-customer [style*="grid"],
+  .step-actions [style*="grid"],
+  .modal-card [style*="grid"],
+  .totals-body [style*="grid"],
+  .totals-body > div[style*="flex"] {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Ensure inputs take full width and look gorgeous */
+  .totals-body input, .modal-card input, .totals-body textarea, .modal-card textarea, .totals-body select, .modal-card select {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    height: 52px !important;
+    font-size: 15px !important;
+    border-radius: 12px !important;
+    background: rgba(15, 23, 42, 0.6) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    padding: 0 16px !important;
+    color: #f8fafc !important;
+    transition: all 0.3s ease !important;
+  }
+  .totals-body textarea, .modal-card textarea {
+    height: auto !important;
+    min-height: 100px !important;
+    padding: 16px !important;
+  }
+  .totals-body input:focus, .modal-card input:focus, .totals-body textarea:focus, .modal-card textarea:focus {
+    border-color: #38bdf8 !important;
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2) !important;
+    background: rgba(15, 23, 42, 0.9) !important;
+  }
+
+  /* Khôi phục kích thước gọn gàng cho các ô input nhập % inline */
+  .totals-body .totals-label input {
+    width: 64px !important;
+    height: 32px !important;
+    font-size: 14px !important;
+    padding: 0 8px !important;
+    border-radius: 8px !important;
+  }
+
+  /* Big tappable buttons */
+  .step-actions button, .modal-card button {
+    height: auto !important;
+    min-height: 56px !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    border-radius: 14px !important;
+    width: 100% !important;
+    margin-bottom: 12px !important;
+    letter-spacing: 0.3px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    white-space: normal !important;
+    line-height: 1.3 !important;
+    padding: 12px 16px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* Khôi phục padding và chiều cao cho các nút xuất file (tránh bị bóp méo do quy tắc ở trên) */
+  .modal-card .export-vip-btn {
+    height: auto !important;
+    min-height: 90px !important;
+    padding: 16px 20px !important;
+  }
+
+  /* Khôi phục kích thước cho nút đóng modal và mở rộng tiêu đề */
+  .modal-card .modal-head .x,
+  .modal-card .export-vip-close,
+  .modal-card .modal-close,
+  .history-modal-header .x {
+    width: 32px !important;
+    min-width: 32px !important;
+    height: 32px !important;
+    margin-bottom: 0 !important;
+    padding: 0 !important;
+    flex-shrink: 0 !important;
+  }
+  .modal-head h3, .export-vip-title, .modal-header h3 {
+    flex: 1 !important;
+    white-space: normal !important;
+    line-height: 1.4 !important;
+    padding-right: 12px !important;
+  }
+
+  /* Khôi phục kích thước cho các thành phần trong bảng cấu hình Data Mapping */
+  .mapping-config-table input,
+  .mapping-config-table select {
+    height: 34px !important;
+    font-size: 13px !important;
+    border-radius: 6px !important;
+    background: #ffffff !important;
+    color: #1e293b !important;
+    padding: 0 10px !important;
+  }
+  .mapping-config-table button {
+    width: 34px !important;
+    min-width: 34px !important;
+    height: 34px !important;
+    margin-bottom: 0 !important;
+    border-radius: 6px !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* Bỏ cuộn bên trong các modal, để modal tự cuộn toàn bộ nội dung (tránh lỗi cuộn ẩn nút) */
+  .modal-card > div[style*="overflow-y: auto"] {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* Cố định các nút dưới cùng của modal Lưu Báo Giá */
+  .save-modal-actions {
+    position: sticky !important;
+    bottom: calc(-16px - env(safe-area-inset-bottom, 24px)) !important;
+    background: #0f172a !important;
+    z-index: 20 !important;
+    margin: 0 -16px calc(-16px - env(safe-area-inset-bottom, 24px)) -16px !important;
+    padding: 16px !important;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 24px)) !important;
+    border-top: 1px solid rgba(255,255,255,0.1) !important;
+  }
+
+  /* Overlay không có padding để modal chạm viền */
+  .modal, .vip-modal-overlay, .load-invoice-modal-overlay, .modal-overlay {
+    padding: 0 !important;
+  }
+
+  /* Căn chỉnh lại modal: full màn hình và trượt từ trái sang */
+  .modal-card, .vip-modal-card, .load-invoice-modal, .modal-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    margin: 0 !important;
+    padding: 16px !important;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 24px)) !important;
+    box-sizing: border-box;
+    border-radius: 0 !important;
+    background: #0f172a !important; /* màu nền đặc để che toàn màn hình */
+    border: none !important;
+    animation: slideInLeftMobile 0.35s cubic-bezier(0.25, 0.8, 0.25, 1) forwards !important;
+    overflow-y: auto !important; /* Quan trọng để nội dung dài có thể cuộn */
+  }
+  @keyframes slideInLeftMobile {
+    from { transform: translateX(-100%); opacity: 0.5; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  .modal-card > div[style*="padding: 24px"] {
+    padding: 0 !important;
+  }
+
+  /* Hiệu ứng mượt mà khi cuộn */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+  }
+
+  /* Override cho phần action buttons trong chế độ mobile */
+  .step-actions div.action-buttons-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    flex-direction: unset !important;
+    gap: 8px !important;
+  }
+}
+</style>
