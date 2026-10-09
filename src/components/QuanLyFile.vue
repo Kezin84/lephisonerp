@@ -3416,6 +3416,14 @@ button {
   border-top: 1px solid #f1f5f9;
 }
 
+.elite-btn-save {
+  color: white !important;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
 .elite-btn-cancel {
   padding: 0.75rem 1.5rem;
   border-radius: 10px;
