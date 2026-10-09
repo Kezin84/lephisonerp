@@ -2256,7 +2256,7 @@ import * as XLSX from 'xlsx-js-style'
 import CustomSelect from '../CustomSelect.vue'
 
 // --- FIREBASE IMPORT ---
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getDatabase, ref as dbRef, get, set, update, remove, child, push, onValue } from "firebase/database";
 
 const firebaseConfig = {
@@ -2269,7 +2269,7 @@ const firebaseConfig = {
   appId: "1:929199941311:web:ca8d86f9fd7f8dff61480a",
   measurementId: "G-48VVPGFSFK"
 };
-const firebaseApp = initializeApp(firebaseConfig);
+const firebaseApp = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const database = getDatabase(firebaseApp);
 
 // --- TÍCH HỢP INTERCEPTOR CHO CÁC API KHÁC (Firebase) ---

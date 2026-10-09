@@ -13,7 +13,7 @@ import PipelinePreviewModal from './PipelinePreviewModal.vue'
 import html2canvas from 'html2canvas'
 import * as XLSX from 'xlsx-js-style'
 import Tesseract from 'tesseract.js'
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getDatabase, ref as dbRef, get } from "firebase/database";
 
 const firebaseConfig = {
@@ -21,7 +21,7 @@ const firebaseConfig = {
   databaseURL: "https://chusonproject-default-rtdb.asia-southeast1.firebasedatabase.app",
   storageBucket: "chusonproject.firebasestorage.app",
 };
-const firebaseApp = initializeApp(firebaseConfig);
+const firebaseApp = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const database = getDatabase(firebaseApp);
 const route = useRoute()
 const router = useRouter()

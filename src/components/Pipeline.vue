@@ -242,7 +242,7 @@
                         </div>
                         <div class="vip-card-header" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; gap: 8px; width: 100%;" v-if="child.ten_khach_hang || child.ten_cong_ty || child.tag">
                           <div class="vip-badges" style="display: flex; flex-wrap: wrap; gap: 6px; flex: 1;" v-if="child.ten_khach_hang || child.ten_cong_ty">
-                            <span class="vip-badge" style="background: #ffffff; color: #334155; border: none; padding: 2px 6px; font-size: 9px; font-weight: 800;">{{ child.ten_cong_ty || child.ten_khach_hang }}</span>
+                            <span class="vip-badge" style="background: #ffffff; color: #334155; border: none; padding: 2px 6px; font-size: 9px; font-weight: 800;">{{ child.ten_khach_hang || 'Chưa có tên' }}{{ child.ten_cong_ty ? ' - ' + child.ten_cong_ty : '' }}</span>
                           </div>
                           <span class="vip-badge tag-normal" v-if="child.tag && child.tag.toLowerCase() !== 'bình thường'" :class="getTagClass(child.tag)" style="flex-shrink: 0; font-size: 9px;">{{ child.tag }}</span>
                         </div>
@@ -321,7 +321,7 @@
               </div>
               <div class="vip-card-header" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; gap: 8px; width: 100%;" v-if="element.ten_khach_hang || element.ten_cong_ty || element.tag">
                 <div class="vip-badges" style="display: flex; flex-wrap: wrap; gap: 6px; flex: 1;" v-if="element.ten_khach_hang || element.ten_cong_ty">
-                  <span class="vip-badge" style="background: #ffffff; color: #334155; border: none; padding: 2px 6px; font-size: 9px; font-weight: 800;">{{ element.ten_cong_ty || element.ten_khach_hang }}</span>
+                  <span class="vip-badge" style="background: #ffffff; color: #334155; border: none; padding: 2px 6px; font-size: 9px; font-weight: 800;">{{ element.ten_khach_hang || 'Chưa có tên' }}{{ element.ten_cong_ty ? ' - ' + element.ten_cong_ty : '' }}</span>
                 </div>
                 <span class="vip-badge tag-normal" v-if="element.tag && element.tag.toLowerCase() !== 'bình thường'" :class="getTagClass(element.tag)" style="flex-shrink: 0; font-size: 9px;">{{ element.tag }}</span>
               </div>
@@ -446,7 +446,7 @@
                         </div>
                         <div class="vip-card-header" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; gap: 8px; width: 100%;" v-if="child.ten_khach_hang || child.ten_cong_ty || child.tag">
                           <div class="vip-badges" style="display: flex; flex-wrap: wrap; gap: 6px; flex: 1;" v-if="child.ten_khach_hang || child.ten_cong_ty">
-                            <span class="vip-badge" :style="{ background: '#ffffff', color: getColDarkColor(col.id), border: 'none', padding: '2px 6px', fontSize: '9px', fontWeight: '800' }">{{ child.ten_cong_ty || child.ten_khach_hang }}</span>
+                            <span class="vip-badge" :style="{ background: '#ffffff', color: getColDarkColor(col.id), border: 'none', padding: '2px 6px', fontSize: '9px', fontWeight: '800' }">{{ child.ten_khach_hang || 'Chưa có tên' }}{{ child.ten_cong_ty ? ' - ' + child.ten_cong_ty : '' }}</span>
                           </div>
                           <span class="vip-badge tag-normal" v-if="child.tag && child.tag.toLowerCase() !== 'bình thường'" :class="getTagClass(child.tag)" style="flex-shrink: 0; font-size: 9px;">{{ child.tag }}</span>
                         </div>
@@ -525,7 +525,7 @@
               </div>
               <div class="vip-card-header" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; gap: 8px; width: 100%;" v-if="element.ten_khach_hang || element.ten_cong_ty || element.tag">
                 <div class="vip-badges" style="display: flex; flex-wrap: wrap; gap: 6px; flex: 1;" v-if="element.ten_khach_hang || element.ten_cong_ty">
-                  <span class="vip-badge" :style="{ background: '#ffffff', color: getColDarkColor(col.id), border: 'none', padding: '2px 6px', fontSize: '9px', fontWeight: '800' }">{{ element.ten_cong_ty || element.ten_khach_hang }}</span>
+                  <span class="vip-badge" :style="{ background: '#ffffff', color: getColDarkColor(col.id), border: 'none', padding: '2px 6px', fontSize: '9px', fontWeight: '800' }">{{ element.ten_khach_hang || 'Chưa có tên' }}{{ element.ten_cong_ty ? ' - ' + element.ten_cong_ty : '' }}</span>
                 </div>
                 <span class="vip-badge tag-normal" v-if="element.tag && element.tag.toLowerCase() !== 'bình thường'" :class="getTagClass(element.tag)" style="flex-shrink: 0; font-size: 9px;">{{ element.tag }}</span>
               </div>
@@ -2811,6 +2811,42 @@ const fileList = computed(() => {
   }
   return list
 })
+
+
+const handleDownloadClick = async (event, url, defaultName) => {
+  event.preventDefault();
+  let name = defaultName;
+  if (!url || typeof url !== 'string') return;
+  const urlParts = url.split('?')[0].split('/');
+  const lastPart = urlParts[urlParts.length - 1];
+  let ext = '';
+  const extIndex = lastPart.lastIndexOf('.');
+  if (extIndex > -1) {
+    ext = lastPart.substring(extIndex);
+  }
+  if (ext && !name.toLowerCase().endsWith(ext.toLowerCase())) {
+    name = name + ext;
+  }
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Fetch failed');
+    const blob = await response.blob();
+    const objectUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = objectUrl;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(objectUrl);
+    }, 1000);
+  } catch (err) {
+    console.error("Lỗi khi tải file qua JS:", err);
+    window.open(url, '_blank');
+  }
+};
 
 const getPreviewUrl = (url) => {
   if (!url) return ''

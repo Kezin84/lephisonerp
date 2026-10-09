@@ -205,7 +205,7 @@ const handleAsyncCancel = () => {
 }
 
 const emit = defineEmits(['close', 'import-success'])
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getDatabase, ref as dbRef, push, set } from "firebase/database";
 
 const firebaseConfig = {
@@ -218,7 +218,7 @@ const firebaseConfig = {
   appId: "1:929199941311:web:ca8d86f9fd7f8dff61480a",
   measurementId: "G-48VVPGFSFK"
 };
-const firebaseApp = initializeApp(firebaseConfig);
+const firebaseApp = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const database = getDatabase(firebaseApp);
 
 

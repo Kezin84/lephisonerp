@@ -96,6 +96,10 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
           <span class="nav-text">Kho lưu trữ</span>
         </router-link>
+        <router-link to="/quan-ly-file" class="nav-item hide-on-mobile" title="Quản lý File">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+          <span class="nav-text">Quản lý File</span>
+        </router-link>
         <a href="#" class="nav-item mobile-only" title="Menu" @click.prevent="isMobileDrawerOpen = true">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
           <span class="nav-text">Menu</span>
@@ -111,9 +115,9 @@
       </nav>
     </aside>
     <main class="main-content" ref="mainContentRef" @scroll="handleScroll">
-      <router-view v-slot="{ Component }">
+      <router-view v-slot="{ Component, route }">
         <keep-alive include="BaoGia,BaoGiaFirebase,report,Report,ReportFIREBASE,Pipeline,KhoLuuTru">
-          <component :is="Component" />
+          <component :is="Component" :key="route.fullPath" />
         </keep-alive>
       </router-view>
     </main>
@@ -196,6 +200,10 @@
         <router-link to="/kho-luu-tru" class="drawer-item" @click="isMobileDrawerOpen = false">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
           <span>Kho lưu trữ</span>
+        </router-link>
+        <router-link to="/quan-ly-file" class="drawer-item" @click="isMobileDrawerOpen = false">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+          <span>Quản lý File</span>
         </router-link>
         <router-link to="/change-password" class="drawer-item" @click="isMobileDrawerOpen = false">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>

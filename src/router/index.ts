@@ -17,6 +17,7 @@ import Dashboard from '../components/Dashboard.vue'
 import Pipeline from '../components/Pipeline.vue'
 import LicenseOldDataFirebase from '../components/LicenseOldDataFirebase.vue'
 import KhoLuuTru from '../components/KhoLuuTru.vue'
+import QuanLyFile from '../components/QuanLyFile.vue'
 
 const routes = [
   {
@@ -130,6 +131,12 @@ const routes = [
     name: 'KhoLuuTru',
     component: KhoLuuTru,
     meta: { title: 'Kho Lưu Trữ' }
+  },
+  {
+    path: '/quan-ly-file',
+    name: 'QuanLyFile',
+    component: QuanLyFile,
+    meta: { title: 'Quản lý File' }
   }
 ]
 
