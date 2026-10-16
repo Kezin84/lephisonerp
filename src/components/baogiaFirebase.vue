@@ -14,12 +14,17 @@ import html2canvas from 'html2canvas'
 import * as XLSX from 'xlsx-js-style'
 import Tesseract from 'tesseract.js'
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getDatabase, ref as dbRef, get } from "firebase/database";
+import { getDatabase, ref as dbRef, get, set, update, remove, push } from "firebase/database";
 
 const firebaseConfig = {
+  apiKey: "AIzaSyB3fHD_sOqyqVygCxP2gZtvaipr-35a1s8",
   authDomain: "chusonproject.firebaseapp.com",
   databaseURL: "https://chusonproject-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "chusonproject",
   storageBucket: "chusonproject.firebasestorage.app",
+  messagingSenderId: "929199941311",
+  appId: "1:929199941311:web:ca8d86f9fd7f8dff61480a",
+  measurementId: "G-48VVPGFSFK"
 };
 const firebaseApp = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const database = getDatabase(firebaseApp);
@@ -27,10 +32,655 @@ const route = useRoute()
 const router = useRouter()
 
 /* ======================
-   CONFIG
+   FIREBASE RTDB HELPERS
 ====================== */
-const BASE_URL =
-  'https://script.google.com/macros/s/AKfycbx1yDOQLxYgJb5w30KmxQHF8AYUZln_5q58HCKP4zlUmtJye6aJBiSt3oyT0j_3QaigdQ/exec'
+function fbHopDongTongQuatToRow(item: any, fbKey = ''): any[] {
+  if (Array.isArray(item)) {
+    const r = item.slice(0, 37)
+    while (r.length < 37) r.push('')
+    return r
+  }
+  if (!item || typeof item !== 'object') return new Array(37).fill('')
+  return [
+    String(item.ma_hop_dong ?? item.Ma_hop_dong ?? fbKey ?? ''),
+    String(item.so_hop_dong ?? item.So_hop_dong ?? ''),
+    String(item.ma_khach_hang ?? item.Ma_khach_hang ?? ''),
+    String(item.ten_khach_hang ?? item.Ten_khach_hang ?? ''),
+    String(item.ngay_tao_hop_dong ?? item.ngay_tao ?? item.ngay_tao_date ?? item.ngay_ky ?? ''),
+    toNum(item.Tong_tien_truoc_thueVAT ?? item.tong_truoc_vat ?? item.tong_truoc_vat_goc ?? item.tong_tien, 0),
+    toNum(item.Tong_thueVAT ?? item.tong_vat, 0),
+    toNum(item.Tong_tien_sau_thueVAT ?? item.tong_sau_vat ?? item.tong_tien, 0),
+    toNum(item.Tong_giam_gia, 0),
+    toNum(item.Tong_cong ?? item.Tong_tien_sau_thueVAT ?? item.tong_sau_vat, 0),
+    toNum(item.Tong_thanh_toan ?? item.da_thanh_toan, 0),
+    toNum(item.Tong_hoa_hong_khach_hang, 0),
+    toNum(item.Tong_hoa_hong_ca_nhan, 0),
+    toNum(item.Cong_no_cu, 0),
+    String(item.Trang_thai_thanh_toan ?? item.trang_thai_thanh_toan ?? 'Chưa thanh toán đủ'),
+    String(item.Trang_thai_hop_dong ?? item['Trang_thai_hop_dong '] ?? item.loai_hop_dong ?? item.trang_thai_hop_dong ?? ''),
+    String(item.Ghi_chu ?? item.ghi_chu ?? ''),
+    String(item.Don_vi_tien_te ?? item.don_vi_tien_te ?? 'VND'),
+    toNum(item.Ti_gia ?? item.ti_gia, 1),
+    String(item.ma_hop_dong_cu ?? ''),
+    toNum(item.Tong_gia_thuc_te ?? item.tong_gia_thuc_te, 0),
+    String(item.created_time ?? ''),
+    String(item.So_PO ?? item.so_po ?? ''),
+    String(item.Ten_PO ?? item.ten_po ?? item.po_content ?? ''),
+    String(item['content_of_contract/PO'] ?? item.content_of_contract_PO ?? item.content_of_contract_po ?? item.content_po ?? item.content ?? item.ten_hop_dong ?? ''),
+    toNum(item.chiet_khau_tong_truoc_thue ?? item.gross_com, 0),
+    toNum(item.phan_tram_chiet_khau_tong_truoc_thue ?? item.phan_tram_chiet_khau, 0),
+    toNum(item.thue_chenh_lech_gia, 0),
+    toNum(item.phan_tram_thue_chenh_lech_gia ?? item.phan_tram_thue, 0),
+    toNum(item.chenh_lech_gia, 0),
+    toNum(item.con_lai, 0),
+    toNum(item.tong_chiet_khau, 0),
+    String(item.ma_hop_dong_goc ?? item.ma_hop_dong ?? fbKey ?? ''),
+    item.isCompleted === true || String(item.isCompleted).toUpperCase() === 'TRUE',
+    String(item.ten_file ?? ''),
+    String(item.link_file ?? ''),
+    String(item.structure ?? '')
+  ]
+}
+
+function rowToFbHopDongTongQuat(r: any[]) {
+  const row = Array.isArray(r) ? r.slice(0, 37) : []
+  while (row.length < 37) row.push('')
+  const isCompletedBool = row[33] === true || String(row[33]).toUpperCase() === 'TRUE'
+  const truoc = toNum(row[5], 0)
+  const vat = toNum(row[6], 0)
+  const sau = toNum(row[7], 0)
+  const daTT = toNum(row[10], 0)
+  const contentVal = String(row[24] ?? '')
+  return {
+    ma_hop_dong: String(row[0] ?? ''),
+    so_hop_dong: String(row[1] ?? ''),
+    ma_khach_hang: String(row[2] ?? ''),
+    ten_khach_hang: String(row[3] ?? ''),
+    ngay_tao_hop_dong: String(row[4] ?? ''),
+    ngay_tao: String(row[4] ?? ''),
+    Tong_tien_truoc_thueVAT: truoc,
+    tong_truoc_vat: truoc,
+    tong_truoc_vat_goc: truoc,
+    Tong_thueVAT: vat,
+    tong_vat: vat,
+    Tong_tien_sau_thueVAT: sau,
+    tong_sau_vat: sau,
+    Tong_giam_gia: toNum(row[8], 0),
+    Tong_cong: toNum(row[9], sau),
+    Tong_thanh_toan: daTT,
+    da_thanh_toan: daTT,
+    con_phai_thu: Math.max(0, sau - daTT),
+    Tong_hoa_hong_khach_hang: toNum(row[11], 0),
+    Tong_hoa_hong_ca_nhan: toNum(row[12], 0),
+    Cong_no_cu: toNum(row[13], 0),
+    Trang_thai_thanh_toan: String(row[14] || 'Chưa thanh toán đủ'),
+    trang_thai_thanh_toan: String(row[14] || 'Chưa thanh toán đủ'),
+    Trang_thai_hop_dong: String(row[15] || 'Tạm'),
+    loai_hop_dong: String(row[15] || 'Tạm'),
+    Ghi_chu: String(row[16] ?? ''),
+    ghi_chu: String(row[16] ?? ''),
+    Don_vi_tien_te: String(row[17] || 'VND'),
+    don_vi_tien_te: String(row[17] || 'VND'),
+    Ti_gia: toNum(row[18], 1),
+    ti_gia: toNum(row[18], 1),
+    ma_hop_dong_cu: String(row[19] ?? ''),
+    Tong_gia_thuc_te: toNum(row[20], 0),
+    created_time: String(row[21] ?? ''),
+    So_PO: String(row[22] ?? ''),
+    so_po: String(row[22] ?? ''),
+    Ten_PO: String(row[23] ?? ''),
+    po_content: String(row[23] ?? ''),
+    content_of_contract_PO: contentVal,
+    content_of_contract_po: contentVal,
+    content_po: contentVal,
+    content: contentVal,
+    chiet_khau_tong_truoc_thue: toNum(row[25], 0),
+    gross_com: toNum(row[25], 0),
+    phan_tram_chiet_khau_tong_truoc_thue: toNum(row[26], 0),
+    phan_tram_chiet_khau: toNum(row[26], 0),
+    thue_chenh_lech_gia: toNum(row[27], 0),
+    phan_tram_thue_chenh_lech_gia: toNum(row[28], 0),
+    phan_tram_thue: toNum(row[28], 0),
+    chenh_lech_gia: toNum(row[29], 0),
+    con_lai: toNum(row[30], 0),
+    tong_chiet_khau: toNum(row[31], 0),
+    ma_hop_dong_goc: String(row[32] || row[0] || ''),
+    isCompleted: isCompletedBool,
+    ten_file: String(row[34] ?? ''),
+    link_file: String(row[35] ?? ''),
+    structure: String(row[36] ?? '')
+  }
+}
+
+function fbHopDongChiTietToRow(item: any): any[] {
+  if (Array.isArray(item)) {
+    const r = item.slice(0, 33)
+    while (r.length < 33) r.push('')
+    return r
+  }
+  if (!item || typeof item !== 'object') return new Array(33).fill('')
+  return [
+    String(item.ma_hop_dong ?? item.Ma_hop_dong ?? ''),
+    String(item.so_hop_dong ?? item.So_hop_dong ?? ''),
+    String(item.Ma_hang ?? item.ma_hang ?? ''),
+    String(item.Ten_hang ?? item.ten_hang ?? ''),
+    String(item.Main_img ?? item.main_img ?? ''),
+    String(item.Ma_nha_cung_cap ?? item.ma_ncc ?? ''),
+    String(item.Ten_nha_cung_cap ?? item.ten_ncc ?? ''),
+    String(item.Mo_ta_chung ?? item.mo_ta_chung ?? ''),
+    String(item.Mo_ta_chi_tiet ?? item.mo_ta_chi_tiet ?? ''),
+    String(item.Features ?? item.features ?? item.dien_giai ?? ''),
+    String(item.Danh_muc ?? item.danh_muc ?? ''),
+    String(item.License_duration ?? item.license_duration ?? ''),
+    String(item.DVT ?? item.dvt ?? ''),
+    toNum(item.Gia_tieu_chuan ?? item.gia_tieu_chuan, 0),
+    toNum(item.Don_gia ?? item.don_gia, 0),
+    String(item.Don_vi_tien_te ?? item.don_vi_tien_te ?? 'VND'),
+    toNum(item.Ti_gia ?? item.ti_gia, 1),
+    toNum(item.Thue_VAT ?? item.thue_vat, 0),
+    Math.max(1, toNum(item.So_luong ?? item.so_luong, 1)),
+    String(item.Trang_thai_hop_dong ?? item.trang_thai_hop_dong ?? item.ghi_chu ?? ''),
+    toNum(item.gia_hardware, 0),
+    toNum(item.gia_nhap, 0),
+    toNum(item['muc_%_off'] ?? item.muc_phan_tram_off, 0),
+    String(item.don_vi_tien_te_USD ?? ''),
+    toNum(item.Ti_giaUSD, 0),
+    toNum(item.Gia_tieu_chuanUSD, 0),
+    toNum(item.Don_giaUS ?? item.Don_giaUSD, 0),
+    toNum(item.gia_nhapUSD, 0),
+    String(item.start_date ?? ''),
+    String(item.end_date ?? ''),
+    String(item.is_giahan ?? ''),
+    String(item.thoi_gian_bao_hanh ?? item.thoi_han_bao_hanh ?? ''),
+    String(item.volume ?? '')
+  ]
+}
+
+function rowToFbHopDongChiTiet(r: any[], trangThaiHopDong: string) {
+  const row = Array.isArray(r) ? r.slice(0, 33) : []
+  while (row.length < 33) row.push('')
+  const maHang = String(row[2] ?? '')
+  const tenHang = String(row[3] ?? '')
+  const mainImg = String(row[4] ?? '')
+  const maNcc = String(row[5] ?? '')
+  const tenNcc = String(row[6] ?? '')
+  const moTaChung = String(row[7] ?? '')
+  const moTaChiTiet = String(row[8] ?? '')
+  const features = String(row[9] ?? '')
+  const danhMuc = String(row[10] ?? '')
+  const licDur = String(row[11] ?? '')
+  const dvt = String(row[12] ?? '')
+  const giaTC = toNum(row[13], 0)
+  const donGia = toNum(row[14], 0)
+  const dvtien = String(row[15] || 'VND').trim()
+  const tiGia = toNum(row[16], 1)
+  const thueVat = toNum(row[17], 0)
+  const soLuong = Math.max(1, toNum(row[18], 1))
+  const statusHD = trangThaiHopDong || String(row[19] || '')
+  const mucOff = toNum(row[22], 0)
+  return {
+    ma_hop_dong: String(row[0] ?? ''),
+    so_hop_dong: String(row[1] ?? ''),
+    Ma_hang: maHang,
+    ma_hang: maHang,
+    Ten_hang: tenHang,
+    ten_hang: tenHang,
+    Main_img: mainImg,
+    main_img: mainImg,
+    Ma_nha_cung_cap: maNcc,
+    ma_ncc: maNcc,
+    Ten_nha_cung_cap: tenNcc,
+    ten_ncc: tenNcc,
+    Mo_ta_chung: moTaChung,
+    mo_ta_chung: moTaChung,
+    Mo_ta_chi_tiet: moTaChiTiet,
+    mo_ta_chi_tiet: moTaChiTiet,
+    Features: features,
+    features: features,
+    dien_giai: features,
+    Danh_muc: danhMuc,
+    danh_muc: danhMuc,
+    License_duration: licDur,
+    license_duration: licDur,
+    DVT: dvt,
+    dvt: dvt,
+    Gia_tieu_chuan: giaTC,
+    gia_tieu_chuan: giaTC,
+    Don_gia: donGia,
+    don_gia: donGia,
+    Don_vi_tien_te: dvtien,
+    don_vi_tien_te: dvtien,
+    Ti_gia: tiGia,
+    ti_gia: tiGia,
+    Thue_VAT: thueVat,
+    thue_vat: thueVat,
+    So_luong: soLuong,
+    so_luong: soLuong,
+    Trang_thai_hop_dong: statusHD,
+    trang_thai_hop_dong: statusHD,
+    gia_hardware: toNum(row[20], 0),
+    gia_nhap: toNum(row[21], 0),
+    'muc_%_off': mucOff,
+    muc_phan_tram_off: mucOff,
+    don_vi_tien_te_USD: String(row[23] ?? ''),
+    Ti_giaUSD: toNum(row[24], 0),
+    Gia_tieu_chuanUSD: toNum(row[25], 0),
+    Don_giaUS: toNum(row[26], 0),
+    Don_giaUSD: toNum(row[26], 0),
+    gia_nhapUSD: toNum(row[27], 0),
+    start_date: String(row[28] ?? ''),
+    end_date: String(row[29] ?? ''),
+    is_giahan: String(row[30] ?? ''),
+    thoi_gian_bao_hanh: String(row[31] ?? ''),
+    thoi_han_bao_hanh: String(row[31] ?? ''),
+    volume: String(row[32] ?? ''),
+    ghi_chu: ''
+  }
+}
+
+function fbPoDxmhToRow(item: any, fbKey = ''): any[] {
+  if (Array.isArray(item)) {
+    const r = item.slice(0, 35)
+    while (r.length < 35) r.push('')
+    return r
+  }
+  if (!item || typeof item !== 'object') return new Array(35).fill('')
+  return [
+    String(item.ma_hop_dong ?? item.Ma_hop_dong ?? fbKey ?? ''),
+    String(item.so_hop_dong ?? ''),
+    String(item.so_po ?? item.So_PO ?? ''),
+    String(item.ten_po ?? item.Ten_PO ?? ''),
+    String(item.do_uu_tien ?? item.Do_uu_tien ?? ''),
+    String(item.trang_thai_don_hang ?? item.Trang_thai_don_hang ?? ''),
+    String(item.ma_khach_hang ?? item.Ma_khach_hang ?? ''),
+    String(item.company ?? item.COMPANY ?? ''),
+    String(item.address ?? item.ADDRESS ?? ''),
+    String(item.tel ?? item.TEL ?? ''),
+    String(item.fax ?? item.FAX ?? ''),
+    String(item.contact ?? item.CONTACT ?? ''),
+    String(item.email ?? item.EMAIL ?? ''),
+    String(item.mobile ?? item.MOBILE ?? ''),
+    String(item.website ?? item.WEBSITE ?? ''),
+    String(item.cong_ty ?? item.CONG_TY ?? ''),
+    String(item.dia_chi ?? item.DIA_CHI ?? ''),
+    String(item.mst ?? item.MST ?? ''),
+    String(item.email_inv ?? item.EMAIL_1 ?? item.email ?? ''),
+    String(item.thanh_ly ?? item.Thanh_ly ?? ''),
+    String(item.dn_thanh_toan ?? item['ĐN_THANH_TOAN'] ?? ''),
+    String(item.co_cq ?? item['CO/CQ'] ?? ''),
+    String(item.giao_hang_hoa_don ?? item.GIAO_HANG_VA_HOA_DON_NGAY_KHI_CO_HANG ?? ''),
+    String(item.giao_hang_ky_thuat ?? item.GIAO_HANG_VA_CO_KY_THUAT_TRIEN_KHAI_DU_AN ?? ''),
+    String(item.lien_he_kd_truoc ?? item.LIEN_HE_KINH_DOANH_TRUOC_KHI_GIAO_HANG ?? ''),
+    String(item.nguoi_nhan_hang ?? item.NGUOI_NHAN_HANG ?? ''),
+    String(item.dia_chi_nhan ?? item.DIA_CHI_1 ?? ''),
+    String(item.so_dien_thoai ?? item.SO_DIEN_THOAI ?? ''),
+    String(item.nguoi_lien_he_trien_khai ?? item.NGUOI_LIEN_HE_TRIEN_KHAI ?? ''),
+    String(item.ngay_dat_coc ?? item.NGAY_DAT_COC ?? ''),
+    String(item.ti_le_dat_coc ?? item.TI_LE_DAT_COC ?? ''),
+    String(item.cong_no_ngay ?? item['CONG_NO(NGAY)'] ?? ''),
+    String(item.ngay_co_hang_du_kien ?? item.NGAY_CO_HANG_DU_KIEN ?? ''),
+    String(item.created_time ?? item.Created_time ?? ''),
+    String(item.content_of_contract_po ?? item['content_of_contract/PO'] ?? '')
+  ]
+}
+
+function fbChiTietMuaHangToRow(item: any): any[] {
+  if (Array.isArray(item)) {
+    const r = item.slice(0, 22)
+    while (r.length < 22) r.push('')
+    return r
+  }
+  if (!item || typeof item !== 'object') return new Array(22).fill('')
+  return [
+    String(item.ma_hop_dong ?? item.Ma_hop_dong ?? ''),
+    String(item.so_hop_dong ?? ''),
+    String(item.so_po ?? item.So_PO ?? ''),
+    String(item.ten_po ?? item.Ten_PO ?? ''),
+    String(item.ma_hang_hoa ?? item.Ma_hang_hoa ?? ''),
+    String(item.ma_sku ?? item.Ma_sku ?? ''),
+    String(item.ten_hang_hoa ?? item.Ten_hang_hoa ?? ''),
+    String(item.ma_nha_cung_cap ?? item.Ma_nha_cung_cap ?? ''),
+    String(item.ten_nha_cung_cap ?? item.Ten_nha_cung_cap ?? ''),
+    String(item.sl ?? item.Sl ?? ''),
+    String(item.list_price_usd ?? item['List_price(USD)'] ?? ''),
+    String(item.muc_off ?? item.Muc_off ?? ''),
+    String(item.don_gia ?? item.Don_gia ?? ''),
+    String(item.thanh_tien ?? item.Thanh_tien ?? ''),
+    String(item.start_date_sophos ?? item.Start_date_sophos ?? ''),
+    String(item.serial_number_sophos ?? item.Serial_number_sophos ?? ''),
+    String(item.license_id_sophos ?? item.License_id_sophos ?? ''),
+    String(item.base_code_kaspersky ?? item.Base_code_kaspersky ?? ''),
+    String(item.expiration_time_kaspersky ?? item.Expiration_time_kaspersky ?? ''),
+    String(item.start_date_other ?? item.Start_date_other ?? ''),
+    String(item.ghi_chu ?? item.Ghi_chu ?? ''),
+    String(item.content_of_contract_po ?? item['content_of_contract/PO'] ?? '')
+  ]
+}
+
+function fbDealRegToRow(item: any): any[] {
+  if (Array.isArray(item)) {
+    const r = item.slice(0, 35)
+    while (r.length < 35) r.push('')
+    return r
+  }
+  if (!item || typeof item !== 'object') return new Array(35).fill('')
+  return [
+    String(item.ma_hop_dong ?? item.Ma_hop_dong ?? ''),
+    String(item.so_hop_dong ?? ''),
+    String(item.so_po ?? item.So_PO ?? ''),
+    String(item.ten_po ?? item.Ten_PO ?? ''),
+    String(item.ma_nha_cung_cap ?? item.Ma_nha_cung_cap ?? ''),
+    String(item.ten_nha_cung_cap ?? item.Ten_nha_cung_cap ?? ''),
+    String(item.end_user_company_name ?? item.End_user_company_name ?? ''),
+    String(item.end_user_company_name_vietnamese ?? item.End_user_company_name_VIetnamese ?? ''),
+    String(item.end_username ?? item.End_username ?? ''),
+    String(item.end_user_email ?? item.End_user_email ?? ''),
+    String(item.company_address ?? item.Company_address ?? ''),
+    String(item.end_user_phone ?? item.End_user_phone ?? ''),
+    String(item.end_user_website ?? item.End_user_website ?? ''),
+    String(item.country ?? item.Country ?? ''),
+    String(item.is_existing_sophos_customer ?? item.isExistingSophosCustomer ?? ''),
+    String(item.company_size ?? ''),
+    String(item.estimated_customer_budget_usd ?? item['estimated_customer_budget(USD)'] ?? ''),
+    String(item.estimated_closure_date ?? ''),
+    String(item.competition ?? ''),
+    String(item.proposed_poc_schedule ?? item.proposed_POC_schedule ?? ''),
+    String(item.partner_company_name ?? ''),
+    String(item.partner_address ?? ''),
+    String(item.account_manager_name ?? ''),
+    String(item.account_manager_email ?? ''),
+    String(item.account_manager_phone ?? ''),
+    String(item.remark ?? ''),
+    String(item.ma_hang_hoa ?? ''),
+    String(item.ma_sku ?? ''),
+    String(item.ten_hang_hoa ?? ''),
+    String(item.ma_nha_cung_cap_item ?? ''),
+    String(item.ten_nha_cung_cap_item ?? ''),
+    String(item.qty ?? ''),
+    String(item.estimated_value_usd ?? item['estimated_value(USD)'] ?? ''),
+    String(item.total ?? item.Total ?? ''),
+    String(item.content_of_contract_po ?? item['content_of_contract/PO'] ?? '')
+  ]
+}
+
+async function fetchHopDongTongQuatFromFirebase(): Promise<any[][]> {
+  try {
+    const snap = await get(dbRef(database, 'hop_dong_tong_quat'))
+    const data = snap.val()
+    if (!data || typeof data !== 'object') return []
+    return Object.entries(data).map(([k, v]) => fbHopDongTongQuatToRow(v, k))
+  } catch (e) {
+    console.error('Lỗi đọc hop_dong_tong_quat từ Firebase:', e)
+    return []
+  }
+}
+
+async function fetchHopDongChiTietFromFirebase(): Promise<any[][]> {
+  try {
+    const snap = await get(dbRef(database, 'hop_dong_chi_tiet'))
+    const data = snap.val()
+    if (!data || typeof data !== 'object') return []
+    return Object.values(data).map((v) => fbHopDongChiTietToRow(v))
+  } catch (e) {
+    console.error('Lỗi đọc hop_dong_chi_tiet từ Firebase:', e)
+    return []
+  }
+}
+
+async function fetchKhachHangFromFirebase(): Promise<KhachHang[]> {
+  try {
+    const snap = await get(dbRef(database, 'khach_hang'))
+    const data = snap.val()
+    if (!data || typeof data !== 'object') return []
+    return Object.entries(data).map(([k, v]) => mapKhachRow(v, k))
+  } catch (e) {
+    console.error('Lỗi đọc khach_hang từ Firebase:', e)
+    return []
+  }
+}
+
+async function fetchPoDxmhFromFirebase(): Promise<any[][]> {
+  try {
+    const snap = await get(dbRef(database, 'PO_DXMH'))
+    const data = snap.val()
+    if (!data || typeof data !== 'object') return []
+    return Object.entries(data).map(([k, v]) => fbPoDxmhToRow(v, k))
+  } catch (e) {
+    console.error('Lỗi đọc PO_DXMH từ Firebase:', e)
+    return []
+  }
+}
+
+async function fetchChiTietMuaHangFromFirebase(): Promise<any[][]> {
+  try {
+    const snap = await get(dbRef(database, 'chi_tiet_mua_hang'))
+    const data = snap.val()
+    if (!data || typeof data !== 'object') return []
+    return Object.values(data).map((v) => fbChiTietMuaHangToRow(v))
+  } catch (e) {
+    console.error('Lỗi đọc chi_tiet_mua_hang từ Firebase:', e)
+    return []
+  }
+}
+
+async function fetchDealRegFromFirebase(): Promise<any[][]> {
+  try {
+    const snap = await get(dbRef(database, 'deal_reg'))
+    const data = snap.val()
+    if (!data || typeof data !== 'object') return []
+    return Object.values(data).map((v) => fbDealRegToRow(v))
+  } catch (e) {
+    console.error('Lỗi đọc deal_reg từ Firebase:', e)
+    return []
+  }
+}
+
+async function fetchDieuKhoanFromFirebase(): Promise<any[][]> {
+  try {
+    const snap = await get(dbRef(database, 'dieu_khoan'))
+    const data = snap.val()
+    if (!data || typeof data !== 'object') return []
+    return Object.entries(data).map(([k, v]: [string, any]) => {
+      if (Array.isArray(v)) return v
+      if (!v || typeof v !== 'object') return []
+      return [
+        String(v.ID ?? v.id ?? k ?? ''),
+        String(v.Mau ?? v.mau ?? v.loai_dieu_khoan ?? ''),
+        String(v.Ma_khach_hang ?? v.ma_khach_hang ?? ''),
+        String(v.Ten_khach_hang ?? v.ten_khach_hang ?? ''),
+        String(v.Ma_cong_ty ?? v.ma_cong_ty ?? ''),
+        String(v.Ten_cong_ty ?? v.ten_cong_ty ?? ''),
+        String(v.Noi_dung ?? v.noi_dung ?? '')
+      ]
+    })
+  } catch (e) {
+    console.error('Lỗi đọc dieu_khoan từ Firebase:', e)
+    return []
+  }
+}
+
+async function fetchUploadFileMauFromFirebase(): Promise<any[]> {
+  try {
+    const snap = await get(dbRef(database, 'upload_file_mau'))
+    const data = snap.val()
+    if (!data || typeof data !== 'object') return []
+    return Object.entries(data).map(([k, v]: [string, any]) => {
+      if (Array.isArray(v)) {
+        return {
+          id: String(v[0] || k),
+          name: String(v[1] || ''),
+          data: String(v[2] || ''),
+          mappingConfig: v[3] ? (typeof v[3] === 'string' ? JSON.parse(v[3]) : v[3]) : [],
+          content: String(v[4] || '')
+        }
+      }
+      let parsedStruct: any[] = []
+      const rawStruct = v?.STRUCTURE ?? v?.structure ?? ''
+      if (Array.isArray(rawStruct)) parsedStruct = rawStruct
+      else if (typeof rawStruct === 'string' && rawStruct.trim()) {
+        try { parsedStruct = JSON.parse(rawStruct) } catch { parsedStruct = [] }
+      }
+      return {
+        id: String(v?.ID ?? v?.id ?? k ?? ''),
+        name: String(v?.TEN_FILE ?? v?.ten_file ?? ''),
+        data: String(v?.LINK_FILE ?? v?.link_file ?? ''),
+        mappingConfig: parsedStruct,
+        content: String(v?.GHI_CHU ?? v?.ghi_chu ?? '')
+      }
+    }).filter(x => x.id)
+  } catch (e) {
+    console.error('Lỗi đọc upload_file_mau từ Firebase:', e)
+    return []
+  }
+}
+
+async function findCustomerInFirebase(maKH: string): Promise<{ key: string; data: any } | null> {
+  const target = String(maKH || '').trim()
+  if (!target) return null
+  try {
+    const directSnap = await get(dbRef(database, `khach_hang/${target}`))
+    if (directSnap.exists()) {
+      return { key: target, data: directSnap.val() }
+    }
+    const allSnap = await get(dbRef(database, 'khach_hang'))
+    const allData = allSnap.val()
+    if (allData && typeof allData === 'object') {
+      for (const [k, v] of Object.entries(allData)) {
+        if (!v || typeof v !== 'object') continue
+        const recMa = String((v as any).ma_khach_hang ?? (v as any).Ma_khach_hang ?? k ?? '').trim()
+        if (recMa === target) {
+          return { key: k, data: v }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('findCustomerInFirebase error:', e)
+  }
+  return null
+}
+
+async function getMaHopDongGocFromFirebase(maHopDong: string): Promise<string> {
+  const target = String(maHopDong || '').trim()
+  if (!target) return ''
+  const localRow = contractsRaw.value.find(r => String(r?.[0] ?? '').trim() === target)
+  if (localRow && localRow[32]) return String(localRow[32]).trim()
+  try {
+    const directSnap = await get(dbRef(database, `hop_dong_tong_quat/${target}`))
+    if (directSnap.exists()) {
+      const val = directSnap.val()
+      const row = fbHopDongTongQuatToRow(val, target)
+      return String(row[32] || '').trim()
+    }
+    const allRows = await fetchHopDongTongQuatFromFirebase()
+    const found = allRows.find(r => String(r?.[0] ?? '').trim() === target)
+    return found ? String(found[32] || '').trim() : ''
+  } catch {
+    return ''
+  }
+}
+
+async function saveContractVersionFirebase(maMoi: string, soHopDongStr: string, maCu: string) {
+  const nowStr = formatDateTimeVN(new Date())
+  const updates: Record<string, any> = {}
+  if (maCu) {
+    try {
+      const verSnap = await get(dbRef(database, 'hop_dong_version'))
+      const verData = verSnap.val()
+      if (verData && typeof verData === 'object') {
+        for (const [k, v] of Object.entries(verData)) {
+          const recMa = Array.isArray(v) ? String(v[0] || '') : String((v as any)?.ma_hop_dong || k || '')
+          if (recMa === maCu) {
+            if (Array.isArray(v)) {
+              const copy = [...v]
+              copy[4] = false
+              updates[`hop_dong_version/${k}`] = copy
+            } else {
+              updates[`hop_dong_version/${k}/is_active`] = false
+            }
+          }
+        }
+      }
+    } catch {}
+  }
+  updates[`hop_dong_version/${maMoi}`] = {
+    ma_hop_dong: maMoi,
+    so_hop_dong: soHopDongStr,
+    ma_hop_dong_cu: maCu || '',
+    ma_hop_dong_truoc: maCu || '',
+    created_time: nowStr,
+    created_at: nowStr,
+    is_active: true
+  }
+  await update(dbRef(database), updates)
+}
+
+async function markDraftsAsCompletedFirebase(maGoc: string, excludeMaHD: string) {
+  if (!maGoc) return
+  try {
+    const snap = await get(dbRef(database, 'hop_dong_tong_quat'))
+    const data = snap.val()
+    if (!data || typeof data !== 'object') return
+    const updates: Record<string, any> = {}
+    for (const [k, v] of Object.entries(data)) {
+      const row = fbHopDongTongQuatToRow(v, k)
+      const rowMaHD = String(row[0] || '').trim()
+      const rowMaGoc = String(row[32] || '').trim()
+      const rowCompleted = row[33] === true || String(row[33]).toUpperCase() === 'TRUE'
+      if (rowMaGoc === maGoc && rowMaHD !== excludeMaHD && !rowCompleted) {
+        if (Array.isArray(v)) {
+          const copy = [...v]
+          copy[33] = true
+          updates[`hop_dong_tong_quat/${k}`] = copy
+        } else {
+          updates[`hop_dong_tong_quat/${k}/isCompleted`] = true
+        }
+      }
+    }
+    if (Object.keys(updates).length > 0) {
+      await update(dbRef(database), updates)
+    }
+  } catch (e) {
+    console.warn('markDraftsAsCompletedFirebase error:', e)
+  }
+}
+
+async function rebuildCategoryLinksFirebase(category: string) {
+  const cat = String(category || '').trim().toUpperCase()
+  if (!cat) return
+  try {
+    const snap = await get(dbRef(database, 'hang_hoa'))
+    const data = snap.val() || {}
+    const sameCatEntries: { fbKey: string; Ma_hang: string; Ten_hang: string }[] = []
+    Object.entries(data).forEach(([fbKey, row]: [string, any]) => {
+      if (!row || typeof row !== 'object') return
+      const rowCat = String(row.Danh_muc || '').trim().toUpperCase()
+      if (rowCat === cat) {
+        sameCatEntries.push({
+          fbKey,
+          Ma_hang: String(row.Ma_hang || '').trim(),
+          Ten_hang: String(row.Ten_hang || '').trim()
+        })
+      }
+    })
+    if (sameCatEntries.length < 2) return
+    const linkUpdates: Record<string, any> = {}
+    sameCatEntries.forEach((entry, idx) => {
+      const otherMas: string[] = []
+      const otherTens: string[] = []
+      sameCatEntries.forEach((other, otherIdx) => {
+        if (otherIdx !== idx) {
+          otherMas.push(other.Ma_hang)
+          otherTens.push(other.Ten_hang)
+        }
+      })
+      linkUpdates[`hang_hoa/${entry.fbKey}/Ma_hang_lien_ket`] = otherMas.join('\n')
+      linkUpdates[`hang_hoa/${entry.fbKey}/Ten_hang_lien_ket`] = otherTens.join('\n')
+    })
+    await update(dbRef(database), linkUpdates)
+  } catch (e) {
+    console.warn('rebuildCategoryLinksFirebase error:', e)
+  }
+}
 
 /* ======================
    TYPES
@@ -916,19 +1566,15 @@ async function saveExcelConfigModal() {
     const tpl = customTemplates.value.find(t => t.id === editingTemplateId.value)
     if (tpl) {
       tpl.mappingConfig = JSON.parse(JSON.stringify(tempMappingConfig.value))
-      
-      const payload = {
-        sheet: 'upload_file_mau',
-        action: 'update',
-        id: tpl.id,
-        structure: JSON.stringify(tpl.mappingConfig)
-      }
+      const structStr = JSON.stringify(tpl.mappingConfig)
       
       try {
         showAsyncLoading('Đang lưu cấu hình...')
-        await fetch(BASE_URL, {
-          method: 'POST',
-          body: JSON.stringify(payload)
+        await update(dbRef(database, `upload_file_mau/${tpl.id}`), {
+          ID: tpl.id,
+          id: tpl.id,
+          STRUCTURE: structStr,
+          structure: structStr
         })
         showAsyncSuccess('Thành công', 'Đã lưu cấu hình Data Mapping riêng cho template.')
       } catch (err) {
@@ -1551,13 +2197,12 @@ async function openLoadInvoiceModal() {
   showLoadInvoiceModal.value = true;
   invoiceListState.value = 'loading'
   try {
-    const ts = Date.now();
-    const [hdRows, khRows] = await Promise.all([
-      fetch(`${BASE_URL}?action=hop_dong_tong_quat&t=${ts}`).then(r => r.json()),
-      fetch(`${BASE_URL}?action=khach_hang&t=${ts}`).then(r => r.json())
+    const [hdRows, khList] = await Promise.all([
+      fetchHopDongTongQuatFromFirebase(),
+      fetchKhachHangFromFirebase()
     ]);
     contractsRaw.value = Array.isArray(hdRows) ? hdRows : [];
-    customers.value = (Array.isArray(khRows) ? khRows : []).map(mapKhachRow);
+    customers.value = Array.isArray(khList) ? khList : [];
     markLoaded(invoiceListState)
   } catch (e) {
     console.error('Error fetching latest contracts for load modal:', e);
@@ -1618,8 +2263,7 @@ maHopDong.value = `HD${Date.now()}`
     }
 
     // ====== load chi tiết ======
-    const ts = Date.now();
-    const detailRows = await fetch(`${BASE_URL}?action=hop_dong_chi_tiet&t=${ts}`).then(r => r.json())
+    const detailRows = await fetchHopDongChiTietFromFirebase()
     const all = Array.isArray(detailRows) ? detailRows : []
     const mine = all.filter((r: any[]) => String(r?.[0] ?? '').trim() === ma)
 
@@ -1646,8 +2290,8 @@ maHopDong.value = `HD${Date.now()}`
 async function generateNewQuoteIds() {
   try {
     const [hdRows, poData] = await Promise.all([
-      fetch(`${BASE_URL}?action=hop_dong_tong_quat`).then(r => r.json()),
-      fetch(`${BASE_URL}?action=po_dxmh`).then(r => r.json())
+      fetchHopDongTongQuatFromFirebase(),
+      fetchPoDxmhFromFirebase()
     ])
     
     contractsRaw.value = Array.isArray(hdRows) ? hdRows : []
@@ -1711,8 +2355,7 @@ async function cloneInvoiceToFE() {
     // do not clear currentPO because it was just generated
 
     // load chi tiết
-    const ts = Date.now();
-    const detailRows = await fetch(`${BASE_URL}?action=hop_dong_chi_tiet&t=${ts}`).then(r => r.json())
+    const detailRows = await fetchHopDongChiTietFromFirebase()
     const all = Array.isArray(detailRows) ? detailRows : []
     const mine = all.filter((r: any[]) => String(r?.[0] ?? '').trim() === ma)
 
@@ -1727,7 +2370,7 @@ async function cloneInvoiceToFE() {
     loadMsg.value = '✅ Đã nhân bản hàng hóa.'
     
     // push route without id to clear URL
-    router.push('/baogia?clone=true')
+    router.push('/baogiafirebase?clone=true')
     
     showAsyncSuccess('Thành công', 'Đã đổ dữ liệu hàng hóa sang báo giá mới')
     triggerToast('Đã nhân bản hàng hóa thành công!')
@@ -1804,11 +2447,10 @@ async function openLoadPipelineModal() {
   loadPipelineMsg.value = ''
   pipelineListState.value = 'loading'
   try {
-    const ts = Date.now()
     const [poRows, ctmhRows, hdctRows] = await Promise.all([
-      fetch(`${BASE_URL}?action=po_dxmh&t=${ts}`).then(r => r.json()),
-      fetch(`${BASE_URL}?action=chi_tiet_mua_hang&t=${ts}`).then(r => r.json()),
-      fetch(`${BASE_URL}?action=hop_dong_chi_tiet&t=${ts}`).then(r => r.json())
+      fetchPoDxmhFromFirebase(),
+      fetchChiTietMuaHangFromFirebase(),
+      fetchHopDongChiTietFromFirebase()
     ])
     poDxmhList.value = Array.isArray(poRows) ? poRows : []
     ctmhList.value = Array.isArray(ctmhRows) ? ctmhRows : []
@@ -1851,11 +2493,16 @@ async function loadPipelineToFE() {
     loadPipelineMsg.value = 'Đang tải dữ liệu, vui lòng đợi...'
     showAsyncLoading('Đang load Pipeline...')
 
-    const ts = Date.now();
-    const allData = await fetch(`${BASE_URL}?action=all&fresh=1&t=${ts}`).then(r => r.json())
+    const [hdRows, khList, allCT, allCTMH, allDR] = await Promise.all([
+      fetchHopDongTongQuatFromFirebase(),
+      fetchKhachHangFromFirebase(),
+      fetchHopDongChiTietFromFirebase(),
+      fetchChiTietMuaHangFromFirebase(),
+      fetchDealRegFromFirebase()
+    ])
     
-    contractsRaw.value = allData.hop_dong_tong_quat || []
-    customers.value = (allData.khach_hang || []).map(mapKhachRow)
+    contractsRaw.value = hdRows || []
+    customers.value = khList || []
     
     let contractRow = null
     if (ma_hd) {
@@ -1866,17 +2513,6 @@ async function loadPipelineToFE() {
     }
     if (!contractRow && so_po) {
       contractRow = contractsRaw.value.find(r => String(r?.[22] ?? '').trim().toLowerCase() === so_po.toLowerCase())
-    }
-
-    // Nếu vẫn không tìm thấy, có thể do cache của action=all. Fetch fresh data cho hợp đồng
-    if (!contractRow) {
-      const freshContracts = await fetch(`${BASE_URL}?action=hop_dong_tong_quat&t=${Date.now()}`).then(r => r.json())
-      if (Array.isArray(freshContracts)) {
-        contractsRaw.value = freshContracts
-        if (ma_hd) contractRow = contractsRaw.value.find(r => String(r?.[0] ?? '').trim().toLowerCase() === ma_hd.toLowerCase())
-        if (!contractRow && so_hd) contractRow = contractsRaw.value.find(r => String(r?.[1] ?? '').trim().toLowerCase() === so_hd.toLowerCase())
-        if (!contractRow && so_po) contractRow = contractsRaw.value.find(r => String(r?.[22] ?? '').trim().toLowerCase() === so_po.toLowerCase())
-      }
     }
 
     if (!contractRow) {
@@ -1915,15 +2551,7 @@ async function loadPipelineToFE() {
       if (tenKH) fillCustomerByTen(tenKH)
     }
 
-    let allCT = allData.hop_dong_chi_tiet || []
-    let mineCT = allCT.filter((r: any[]) => String(r?.[0] ?? '').trim() === ma)
-    
-    if (mineCT.length === 0) {
-      allCT = await fetch(`${BASE_URL}?action=hop_dong_chi_tiet&t=${Date.now()}`).then(r => r.json())
-      if (Array.isArray(allCT)) {
-        mineCT = allCT.filter((r: any[]) => String(r?.[0] ?? '').trim() === ma)
-      }
-    }
+    const mineCT = (allCT || []).filter((r: any[]) => String(r?.[0] ?? '').trim() === ma)
 
     selectedItems.value = mineCT.map(mapHopDongChiTietRowToItem)
 
@@ -1931,25 +2559,9 @@ async function loadPipelineToFE() {
       if (it.Ma_hang) qtyMap[it.Ma_hang] = Math.max(1, toNum(it.So_luong, 1))
     })
 
-    let allCTMH = allData.chi_tiet_mua_hang || []
-    let myCTMH = allCTMH.filter((r: any[]) => String(r?.[2] ?? '').trim().toLowerCase() === so_po.toLowerCase() || (so_hd && String(r?.[1] ?? '').trim().toLowerCase() === so_hd.toLowerCase()))
+    const myCTMH = (allCTMH || []).filter((r: any[]) => String(r?.[2] ?? '').trim().toLowerCase() === so_po.toLowerCase() || (so_hd && String(r?.[1] ?? '').trim().toLowerCase() === so_hd.toLowerCase()))
 
-    if (myCTMH.length === 0) {
-      allCTMH = await fetch(`${BASE_URL}?action=chi_tiet_mua_hang&t=${Date.now()}`).then(r => r.json())
-      if (Array.isArray(allCTMH)) {
-        myCTMH = allCTMH.filter((r: any[]) => String(r?.[2] ?? '').trim().toLowerCase() === so_po.toLowerCase() || (so_hd && String(r?.[1] ?? '').trim().toLowerCase() === so_hd.toLowerCase()))
-      }
-    }
-
-    let allDR = allData.deal_reg || []
-    let myDR = allDR.filter((r: any[]) => String(r?.[2] ?? '').trim().toLowerCase() === so_po.toLowerCase() || (so_hd && String(r?.[1] ?? '').trim().toLowerCase() === so_hd.toLowerCase()))
-
-    if (myDR.length === 0) {
-      allDR = await fetch(`${BASE_URL}?action=deal_reg&t=${Date.now()}`).then(r => r.json())
-      if (Array.isArray(allDR)) {
-        myDR = allDR.filter((r: any[]) => String(r?.[2] ?? '').trim().toLowerCase() === so_po.toLowerCase() || (so_hd && String(r?.[1] ?? '').trim().toLowerCase() === so_hd.toLowerCase()))
-      }
-    }
+    const myDR = (allDR || []).filter((r: any[]) => String(r?.[2] ?? '').trim().toLowerCase() === so_po.toLowerCase() || (so_hd && String(r?.[1] ?? '').trim().toLowerCase() === so_hd.toLowerCase()))
 
     loadedPipelineExtraData.value = {
       po: poRow,
@@ -2143,17 +2755,152 @@ const saving = ref(false)
 const saveMsg = ref('')
 
 async function postApi(action: string, payload: any) {
-  const body = new URLSearchParams()
-  body.set('action', action)
-  body.set('payload', JSON.stringify(payload || {}))
+  if (action === 'save_contract_temp') {
+    const hdRow = Array.isArray(payload?.hd_tong_quat_row) ? payload.hd_tong_quat_row.slice(0, 37) : []
+    while (hdRow.length < 37) hdRow.push('')
+    const ctRows = Array.isArray(payload?.hd_chi_tiet_rows) ? payload.hd_chi_tiet_rows : []
+    if (!hdRow.length) throw new Error('Thiếu hd_tong_quat_row')
 
-  const res = await fetch(BASE_URL, {
-    method: 'POST',
-    body
-  })
-  const data = await res.json()
-  if (!data.ok) throw new Error(data.error || 'Lỗi server')
-  return data
+    const maMoi = String(hdRow[0] || '').trim()
+    const soHopDongStr = String(hdRow[1] || '').trim()
+    const maCu = String(hdRow[19] || '').trim()
+    const maKH = String(hdRow[2] || '').trim()
+
+    let maGoc = maMoi
+    if (maCu) {
+      maGoc = (await getMaHopDongGocFromFirebase(maCu)) || maCu
+    }
+    hdRow[32] = maGoc
+    hdRow[33] = false
+    hdRow[15] = 'Tạm'
+
+    if (maKH) {
+      const custFound = await findCustomerInFirebase(maKH)
+      if (custFound && custFound.data) {
+        hdRow[13] = toNum(custFound.data.tong_loi_nhuan ?? custFound.data.Tong_loi_nhuan, 0)
+      }
+    }
+
+    const fbHdObj = rowToFbHopDongTongQuat(hdRow)
+    await set(dbRef(database, `hop_dong_tong_quat/${maMoi}`), fbHdObj)
+    await saveContractVersionFirebase(maMoi, soHopDongStr, maCu)
+
+    if (ctRows.length > 0) {
+      const ctUpdates: Record<string, any> = {}
+      ctRows.forEach((r: any[]) => {
+        const key = push(dbRef(database, 'hop_dong_chi_tiet')).key
+        if (key) {
+          ctUpdates[`hop_dong_chi_tiet/${key}`] = rowToFbHopDongChiTiet(r, 'Tạm')
+        }
+      })
+      await update(dbRef(database), ctUpdates)
+    }
+    return { ok: true, status: 'success' }
+  }
+
+  if (action === 'save_contract_official') {
+    const hdRow = Array.isArray(payload?.hd_tong_quat_row) ? payload.hd_tong_quat_row.slice(0, 37) : []
+    while (hdRow.length < 37) hdRow.push('')
+    const ctRows = Array.isArray(payload?.hd_chi_tiet_rows) ? payload.hd_chi_tiet_rows : []
+    const maKH = String(payload?.ma_khach_hang || hdRow[2] || '').trim()
+    const tongSau = toNum(payload?.tong_sau_thue ?? hdRow[7], 0)
+    if (!hdRow.length) throw new Error('Thiếu hd_tong_quat_row')
+
+    const maMoi = String(hdRow[0] || '').trim()
+    const soHopDongStr = String(hdRow[1] || '').trim()
+    const maCu = String(hdRow[19] || '').trim()
+
+    let maGoc = maMoi
+    if (maCu) {
+      maGoc = (await getMaHopDongGocFromFirebase(maCu)) || maCu
+    }
+    hdRow[32] = maGoc
+    hdRow[33] = true
+    hdRow[15] = 'Chính thức'
+
+    let congNoCu = 0
+    if (maKH) {
+      const custFound = await findCustomerInFirebase(maKH)
+      if (custFound && custFound.data) {
+        const cData = custFound.data
+        const curChiTieu = toNum(cData.tong_chi_tieu ?? cData.Tong_chi_tieu, 0)
+        congNoCu = toNum(cData.tong_loi_nhuan ?? cData.Tong_loi_nhuan, 0)
+        const curHoaHong = toNum(cData.hoa_hong ?? cData.Hoa_hong, 0)
+        const hhHD = toNum(hdRow[11], 0)
+        const daTT = toNum(hdRow[10], 0)
+        const ps = Math.max(0, tongSau - daTT)
+        await update(dbRef(database, `khach_hang/${custFound.key}`), {
+          hoa_hong: curHoaHong + hhHD,
+          Hoa_hong: curHoaHong + hhHD,
+          tong_chi_tieu: curChiTieu + tongSau,
+          Tong_chi_tieu: curChiTieu + tongSau,
+          tong_loi_nhuan: congNoCu + ps,
+          Tong_loi_nhuan: congNoCu + ps
+        })
+      }
+    }
+    hdRow[13] = congNoCu
+
+    const fbHdObj = rowToFbHopDongTongQuat(hdRow)
+    await set(dbRef(database, `hop_dong_tong_quat/${maMoi}`), fbHdObj)
+    await saveContractVersionFirebase(maMoi, soHopDongStr, maCu)
+    await markDraftsAsCompletedFirebase(maGoc, maMoi)
+
+    if (ctRows.length > 0) {
+      const ctUpdates: Record<string, any> = {}
+      ctRows.forEach((r: any[]) => {
+        const key = push(dbRef(database, 'hop_dong_chi_tiet')).key
+        if (key) {
+          ctUpdates[`hop_dong_chi_tiet/${key}`] = rowToFbHopDongChiTiet(r, 'Chính thức')
+        }
+      })
+      await update(dbRef(database), ctUpdates)
+    }
+    return { ok: true, status: 'success' }
+  }
+
+  if (action === 'addHangHoa') {
+    const row = Array.isArray(payload) ? payload : []
+    const danhMuc = String(row[8] ?? '').trim().toUpperCase()
+    const newItemObj = {
+      Ma_hang: String(row[0] ?? '').trim(),
+      Ten_hang: String(row[1] ?? '').trim(),
+      Main_img: String(row[2] ?? '').trim(),
+      Ma_nha_cung_cap: String(row[3] ?? '').trim(),
+      Ten_nha_cung_cap: String(row[4] ?? '').trim(),
+      Mo_ta_chung: String(row[5] ?? ''),
+      Mo_ta_chi_tiet: String(row[6] ?? ''),
+      Features: String(row[7] ?? ''),
+      Danh_muc: danhMuc,
+      License_duration: String(row[9] ?? ''),
+      DVT: String(row[10] ?? ''),
+      Gia_tieu_chuan: toNum(row[11], 0),
+      Don_gia: toNum(row[12], 0),
+      Trang_thai: String(row[13] || 'Hiển thị'),
+      Don_vi_tien_te: String(row[14] || 'VND'),
+      Ti_gia: toNum(row[15], 1),
+      Thue_VAT: toNum(row[16], 0),
+      Ma_hang_lien_ket: String(row[17] ?? ''),
+      Ten_hang_lien_ket: String(row[18] ?? ''),
+      Ghi_chu: String(row[19] ?? ''),
+      gia_hardware: toNum(row[20], 0),
+      gia_nhap: toNum(row[21], 0),
+      'muc_%_off': toNum(row[22], 0),
+      muc_phan_tram_off: toNum(row[22], 0),
+      TYPE: String(row[23] ?? '').trim(),
+      Type: String(row[23] ?? '').trim(),
+      thoi_han_bao_hanh: String(row[24] ?? ''),
+      volume: String(row[25] ?? '')
+    }
+    const newRef = push(dbRef(database, 'hang_hoa'))
+    await set(newRef, newItemObj)
+    if (danhMuc) {
+      await rebuildCategoryLinksFirebase(danhMuc)
+    }
+    return { ok: true, status: 'success' }
+  }
+
+  throw new Error('Action không hợp lệ: ' + action)
 }
 
 /* ======================
@@ -2389,7 +3136,7 @@ async function saveContractTemp(force = false) {
     .then(() => {
       isDataSaved.value = true
       showAsyncSuccess('Lưu tạm thành công', 'Dữ liệu đã được đồng bộ lên hệ thống.')
-      setTimeout(() => { router.replace('/baogia'); setTimeout(() => window.location.reload(), 100) }, 1500)
+      setTimeout(() => { router.replace('/baogiafirebase'); setTimeout(() => window.location.reload(), 100) }, 1500)
     })
     .catch((e: any) => {
       showAsyncError('Lưu tạm thất bại', 'Lỗi: ' + String(e?.message || e) + '. Vui lòng thử lại.')
@@ -2421,7 +3168,7 @@ async function saveContractOfficialAndSaleReport(force = false) {
     // Auto-gen So_PO
     let nextPO = ''
     try {
-      const poData = await fetch(`${BASE_URL}?action=po_dxmh`).then(r => r.json())
+      const poData = await fetchPoDxmhFromFirebase()
       let maxPO = 0
       if (Array.isArray(poData)) {
         poData.forEach(row => {
@@ -2470,14 +3217,20 @@ async function saveContractOfficialAndSaleReport(force = false) {
     // 2) Lưu vào sale_report (dùng format giống pipeline)
     const t = totals.value
     const firstItem = selectedItems.value[0] || {} as any
+    const srKey = push(dbRef(database, 'sale_report')).key || `SR_${Date.now()}`
+    const contentPoStr = contentOfContractPO.value.trim() || soHopDong.value
+    const nowSr = new Date()
+    const padSr = (n: number) => String(n).padStart(2, '0')
+    const nowSrStr = `${padSr(nowSr.getDate())}/${padSr(nowSr.getMonth() + 1)}/${nowSr.getFullYear()} ${padSr(nowSr.getHours())}:${padSr(nowSr.getMinutes())}:${padSr(nowSr.getSeconds())}`
 
     const srPayload = {
-      sheet: 'sale_report',
-      action: 'add',
+      ID: srKey,
+      created_time: nowSrStr,
       ma_hop_dong: maHopDong.value,
       so_hop_dong: soHopDong.value,
       So_PO: nextPO,
-      content_of_contract_PO: contentOfContractPO.value.trim() || soHopDong.value,
+      content_of_contract_po: contentPoStr,
+      content_of_contract_PO: contentPoStr,
       Ma_khach_hang: (khach.value.Ma_khach_hang || '').trim(),
       Ten_khach_hang: (khach.value.Ten_khach_hang || '').trim(),
       Ma_cong_ty: (khach.value.Ma_cong_ty || '').trim(),
@@ -2499,60 +3252,93 @@ async function saveContractOfficialAndSaleReport(force = false) {
       Tong_CP_don_hang: 0,
       account_manager_name: 'LÊ PHI SƠN',
       link_excel_bao_gia: linkBaoGia,
-      ten_file_bao_gia: tenFileBaoGia
+      ten_file_bao_gia: tenFileBaoGia,
+      cong_no: round2(t.sau),
+      so_tien_da_thanh_toan: 0,
+      thoi_gian_thanh_toan: '',
+      loai_thanh_toan: 'mot_lan',
+      han_thanh_toan: '',
+      ke_hoach_thanh_toan: []
     }
 
-    try {
-      await fetch(BASE_URL, { method: 'POST', body: JSON.stringify(srPayload) })
-    } catch (e2) {
-      console.warn('Lỗi lưu sale_report:', e2)
-    }
+    await set(dbRef(database, `sale_report/${srKey}`), srPayload)
 
     // 3) Lưu vào PO_DXMH
     if (contentOfContractPO.value.trim()) {
+      const poContentStr = contentOfContractPO.value.trim()
+      const nowCreatedStr = formatCreatedTimeVN(new Date())
       const poPayload = {
-        sheet: 'po_dxmh',
-        action: 'add',
         ma_hop_dong: maHopDong.value,
+        Ma_hop_dong: maHopDong.value,
         so_hop_dong: soHopDong.value,
         so_po: nextPO,
-        content_of_contract_po: contentOfContractPO.value.trim(),
+        So_PO: nextPO,
+        ten_po: poContentStr,
+        Ten_PO: poContentStr,
+        content_of_contract_po: poContentStr,
+        content_of_contract_PO: poContentStr,
         ma_khach_hang: (khach.value.Ma_khach_hang || '').trim(),
+        Ma_khach_hang: (khach.value.Ma_khach_hang || '').trim(),
         company: (khach.value.Ten_cong_ty || '').trim(),
+        COMPANY: (khach.value.Ten_cong_ty || '').trim(),
         mst: (khach.value.MST || '').trim(),
+        MST: (khach.value.MST || '').trim(),
         address: (khach.value.Dia_chi_cong_ty || khach.value.ADDRESS || '').trim(),
+        ADDRESS: (khach.value.Dia_chi_cong_ty || khach.value.ADDRESS || '').trim(),
         tel: (khach.value.So_dien_thoai_cong_ty || khach.value.TEL || '').trim(),
+        TEL: (khach.value.So_dien_thoai_cong_ty || khach.value.TEL || '').trim(),
         contact: (khach.value.Ten_khach_hang || '').trim(),
-        email: (khach.value.Email_cong_ty || '').trim()
+        CONTACT: (khach.value.Ten_khach_hang || '').trim(),
+        email: (khach.value.Email_cong_ty || '').trim(),
+        EMAIL: (khach.value.Email_cong_ty || '').trim(),
+        created_time: nowCreatedStr,
+        Created_time: nowCreatedStr
       }
       try {
-        await fetch(BASE_URL, { method: 'POST', body: JSON.stringify(poPayload) })
+        await set(dbRef(database, `PO_DXMH/${maHopDong.value}`), poPayload)
       } catch (e3) {
         console.warn('Lỗi lưu PO_DXMH:', e3)
       }
 
       // 4) Lưu vào chi_tiet_mua_hang (mỗi item 1 row)
-      const ctmhItems = selectedItems.value.map(it => ({
-        ma_hop_dong: maHopDong.value,
-        so_hop_dong: soHopDong.value,
-        so_po: nextPO,
-        ten_po: contentOfContractPO.value.trim(),
-        ma_hang_hoa: it.Ma_hang || '',
-        ten_hang_hoa: it.Ten_hang || '',
-        ma_nha_cung_cap: it.Ma_nha_cung_cap || '',
-        ten_nha_cung_cap: it.Ten_nha_cung_cap || '',
-        sl: Number(it.So_luong) || 1,
-        don_gia: Number(it.Don_gia) || 0,
-        thanh_tien: (Number(it.So_luong) || 1) * (Number(it.Don_gia) || 0),
-        content_of_contract_po: contentOfContractPO.value.trim()
-      }))
+      const ctmhItems = selectedItems.value.map(it => {
+        const slNum = Number(it.So_luong) || 1
+        const dgNum = Number(it.Don_gia) || 0
+        const ttNum = slNum * dgNum
+        return {
+          ma_hop_dong: maHopDong.value,
+          Ma_hop_dong: maHopDong.value,
+          so_hop_dong: soHopDong.value,
+          so_po: nextPO,
+          So_PO: nextPO,
+          ten_po: poContentStr,
+          Ten_PO: poContentStr,
+          ma_hang_hoa: it.Ma_hang || '',
+          Ma_hang_hoa: it.Ma_hang || '',
+          ten_hang_hoa: it.Ten_hang || '',
+          Ten_hang_hoa: it.Ten_hang || '',
+          ma_nha_cung_cap: it.Ma_nha_cung_cap || '',
+          Ma_nha_cung_cap: it.Ma_nha_cung_cap || '',
+          ten_nha_cung_cap: it.Ten_nha_cung_cap || '',
+          Ten_nha_cung_cap: it.Ten_nha_cung_cap || '',
+          sl: slNum,
+          Sl: slNum,
+          don_gia: dgNum,
+          Don_gia: dgNum,
+          thanh_tien: ttNum,
+          Thanh_tien: ttNum,
+          content_of_contract_po: poContentStr,
+          content_of_contract_PO: poContentStr
+        }
+      })
       if (ctmhItems.length) {
         try {
-          await fetch(BASE_URL, { method: 'POST', body: JSON.stringify({
-            sheet: 'chi_tiet_mua_hang',
-            action: 'add_bulk',
-            items: ctmhItems
-          }) })
+          const ctmhUpdates: Record<string, any> = {}
+          ctmhItems.forEach(itemObj => {
+            const k = push(dbRef(database, 'chi_tiet_mua_hang')).key
+            if (k) ctmhUpdates[`chi_tiet_mua_hang/${k}`] = itemObj
+          })
+          await update(dbRef(database), ctmhUpdates)
         } catch (e4) {
           console.warn('Lỗi lưu chi_tiet_mua_hang:', e4)
         }
@@ -2563,7 +3349,7 @@ async function saveContractOfficialAndSaleReport(force = false) {
     isDataSaved.value = true
     showAsyncSuccess('Lưu thành công', 'Hợp đồng + Sale Report đã được đồng bộ.')
     loadedMaHopDong.value = null
-    setTimeout(() => { router.replace('/baogia'); setTimeout(() => window.location.reload(), 100) }, 1500)
+    setTimeout(() => { router.replace('/baogiafirebase'); setTimeout(() => window.location.reload(), 100) }, 1500)
   } catch (e: any) {
     saveMsg.value = '❌ Lỗi: ' + String(e?.message || e)
     showAsyncError('Lưu thất bại', String(e?.message || e))
@@ -2759,32 +3545,59 @@ const contractCards = computed(() => {
   })
 })
 
-function mapKhachRow(row: any[]): KhachHang {
-  // khach_hang chuẩn A->P (16 cột)
+function mapKhachRow(row: any, fbKey = ''): KhachHang {
+  if (Array.isArray(row)) {
+    return {
+      Ma_khach_hang: String(row[0] ?? ''),
+      Ten_khach_hang: String(row[1] ?? ''),
+      Email_ca_nhan: String(row[2] ?? ''),
+      So_dien_thoai_ca_nhan: String(row[3] ?? ''),
+      Ma_cong_ty: String(row[4] ?? ''),
+      Ten_cong_ty: String(row[5] ?? ''),
+      So_dien_thoai_cong_ty: String(row[6] ?? ''),
+      So_fax_cong_ty: String(row[7] ?? ''),
+      Dia_chi_cong_ty: String(row[8] ?? ''),
+      Email_cong_ty: String(row[9] ?? ''),
+      Website_cong_ty: String(row[10] ?? ''),
+      Hoa_hong: String(row[11] ?? ''),
+      Tong_chi_tieu: String(row[12] ?? ''),
+      Tong_loi_nhuan: String(row[13] ?? ''),
+      Trang_thai: String(row[14] ?? ''),
+      Ghi_chu: String(row[15] ?? ''),
+      Ten_khach_hang_phu: String(row[16] ?? ''),
+      So_dien_thoai_ca_nhan_phu: String(row[17] ?? ''),
+      Email_ca_nhan_phu: String(row[18] ?? ''),
+      MST: String(row[19] ?? ''),
+      COMPANY: String(row[20] ?? ''),
+      ADDRESS: String(row[21] ?? ''),
+      TEL: String(row[22] ?? '')
+    }
+  }
+  const obj = row || {}
   return {
-    Ma_khach_hang: String(row[0] ?? ''),
-    Ten_khach_hang: String(row[1] ?? ''),
-    Email_ca_nhan: String(row[2] ?? ''),
-    So_dien_thoai_ca_nhan: String(row[3] ?? ''),
-    Ma_cong_ty: String(row[4] ?? ''),
-    Ten_cong_ty: String(row[5] ?? ''),
-    So_dien_thoai_cong_ty: String(row[6] ?? ''),
-    So_fax_cong_ty: String(row[7] ?? ''),
-    Dia_chi_cong_ty: String(row[8] ?? ''),
-    Email_cong_ty: String(row[9] ?? ''),
-    Website_cong_ty: String(row[10] ?? ''),
-    Hoa_hong: String(row[11] ?? ''),
-    Tong_chi_tieu: String(row[12] ?? ''),
-    Tong_loi_nhuan: String(row[13] ?? ''),
-    Trang_thai: String(row[14] ?? ''),
-    Ghi_chu: String(row[15] ?? ''),
-    Ten_khach_hang_phu: String(row[16] ?? ''),
-    So_dien_thoai_ca_nhan_phu: String(row[17] ?? ''),
-    Email_ca_nhan_phu: String(row[18] ?? ''),
-    MST: String(row[19] ?? ''),
-    COMPANY: String(row[20] ?? ''),
-    ADDRESS: String(row[21] ?? ''),
-    TEL: String(row[22] ?? '')
+    Ma_khach_hang: String(obj.ma_khach_hang ?? obj.Ma_khach_hang ?? fbKey ?? ''),
+    Ten_khach_hang: String(obj.ten_khach_hang ?? obj.Ten_khach_hang ?? ''),
+    Email_ca_nhan: String(obj.email_ca_nhan ?? obj.Email_ca_nhan ?? ''),
+    So_dien_thoai_ca_nhan: String(obj.so_dien_thoai_ca_nhan ?? obj.So_dien_thoai_ca_nhan ?? ''),
+    Ma_cong_ty: String(obj.ma_cong_ty ?? obj.Ma_cong_ty ?? ''),
+    Ten_cong_ty: String(obj.ten_cong_ty ?? obj.Ten_cong_ty ?? ''),
+    So_dien_thoai_cong_ty: String(obj.so_dien_thoai_cong_ty ?? obj.So_dien_thoai_cong_ty ?? ''),
+    So_fax_cong_ty: String(obj.so_fax_cong_ty ?? obj.So_fax_cong_ty ?? ''),
+    Dia_chi_cong_ty: String(obj.dia_chi_cong_ty ?? obj.Dia_chi_cong_ty ?? ''),
+    Email_cong_ty: String(obj.email_cong_ty ?? obj.Email_cong_ty ?? ''),
+    Website_cong_ty: String(obj.website_cong_ty ?? obj.Website_cong_ty ?? ''),
+    Hoa_hong: String(obj.hoa_hong ?? obj.Hoa_hong ?? ''),
+    Tong_chi_tieu: String(obj.tong_chi_tieu ?? obj.Tong_chi_tieu ?? ''),
+    Tong_loi_nhuan: String(obj.tong_loi_nhuan ?? obj.Tong_loi_nhuan ?? ''),
+    Trang_thai: String(obj.trang_thai ?? obj.Trang_thai ?? ''),
+    Ghi_chu: String(obj.ghi_chu ?? obj.Ghi_chu ?? ''),
+    Ten_khach_hang_phu: String(obj.ten_khach_hang_phu ?? obj.Ten_khach_hang_phu ?? ''),
+    So_dien_thoai_ca_nhan_phu: String(obj.so_dien_thoai_ca_nhan_phu ?? obj.So_dien_thoai_ca_nhan_phu ?? ''),
+    Email_ca_nhan_phu: String(obj.email_ca_nhan_phu ?? obj.Email_ca_nhan_phu ?? ''),
+    MST: String(obj.mst ?? obj.MST ?? ''),
+    COMPANY: String(obj.company ?? obj.COMPANY ?? ''),
+    ADDRESS: String(obj.address ?? obj.ADDRESS ?? ''),
+    TEL: String(obj.tel ?? obj.TEL ?? '')
   }
 }
 
@@ -2794,7 +3607,7 @@ function mapKhachRow(row: any[]): KhachHang {
 onMounted(async () => {
   // hop_dong_tong_quat
   contractsState.value = 'loading'
-  const hdRows = await fetch(`${BASE_URL}?action=hop_dong_tong_quat`).then(r => r.json())
+  const hdRows = await fetchHopDongTongQuatFromFirebase()
   contractsRaw.value = Array.isArray(hdRows) ? hdRows : []
   const hdLen = contractsRaw.value.length
   soHopDong.value = `HĐ${hdLen + 1}`
@@ -2851,28 +3664,18 @@ onMounted(async () => {
 
   // khach_hang
   customersState.value = 'loading'
-  const khRows = await fetch(`${BASE_URL}?action=khach_hang`).then(r => r.json())
-  customers.value = (Array.isArray(khRows) ? khRows : []).map(mapKhachRow)
+  customers.value = await fetchKhachHangFromFirebase()
   markLoaded(customersState)
 
   // dieu_khoan
   termsState.value = 'loading'
-  const dkRows = await fetch(`${BASE_URL}?action=dieu_khoan`).then(r => r.json())
+  const dkRows = await fetchDieuKhoanFromFirebase()
   termsRaw.value = Array.isArray(dkRows) ? dkRows : []
   markLoaded(termsState)
 
   // upload_file_mau
   try {
-    const ufmRows = await fetch(`${BASE_URL}?action=upload_file_mau`).then(r => r.json())
-    if (Array.isArray(ufmRows)) {
-      customTemplates.value = ufmRows.map(row => ({
-        id: String(row[0] || ''),
-        name: String(row[1] || ''),
-        data: String(row[2] || ''), // Cloudinary URL
-        mappingConfig: row[3] ? JSON.parse(row[3]) : [], // Structure
-        content: String(row[4] || '') // Ghi chú
-      }))
-    }
+    customTemplates.value = await fetchUploadFileMauFromFirebase()
   } catch (err) { console.error('Lỗi lấy template tùy chỉnh:', err) }
 
   if (route.query.ma) {
@@ -2895,7 +3698,7 @@ onMounted(async () => {
   // Tự động load Số PO tiếp theo từ po_dxmh nếu chưa có
   if (!currentPO.value) {
     try {
-      const poData = await fetch(`${BASE_URL}?action=po_dxmh`).then(r => r.json())
+      const poData = await fetchPoDxmhFromFirebase()
       let maxPO = 0
       if (Array.isArray(poData)) {
         poData.forEach((row: any) => {
@@ -2915,6 +3718,11 @@ onActivated(async () => {
   // Tránh đụng độ với onMounted trong lần tải trang đầu tiên
   if (contractsState.value === 'loading') return
 
+  // Luôn cập nhật lại danh sách điều khoản mới nhất từ Firebase (khi vừa thêm/sửa/xóa bên QuanLyDieuKhoanFirebase)
+  fetchDieuKhoanFromFirebase().then(dkRows => {
+    termsRaw.value = Array.isArray(dkRows) ? dkRows : []
+  }).catch(e => console.error('Lỗi refresh dieu_khoan:', e))
+
   if (route.query.ma) {
     const ma = String(route.query.ma)
     // Nếu đã load đúng mã này rồi thì skip
@@ -2924,7 +3732,7 @@ onActivated(async () => {
 
     // Refresh contractsRaw trước khi load
     try {
-      const hdRows = await fetch(`${BASE_URL}?action=hop_dong_tong_quat`).then(r => r.json())
+      const hdRows = await fetchHopDongTongQuatFromFirebase()
       contractsRaw.value = Array.isArray(hdRows) ? hdRows : []
     } catch (e) { console.error(e) }
 
@@ -3478,32 +4286,54 @@ async function saveCustomerToDB() {
   }
 
   const isUpdate = isExistingCustomer.value
-  const payload: Record<string, any> = {
-    sheet: 'khach_hang',
-    action: isUpdate ? 'update' : 'add',
+  const tenKHVal = tenKHInput.value || k.Ten_khach_hang || ''
+  const fbPayload: Record<string, any> = {
     ma_khach_hang: ma,
-    ten_khach_hang: tenKHInput.value || k.Ten_khach_hang || '',
+    Ma_khach_hang: ma,
+    ten_khach_hang: tenKHVal,
+    Ten_khach_hang: tenKHVal,
     email_ca_nhan: k.Email_ca_nhan || '',
+    Email_ca_nhan: k.Email_ca_nhan || '',
     so_dien_thoai_ca_nhan: k.So_dien_thoai_ca_nhan || '',
+    So_dien_thoai_ca_nhan: k.So_dien_thoai_ca_nhan || '',
     ma_cong_ty: k.Ma_cong_ty || '',
+    Ma_cong_ty: k.Ma_cong_ty || '',
     ten_cong_ty: k.Ten_cong_ty || '',
+    Ten_cong_ty: k.Ten_cong_ty || '',
     so_dien_thoai_cong_ty: k.So_dien_thoai_cong_ty || '',
+    So_dien_thoai_cong_ty: k.So_dien_thoai_cong_ty || '',
     so_fax_cong_ty: k.So_fax_cong_ty || '',
+    So_fax_cong_ty: k.So_fax_cong_ty || '',
     dia_chi_cong_ty: k.Dia_chi_cong_ty || '',
+    Dia_chi_cong_ty: k.Dia_chi_cong_ty || '',
     email_cong_ty: k.Email_cong_ty || '',
+    Email_cong_ty: k.Email_cong_ty || '',
     website_cong_ty: k.Website_cong_ty || '',
+    Website_cong_ty: k.Website_cong_ty || '',
     hoa_hong: k.Hoa_hong || '',
+    Hoa_hong: k.Hoa_hong || '',
     tong_chi_tieu: k.Tong_chi_tieu || 0,
+    Tong_chi_tieu: k.Tong_chi_tieu || 0,
     tong_loi_nhuan: k.Tong_loi_nhuan || 0,
+    Tong_loi_nhuan: k.Tong_loi_nhuan || 0,
     trang_thai: k.Trang_thai || '',
+    Trang_thai: k.Trang_thai || '',
     ghi_chu: k.Ghi_chu || '',
+    Ghi_chu: k.Ghi_chu || '',
     ten_khach_hang_phu: k.Ten_khach_hang_phu || '',
+    Ten_khach_hang_phu: k.Ten_khach_hang_phu || '',
     so_dien_thoai_ca_nhan_phu: k.So_dien_thoai_ca_nhan_phu || '',
+    So_dien_thoai_ca_nhan_phu: k.So_dien_thoai_ca_nhan_phu || '',
     email_ca_nhan_phu: k.Email_ca_nhan_phu || '',
+    Email_ca_nhan_phu: k.Email_ca_nhan_phu || '',
     mst: k.MST || '',
+    MST: k.MST || '',
     company: k.COMPANY || '',
+    COMPANY: k.COMPANY || '',
     address: k.ADDRESS || '',
+    ADDRESS: k.ADDRESS || '',
     tel: k.TEL || '',
+    TEL: k.TEL || ''
   }
 
   // Optimistic: update FE immediately
@@ -3512,54 +4342,25 @@ async function saveCustomerToDB() {
   savingCustomer.value = false
   showAsyncLoading(`Đang ${isUpdate ? 'cập nhật' : 'thêm'} khách hàng...`)
 
-  // Fire-and-forget POST
-  fetch(BASE_URL, { method: 'POST', body: JSON.stringify(payload) })
-    .then(r => r.json())
-    .then(async (result) => {
-      if (result.status === 'success') {
-        showCustomerDetailModal.value = false;
-        showAsyncSuccess(
-          `${isUpdate ? 'Cập nhật' : 'Thêm'} KH thành công`,
-          `Mã KH: ${ma}`
-        )
-        // Refresh customer list ngầm
-        try {
-          const khRows = await fetch(`${BASE_URL}?action=khach_hang`).then(r => r.json())
-          if (Array.isArray(khRows)) {
-            customers.value = khRows.map((row: any) => ({
-              Ma_khach_hang: String(row[0] ?? ''),
-              Ten_khach_hang: String(row[1] ?? ''),
-              Email_ca_nhan: String(row[2] ?? ''),
-              So_dien_thoai_ca_nhan: String(row[3] ?? ''),
-              Ma_cong_ty: String(row[4] ?? ''),
-              Ten_cong_ty: String(row[5] ?? ''),
-              So_dien_thoai_cong_ty: String(row[6] ?? ''),
-              So_fax_cong_ty: String(row[7] ?? ''),
-              Dia_chi_cong_ty: String(row[8] ?? ''),
-              Email_cong_ty: String(row[9] ?? ''),
-              Website_cong_ty: String(row[10] ?? ''),
-              Hoa_hong: String(row[11] ?? ''),
-              Tong_chi_tieu: String(row[12] ?? ''),
-              Tong_loi_nhuan: String(row[13] ?? ''),
-              Trang_thai: String(row[14] ?? ''),
-              Ghi_chu: String(row[15] ?? ''),
-              Ten_khach_hang_phu: String(row[16] ?? ''),
-              So_dien_thoai_ca_nhan_phu: String(row[17] ?? ''),
-              Email_ca_nhan_phu: String(row[18] ?? ''),
-              MST: String(row[19] ?? ''),
-              COMPANY: String(row[20] ?? ''),
-              ADDRESS: String(row[21] ?? ''),
-              TEL: String(row[22] ?? ''),
-            }))
-          }
-        } catch {}
-      } else {
-        showAsyncError('Lưu KH thất bại', 'Lỗi: ' + (result.message || 'Không rõ'))
-      }
-    })
-    .catch((err: any) => {
-      showAsyncError('Lưu KH thất bại', 'Lỗi kết nối: ' + err.message)
-    })
+  ;(async () => {
+    const existing = await findCustomerInFirebase(ma)
+    const targetKey = existing ? existing.key : ma
+    if (existing) {
+      await update(dbRef(database, `khach_hang/${targetKey}`), fbPayload)
+    } else {
+      await set(dbRef(database, `khach_hang/${targetKey}`), fbPayload)
+    }
+    showCustomerDetailModal.value = false
+    showAsyncSuccess(
+      `${isUpdate ? 'Cập nhật' : 'Thêm'} KH thành công`,
+      `Mã KH: ${ma}`
+    )
+    try {
+      customers.value = await fetchKhachHangFromFirebase()
+    } catch {}
+  })().catch((err: any) => {
+    showAsyncError('Lưu KH thất bại', 'Lỗi kết nối: ' + (err?.message || err))
+  })
 }
 
 /* ======================
@@ -3952,17 +4753,50 @@ const previewImageLink = computed(() => {
 const fetchFileGiaOffList = async () => {
   if (listFileGiaOff.value.length > 0) return
   try {
-    const ts = Date.now()
-    const res = await fetch(`${BASE_URL}?action=file_gia_off&t=${ts}`)
-    const data = await res.json()
-    if (Array.isArray(data)) {
+    const snap = await get(dbRef(database, 'file_gia_off'))
+    const val = snap.val()
+    if (val && typeof val === 'object') {
+      const parseOffTime = (str: string) => {
+        if (!str) return 0
+        const s = String(str).trim()
+        const m1 = s.match(/^(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?,?\s*(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+        if (m1) return new Date(Number(m1[6]), Number(m1[5]) - 1, Number(m1[4]), Number(m1[1]), Number(m1[2]), Number(m1[3] || 0)).getTime()
+        const m2 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?$/)
+        if (m2) return new Date(Number(m2[3]), Number(m2[2]) - 1, Number(m2[1]), Number(m2[4]), Number(m2[5]), Number(m2[6] || 0)).getTime()
+        const t = Date.parse(s)
+        return isNaN(t) ? 0 : t
+      }
+      const entries = Object.entries(val).map(([k, v]: [string, any]) => {
+        if (Array.isArray(v)) {
+          return { row: [String(v[0] || k), String(v[1] || ''), String(v[2] || ''), String(v[3] || '')], ts: parseOffTime(String(v[1] || '')) }
+        }
+        const rawTime = String(v?.created_time ?? v?.Created_time ?? '')
+        let displayTime = rawTime
+        const tsNum = parseOffTime(rawTime)
+        if (tsNum > 0 && rawTime.includes('GMT')) {
+          const d = new Date(tsNum)
+          const pad = (n: number) => String(n).padStart(2, '0')
+          displayTime = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+        }
+        return {
+          row: [
+            String(v?.id ?? v?.ID ?? k ?? ''),
+            displayTime,
+            String(v?.ten_file ?? v?.TEN_FILE ?? ''),
+            String(v?.link_file ?? v?.LINK_FILE ?? '')
+          ],
+          ts: tsNum
+        }
+      })
+      entries.sort((a, b) => a.ts - b.ts)
+      const data = entries.map(e => e.row)
       listFileGiaOff.value = data
       if (data.length > 0) {
         selectedFileGiaOffIndex.value = data.length - 1
       }
     }
   } catch (err) {
-    console.error('Lỗi khi fetch file_gia_off:', err)
+    console.error('Lỗi khi fetch file_gia_off từ Firebase:', err)
   }
 }
 
@@ -4695,7 +5529,7 @@ async function loadCompareBySoHopDong(so: string) {
   if (!maList.length) return
 
   // 2️⃣ Load toàn bộ chi tiết
-  const detailRows = await fetch(`${BASE_URL}?action=hop_dong_chi_tiet`).then(r => r.json())
+  const detailRows = await fetchHopDongChiTietFromFirebase()
   const all = Array.isArray(detailRows) ? detailRows : []
 
   // 3️⃣ Lọc theo danh sách mã HĐ
@@ -5664,22 +6498,20 @@ async function handleCustomTemplateUpload(event: Event) {
       const ws0 = wb.worksheets[0]
       const extractedConfig = extractHeadersFromWorksheet(ws0)
 
-
       const newId = Date.now().toString() + i
+      const structStr = JSON.stringify(extractedConfig)
       
-      const payload = {
-        sheet: 'upload_file_mau',
-        action: 'add',
+      await set(dbRef(database, `upload_file_mau/${newId}`), {
+        ID: newId,
         id: newId,
+        TEN_FILE: file.name,
         ten_file: file.name,
+        LINK_FILE: uploadRes.secure_url,
         link_file: uploadRes.secure_url,
-        structure: JSON.stringify(extractedConfig),
+        STRUCTURE: structStr,
+        structure: structStr,
+        GHI_CHU: '',
         ghi_chu: ''
-      }
-      
-      await fetch(BASE_URL, {
-        method: 'POST',
-        body: JSON.stringify(payload)
       })
       
       customTemplates.value.push({ 
@@ -5699,28 +6531,18 @@ async function handleCustomTemplateUpload(event: Event) {
 
 async function saveCustomTemplates() {
   for (const tpl of customTemplates.value) {
-    await fetch(BASE_URL, {
-      method: 'POST',
-      body: JSON.stringify({
-        sheet: 'upload_file_mau',
-        action: 'update',
-        id: tpl.id,
-        ghi_chu: tpl.content || ''
-      })
+    await update(dbRef(database, `upload_file_mau/${tpl.id}`), {
+      ID: tpl.id,
+      id: tpl.id,
+      GHI_CHU: tpl.content || '',
+      ghi_chu: tpl.content || ''
     })
   }
 }
 
 async function removeCustomTemplate(id: string) {
   customTemplates.value = customTemplates.value.filter(t => t.id !== id)
-  await fetch(BASE_URL, {
-    method: 'POST',
-    body: JSON.stringify({
-      sheet: 'upload_file_mau',
-      action: 'delete',
-      id: id
-    })
-  })
+  await remove(dbRef(database, `upload_file_mau/${id}`))
 }
 
 async function downloadCustomTemplate(tpl: any) {
@@ -5760,6 +6582,9 @@ function openExportExcelModal(templateData?: string, mappingConfig?: any[]) {
   pendingExportTemplateData.value = templateData || null;
   pendingExportMappingConfig.value = mappingConfig || null;
   showExportExcelModal.value = true;
+  fetchDieuKhoanFromFirebase().then(dkRows => {
+    termsRaw.value = Array.isArray(dkRows) ? dkRows : [];
+  }).catch(e => console.error('Lỗi refresh dieu_khoan khi mở modal xuất Excel:', e));
 }
 
 async function exportQuoteExcel(templateData?: string | null) {
@@ -6074,7 +6899,7 @@ watch([khach, selectedItems], () => {
 
 const onPipelineSaved = () => {
   isDataSaved.value = true
-  setTimeout(() => { router.replace('/baogia'); setTimeout(() => window.location.reload(), 100) }, 1500)
+  setTimeout(() => { router.replace('/baogiafirebase'); setTimeout(() => window.location.reload(), 100) }, 1500)
 }
 
 const hasUnsavedChanges = () => {
@@ -9440,6 +10265,7 @@ async function confirmImport(saveToDb: boolean) {
 
   <PipelinePreviewModal 
     v-if="showPipelineModal" 
+    :useFirebase="true"
     @close="showPipelineModal = false"
     @saved="onPipelineSaved"
     :khach="selectedPipelineKhach || khach"

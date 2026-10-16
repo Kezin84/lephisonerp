@@ -382,6 +382,10 @@
                             {{ report.trang_thai }}
                           </div>
                           <span v-if="report.tag" v-for="t in splitTags(report.tag)" :key="t" v-show="t !== 'BÌNH THƯỜNG'" class="tl-badge-tag" :class="getTagClass(t)">{{ t }}</span>
+                          <span v-if="report.maKH" class="tl-badge-customer" :title="'Mã KH: ' + report.maKH">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 3px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            {{ getCustomerDisplayName(report.maKH) }}
+                          </span>
                         </div>
                       </div>
                       <div v-if="report.img_save" style="display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.5rem 0.5rem 0 0.5rem;">
@@ -426,6 +430,15 @@
                           </a>
                         </div>
                       </div>
+
+                      <!-- FILE LIÊN KẾT (FULL WIDTH ROW) -->
+                      <div v-if="report.id_quanlyfile" style="margin-top: 0.6rem; padding: 0 0.5rem;">
+                        <button @click.stop="goToQuanLyFile(report.id_quanlyfile)" type="button" style="width: 100%; justify-content: center; background: rgba(59,130,246,0.1); color: #3b82f6; border: 1px solid rgba(59,130,246,0.2); padding: 8px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='#3b82f6'; this.style.color='white'" onmouseout="this.style.background='rgba(59,130,246,0.1)'; this.style.color='#3b82f6'">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                          Xem các file đã liên kết
+                        </button>
+                      </div>
+
                       <div class="tl-rect-actions">
                         <button class="tl-action-btn tl-action-delete" @click.stop="confirmDelete(report.id)">
                           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
@@ -504,6 +517,10 @@
                             {{ report.trang_thai }}
                           </div>
                           <span v-if="report.tag" v-for="t in splitTags(report.tag)" :key="t" v-show="t !== 'BÌNH THƯỜNG'" class="tl-badge-tag" :class="getTagClass(t)">{{ t }}</span>
+                          <span v-if="report.maKH" class="tl-badge-customer" :title="'Mã KH: ' + report.maKH">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 3px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            {{ getCustomerDisplayName(report.maKH) }}
+                          </span>
                         </div>
                       </div>
                       <div v-if="report.img_save" style="display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.5rem 0.5rem 0 0.5rem;">
@@ -548,6 +565,15 @@
                           </a>
                         </div>
                       </div>
+
+                      <!-- FILE LIÊN KẾT (FULL WIDTH ROW) -->
+                      <div v-if="report.id_quanlyfile" style="margin-top: 0.6rem; padding: 0 0.5rem;">
+                        <button @click.stop="goToQuanLyFile(report.id_quanlyfile)" type="button" style="width: 100%; justify-content: center; background: rgba(59,130,246,0.1); color: #3b82f6; border: 1px solid rgba(59,130,246,0.2); padding: 8px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='#3b82f6'; this.style.color='white'" onmouseout="this.style.background='rgba(59,130,246,0.1)'; this.style.color='#3b82f6'">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                          Xem các file đã liên kết
+                        </button>
+                      </div>
+
                       <div class="tl-rect-actions">
                         <button class="tl-action-btn tl-action-delete" @click.stop="confirmDelete(report.id)">
                           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
@@ -637,6 +663,10 @@
                           {{ report.trang_thai }}
                         </div>
                         <span v-if="report.tag" v-for="t in splitTags(report.tag)" :key="t" v-show="t !== 'BÌNH THƯỜNG'" class="tl-badge-tag" :class="getTagClass(t)">{{ t }}</span>
+                          <span v-if="report.maKH" class="tl-badge-customer" :title="'Mã KH: ' + report.maKH">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 3px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            {{ getCustomerDisplayName(report.maKH) }}
+                          </span>
                       </div>
                     </div>
                     <div v-if="report.img_save" style="display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.5rem 0.5rem 0 0.5rem;">
@@ -680,6 +710,14 @@
                           <span class="file-attach-text">{{ getExcelFileName(report, 'link_excel_mua_hang', i, 'Mua hàng') }}</span>
                         </a>
                       </div>
+                    </div>
+
+                    <!-- FILE LIÊN KẾT (FULL WIDTH ROW) -->
+                    <div v-if="report.id_quanlyfile" style="margin-top: 0.6rem; padding: 0 0.5rem;">
+                      <button @click.stop="goToQuanLyFile(report.id_quanlyfile)" type="button" style="width: 100%; justify-content: center; background: rgba(59,130,246,0.1); color: #3b82f6; border: 1px solid rgba(59,130,246,0.2); padding: 8px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='#3b82f6'; this.style.color='white'" onmouseout="this.style.background='rgba(59,130,246,0.1)'; this.style.color='#3b82f6'">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                        Xem các file đã liên kết
+                      </button>
                     </div>
 
                     <div class="tl-rect-actions">
@@ -749,6 +787,10 @@
                           {{ report.trang_thai }}
                         </div>
                         <span v-if="report.tag" v-for="t in splitTags(report.tag)" :key="t" v-show="t !== 'BÌNH THƯỜNG'" class="tl-badge-tag" :class="getTagClass(t)">{{ t }}</span>
+                          <span v-if="report.maKH" class="tl-badge-customer" :title="'Mã KH: ' + report.maKH">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 3px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            {{ getCustomerDisplayName(report.maKH) }}
+                          </span>
                       </div>
                     </div>
                     <div v-if="report.img_save" style="display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.5rem 0.5rem 0 0.5rem;">
@@ -792,6 +834,14 @@
                           <span class="file-attach-text">{{ getExcelFileName(report, 'link_excel_mua_hang', i, 'Mua hàng') }}</span>
                         </a>
                       </div>
+                    </div>
+
+                    <!-- FILE LIÊN KẾT (FULL WIDTH ROW) -->
+                    <div v-if="report.id_quanlyfile" style="margin-top: 0.6rem; padding: 0 0.5rem;">
+                      <button @click.stop="goToQuanLyFile(report.id_quanlyfile)" type="button" style="width: 100%; justify-content: center; background: rgba(59,130,246,0.1); color: #3b82f6; border: 1px solid rgba(59,130,246,0.2); padding: 8px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='#3b82f6'; this.style.color='white'" onmouseout="this.style.background='rgba(59,130,246,0.1)'; this.style.color='#3b82f6'">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                        Xem các file đã liên kết
+                      </button>
                     </div>
 
                     <div class="tl-rect-actions">
@@ -867,6 +917,10 @@
                   {{ report.trang_thai }}
                 </div>
                 <span v-if="report.tag" v-for="t in splitTags(report.tag)" :key="t" v-show="t !== 'BÌNH THƯỜNG'" class="tl-badge-tag" :class="getTagClass(t)">{{ t }}</span>
+                          <span v-if="report.maKH" class="tl-badge-customer" :title="'Mã KH: ' + report.maKH">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 3px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            {{ getCustomerDisplayName(report.maKH) }}
+                          </span>
               </div>
             </div>
             <div v-if="report.img_save" style="display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.5rem 0.5rem 0 0.5rem;">
@@ -911,6 +965,15 @@
                 </a>
               </div>
             </div>
+
+            <!-- FILE LIÊN KẾT (FULL WIDTH ROW) -->
+            <div v-if="report.id_quanlyfile" style="margin-top: 0.6rem; padding: 0 0.5rem;">
+              <button @click.stop="goToQuanLyFile(report.id_quanlyfile)" type="button" style="width: 100%; justify-content: center; background: rgba(59,130,246,0.1); color: #3b82f6; border: 1px solid rgba(59,130,246,0.2); padding: 8px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='#3b82f6'; this.style.color='white'" onmouseout="this.style.background='rgba(59,130,246,0.1)'; this.style.color='#3b82f6'">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                Xem các file đã liên kết
+              </button>
+            </div>
+
             <div class="tl-rect-actions">
               <button class="tl-action-btn tl-action-delete" @click.stop="confirmDelete(report.id)">
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
@@ -1063,6 +1126,37 @@
           
           <div class="pc-col pc-col-2">
           <div class="elite-form-row" style="flex-direction: column; height: 100%;">
+            <!-- Chọn Khách Hàng (Field maKH liên kết db khach_hang) -->
+            <div class="elite-form-group" style="background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 1rem;">
+              <div style="display: flex; flex-direction: column; gap: 0.8rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <label style="color: #475569; margin: 0; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;">Khách Hàng *</label>
+                  <div style="display: flex; gap: 0.5rem;">
+                    <button v-if="formData.maKH" @click="formData.maKH = ''" type="button" style="background: #fee2e2; color: #ef4444; border: 1px solid #fecaca; padding: 0.4rem 0.6rem; border-radius: 6px; cursor: pointer; font-weight: 600; transition: background 0.2s; font-size: 0.85rem;" onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fee2e2'">
+                      Xóa
+                    </button>
+                    <button @click="customerSelectMode = 'form'; isCustomerSelectModalOpen = true; customerSearchQuery = '';" type="button" style="background: #eff6ff; color: #3b82f6; border: 1px solid #bfdbfe; padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; font-weight: 600; white-space: nowrap; transition: background 0.2s; font-size: 0.85rem;" onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#eff6ff'">
+                      {{ formData.maKH ? 'Thay đổi KH' : 'Chọn KH' }}
+                    </button>
+                  </div>
+                </div>
+                <div style="min-width: 0;">
+                  <div v-if="!formData.maKH" style="color: #94a3b8; font-style: italic; font-size: 0.95rem;">Chưa chọn khách hàng</div>
+                  <div v-else style="display: flex; flex-direction: column; gap: 6px;">
+                    <div style="color: #0f172a; font-weight: 700; font-size: 1.05rem; white-space: pre-wrap; word-break: break-word;">
+                      {{ getSelectedCustomerDisplay() }}
+                    </div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.4rem;">
+                      <span v-for="tag in getSelectedCustomerTags()" :key="tag" style="background: rgba(16, 185, 129, 0.15); color: #059669; border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 9999px; padding: 2px 8px; font-size: 0.75rem; font-weight: 700;">
+                        {{ tag }}
+                      </span>
+                      <span v-if="!getSelectedCustomerTags().length" style="color: #94a3b8; font-size: 0.75rem; font-style: italic;">Chưa phân loại nhóm</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div class="elite-form-group" style="flex: 2; display: flex; flex-direction: column;">
               <div class="form-group-header">
                 <label>Nội Dung <span class="required">*</span></label>
@@ -1071,7 +1165,8 @@
                     <svg v-if="isRecordingVoice !== 'noi_dung'" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
                     <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12"></rect></svg>
                   </button>
-                  <button type="button" class="elite-quote-btn" @click="openCustomerModal">
+                  <!-- Ẩn nút Báo Giá theo yêu cầu -->
+                  <button v-if="false" type="button" class="elite-quote-btn" @click="openCustomerModal">
                     BÁO GIÁ
                   </button>
                 </div>
@@ -1101,7 +1196,8 @@
               <input type="text" v-model="formData.reminder_content" placeholder="Nội dung nhắc nhở..." class="elite-input" />
             </div>
 
-            <div class="elite-form-group" style="margin-bottom: 1rem; display: flex; flex-direction: column; position: relative;">
+            <!-- Ẩn phần ID Pipeline (Liên kết) theo yêu cầu -->
+            <div v-if="false" class="elite-form-group" style="margin-bottom: 1rem; display: flex; flex-direction: column; position: relative;">
               <div class="form-group-header" style="display: flex; justify-content: space-between; align-items: center;">
                 <label style="color: #3b82f6 !important; font-weight: 700 !important; margin: 0;">ID Pipeline (Liên kết)</label>
                 <div style="display: flex; gap: 0.5rem;">
@@ -1125,7 +1221,7 @@
                       </span>
                     </span>
                     <div style="display: flex; align-items: center; gap: 8px; margin-left: 8px; flex-shrink: 0;">
-                      <a :href="'/pipeline?id=' + pId" target="_blank" @click.stop title="Xem Pipeline" style="color: inherit; opacity: 0.7; transition: opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">
+                      <a :href="'/pipeline-firebase?openId=' + pId" target="_blank" @click.stop title="Xem Pipeline" style="color: inherit; opacity: 0.7; transition: opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                       </a>
                       <span class="pipeline-chip-remove" @click.stop="togglePipelineSelection(pId)" title="Xóa">&times;</span>
@@ -1134,14 +1230,41 @@
               </div>
             </div>
 
+          <!-- Liên kết File (100% giống QuanLyFile.vue) -->
+          <div class="elite-form-group" style="background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 1rem;">
+            <div style="display: flex; flex-direction: column; gap: 0.8rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <label style="color: #475569; margin: 0; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;">Liên kết File (Tùy chọn)</label>
+                <div style="display: flex; gap: 0.5rem;">
+                  <button v-if="formData.id_quanlyfile" @click="formData.id_quanlyfile = ''" type="button" style="background: #fee2e2; color: #ef4444; border: 1px solid #fecaca; padding: 0.4rem 0.6rem; border-radius: 6px; cursor: pointer; font-weight: 600; transition: background 0.2s; font-size: 0.85rem;" onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fee2e2'">
+                    Xóa
+                  </button>
+                  <button @click="isFileSelectModalOpen = true; fileSearchQuery = '';" type="button" style="background: #eff6ff; color: #3b82f6; border: 1px solid #bfdbfe; padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; font-weight: 600; white-space: nowrap; transition: background 0.2s; font-size: 0.85rem;" onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#eff6ff'">
+                    {{ formData.id_quanlyfile ? 'Đổi File' : 'Chọn File' }}
+                  </button>
+                </div>
+              </div>
+              <div style="min-width: 0;">
+                <div v-if="!formData.id_quanlyfile" style="color: #94a3b8; font-style: italic; font-size: 0.95rem;">Chưa chọn file liên kết</div>
+                <div v-else-if="selectedLinkedFile" @click="handleLinkedFileClick(selectedLinkedFile)" style="display: flex; flex-direction: column; gap: 6px; cursor: pointer; padding: 4px; border-radius: 6px; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+                  <div style="color: #0f172a; font-weight: 700; font-size: 0.95rem; white-space: pre-wrap; word-break: break-word;">
+                    {{ selectedLinkedFile.noiDung || 'Không có nội dung' }}
+                  </div>
+                  <div v-if="selectedLinkedFile.ghiChu" style="color: #ef4444; font-size: 0.85rem; font-style: italic; font-weight: 600; white-space: pre-wrap; word-break: break-word;">
+                    * Ghi chú: {{ selectedLinkedFile.ghiChu }}
+                  </div>
+                </div>
+                <div v-else style="color: #ef4444; font-style: italic; font-size: 0.95rem;">File liên kết không tồn tại</div>
+              </div>
+            </div>
+          </div>
+
           <!-- Upload Files -->
           <div class="elite-form-group">
             <label style="display: flex; justify-content: space-between; align-items: center;">
               <span>Đính Kèm (Ảnh / Excel)</span>
-              <button type="button" @click="openStorageModal" class="elite-btn-primary" style="padding: 0.3rem 0.8rem; font-size: 0.75rem; border-radius: 4px; background: #10b981; border: 1px solid #059669; color: white; cursor: pointer; display: flex; align-items: center; gap: 0.3rem; font-weight: 600; box-shadow: 0 2px 4px rgba(16,185,129,0.3);" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                Chọn từ kho
-              </button>
+              <!-- Ẩn nút Chọn từ kho -->
+              <button v-if="false" type="button" @click="openStorageModal" class="elite-btn-primary" style="display: none;">Chọn từ kho</button>
             </label>
             <div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
               <!-- Image Upload Row -->
@@ -1275,49 +1398,519 @@
       </div>
     </div>
 
+    <!-- Modal Cảnh báo Khác Khách Hàng (Taste-Skill Precision & Double-Bezel Design) -->
+    <Teleport to="body">
+      <Transition name="taste-modal">
+        <div v-if="isWarningCustomerModalOpen" class="taste-modal-overlay" @click.self="isWarningCustomerModalOpen = false" role="dialog" aria-modal="true">
+          <div class="taste-modal-shell taste-variant-warning" style="width: 480px;">
+            <div class="taste-modal-glow" aria-hidden="true" style="background: #f59e0b;"></div>
+            <div class="taste-modal-core">
+              <button type="button" class="taste-modal-close" @click="isWarningCustomerModalOpen = false" title="Đóng (Esc)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
 
+              <div class="taste-modal-body">
+                <div class="taste-jewel-wrap">
+                  <div class="taste-jewel-box" style="background: radial-gradient(circle, rgba(245, 158, 11, 0.22) 0%, rgba(245, 158, 11, 0.05) 100%); border: 1px solid rgba(245, 158, 11, 0.4); box-shadow: 0 0 24px rgba(245, 158, 11, 0.25);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                      <line x1="12" y1="9" x2="12" y2="13"></line>
+                      <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                  </div>
+                </div>
 
-    <!-- Modal Chọn Khách Hàng -->
-    <div class="elite-modal-overlay" v-if="showCustomerModal" @click.self="showCustomerModal = false">
-      <div class="elite-modal" style="max-width: 550px; display: flex; flex-direction: column; max-height: 85vh;">
-        <div class="elite-modal-header" style="flex-shrink: 0;">
-          <div class="elite-modal-title">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-            <h2>Chọn Khách Hàng</h2>
-          </div>
-          <button class="elite-btn-close" @click="showCustomerModal = false">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-          </button>
-        </div>
-        <div class="elite-modal-body" style="flex: 1; overflow-y: hidden; display: flex; flex-direction: column; gap: 1.2rem;">
-          <div class="elite-form-group" style="margin-bottom: 0; flex-shrink: 0;">
-            <input type="text" v-model="customerSearch" placeholder="Tìm tên khách hàng hoặc công ty..." class="elite-input" style="width: 100%; box-sizing: border-box; padding: 0.8rem 1.2rem; border-radius: 9999px;" />
-          </div>
-          
-          <div style="max-height: 240px; overflow-y: auto; border: 1.5px solid #e2e8f0; border-radius: 16px; background: rgba(248, 250, 252, 0.6); margin-bottom: 0.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-            <div v-if="loadingCustomers" style="padding: 3rem 2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem;">
-              <span style="color: #10b981; font-weight: 600; font-size: 0.95rem; letter-spacing: 0.02em;">Đang tải dữ liệu khách hàng...</span>
-              <div style="width: 100%; max-width: 200px; height: 6px; background: #e2e8f0; border-radius: 999px; overflow: hidden; position: relative;">
-                <div style="position: absolute; top: 0; left: 0; height: 100%; background: #10b981; border-radius: 999px; animation: progress-indeterminate 1.5s infinite ease-in-out;"></div>
+                <div class="taste-modal-text">
+                  <div class="taste-eyebrow" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3);">
+                    <span class="taste-eyebrow-dot" style="background: #f59e0b;"></span>
+                    <span>CẢNH BÁO LIÊN KẾT KHÁCH HÀNG</span>
+                  </div>
+                  <h3 class="taste-title">Khác Khách Hàng Gốc</h3>
+                  <div class="taste-message">
+                    Bạn đang cố liên kết với một Hồ sơ thuộc về <strong style="color: #f8fafc;">Khách hàng khác</strong>:
+                    <div style="margin: 12px 0; padding: 12px 14px; border-radius: 12px; background: rgba(15,23,42,0.7); border: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 6px; font-size: 13px;">
+                      <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: #94a3b8;">Khách hàng thẻ gốc:</span>
+                        <span style="color: #f87171; font-weight: 700; font-family: 'JetBrains Mono', monospace; background: rgba(239,68,68,0.12); padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(239,68,68,0.3);">{{ pendingLinkedFile?.maKH }}</span>
+                      </div>
+                      <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: #94a3b8;">Khách hàng thẻ hiện tại:</span>
+                        <span style="color: #38bdf8; font-weight: 700; font-family: 'JetBrains Mono', monospace; background: rgba(56,189,248,0.12); padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(56,189,248,0.3);">{{ formData.maKH }}</span>
+                      </div>
+                    </div>
+                    Bạn có chắc chắn muốn tiếp tục thực hiện liên kết này không?
+                  </div>
+                </div>
+              </div>
+
+              <div class="taste-modal-actions">
+                <button type="button" @click="isWarningCustomerModalOpen = false" class="taste-btn taste-btn-secondary">Hủy bỏ</button>
+                <button type="button" @click="confirmLinkedFile" class="taste-btn taste-btn-primary taste-btn-warning">
+                  <span>Vẫn Liên kết</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                  </svg>
+                </button>
               </div>
             </div>
-            <ul v-else class="customer-list-modal" style="list-style: none; padding: 0; margin: 0;">
-              <li v-for="c in filteredCustomersList" :key="c.ma_khach_hang" @click="insertCustomerQuote(c)" class="customer-list-item">
-                <span class="c-name">{{ c.ten_khach_hang }}</span>
-                <span v-if="c.ten_cong_ty" class="c-company">{{ c.ten_cong_ty }}</span>
-                <span v-if="c.so_dien_thoai_ca_nhan" class="c-phone">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
-                  {{ c.so_dien_thoai_ca_nhan }}
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Modal Chọn File Liên Kết (100% giống QuanLyFile.vue) -->
+    <div v-if="isFileSelectModalOpen" class="elite-modal-overlay" @click.self="isFileSelectModalOpen = false" style="position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 100060; background: rgba(0,0,0,0.6);">
+      <div class="elite-modal" style="width: 700px; max-width: 95%; background: #ffffff; border-radius: 12px; display: flex; flex-direction: column; max-height: 85vh; padding: 0;">
+        <div class="elite-modal-header" style="padding: 1rem 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="margin: 0; color: #0f172a; font-size: 1.1rem;">Chọn File Liên Kết</h3>
+          <button class="elite-btn-close" @click="isFileSelectModalOpen = false" style="background: transparent; border: none; cursor: pointer; color: #64748b;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+        
+        <div style="padding: 1rem 1.5rem; border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
+          <input type="text" v-model="fileSearchQuery" placeholder="Nhập nội dung hoặc mã KH..." class="elite-input" style="width: 100%; padding: 0.6rem 1rem; border: 1px solid #cbd5e1; border-radius: 6px;" />
+        </div>
+
+        <div style="flex: 1; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; background: #0f172a; max-height: 60vh;">
+          <div v-if="filteredModalFiles.length === 0" style="text-align: center; color: #94a3b8; margin-top: 2rem;">Không tìm thấy file nào.</div>
+          
+          <div v-for="f in filteredModalFiles" :key="f.id" @click="selectLinkedFile(f)" style="cursor: pointer; box-sizing: border-box; align-self: stretch; border-radius: 12px; padding: 12px 16px; background: linear-gradient(180deg, rgba(15,23,34,0.95) 0%, rgba(15,23,34,0.85) 100%); border: 3px solid rgba(16,185,129,0.8); box-shadow: 0 0 15px rgba(16,185,129,0.4); position: relative; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-4px) scale(1.015)'; this.style.filter='brightness(1.1)';" onmouseout="this.style.transform='none'; this.style.filter='none';">
+            <div style="display: flex; flex-direction: column;">
+              <div style="display: flex; flex-wrap: wrap; gap: 0.4rem;">
+                <span style="padding: 2px 8px; border-radius: 9999px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; display: inline-flex; align-items: center; background: rgba(148,163,184,0.1); color: #94a3b8; border: 1px solid rgba(148,163,184,0.2);">
+                  {{ formatQuanLyFileTime(f.createdTime).time }} - {{ formatQuanLyFileTime(f.createdTime).date }}
                 </span>
-              </li>
-              <li v-if="filteredCustomersList.length === 0 && !loadingCustomers" style="padding: 3rem; text-align: center; color: #94a3b8; font-style: italic; font-weight: 500;">
-                Không tìm thấy khách hàng nào.
-              </li>
-            </ul>
+                <span v-if="f.mucDoUuTien" style="padding: 2px 8px; border-radius: 9999px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; display: inline-flex; align-items: center; background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2);">{{ f.mucDoUuTien }}</span>
+                <span v-if="f.trangThaiXuLy" style="padding: 2px 8px; border-radius: 9999px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; display: inline-flex; align-items: center; background: rgba(59, 130, 246, 0.1); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.2);">{{ f.trangThaiXuLy }}</span>
+                <span v-if="f.trangThaiBaoGia" style="padding: 2px 8px; border-radius: 9999px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; display: inline-flex; align-items: center;" :style="f.trangThaiBaoGia === 'Thành công' ? 'background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2);' : (f.trangThaiBaoGia === 'Thất bại' ? 'background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2);' : 'background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2);')">
+                  {{ f.trangThaiBaoGia }}
+                </span>
+              </div>
+            </div>
+            <div style="margin-top: 0.5rem; padding-top: 0.8rem; border-top: 1px dashed rgba(255,255,255,0.1);">
+              <div v-if="f.maKH" style="color: #60a5fa; font-weight: 700; font-size: 0.9rem; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.3rem;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                {{ getCustomerNameInfo(f.maKH) }}
+              </div>
+              <div style="color: #f8fafc; font-size: 0.95rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word;">{{ f.noiDung }}</div>
+              <div v-if="f.ghiChu" style="margin-top: 0.4rem; font-size: 0.85rem; font-weight: 600; font-style: italic; color: #ef4444;">* Ghi chú: {{ f.ghiChu }}</div>
+              
+              <div class="tl-attachments" v-if="hasCardAttachments(f)" style="display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.8rem; padding-top: 0.5rem; border-top: 1px dashed rgba(255,255,255,0.05);">
+                <!-- Header vùng đính kèm + Nút Download All ZIP -->
+                <div class="tl-attachments-toolbar" style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 0.3rem; border-bottom: 1px dashed rgba(255,255,255,0.08); margin-bottom: 0.15rem;">
+                  <span style="font-size: 0.72rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.3px; display: inline-flex; align-items: center; gap: 4px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+                    Tệp &amp; Ảnh ({{ getCardAttachmentCount(f) }})
+                  </span>
+                  <button type="button"
+                          @click.stop.prevent="handleDownloadCardZip(f)"
+                          :disabled="downloadingZipMap[f.id]"
+                          class="btn-dl-all-zip"
+                          :title="'Tải về toàn bộ ' + getCardAttachmentCount(f) + ' file & ảnh (.zip)'">
+                    <template v-if="downloadingZipMap[f.id]">
+                      <span class="zip-mini-spinner"></span>
+                      <span>{{ zipProgressTextMap[f.id] || 'Đang nén...' }}</span>
+                    </template>
+                    <template v-else>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                      <span>Download all</span>
+                    </template>
+                  </button>
+                </div>
+                <div v-if="f.linkFileBaoGia && f.linkFileBaoGia.length > 0" style="display: flex; flex-direction: column; gap: 0.4rem;">
+                  <template v-if="Array.isArray(f.linkFileBaoGia)">
+                    <div v-for="(link, i) in f.linkFileBaoGia" :key="'bg'+i" style="display: flex; align-items: center; justify-content: space-between; gap: 0.4rem;">
+                      <a :href="typeof link === 'string' ? link : link.url" target="_blank" @click.stop class="attach-badge" :class="getFileBadgeClass(link)" style="flex: 1; min-width: 0;">
+                        <span v-html="getQuanLyFileIconSvg(link)" style="display: flex; align-items: center;"></span>
+                        <span class="attach-text" :title="getFileName(link, 'File', i)">{{ truncateFileName(getFileName(link, 'File', i)) }}</span>
+                      </a>
+                      <a :href="getOfficeViewUrl(link)" target="_blank" @click.stop title="Xem file (Office Online)" style="background: rgba(59,130,246,0.12); color: #38bdf8; border: 1px solid rgba(59,130,246,0.25); border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all 0.2s; text-decoration: none;" onmouseover="this.style.background='#3b82f6'; this.style.color='white'" onmouseout="this.style.background='rgba(59,130,246,0.12)'; this.style.color='#38bdf8'">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                      </a>
+                      <button type="button" @click.stop.prevent="handleDownloadClick($event, typeof link === 'string' ? link : link.url, getFileName(link, 'File', i))" title="Tải về" style="background: rgba(16,185,129,0.1); color: #10b981; border: 1px solid rgba(16,185,129,0.2); border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all 0.2s;" onmouseover="this.style.background='#10b981'; this.style.color='white'" onmouseout="this.style.background='rgba(16,185,129,0.1)'; this.style.color='#10b981'">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                      </button>
+                    </div>
+                  </template>
+                  <div v-else-if="typeof f.linkFileBaoGia === 'string' && f.linkFileBaoGia !== ''" style="display: flex; align-items: center; justify-content: space-between; gap: 0.4rem;">
+                    <a :href="f.linkFileBaoGia" target="_blank" @click.stop class="attach-badge" :class="getFileBadgeClass(f.linkFileBaoGia)" style="flex: 1; min-width: 0;">
+                       <span v-html="getQuanLyFileIconSvg(f.linkFileBaoGia)" style="display: flex; align-items: center;"></span>
+                       <span class="attach-text" :title="getFileName(f.linkFileBaoGia, 'File', 0)">{{ truncateFileName(getFileName(f.linkFileBaoGia, 'File', 0)) }}</span>
+                    </a>
+                    <a :href="getOfficeViewUrl(f.linkFileBaoGia)" target="_blank" @click.stop title="Xem file (Office Online)" style="background: rgba(59,130,246,0.12); color: #38bdf8; border: 1px solid rgba(59,130,246,0.25); border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all 0.2s; text-decoration: none;" onmouseover="this.style.background='#3b82f6'; this.style.color='white'" onmouseout="this.style.background='rgba(59,130,246,0.12)'; this.style.color='#38bdf8'">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    </a>
+                    <button type="button" @click.stop.prevent="handleDownloadClick($event, f.linkFileBaoGia, getFileName(f.linkFileBaoGia, 'File', 0))" title="Tải về" style="background: rgba(16,185,129,0.1); color: #10b981; border: 1px solid rgba(16,185,129,0.2); border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all 0.2s;" onmouseover="this.style.background='#10b981'; this.style.color='white'" onmouseout="this.style.background='rgba(16,185,129,0.1)'; this.style.color='#10b981'">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    </button>
+                  </div>
+                </div>
+                
+                <div v-if="f.linkImgSave && f.linkImgSave.length > 0" style="display: flex; flex-wrap: wrap; gap: 0.4rem;">
+                  <template v-if="Array.isArray(f.linkImgSave)">
+                    <a v-for="(link, i) in f.linkImgSave" :key="'img'+i" :href="typeof link === 'string' ? link : link.url" target="_blank" @click.stop class="attach-badge badge-image" style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 0.4rem;">
+                      <img :src="typeof link === 'string' ? link : link.url" style="width: 24px; height: 24px; object-fit: cover; border-radius: 4px; flex-shrink: 0; background: rgba(0,0,0,0.2);" />
+                      <span class="attach-text" :title="getFileName(link, 'Hình ảnh', i)">{{ truncateFileName(getFileName(link, 'Hình ảnh', i)) }}</span>
+                    </a>
+                  </template>
+                  <a v-else-if="typeof f.linkImgSave === 'string' && f.linkImgSave !== ''" :href="f.linkImgSave" target="_blank" @click.stop class="attach-badge badge-image" style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 0.4rem;">
+                    <img :src="f.linkImgSave" style="width: 24px; height: 24px; object-fit: cover; border-radius: 4px; flex-shrink: 0; background: rgba(0,0,0,0.2);" />
+                    <span class="attach-text" :title="getFileName(f.linkImgSave, 'Hình ảnh', 0)">{{ truncateFileName(getFileName(f.linkImgSave, 'Hình ảnh', 0)) }}</span>
+                  </a>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Modal Quản lý Tag -->
+    <div v-if="isTagModalOpen" class="elite-modal-overlay" @click.self="isTagModalOpen = false" style="position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 100070;">
+      <div class="elite-modal report-form-modal" style="width: 95%; max-width: 500px;">
+        <div class="elite-modal-header">
+          <div class="elite-modal-title" style="display: flex; align-items: flex-start; gap: 0.6rem;"><h2>Quản lý Nhóm Khách Hàng</h2></div>
+          <button class="elite-btn-close" @click="isTagModalOpen = false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+        
+        <div class="elite-modal-body" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem;">
+          <!-- Thêm tag mới -->
+          <div style="display: flex; gap: 0.5rem;">
+            <input type="text" v-model="tempTagKH" @keyup.enter="addNewTagFromInput" placeholder="Nhập tên nhóm mới..." class="elite-input" style="flex: 1;" />
+            <button type="button" @click="addNewTagFromInput" class="elite-btn-save" style="padding: 0 1rem; border-radius: 6px; font-weight: 600;">Thêm Mới</button>
+          </div>
+
+          <!-- Danh sách tag để sửa/xóa -->
+          <div>
+            <h4 style="margin: 0 0 0.8rem 0; color: #475569; font-size: 13px;">Tất cả nhóm hiện có</h4>
+            <div v-if="availableTags.length === 0" style="color: #94a3b8; font-size: 13px; font-style: italic;">Chưa có nhóm nào.</div>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 300px; overflow-y: auto; padding-right: 0.5rem;">
+              <div v-for="tag in availableTags" :key="tag.id" style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1px solid #e2e8f0; padding: 0.5rem 0.8rem; border-radius: 6px;">
+                
+                <div v-if="editingTagId === tag.name" style="display: flex; gap: 0.5rem; flex: 1; margin-right: 1rem;">
+                  <input type="text" v-model="editTagValue" class="elite-input" style="flex: 1; padding: 4px 8px; font-size: 13px;" />
+                  <button @click="saveTagEdit(tag.name)" class="elite-btn-save" style="padding: 4px 10px; font-size: 12px; border-radius: 4px;">Lưu</button>
+                  <button @click="editingTagId = null" class="elite-btn-cancel" style="padding: 4px 10px; font-size: 12px; border-radius: 4px;">Hủy</button>
+                </div>
+                
+                <span v-else style="font-weight: 600; color: #334155; font-size: 13px;">{{ tag.name }}</span>
+                
+                <div v-if="editingTagId !== tag.name" style="display: flex; gap: 0.4rem;">
+                  <button @click="startEditTag(tag.name)" type="button" style="background: transparent; border: none; color: #3b82f6; cursor: pointer; padding: 4px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="16 3 21 8 8 21 3 21 3 16 16 3"></polygon></svg>
+                  </button>
+                  <button @click="deleteTagGlobal(tag.name)" type="button" style="background: transparent; border: none; color: #ef4444; cursor: pointer; padding: 4px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Chọn Khách Hàng -->
+    <div v-if="isCustomerSelectModalOpen" class="elite-modal-overlay" @click.self="isCustomerSelectModalOpen = false" style="position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 100060; background: rgba(0,0,0,0.6);">
+      <div class="elite-modal" style="width: 500px; max-width: 90%; background: #ffffff; border-radius: 12px; display: flex; flex-direction: column; max-height: 85vh; padding: 0;">
+        <div class="elite-modal-header" style="padding: 1rem 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="margin: 0; color: #0f172a; font-size: 1.1rem;">Chọn Khách Hàng</h3>
+          <button class="elite-btn-close" @click="isCustomerSelectModalOpen = false" style="background: transparent; border: none; cursor: pointer; color: #64748b;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+        
+        <div style="padding: 1rem 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; gap: 1rem; align-items: center; background: #f8fafc;">
+          <input type="text" v-model="customerSearchQuery" placeholder="Nhập tên, công ty hoặc mã KH..." class="elite-input" style="flex: 1; padding: 0.6rem 1rem; border: 1px solid #cbd5e1; border-radius: 6px;" />
+          <button @click="openCustomerModal(); isCustomerSelectModalOpen = false;" style="background: #10b981; color: #ffffff; border: none; padding: 0.6rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 600; white-space: nowrap; transition: background 0.2s;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
+            + Thêm Mới
+          </button>
+        </div>
+
+        <div style="flex: 1; overflow-y: auto; padding: 0.5rem 0; max-height: 380px;">
+          <!-- Nút chọn tất cả khách hàng khi ở chế độ filter -->
+          <div v-if="customerSelectMode === 'filter'" style="padding: 0.75rem 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s; cursor: pointer; background: #eff6ff;" @click="selectCustomer(null)" onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#eff6ff'">
+            <div style="font-weight: 700; color: #3b82f6; font-size: 1rem;">Tất cả khách hàng</div>
+            <div style="display: flex; gap: 8px;">
+              <button style="background: transparent; color: #3b82f6; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600;">
+                Chọn
+              </button>
+            </div>
+          </div>
+          
+          <div v-if="filteredCustomers.length === 0" style="text-align: center; color: #64748b; margin-top: 2rem;">Không tìm thấy khách hàng nào.</div>
+          <div v-for="cus in filteredCustomers" :key="cus.id" style="padding: 0.75rem 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <div style="font-weight: 600; color: #0f172a; font-size: 1rem;">{{ cus.ten_khach_hang }} <span v-if="cus.ten_cong_ty" style="color: #64748b; font-weight: 400;">- {{ cus.ten_cong_ty }}</span></div>
+              <div style="font-size: 0.85rem; color: #64748b;">Mã KH: <span style="font-weight: 500; color: #3b82f6;">{{ cus.ma_khach_hang }}</span></div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button @click.stop="editCustomerInfo(cus)" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='#e2e8f0'; this.style.color='#0f172a'" onmouseout="this.style.background='#f1f5f9'; this.style.color='#475569'">
+                Sửa
+              </button>
+              <button @click.stop="selectCustomer(cus)" style="background: #eff6ff; color: #3b82f6; border: 1px solid #bfdbfe; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='#dbeafe'; this.style.color='#2563eb'" onmouseout="this.style.background='#eff6ff'; this.style.color='#3b82f6'">
+                Chọn
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Modal Thêm Khách Hàng Mới -->
+    <div v-if="isCustomerModalOpen" class="elite-modal-overlay" @click.self="isCustomerModalOpen = false" style="position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 100065;">
+      <div class="elite-modal report-form-modal customer-modal">
+        <div class="elite-modal-header">
+          <div class="elite-modal-title" style="display: flex; align-items: flex-start; gap: 0.6rem;"><h2>{{ customerFormData.id ? 'Sửa Khách Hàng' : 'Tạo Khách Hàng Mới' }}</h2></div>
+          <button class="elite-btn-close" @click="isCustomerModalOpen = false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+          <!-- THÔNG TIN CÁ NHÂN -->
+          <div style="background: #f8fafc; padding: 1.5rem; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <h3 style="margin-top: 0; color: #0f172a; font-size: 16px; margin-bottom: 1rem;">Thông tin Đại diện</h3>
+            
+            <div style="margin-bottom: 1rem;">
+              <label style="font-weight: 600; font-size: 13px; color: #475569;">Mã Khách Hàng *</label>
+              <input type="text" v-model="customerFormData.ma_khach_hang" class="elite-input" placeholder="VD: KH-001" :disabled="!!customerFormData.id" :style="customerFormData.id ? 'background: #f1f5f9; cursor: not-allowed; color: #64748b;' : ''" />
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+              <div>
+                <label style="font-weight: 600; font-size: 13px; color: #475569; margin-bottom: 4px; display: block;">Tên Khách Hàng *</label>
+                <input type="text" v-model="customerFormData.ten_khach_hang" class="elite-input" placeholder="VD: Nguyễn Văn A" />
+              </div>
+              
+              <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <label style="font-weight: 600; font-size: 13px; color: #475569;">Nhóm Khách Hàng</label>
+                  <button @click="isTagModalOpen = true" type="button" style="background: #e0e7ff; color: #4338ca; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 4px;">
+                    Quản lý Nhóm
+                  </button>
+                </div>
+                <div v-if="availableTags.length > 0" style="margin-top: 0.4rem;">
+                  <div style="display: flex; flex-wrap: wrap; gap: 0.4rem;">
+                    <button type="button" v-for="tag in availableTags" :key="tag.id" 
+                            @click="toggleTag(tag.name)"
+                            style="border: 1px solid #e2e8f0; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; transition: all 0.2s; font-weight: 600;"
+                            :style="{ 
+                              background: customerFormData.tagKH?.includes(tag.name) ? '#10b981' : 'transparent',
+                              color: customerFormData.tagKH?.includes(tag.name) ? 'white' : '#475569',
+                              borderColor: customerFormData.tagKH?.includes(tag.name) ? '#10b981' : '#e2e8f0'
+                            }">
+                      {{ tag.name }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+              <div>
+                <label style="font-weight: 600; font-size: 13px; color: #475569;">SĐT Cá nhân</label>
+                <input type="text" v-model="customerFormData.so_dien_thoai_ca_nhan" class="elite-input" />
+              </div>
+              <div>
+                <label style="font-weight: 600; font-size: 13px; color: #475569;">Email Cá nhân</label>
+                <input type="email" v-model="customerFormData.email_ca_nhan" class="elite-input" />
+              </div>
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+              <label style="font-weight: 600; font-size: 13px; color: #475569;">Tên Khách Hàng Phụ</label>
+              <input type="text" v-model="customerFormData.ten_khach_hang_phu" class="elite-input" />
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+              <div>
+                <label style="font-weight: 600; font-size: 13px; color: #475569;">SĐT Cá nhân Phụ</label>
+                <input type="text" v-model="customerFormData.so_dien_thoai_ca_nhan_phu" class="elite-input" />
+              </div>
+              <div>
+                <label style="font-weight: 600; font-size: 13px; color: #475569;">Email Cá nhân Phụ</label>
+                <input type="email" v-model="customerFormData.email_ca_nhan_phu" class="elite-input" />
+              </div>
+            </div>
+          </div>
+
+          <!-- THÔNG TIN CÔNG TY -->
+          <div style="background: #f8fafc; padding: 1.5rem; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <h3 style="margin-top: 0; color: #0f172a; font-size: 16px; margin-bottom: 1rem;">Thông tin Công ty</h3>
+            
+            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1rem; margin-bottom: 1rem;">
+              <div>
+                <label style="font-weight: 600; font-size: 13px; color: #475569;">Mã Công Ty</label>
+                <input type="text" v-model="customerFormData.ma_cong_ty" class="elite-input" :disabled="!!customerFormData.id" :style="customerFormData.id ? 'background: #f1f5f9; cursor: not-allowed; color: #64748b;' : ''" />
+              </div>
+              <div>
+                <label style="font-weight: 600; font-size: 13px; color: #475569;">Tên Công Ty</label>
+                <input type="text" v-model="customerFormData.ten_cong_ty" class="elite-input" />
+              </div>
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+              <label style="font-weight: 600; font-size: 13px; color: #475569;">Mã số thuế (MST)</label>
+              <input type="text" v-model="customerFormData.mst" class="elite-input" />
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+              <label style="font-weight: 600; font-size: 13px; color: #475569;">Địa chỉ Công Ty</label>
+              <input type="text" v-model="customerFormData.dia_chi_cong_ty" class="elite-input" />
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+              <div>
+                <label style="font-weight: 600; font-size: 13px; color: #475569;">Email Công ty</label>
+                <input type="email" v-model="customerFormData.email_cong_ty" class="elite-input" />
+              </div>
+              <div>
+                <label style="font-weight: 600; font-size: 13px; color: #475569;">Website</label>
+                <input type="text" v-model="customerFormData.website_cong_ty" class="elite-input" />
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+              <div>
+                <label style="font-weight: 600; font-size: 13px; color: #475569;">SĐT Công ty</label>
+                <input type="text" v-model="customerFormData.so_dien_thoai_cong_ty" class="elite-input" />
+              </div>
+              <div>
+                <label style="font-weight: 600; font-size: 13px; color: #475569;">Số Fax</label>
+                <input type="text" v-model="customerFormData.so_fax_cong_ty" class="elite-input" />
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- THÔNG TIN BỔ SUNG -->
+        <div style="background: #f8fafc; padding: 1.5rem; border-radius: 8px; border: 1px solid #e2e8f0; margin-top: 1.5rem;">
+           <h3 style="margin-top: 0; color: #0f172a; font-size: 16px; margin-bottom: 1rem;">Thông tin khác</h3>
+           <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+             <div>
+               <label style="font-weight: 600; font-size: 13px; color: #475569;">Trạng thái</label>
+               <input type="text" v-model="customerFormData.trang_thai" class="elite-input" placeholder="Active / Tiềm năng" />
+             </div>
+             <div>
+               <label style="font-weight: 600; font-size: 13px; color: #475569;">Hoa hồng (%)</label>
+               <input type="text" v-model="customerFormData.hoa_hong" class="elite-input" />
+             </div>
+             <div>
+               <label style="font-weight: 600; font-size: 13px; color: #475569;">Ghi chú KH</label>
+               <input type="text" v-model="customerFormData.ghi_chu" class="elite-input" />
+             </div>
+           </div>
+        </div>
+
+        <div class="elite-modal-actions" style="margin-top: 1rem; padding: 1rem 1.5rem 1.5rem 1.5rem; display: flex; justify-content: flex-end; gap: 0.75rem; border-top: 1px solid #e2e8f0;">
+          <button class="elite-btn-cancel" @click="isCustomerModalOpen = false">Hủy bỏ</button>
+          <button v-if="!customerFormData.id" class="elite-btn-save" @click="saveNewCustomer" style="background: #3b82f6; border-color: #3b82f6; padding: 0.6rem 1.5rem;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">Tạo Khách Hàng</button>
+          <button v-else-if="isCustomerDataChanged" class="elite-btn-save" @click="saveNewCustomer" style="background: #10b981; border-color: #10b981; padding: 0.6rem 1.5rem;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">Lưu Thay Đổi</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Global Alert/Confirm Modal (Taste-Skill Precision & Double-Bezel Design) -->
+    <Teleport to="body">
+      <Transition name="taste-modal">
+        <div 
+          v-if="appDialog.isOpen" 
+          class="taste-modal-overlay" 
+          @click.self="closeAppDialog(false)"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div class="taste-modal-shell" :class="['taste-variant-' + getAppDialogVariant()]">
+            <!-- Double-Bezel Ambient Aura Glow -->
+            <div class="taste-modal-glow" aria-hidden="true"></div>
+
+            <div class="taste-modal-core">
+              <!-- Close cross button -->
+              <button 
+                type="button" 
+                class="taste-modal-close" 
+                @click="closeAppDialog(false)" 
+                title="Đóng (Esc)"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+
+              <div class="taste-modal-body">
+                <!-- Jewel Icon with ambient aura -->
+                <div class="taste-jewel-wrap">
+                  <div class="taste-jewel-box">
+                    <!-- Success Icon -->
+                    <svg v-if="getAppDialogVariant() === 'success'" xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                      <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                    <!-- Warning / Danger Icon -->
+                    <svg v-else-if="getAppDialogVariant() === 'danger'" xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                      <line x1="12" y1="9" x2="12" y2="13"></line>
+                      <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    <!-- Confirm Icon -->
+                    <svg v-else-if="appDialog.type === 'confirm'" xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                      <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    <!-- Default Info Icon -->
+                    <svg v-else xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="12" y1="16" x2="12" y2="12"></line>
+                      <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                  </div>
+                </div>
+
+                <!-- Text Content -->
+                <div class="taste-modal-text">
+                  <div class="taste-eyebrow">
+                    <span class="taste-eyebrow-dot"></span>
+                    <span>{{ getAppDialogEyebrow() }}</span>
+                  </div>
+                  <h3 class="taste-title">{{ cleanDialogTitle(appDialog.title) }}</h3>
+                  <div class="taste-message">{{ cleanDialogMessage(appDialog.message) }}</div>
+                </div>
+              </div>
+
+              <!-- Action buttons with tactile physics -->
+              <div class="taste-modal-actions">
+                <button 
+                  v-if="appDialog.type === 'confirm'" 
+                  type="button"
+                  @click="closeAppDialog(false)" 
+                  class="taste-btn taste-btn-secondary"
+                >
+                  Hủy bỏ
+                </button>
+                <button 
+                  type="button"
+                  @click="closeAppDialog(true)" 
+                  class="taste-btn taste-btn-primary"
+                  :class="['taste-btn-' + getAppDialogVariant()]"
+                >
+                  <span>{{ appDialog.type === 'confirm' ? 'Xác nhận' : 'Đã hiểu' }}</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
 
     <!-- Modal Lịch Trống (Empty Schedule) -->
     <div class="elite-modal-overlay" v-if="isEmptyDaysModalOpen" @click.self="isEmptyDaysModalOpen = false" style="z-index: 999999; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);">
@@ -2171,8 +2764,8 @@
       </div>
     </div>
 
-    <!-- Storage Prompt Modal -->
-    <div v-if="isStoragePromptModalOpen" class="elite-modal-overlay" @click.self="closeStoragePromptModal" style="z-index: 9999999; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);">
+    <!-- Storage Prompt Modal (Ẩn hoàn toàn) -->
+    <div v-if="false" class="elite-modal-overlay" @click.self="closeStoragePromptModal" style="z-index: 9999999; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);">
       <div class="elite-modal-content" style="max-width: 450px; background: #0f172a; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); overflow: hidden; animation: slideDown 0.3s ease-out;">
         <div style="padding: 1.5rem; text-align: center;">
           <div style="width: 60px; height: 60px; border-radius: 50%; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2); display: flex; align-items: center; justify-content: center; color: #10b981; margin: 0 auto 1.5rem;">
@@ -2252,6 +2845,7 @@ defineOptions({ name: 'Report' })
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import * as XLSX from 'xlsx-js-style'
+import { downloadCardFilesAsZip } from '../../utils/cardZipHelper'
 
 import CustomSelect from '../CustomSelect.vue'
 
@@ -2340,7 +2934,13 @@ const firebaseFetch = async (urlInput, options = {}) => {
             'CREATED_TIME': 'created_time',
             'reminder-time': 'reminder_time',
             'reminder-content': 'reminder_content',
-            'reminder-visible': 'reminder_visible'
+            'reminder-visible': 'reminder_visible',
+            'MAKH': 'maKH',
+            'ma_khach_hang': 'maKH',
+            'maKH': 'maKH',
+            'ID_QUANLYFILE': 'id_quanlyfile',
+            'id_quan_ly_file': 'id_quanlyfile',
+            'id_quanlyfile': 'id_quanlyfile'
           };
           
           for (const oldKey in keyMap) {
@@ -2434,7 +3034,7 @@ const firebaseFetch = async (urlInput, options = {}) => {
          });
          // Khi cập nhật field chữ thường (VD: thoi_gian) thì xoá luôn field viết hoa tương ứng trong DB,
          // nếu không lúc tải lại, giá trị cũ (THOI_GIAN) sẽ đè lên giá trị mới.
-         const lowerToUpper = { ghi_chu: 'GHI_CHU', noi_dung: 'NOI_DUNG', phan_loai: 'PHAN_LOAI', tag: 'TAG', thoi_gian: 'THOI_GIAN', trang_thai: 'TRANG_THAI', created_time: 'CREATED_TIME', reminder_time: 'reminder-time', reminder_content: 'reminder-content', reminder_visible: 'reminder-visible' };
+         const lowerToUpper = { ghi_chu: 'GHI_CHU', noi_dung: 'NOI_DUNG', phan_loai: 'PHAN_LOAI', tag: 'TAG', thoi_gian: 'THOI_GIAN', trang_thai: 'TRANG_THAI', created_time: 'CREATED_TIME', reminder_time: 'reminder-time', reminder_content: 'reminder-content', reminder_visible: 'reminder-visible', maKH: 'MAKH', id_quanlyfile: 'ID_QUANLYFILE' };
          Object.keys(lowerToUpper).forEach(lk => {
            if (payload[lk] !== undefined) payload[lowerToUpper[lk]] = null;
          });
@@ -3637,6 +4237,8 @@ const isPendingModalOpen = ref(false)
 const isEditing = ref(false)
 const formData = ref({
   id: '',
+  maKH: '',
+  id_quanlyfile: '',
   phan_loai: 'CÔNG VIỆC',
   noi_dung: '',
   ghi_chu: '',
@@ -3832,7 +4434,13 @@ const fetchReports = async () => {
             'CREATED_TIME': 'created_time',
             'reminder-time': 'reminder_time',
             'reminder-content': 'reminder_content',
-            'reminder-visible': 'reminder_visible'
+            'reminder-visible': 'reminder_visible',
+            'MAKH': 'maKH',
+            'ma_khach_hang': 'maKH',
+            'maKH': 'maKH',
+            'ID_QUANLYFILE': 'id_quanlyfile',
+            'id_quan_ly_file': 'id_quanlyfile',
+            'id_quanlyfile': 'id_quanlyfile'
           };
           
           for (const oldKey in keyMap) {
@@ -3890,8 +4498,11 @@ const fetchReports = async () => {
 // Mở Modal
 const openAddModal = () => {
   isEditing.value = false
+  if (customersList.value.length === 0) fetchCustomersForQuote();
   formData.value = {
     id: '',
+    maKH: '',
+    id_quanlyfile: '',
     phan_loai: 'CÔNG VIỆC',
     noi_dung: '',
     ghi_chu: '',
@@ -3924,8 +4535,11 @@ const openAddModalForPeriod = (period) => {
 const openAddModalWithSlot = (slot) => {
   isEmptyDaysModalOpen.value = false;
   isEditing.value = false;
+  if (customersList.value.length === 0) fetchCustomersForQuote();
   formData.value = {
     id: '',
+    maKH: '',
+    id_quanlyfile: '',
     phan_loai: 'CÔNG VIỆC',
     noi_dung: '',
     ghi_chu: '',
@@ -3961,7 +4575,7 @@ const hasChanges = computed(() => {
   if (!isEditing.value) return true;
   if (!originalData.value || !originalTimeInputs.value) return false;
   
-  const formKeys = ['phan_loai', 'noi_dung', 'ghi_chu', 'tag', 'trang_thai', 'img_save', 'link_excel_bao_gia', 'link_excel_mua_hang', 'ten_file_bao_gia', 'ten_file_mua_hang', 'id_pipeline', 'reminder_time', 'reminder_content'];
+  const formKeys = ['maKH', 'id_quanlyfile', 'phan_loai', 'noi_dung', 'ghi_chu', 'tag', 'trang_thai', 'img_save', 'link_excel_bao_gia', 'link_excel_mua_hang', 'ten_file_bao_gia', 'ten_file_mua_hang', 'id_pipeline', 'reminder_time', 'reminder_content'];
   for (const k of formKeys) {
     if (formData.value[k] !== originalData.value[k]) return true;
   }
@@ -3976,7 +4590,10 @@ const hasChanges = computed(() => {
 
 const openEditModal = (report) => {
   isEditing.value = true
+  if (customersList.value.length === 0) fetchCustomersForQuote();
   formData.value = { ...report }
+  formData.value.maKH = report.maKH || report.MAKH || report.ma_khach_hang || ''
+  formData.value.id_quanlyfile = report.id_quanlyfile || report.id_quan_ly_file || report.ID_QUANLYFILE || ''
   if (!formData.value.img_save) formData.value.img_save = ''
   if (!formData.value.link_excel_bao_gia) formData.value.link_excel_bao_gia = ''
   if (!formData.value.link_excel_mua_hang) formData.value.link_excel_mua_hang = ''
@@ -4004,11 +4621,90 @@ const closeModal = () => {
   activeReminderForNewReport.value = null;
 }
 
-// --- BÁO GIÁ KHÁCH HÀNG ---
+// --- GLOBAL ALERT / CONFIRM DIALOG (Taste-Skill Precision) ---
+const appDialog = ref({
+  isOpen: false,
+  type: 'alert',
+  title: 'Thông báo',
+  message: '',
+  resolvePromise: null,
+});
+
+const showAlert = (message, title = 'Thông báo') => {
+  return new Promise((resolve) => {
+    appDialog.value = { isOpen: true, type: 'alert', title, message, resolvePromise: resolve };
+  });
+};
+
+const showConfirm = (message, title = 'Xác nhận') => {
+  return new Promise((resolve) => {
+    appDialog.value = { isOpen: true, type: 'confirm', title, message, resolvePromise: resolve };
+  });
+};
+
+const closeAppDialog = (result = false) => {
+  if (appDialog.value.resolvePromise) {
+    appDialog.value.resolvePromise(result);
+  }
+  appDialog.value.isOpen = false;
+};
+
+const getAppDialogVariant = () => {
+  const t = (appDialog.value.title || '').toLowerCase();
+  const m = (appDialog.value.message || '').toLowerCase();
+  if (t.includes('thành công') || m.includes('thành công') || m.includes('lưu tạm') || m.includes('chốt deal thành công') || t.includes('✅') || m.includes('✅') || m.includes('🎉')) {
+    return 'success';
+  }
+  if (t.includes('lỗi') || m.includes('lỗi') || t.includes('cảnh báo') || m.includes('cảnh báo') || m.includes('xóa') || t.includes('xóa') || m.includes('chốt deal?') || m.includes('🔥') || m.includes('nhân bản')) {
+    return 'danger';
+  }
+  if (appDialog.value.type === 'confirm') {
+    return 'confirm';
+  }
+  return 'info';
+};
+
+const getAppDialogEyebrow = () => {
+  const v = getAppDialogVariant();
+  if (v === 'success') return 'THÀNH CÔNG';
+  if (v === 'danger') return appDialog.value.type === 'confirm' ? 'XÁC NHẬN CẦN CHÚ Ý' : 'CẢNH BÁO';
+  if (v === 'confirm') return 'XÁC NHẬN HÀNH ĐỘNG';
+  return 'THÔNG BÁO HỆ THỐNG';
+};
+
+const cleanDialogTitle = (title) => {
+  if (!title) return 'Thông báo';
+  return title.replace(/^[✅🎉🔥⚠️❗❌ℹ️\s]+/, '').trim() || 'Thông báo';
+};
+
+const cleanDialogMessage = (message) => {
+  if (!message) return '';
+  return message.replace(/^[✅🎉🔥⚠️❗❌ℹ️\s]+/, '').trim();
+};
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('keydown', (e) => {
+    if (appDialog.value && appDialog.value.isOpen) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeAppDialog(false);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        closeAppDialog(true);
+      }
+    }
+  });
+}
+
+// --- QUẢN LÝ KHÁCH HÀNG & NHÓM KHÁCH HÀNG (100% GIỐNG QUANLYFILE) ---
 const customersList = ref([])
-const showCustomerModal = ref(false)
-const customerSearch = ref('')
 const loadingCustomers = ref(false)
+const isCustomerModalOpen = ref(false)
+const originalCustomerFormDataStr = ref('')
+
+const isCustomerDataChanged = computed(() => {
+  return JSON.stringify(customerFormData.value) !== originalCustomerFormDataStr.value;
+})
 
 const fetchCustomersForQuote = async () => {
   loadingCustomers.value = true;
@@ -4028,30 +4724,255 @@ const fetchCustomersForQuote = async () => {
   }
 }
 
-const openCustomerModal = () => {
-  showCustomerModal.value = true;
-  if (customersList.value.length === 0) {
-    fetchCustomersForQuote();
+const availableTags = computed(() => {
+  const tags = new Set()
+  customersList.value.forEach(c => {
+    if (c.tagKH && Array.isArray(c.tagKH)) {
+      c.tagKH.forEach(tag => tags.add(tag))
+    }
+  })
+  if (customerFormData.value.tagKH && Array.isArray(customerFormData.value.tagKH)) {
+    customerFormData.value.tagKH.forEach(tag => tags.add(tag))
+  }
+  if (formData.value.tagKH && Array.isArray(formData.value.tagKH)) {
+    formData.value.tagKH.forEach(tag => tags.add(tag))
+  }
+  return Array.from(tags).map(tag => ({ id: tag, name: tag }))
+})
+
+const isCustomerSelectModalOpen = ref(false);
+const customerSelectMode = ref('form');
+const customerSearchQuery = ref('');
+
+const filteredCustomers = computed(() => {
+  if (!customerSearchQuery.value) return customersList.value;
+  const q = customerSearchQuery.value.toLowerCase();
+  return customersList.value.filter(c => 
+    (c.ten_khach_hang && c.ten_khach_hang.toLowerCase().includes(q)) || 
+    (c.ma_khach_hang && c.ma_khach_hang.toLowerCase().includes(q)) ||
+    (c.ten_cong_ty && c.ten_cong_ty.toLowerCase().includes(q))
+  );
+});
+
+const selectCustomer = (cus) => {
+  formData.value.maKH = cus ? cus.ma_khach_hang : '';
+  isCustomerSelectModalOpen.value = false;
+};
+
+const editCustomerInfo = (cus) => {
+  customerFormData.value = { ...cus };
+  originalCustomerFormDataStr.value = JSON.stringify(customerFormData.value);
+  isCustomerSelectModalOpen.value = false;
+  isCustomerModalOpen.value = true;
+};
+
+const getSelectedCustomerTags = () => {
+  if (!formData.value.maKH) return [];
+  const cus = customersList.value.find(c => c.ma_khach_hang === formData.value.maKH);
+  return cus && cus.tagKH ? cus.tagKH : [];
+};
+
+const getSelectedCustomerDisplay = () => {
+  if (!formData.value.maKH) return 'Chưa chọn khách hàng';
+  const cus = customersList.value.find(c => c.ma_khach_hang === formData.value.maKH);
+  if (!cus) return formData.value.maKH;
+  return `${cus.ten_khach_hang} ${cus.ten_cong_ty ? '- ' + cus.ten_cong_ty : ''}`;
+};
+
+// Logic Quản lý Tag
+const isTagModalOpen = ref(false)
+const editingTagId = ref(null)
+const editTagValue = ref('')
+
+const startEditTag = (tagName) => {
+  editingTagId.value = tagName
+  editTagValue.value = tagName
+}
+
+const saveTagEdit = async (oldTagName) => {
+  const newTagName = editTagValue.value.trim()
+  if (!newTagName || newTagName === oldTagName) {
+    editingTagId.value = null
+    return
+  }
+  
+  const updates = {}
+  customersList.value.forEach(c => {
+    if (c.tagKH && c.tagKH.includes(oldTagName)) {
+      const newTags = c.tagKH.map(t => t === oldTagName ? newTagName : t)
+      updates[`khach_hang/${c.id}/tagKH`] = newTags
+    }
+  })
+  
+  if (Object.keys(updates).length > 0) {
+    await update(dbRef(database), updates)
+  }
+  
+  if (customerFormData.value.tagKH && customerFormData.value.tagKH.includes(oldTagName)) {
+    customerFormData.value.tagKH = customerFormData.value.tagKH.map(t => t === oldTagName ? newTagName : t)
+  }
+  if (formData.value.tagKH && formData.value.tagKH.includes(oldTagName)) {
+    formData.value.tagKH = formData.value.tagKH.map(t => t === oldTagName ? newTagName : t)
+  }
+  
+  editingTagId.value = null
+}
+
+const deleteTagGlobal = async (tagName) => {
+  const confirmDel = await showConfirm(`Bạn có chắc muốn xóa vĩnh viễn nhóm "${tagName}" khỏi TẤT CẢ khách hàng không?`)
+  if (!confirmDel) return
+  
+  const updates = {}
+  customersList.value.forEach(c => {
+    if (c.tagKH && c.tagKH.includes(tagName)) {
+      const newTags = c.tagKH.filter(t => t !== tagName)
+      updates[`khach_hang/${c.id}/tagKH`] = newTags
+    }
+  })
+  
+  if (Object.keys(updates).length > 0) {
+    await update(dbRef(database), updates)
+  }
+  
+  if (customerFormData.value.tagKH) {
+    customerFormData.value.tagKH = customerFormData.value.tagKH.filter(t => t !== tagName)
+  }
+  if (formData.value.tagKH) {
+    formData.value.tagKH = formData.value.tagKH.filter(t => t !== tagName)
   }
 }
 
-const filteredCustomersList = computed(() => {
-  if (!customerSearch.value) return customersList.value;
-  const q = customerSearch.value.toLowerCase();
-  return customersList.value.filter(c => 
-    (c.ten_khach_hang && c.ten_khach_hang.toLowerCase().includes(q)) ||
-    (c.ten_cong_ty && c.ten_cong_ty.toLowerCase().includes(q))
-  );
-})
-
-const insertCustomerQuote = (customer) => {
-  const nameToUse = customer.ten_cong_ty || customer.ten_khach_hang;
-  const quoteText = `Báo giá ${nameToUse}`;
-  formData.value.noi_dung = quoteText;
-  showCustomerModal.value = false;
-  showCustomerModal.value = false;
-  customerSearch.value = '';
+const defaultCustomerForm = {
+  ma_khach_hang: '',
+  ten_khach_hang: '',
+  so_dien_thoai_ca_nhan: '',
+  email_ca_nhan: '',
+  ten_khach_hang_phu: '',
+  so_dien_thoai_ca_nhan_phu: '',
+  email_ca_nhan_phu: '',
+  ma_cong_ty: '',
+  ten_cong_ty: '',
+  mst: '',
+  dia_chi_cong_ty: '',
+  email_cong_ty: '',
+  website_cong_ty: '',
+  so_dien_thoai_cong_ty: '',
+  so_fax_cong_ty: '',
+  ghi_chu: '',
+  hoa_hong: '',
+  trang_thai: 'Active'
 }
+const customerFormData = ref({ ...defaultCustomerForm })
+
+// --- HÀM TẠO MÃ KHÁCH HÀNG TỰ ĐỘNG ---
+const removeDiacritics = (str) => {
+  if (!str) return ''
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+}
+
+const genMaCT = (congTy) => {
+  if (!congTy) return ''
+  return removeDiacritics(congTy).toUpperCase().replace(/\s+/g, '').replace(/[^A-Z0-9]/g, '')
+}
+
+const genMaKH = (tenKH, congTy) => {
+  const tenClean = removeDiacritics(tenKH).toUpperCase().replace(/\s+/g, '').replace(/[^A-Z0-9]/g, '')
+  const maCT = genMaCT(congTy)
+  if (!tenClean && !maCT) return ''
+  return [tenClean, maCT].filter(Boolean).join('-')
+}
+
+watch(
+  [() => customerFormData.value.ten_khach_hang, () => customerFormData.value.ten_cong_ty],
+  ([ten, congTy]) => {
+    // Chỉ tự động gen khi đang mở modal thêm mới KH
+    if (isCustomerModalOpen.value && !customerFormData.value.id) {
+      const newMaKH = genMaKH(ten, congTy)
+      if (newMaKH || newMaKH === '') {
+        customerFormData.value.ma_khach_hang = newMaKH
+      }
+      customerFormData.value.ma_cong_ty = genMaCT(congTy)
+    }
+  }
+)
+
+// --- LOGIC MODAL KHÁCH HÀNG MỚI ---
+const openCustomerModal = () => {
+  customerFormData.value = { 
+    ...defaultCustomerForm,
+    ma_khach_hang: formData.value.maKH || ''
+  }
+  isCustomerModalOpen.value = true
+}
+
+const saveNewCustomer = async () => {
+  if (!customerFormData.value.ma_khach_hang || !customerFormData.value.ten_khach_hang) {
+    await showAlert('Vui lòng nhập Mã Khách Hàng và Tên Khách Hàng!')
+    return
+  }
+  try {
+    if (customerFormData.value.id) {
+      const cusRef = dbRef(database, 'khach_hang/' + customerFormData.value.id);
+      const dataToSave = { ...customerFormData.value };
+      delete dataToSave.id;
+      await update(cusRef, dataToSave);
+      await showAlert('Cập nhật thông tin khách hàng thành công!');
+    } else {
+      const newCusRef = push(dbRef(database, 'khach_hang'));
+      await set(newCusRef, {
+        ...customerFormData.value,
+        created_time: Date.now()
+      });
+      await showAlert('Tạo khách hàng mới thành công!');
+    }
+    
+    formData.value.maKH = customerFormData.value.ma_khach_hang;
+    isCustomerModalOpen.value = false;
+  } catch (error) {
+    console.error("Lỗi khi thêm/sửa KH:", error);
+    await showAlert('Lỗi: ' + error.message);
+  }
+}
+
+const tempTagKH = ref('')
+
+const addNewTagFromInput = () => {
+  if (!tempTagKH.value) return
+  const newTag = tempTagKH.value.trim()
+  if (newTag) {
+    if (!formData.value.tagKH) formData.value.tagKH = []
+    if (!formData.value.tagKH.includes(newTag)) {
+      formData.value.tagKH.push(newTag)
+    }
+  }
+  tempTagKH.value = ''
+}
+
+const toggleTag = (tagName) => {
+  if (!customerFormData.value.tagKH) customerFormData.value.tagKH = []
+  if (customerFormData.value.tagKH.includes(tagName)) {
+    customerFormData.value.tagKH = customerFormData.value.tagKH.filter(t => t !== tagName)
+  } else {
+    customerFormData.value.tagKH.push(tagName)
+  }
+}
+
+const removeSelectedTag = (tagName) => {
+  if (customerFormData.value.tagKH) {
+    customerFormData.value.tagKH = customerFormData.value.tagKH.filter(t => t !== tagName)
+  }
+}
+
+const getCustomerDisplayName = (maKH) => {
+  if (!maKH) return '';
+  const cus = customersList.value.find(c => (c.ma_khach_hang && c.ma_khach_hang === maKH) || c.id === maKH);
+  if (!cus) return maKH;
+  return cus.ten_khach_hang || cus.ten_cong_ty || maKH;
+};
 
 const handlePasteImage = async (e) => {
   const items = e.clipboardData?.items;
@@ -4115,9 +5036,7 @@ const handleImgUpload = async (e) => {
   } finally {
     isUploadingFiles.value = false
     e.target.value = ''
-    if (pendingStorageFiles.value.length > 0) {
-      isStoragePromptModalOpen.value = true
-    }
+    pendingStorageFiles.value = []
   }
 }
 
@@ -4148,9 +5067,7 @@ const handleExcelUpload = async (e, field) => {
   } finally {
     isUploadingFiles.value = false
     e.target.value = ''
-    if (pendingStorageFiles.value.length > 0) {
-      isStoragePromptModalOpen.value = true
-    }
+    pendingStorageFiles.value = []
   }
 }
 
@@ -4185,7 +5102,7 @@ const createPipelineFromReport = () => {
     note: formData.value.ghi_chu || ''
   }
   sessionStorage.setItem('pendingPipelineCreate', JSON.stringify(pipelineData))
-  window.open('/pipeline', '_blank')
+  window.open('/pipeline-firebase', '_blank')
 }
 
 const saveReport = async (options = {}) => {
@@ -4220,7 +5137,9 @@ const saveReport = async (options = {}) => {
   const action = isEditing.value ? 'update' : 'add'
   const payload = {
     action: action,
-    ...formData.value
+    ...formData.value,
+    maKH: formData.value.maKH || '',
+    id_quanlyfile: formData.value.id_quanlyfile || ''
   }
   
   // Đảm bảo cờ reminder_visible được set thành 'TRUE' nếu có lịch nhắc nhở
@@ -5511,11 +6430,318 @@ const togglePipelineSelection = (id) => {
 
 const goToPipeline = (id) => {
   if (!id) return
-  const routeData = router.resolve({ path: '/pipeline', query: { openId: id } })
+  const routeData = router.resolve({ path: '/pipeline-firebase', query: { openId: id } })
   window.open(routeData.href, '_blank')
 }
 
+let unsubscribeCustomers = null;
+const listenCustomersRealtime = () => {
+  try {
+    const cusRef = dbRef(database, 'khach_hang');
+    unsubscribeCustomers = onValue(cusRef, (snap) => {
+      if (snap.exists()) {
+        const val = snap.val();
+        customersList.value = Object.keys(val).map(k => ({
+          id: k,
+          ...val[k]
+        }));
+      }
+    });
+  } catch(e) {
+    console.error('Lỗi lắng nghe khach_hang realtime:', e);
+  }
+};
+
+// --- LIÊN KẾT FILE (100% GIỐNG QUANLYFILE.VUE) ---
+const quanLyFilesList = ref([]);
+let unsubscribeQuanLyFiles = null;
+
+const listenQuanLyFileRealtime = () => {
+  try {
+    const listRef = dbRef(database, 'quan_ly_file');
+    unsubscribeQuanLyFiles = onValue(listRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const parsedData = Object.keys(data).map(key => ({
+          id: key,
+          ...data[key]
+        }));
+        quanLyFilesList.value = parsedData.sort((a, b) => (b.createdTime || 0) - (a.createdTime || 0));
+      } else {
+        quanLyFilesList.value = [];
+      }
+    });
+  } catch (e) {
+    console.error('Lỗi lắng nghe quan_ly_file realtime:', e);
+  }
+};
+
+const isFileSelectModalOpen = ref(false);
+const isWarningCustomerModalOpen = ref(false);
+const pendingLinkedFile = ref(null);
+const fileSearchQuery = ref('');
+
+const filteredModalFiles = computed(() => {
+  let res = [...quanLyFilesList.value];
+  if (fileSearchQuery.value) {
+    const q = fileSearchQuery.value.toLowerCase();
+    res = res.filter(f => 
+      (f.noiDung && f.noiDung.toLowerCase().includes(q)) || 
+      (f.maKH && f.maKH.toLowerCase().includes(q)) ||
+      (f.ghiChu && f.ghiChu.toLowerCase().includes(q))
+    );
+  }
+  return res.sort((a, b) => (b.createdTime || 0) - (a.createdTime || 0)).slice(0, 50);
+});
+
+const applyLinkedFileToForm = (f) => {
+  if (!f) return;
+  formData.value.id_quanlyfile = f.id;
+  if (!isEditing.value) {
+    if (f.maKH) {
+      formData.value.maKH = f.maKH || '';
+    }
+    if (!formData.value.noi_dung && f.noiDung) {
+      formData.value.noi_dung = f.noiDung || '';
+    }
+    if (!formData.value.ghi_chu && f.ghiChu) {
+      formData.value.ghi_chu = f.ghiChu || '';
+    }
+  } else if (f.maKH && !formData.value.maKH) {
+    formData.value.maKH = f.maKH;
+  }
+};
+
+const selectLinkedFile = (f) => {
+  if (isEditing.value && f.maKH && formData.value.maKH && f.maKH !== formData.value.maKH) {
+    pendingLinkedFile.value = f;
+    isWarningCustomerModalOpen.value = true;
+  } else {
+    applyLinkedFileToForm(f);
+    isFileSelectModalOpen.value = false;
+  }
+};
+
+const confirmLinkedFile = () => {
+  if (pendingLinkedFile.value) {
+    applyLinkedFileToForm(pendingLinkedFile.value);
+  }
+  isWarningCustomerModalOpen.value = false;
+  isFileSelectModalOpen.value = false;
+};
+
+const selectedLinkedFile = computed(() => {
+  if (!formData.value.id_quanlyfile) return null;
+  return quanLyFilesList.value.find(x => x.id === formData.value.id_quanlyfile) || null;
+});
+
+const handleLinkedFileClick = (file) => {
+  if (!file || !file.id) return;
+  const routeData = router.resolve({ path: '/quan-ly-file', query: { id: file.id } });
+  window.open(routeData.href, '_blank');
+};
+
+const goToQuanLyFile = (fileId) => {
+  if (!fileId) return;
+  const routeData = router.resolve({ path: '/quan-ly-file', query: { id: fileId } });
+  window.open(routeData.href, '_blank');
+};
+
+const getCustomerNameInfo = (maKH) => {
+  const cus = customersList.value.find(c => c.ma_khach_hang === maKH);
+  if (!cus) return maKH;
+  let info = cus.ten_khach_hang || '';
+  if (cus.ten_cong_ty) {
+    info += (info ? ' - ' : '') + cus.ten_cong_ty;
+  }
+  return info || maKH;
+};
+
+const formatQuanLyFileTime = (timestamp) => {
+  if (!timestamp) return { time: '', thu: '', date: '', period: '' };
+  const d = new Date(timestamp);
+  const h = String(d.getHours()).padStart(2, '0');
+  const m = String(d.getMinutes()).padStart(2, '0');
+  const days = ['CN', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+  const date = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return {
+    time: `${h}:${m}`,
+    thu: days[d.getDay()],
+    date: `${date} / ${month} / ${year}`,
+    period: parseInt(h) < 12 ? 'Sáng' : 'Chiều'
+  };
+};
+
+const downloadingZipMap = ref({});
+const zipProgressTextMap = ref({});
+
+const getCardAttachmentCount = (file) => {
+  if (!file) return 0;
+  let count = 0;
+  if (Array.isArray(file.linkFileBaoGia)) {
+    count += file.linkFileBaoGia.length;
+  } else if (typeof file.linkFileBaoGia === 'string' && file.linkFileBaoGia.trim() !== '') {
+    count += 1;
+  }
+  if (Array.isArray(file.linkImgSave)) {
+    count += file.linkImgSave.length;
+  } else if (typeof file.linkImgSave === 'string' && file.linkImgSave.trim() !== '') {
+    count += 1;
+  }
+  return count;
+};
+
+const hasCardAttachments = (file) => {
+  return getCardAttachmentCount(file) > 0;
+};
+
+const handleDownloadCardZip = async (file) => {
+  if (!file || downloadingZipMap.value[file.id]) return;
+  downloadingZipMap.value[file.id] = true;
+  zipProgressTextMap.value[file.id] = 'Đang nén...';
+
+  try {
+    const customerName = getCustomerNameInfo(file.maKH) || file.tenKH || file.maKH || 'Khách hàng';
+    let fileList = [];
+    if (Array.isArray(file.linkFileBaoGia)) {
+      fileList = file.linkFileBaoGia;
+    } else if (typeof file.linkFileBaoGia === 'string' && file.linkFileBaoGia.trim() !== '') {
+      fileList = [file.linkFileBaoGia];
+    }
+    let imgList = [];
+    if (Array.isArray(file.linkImgSave)) {
+      imgList = file.linkImgSave;
+    } else if (typeof file.linkImgSave === 'string' && file.linkImgSave.trim() !== '') {
+      imgList = [file.linkImgSave];
+    }
+
+    await downloadCardFilesAsZip({
+      customerName,
+      noiDung: file.noiDung || '',
+      ghiChu: file.ghiChu || '',
+      files: fileList,
+      images: imgList,
+      onProgress: (percent, msg) => {
+        zipProgressTextMap.value[file.id] = msg || (percent + '%');
+      }
+    });
+  } catch (err) {
+    console.error('Lỗi tải ZIP cho card:', err);
+    await showAlert('Không thể tạo file zip: ' + (err.message || 'Lỗi không xác định'), 'Lỗi tải ZIP');
+  } finally {
+    downloadingZipMap.value[file.id] = false;
+    delete zipProgressTextMap.value[file.id];
+  }
+};
+
+const getOriginalFileName = (fileObj) => {
+  if (typeof fileObj === 'object' && fileObj.name) return fileObj.name;
+  return typeof fileObj === 'string' ? fileObj : fileObj.url;
+};
+
+const getFileIconType = (fileObj) => {
+  const name = (getOriginalFileName(fileObj) || '').toLowerCase();
+  if (name.endsWith('.pdf')) return 'pdf';
+  if (name.endsWith('.doc') || name.endsWith('.docx')) return 'word';
+  if (name.endsWith('.xls') || name.endsWith('.xlsx') || name.endsWith('.csv')) return 'excel';
+  if (name.endsWith('.png') || name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.gif') || name.endsWith('.webp')) return 'image';
+  return 'default';
+};
+
+const getFileBadgeClass = (fileObj) => {
+  const type = getFileIconType(fileObj);
+  if (type === 'pdf') return 'badge-pdf';
+  if (type === 'word') return 'badge-word';
+  if (type === 'excel') return 'badge-excel';
+  if (type === 'image') return 'badge-image';
+  return 'badge-default';
+};
+
+const handleDownloadClick = async (event, fileObj, defaultName) => {
+  event.preventDefault();
+  
+  const url = fileObj?.url || fileObj;
+  let name = fileObj?.name || defaultName || 'file';
+  if (!url || typeof url !== 'string') return;
+  
+  const urlParts = url.split('?')[0].split('/');
+  const lastPart = urlParts[urlParts.length - 1];
+  let ext = '';
+  const extIndex = lastPart.lastIndexOf('.');
+  if (extIndex > -1) {
+    ext = lastPart.substring(extIndex);
+  }
+  if (ext && !String(name).toLowerCase().endsWith(ext.toLowerCase())) {
+    name = name + ext;
+  }
+  
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Fetch failed');
+    const blob = await response.blob();
+    const objectUrl = window.URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = objectUrl;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    
+    setTimeout(() => {
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(objectUrl);
+    }, 1000);
+  } catch (err) {
+    console.error("Lỗi khi tải file qua JS:", err);
+    window.open(url, '_blank');
+  }
+};
+
+const getQuanLyFileIconSvg = (fileObj) => {
+  const type = getFileIconType(fileObj);
+  const imgStyle = "width: 16px; height: 16px; object-fit: contain; border-radius: 2px;";
+  if (type === 'pdf') return `<img src="https://i.ibb.co/3YdHRTFs/unnamed.webp" style="${imgStyle}" />`;
+  if (type === 'word') return `<img src="https://i.ibb.co/d0Y6v4yD/images-7.jpg" style="${imgStyle}" />`;
+  if (type === 'excel') return `<img src="https://i.ibb.co/b5yq09VP/images-8.jpg" style="${imgStyle}" />`;
+  if (type === 'image') return `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>`;
+};
+
+const getFileName = (fileObj, prefix, index) => {
+  if (typeof fileObj === 'object' && fileObj.name) return fileObj.name;
+  const url = typeof fileObj === 'string' ? fileObj : fileObj?.url;
+  try {
+    const parts = url.split('/');
+    let name = parts[parts.length - 1];
+    name = name.split('?')[0];
+    name = decodeURIComponent(name);
+    return name;
+  } catch (e) {
+    return `${prefix} ${index + 1}`;
+  }
+};
+
+const truncateFileName = (name) => {
+  if (!name) return '';
+  if (name.length > 25) {
+    return name.substring(0, 15) + '...' + name.substring(name.length - 7);
+  }
+  return name;
+};
+
+const getOfficeViewUrl = (fileObj) => {
+  const url = typeof fileObj === 'string' ? fileObj : fileObj?.url;
+  if (!url || typeof url !== 'string') return '#';
+  return `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(url)}`;
+};
+
 onMounted(() => {
+  listenCustomersRealtime();
+  listenQuanLyFileRealtime();
+  fetchCustomersForQuote();
   loadPipelineData();
   if (route.query.date) {
     filters.value.filterMode = 'day'
@@ -5531,10 +6757,117 @@ onUnmounted(() => {
   if (unsubscribeReports) {
     unsubscribeReports();
   }
+  if (unsubscribeCustomers) {
+    unsubscribeCustomers();
+  }
+  if (unsubscribeQuanLyFiles) {
+    unsubscribeQuanLyFiles();
+  }
 })
 </script>
 
 <style scoped>
+/* =========================================
+   CUSTOMER PICKER & BADGES
+========================================= */
+.customer-tag-code {
+  font-size: 0.72rem;
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.customer-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 5px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-clear-cus {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+.btn-clear-cus:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.btn-search-cus {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+.btn-search-cus:hover {
+  background: rgba(16, 185, 129, 0.22);
+  color: #34d399;
+}
+
+.customer-select-input {
+  appearance: auto;
+  -webkit-appearance: menulist;
+}
+
+.customer-selected-detail-card {
+  margin-top: 0.4rem;
+  padding: 0.45rem 0.75rem;
+  background: rgba(16, 185, 129, 0.06);
+  border: 1px dashed rgba(16, 185, 129, 0.3);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.8rem;
+}
+
+.customer-selected-detail-card .cus-name {
+  color: #10b981;
+}
+
+.customer-selected-detail-card .cus-company {
+  color: #cbd5e1;
+  margin-left: 0.3rem;
+}
+
+.customer-selected-detail-card .cus-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  color: #94a3b8;
+  font-size: 0.72rem;
+}
+
+.tl-badge-customer {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  white-space: nowrap;
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.customer-list-item.is-selected {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border-left: 3px solid #10b981;
+}
+
 /* =========================================
    THIẾT KẾ: MODERN, CLEAN & PREMIUM 
    Dựa trên CSS thuần, với Micro-animations
@@ -9917,5 +11250,381 @@ span[style*="color: #334155"] {
 .pipeline-chip-remove:hover {
   background: rgba(239, 68, 68, 0.2);
   color: #fca5a5;
+}
+
+.elite-btn-save {
+  color: white !important;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+@media (max-width: 768px) {
+  .customer-modal [style*="display: grid"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ═══ TASTE SKILL LUXURY MODAL DESIGN SYSTEM ═══ */
+.taste-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(3, 7, 18, 0.76);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+}
+
+.taste-modal-shell {
+  position: relative;
+  width: 450px;
+  max-width: 95vw;
+  border-radius: 22px;
+  padding: 1.5px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.03) 50%, rgba(255, 255, 255, 0.08) 100%);
+  box-shadow: 
+    0 32px 80px -16px rgba(0, 0, 0, 0.85),
+    0 12px 32px -8px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+.taste-modal-glow {
+  position: absolute;
+  top: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 240px;
+  height: 120px;
+  border-radius: 50%;
+  filter: blur(48px);
+  pointer-events: none;
+  opacity: 0.35;
+  transition: all 0.3s ease;
+}
+.taste-variant-success .taste-modal-glow { background: #10b981; }
+.taste-variant-danger .taste-modal-glow { background: #ef4444; }
+.taste-variant-warning .taste-modal-glow { background: #f59e0b; }
+.taste-variant-confirm .taste-modal-glow { background: #38bdf8; }
+.taste-variant-info .taste-modal-glow { background: #6366f1; }
+
+.taste-modal-core {
+  position: relative;
+  border-radius: 20px;
+  background: linear-gradient(165deg, #0d1527 0%, #080d19 100%);
+  padding: 24px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.taste-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #64748b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 10;
+}
+.taste-modal-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+  transform: scale(1.05);
+}
+
+.taste-modal-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.taste-jewel-wrap {
+  flex-shrink: 0;
+  position: relative;
+}
+.taste-jewel-box {
+  width: 52px;
+  height: 52px;
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+.taste-variant-success .taste-jewel-box {
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.22) 0%, rgba(16, 185, 129, 0.05) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  box-shadow: 0 0 24px rgba(16, 185, 129, 0.25);
+}
+.taste-variant-danger .taste-jewel-box {
+  background: radial-gradient(circle, rgba(239, 68, 68, 0.22) 0%, rgba(239, 68, 68, 0.05) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  box-shadow: 0 0 24px rgba(239, 68, 68, 0.25);
+}
+.taste-variant-warning .taste-jewel-box {
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.22) 0%, rgba(245, 158, 11, 0.05) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  box-shadow: 0 0 24px rgba(245, 158, 11, 0.25);
+}
+.taste-variant-confirm .taste-jewel-box,
+.taste-variant-info .taste-jewel-box {
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.22) 0%, rgba(56, 189, 248, 0.05) 100%);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  box-shadow: 0 0 24px rgba(56, 189, 248, 0.25);
+}
+
+.taste-modal-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.taste-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2.5px 9px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.taste-variant-success .taste-eyebrow {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+.taste-variant-danger .taste-eyebrow {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.taste-variant-warning .taste-eyebrow {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+.taste-variant-confirm .taste-eyebrow,
+.taste-variant-info .taste-eyebrow {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.taste-eyebrow-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  animation: tastePulse 2s ease-in-out infinite;
+}
+.taste-variant-success .taste-eyebrow-dot { background: #10b981; }
+.taste-variant-danger .taste-eyebrow-dot { background: #ef4444; }
+.taste-variant-warning .taste-eyebrow-dot { background: #f59e0b; }
+.taste-variant-confirm .taste-eyebrow-dot,
+.taste-variant-info .taste-eyebrow-dot { background: #38bdf8; }
+
+@keyframes tastePulse {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.3); opacity: 1; }
+}
+
+.taste-title {
+  margin: 0 0 8px 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #f8fafc;
+  letter-spacing: -0.02em;
+  line-height: 1.35;
+}
+
+.taste-message {
+  font-size: 13.5px;
+  font-weight: 400;
+  color: #94a3b8;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.taste-modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.taste-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 20px;
+  border-radius: 11px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  text-decoration: none;
+  line-height: 1;
+}
+.taste-btn:active {
+  transform: scale(0.97);
+}
+
+.taste-btn-secondary {
+  background: rgba(255, 255, 255, 0.05);
+  color: #94a3b8;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.taste-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+  border-color: rgba(255, 255, 255, 0.18);
+  transform: translateY(-1px);
+}
+
+.taste-btn-primary {
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  font-weight: 700;
+}
+.taste-btn-primary:hover {
+  filter: brightness(1.12);
+  transform: translateY(-1.5px);
+}
+
+.taste-btn-success {
+  background: linear-gradient(135deg, #10b981, #059669);
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+.taste-btn-danger {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+.taste-btn-warning {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+.taste-btn-confirm,
+.taste-btn-info {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+/* ═══ TASTE SPRING CHOREOGRAPHY ═══ */
+.taste-modal-enter-active {
+  animation: tasteOverlayFadeIn 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.taste-modal-leave-active {
+  animation: tasteOverlayFadeOut 0.2s cubic-bezier(0.4, 0, 1, 1);
+}
+.taste-modal-enter-active .taste-modal-shell {
+  animation: tasteShellSpring 0.38s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+.taste-modal-leave-active .taste-modal-shell {
+  animation: tasteShellOut 0.2s cubic-bezier(0.4, 0, 1, 1);
+}
+
+@keyframes tasteOverlayFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes tasteOverlayFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes tasteShellSpring {
+  from { opacity: 0; transform: scale(0.92) translateY(16px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes tasteShellOut {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.94) translateY(10px); }
+}
+
+.attach-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s;
+  max-width: 100%;
+}
+.attach-badge:hover {
+  transform: translateY(-1px);
+}
+.attach-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.badge-pdf { background: rgba(239, 68, 68, 0.4); color: #ffffff !important; border: 1px solid rgba(239, 68, 68, 0.6); }
+.badge-pdf:hover { background: rgba(239, 68, 68, 0.15); }
+.badge-word { background: rgba(59, 130, 246, 0.4); color: #ffffff !important; border: 1px solid rgba(59, 130, 246, 0.6); }
+.badge-word:hover { background: rgba(59, 130, 246, 0.15); }
+.badge-excel { background: rgba(16, 185, 129, 0.4); color: #ffffff !important; border: 1px solid rgba(16, 185, 129, 0.6); }
+.badge-excel:hover { background: rgba(16, 185, 129, 0.15); }
+.badge-default { background: rgba(148, 163, 184, 0.4); color: #ffffff !important; border: 1px solid rgba(148, 163, 184, 0.6); }
+.badge-default:hover { background: rgba(148, 163, 184, 0.15); }
+.badge-image { background: rgba(168, 85, 247, 0.4); color: #ffffff !important; border: 1px solid rgba(168, 85, 247, 0.6); }
+.badge-image:hover { background: rgba(168, 85, 247, 0.15); }
+
+.btn-dl-all-zip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 5px;
+  padding: 3px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1.2;
+}
+.btn-dl-all-zip:hover:not(:disabled) {
+  background: #10b981;
+  color: #ffffff;
+  border-color: #10b981;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.4);
+  transform: translateY(-1px);
+}
+.btn-dl-all-zip:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+.zip-mini-spinner {
+  width: 10px;
+  height: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #34d399;
+  border-radius: 50%;
+  animation: zipSpin 0.7s linear infinite;
+  display: inline-block;
+}
+@keyframes zipSpin {
+  to { transform: rotate(360deg); }
 }
 </style>

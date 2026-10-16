@@ -67,6 +67,21 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { initializeApp, getApps, getApp } from 'firebase/app'
+import { getDatabase, ref as dbRef, get, update, set } from 'firebase/database'
+
+const firebaseConfig = {
+  apiKey: "AIzaSyB3fHD_sOqyqVygCxP2gZtvaipr-35a1s8",
+  authDomain: "chusonproject.firebaseapp.com",
+  databaseURL: "https://chusonproject-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "chusonproject",
+  storageBucket: "chusonproject.firebasestorage.app",
+  messagingSenderId: "929199941311",
+  appId: "1:929199941311:web:ca8d86f9fd7f8dff61480a",
+  measurementId: "G-48VVPGFSFK"
+}
+const firebaseApp = !getApps().length ? initializeApp(firebaseConfig) : getApp()
+const database = getDatabase(firebaseApp)
 
 const router = useRouter()
 const username = ref('')
@@ -76,9 +91,6 @@ const confirmPassword = ref('')
 const isLoading = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
-
-// TODO: Thay bằng URL thực tế
-const API_URL = 'https://script.google.com/macros/s/AKfycbx1yDOQLxYgJb5w30KmxQHF8AYUZln_5q58HCKP4zlUmtJye6aJBiSt3oyT0j_3QaigdQ/exec'
 
 onMounted(() => {
   const tokenLocal = localStorage.getItem('auth_token')
@@ -112,19 +124,44 @@ const handleChangePassword = async () => {
   isLoading.value = true
   
   try {
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'change_password',
-        username: username.value,
-        old_password: oldPassword.value,
-        new_password: newPassword.value
-      })
-    })
-    
-    const result = await response.json()
-    
-    if (result.status === 'success') {
+    const snap = await get(dbRef(database, 'password'))
+    if (!snap.exists()) {
+      errorMessage.value = 'Chưa cấu hình bảng password trên Firebase.'
+      return
+    }
+
+    const data = snap.val()
+    let matchedKey = null
+    let isArrayRow = false
+    let pwField = 'password'
+
+    if (data && typeof data === 'object') {
+      const entries = Array.isArray(data) ? data.map((v, i) => [String(i), v]) : Object.entries(data)
+      for (const [key, row] of entries) {
+        if (!row) continue
+        const u = Array.isArray(row) ? row[0] : (row.username ?? row.Username ?? '')
+        const p = Array.isArray(row) ? row[1] : (row.password ?? row.Password ?? '')
+        if (
+          String(u).trim() === String(username.value).trim() &&
+          String(p).trim() === String(oldPassword.value).trim()
+        ) {
+          matchedKey = key
+          isArrayRow = Array.isArray(row)
+          if (!isArrayRow && row.Password !== undefined && row.password === undefined) {
+            pwField = 'Password'
+          }
+          break
+        }
+      }
+    }
+
+    if (matchedKey !== null) {
+      if (isArrayRow) {
+        await set(dbRef(database, `password/${matchedKey}/1`), newPassword.value)
+      } else {
+        await update(dbRef(database, `password/${matchedKey}`), { [pwField]: newPassword.value })
+      }
+
       successMessage.value = 'Đổi mật khẩu thành công! Hãy dùng mật khẩu mới trong lần đăng nhập sau.'
       oldPassword.value = ''
       newPassword.value = ''
@@ -132,13 +169,14 @@ const handleChangePassword = async () => {
       
       // Auto redirect sau 2s
       setTimeout(() => {
-        router.push('/dashboard')
+        router.push('/report-firebase')
       }, 2000)
     } else {
-      errorMessage.value = result.message || 'Lỗi: Không thể đổi mật khẩu.'
+      errorMessage.value = 'Mật khẩu cũ không chính xác'
     }
   } catch (error) {
     errorMessage.value = 'Lỗi kết nối đến máy chủ. Vui lòng thử lại sau.'
+    console.error(error)
   } finally {
     isLoading.value = false
   }

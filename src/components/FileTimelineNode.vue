@@ -1,5 +1,8 @@
 <template>
   <div class="timeline-node">
+    <!-- C. Pass-through line to next sibling (only if child AND not last) -->
+    <div class="line-pass-through" v-if="isChild && !isLast"></div>
+
     <div class="node-content">
       
       <!-- A. Bridge from above down to dot center (only if child) -->
@@ -7,9 +10,6 @@
 
       <!-- B. Horizontal connector to dot (only if child) -->
       <div class="line-horizontal" v-if="isChild"></div>
-
-      <!-- C. Pass-through line to next sibling (only if child AND not last) -->
-      <div class="line-pass-through" v-if="isChild && !isLast"></div>
 
       <!-- D. Parent line to own children (only if has children) -->
       <div class="line-to-children" v-if="node.children && node.children.length > 0"></div>
@@ -25,12 +25,28 @@
       </div>
 
       <!-- CONTENT CARD -->
-      <div class="node-card tl-rect-card tl-rect--green" :class="{ 'is-highlighted': node.id == highlightedId }" :id="'tl-node-' + node.id" @click="$emit('edit', node)">
+      <div class="node-card tl-rect-card tl-rect--green" 
+           :class="{ 'is-highlighted': node.id == highlightedId, 'is-json-selected-card': jsonSelectionOrder > 0, 'is-dragover-append': dragOverType === 'append', 'is-dragover-insert': dragOverType === 'insert' }" 
+           :id="'tl-node-' + node.id" 
+           @click="$emit('edit', node)"
+           draggable="true"
+           @dragstart="onDragStart($event, node)"
+           @dragover.prevent="onDragOver($event)"
+           @dragleave="onDragLeave"
+           @drop="onDrop($event, node)">
         <div class="tl-shimmer tl-shimmer--green"></div>
         <div class="tl-rect-border tl-border--green"></div>
         
-        <div class="tl-rect-header" style="display: flex; flex-direction: row; justify-content: space-between; align-items: flex-start;">
+        <div class="tl-rect-header" style="display: flex; flex-direction: row; justify-content: space-between; align-items: flex-start; gap: 6px;">
           <div class="tl-rect-tags">
+            <button type="button"
+                    class="btn-pick-json-card"
+                    :class="{ 'is-picked': jsonSelectionOrder > 0 }"
+                    @click.stop="$emit('toggle-select-json-card', node.id)"
+                    :title="jsonSelectionOrder > 0 ? 'Bỏ chọn card này khỏi danh sách tải JSON' : 'Chọn card này để tải JSON'">
+              <span v-if="jsonSelectionOrder > 0">Bỏ chọn JSON (#{{ String(jsonSelectionOrder).padStart(2, '0') }})</span>
+              <span v-else>+ Chọn tải JSON</span>
+            </button>
             <!-- Badge Thời gian -->
             <span class="tl-status-chip is-green" style="background: rgba(148,163,184,0.1); color: #94a3b8; border: 1px solid rgba(148,163,184,0.2);">
               {{ formatTime(node.createdTime) }}
@@ -49,12 +65,32 @@
             </span>
           </div>
           
-          <button @click.stop="$emit('delete', node.id)" title="Xóa card" style="background: #ef4444; color: #ffffff; border: none; cursor: pointer; padding: 4px; border-radius: 4px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; opacity: 0.9; box-shadow: 0 2px 4px rgba(239,68,68,0.3);" onmouseover="this.style.opacity='1'; this.style.background='#dc2626'" onmouseout="this.style.opacity='0.9'; this.style.background='#ef4444'">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="3 6 5 6 21 6"></polyline>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-            </svg>
-          </button>
+          <div style="display: flex; align-items: center; gap: 5px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end;">
+            <button v-if="cardChainInfo && cardChainInfo.totalCards > 1"
+                    type="button"
+                    @click.stop="$emit('export-chain-json', { node, customer })"
+                    :title="'Tải JSON toàn bộ chuỗi liên kết này (' + cardChainInfo.totalCards + ' card)'"
+                    class="btn-chain-json-mini">
+              <span>🔗 Chuỗi ({{ cardChainInfo.totalCards }})</span>
+            </button>
+            <button type="button"
+                    @click.stop="$emit('export-card-json', { node, customer })"
+                    title="Xuất file JSON (Tài chính & Hàng hóa) của riêng card này"
+                    class="btn-card-json-mini">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>JSON</span>
+            </button>
+            <button @click.stop="$emit('delete', node.id)" title="Xóa card" style="background: #ef4444; color: #ffffff; border: none; cursor: pointer; padding: 4px; border-radius: 4px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; opacity: 0.9; box-shadow: 0 2px 4px rgba(239,68,68,0.3);" onmouseover="this.style.opacity='1'; this.style.background='#dc2626'" onmouseout="this.style.opacity='0.9'; this.style.background='#ef4444'">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+            </button>
+          </div>
         </div>
         
         <div class="tl-rect-body" style="margin-top: 0.5rem; padding-top: 0.8rem; border-top: 1px dashed rgba(255,255,255,0.05);">
@@ -65,12 +101,37 @@
         </div>
         
         <div v-if="hasAttachments(node)" class="tl-attachments" style="display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.5rem; padding: 0 0.5rem;">
+          <!-- Header vùng đính kèm + Nút Download All ZIP -->
+          <div class="tl-attachments-toolbar" style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 0.3rem; border-bottom: 1px dashed rgba(255,255,255,0.08); margin-bottom: 0.15rem;">
+            <span style="font-size: 0.72rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.3px; display: inline-flex; align-items: center; gap: 4px;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+              Tệp &amp; Ảnh ({{ getFiles(node.linkFileBaoGia).length + getFiles(node.linkImgSave).length }})
+            </span>
+            <button type="button"
+                    @click.stop.prevent="handleDownloadAllZip"
+                    :disabled="isDownloadingZip"
+                    class="btn-dl-all-zip"
+                    :title="'Tải về toàn bộ ' + (getFiles(node.linkFileBaoGia).length + getFiles(node.linkImgSave).length) + ' file & ảnh (.zip)'">
+              <template v-if="isDownloadingZip">
+                <span class="zip-mini-spinner"></span>
+                <span>{{ zipProgressText || 'Đang nén...' }}</span>
+              </template>
+              <template v-else>
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                <span>Download all</span>
+              </template>
+            </button>
+          </div>
+
           <!-- Tài liệu -->
           <div v-if="getFiles(node.linkFileBaoGia).length > 0" style="display: flex; flex-direction: column; gap: 0.4rem;">
-            <div v-for="(fileObj, i) in getFiles(node.linkFileBaoGia)" :key="'f'+i" style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+            <div v-for="(fileObj, i) in getFiles(node.linkFileBaoGia)" :key="'f'+i" style="display: flex; align-items: center; justify-content: space-between; gap: 0.4rem;">
               <a :href="typeof fileObj === 'string' ? fileObj : fileObj.url" target="_blank" @click.stop class="attach-badge" :class="getFileBadgeClass(fileObj)" style="flex: 1; min-width: 0;">
                 <span v-html="getFileIconSvg(fileObj)" style="display: flex; align-items: center;"></span>
                 <span class="attach-text" :title="getFileName(fileObj, 'File', i, node)">{{ truncateFileName(getFileName(fileObj, 'File đính kèm', i, node)) }}</span>
+              </a>
+              <a :href="getOfficeViewUrl(fileObj)" target="_blank" @click.stop title="Xem file (Office Online)" style="background: rgba(59,130,246,0.12); color: #38bdf8; border: 1px solid rgba(59,130,246,0.25); border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all 0.2s; text-decoration: none;" onmouseover="this.style.background='#3b82f6'; this.style.color='white'" onmouseout="this.style.background='rgba(59,130,246,0.12)'; this.style.color='#38bdf8'">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
               </a>
               <button @click.stop.prevent="handleDownloadClick($event, typeof fileObj === 'string' ? fileObj : fileObj.url, getFileName(fileObj, 'File đính kèm', i, node))" title="Tải về" style="background: rgba(16,185,129,0.1); color: #10b981; border: 1px solid rgba(16,185,129,0.2); border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all 0.2s;" onmouseover="this.style.background='#10b981'; this.style.color='white'" onmouseout="this.style.background='rgba(16,185,129,0.1)'; this.style.color='#10b981'">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
@@ -101,24 +162,81 @@
                         :isChild="true"
                         :isLast="index === node.children.length - 1"
                         :highlighted-id="highlightedId"
+                        :selected-json-card-ids="selectedJsonCardIds"
+                        :get-chain-info-for-card="getChainInfoForCard"
                         @edit="$emit('edit', $event)" 
-                        @delete="$emit('delete', $event)" />
+                        @delete="$emit('delete', $event)" 
+                        @node-dropped="$emit('node-dropped', $event)"
+                        @export-card-json="$emit('export-card-json', $event)"
+                        @export-chain-json="$emit('export-chain-json', $event)"
+                        @open-chain-card-picker="$emit('open-chain-card-picker', $event)"
+                        @toggle-select-json-card="$emit('toggle-select-json-card', $event)" />
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
+import { downloadCardFilesAsZip } from '../utils/cardZipHelper';
 
 const props = defineProps({
   node: Object,
   customer: Object,
   isChild: { type: Boolean, default: false },
   isLast: { type: Boolean, default: false },
-  highlightedId: { type: [String, Number], default: null }
+  highlightedId: { type: [String, Number], default: null },
+  selectedJsonCardIds: { type: Array, default: () => [] },
+  getChainInfoForCard: { type: Function, default: null }
 });
 
-const emit = defineEmits(['edit', 'delete']);
+const emit = defineEmits([
+  'edit',
+  'delete',
+  'node-dropped',
+  'export-card-json',
+  'export-chain-json',
+  'open-chain-card-picker',
+  'toggle-select-json-card'
+]);
+
+const jsonSelectionOrder = computed(() => {
+  const idx = (props.selectedJsonCardIds || []).indexOf(props.node?.id);
+  return idx >= 0 ? idx + 1 : 0;
+});
+const isCardSelectedForJson = computed(() => jsonSelectionOrder.value > 0);
+const cardChainInfo = computed(() => (props.getChainInfoForCard && props.node) ? props.getChainInfoForCard(props.node) : null);
+
+const dragOverType = ref(null);
+
+const onDragStart = (e, node) => {
+  e.dataTransfer.setData('nodeId', node.id);
+  e.dataTransfer.effectAllowed = 'move';
+};
+
+const onDragOver = (e) => {
+  e.preventDefault();
+  const rect = e.currentTarget.getBoundingClientRect();
+  const y = e.clientY - rect.top;
+  if (y < rect.height * 0.3) {
+    dragOverType.value = 'insert';
+  } else {
+    dragOverType.value = 'append';
+  }
+};
+
+const onDragLeave = () => {
+  dragOverType.value = null;
+};
+
+const onDrop = (e, targetNode) => {
+  e.stopPropagation();
+  const draggedId = e.dataTransfer.getData('nodeId');
+  const pos = dragOverType.value;
+  dragOverType.value = null;
+  if (draggedId && draggedId !== targetNode.id) {
+    emit('node-dropped', { draggedId, targetId: targetNode.id, position: pos });
+  }
+};
 
 const formatTime = (ts) => {
   if (!ts) return '';
@@ -206,6 +324,12 @@ const getFileIconSvg = (fileObj) => {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>`;
 };
 
+const getOfficeViewUrl = (fileObj) => {
+  const url = typeof fileObj === 'string' ? fileObj : fileObj?.url;
+  if (!url || typeof url !== 'string') return '#';
+  return `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(url)}`;
+};
+
 const handleDownloadClick = async (event, url, defaultName) => {
   event.preventDefault();
   let name = defaultName;
@@ -240,11 +364,79 @@ const handleDownloadClick = async (event, url, defaultName) => {
     window.open(url, '_blank');
   }
 };
+
+const isDownloadingZip = ref(false);
+const zipProgressText = ref('');
+
+const handleDownloadAllZip = async () => {
+  if (isDownloadingZip.value) return;
+  isDownloadingZip.value = true;
+  zipProgressText.value = 'Đang nén...';
+  try {
+    const customerName = props.customer?.ten_khach_hang || props.customer?.name || props.node?.tenKH || props.node?.maKH || 'Khách hàng';
+    await downloadCardFilesAsZip({
+      customerName,
+      noiDung: props.node?.noiDung || '',
+      ghiChu: props.node?.ghiChu || '',
+      files: getFiles(props.node?.linkFileBaoGia),
+      images: getFiles(props.node?.linkImgSave),
+      onProgress: (percent, msg) => {
+        zipProgressText.value = msg || `${percent}%`;
+      }
+    });
+  } catch (err) {
+    console.error('Lỗi khi tải zip card:', err);
+    alert('Không thể tạo file zip: ' + (err.message || 'Lỗi không xác định'));
+  } finally {
+    isDownloadingZip.value = false;
+    zipProgressText.value = '';
+  }
+};
 </script>
 
 <style scoped>
+.btn-dl-all-zip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 5px;
+  padding: 3px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1.2;
+}
+.btn-dl-all-zip:hover:not(:disabled) {
+  background: #10b981;
+  color: #ffffff;
+  border-color: #10b981;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.4);
+  transform: translateY(-1px);
+}
+.btn-dl-all-zip:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+.zip-mini-spinner {
+  width: 10px;
+  height: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #34d399;
+  border-radius: 50%;
+  animation: zipSpin 0.7s linear infinite;
+  display: inline-block;
+}
+@keyframes zipSpin {
+  to { transform: rotate(360deg); }
+}
+
 .timeline-node {
   margin-top: 16px;
+  position: relative;
 }
 
 .node-content {
@@ -345,6 +537,18 @@ const handleDownloadClick = async (event, url, defaultName) => {
   background: linear-gradient(180deg, rgba(30,58,138,0.95) 0%, rgba(30,58,138,0.85) 100%) !important;
 }
 
+.is-dragover-append {
+  box-shadow: 0 0 0 3px #10b981, inset 0 0 20px rgba(16, 185, 129, 0.4) !important;
+  transform: scale(1.02);
+  z-index: 9999;
+}
+
+.is-dragover-insert {
+  border-top: 4px dashed #f59e0b !important;
+  box-shadow: 0 -4px 10px rgba(245, 158, 11, 0.3) !important;
+  z-index: 9999;
+}
+
 @keyframes pulse-glow-strong {
   0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 1); transform: scale(1); }
   50% { box-shadow: 0 0 0 15px rgba(59, 130, 246, 0.5); transform: scale(1.05); }
@@ -425,6 +629,88 @@ const handleDownloadClick = async (event, url, defaultName) => {
   opacity: 0.5;
 }
 .tl-shimmer--green { background: linear-gradient(90deg, transparent, rgba(16,185,129,0.1), transparent); }
+
+.node-card.is-json-selected-card {
+  box-shadow: 0 0 0 1.5px rgba(56, 189, 248, 0.65), 0 8px 22px -6px rgba(14, 165, 233, 0.28) !important;
+}
+
+.btn-pick-json-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(255, 255, 255, 0.03);
+  color: #94a3b8;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.22, 1, 0.36, 1);
+  white-space: nowrap;
+}
+.btn-pick-json-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-0.5px);
+}
+.btn-pick-json-card.is-picked {
+  background: rgba(16, 185, 129, 0.14);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.42);
+}
+.btn-pick-json-card.is-picked:hover {
+  background: rgba(239, 68, 68, 0.16);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.45);
+}
+
+.btn-chain-json-mini {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  cursor: pointer;
+  padding: 3px 7px;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  font-family: monospace;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+.btn-chain-json-mini:hover {
+  background: #059669;
+  color: #ffffff;
+  border-color: #10b981;
+}
+
+.btn-card-json-mini {
+  background: rgba(56, 189, 248, 0.14);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  cursor: pointer;
+  padding: 3px 7px;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  font-family: monospace;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+.btn-card-json-mini:hover {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #38bdf8;
+}
 
 @media (max-width: 768px) {
   .children-list {

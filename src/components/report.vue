@@ -382,6 +382,10 @@
                             {{ report.trang_thai }}
                           </div>
                           <span v-if="report.tag" v-for="t in splitTags(report.tag)" :key="t" v-show="t !== 'BÌNH THƯỜNG'" class="tl-badge-tag" :class="getTagClass(t)">{{ t }}</span>
+                          <span v-if="report.maKH" class="tl-badge-customer" :title="'Mã KH: ' + report.maKH">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 3px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            {{ getCustomerDisplayName(report.maKH) }}
+                          </span>
                         </div>
                       </div>
                       <div v-if="report.img_save" style="display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.5rem 0.5rem 0 0.5rem;">
@@ -504,6 +508,10 @@
                             {{ report.trang_thai }}
                           </div>
                           <span v-if="report.tag" v-for="t in splitTags(report.tag)" :key="t" v-show="t !== 'BÌNH THƯỜNG'" class="tl-badge-tag" :class="getTagClass(t)">{{ t }}</span>
+                          <span v-if="report.maKH" class="tl-badge-customer" :title="'Mã KH: ' + report.maKH">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 3px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            {{ getCustomerDisplayName(report.maKH) }}
+                          </span>
                         </div>
                       </div>
                       <div v-if="report.img_save" style="display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.5rem 0.5rem 0 0.5rem;">
@@ -637,6 +645,10 @@
                           {{ report.trang_thai }}
                         </div>
                         <span v-if="report.tag" v-for="t in splitTags(report.tag)" :key="t" v-show="t !== 'BÌNH THƯỜNG'" class="tl-badge-tag" :class="getTagClass(t)">{{ t }}</span>
+                          <span v-if="report.maKH" class="tl-badge-customer" :title="'Mã KH: ' + report.maKH">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 3px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            {{ getCustomerDisplayName(report.maKH) }}
+                          </span>
                       </div>
                     </div>
                     <div v-if="report.img_save" style="display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.5rem 0.5rem 0 0.5rem;">
@@ -749,6 +761,10 @@
                           {{ report.trang_thai }}
                         </div>
                         <span v-if="report.tag" v-for="t in splitTags(report.tag)" :key="t" v-show="t !== 'BÌNH THƯỜNG'" class="tl-badge-tag" :class="getTagClass(t)">{{ t }}</span>
+                          <span v-if="report.maKH" class="tl-badge-customer" :title="'Mã KH: ' + report.maKH">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 3px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            {{ getCustomerDisplayName(report.maKH) }}
+                          </span>
                       </div>
                     </div>
                     <div v-if="report.img_save" style="display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.5rem 0.5rem 0 0.5rem;">
@@ -867,6 +883,10 @@
                   {{ report.trang_thai }}
                 </div>
                 <span v-if="report.tag" v-for="t in splitTags(report.tag)" :key="t" v-show="t !== 'BÌNH THƯỜNG'" class="tl-badge-tag" :class="getTagClass(t)">{{ t }}</span>
+                          <span v-if="report.maKH" class="tl-badge-customer" :title="'Mã KH: ' + report.maKH">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 3px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            {{ getCustomerDisplayName(report.maKH) }}
+                          </span>
               </div>
             </div>
             <div v-if="report.img_save" style="display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.5rem 0.5rem 0 0.5rem;">
@@ -1063,6 +1083,50 @@
           
           <div class="pc-col pc-col-2">
           <div class="elite-form-row" style="flex-direction: column; height: 100%;">
+            <!-- Chọn Khách Hàng (Field maKH liên kết db khach_hang) -->
+            <div class="elite-form-group customer-select-group" style="margin-bottom: 0.85rem; display: flex; flex-direction: column;">
+              <div class="form-group-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                <label style="color: #10b981; font-weight: 700; display: flex; align-items: center; gap: 0.35rem; margin: 0; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.03em;">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                  <span>Khách Hàng</span>
+                  <span v-if="formData.maKH" class="customer-tag-code">{{ formData.maKH }}</span>
+                </label>
+                <div class="header-actions-group" style="display: flex; align-items: center; gap: 0.4rem;">
+                  <button v-if="formData.maKH" type="button" class="customer-action-btn" @click="viewCustomerInfo(selectedCustomerInfo)" title="Xem thông tin chi tiết khách hàng" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.25);">
+                    👁 Xem
+                  </button>
+                  <button v-if="formData.maKH" type="button" class="customer-action-btn" @click="editCustomerInfo(selectedCustomerInfo)" title="Chỉnh sửa thông tin khách hàng" style="background: rgba(245, 158, 11, 0.1); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.25);">
+                    ✏️ Sửa
+                  </button>
+                  <button v-if="formData.maKH" type="button" class="customer-action-btn btn-clear-cus" @click="formData.maKH = ''" title="Bỏ chọn khách hàng">
+                    ✕ Bỏ chọn
+                  </button>
+                  <button type="button" class="customer-action-btn btn-search-cus" @click="openCustomerModal" title="Chọn khách hàng">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <span>Chọn</span>
+                  </button>
+                </div>
+              </div>
+              <div class="customer-select-wrapper" style="position: relative;">
+                <select v-model="formData.maKH" class="elite-input customer-select-input" style="width: 100%; cursor: pointer;">
+                  <option value="">-- Chọn khách hàng --</option>
+                  <option v-for="c in customersList" :key="c.ma_khach_hang || c.id" :value="c.ma_khach_hang">
+                    [{{ c.ma_khach_hang }}] {{ c.ten_khach_hang || 'Chưa đặt tên' }}{{ c.ten_cong_ty ? ' - ' + c.ten_cong_ty : '' }}
+                  </option>
+                </select>
+              </div>
+              <div v-if="selectedCustomerInfo" class="customer-selected-detail-card">
+                <div class="cus-detail-row">
+                  <span class="cus-name"><b>{{ selectedCustomerInfo.ten_khach_hang || 'Khách hàng' }}</b></span>
+                  <span v-if="selectedCustomerInfo.ten_cong_ty" class="cus-company">• {{ selectedCustomerInfo.ten_cong_ty }}</span>
+                </div>
+                <div class="cus-meta-row" v-if="selectedCustomerInfo.dien_thoai || selectedCustomerInfo.sdt || selectedCustomerInfo.so_dien_thoai_ca_nhan || selectedCustomerInfo.dia_chi || selectedCustomerInfo.dia_chi_cong_ty">
+                  <span v-if="selectedCustomerInfo.dien_thoai || selectedCustomerInfo.sdt || selectedCustomerInfo.so_dien_thoai_ca_nhan">📞 {{ selectedCustomerInfo.dien_thoai || selectedCustomerInfo.sdt || selectedCustomerInfo.so_dien_thoai_ca_nhan }}</span>
+                  <span v-if="selectedCustomerInfo.dia_chi || selectedCustomerInfo.dia_chi_cong_ty">📍 {{ selectedCustomerInfo.dia_chi || selectedCustomerInfo.dia_chi_cong_ty }}</span>
+                </div>
+              </div>
+            </div>
+
             <div class="elite-form-group" style="flex: 2; display: flex; flex-direction: column;">
               <div class="form-group-header">
                 <label>Nội Dung <span class="required">*</span></label>
@@ -1071,7 +1135,8 @@
                     <svg v-if="isRecordingVoice !== 'noi_dung'" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
                     <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12"></rect></svg>
                   </button>
-                  <button type="button" class="elite-quote-btn" @click="openCustomerModal">
+                  <!-- Ẩn nút Báo Giá theo yêu cầu -->
+                  <button v-if="false" type="button" class="elite-quote-btn" @click="openCustomerModal">
                     BÁO GIÁ
                   </button>
                 </div>
@@ -1101,7 +1166,8 @@
               <input type="text" v-model="formData.reminder_content" placeholder="Nội dung nhắc nhở..." class="elite-input" />
             </div>
 
-            <div class="elite-form-group" style="margin-bottom: 1rem; display: flex; flex-direction: column; position: relative;">
+            <!-- Ẩn phần ID Pipeline (Liên kết) theo yêu cầu -->
+            <div v-if="false" class="elite-form-group" style="margin-bottom: 1rem; display: flex; flex-direction: column; position: relative;">
               <div class="form-group-header" style="display: flex; justify-content: space-between; align-items: center;">
                 <label style="color: #3b82f6 !important; font-weight: 700 !important; margin: 0;">ID Pipeline (Liên kết)</label>
                 <div style="display: flex; gap: 0.5rem;">
@@ -1138,10 +1204,8 @@
           <div class="elite-form-group">
             <label style="display: flex; justify-content: space-between; align-items: center;">
               <span>Đính Kèm (Ảnh / Excel)</span>
-              <button type="button" @click="openStorageModal" class="elite-btn-primary" style="padding: 0.3rem 0.8rem; font-size: 0.75rem; border-radius: 4px; background: #10b981; border: 1px solid #059669; color: white; cursor: pointer; display: flex; align-items: center; gap: 0.3rem; font-weight: 600; box-shadow: 0 2px 4px rgba(16,185,129,0.3);" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                Chọn từ kho
-              </button>
+              <!-- Ẩn nút Chọn từ kho -->
+              <button v-if="false" type="button" @click="openStorageModal" class="elite-btn-primary" style="display: none;">Chọn từ kho</button>
             </label>
             <div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
               <!-- Image Upload Row -->
@@ -1277,45 +1341,207 @@
 
 
 
-    <!-- Modal Chọn Khách Hàng -->
-    <div class="elite-modal-overlay" v-if="showCustomerModal" @click.self="showCustomerModal = false">
-      <div class="elite-modal" style="max-width: 550px; display: flex; flex-direction: column; max-height: 85vh;">
-        <div class="elite-modal-header" style="flex-shrink: 0;">
-          <div class="elite-modal-title">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-            <h2>Chọn Khách Hàng</h2>
-          </div>
-          <button class="elite-btn-close" @click="showCustomerModal = false">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        <!-- Modal Chọn Khách Hàng (Theo giao diện Quản Lý File) -->
+    <div v-if="showCustomerModal" class="elite-modal-overlay" @click.self="showCustomerModal = false" style="position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 100005; background: rgba(0,0,0,0.6);">
+      <div class="elite-modal" style="width: 500px; max-width: 90%; background: #ffffff; border-radius: 12px; display: flex; flex-direction: column; max-height: 85vh; padding: 0;">
+        <div class="elite-modal-header" style="padding: 1rem 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="margin: 0; color: #0f172a; font-size: 1.1rem; font-weight: 700;">Chọn Khách Hàng</h3>
+          <button class="elite-btn-close" @click="showCustomerModal = false" style="background: transparent; border: none; cursor: pointer; color: #64748b;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           </button>
         </div>
-        <div class="elite-modal-body" style="flex: 1; overflow-y: hidden; display: flex; flex-direction: column; gap: 1.2rem;">
-          <div class="elite-form-group" style="margin-bottom: 0; flex-shrink: 0;">
-            <input type="text" v-model="customerSearch" placeholder="Tìm tên khách hàng hoặc công ty..." class="elite-input" style="width: 100%; box-sizing: border-box; padding: 0.8rem 1.2rem; border-radius: 9999px;" />
-          </div>
-          
-          <div style="max-height: 240px; overflow-y: auto; border: 1.5px solid #e2e8f0; border-radius: 16px; background: rgba(248, 250, 252, 0.6); margin-bottom: 0.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-            <div v-if="loadingCustomers" style="padding: 3rem 2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem;">
-              <span style="color: #10b981; font-weight: 600; font-size: 0.95rem; letter-spacing: 0.02em;">Đang tải dữ liệu khách hàng...</span>
-              <div style="width: 100%; max-width: 200px; height: 6px; background: #e2e8f0; border-radius: 999px; overflow: hidden; position: relative;">
-                <div style="position: absolute; top: 0; left: 0; height: 100%; background: #10b981; border-radius: 999px; animation: progress-indeterminate 1.5s infinite ease-in-out;"></div>
+        
+        <div style="padding: 1rem 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; gap: 1rem; align-items: center; background: #f8fafc;">
+          <input type="text" v-model="customerSearch" placeholder="Nhập tên, công ty hoặc mã KH..." class="elite-input" style="flex: 1; padding: 0.6rem 1rem; border: 1px solid #cbd5e1; border-radius: 6px;" autofocus />
+        </div>
+
+        <div style="flex: 1; overflow-y: auto; padding: 0.5rem 0; max-height: 380px;">
+          <div v-if="filteredCustomersList.length === 0" style="text-align: center; color: #64748b; margin-top: 2rem;">Không tìm thấy khách hàng nào.</div>
+          <div v-for="cus in filteredCustomersList" :key="cus.id || cus.ma_khach_hang" style="padding: 0.75rem 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <div style="font-weight: 600; color: #0f172a; font-size: 1rem;">
+                {{ cus.ten_khach_hang }} <span v-if="cus.ten_cong_ty" style="color: #64748b; font-weight: 400;">- {{ cus.ten_cong_ty }}</span>
+              </div>
+              <div style="font-size: 0.85rem; color: #64748b;">
+                Mã KH: <span style="font-weight: 500; color: #3b82f6;">{{ cus.ma_khach_hang }}</span>
               </div>
             </div>
-            <ul v-else class="customer-list-modal" style="list-style: none; padding: 0; margin: 0;">
-              <li v-for="c in filteredCustomersList" :key="c.ma_khach_hang" @click="insertCustomerQuote(c)" class="customer-list-item">
-                <span class="c-name">{{ c.ten_khach_hang }}</span>
-                <span v-if="c.ten_cong_ty" class="c-company">{{ c.ten_cong_ty }}</span>
-                <span v-if="c.so_dien_thoai_ca_nhan" class="c-phone">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
-                  {{ c.so_dien_thoai_ca_nhan }}
-                </span>
-              </li>
-              <li v-if="filteredCustomersList.length === 0 && !loadingCustomers" style="padding: 3rem; text-align: center; color: #94a3b8; font-style: italic; font-weight: 500;">
-                Không tìm thấy khách hàng nào.
-              </li>
-            </ul>
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <button type="button" @click.stop="viewCustomerInfo(cus)" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='#e2e8f0'; this.style.color='#0f172a'" onmouseout="this.style.background='#f1f5f9'; this.style.color='#475569'">
+                Xem
+              </button>
+              <button type="button" @click.stop="editCustomerInfo(cus)" style="background: #fef3c7; color: #b45309; border: 1px solid #fde68a; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='#fde68a'; this.style.color='#92400e'" onmouseout="this.style.background='#fef3c7'; this.style.color='#b45309'">
+                Sửa
+              </button>
+              <button type="button" @click.stop="selectCustomerFromModal(cus)" style="background: #eff6ff; color: #3b82f6; border: 1px solid #bfdbfe; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='#dbeafe'; this.style.color='#2563eb'" onmouseout="this.style.background='#eff6ff'; this.style.color='#3b82f6'">
+                {{ formData.maKH === cus.ma_khach_hang ? 'Đang chọn' : 'Chọn' }}
+              </button>
+            </div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Modal Xem / Sửa Khách Hàng (Tích hợp Chọn, Sửa, Xem) -->
+    <div v-if="isCustomerDetailModalOpen" class="elite-modal-overlay" @click.self="isCustomerDetailModalOpen = false" style="position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 100015; background: rgba(0,0,0,0.65); backdrop-filter: blur(4px);">
+      <div class="elite-modal" style="width: 600px; max-width: 95%; background: #ffffff; border-radius: 14px; display: flex; flex-direction: column; max-height: 90vh; padding: 0; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); overflow: hidden;">
+        
+        <!-- Header -->
+        <div class="elite-modal-header" style="padding: 1.1rem 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #ffffff;">
+          <div style="display: flex; align-items: center; gap: 0.6rem;">
+            <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(16,185,129,0.12); color: #10b981; display: flex; align-items: center; justify-content: center;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            </div>
+            <div>
+              <h3 style="margin: 0; color: #0f172a; font-size: 1.15rem; font-weight: 700;">
+                {{ customerModalMode === 'edit' ? 'Sửa Thông Tin Khách Hàng' : 'Chi Tiết Khách Hàng' }}
+              </h3>
+              <span style="font-size: 0.78rem; color: #64748b;">Mã KH: <b style="color: #3b82f6;">{{ customerFormData.ma_khach_hang }}</b></span>
+            </div>
+          </div>
+          <button class="elite-btn-close" @click="isCustomerDetailModalOpen = false" style="background: transparent; border: none; cursor: pointer; color: #64748b; padding: 4px; display: flex; align-items: center; justify-content: center;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+
+        <!-- Body: VIEW MODE -->
+        <div v-if="customerModalMode === 'view'" style="flex: 1; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1.2rem; background: #ffffff;">
+          <!-- Card đại diện -->
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1.2rem;">
+            <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #475569; font-weight: 700; margin-bottom: 0.75rem;">Thông tin cá nhân & liên hệ</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem;">
+              <div>
+                <div style="font-size: 0.75rem; color: #64748b;">Tên khách hàng</div>
+                <div style="font-weight: 700; color: #0f172a; font-size: 1.05rem;">{{ customerFormData.ten_khach_hang || '—' }}</div>
+              </div>
+              <div>
+                <div style="font-size: 0.75rem; color: #64748b;">Số điện thoại</div>
+                <div style="font-weight: 600; color: #0f172a;">{{ customerFormData.so_dien_thoai_ca_nhan || '—' }}</div>
+              </div>
+              <div>
+                <div style="font-size: 0.75rem; color: #64748b;">Email cá nhân</div>
+                <div style="color: #0f172a;">{{ customerFormData.email_ca_nhan || '—' }}</div>
+              </div>
+              <div>
+                <div style="font-size: 0.75rem; color: #64748b;">Nhóm khách hàng</div>
+                <div style="display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 2px;">
+                  <span v-for="tag in customerFormData.tagKH" :key="tag" style="background: rgba(16,185,129,0.15); color: #059669; padding: 1px 7px; border-radius: 4px; font-size: 0.72rem; font-weight: 700;">{{ tag }}</span>
+                  <span v-if="!customerFormData.tagKH || !customerFormData.tagKH.length" style="color: #94a3b8; font-size: 0.85rem; font-style: italic;">Chưa phân nhóm</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card công ty -->
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1.2rem;">
+            <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #475569; font-weight: 700; margin-bottom: 0.75rem;">Thông tin công ty</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem;">
+              <div style="grid-column: span 2;">
+                <div style="font-size: 0.75rem; color: #64748b;">Tên công ty</div>
+                <div style="font-weight: 600; color: #0f172a; font-size: 0.95rem;">{{ customerFormData.ten_cong_ty || '—' }}</div>
+              </div>
+              <div>
+                <div style="font-size: 0.75rem; color: #64748b;">Mã số thuế (MST)</div>
+                <div style="color: #0f172a; font-weight: 500;">{{ customerFormData.mst || '—' }}</div>
+              </div>
+              <div>
+                <div style="font-size: 0.75rem; color: #64748b;">SĐT Công ty</div>
+                <div style="color: #0f172a;">{{ customerFormData.so_dien_thoai_cong_ty || '—' }}</div>
+              </div>
+              <div style="grid-column: span 2;">
+                <div style="font-size: 0.75rem; color: #64748b;">Địa chỉ công ty</div>
+                <div style="color: #0f172a;">{{ customerFormData.dia_chi_cong_ty || '—' }}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card ghi chú -->
+          <div v-if="customerFormData.ghi_chu" style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 1rem;">
+            <div style="font-size: 0.75rem; color: #b45309; font-weight: 700; margin-bottom: 0.2rem;">Ghi chú</div>
+            <div style="color: #78350f; font-size: 0.9rem;">{{ customerFormData.ghi_chu }}</div>
+          </div>
+        </div>
+
+        <!-- Body: EDIT MODE -->
+        <div v-else style="flex: 1; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; background: #ffffff;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div>
+              <label style="font-weight: 600; font-size: 13px; color: #475569; margin-bottom: 4px; display: block;">Mã Khách Hàng</label>
+              <input type="text" v-model="customerFormData.ma_khach_hang" class="elite-input" disabled style="background: #f1f5f9; cursor: not-allowed; color: #64748b; width: 100%; box-sizing: border-box;" />
+            </div>
+            <div>
+              <label style="font-weight: 600; font-size: 13px; color: #475569; margin-bottom: 4px; display: block;">Tên Khách Hàng <span style="color: #ef4444;">*</span></label>
+              <input type="text" v-model="customerFormData.ten_khach_hang" class="elite-input" required placeholder="Tên khách hàng..." style="width: 100%; box-sizing: border-box;" />
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div>
+              <label style="font-weight: 600; font-size: 13px; color: #475569; margin-bottom: 4px; display: block;">SĐT Cá nhân</label>
+              <input type="text" v-model="customerFormData.so_dien_thoai_ca_nhan" class="elite-input" placeholder="090..." style="width: 100%; box-sizing: border-box;" />
+            </div>
+            <div>
+              <label style="font-weight: 600; font-size: 13px; color: #475569; margin-bottom: 4px; display: block;">Email</label>
+              <input type="email" v-model="customerFormData.email_ca_nhan" class="elite-input" placeholder="email@..." style="width: 100%; box-sizing: border-box;" />
+            </div>
+          </div>
+
+          <div>
+            <label style="font-weight: 600; font-size: 13px; color: #475569; margin-bottom: 4px; display: block;">Tên Công Ty</label>
+            <input type="text" v-model="customerFormData.ten_cong_ty" class="elite-input" placeholder="Công ty TNHH..." style="width: 100%; box-sizing: border-box;" />
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div>
+              <label style="font-weight: 600; font-size: 13px; color: #475569; margin-bottom: 4px; display: block;">Mã số thuế (MST)</label>
+              <input type="text" v-model="customerFormData.mst" class="elite-input" style="width: 100%; box-sizing: border-box;" />
+            </div>
+            <div>
+              <label style="font-weight: 600; font-size: 13px; color: #475569; margin-bottom: 4px; display: block;">SĐT Công ty</label>
+              <input type="text" v-model="customerFormData.so_dien_thoai_cong_ty" class="elite-input" style="width: 100%; box-sizing: border-box;" />
+            </div>
+          </div>
+
+          <div>
+            <label style="font-weight: 600; font-size: 13px; color: #475569; margin-bottom: 4px; display: block;">Địa chỉ Công Ty</label>
+            <input type="text" v-model="customerFormData.dia_chi_cong_ty" class="elite-input" style="width: 100%; box-sizing: border-box;" />
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div>
+              <label style="font-weight: 600; font-size: 13px; color: #475569; margin-bottom: 4px; display: block;">Trạng thái</label>
+              <input type="text" v-model="customerFormData.trang_thai" class="elite-input" placeholder="Active / Tiềm năng" style="width: 100%; box-sizing: border-box;" />
+            </div>
+            <div>
+              <label style="font-weight: 600; font-size: 13px; color: #475569; margin-bottom: 4px; display: block;">Ghi chú</label>
+              <input type="text" v-model="customerFormData.ghi_chu" class="elite-input" style="width: 100%; box-sizing: border-box;" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="padding: 1rem 1.5rem; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+          <div>
+            <button v-if="customerModalMode === 'edit'" type="button" @click="customerModalMode = 'view'" style="background: transparent; border: 1px solid #cbd5e1; color: #64748b; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem;">
+              ← Quay lại xem
+            </button>
+          </div>
+          <div style="display: flex; gap: 0.6rem;">
+            <button type="button" @click="isCustomerDetailModalOpen = false" style="background: #ffffff; border: 1px solid #cbd5e1; color: #475569; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem;">
+              Đóng
+            </button>
+            <button v-if="customerModalMode === 'view'" type="button" @click="customerModalMode = 'edit'" style="background: #fef3c7; border: 1px solid #fde68a; color: #b45309; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem;">
+              ✏️ Sửa thông tin
+            </button>
+            <button v-if="customerModalMode === 'edit'" type="button" @click="saveCustomerData" :disabled="savingCustomer" style="background: #10b981; border: 1px solid #059669; color: #ffffff; padding: 0.5rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem;">
+              {{ savingCustomer ? 'Đang lưu...' : '💾 Lưu Thay Đổi' }}
+            </button>
+            <button type="button" @click="selectCustomerFromModal(customerFormData); isCustomerDetailModalOpen = false;" style="background: #3b82f6; border: 1px solid #2563eb; color: #ffffff; padding: 0.5rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem;">
+              ✓ Chọn KH này
+            </button>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -2171,8 +2397,8 @@
       </div>
     </div>
 
-    <!-- Storage Prompt Modal -->
-    <div v-if="isStoragePromptModalOpen" class="elite-modal-overlay" @click.self="closeStoragePromptModal" style="z-index: 9999999; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);">
+    <!-- Storage Prompt Modal (Ẩn hoàn toàn) -->
+    <div v-if="false" class="elite-modal-overlay" @click.self="closeStoragePromptModal" style="z-index: 9999999; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);">
       <div class="elite-modal-content" style="max-width: 450px; background: #0f172a; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); overflow: hidden; animation: slideDown 0.3s ease-out;">
         <div style="padding: 1.5rem; text-align: center;">
           <div style="width: 60px; height: 60px; border-radius: 50%; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2); display: flex; align-items: center; justify-content: center; color: #10b981; margin: 0 auto 1.5rem;">
@@ -3410,6 +3636,7 @@ const isPendingModalOpen = ref(false)
 const isEditing = ref(false)
 const formData = ref({
   id: '',
+  maKH: '',
   phan_loai: 'CÔNG VIỆC',
   noi_dung: '',
   ghi_chu: '',
@@ -3628,8 +3855,10 @@ const fetchReports = async () => {
 // Mở Modal
 const openAddModal = () => {
   isEditing.value = false
+  if (customersList.value.length === 0) fetchCustomersForQuote();
   formData.value = {
     id: '',
+    maKH: '',
     phan_loai: 'CÔNG VIỆC',
     noi_dung: '',
     ghi_chu: '',
@@ -3662,8 +3891,10 @@ const openAddModalForPeriod = (period) => {
 const openAddModalWithSlot = (slot) => {
   isEmptyDaysModalOpen.value = false;
   isEditing.value = false;
+  if (customersList.value.length === 0) fetchCustomersForQuote();
   formData.value = {
     id: '',
+    maKH: '',
     phan_loai: 'CÔNG VIỆC',
     noi_dung: '',
     ghi_chu: '',
@@ -3699,7 +3930,7 @@ const hasChanges = computed(() => {
   if (!isEditing.value) return true;
   if (!originalData.value || !originalTimeInputs.value) return false;
   
-  const formKeys = ['phan_loai', 'noi_dung', 'ghi_chu', 'tag', 'trang_thai', 'img_save', 'link_excel_bao_gia', 'link_excel_mua_hang', 'ten_file_bao_gia', 'ten_file_mua_hang', 'id_pipeline', 'reminder_time', 'reminder_content'];
+  const formKeys = ['maKH', 'phan_loai', 'noi_dung', 'ghi_chu', 'tag', 'trang_thai', 'img_save', 'link_excel_bao_gia', 'link_excel_mua_hang', 'ten_file_bao_gia', 'ten_file_mua_hang', 'id_pipeline', 'reminder_time', 'reminder_content'];
   for (const k of formKeys) {
     if (formData.value[k] !== originalData.value[k]) return true;
   }
@@ -3714,7 +3945,9 @@ const hasChanges = computed(() => {
 
 const openEditModal = (report) => {
   isEditing.value = true
+  if (customersList.value.length === 0) fetchCustomersForQuote();
   formData.value = { ...report }
+  formData.value.maKH = report.maKH || report.MAKH || report.ma_khach_hang || ''
   if (!formData.value.img_save) formData.value.img_save = ''
   if (!formData.value.link_excel_bao_gia) formData.value.link_excel_bao_gia = ''
   if (!formData.value.link_excel_mua_hang) formData.value.link_excel_mua_hang = ''
@@ -3775,21 +4008,127 @@ const openCustomerModal = () => {
 
 const filteredCustomersList = computed(() => {
   if (!customerSearch.value) return customersList.value;
-  const q = customerSearch.value.toLowerCase();
+  const q = customerSearch.value.toLowerCase().trim();
   return customersList.value.filter(c => 
     (c.ten_khach_hang && c.ten_khach_hang.toLowerCase().includes(q)) ||
-    (c.ten_cong_ty && c.ten_cong_ty.toLowerCase().includes(q))
+    (c.ten_cong_ty && c.ten_cong_ty.toLowerCase().includes(q)) ||
+    (c.ma_khach_hang && c.ma_khach_hang.toLowerCase().includes(q)) ||
+    (c.dien_thoai && c.dien_thoai.toLowerCase().includes(q)) ||
+    (c.sdt && c.sdt.toLowerCase().includes(q)) ||
+    (c.so_dien_thoai_ca_nhan && c.so_dien_thoai_ca_nhan.toLowerCase().includes(q))
   );
 })
 
-const insertCustomerQuote = (customer) => {
-  const nameToUse = customer.ten_cong_ty || customer.ten_khach_hang;
-  const quoteText = `Báo giá ${nameToUse}`;
-  formData.value.noi_dung = quoteText;
-  showCustomerModal.value = false;
+const isCustomerDetailModalOpen = ref(false);
+const customerModalMode = ref('view');
+const savingCustomer = ref(false);
+const customerFormData = ref({
+  id: '',
+  ma_khach_hang: '',
+  ten_khach_hang: '',
+  so_dien_thoai_ca_nhan: '',
+  email_ca_nhan: '',
+  ten_cong_ty: '',
+  mst: '',
+  dia_chi_cong_ty: '',
+  email_cong_ty: '',
+  so_dien_thoai_cong_ty: '',
+  trang_thai: '',
+  ghi_chu: '',
+  tagKH: []
+});
+
+const populateCustomerFormData = (cus) => {
+  if (!cus) {
+    if (formData.value && formData.value.maKH) {
+      cus = customersList.value.find(c => (c.ma_khach_hang && c.ma_khach_hang === formData.value.maKH) || c.id === formData.value.maKH) 
+        || { ma_khach_hang: formData.value.maKH, ten_khach_hang: formData.value.maKH };
+    } else {
+      cus = {};
+    }
+  }
+  customerFormData.value = {
+    id: cus.id || cus.ma_khach_hang,
+    ma_khach_hang: cus.ma_khach_hang || '',
+    ten_khach_hang: cus.ten_khach_hang || '',
+    so_dien_thoai_ca_nhan: cus.so_dien_thoai_ca_nhan || cus.dien_thoai || cus.sdt || '',
+    email_ca_nhan: cus.email_ca_nhan || cus.email || '',
+    ten_cong_ty: cus.ten_cong_ty || cus.company || '',
+    mst: cus.mst || '',
+    dia_chi_cong_ty: cus.dia_chi_cong_ty || cus.dia_chi || '',
+    email_cong_ty: cus.email_cong_ty || '',
+    so_dien_thoai_cong_ty: cus.so_dien_thoai_cong_ty || '',
+    trang_thai: cus.trang_thai || 'Active',
+    ghi_chu: cus.ghi_chu || '',
+    tagKH: Array.isArray(cus.tagKH) ? [...cus.tagKH] : (cus.tagKH ? [cus.tagKH] : [])
+  };
+};
+
+const viewCustomerInfo = (cus) => {
+  populateCustomerFormData(cus);
+  customerModalMode.value = 'view';
+  isCustomerDetailModalOpen.value = true;
+};
+
+const editCustomerInfo = (cus) => {
+  populateCustomerFormData(cus);
+  customerModalMode.value = 'edit';
+  isCustomerDetailModalOpen.value = true;
+};
+
+const saveCustomerData = async () => {
+  if (!customerFormData.value.ten_khach_hang) {
+    alert('Vui lòng nhập Tên Khách Hàng!');
+    return;
+  }
+  savingCustomer.value = true;
+  try {
+    if (API_URL && API_URL !== 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL') {
+      await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'update',
+          sheet: 'khach_hang',
+          ...customerFormData.value
+        })
+      });
+    }
+    const idx = customersList.value.findIndex(c => c.id === customerFormData.value.id || c.ma_khach_hang === customerFormData.value.ma_khach_hang);
+    if (idx !== -1) {
+      customersList.value[idx] = { ...customersList.value[idx], ...customerFormData.value };
+    }
+    alert('Cập nhật thông tin khách hàng thành công!');
+    isCustomerDetailModalOpen.value = false;
+  } catch (error) {
+    console.error("Lỗi khi sửa KH:", error);
+    alert('Lỗi: ' + error.message);
+  } finally {
+    savingCustomer.value = false;
+  }
+};
+
+const selectCustomerFromModal = (customer) => {
+  formData.value.maKH = customer ? (customer.ma_khach_hang || customer.id || '') : '';
   showCustomerModal.value = false;
   customerSearch.value = '';
-}
+};
+
+const insertCustomerQuote = (customer) => {
+  selectCustomerFromModal(customer);
+};
+
+const selectedCustomerInfo = computed(() => {
+  if (!formData.value.maKH) return null;
+  return customersList.value.find(c => (c.ma_khach_hang && c.ma_khach_hang === formData.value.maKH) || c.id === formData.value.maKH) || null;
+});
+
+const getCustomerDisplayName = (maKH) => {
+  if (!maKH) return '';
+  const cus = customersList.value.find(c => (c.ma_khach_hang && c.ma_khach_hang === maKH) || c.id === maKH);
+  if (!cus) return maKH;
+  return cus.ten_khach_hang || cus.ten_cong_ty || maKH;
+};
 
 const handlePasteImage = async (e) => {
   const items = e.clipboardData?.items;
@@ -3853,9 +4192,7 @@ const handleImgUpload = async (e) => {
   } finally {
     isUploadingFiles.value = false
     e.target.value = ''
-    if (pendingStorageFiles.value.length > 0) {
-      isStoragePromptModalOpen.value = true
-    }
+    pendingStorageFiles.value = []
   }
 }
 
@@ -3886,9 +4223,7 @@ const handleExcelUpload = async (e, field) => {
   } finally {
     isUploadingFiles.value = false
     e.target.value = ''
-    if (pendingStorageFiles.value.length > 0) {
-      isStoragePromptModalOpen.value = true
-    }
+    pendingStorageFiles.value = []
   }
 }
 
@@ -3958,7 +4293,8 @@ const saveReport = async (options = {}) => {
   const action = isEditing.value ? 'update' : 'add'
   const payload = {
     action: action,
-    ...formData.value
+    ...formData.value,
+    maKH: formData.value.maKH || ''
   }
 
   // Cập nhật UI ngay lập tức
@@ -5303,6 +5639,7 @@ const goToPipeline = (id) => {
 }
 
 onMounted(() => {
+  fetchCustomersForQuote();
   loadPipelineData();
   if (route.query.date) {
     filters.value.filterMode = 'day'
@@ -5319,6 +5656,107 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* =========================================
+   CUSTOMER PICKER & BADGES
+========================================= */
+.customer-tag-code {
+  font-size: 0.72rem;
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.customer-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 5px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-clear-cus {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+.btn-clear-cus:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.btn-search-cus {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+.btn-search-cus:hover {
+  background: rgba(16, 185, 129, 0.22);
+  color: #34d399;
+}
+
+.customer-select-input {
+  appearance: auto;
+  -webkit-appearance: menulist;
+}
+
+.customer-selected-detail-card {
+  margin-top: 0.4rem;
+  padding: 0.45rem 0.75rem;
+  background: rgba(16, 185, 129, 0.06);
+  border: 1px dashed rgba(16, 185, 129, 0.3);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.8rem;
+}
+
+.customer-selected-detail-card .cus-name {
+  color: #10b981;
+}
+
+.customer-selected-detail-card .cus-company {
+  color: #cbd5e1;
+  margin-left: 0.3rem;
+}
+
+.customer-selected-detail-card .cus-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  color: #94a3b8;
+  font-size: 0.72rem;
+}
+
+.tl-badge-customer {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  white-space: nowrap;
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.customer-list-item.is-selected {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border-left: 3px solid #10b981;
+}
+
 /* =========================================
    THIẾT KẾ: MODERN, CLEAN & PREMIUM 
    Dựa trên CSS thuần, với Micro-animations

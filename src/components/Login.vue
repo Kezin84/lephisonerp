@@ -51,6 +51,21 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { initializeApp, getApps, getApp } from 'firebase/app'
+import { getDatabase, ref as dbRef, get } from 'firebase/database'
+
+const firebaseConfig = {
+  apiKey: "AIzaSyB3fHD_sOqyqVygCxP2gZtvaipr-35a1s8",
+  authDomain: "chusonproject.firebaseapp.com",
+  databaseURL: "https://chusonproject-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "chusonproject",
+  storageBucket: "chusonproject.firebasestorage.app",
+  messagingSenderId: "929199941311",
+  appId: "1:929199941311:web:ca8d86f9fd7f8dff61480a",
+  measurementId: "G-48VVPGFSFK"
+}
+const firebaseApp = !getApps().length ? initializeApp(firebaseConfig) : getApp()
+const database = getDatabase(firebaseApp)
 
 const router = useRouter()
 const username = ref('')
@@ -59,9 +74,6 @@ const isKeepLogin = ref(false)
 const isLoading = ref(false)
 const errorMessage = ref('')
 
-// TODO: Replace with your actual script URL
-const API_URL = 'https://script.google.com/macros/s/AKfycbx1yDOQLxYgJb5w30KmxQHF8AYUZln_5q58HCKP4zlUmtJye6aJBiSt3oyT0j_3QaigdQ/exec'
-
 const handleLogin = async () => {
   if (!username.value || !password.value) return
   
@@ -69,18 +81,32 @@ const handleLogin = async () => {
   errorMessage.value = ''
   
   try {
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'login',
-        username: username.value,
-        password: password.value
-      })
-    })
-    
-    const result = await response.json()
-    
-    if (result.status === 'success') {
+    const snap = await get(dbRef(database, 'password'))
+    if (!snap.exists()) {
+      errorMessage.value = 'Chưa cấu hình bảng password trên Firebase.'
+      return
+    }
+
+    const data = snap.val()
+    let found = false
+
+    if (data && typeof data === 'object') {
+      const entries = Array.isArray(data) ? data.map((v, i) => [String(i), v]) : Object.entries(data)
+      for (const [, row] of entries) {
+        if (!row) continue
+        const u = Array.isArray(row) ? row[0] : (row.username ?? row.Username ?? '')
+        const p = Array.isArray(row) ? row[1] : (row.password ?? row.Password ?? '')
+        if (
+          String(u).trim() === String(username.value).trim() &&
+          String(p).trim() === String(password.value).trim()
+        ) {
+          found = true
+          break
+        }
+      }
+    }
+
+    if (found) {
       const sessionData = {
         user: username.value,
         loggedInAt: new Date().toISOString()
@@ -93,9 +119,9 @@ const handleLogin = async () => {
       }
       
       // Chuyển hướng vào trang chính
-      router.push('/dashboard')
+      router.push('/report-firebase')
     } else {
-      errorMessage.value = result.message || 'Tài khoản hoặc mật khẩu không đúng.'
+      errorMessage.value = 'Sai tài khoản hoặc mật khẩu'
     }
   } catch (error) {
     errorMessage.value = 'Lỗi kết nối đến máy chủ. Vui lòng thử lại sau.'

@@ -294,6 +294,21 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from 'vue'
 import FormattedInput from './FormattedInput.vue'
+import { initializeApp, getApps, getApp } from 'firebase/app'
+import { getDatabase, ref as dbRef, get, set, update, push } from 'firebase/database'
+
+const firebaseConfig = {
+  apiKey: "AIzaSyB3fHD_sOqyqVygCxP2gZtvaipr-35a1s8",
+  authDomain: "chusonproject.firebaseapp.com",
+  databaseURL: "https://chusonproject-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "chusonproject",
+  storageBucket: "chusonproject.firebasestorage.app",
+  messagingSenderId: "929199941311",
+  appId: "1:929199941311:web:ca8d86f9fd7f8dff61480a",
+  measurementId: "G-48VVPGFSFK"
+}
+const firebaseApp = !getApps().length ? initializeApp(firebaseConfig) : getApp()
+const database = getDatabase(firebaseApp)
 
 const emit = defineEmits(['close', 'saved'])
 
@@ -448,15 +463,29 @@ onMounted(async () => {
     }
   } else {
     try {
-      const poData = await fetch(`${BASE_URL}?action=po_dxmh`).then(r => r.json())
-      let maxPO = 0
-      if (Array.isArray(poData)) {
-        poData.forEach((row: any) => {
-          const soPo = parseInt(String(row[2] || '').replace(/\D/g, ''))
-          if (!isNaN(soPo) && soPo > maxPO) maxPO = soPo
-        })
+      if (props.useFirebase) {
+        const snap = await get(dbRef(database, 'PO_DXMH'))
+        const val = snap.val()
+        let maxPO = 0
+        if (val && typeof val === 'object') {
+          Object.values(val).forEach((row: any) => {
+            const rawPo = Array.isArray(row) ? row[2] : (row?.so_po ?? row?.So_PO ?? '')
+            const soPo = parseInt(String(rawPo || '').replace(/\D/g, ''))
+            if (!isNaN(soPo) && soPo > maxPO) maxPO = soPo
+          })
+        }
+        nextPoNumber.value = String(maxPO + 1)
+      } else {
+        const poData = await fetch(`${BASE_URL}?action=po_dxmh`).then(r => r.json())
+        let maxPO = 0
+        if (Array.isArray(poData)) {
+          poData.forEach((row: any) => {
+            const soPo = parseInt(String(row[2] || '').replace(/\D/g, ''))
+            if (!isNaN(soPo) && soPo > maxPO) maxPO = soPo
+          })
+        }
+        nextPoNumber.value = String(maxPO + 1)
       }
-      nextPoNumber.value = String(maxPO + 1)
     } catch (e) {
       nextPoNumber.value = '...'
     }
@@ -506,6 +535,464 @@ const saveRecord = async () => {
     const abbr = (s: string) => (s||'').trim().split(/\s+/).map(w => w[0]?.toUpperCase()).join('')
     const maKH = props.khach?.Ma_khach_hang || [abbr(tenKhachHangSave), abbr(congTy), sdtChinh.replace(/\D/g, '')].filter(Boolean).join('_')
     const maCT = congTy ? `CT_${abbr(congTy)}` : ''
+
+    const n = new Date()
+    const p = (v: number) => String(v).padStart(2,'0')
+    const ngayTao = `${p(n.getHours())}:${p(n.getMinutes())}:${p(n.getSeconds())} ${p(n.getDate())}/${p(n.getMonth()+1)}/${n.getFullYear()}`
+    const createdTimeStr = `${p(n.getHours())}:${p(n.getMinutes())}, ${p(n.getDate())}/${p(n.getMonth()+1)}/${n.getFullYear()}`
+    const tongTruocThue = props.quoteTotals?.truoc ?? 0
+    const vat = props.quoteTotals?.vat ?? 0
+    const sau = props.quoteTotals?.sau ?? 0
+
+    if (props.useFirebase) {
+      // 0. Lưu / Cập nhật khach_hang trên Firebase
+      let congNoCu = Number(props.khach?.Tong_loi_nhuan) || 0
+      if (maKH) {
+        let targetKhKey = maKH
+        const khSnap = await get(dbRef(database, 'khach_hang'))
+        const khAll = khSnap.val()
+        let existingKhData: any = null
+        if (khAll && typeof khAll === 'object') {
+          if (khAll[maKH]) {
+            targetKhKey = maKH
+            existingKhData = khAll[maKH]
+          } else {
+            for (const [k, v] of Object.entries(khAll)) {
+              const recMa = String((v as any)?.ma_khach_hang ?? (v as any)?.Ma_khach_hang ?? k ?? '').trim()
+              if (recMa === maKH) {
+                targetKhKey = k
+                existingKhData = v
+                break
+              }
+            }
+          }
+        }
+        if (existingKhData) {
+          congNoCu = Number(existingKhData.tong_loi_nhuan ?? existingKhData.Tong_loi_nhuan) || congNoCu
+        }
+        const maCongTyVal = props.khach?.Ma_cong_ty || maCT
+        const sdtCaNhanVal = getEditable('DEL_SDT') || props.khach?.So_dien_thoai_ca_nhan || sdtChinh
+        const emailCaNhanVal = getEditable('CUS_EMAIL') || props.khach?.Email_ca_nhan || ''
+        const tenCongTyVal = getEditable('INV_CONG_TY') || props.khach?.Ten_cong_ty || congTy
+        const diaChiCongTyVal = getEditable('INV_DIA_CHI') || props.khach?.Dia_chi_cong_ty || ''
+        const sdtCongTyVal = getEditable('CUS_TEL') || props.khach?.So_dien_thoai_cong_ty || ''
+        const faxCongTyVal = getEditable('CUS_FAX') || props.khach?.So_fax_cong_ty || ''
+        const emailCongTyVal = getEditable('INV_EMAIL') || props.khach?.Email_cong_ty || ''
+        const mstVal = getEditable('INV_MST') || props.khach?.MST || ''
+        const websiteVal = getEditable('CUS_WEBSITE') || props.khach?.Website_cong_ty || ''
+        const companyVal = getEditable('CUS_COMPANY') || props.khach?.COMPANY || ''
+        const addressVal = getEditable('CUS_ADDRESS') || props.khach?.ADDRESS || ''
+        const telVal = getEditable('CUS_TEL') || props.khach?.TEL || ''
+        const tenPhuVal = getEditable('CUS_CONTACT') || props.khach?.Ten_khach_hang_phu || ''
+        const sdtPhuVal = getEditable('CUS_MOBILE') || props.khach?.So_dien_thoai_ca_nhan_phu || ''
+        const trangThaiVal = props.khach?.Trang_thai || 'Hoạt động'
+        const tongChiTieuVal = props.khach?.Tong_chi_tieu || existingKhData?.tong_chi_tieu || 0
+        const hoaHongVal = props.khach?.Hoa_hong || existingKhData?.hoa_hong || ''
+
+        const fbKhObj = {
+          ma_khach_hang: maKH,
+          Ma_khach_hang: maKH,
+          ma_cong_ty: maCongTyVal,
+          Ma_cong_ty: maCongTyVal,
+          ten_khach_hang: tenKhachHangSave,
+          Ten_khach_hang: tenKhachHangSave,
+          so_dien_thoai_ca_nhan: sdtCaNhanVal,
+          So_dien_thoai_ca_nhan: sdtCaNhanVal,
+          email_ca_nhan: emailCaNhanVal,
+          Email_ca_nhan: emailCaNhanVal,
+          ten_cong_ty: tenCongTyVal,
+          Ten_cong_ty: tenCongTyVal,
+          dia_chi_cong_ty: diaChiCongTyVal,
+          Dia_chi_cong_ty: diaChiCongTyVal,
+          so_dien_thoai_cong_ty: sdtCongTyVal,
+          So_dien_thoai_cong_ty: sdtCongTyVal,
+          so_fax_cong_ty: faxCongTyVal,
+          So_fax_cong_ty: faxCongTyVal,
+          email_cong_ty: emailCongTyVal,
+          Email_cong_ty: emailCongTyVal,
+          mst: mstVal,
+          MST: mstVal,
+          website_cong_ty: websiteVal,
+          Website_cong_ty: websiteVal,
+          company: companyVal,
+          COMPANY: companyVal,
+          address: addressVal,
+          ADDRESS: addressVal,
+          tel: telVal,
+          TEL: telVal,
+          ten_khach_hang_phu: tenPhuVal,
+          Ten_khach_hang_phu: tenPhuVal,
+          so_dien_thoai_ca_nhan_phu: sdtPhuVal,
+          So_dien_thoai_ca_nhan_phu: sdtPhuVal,
+          trang_thai: trangThaiVal,
+          Trang_thai: trangThaiVal,
+          tong_chi_tieu: tongChiTieuVal,
+          Tong_chi_tieu: tongChiTieuVal,
+          tong_loi_nhuan: congNoCu,
+          Tong_loi_nhuan: congNoCu,
+          hoa_hong: hoaHongVal,
+          Hoa_hong: hoaHongVal
+        }
+        if (existingKhData) {
+          await update(dbRef(database, `khach_hang/${targetKhKey}`), fbKhObj)
+        } else {
+          await set(dbRef(database, `khach_hang/${targetKhKey}`), fbKhObj)
+        }
+      }
+
+      // 1. Lưu PO_DXMH trên Firebase
+      const contentPoVal = props.contentOfContractPO || ''
+      const fbPoObj = {
+        ma_hop_dong: maHD, Ma_hop_dong: maHD,
+        so_hop_dong: soHD,
+        so_po: soPO, So_PO: soPO,
+        ten_po: tenPO, Ten_PO: tenPO,
+        ma_khach_hang: maKH, Ma_khach_hang: maKH,
+        do_uu_tien: getEditable('DO_UU_TIEN'), Do_uu_tien: getEditable('DO_UU_TIEN'),
+        trang_thai_don_hang: getEditable('TRANG_THAI'), Trang_thai_don_hang: getEditable('TRANG_THAI'),
+        company: getEditable('CUS_COMPANY'), COMPANY: getEditable('CUS_COMPANY'),
+        address: getEditable('CUS_ADDRESS'), ADDRESS: getEditable('CUS_ADDRESS'),
+        tel: getEditable('CUS_TEL'), TEL: getEditable('CUS_TEL'),
+        fax: getEditable('CUS_FAX'), FAX: getEditable('CUS_FAX'),
+        contact: getEditable('CUS_CONTACT'), CONTACT: getEditable('CUS_CONTACT'),
+        email: getEditable('CUS_EMAIL'), EMAIL: getEditable('CUS_EMAIL'),
+        mobile: getEditable('CUS_MOBILE'), MOBILE: getEditable('CUS_MOBILE'),
+        website: getEditable('CUS_WEBSITE'), WEBSITE: getEditable('CUS_WEBSITE'),
+        cong_ty: getEditable('INV_CONG_TY'), CONG_TY: getEditable('INV_CONG_TY'),
+        dia_chi: getEditable('INV_DIA_CHI'), DIA_CHI: getEditable('INV_DIA_CHI'),
+        mst: getEditable('INV_MST'), MST: getEditable('INV_MST'),
+        email_inv: getEditable('INV_EMAIL'), EMAIL_1: getEditable('INV_EMAIL'),
+        thanh_ly: getEditable('INV_THANH_LY'), Thanh_ly: getEditable('INV_THANH_LY'),
+        dn_thanh_toan: getEditable('INV_DN_THANH_TOAN'), 'ĐN_THANH_TOAN': getEditable('INV_DN_THANH_TOAN'),
+        co_cq: getEditable('INV_COCQ'), 'CO/CQ': getEditable('INV_COCQ'),
+        giao_hang_hoa_don: getEditable('DEL_M1'), GIAO_HANG_VA_HOA_DON_NGAY_KHI_CO_HANG: getEditable('DEL_M1'),
+        giao_hang_ky_thuat: getEditable('DEL_M2'), GIAO_HANG_VA_CO_KY_THUAT_TRIEN_KHAI_DU_AN: getEditable('DEL_M2'),
+        lien_he_kd_truoc: getEditable('DEL_M3'), LIEN_HE_KINH_DOANH_TRUOC_KHI_GIAO_HANG: getEditable('DEL_M3'),
+        nguoi_nhan_hang: getEditable('DEL_NGUOI_NHAN'), NGUOI_NHAN_HANG: getEditable('DEL_NGUOI_NHAN'),
+        dia_chi_nhan: getEditable('DEL_DIA_CHI'), DIA_CHI_1: getEditable('DEL_DIA_CHI'),
+        so_dien_thoai: getEditable('DEL_SDT'), SO_DIEN_THOAI: getEditable('DEL_SDT'),
+        nguoi_lien_he_trien_khai: getEditable('DEL_NGUOI_LIEN_HE'), NGUOI_LIEN_HE_TRIEN_KHAI: getEditable('DEL_NGUOI_LIEN_HE'),
+        ngay_dat_coc: getEditable('PAY_NGAY_COC'), NGAY_DAT_COC: getEditable('PAY_NGAY_COC'),
+        ti_le_dat_coc: getEditable('PAY_TI_LE_COC'), TI_LE_DAT_COC: getEditable('PAY_TI_LE_COC'),
+        cong_no_ngay: getEditable('PAY_CONG_NO'), 'CONG_NO(NGAY)': getEditable('PAY_CONG_NO'),
+        ngay_co_hang_du_kien: getEditable('PAY_NGAY_CO_HANG'), NGAY_CO_HANG_DU_KIEN: getEditable('PAY_NGAY_CO_HANG'),
+        created_time: createdTimeStr, Created_time: createdTimeStr,
+        content_of_contract_po: contentPoVal, content_of_contract_PO: contentPoVal
+      }
+      await set(dbRef(database, `PO_DXMH/${maHD}`), fbPoObj)
+
+      // Upload Excel lên Cloudinary trước để gắn vào cả hop_dong_tong_quat và sale_report
+      let linkBaoGia = ''
+      const tenFileBaoGia = `BaoGia_${soHD || maHD}.xlsx`
+      if (props.excelBlob) {
+        try {
+          const formData = new FormData()
+          formData.append('upload_preset', 'upload_file')
+          formData.append('file', props.excelBlob, tenFileBaoGia)
+          const uploadRes = await fetch('https://api.cloudinary.com/v1_1/db6fzs3rh/auto/upload', {
+            method: 'POST',
+            body: formData
+          }).then(r => r.json())
+          linkBaoGia = uploadRes.secure_url || ''
+        } catch (e) {
+          console.error('Lỗi upload file báo giá lên Cloudinary:', e)
+        }
+      }
+
+      // 1b. Lưu hop_dong_tong_quat + hop_dong_version + hop_dong_chi_tiet trên Firebase
+      const maCu = props.maHopDongCu || ''
+      const maGoc = props.maHopDongGoc || maCu || maHD
+      const structStr = JSON.stringify(props.excelMappingConfig || [])
+      const fbHdTongObj = {
+        ma_hop_dong: maHD,
+        so_hop_dong: soHD,
+        ma_khach_hang: maKH,
+        ten_khach_hang: tenKhachHangSave,
+        ngay_tao_hop_dong: ngayTao,
+        ngay_tao: ngayTao,
+        Tong_tien_truoc_thueVAT: tongTruocThue,
+        tong_truoc_vat: tongTruocThue,
+        tong_truoc_vat_goc: tongTruocThue,
+        Tong_thueVAT: vat,
+        tong_vat: vat,
+        Tong_tien_sau_thueVAT: sau,
+        tong_sau_vat: sau,
+        Tong_giam_gia: 0,
+        Tong_cong: sau,
+        Tong_thanh_toan: 0,
+        da_thanh_toan: 0,
+        con_phai_thu: Math.max(0, sau),
+        Tong_hoa_hong_khach_hang: 0,
+        Tong_hoa_hong_ca_nhan: 0,
+        Cong_no_cu: congNoCu,
+        Trang_thai_thanh_toan: 'Chưa thanh toán đủ',
+        trang_thai_thanh_toan: 'Chưa thanh toán đủ',
+        Trang_thai_hop_dong: 'Tạm',
+        loai_hop_dong: 'Tạm',
+        Ghi_chu: props.ghiChuHopDong || '',
+        ghi_chu: props.ghiChuHopDong || '',
+        Don_vi_tien_te: 'VND',
+        don_vi_tien_te: 'VND',
+        Ti_gia: 1,
+        ti_gia: 1,
+        ma_hop_dong_cu: maCu,
+        Tong_gia_thuc_te: props.quoteTongGiaThucTe ?? tongTruocThue,
+        created_time: createdTimeStr,
+        So_PO: soPO,
+        so_po: soPO,
+        Ten_PO: tenPO,
+        po_content: tenPO,
+        content_of_contract_PO: contentPoVal,
+        content_of_contract_po: contentPoVal,
+        content_po: contentPoVal,
+        content: contentPoVal,
+        chiet_khau_tong_truoc_thue: props.quoteFinancials?.chietKhauTruocThue ?? 0,
+        gross_com: props.quoteFinancials?.chietKhauTruocThue ?? 0,
+        phan_tram_chiet_khau_tong_truoc_thue: props.quoteFinancials?.chietKhauTruocThuePct ?? 0,
+        phan_tram_chiet_khau: props.quoteFinancials?.chietKhauTruocThuePct ?? 0,
+        thue_chenh_lech_gia: props.quoteFinancials?.thueChenhLech ?? 0,
+        phan_tram_thue_chenh_lech_gia: props.quoteFinancials?.thueChenhLechPct ?? 0,
+        phan_tram_thue: props.quoteFinancials?.thueChenhLechPct ?? 0,
+        chenh_lech_gia: props.quoteFinancials?.chenhLechGia ?? 0,
+        con_lai: props.quoteFinancials?.conLai ?? 0,
+        tong_chiet_khau: props.quoteFinancials?.tongChietKhau ?? 0,
+        ma_hop_dong_goc: maGoc,
+        isCompleted: false,
+        ten_file: linkBaoGia ? tenFileBaoGia : '',
+        link_file: linkBaoGia,
+        structure: structStr
+      }
+      await set(dbRef(database, `hop_dong_tong_quat/${maHD}`), fbHdTongObj)
+
+      // Version tracking
+      const verUpdates: Record<string, any> = {}
+      if (maCu) {
+        try {
+          const verSnap = await get(dbRef(database, 'hop_dong_version'))
+          const verData = verSnap.val()
+          if (verData && typeof verData === 'object') {
+            for (const [k, v] of Object.entries(verData)) {
+              const recMa = Array.isArray(v) ? String(v[0] || '') : String((v as any)?.ma_hop_dong || k || '')
+              if (recMa === maCu) {
+                if (Array.isArray(v)) {
+                  const copy = [...v]
+                  copy[4] = false
+                  verUpdates[`hop_dong_version/${k}`] = copy
+                } else {
+                  verUpdates[`hop_dong_version/${k}/is_active`] = false
+                }
+              }
+            }
+          }
+        } catch {}
+      }
+      verUpdates[`hop_dong_version/${maHD}`] = {
+        ma_hop_dong: maHD,
+        so_hop_dong: soHD,
+        ma_hop_dong_cu: maCu,
+        ma_hop_dong_truoc: maCu,
+        created_time: ngayTao,
+        created_at: ngayTao,
+        is_active: true
+      }
+      await update(dbRef(database), verUpdates)
+
+      // hop_dong_chi_tiet
+      if (props.selectedItems && props.selectedItems.length > 0) {
+        const ctUpdates: Record<string, any> = {}
+        props.selectedItems.forEach((item, idx) => {
+          const tg = customRates.value[idx] !== undefined ? customRates.value[idx] : (Number(item.Ti_gia) || 1)
+          const isUSD = (item.Don_vi_tien_te || 'USD').toUpperCase().includes('US')
+          const giaTCToSave = isUSD ? (item.Gia_tieu_chuan || 0) * tg : (item.Gia_tieu_chuan || 0)
+          const donGiaToSave = isUSD ? (item.Don_gia || 0) * tg : (item.Don_gia || 0)
+          const key = push(dbRef(database, 'hop_dong_chi_tiet')).key
+          if (key) {
+            const mucOff = Number(item.muc_phan_tram_off) || 0
+            ctUpdates[`hop_dong_chi_tiet/${key}`] = {
+              ma_hop_dong: maHD,
+              so_hop_dong: soHD,
+              Ma_hang: item.Ma_hang || '', ma_hang: item.Ma_hang || '',
+              Ten_hang: item.Ten_hang || '', ten_hang: item.Ten_hang || '',
+              Main_img: item.Main_img || '', main_img: item.Main_img || '',
+              Ma_nha_cung_cap: item.Ma_nha_cung_cap || '', ma_ncc: item.Ma_nha_cung_cap || '',
+              Ten_nha_cung_cap: item.Ten_nha_cung_cap || '', ten_ncc: item.Ten_nha_cung_cap || '',
+              Mo_ta_chung: item.Mo_ta_chung || '', mo_ta_chung: item.Mo_ta_chung || '',
+              Mo_ta_chi_tiet: item.Mo_ta_chi_tiet || '', mo_ta_chi_tiet: item.Mo_ta_chi_tiet || '',
+              Features: item.Features || '', features: item.Features || '', dien_giai: item.Features || '',
+              Danh_muc: item.Danh_muc || '', danh_muc: item.Danh_muc || '',
+              License_duration: item.License_duration || '', license_duration: item.License_duration || '',
+              DVT: item.DVT || '', dvt: item.DVT || '',
+              Gia_tieu_chuan: giaTCToSave, gia_tieu_chuan: giaTCToSave,
+              Don_gia: donGiaToSave, don_gia: donGiaToSave,
+              Don_vi_tien_te: 'VND', don_vi_tien_te: 'VND',
+              Ti_gia: 1, ti_gia: 1,
+              Thue_VAT: item.Thue_VAT !== undefined ? item.Thue_VAT : 10, thue_vat: item.Thue_VAT !== undefined ? item.Thue_VAT : 10,
+              So_luong: item.So_luong || 1, so_luong: item.So_luong || 1,
+              Trang_thai_hop_dong: 'Tạm', trang_thai_hop_dong: 'Tạm',
+              gia_hardware: Number(item.gia_hardware) || 0,
+              gia_nhap: Number(item.gia_nhap) || 0,
+              'muc_%_off': mucOff, muc_phan_tram_off: mucOff,
+              don_vi_tien_te_USD: 'USD',
+              Ti_giaUSD: tg,
+              Gia_tieu_chuanUSD: Number(item.Gia_tieu_chuan) || 0,
+              Don_giaUS: Number(item.Don_gia) || 0,
+              Don_giaUSD: Number(item.Don_gia) || 0,
+              gia_nhapUSD: Number(item.gia_nhap) || 0,
+              start_date: item.start_date || '',
+              end_date: item.end_date || '',
+              is_giahan: item.is_giahan || '',
+              thoi_gian_bao_hanh: item.thoi_han_bao_hanh || '',
+              thoi_han_bao_hanh: item.thoi_han_bao_hanh || '',
+              volume: item.volume || '',
+              ghi_chu: ''
+            }
+          }
+        })
+        await update(dbRef(database), ctUpdates)
+      }
+
+      // 1c. Lưu chi_tiet_mua_hang trên Firebase
+      if (props.selectedItems && props.selectedItems.length) {
+        const ctmhUpdates: Record<string, any> = {}
+        props.selectedItems.forEach(item => {
+          const k = push(dbRef(database, 'chi_tiet_mua_hang')).key
+          if (!k) return
+          const dg = (item.Don_gia || 0) * (1 - (item.muc_phan_tram_off || 0) / 100)
+          const tt = dg * (item.So_luong || 1)
+          ctmhUpdates[`chi_tiet_mua_hang/${k}`] = {
+            ma_hop_dong: maHD, Ma_hop_dong: maHD,
+            so_hop_dong: soHD,
+            so_po: soPO, So_PO: soPO,
+            ten_po: tenPO, Ten_PO: tenPO,
+            ma_hang_hoa: '', Ma_hang_hoa: '',
+            ma_sku: item.Ma_hang || '', Ma_sku: item.Ma_hang || '',
+            ten_hang_hoa: item.Ten_hang || '', Ten_hang_hoa: item.Ten_hang || '',
+            ma_nha_cung_cap: item.Ma_nha_cung_cap || '', Ma_nha_cung_cap: item.Ma_nha_cung_cap || '',
+            ten_nha_cung_cap: item.Ten_nha_cung_cap || '', Ten_nha_cung_cap: item.Ten_nha_cung_cap || '',
+            sl: item.So_luong || '', Sl: item.So_luong || '',
+            list_price_usd: item.Don_gia || '', 'List_price(USD)': item.Don_gia || '',
+            muc_off: item.muc_phan_tram_off || '', Muc_off: item.muc_phan_tram_off || '',
+            don_gia: dg, Don_gia: dg,
+            thanh_tien: tt, Thanh_tien: tt,
+            start_date_sophos: '', Start_date_sophos: '',
+            serial_number_sophos: '', Serial_number_sophos: '',
+            license_id_sophos: '', License_id_sophos: '',
+            base_code_kaspersky: '', Base_code_kaspersky: '',
+            expiration_time_kaspersky: '', Expiration_time_kaspersky: '',
+            start_date_other: '', Start_date_other: '',
+            ghi_chu: '', Ghi_chu: '',
+            content_of_contract_po: contentPoVal, content_of_contract_PO: contentPoVal
+          }
+        })
+        await update(dbRef(database), ctmhUpdates)
+      }
+
+      // 2. Lưu deal_reg trên Firebase
+      if (dealRegs.value && dealRegs.value.length) {
+        const drUpdates: Record<string, any> = {}
+        for (const dr of dealRegs.value) {
+          for (const item of dr.items) {
+            const k = push(dbRef(database, 'deal_reg')).key
+            if (!k) continue
+            drUpdates[`deal_reg/${k}`] = {
+              ma_hop_dong: maHD, Ma_hop_dong: maHD,
+              so_hop_dong: soHD,
+              so_po: soPO, So_PO: soPO,
+              ten_po: tenPO, Ten_PO: tenPO,
+              content_of_contract_po: contentPoVal, content_of_contract_PO: contentPoVal,
+              ma_nha_cung_cap: '', Ma_nha_cung_cap: '',
+              ten_nha_cung_cap: dr.brand, Ten_nha_cung_cap: dr.brand,
+              end_user_company_name: getEditable('CUS_COMPANY'), End_user_company_name: getEditable('CUS_COMPANY'),
+              end_user_company_name_vietnamese: getEditable('INV_CONG_TY'), End_user_company_name_VIetnamese: getEditable('INV_CONG_TY'),
+              end_username: getEditable('CUS_CONTACT'), End_username: getEditable('CUS_CONTACT'),
+              end_user_email: getEditable('CUS_EMAIL'), End_user_email: getEditable('CUS_EMAIL'),
+              company_address: getEditable('CUS_ADDRESS'), Company_address: getEditable('CUS_ADDRESS'),
+              end_user_phone: getEditable('CUS_MOBILE'), End_user_phone: getEditable('CUS_MOBILE'),
+              end_user_website: getEditable('CUS_WEBSITE'), End_user_website: getEditable('CUS_WEBSITE'),
+              country: getEditable('DR_COUNTRY') || 'VIET NAM', Country: getEditable('DR_COUNTRY') || 'VIET NAM',
+              is_existing_sophos_customer: getEditable('DR_EXISTING_CUST'), isExistingSophosCustomer: getEditable('DR_EXISTING_CUST'),
+              company_size: getEditable('DR_SIZE'),
+              estimated_customer_budget_usd: getEditable('DR_BUDGET'), 'estimated_customer_budget(USD)': getEditable('DR_BUDGET'),
+              estimated_closure_date: getEditable('DR_CLOSE_DATE'),
+              competition: getEditable('DR_COMP'),
+              proposed_poc_schedule: getEditable('DR_POC'), proposed_POC_schedule: getEditable('DR_POC'),
+              partner_company_name: getEditable('DR_PARTNER_NAME') || 'Nam Truong Son System Integration Corp',
+              partner_address: getEditable('DR_PARTNER_ADDRESS') || '55/10 Trần Đình Xu, Phường Cầu Kho, Quận 1, Thành phố Hồ Chí Minh, Việt Nam',
+              account_manager_name: getEditable('DR_AM_NAME') || 'LÊ PHI SƠN',
+              account_manager_email: getEditable('DR_AM_EMAIL') || 'sonlp@nts.com.vn',
+              account_manager_phone: getEditable('DR_AM_PHONE') || '090 8137488',
+              remark: getEditable('DR_REMARKS'),
+              ma_hang_hoa: '',
+              ma_sku: item.sku || '',
+              ten_hang_hoa: item.name || '',
+              ma_nha_cung_cap_item: '',
+              ten_nha_cung_cap_item: dr.brand,
+              qty: item.qty || '',
+              estimated_value_usd: formatNum(item.value), 'estimated_value(USD)': formatNum(item.value),
+              total: formatNum(dr.total), Total: formatNum(dr.total)
+            }
+          }
+        }
+        if (Object.keys(drUpdates).length > 0) {
+          await update(dbRef(database), drUpdates)
+        }
+      }
+
+      // 3. Lưu sale_report trên Firebase
+      const firstItem = props.selectedItems[0] || {}
+      const maNCC = firstItem.Ma_nha_cung_cap || ''
+      const tenNCC = firstItem.Ten_nha_cung_cap || ''
+      const srKey = push(dbRef(database, 'sale_report')).key || `SR_${Date.now()}`
+      const srContentPo = props.contentOfContractPO || tenPO
+      const nowSr = new Date()
+      const padSr = (n: number) => String(n).padStart(2, '0')
+      const nowSrStr = `${padSr(nowSr.getDate())}/${padSr(nowSr.getMonth() + 1)}/${nowSr.getFullYear()} ${padSr(nowSr.getHours())}:${padSr(nowSr.getMinutes())}:${padSr(nowSr.getSeconds())}`
+      const srPayload = {
+        ID: srKey,
+        created_time: nowSrStr,
+        ma_hop_dong: maHD,
+        so_hop_dong: soHD,
+        So_PO: soPO,
+        content_of_contract_po: srContentPo,
+        content_of_contract_PO: srContentPo,
+        Ma_khach_hang: maKH,
+        Ten_khach_hang: tenKhachHangSave,
+        Ma_cong_ty: props.khach?.Ma_cong_ty || maCT,
+        Ten_cong_ty: getEditable('INV_CONG_TY') || props.khach?.Ten_cong_ty || congTy,
+        MST: getEditable('INV_MST') || props.khach?.MST || '',
+        Ma_nha_cung_cap: maNCC,
+        Ten_nha_cung_cap: tenNCC,
+        Tong_tien_truoc_thueVAT: props.quoteTotals?.truoc ?? tongTruocThue,
+        Tong_thueVAT: props.quoteTotals?.vat ?? vat,
+        Tong_tien_sau_thueVAT: props.quoteTotals?.sau ?? sau,
+        chiet_khau_tong_truoc_thue: props.quoteFinancials?.chietKhauTruocThue ?? 0,
+        phan_tram_chiet_khau_tong_truoc_thue: props.quoteFinancials?.chietKhauTruocThuePct ?? 0,
+        thue_chenh_lech_gia: props.quoteFinancials?.thueChenhLech ?? 0,
+        phan_tram_thue_chenh_lech_gia: props.quoteFinancials?.thueChenhLechPct ?? 0,
+        chenh_lech_gia: props.quoteFinancials?.chenhLechGia ?? 0,
+        con_lai: props.quoteFinancials?.conLai ?? 0,
+        tong_chiet_khau: props.quoteFinancials?.tongChietKhau ?? 0,
+        Tong_thanh_tien_chua_VAT_mua_hang: 0,
+        Tong_CP_don_hang: 0,
+        account_manager_name: getEditable('DR_AM_NAME') || 'LÊ PHI SƠN',
+        link_excel_bao_gia: linkBaoGia,
+        ten_file_bao_gia: linkBaoGia ? tenFileBaoGia : '',
+        cong_no: props.quoteTotals?.sau ?? sau,
+        so_tien_da_thanh_toan: 0,
+        thoi_gian_thanh_toan: '',
+        loai_thanh_toan: 'mot_lan',
+        han_thanh_toan: '',
+        ke_hoach_thanh_toan: []
+      }
+      await set(dbRef(database, `sale_report/${srKey}`), srPayload)
+
+      saved.value = true
+      emit('saved')
+      asyncResult.value = { show: true, type: 'success', title: 'Lưu Pipeline thành công', msg: `PO: ${soPO}\nKH: ${tenKhachHangSave || maKH}` }
+      if (asyncTimeout) window.clearTimeout(asyncTimeout)
+      asyncTimeout = window.setTimeout(() => { asyncResult.value.show = false }, 3000)
+      return
+    }
 
     // 0. Cập nhật / Thêm mới khach_hang
     const isExisting = props.customers?.some((c: any) => c.Ma_khach_hang === maKH) || !!props.khach?.Ma_khach_hang
@@ -572,15 +1059,6 @@ const saveRecord = async () => {
     })
 
     // 1b. POST hop_dong_tong_quat + hop_dong_chi_tiet
-    const n = new Date()
-    const p = (v: number) => String(v).padStart(2,'0')
-    const ngayTao = `${p(n.getHours())}:${p(n.getMinutes())}:${p(n.getSeconds())} ${p(n.getDate())}/${p(n.getMonth()+1)}/${n.getFullYear()}`
-    
-    // ✅ Dùng quoteTotals đã tính đúng từ BaoGia (bao gồm giá sau khi tăng giá kí HĐ)
-    const tongTruocThue = props.quoteTotals?.truoc ?? 0
-    const vat = props.quoteTotals?.vat ?? 0
-    const sau = props.quoteTotals?.sau ?? 0
-
     const hdTongRow = [
       maHD,                        // 0  ma_hop_dong
       soHD,                        // 1  so_hop_dong
@@ -603,7 +1081,7 @@ const saveRecord = async () => {
       1,                           // 18 ti_gia
       props.maHopDongCu || '',      // 19 ma_hop_dong_cu
       props.quoteTongGiaThucTe ?? tongTruocThue,  // 20 tong_gia_thuc_te (lấy theo FE)
-      `${p(n.getHours())}:${p(n.getMinutes())}, ${p(n.getDate())}/${p(n.getMonth()+1)}/${n.getFullYear()}`, // 21 created_time
+      createdTimeStr,              // 21 created_time
       soPO,                        // 22 So_PO
       tenPO,                       // 23 Ten_PO
       props.contentOfContractPO || '',  // 24 content_of_contract_po
@@ -794,6 +1272,7 @@ const saveRecord = async () => {
 }
 
 const props = defineProps<{
+  useFirebase?: boolean,
   khach: any,
   customers?: any[],
   excelMappingConfig?: any[],

@@ -300,66 +300,110 @@ code {
   .sidebar {
     width: 100% !important;
     border-right: none;
-    border-top: 1px solid rgba(255,255,255,0.06);
+    border-top: 1px solid rgba(255,255,255,0.08);
     border-bottom: none;
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
     top: auto;
-    height: auto;
+    height: 56px !important;
+    max-height: 56px !important;
     z-index: 9999;
     background: #0d1b2a;
     box-shadow: 0 -4px 24px rgba(0,0,0,0.5);
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+    padding: 0 !important;
   }
   .logo {
     display: none !important;
   }
   .toggle-btn {
-    display: none;
+    display: none !important;
+  }
+  .nav-section-title,
+  .nav-section-divider {
+    display: none !important;
   }
   .nav-menu {
-    flex-direction: row;
-    overflow-x: auto;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    height: 100% !important;
+    overflow-x: hidden !important;
+    overflow-y: hidden !important;
     padding: 0 !important;
-    gap: 0;
+    margin: 0 !important;
+    gap: 0 !important;
+  }
+  .nav-group-items {
+    display: flex !important;
+    flex-direction: row !important;
+    flex: 2 1 0 !important;
+    gap: 0 !important;
+    height: 100% !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  @supports (display: contents) {
+    .nav-group-items {
+      display: contents !important;
+    }
   }
   .nav-item {
-    flex: 1;
-    flex-direction: column;
-    gap: 4px;
-    padding: 10px 8px !important;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    border-radius: 0;
-    font-size: 11px;
+    flex: 1 1 0 !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 3px !important;
+    padding: 6px 4px !important;
+    justify-content: center !important;
+    align-items: center !important;
+    text-align: center !important;
+    border-radius: 0 !important;
+    font-size: 11px !important;
     color: #94a3b8;
+    box-sizing: border-box !important;
+    border-top: 2px solid transparent !important;
+    text-decoration: none !important;
   }
   .nav-item span,
+  .nav-item .nav-text,
   .app-layout.sidebar-collapsed .nav-text,
   .app-layout.sidebar-collapsed .nav-text-container {
-    display: inline !important;
-    font-size: 11px;
+    display: block !important;
+    font-size: 11px !important;
     font-weight: 600;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 100% !important;
+    line-height: 1.2 !important;
   }
   .app-layout.sidebar-collapsed .nav-text-container {
     display: flex !important;
   }
   .nav-item svg {
-    width: 22px;
-    height: 22px;
+    width: 20px !important;
+    height: 20px !important;
+    flex-shrink: 0 !important;
   }
   .nav-item:hover {
     background: rgba(255, 255, 255, 0.05);
     color: #ffffff;
   }
   .nav-item.router-link-active {
-    background: rgba(24, 90, 89, 0.2);
-    color: #14b8a6;
-    border-top: 2px solid #14b8a6;
-    margin-top: -2px;
-    box-shadow: none;
+    background: rgba(24, 90, 89, 0.2) !important;
+    color: #14b8a6 !important;
+    border-top: 2px solid #14b8a6 !important;
+    margin-top: 0 !important;
+    box-shadow: none !important;
   }
   .main-content {
     max-width: 100% !important;

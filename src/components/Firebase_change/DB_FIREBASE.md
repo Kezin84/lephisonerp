@@ -22,5 +22,6 @@ Mỗi object Report bên trong `REPORT/` (được key bằng mã, VD: `RPT_2026
 - `reminder-content`: Nội dung nhắc nhở (String)
 - `reminder-time`: Thời gian nhắc nhở (String)
 - `reminder-visible`: Cờ trạng thái hiển thị nhắc nhở (String)
+- `maKH`: Mã khách hàng để liên kết với node `khach_hang` (String, VD: "KH_001")
 
 *Lưu ý: Có một số trường bị trùng lặp giữa chữ hoa và chữ thường (ví dụ: `ID` và `id`, `THOI_GIAN` và `thoi_gian`), code hiện tại có thể đang sử dụng hoặc lưu trữ cả hai dạng này.*
