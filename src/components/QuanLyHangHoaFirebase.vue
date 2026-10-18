@@ -21,6 +21,15 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
           Import Kaspersky
         </label>
+        <label class="btn btn-outline" style="border-color: rgba(99, 102, 241, 0.5); color: #818cf8; cursor: pointer;">
+          <input type="file" accept=".xlsx" style="display:none" @change="handleAcronisUpload" />
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          Import Acronis
+        </label>
+        <a href="/template_excel/ACRONIS_file_mau_import.xlsx" download="ACRONIS_file_mau_import.xlsx" class="btn btn-outline" style="border-color: rgba(99,102,241,0.3); color: #94a3b8; font-size: 12px; padding: 4px 8px;" title="Tải file mẫu Acronis">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          Mẫu Acronis
+        </a>
         <div style="display: flex; align-items: center; gap: 8px;">
           <label class="btn btn-outline" style="border-color: rgba(167, 139, 250, 0.4); color: #a78bfa; cursor: pointer;">
             <input type="file" accept="image/*,.pdf" style="display:none" @change="handleGiaOffUpload" />
@@ -34,6 +43,10 @@
             <span>Thời gian: {{ formatGiaOffDate(latestFileGiaOff.thoi_gian) }}</span>
           </div>
         </div>
+        <button class="btn btn-pricelist" @click="openCreatePriceListModal">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+          Tạo Bảng Giá
+        </button>
         <button class="btn btn-primary" @click="openAddModal">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           Thêm mới
@@ -46,15 +59,62 @@
       </div>
     </div>
 
-    <!-- Filters -->
-    <div class="filters" style="display: flex; gap: 12px;">
-      <div style="flex: 1; max-width: 400px; position: relative;">
+    <!-- Filters & Price List Selector -->
+    <div class="filters" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+      <div style="flex: 1; min-width: 240px; max-width: 360px; position: relative;">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
         <input type="text" v-model="searchQuery" placeholder="Tìm mã / tên hàng / NCC..." class="search-input" style="padding-left: 36px; max-width: 100%;" />
       </div>
-      <div style="flex: 1; max-width: 300px; position: relative;">
+      <div style="flex: 1; min-width: 200px; max-width: 240px; position: relative;">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
         <input type="number" v-model="userVolumeFilter" placeholder="Số lượng user (Volume)..." class="search-input" style="padding-left: 36px; max-width: 100%;" />
+      </div>
+
+      <!-- Khung chọn Bảng Giá -->
+      <div class="pricelist-bar">
+        <div class="pricelist-select-wrap">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+          <select v-model="selectedPriceListId" class="pricelist-select">
+            <option value="">📋 Giá gốc hệ thống ({{ items.length }} SP)</option>
+            <option v-for="pl in priceLists" :key="pl._firebaseKey" :value="pl._firebaseKey">
+              🏷️ {{ pl.ten_bang_gia }} ({{ (pl.items || []).length }} SP){{ formatPriceListPeriodInline(pl) }}
+            </option>
+          </select>
+        </div>
+
+        <template v-if="activePriceList">
+          <span class="pricelist-period-badge" v-if="activePriceList.ngay_bat_dau || activePriceList.ngay_ket_thuc">
+            🗓️ {{ formatPriceListPeriod(activePriceList) }}
+          </span>
+          <span class="pricelist-status-badge" :class="getPriceListStatusInfo(activePriceList).cls">
+            {{ getPriceListStatusInfo(activePriceList).label }}
+          </span>
+          <button
+            type="button"
+            class="pricelist-autosync-btn"
+            :class="activePriceList.auto_sync_base_price ? 'on' : 'off'"
+            @click="togglePriceListAutoSync(activePriceList)"
+            :title="activePriceList.auto_sync_base_price ? 'Đang BẬT: Khi giá gốc thay đổi, bảng giá này sẽ tự động tính lại theo % / số tiền tăng giảm. Nhấn để TẮT.' : 'Đang TẮT: Giữ cố định giá bán hiện tại dù giá gốc thay đổi. Nhấn để BẬT tự động cập nhật.'"
+          >
+            <span v-if="activePriceList.auto_sync_base_price">🔄 Tự động theo giá gốc: BẬT</span>
+            <span v-else>🔒 Giá cố định (Tắt tự động)</span>
+          </button>
+          <span class="pricelist-rule-badge" v-if="activePriceList.default_rule && activePriceList.default_rule.value">
+            {{ activePriceList.default_rule.direction === 'decrease' ? 'Giảm (-)' : 'Tăng (+)' }}
+            {{ activePriceList.default_rule.type === 'percent' ? activePriceList.default_rule.value + '%' : formatNumberPlain(activePriceList.default_rule.value) }}
+          </span>
+          <button type="button" class="pricelist-action-btn edit" @click="openEditPriceListModal(activePriceList)" title="Chỉnh sửa bảng giá">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            Sửa
+          </button>
+          <button type="button" class="pricelist-action-btn export" @click="exportPriceListToExcel(activePriceList)" title="Xuất Excel bảng giá">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Xuất Excel
+          </button>
+          <button type="button" class="pricelist-action-btn delete" @click="requestDeletePriceList(activePriceList)" title="Xóa bảng giá">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          </button>
+        </template>
       </div>
     </div>
 
@@ -138,12 +198,35 @@
               
               <p style="color: #fbbf24;">Giá nhập: <span style="color: #fcd34d;">{{ formatCurrency(item.gia_nhap || 0, item.Don_vi_tien_te) }}</span></p>
               <p>Thuế VAT: <span style="color: #facc15;">{{ item.Thue_VAT ? item.Thue_VAT + '%' : '0%' }}</span></p>
-              <p class="highlight" style="margin-top: 4px;">
+              <template v-if="getPriceListEntry(item)">
+                <p style="font-size: 12px; color: #94a3b8; margin-top: 2px;">
+                  Giá bán gốc:
+                  <span style="text-decoration: line-through; color: #64748b;">
+                    {{ formatCurrency(activePriceList?.auto_sync_base_price ? item.Don_gia : getPriceListEntry(item).gia_goc, item.Don_vi_tien_te) }}
+                  </span>
+                </p>
+                <p class="highlight" style="margin-top: 4px;">
+                  <span style="display: inline-flex; align-items: center; gap: 6px;">
+                    Giá bảng giá:
+                    <span class="pl-card-diff-badge" :class="getPriceListDiffClass(getPriceListEntry(item), activePriceList?.auto_sync_base_price ? item.Don_gia : getPriceListEntry(item).gia_goc)">
+                      {{ formatPriceListRuleShort(getPriceListEntry(item), activePriceList?.auto_sync_base_price ? item.Don_gia : getPriceListEntry(item).gia_goc) }}
+                    </span>
+                  </span>
+                  <span style="color: #34d399; font-weight: 700;">
+                    {{ formatCurrency(getPriceListEntry(item).gia_ban_moi, item.Don_vi_tien_te) }}
+                    <small v-if="item.DVT" style="font-size: 11px; color: #64748b; font-weight: 500;">/ {{ item.DVT }}</small>
+                  </span>
+                </p>
+              </template>
+              <p v-else class="highlight" style="margin-top: 4px;">
                 Giá bán: 
                 <span>
                   {{ formatCurrency(item.Don_gia, item.Don_vi_tien_te) }}
                   <small v-if="item.DVT" style="font-size: 11px; color: #64748b; font-weight: 500;">/ {{ item.DVT }}</small>
                 </span>
+              </p>
+              <p style="font-size: 11.5px; color: #64748b; margin-top: 4px; padding-top: 4px; border-top: 1px dashed rgba(255,255,255,0.07);">
+                Cập nhật gốc: <span style="color: #94a3b8; font-weight: 500;">{{ formatLastUpdated(item.last_updated) }}</span>
               </p>
             </div>
           </div>
@@ -166,7 +249,15 @@
     <div class="modal-overlay" v-if="showModal" @click.self="closeModal">
       <div class="modal-content large-modal">
         <div class="modal-header">
-          <h2>{{ isEditing ? 'Cập nhật hàng hóa' : 'Thêm hàng hóa mới' }}</h2>
+          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <h2>{{ isEditing ? 'Cập nhật hàng hóa' : 'Thêm hàng hóa mới' }}</h2>
+            <span v-if="isEditing && formData.last_updated" style="font-size: 12px; color: #94a3b8; background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 99px;">
+              🕒 Cập nhật cuối: <strong style="color: #38bdf8;">{{ formatLastUpdated(formData.last_updated) }}</strong>
+            </span>
+            <span v-if="isEditing && activePriceList && formData._has_pl_entry" style="font-size: 12px; color: #fbbf24; background: rgba(245, 158, 11, 0.14); border: 1px solid rgba(245, 158, 11, 0.35); padding: 4px 12px; border-radius: 99px;">
+              🏷️ Đang sửa theo bảng giá: <strong style="color: #fde68a;">{{ activePriceList.ten_bang_gia }}</strong>
+            </span>
+          </div>
           <button class="close-btn" @click="closeModal">&times;</button>
         </div>
         <div class="modal-body">
@@ -217,6 +308,7 @@
                   <datalist id="ncc-options">
                     <option value="SOPHOS"></option>
                     <option value="KASPERSKY"></option>
+                    <option value="ACRONIS"></option>
                   </datalist>
                 </div>
                 <!--
@@ -231,7 +323,7 @@
                 </div>
                 <div class="form-group col-span-2">
                   <label>Features (Tính năng)</label>
-                  <textarea v-model="formData.Features" rows="3"></textarea>
+                  <ExcelEditor v-model="formData.Features" placeholder="Nhập tính năng sản phẩm..." class="features-excel-editor" />
                 </div>
                 <div class="form-group col-span-2">
                   <label>Ghi chú</label>
@@ -259,8 +351,53 @@
                   <NumberInput v-model="formData.Ti_gia" />
                 </div>
                 <div class="form-group col-span-2">
-                  <label>Đơn giá</label>
-                  <NumberInput v-model="formData.Don_gia" />
+                  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; margin-bottom: 4px;">
+                    <label style="margin-bottom: 0; display: inline-flex; align-items: center; gap: 6px;">
+                      <span>{{ isEditing && activePriceList && formData._has_pl_entry ? `Đơn giá (${activePriceList.ten_bang_gia})` : 'Đơn giá' }}</span>
+                      <span
+                        v-if="isEditing && activePriceList && formData._has_pl_entry"
+                        class="pl-card-diff-badge"
+                        :class="toNum(formData.Don_gia) > toNum(formData._gia_goc_he_thong) ? 'up' : (toNum(formData.Don_gia) < toNum(formData._gia_goc_he_thong) ? 'down' : 'neutral')"
+                      >
+                        {{ formatModalPriceListBadge() }}
+                      </span>
+                    </label>
+                    <span v-if="isEditing && activePriceList && formData._has_pl_entry" style="font-size: 11.5px; color: #94a3b8;">
+                      Giá gốc hệ thống: <strong style="color: #cbd5e1;">{{ formatCurrency(formData._gia_goc_he_thong, formData.Don_vi_tien_te) }}</strong>
+                    </span>
+                  </div>
+                  <NumberInput v-model="formData.Don_gia" @update:modelValue="onModalDonGiaChange" />
+                  <div
+                    v-if="isEditing && activePriceList && formData._has_pl_entry"
+                    style="margin-top: 8px; padding: 8px 10px; background: rgba(245, 158, 11, 0.08); border: 1px dashed rgba(245, 158, 11, 0.35); border-radius: 8px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;"
+                  >
+                    <span style="font-size: 12px; color: #fcd34d; font-weight: 600;">
+                      ⚡ Chỉnh % theo giá gốc:
+                    </span>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <select
+                        v-model="formData._pl_direction"
+                        @change="onModalPriceListPctChange"
+                        class="pl-row-select"
+                        :class="formData._pl_direction === 'decrease' ? 'down' : 'up'"
+                        style="height: 32px; font-size: 12px;"
+                      >
+                        <option value="increase">+ Tăng</option>
+                        <option value="decrease">- Giảm</option>
+                      </select>
+                      <div style="position: relative; display: inline-flex; align-items: center;">
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          v-model.number="formData._pl_pct"
+                          @input="onModalPriceListPctChange"
+                          style="width: 86px; height: 32px; padding: 4px 24px 4px 8px; border-radius: 6px; border: 1px solid rgba(245, 158, 11, 0.4); background: #0f172a; color: #34d399; font-weight: 700; font-size: 13px; text-align: right;"
+                        />
+                        <span style="position: absolute; right: 7px; font-size: 12px; color: #94a3b8; font-weight: 700; pointer-events: none;">%</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 <div class="form-group col-span-2">
                   <label>Thuế VAT (%)</label>
@@ -414,7 +551,24 @@
                 <td class="import-th--sticky-left import-th--idx import-row__idx">{{ idx + 1 }}</td>
                 <td><input type="text" v-model="row.Ma_hang" class="imp-input imp-input--code" /></td>
                 <td><textarea v-model="row.Ten_hang" class="imp-input imp-input--textarea imp-input--autofit" rows="1"></textarea></td>
-                <td><textarea v-model="row.Features" class="imp-input imp-input--textarea imp-input--autofit" rows="1"></textarea></td>
+                <td>
+                  <div class="imp-features-cell">
+                    <div
+                      class="imp-input imp-input--rich"
+                      contenteditable="true"
+                      v-html="formatFeaturesHtml(row.Features)"
+                      @blur="row.Features = $event.currentTarget.innerHTML"
+                    ></div>
+                    <button
+                      type="button"
+                      class="imp-features-edit-btn"
+                      title="Mở công cụ chỉnh sửa format Features"
+                      @click="openImportFeaturesEditor(row)"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    </button>
+                  </div>
+                </td>
                 <td><textarea v-model="row.Danh_muc" class="imp-input imp-input--textarea imp-input--autofit" rows="1"></textarea></td>
                 <td><input type="text" v-model="row.Type" class="imp-input imp-input--sm" /></td>
                 <td><NumberInput v-model="row.Don_gia" class="imp-input imp-input--num imp-input--green" /></td>
@@ -457,6 +611,22 @@
       </div>
     </div>
 
+    <!-- MODAL CHỈNH SỬA FORMAT FEATURES TRONG BẢNG IMPORT PREVIEW -->
+    <div v-if="importFeaturesEditRow" class="modal-overlay" @click.self="importFeaturesEditRow = null" style="z-index: 3000;">
+      <div class="modal-content" style="max-width: 820px;">
+        <div class="modal-header">
+          <h2>Chỉnh sửa định dạng Features — {{ importFeaturesEditRow.Ma_hang }}</h2>
+          <button class="close-btn" @click="importFeaturesEditRow = null">&times;</button>
+        </div>
+        <div class="modal-body">
+          <ExcelEditor v-model="importFeaturesEditRow.Features" placeholder="Nhập tính năng sản phẩm..." class="features-excel-editor" />
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" @click="importFeaturesEditRow = null">Xong</button>
+        </div>
+      </div>
+    </div>
+
     <!-- CONFIRM DELETE MODAL -->
     <div v-if="confirmDeleteModal.show" class="modal-overlay" @click.self="confirmDeleteModal.show = false" style="z-index: 10001;">
       <div class="custom-alert-modal">
@@ -468,6 +638,363 @@
         <div class="alert-actions" style="display: flex; gap: 12px; justify-content: center;">
           <button class="btn btn-secondary" @click="confirmDeleteModal.show = false">Hủy</button>
           <button class="btn btn-primary" style="background: #ef4444; border: none; box-shadow: 0 4px 12px rgba(239,68,68,0.3);" @click="executeDelete">Xóa ngay</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONFIRM DELETE PRICE LIST MODAL -->
+    <div v-if="confirmDeletePriceListModal.show" class="modal-overlay" @click.self="confirmDeletePriceListModal.show = false" style="z-index: 10002;">
+      <div class="custom-alert-modal">
+        <div class="alert-icon question" style="color: #ef4444; background: rgba(239, 68, 68, 0.1);">
+          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+        </div>
+        <h3 class="alert-title" style="color: #f8fafc; font-size: 18px; margin: 16px 0 8px; font-weight: 700;">Xóa Bảng Giá</h3>
+        <p class="alert-desc" style="color: #94a3b8; font-size: 14px; margin-bottom: 24px;">
+          Bạn có chắc muốn xóa bảng giá <br>
+          <span style="color:#f59e0b; font-weight: 700;">{{ confirmDeletePriceListModal.priceList?.ten_bang_gia }}</span>?
+        </p>
+        <div class="alert-actions" style="display: flex; gap: 12px; justify-content: center;">
+          <button class="btn btn-secondary" @click="confirmDeletePriceListModal.show = false">Hủy</button>
+          <button class="btn btn-primary" style="background: #ef4444; border: none; box-shadow: 0 4px 12px rgba(239,68,68,0.3);" @click="executeDeletePriceList">Xóa bảng giá</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL TẠO / CẬP NHẬT BẢNG GIÁ -->
+    <div v-if="showPriceListModal" class="import-overlay" @click.self="showPriceListModal = false" style="z-index: 2600;">
+      <div class="import-modal pricelist-modal">
+        <!-- Header -->
+        <div class="import-modal__header">
+          <div class="import-modal__title-group">
+            <div class="import-modal__icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border-color: rgba(245, 158, 11, 0.3);">
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+            </div>
+            <div>
+              <h2 class="import-modal__title">
+                {{ isEditingPriceList ? 'Cập nhật Bảng Giá' : 'Tạo Bảng Giá Mới' }}
+              </h2>
+              <p class="import-modal__subtitle">
+                Đã chọn <strong style="color: #34d399;">{{ selectedPriceListCount }}</strong> / {{ priceListRows.length }} sản phẩm trong kho
+              </p>
+            </div>
+          </div>
+          <button class="import-modal__close" @click="showPriceListModal = false" title="Đóng">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        <!-- Khung Cấu hình Tên Bảng Giá & Khung Tăng/Giảm Giá Bán Hàng Loạt -->
+        <div class="pl-config-section">
+          <!-- Khung 1: Tên bảng giá, Thời gian áp dụng & Ghi chú -->
+          <div class="pl-config-card">
+            <div class="pl-config-card__title">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+              1. Thông tin & Thời hạn Bảng Giá
+            </div>
+            <div class="pl-config-grid pl-config-grid--4">
+              <div class="pl-field">
+                <label>Tên bảng giá <span class="required">*</span></label>
+                <input type="text" v-model="priceListForm.ten_bang_gia" placeholder="VD: Bảng giá Đại lý cấp 1..." class="pl-input" />
+              </div>
+              <div class="pl-field">
+                <label>Thời gian bắt đầu áp dụng</label>
+                <input type="date" v-model="priceListForm.ngay_bat_dau" class="pl-input" />
+              </div>
+              <div class="pl-field">
+                <label>Thời gian kết thúc</label>
+                <input type="date" v-model="priceListForm.ngay_ket_thuc" class="pl-input" />
+              </div>
+              <div class="pl-field">
+                <label>Ghi chú / Mô tả</label>
+                <input type="text" v-model="priceListForm.ghi_chu" placeholder="Ghi chú đối tượng áp dụng..." class="pl-input" />
+              </div>
+            </div>
+            <div class="pl-autosync-box" :class="{ active: priceListForm.auto_sync_base_price }">
+              <label class="pl-autosync-label">
+                <input
+                  type="checkbox"
+                  v-model="priceListForm.auto_sync_base_price"
+                  @change="onModalAutoSyncChange"
+                  class="pl-autosync-checkbox"
+                />
+                <span class="pl-autosync-title">
+                  {{ priceListForm.auto_sync_base_price ? '🔄 Tự động cập nhật khi bảng giá gốc thay đổi (Đang BẬT)' : '🔒 Giữ giá cố định — Không tự động đổi theo giá gốc (Đang TẮT)' }}
+                </span>
+              </label>
+              <span class="pl-autosync-hint">
+                {{ priceListForm.auto_sync_base_price
+                  ? 'Khi giá gốc sản phẩm thay đổi (do Import Excel hoặc sửa giá gốc), bảng giá này sẽ tự động cập nhật giá bán mới theo % / số tiền đã cài đặt.'
+                  : 'Bảng giá sẽ giữ cố định mức giá bán đã lưu, không bị thay đổi khi bảng giá gốc biến động.' }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Khung 2: Khung điều chỉnh giá bán tăng / giảm theo % hoặc Số tiền -->
+          <div class="pl-config-card pl-config-card--highlight">
+            <div class="pl-config-card__title">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+              2. Khung Điều Chỉnh Giá Bán (Tăng / Giảm theo % hoặc Số tiền)
+            </div>
+            <div class="pl-bulk-controls">
+              <div class="pl-field" style="min-width: 135px;">
+                <label>Chiều điều chỉnh</label>
+                <select v-model="priceListForm.bulkDirection" @change="onBulkRuleAutoApply" class="pl-select" :class="priceListForm.bulkDirection === 'decrease' ? 'pl-select--down' : 'pl-select--up'">
+                  <option value="increase">📈 Tăng giá (+)</option>
+                  <option value="decrease">📉 Giảm giá (-)</option>
+                </select>
+              </div>
+              <div class="pl-field" style="min-width: 150px;">
+                <label>Đơn vị tính</label>
+                <select v-model="priceListForm.bulkType" @change="onBulkRuleAutoApply" class="pl-select">
+                  <option value="percent">Theo Phần trăm (%)</option>
+                  <option value="amount">Theo Số tiền cố định</option>
+                </select>
+              </div>
+              <div class="pl-field" style="flex: 1; min-width: 150px;">
+                <label>
+                  {{ priceListForm.bulkType === 'percent' ? 'Mức % tăng/giảm' : 'Số tiền tăng/giảm' }}
+                </label>
+                <div style="position: relative; display: flex; align-items: center;">
+                  <input
+                    v-if="priceListForm.bulkType === 'percent'"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    v-model.number="priceListForm.bulkValue"
+                    @input="onBulkRuleAutoApply"
+                    placeholder="VD: 10"
+                    class="pl-input"
+                    style="padding-right: 32px; font-weight: 700; color: #fbbf24;"
+                  />
+                  <NumberInput
+                    v-else
+                    v-model="priceListForm.bulkValue"
+                    @update:modelValue="onBulkRuleAutoApply"
+                    placeholder="VD: 500.000"
+                    class="pl-input"
+                    style="padding-right: 45px; font-weight: 700; color: #fbbf24;"
+                  />
+                  <span style="position: absolute; right: 10px; font-size: 12px; font-weight: 700; color: #94a3b8; pointer-events: none;">
+                    {{ priceListForm.bulkType === 'percent' ? '%' : 'Tiền' }}
+                  </span>
+                </div>
+              </div>
+              <div class="pl-bulk-actions">
+                <button type="button" class="pl-apply-btn pl-apply-btn--selected" @click="applyBulkRuleToSelected" title="Áp dụng mức tăng/giảm này cho tất cả sản phẩm đã tích chọn">
+                  ⚡ Áp dụng cho SP đã chọn ({{ selectedPriceListCount }})
+                </button>
+                <button type="button" class="pl-apply-btn pl-apply-btn--filtered" @click="applyBulkRuleToFiltered" title="Tích chọn và áp dụng mức tăng/giảm này cho danh sách đang lọc bên dưới">
+                  🎯 Chọn & Áp dụng SP đang lọc ({{ filteredModalProducts.length }})
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Thanh Lọc & Chọn Sản Phẩm -->
+        <div class="pl-filter-bar">
+          <div class="pl-filter-group">
+            <select v-model="modalBrandFilter" class="pl-filter-select">
+              <option value="ALL">🏢 Tất cả Hãng ({{ priceListBrandOptions.length }})</option>
+              <option v-for="b in priceListBrandOptions" :key="b" :value="b">{{ b }}</option>
+            </select>
+
+            <select v-model="modalCategoryFilter" class="pl-filter-select" style="max-width: 260px;">
+              <option value="ALL">📁 Tất cả Danh mục ({{ priceListCategoryOptions.length }})</option>
+              <option v-for="c in priceListCategoryOptions" :key="c" :value="c">{{ c }}</option>
+            </select>
+
+            <div style="position: relative; flex: 1; min-width: 200px; max-width: 300px;">
+              <input
+                type="text"
+                v-model="modalSearchQuery"
+                placeholder="🔍 Tìm mã hàng, tên sản phẩm..."
+                class="pl-filter-input"
+              />
+              <button
+                v-if="modalSearchQuery"
+                type="button"
+                @click="modalSearchQuery = ''"
+                style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 13px;"
+              >✕</button>
+            </div>
+
+            <div class="pl-view-tabs">
+              <button type="button" :class="['pl-view-tab', { active: modalViewMode === 'all' }]" @click="modalViewMode = 'all'">
+                Tất cả ({{ priceListRows.length }})
+              </button>
+              <button type="button" :class="['pl-view-tab', { active: modalViewMode === 'selected' }]" @click="modalViewMode = 'selected'">
+                Đã chọn ({{ selectedPriceListCount }})
+              </button>
+              <button type="button" :class="['pl-view-tab', { active: modalViewMode === 'unselected' }]" @click="modalViewMode = 'unselected'">
+                Chưa chọn ({{ priceListRows.length - selectedPriceListCount }})
+              </button>
+            </div>
+          </div>
+
+          <div class="pl-selection-btns">
+            <button type="button" class="pl-mini-btn" @click="selectAllFilteredInModal">
+              ☑️ Chọn tất cả đang lọc ({{ filteredModalProducts.length }})
+            </button>
+            <button type="button" class="pl-mini-btn pl-mini-btn--muted" @click="deselectAllFilteredInModal">
+              ⬜ Bỏ chọn đang lọc
+            </button>
+          </div>
+        </div>
+
+        <!-- Bảng danh sách sản phẩm trong Bảng Giá -->
+        <div class="import-table-wrap" style="flex: 1;">
+          <table class="import-table pl-table">
+            <thead>
+              <tr>
+                <th style="width: 42px; text-align: center;">
+                  <input
+                    type="checkbox"
+                    :checked="isAllFilteredSelected"
+                    @change="toggleAllFilteredInModal($event.target.checked)"
+                    title="Chọn / Bỏ chọn tất cả sản phẩm đang lọc"
+                    style="width: 16px; height: 16px; cursor: pointer; accent-color: #10b981;"
+                  />
+                </th>
+                <th style="width: 46px;">#</th>
+                <th style="min-width: 150px;">Mã hàng</th>
+                <th style="min-width: 260px;">Tên hàng hóa</th>
+                <th style="min-width: 110px;">Hãng</th>
+                <th style="min-width: 160px;">Danh mục</th>
+                <th style="width: 75px; text-align: center;">Tiền tệ</th>
+                <th style="min-width: 120px; text-align: right;">Giá nhập</th>
+                <th style="min-width: 140px; text-align: right;">Giá bán gốc</th>
+                <th style="min-width: 250px;">Tăng / Giảm riêng</th>
+                <th style="min-width: 155px; text-align: right;">Giá bán mới (Bảng giá)</th>
+                <th style="min-width: 120px; text-align: right;">Chênh lệch</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="!displayedModalProducts.length">
+                <td colspan="12" style="text-align: center; padding: 32px; color: #64748b;">
+                  Không tìm thấy sản phẩm nào phù hợp với bộ lọc hiện tại.
+                </td>
+              </tr>
+              <tr
+                v-for="(row, idx) in displayedModalProducts"
+                :key="row.Ma_hang || idx"
+                :class="{ 'pl-row-selected': row.selected }"
+                @click="row.selected = !row.selected"
+                style="cursor: pointer;"
+              >
+                <td style="text-align: center;" @click.stop>
+                  <input
+                    type="checkbox"
+                    v-model="row.selected"
+                    style="width: 16px; height: 16px; cursor: pointer; accent-color: #10b981;"
+                  />
+                </td>
+                <td class="import-row-num">{{ idx + 1 }}</td>
+                <td>
+                  <span style="font-family: monospace; font-weight: 600; color: #93c5fd; font-size: 12px;">{{ row.Ma_hang }}</span>
+                </td>
+                <td>
+                  <div style="font-weight: 500; color: #f1f5f9; font-size: 12.5px; line-height: 1.35;">{{ row.Ten_hang }}</div>
+                </td>
+                <td>
+                  <span class="brand-badge" style="font-size: 10px; padding: 2px 7px;">{{ row.Ten_nha_cung_cap || '-' }}</span>
+                </td>
+                <td>
+                  <span style="font-size: 11px; color: #94a3b8;">{{ row.Danh_muc || '-' }}</span>
+                </td>
+                <td style="text-align: center; font-weight: 600; color: #cbd5e1; font-size: 12px;">
+                  {{ row.Don_vi_tien_te || 'VND' }}
+                </td>
+                <td style="text-align: right; color: #fbbf24; font-family: monospace; font-size: 12px;">
+                  {{ formatNumberPlain(row.gia_nhap) }}
+                </td>
+                <td style="text-align: right; color: #cbd5e1; font-weight: 600; font-family: monospace; font-size: 12.5px;">
+                  <div>{{ formatNumberPlain(row.gia_goc) }}</div>
+                  <div v-if="row.last_updated" style="font-size: 10px; color: #64748b; font-weight: 400; font-family: sans-serif; margin-top: 2px;">
+                    CN: {{ formatLastUpdated(row.last_updated) }}
+                  </div>
+                </td>
+                <td @click.stop>
+                  <div class="pl-row-adjust">
+                    <select v-model="row.direction" @change="recalcRowPrice(row, true)" class="pl-row-select" :class="row.direction === 'decrease' ? 'down' : 'up'">
+                      <option value="increase">+ Tăng</option>
+                      <option value="decrease">- Giảm</option>
+                    </select>
+                    <select v-model="row.type" @change="recalcRowPrice(row, true)" class="pl-row-select">
+                      <option value="percent">%</option>
+                      <option value="amount">Tiền</option>
+                      <option value="custom">Tùy chỉnh</option>
+                    </select>
+                    <input
+                      v-if="row.type === 'percent'"
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      v-model.number="row.value"
+                      @input="recalcRowPrice(row, true)"
+                      class="imp-input imp-input--num"
+                      style="width: 72px; min-width: 72px;"
+                      placeholder="0%"
+                    />
+                    <NumberInput
+                      v-else-if="row.type === 'amount'"
+                      v-model="row.value"
+                      @update:modelValue="recalcRowPrice(row, true)"
+                      class="imp-input imp-input--num"
+                      style="width: 95px; min-width: 95px;"
+                      placeholder="0"
+                    />
+                    <span v-else style="font-size: 11px; color: #94a3b8; padding: 0 4px;">Nhập trực tiếp</span>
+                  </div>
+                </td>
+                <td @click.stop>
+                  <NumberInput
+                    v-model="row.gia_ban_moi"
+                    @update:modelValue="onCustomRowPriceChange(row)"
+                    class="imp-input imp-input--num imp-input--amber"
+                    style="font-size: 13px; color: #34d399 !important; border-color: rgba(16, 185, 129, 0.35);"
+                  />
+                </td>
+                <td style="text-align: right; font-family: monospace; font-size: 12px;">
+                  <span :class="getRowDiffClass(row)">
+                    {{ formatRowDiffText(row) }}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div v-if="filteredModalProducts.length > modalDisplayLimit" style="padding: 12px; text-align: center; background: #0f172a;">
+            <button
+              type="button"
+              class="btn btn-outline"
+              @click="modalDisplayLimit += 100"
+              style="font-size: 12.5px; padding: 6px 18px;"
+            >
+              Hiển thị thêm 100 sản phẩm (còn {{ filteredModalProducts.length - modalDisplayLimit }} SP)
+            </button>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="import-modal__footer" style="justify-content: space-between;">
+          <div style="font-size: 13px; color: #94a3b8;">
+            Tổng số SP trong bảng giá: <strong style="color: #34d399; font-size: 15px;">{{ selectedPriceListCount }}</strong> sản phẩm
+          </div>
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <button type="button" class="btn btn-secondary" @click="showPriceListModal = false">
+              Hủy bỏ
+            </button>
+            <button type="button" class="btn btn-outline" style="border-color: rgba(56, 189, 248, 0.4); color: #38bdf8;" @click="exportDraftPriceListToExcel">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              Xuất Excel
+            </button>
+            <button type="button" class="btn import-btn-save" @click="savePriceList" :disabled="savingPriceList">
+              <span v-if="savingPriceList" class="spinner"></span>
+              <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              {{ savingPriceList ? 'Đang lưu...' : (isEditingPriceList ? `Cập nhật Bảng Giá (${selectedPriceListCount} SP)` : `Lưu Bảng Giá (${selectedPriceListCount} SP)`) }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -526,6 +1053,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import * as XLSX from 'xlsx-js-style'
 import NumberInput from './NumberInput.vue'
+import ExcelEditor from './ExcelEditor.vue'
 import Tesseract from 'tesseract.js'
 import { initializeApp, getApps, getApp } from 'firebase/app'
 import { getDatabase, ref as dbRef, get, set, push, update, remove } from 'firebase/database'
@@ -553,6 +1081,153 @@ const searchQuery = ref('')
 const userVolumeFilter = ref('')
 const originalItem = ref(null)
 const confirmDeleteModal = ref({ show: false, item: null })
+const importFeaturesEditRow = ref(null)
+
+const openImportFeaturesEditor = (row) => {
+  if (!row) return
+  row.Features = formatFeaturesHtml(row.Features)
+  importFeaturesEditRow.value = row
+}
+
+const decodeXmlEntities = (str) => {
+  return String(str || '')
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+}
+
+const escapeHtmlWithBr = (str) => {
+  return String(str || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>')
+}
+
+const formatFeaturesHtml = (val) => {
+  const s = String(val ?? '').trim()
+  if (!s) return ''
+  if (/<(br|span|b|strong|i|em|u|s|strike|div|p|font|ul|ol|li)\b/i.test(s)) {
+    return s.replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\n/g, '<br>')
+  }
+  return escapeHtmlWithBr(s)
+}
+
+const extractExcelCellRichHtml = (ws, r, c) => {
+  if (!ws || r < 0 || c < 0) return ''
+  const addr = XLSX.utils.encode_cell({ r, c })
+  const cell = ws[addr]
+  if (!cell) return ''
+
+  const cellFont = cell.s && cell.s.font ? cell.s.font : {}
+  const xml = String(cell.r || '')
+
+  if (xml && /<r[\s>]/i.test(xml)) {
+    const defaultSzMatch = xml.match(/<sz\s+val="([\d.]+)"\s*\/>/i)
+    const defaultFontMatch = xml.match(/<(?:rFont|font)\s+val="([^"]+)"\s*\/>/i)
+    const fallbackSz = cellFont.sz || (defaultSzMatch ? defaultSzMatch[1] : '')
+    const fallbackFont = cellFont.name || (defaultFontMatch ? defaultFontMatch[1] : '')
+
+    const runRegex = /<r(?:\s[^>]*)?>([\s\S]*?)<\/r>/gi
+    let match
+    let html = ''
+
+    while ((match = runRegex.exec(xml)) !== null) {
+      const runContent = match[1]
+      const rPrMatch = runContent.match(/<rPr>([\s\S]*?)<\/rPr>/i)
+      const tMatch = runContent.match(/<t[^>]*>([\s\S]*?)<\/t>/i)
+      if (!tMatch) continue
+
+      const rawText = decodeXmlEntities(tMatch[1])
+      let text = escapeHtmlWithBr(rawText)
+      if (!text) continue
+
+      const styles = []
+      let isBold = false
+      let isItalic = false
+      let isUnderline = false
+      let isStrike = false
+
+      if (rPrMatch) {
+        const rPr = rPrMatch[1]
+        isBold = /<b(?:\s+val="(?:1|true)")?\s*\/>/i.test(rPr)
+        isItalic = /<i(?:\s+val="(?:1|true)")?\s*\/>/i.test(rPr)
+        isUnderline = /<u(?:\s+val="[^"]*?")?\s*\/>/i.test(rPr) && !/<u\s+val="none"\s*\/>/i.test(rPr)
+        isStrike = /<strike(?:\s+val="(?:1|true)")?\s*\/>/i.test(rPr)
+
+        const szMatch = rPr.match(/<sz\s+val="([\d.]+)"\s*\/>/i)
+        const fontMatch = rPr.match(/<(?:rFont|font)\s+val="([^"]+)"\s*\/>/i)
+        const colorMatch = rPr.match(/<color\s+rgb="([0-9A-Fa-f]{6,8})"\s*\/>/i)
+
+        const szVal = szMatch ? szMatch[1] : fallbackSz
+        const fontVal = fontMatch ? fontMatch[1] : fallbackFont
+
+        if (fontVal) styles.push(`font-family:${fontVal}`)
+        if (szVal) styles.push(`font-size:${szVal}pt`)
+        if (colorMatch) {
+          const hex = colorMatch[1].length === 8 ? colorMatch[1].slice(2) : colorMatch[1]
+          if (hex.toUpperCase() !== '000000') {
+            styles.push(`color:#${hex}`)
+          }
+        }
+      } else {
+        isBold = Boolean(cellFont.bold)
+        isItalic = Boolean(cellFont.italic)
+        isUnderline = Boolean(cellFont.underline)
+        isStrike = Boolean(cellFont.strike)
+        if (fallbackFont) styles.push(`font-family:${fallbackFont}`)
+        if (fallbackSz) styles.push(`font-size:${fallbackSz}pt`)
+        if (cellFont.color && cellFont.color.rgb) {
+          const rgb = String(cellFont.color.rgb)
+          const hex = rgb.length === 8 ? rgb.slice(2) : rgb
+          if (hex.toUpperCase() !== '000000') {
+            styles.push(`color:#${hex}`)
+          }
+        }
+      }
+
+      if (isStrike) styles.push('text-decoration:line-through')
+      if (isUnderline) text = `<u>${text}</u>`
+      if (isItalic) text = `<i>${text}</i>`
+      if (isBold) text = `<b>${text}</b>`
+      if (styles.length > 0) {
+        text = `<span style="${styles.join(';')}">${text}</span>`
+      }
+      html += text
+    }
+
+    if (html) return html.trim()
+  }
+
+  const plain = String(cell.v ?? '').trim()
+  if (!plain) return ''
+  let text = escapeHtmlWithBr(plain)
+  const styles = []
+  if (cellFont.name) styles.push(`font-family:${cellFont.name}`)
+  if (cellFont.sz) styles.push(`font-size:${cellFont.sz}pt`)
+  if (cellFont.color && cellFont.color.rgb) {
+    const rgb = String(cellFont.color.rgb)
+    const hex = rgb.length === 8 ? rgb.slice(2) : rgb
+    if (hex.toUpperCase() !== '000000') {
+      styles.push(`color:#${hex}`)
+    }
+  }
+  if (cellFont.strike) styles.push('text-decoration:line-through')
+  if (cellFont.underline) text = `<u>${text}</u>`
+  if (cellFont.italic) text = `<i>${text}</i>`
+  if (cellFont.bold) text = `<b>${text}</b>`
+  if (styles.length > 0) {
+    text = `<span style="${styles.join(';')}">${text}</span>`
+  }
+  return text
+}
 
 const isDirty = computed(() => {
   if (!isEditing.value) return true
@@ -598,7 +1273,7 @@ const handleFileUpload = (e) => {
   reader.onload = (evt) => {
     try {
       const data = evt.target.result
-      const workbook = XLSX.read(data, { type: 'array' })
+      const workbook = XLSX.read(data, { type: 'array', cellStyles: true, cellHTML: true })
       const products = []
 
       for (const sheetName of workbook.SheetNames) {
@@ -685,14 +1360,14 @@ const handleFileUpload = (e) => {
           if (moTa !== undefined && moTa !== null && String(moTa).trim() !== '') {
             const moTaStr = String(moTa).trim()
             let tenHang = moTaStr
-            let features = moTaStr
             const firstNewline = moTaStr.indexOf('\n')
             
             if (firstNewline !== -1) {
               tenHang = moTaStr.substring(0, firstNewline).trim()
               if (tenHang.endsWith(':')) tenHang = tenHang.slice(0, -1)
             }
-            features = moTaStr
+            const richFeatures = moTaIdx >= 0 ? extractExcelCellRichHtml(worksheet, i, moTaIdx) : ''
+            const features = richFeatures || formatFeaturesHtml(moTaStr)
             
             let licenseDuration = ''
             const durationMatch = tenHang.match(/(\d+)[-\s]?(year|month)s?/i)
@@ -794,7 +1469,7 @@ const handleKasperskyUpload = (e) => {
     setTimeout(() => {
       try {
         const data = new Uint8Array(evt.target.result)
-        const wb = XLSX.read(data, { type: 'array' })
+        const wb = XLSX.read(data, { type: 'array', cellStyles: true, cellHTML: true })
         let targetSheetName = wb.SheetNames.find(name => name.trim() === 'SMB+Enterprise (License)')
         if (!targetSheetName) {
           showAsyncError('Import thất bại', 'Không tìm thấy sheet "SMB+Enterprise (License)".')
@@ -808,6 +1483,13 @@ const handleKasperskyUpload = (e) => {
       // Lấy danh sách các cột Band từ dòng 10 (index 9)
       const headerRow = json[9] || []
       const bands = []
+      let featuresIdx = -1
+      for (let j = 0; j < headerRow.length; j++) {
+        const colName = String(headerRow[j] || '').trim().toUpperCase().replace(/\s+/g, '')
+        if (colName.includes('FEATURES') || colName.includes('MÔTẢSẢNPHẨM') || colName === 'MÔTẢ') {
+          featuresIdx = j
+        }
+      }
       for (let j = 9; j < headerRow.length; j++) {
         const b = String(headerRow[j] || '').trim()
         if (b && b !== 'Grand Total') {
@@ -823,6 +1505,7 @@ const handleKasperskyUpload = (e) => {
       let lastProduct = ''
       let lastPkg = ''
       let lastType = ''
+      let lastFeatures = ''
       
       for (let i = 10; i < json.length; i++) {
         const row = json[i]
@@ -831,15 +1514,25 @@ const handleKasperskyUpload = (e) => {
         const rawProduct = String(row[2] || '').trim()
         const rawPkg = String(row[4] || '').trim()
         const rawType = String(row[6] || '').trim()
+        const rawFeaturesText = featuresIdx >= 0 ? String(row[featuresIdx] || '').trim() : ''
         
         // Kế thừa giá trị từ dòng trên nếu dòng hiện tại bị trống (do tính chất của Pivot table gộp ô)
-        if (rawProduct) lastProduct = rawProduct
+        if (rawProduct) {
+          lastProduct = rawProduct
+          lastFeatures = ''
+        }
         if (rawPkg) lastPkg = rawPkg
         if (rawType) lastType = rawType
+        if (rawFeaturesText && featuresIdx >= 0) {
+          lastFeatures = extractExcelCellRichHtml(ws, i, featuresIdx) || formatFeaturesHtml(rawFeaturesText)
+        }
         
         const product = rawProduct || lastProduct
         const pkg = rawPkg || lastPkg
         const type = rawType || lastType
+        const rowFeatures = (rawFeaturesText && featuresIdx >= 0)
+          ? (extractExcelCellRichHtml(ws, i, featuresIdx) || formatFeaturesHtml(rawFeaturesText))
+          : lastFeatures
         
         const term = String(row[7] || '').trim()
         const sku = String(row[8] || '').trim()
@@ -877,7 +1570,7 @@ const handleKasperskyUpload = (e) => {
           Ten_nha_cung_cap: 'KASPERSKY',
           Mo_ta_chung: '',
           Mo_ta_chi_tiet: '',
-          Features: '',
+          Features: rowFeatures,
           Danh_muc: product.toUpperCase(),
           License_duration: term,
           DVT: pkg,
@@ -923,6 +1616,182 @@ const handleKasperskyUpload = (e) => {
       showAsyncError('Lỗi đọc file', 'Không thể xử lý file Kaspersky: ' + err.message)
     }
     }, 50) // Delay 50ms để browser kịp render loading overlay
+  }
+  reader.readAsArrayBuffer(file)
+  e.target.value = '' // reset
+}
+
+const handleAcronisUpload = (e) => {
+  const file = e.target.files[0]
+  if (!file) return
+
+  showAsyncLoading('Đang xử lý file Acronis...', 'Vui lòng chờ giây lát...')
+
+  const reader = new FileReader()
+  reader.onload = (evt) => {
+    setTimeout(() => {
+      try {
+        const data = new Uint8Array(evt.target.result)
+        const wb = XLSX.read(data, { type: 'array', cellStyles: true, cellHTML: true })
+        const products = []
+
+        for (const sheetName of wb.SheetNames) {
+          const ws = wb.Sheets[sheetName]
+          if (!ws) continue
+
+          // Giới hạn số cột đọc (tránh trường hợp sheet Personal có !ref kéo dài tới cột XEV gây treo)
+          if (ws['!ref']) {
+            const range = XLSX.utils.decode_range(ws['!ref'])
+            if (range.e.c > 20) {
+              range.e.c = 20
+              ws['!ref'] = XLSX.utils.encode_range(range)
+            }
+          }
+
+          const json = XLSX.utils.sheet_to_json(ws, { header: 1 })
+          let headerRowIndex = -1
+          let skuForIdx = 0
+          let skuIdx = 1
+          let moTaIdx = 2
+          let priceIdx = 3
+
+          for (let i = 0; i < json.length; i++) {
+            const row = json[i]
+            if (!row || !row.length) continue
+            const hasHeader = row.some(c => {
+              const t = String(c || '').toUpperCase().replace(/\s+/g, ' ').trim()
+              return t.includes('MÔ TẢ SẢN PHẨM') || t === 'SKU FOR'
+            })
+            if (hasHeader) {
+              headerRowIndex = i
+              row.forEach((c, idx) => {
+                const text = String(c || '').toUpperCase().replace(/\s+/g, '')
+                if (text.includes('SKUFOR')) skuForIdx = idx
+                else if (text === 'SKU') skuIdx = idx
+                else if (text.includes('MÔTẢSẢNPHẨM')) moTaIdx = idx
+                else if (text.includes('UNITPRICE') || text.includes('GIÁ')) priceIdx = idx
+              })
+              break
+            }
+          }
+
+          if (headerRowIndex === -1) continue
+
+          let currentCategory = ''
+          let currentFeatures = ''
+          let currentSubType = ''
+
+          for (let i = headerRowIndex + 1; i < json.length; i++) {
+            const row = json[i]
+            if (!row || !row.length) continue
+
+            const skuFor = String(row[skuForIdx] ?? '').trim()
+            const sku = String(row[skuIdx] ?? '').trim()
+            const moTa = String(row[moTaIdx] ?? '').trim()
+            const rawPrice = row[priceIdx]
+            const priceStr = String(rawPrice ?? '').trim()
+            const price = toNum(rawPrice, 0)
+            const hasPrice = priceStr !== '' && price > 0
+
+            // 1. Dòng sản phẩm: có SKU (hoặc SKU For), có Mô tả sản phẩm và có Unit Price
+            if ((sku || skuFor) && moTa && hasPrice) {
+              const tenHang = moTa.replace(/\u00a0/g, ' ').trim()
+              const maHang = [skuFor, sku].filter(Boolean).join(' - ')
+
+              let licenseDuration = ''
+              const durMatch = tenHang.match(/(\d+)\s*(year|month)s?/i)
+              if (durMatch) {
+                licenseDuration = `${durMatch[1]} ${durMatch[2].toLowerCase()}`
+              }
+
+              let volume = ''
+              const volMatch = tenHang.match(/(?:^|[\s(])(\d+(?:\/\d+)?\s*(?:VMs?(?:\s*pack)?|Seats?|Computers?|GB|TB))\b/i)
+              if (volMatch) {
+                volume = volMatch[1].trim()
+              }
+
+              let typeVal = ''
+              if (/reinstated\s+renewal/i.test(tenHang)) typeVal = 'Reinstated Renewal'
+              else if (/renewal/i.test(tenHang)) typeVal = 'Renewal'
+              else if (/upgrade/i.test(tenHang)) typeVal = 'Upgrade'
+              else if (/subscription/i.test(tenHang) || /subscription/i.test(currentSubType)) typeVal = 'Subscription'
+              else if (/perpeptual|perpetual/i.test(tenHang) || /perpeptual|perpetual/i.test(currentSubType)) typeVal = 'Perpetual'
+
+              const rawCat = (currentCategory || sheetName).replace(/^\d+(\.\d+)?\.?\s*/, '').trim().toUpperCase()
+
+              products.push({
+                Sheet_name: sheetName,
+                Ma_hang: maHang,
+                Ten_hang: tenHang,
+                Main_img: '',
+                Ma_nha_cung_cap: 'ACRONIS',
+                Ten_nha_cung_cap: 'ACRONIS',
+                Mo_ta_chung: '',
+                Mo_ta_chi_tiet: '',
+                Features: currentFeatures,
+                Danh_muc: rawCat,
+                License_duration: licenseDuration,
+                DVT: 'License',
+                Gia_tieu_chuan: price,
+                Don_gia: price,
+                Trang_thai: 'Còn hàng',
+                Don_vi_tien_te: 'VND',
+                Ti_gia: 1,
+                Thue_VAT: 0,
+                Ma_hang_lien_ket: '',
+                Ten_hang_lien_ket: '',
+                Ghi_chu: '',
+                gia_hardware: 0,
+                gia_nhap: 0,
+                muc_phan_tram_off: 0,
+                Type: typeVal,
+                thoi_han_bao_hanh: '',
+                volume: volume
+              })
+            }
+            // 2. Dòng Features: có Mô tả sản phẩm nhưng KHÔNG có SKU và KHÔNG có Unit Price -> giữ nguyên format Excel
+            else if (!sku && !skuFor && moTa && !hasPrice) {
+              currentFeatures = extractExcelCellRichHtml(ws, i, moTaIdx) || formatFeaturesHtml(moTa)
+            }
+            // 3. Dòng tiêu đề mục (Category) hoặc tiêu đề phụ (Sub-header): không có Mô tả sản phẩm & không có Unit Price
+            else if (!moTa && !hasPrice && (sku || skuFor)) {
+              const headerText = sku || skuFor
+              const isSubHeader = (sku && skuFor && sku === skuFor) || /perpeptual|perpetual|^\d+\.\d+\s/i.test(headerText)
+              if (isSubHeader) {
+                currentSubType = headerText
+              } else {
+                currentCategory = headerText
+                currentFeatures = '' // Reset features cho mục mới; nếu mục không có dòng mô tả thì để trống
+                currentSubType = ''
+              }
+            }
+          }
+        }
+
+        if (products.length > 0) {
+          // Liên kết các sản phẩm có cùng Danh_muc
+          products.forEach(p => {
+            if (p.Danh_muc) {
+              const related = products.filter(r => r.Danh_muc === p.Danh_muc && r.Ma_hang !== p.Ma_hang)
+              if (related.length > 0) {
+                p.Ma_hang_lien_ket = related.map(r => r.Ma_hang).join('\n')
+                p.Ten_hang_lien_ket = related.map(r => r.Ten_hang).join('\n')
+              }
+            }
+          })
+
+          importData.value = products
+          activeImportSheet.value = [...new Set(products.map(p => p.Sheet_name).filter(Boolean))][0] || ''
+          asyncResultModal.value.show = false
+          showImportModal.value = true
+        } else {
+          showAsyncError('Import thất bại', 'Không tìm thấy dữ liệu hợp lệ trong file Acronis.')
+        }
+      } catch (err) {
+        console.error(err)
+        showAsyncError('Lỗi đọc file', 'Không thể xử lý file Acronis: ' + err.message)
+      }
+    }, 50)
   }
   reader.readAsArrayBuffer(file)
   e.target.value = '' // reset
@@ -1042,7 +1911,8 @@ const buildFirebaseHangHoaPayload = (p) => {
     TYPE: typeVal,
     Type: typeVal,
     thoi_han_bao_hanh: String(p.thoi_han_bao_hanh || ''),
-    volume: String(p.volume || '')
+    volume: String(p.volume || ''),
+    last_updated: new Date().toISOString()
   }
 }
 
@@ -1095,6 +1965,7 @@ const confirmImport = async () => {
     showImportModal.value = false
     showAsyncSuccess('Đã lưu thành công!', `Thêm mới: ${addedCount}, Cập nhật: ${updatedCount} sản phẩm.`)
     await fetchData()
+    await syncAutoUpdatePriceListsInFirebase()
   } catch (err) {
     console.error('Import Firebase error:', err)
     showAsyncError('Lỗi lưu dữ liệu Firebase', err.message)
@@ -1129,7 +2000,8 @@ const defaultForm = {
   muc_phan_tram_off: '',
   Type: '',
   thoi_han_bao_hanh: '',
-  volume: ''
+  volume: '',
+  last_updated: ''
 }
 
 const formData = ref({ ...defaultForm })
@@ -1213,11 +2085,16 @@ function checkVolumeMatch(volumeStr, userCount) {
 const filteredItems = computed(() => {
   const uCount = parseInt(userVolumeFilter.value, 10)
   const hasVolumeFilter = userVolumeFilter.value !== '' && !isNaN(uCount)
+  const hasPriceListFilter = Boolean(selectedPriceListId.value && activePriceList.value)
+  const words = searchQuery.value ? searchQuery.value.toLowerCase().split(/\s+/).filter(Boolean) : []
 
-  if (!searchQuery.value && !hasVolumeFilter) return items.value
-  const words = searchQuery.value.toLowerCase().split(/\s+/).filter(Boolean)
+  if (!words.length && !hasVolumeFilter && !hasPriceListFilter) return items.value
   
   return items.value.filter(item => {
+    if (hasPriceListFilter && !getPriceListEntry(item)) {
+      return false
+    }
+
     let okKw = true;
     if (words.length > 0) {
       const ma = (item.Ma_hang || '').toLowerCase()
@@ -1260,6 +2137,823 @@ const displayLimit = ref(15)
 watch(searchQuery, () => {
   displayLimit.value = 15
 })
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   QUẢN LÝ BẢNG GIÁ (PRICE LIST) — FIREBASE NODE: bang_gia
+   ═══════════════════════════════════════════════════════════════════════════ */
+const priceLists = ref([])
+const selectedPriceListId = ref('')
+const showPriceListModal = ref(false)
+const isEditingPriceList = ref(false)
+const editingPriceListKey = ref('')
+const savingPriceList = ref(false)
+const confirmDeletePriceListModal = ref({ show: false, priceList: null })
+
+const priceListForm = ref({
+  ten_bang_gia: '',
+  ghi_chu: '',
+  ngay_bat_dau: '',
+  ngay_ket_thuc: '',
+  auto_sync_base_price: true,
+  bulkDirection: 'increase', // 'increase' | 'decrease'
+  bulkType: 'percent',       // 'percent' | 'amount'
+  bulkValue: 0
+})
+
+const formatLastUpdated = (val) => {
+  if (!val) return 'Chưa ghi nhận'
+  const dt = new Date(val)
+  if (isNaN(dt.getTime())) return String(val)
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${pad(dt.getDate())}/${pad(dt.getMonth() + 1)}/${dt.getFullYear()} ${pad(dt.getHours())}:${pad(dt.getMinutes())}`
+}
+
+const formatDateVN = (dateStr) => {
+  if (!dateStr) return ''
+  const parts = String(dateStr).split('T')[0].split('-')
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`
+  }
+  return String(dateStr)
+}
+
+const formatPriceListPeriod = (pl) => {
+  if (!pl) return ''
+  const s = formatDateVN(pl.ngay_bat_dau)
+  const e = formatDateVN(pl.ngay_ket_thuc)
+  if (s && e) return `${s} → ${e}`
+  if (s) return `Từ ${s}`
+  if (e) return `Đến ${e}`
+  return 'Không giới hạn'
+}
+
+const formatPriceListPeriodInline = (pl) => {
+  if (!pl || (!pl.ngay_bat_dau && !pl.ngay_ket_thuc)) return ''
+  return ` • [${formatPriceListPeriod(pl)}]`
+}
+
+const getPriceListStatusInfo = (pl) => {
+  if (!pl) return { label: '', cls: '' }
+  const now = new Date()
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  const start = String(pl.ngay_bat_dau || '').trim()
+  const end = String(pl.ngay_ket_thuc || '').trim()
+
+  if (start && todayStr < start) {
+    return { label: '⏳ Chưa đến hạn', cls: 'upcoming' }
+  }
+  if (end && todayStr > end) {
+    return { label: '⚠️ Đã hết hạn', cls: 'expired' }
+  }
+  return { label: '✅ Đang hiệu lực', cls: 'active' }
+}
+
+const priceListRows = ref([])
+const modalBrandFilter = ref('ALL')
+const modalCategoryFilter = ref('ALL')
+const modalSearchQuery = ref('')
+const modalViewMode = ref('all') // 'all' | 'selected' | 'unselected'
+const modalDisplayLimit = ref(100)
+
+watch([modalBrandFilter, modalCategoryFilter, modalSearchQuery, modalViewMode], () => {
+  modalDisplayLimit.value = 100
+})
+
+watch(modalBrandFilter, () => {
+  modalCategoryFilter.value = 'ALL'
+})
+
+const formatNumberPlain = (val) => {
+  const n = Number(val)
+  if (!Number.isFinite(n) || n === 0) return '0'
+  return new Intl.NumberFormat('vi-VN').format(n)
+}
+
+const roundByCurrency = (val, currency) => {
+  const n = Math.max(0, Number(val) || 0)
+  const cur = String(currency || 'VND').trim().toUpperCase()
+  if (cur === 'VND') return Math.round(n)
+  return Math.round(n * 100) / 100
+}
+
+/**
+ * Tính lại giá bán mới của 1 dòng trong bảng giá dựa trên giá gốc mới nhất và quy tắc (direction, type, value).
+ */
+const computeNewPriceFromBase = (basePrice, entry, currency) => {
+  const giaGoc = Number(basePrice) || 0
+  if (!entry) return giaGoc
+  const dir = entry.direction || 'increase'
+  const type = entry.type || 'percent'
+  const val = Math.max(0, Number(entry.value) || 0)
+  let rawNew = giaGoc
+  if (type === 'percent') {
+    const delta = (giaGoc * val) / 100
+    rawNew = dir === 'decrease' ? giaGoc - delta : giaGoc + delta
+  } else if (type === 'amount') {
+    rawNew = dir === 'decrease' ? giaGoc - val : giaGoc + val
+  } else {
+    // custom: nếu trước đó có gia_goc > 0 thì giữ tỉ lệ, ngược lại giữ khoảng chênh lệch
+    const oldBase = Number(entry.gia_goc) || 0
+    const oldPrice = Number(entry.gia_ban_moi) || 0
+    if (oldBase > 0) {
+      rawNew = giaGoc * (oldPrice / oldBase)
+    } else {
+      rawNew = giaGoc + (oldPrice - oldBase)
+    }
+  }
+  return roundByCurrency(rawNew, currency || entry.Don_vi_tien_te || 'VND')
+}
+
+const activePriceList = computed(() => {
+  if (!selectedPriceListId.value) return null
+  return priceLists.value.find(pl => pl._firebaseKey === selectedPriceListId.value) || null
+})
+
+const activePriceListMap = computed(() => {
+  const map = new Map()
+  const pl = activePriceList.value
+  if (!pl || !Array.isArray(pl.items)) return map
+
+  const autoSync = pl.auto_sync_base_price !== false
+  const sysItemMap = new Map()
+  if (autoSync) {
+    items.value.forEach(it => {
+      if (it && it.Ma_hang) {
+        sysItemMap.set(String(it.Ma_hang).trim(), it)
+      }
+    })
+  }
+
+  pl.items.forEach(entry => {
+    if (entry && entry.Ma_hang) {
+      const cleanMa = String(entry.Ma_hang).trim()
+      if (autoSync) {
+        const sysItem = sysItemMap.get(cleanMa)
+        if (sysItem) {
+          const latestGiaGoc = Number(sysItem.Don_gia) || 0
+          const savedGiaGoc = Number(entry.gia_goc) || 0
+          if (latestGiaGoc !== savedGiaGoc) {
+            const newGiaBan = computeNewPriceFromBase(
+              latestGiaGoc,
+              entry,
+              sysItem.Don_vi_tien_te || entry.Don_vi_tien_te
+            )
+            map.set(cleanMa, {
+              ...entry,
+              gia_goc: latestGiaGoc,
+              gia_ban_moi: newGiaBan,
+              _auto_synced: true
+            })
+            return
+          }
+        }
+      }
+      map.set(cleanMa, entry)
+    }
+  })
+  return map
+})
+
+const getPriceListEntry = (item) => {
+  if (!item || !item.Ma_hang) return null
+  return activePriceListMap.value.get(String(item.Ma_hang).trim()) || null
+}
+
+watch(selectedPriceListId, () => {
+  displayLimit.value = 15
+})
+
+const recalcRowPrice = (row, markManual = false) => {
+  if (!row) return
+  if (markManual) row._manualRowEdit = true
+  const giaGoc = Number(row.gia_goc) || 0
+  if (row.type === 'custom') return
+  const val = Math.max(0, Number(row.value) || 0)
+  let delta = 0
+  if (row.type === 'percent') {
+    delta = (giaGoc * val) / 100
+  } else {
+    delta = val
+  }
+  const rawNew = row.direction === 'decrease' ? giaGoc - delta : giaGoc + delta
+  row.gia_ban_moi = roundByCurrency(rawNew, row.Don_vi_tien_te)
+}
+
+const onCustomRowPriceChange = (row) => {
+  if (!row) return
+  row._manualRowEdit = true
+  const giaGoc = Number(row.gia_goc) || 0
+  const giaMoi = Math.max(0, Number(row.gia_ban_moi) || 0)
+  const diff = giaMoi - giaGoc
+  row.type = 'custom'
+  row.direction = diff < 0 ? 'decrease' : 'increase'
+  row.value = Math.abs(diff)
+}
+
+const getRowDiffClass = (row) => {
+  const diff = (Number(row.gia_ban_moi) || 0) - (Number(row.gia_goc) || 0)
+  if (diff > 0) return 'pl-diff-up'
+  if (diff < 0) return 'pl-diff-down'
+  return 'pl-diff-zero'
+}
+
+const formatRowDiffText = (row) => {
+  const giaGoc = Number(row.gia_goc) || 0
+  const giaMoi = Number(row.gia_ban_moi) || 0
+  const diff = giaMoi - giaGoc
+  if (diff === 0) return '0 (Giữ nguyên)'
+  const sign = diff > 0 ? '+' : '-'
+  const absDiff = Math.abs(diff)
+  const pct = giaGoc > 0 ? Math.round((absDiff / giaGoc) * 1000) / 10 : 0
+  return `${sign}${formatNumberPlain(absDiff)} (${sign}${pct}%)`
+}
+
+const getPriceListDiffClass = (plEntry, currentDonGia) => {
+  if (!plEntry) return ''
+  const base = Number(currentDonGia ?? plEntry.gia_goc) || 0
+  const next = Number(plEntry.gia_ban_moi) || 0
+  if (next > base) return 'up'
+  if (next < base) return 'down'
+  return 'neutral'
+}
+
+const formatPriceListRuleShort = (plEntry, currentDonGia) => {
+  if (!plEntry) return ''
+  const base = Number(currentDonGia ?? plEntry.gia_goc) || 0
+  const next = Number(plEntry.gia_ban_moi) || 0
+  const diff = next - base
+  if (plEntry.type === 'percent' && Number(plEntry.value) > 0) {
+    return `${plEntry.direction === 'decrease' ? '-' : '+'}${plEntry.value}%`
+  }
+  if (diff === 0) return 'Giữ nguyên'
+  const sign = diff > 0 ? '+' : '-'
+  return `${sign}${formatNumberPlain(Math.abs(diff))}`
+}
+
+const priceListBrandOptions = computed(() => {
+  const set = new Set()
+  priceListRows.value.forEach(r => {
+    const b = String(r.Ten_nha_cung_cap || '').trim()
+    if (b) set.add(b)
+  })
+  return Array.from(set).sort((a, b) => a.localeCompare(b))
+})
+
+const priceListCategoryOptions = computed(() => {
+  const set = new Set()
+  priceListRows.value.forEach(r => {
+    if (modalBrandFilter.value !== 'ALL' && r.Ten_nha_cung_cap !== modalBrandFilter.value) return
+    const c = String(r.Danh_muc || '').trim()
+    if (c) set.add(c)
+  })
+  return Array.from(set).sort((a, b) => a.localeCompare(b))
+})
+
+const selectedPriceListCount = computed(() => {
+  return priceListRows.value.filter(r => r.selected).length
+})
+
+const filteredModalProducts = computed(() => {
+  const kw = modalSearchQuery.value.trim().toLowerCase()
+  const words = kw ? kw.split(/\s+/).filter(Boolean) : []
+
+  return priceListRows.value.filter(r => {
+    if (modalViewMode.value === 'selected' && !r.selected) return false
+    if (modalViewMode.value === 'unselected' && r.selected) return false
+    if (modalBrandFilter.value !== 'ALL' && r.Ten_nha_cung_cap !== modalBrandFilter.value) return false
+    if (modalCategoryFilter.value !== 'ALL' && r.Danh_muc !== modalCategoryFilter.value) return false
+
+    if (words.length > 0) {
+      const ma = String(r.Ma_hang || '').toLowerCase()
+      const ten = String(r.Ten_hang || '').toLowerCase()
+      const cat = String(r.Danh_muc || '').toLowerCase()
+      const ok = words.every(w => ma.includes(w) || ten.includes(w) || cat.includes(w))
+      if (!ok) return false
+    }
+    return true
+  })
+})
+
+const displayedModalProducts = computed(() => {
+  return filteredModalProducts.value.slice(0, modalDisplayLimit.value)
+})
+
+const isAllFilteredSelected = computed(() => {
+  if (!filteredModalProducts.value.length) return false
+  return filteredModalProducts.value.every(r => r.selected)
+})
+
+const toggleAllFilteredInModal = (checked) => {
+  filteredModalProducts.value.forEach(r => {
+    r.selected = Boolean(checked)
+  })
+}
+
+const selectAllFilteredInModal = () => {
+  filteredModalProducts.value.forEach(r => {
+    r.selected = true
+  })
+}
+
+const deselectAllFilteredInModal = () => {
+  filteredModalProducts.value.forEach(r => {
+    r.selected = false
+  })
+}
+
+const onBulkRuleAutoApply = () => {
+  const dir = priceListForm.value.bulkDirection || 'increase'
+  const type = priceListForm.value.bulkType || 'percent'
+  const val = Math.max(0, Number(priceListForm.value.bulkValue) || 0)
+
+  const hasFilter = modalBrandFilter.value !== 'ALL' || modalCategoryFilter.value !== 'ALL' || Boolean(modalSearchQuery.value.trim())
+  const targetRows = hasFilter ? filteredModalProducts.value : priceListRows.value
+
+  targetRows.forEach(r => {
+    if (r.selected && !r._manualRowEdit) {
+      r.direction = dir
+      r.type = type
+      r.value = val
+      recalcRowPrice(r, false)
+    }
+  })
+}
+
+const applyBulkRuleToSelected = () => {
+  const dir = priceListForm.value.bulkDirection || 'increase'
+  const type = priceListForm.value.bulkType || 'percent'
+  const val = Math.max(0, Number(priceListForm.value.bulkValue) || 0)
+
+  let count = 0
+  priceListRows.value.forEach(r => {
+    if (r.selected) {
+      r._manualRowEdit = false
+      r.direction = dir
+      r.type = type
+      r.value = val
+      recalcRowPrice(r, false)
+      count++
+    }
+  })
+
+  if (count === 0) {
+    showAsyncError('Chưa chọn sản phẩm', 'Vui lòng tích chọn ít nhất 1 sản phẩm hoặc bấm "Chọn & Áp dụng SP đang lọc".')
+  }
+}
+
+const applyBulkRuleToFiltered = () => {
+  const dir = priceListForm.value.bulkDirection || 'increase'
+  const type = priceListForm.value.bulkType || 'percent'
+  const val = Math.max(0, Number(priceListForm.value.bulkValue) || 0)
+
+  filteredModalProducts.value.forEach(r => {
+    r.selected = true
+    r._manualRowEdit = false
+    r.direction = dir
+    r.type = type
+    r.value = val
+    recalcRowPrice(r, false)
+  })
+}
+
+const buildPriceListRowsFromItems = (existingEntryMap = null, defaultRule = null, autoSyncBasePrice = true) => {
+  const dir = defaultRule?.direction || 'increase'
+  const type = defaultRule?.type || 'percent'
+  const val = Number(defaultRule?.value) || 0
+
+  return items.value.map(item => {
+    const cleanMa = String(item.Ma_hang || '').trim()
+    const saved = existingEntryMap ? existingEntryMap.get(cleanMa) : null
+    const latestGiaGoc = Number(item.Don_gia) || 0
+    const savedGiaGoc = saved && saved.gia_goc !== undefined ? Number(saved.gia_goc) : latestGiaGoc
+    const effectiveGiaGoc = (saved && !autoSyncBasePrice) ? savedGiaGoc : latestGiaGoc
+
+    let effectiveGiaBanMoi = effectiveGiaGoc
+    if (saved && saved.gia_ban_moi !== undefined) {
+      if (autoSyncBasePrice && latestGiaGoc !== savedGiaGoc) {
+        effectiveGiaBanMoi = computeNewPriceFromBase(latestGiaGoc, saved, item.Don_vi_tien_te)
+      } else {
+        effectiveGiaBanMoi = Number(saved.gia_ban_moi)
+      }
+    }
+
+    const row = {
+      selected: existingEntryMap ? Boolean(saved) : true,
+      _manualRowEdit: false,
+      Ma_hang: cleanMa,
+      Ten_hang: item.Ten_hang,
+      Ten_nha_cung_cap: item.Ten_nha_cung_cap,
+      Danh_muc: item.Danh_muc,
+      Don_vi_tien_te: item.Don_vi_tien_te || 'VND',
+      DVT: item.DVT || '',
+      Ti_gia: Number(item.Ti_gia) || 1,
+      Thue_VAT: Number(item.Thue_VAT) || 0,
+      gia_nhap: Number(item.gia_nhap) || 0,
+      gia_goc: effectiveGiaGoc,
+      _latest_sys_gia_goc: latestGiaGoc,
+      _saved_gia_goc: savedGiaGoc,
+      _saved_gia_ban_moi: saved && saved.gia_ban_moi !== undefined ? Number(saved.gia_ban_moi) : latestGiaGoc,
+      last_updated: item.last_updated || '',
+      direction: saved ? (saved.direction || dir) : dir,
+      type: saved ? (saved.type || type) : type,
+      value: saved ? (Number(saved.value) || 0) : val,
+      gia_ban_moi: effectiveGiaBanMoi
+    }
+    if (!saved) {
+      recalcRowPrice(row, false)
+    }
+    return row
+  })
+}
+
+const onModalAutoSyncChange = () => {
+  const autoSync = Boolean(priceListForm.value.auto_sync_base_price)
+  priceListRows.value.forEach(r => {
+    if (autoSync) {
+      const latestBase = Number(r._latest_sys_gia_goc ?? r.gia_goc) || 0
+      if (r.gia_goc !== latestBase) {
+        const nextPrice = computeNewPriceFromBase(latestBase, r, r.Don_vi_tien_te)
+        r.gia_goc = latestBase
+        r.gia_ban_moi = nextPrice
+      }
+    } else if (isEditingPriceList.value && r._saved_gia_goc !== undefined) {
+      r.gia_goc = Number(r._saved_gia_goc) || 0
+      r.gia_ban_moi = Number(r._saved_gia_ban_moi) || 0
+    }
+  })
+}
+
+const openCreatePriceListModal = async () => {
+  if (!items.value.length) {
+    await fetchData()
+  }
+  isEditingPriceList.value = false
+  editingPriceListKey.value = ''
+  const now = new Date()
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  priceListForm.value = {
+    ten_bang_gia: '',
+    ghi_chu: '',
+    ngay_bat_dau: todayStr,
+    ngay_ket_thuc: '',
+    auto_sync_base_price: true,
+    bulkDirection: 'increase',
+    bulkType: 'percent',
+    bulkValue: 0
+  }
+  modalBrandFilter.value = 'ALL'
+  modalCategoryFilter.value = 'ALL'
+  modalSearchQuery.value = ''
+  modalViewMode.value = 'all'
+  priceListRows.value = buildPriceListRowsFromItems(null, null, true)
+  showPriceListModal.value = true
+}
+
+const openEditPriceListModal = async (pl) => {
+  if (!pl) return
+  if (!items.value.length) {
+    await fetchData()
+  }
+  isEditingPriceList.value = true
+  editingPriceListKey.value = pl._firebaseKey
+  const rule = pl.default_rule || {}
+  const autoSync = pl.auto_sync_base_price !== false
+  priceListForm.value = {
+    ten_bang_gia: pl.ten_bang_gia || '',
+    ghi_chu: pl.ghi_chu || '',
+    ngay_bat_dau: pl.ngay_bat_dau || '',
+    ngay_ket_thuc: pl.ngay_ket_thuc || '',
+    auto_sync_base_price: autoSync,
+    bulkDirection: rule.direction || 'increase',
+    bulkType: rule.type || 'percent',
+    bulkValue: Number(rule.value) || 0
+  }
+  modalBrandFilter.value = 'ALL'
+  modalCategoryFilter.value = 'ALL'
+  modalSearchQuery.value = ''
+  modalViewMode.value = 'selected'
+
+  const existingMap = new Map()
+  if (Array.isArray(pl.items)) {
+    pl.items.forEach(entry => {
+      if (entry && entry.Ma_hang) existingMap.set(String(entry.Ma_hang).trim(), entry)
+    })
+  }
+  priceListRows.value = buildPriceListRowsFromItems(existingMap, rule, autoSync)
+  showPriceListModal.value = true
+}
+
+const fetchPriceLists = async () => {
+  try {
+    const snap = await get(dbRef(database, 'bang_gia'))
+    const data = snap.val() || {}
+    const list = Object.entries(data)
+      .map(([fbKey, row]) => {
+        if (!row || typeof row !== 'object') return null
+        const rawItems = Array.isArray(row.items)
+          ? row.items
+          : (row.items && typeof row.items === 'object' ? Object.values(row.items) : [])
+        return {
+          _firebaseKey: fbKey,
+          id: row.id || fbKey,
+          ten_bang_gia: String(row.ten_bang_gia || 'Bảng giá chưa đặt tên'),
+          ghi_chu: String(row.ghi_chu || ''),
+          ngay_bat_dau: String(row.ngay_bat_dau || ''),
+          ngay_ket_thuc: String(row.ngay_ket_thuc || ''),
+          auto_sync_base_price: row.auto_sync_base_price !== false,
+          created_at: Number(row.created_at) || 0,
+          updated_at: Number(row.updated_at) || 0,
+          default_rule: row.default_rule || { direction: 'increase', type: 'percent', value: 0 },
+          items: rawItems.filter(Boolean)
+        }
+      })
+      .filter(Boolean)
+
+    list.sort((a, b) => (b.updated_at || b.created_at) - (a.updated_at || a.created_at))
+    priceLists.value = list
+  } catch (err) {
+    console.error('Lỗi khi tải danh sách bảng giá từ Firebase:', err)
+  }
+}
+
+/**
+ * Bật / Tắt nhanh chế độ "Tự động cập nhật khi bảng giá gốc thay đổi" ngay trên thanh chọn bảng giá.
+ */
+const togglePriceListAutoSync = async (pl) => {
+  if (!pl || !pl._firebaseKey) return
+  const nextState = !(pl.auto_sync_base_price !== false)
+  try {
+    const updates = {
+      auto_sync_base_price: nextState,
+      updated_at: Date.now()
+    }
+    if (nextState && Array.isArray(pl.items) && items.value.length > 0) {
+      const sysMap = new Map()
+      items.value.forEach(it => {
+        if (it && it.Ma_hang) sysMap.set(String(it.Ma_hang).trim(), it)
+      })
+      updates.items = pl.items.map(entry => {
+        if (!entry || !entry.Ma_hang) return entry
+        const sysItem = sysMap.get(String(entry.Ma_hang).trim())
+        if (!sysItem) return entry
+        const latestGiaGoc = Number(sysItem.Don_gia) || 0
+        const newGiaBan = computeNewPriceFromBase(latestGiaGoc, entry, sysItem.Don_vi_tien_te || entry.Don_vi_tien_te)
+        return {
+          ...entry,
+          gia_goc: latestGiaGoc,
+          gia_ban_moi: newGiaBan
+        }
+      })
+    }
+    await update(dbRef(database, `bang_gia/${pl._firebaseKey}`), updates)
+    await fetchPriceLists()
+    showAsyncSuccess(
+      nextState ? '🔄 Đã BẬT tự động cập nhật theo giá gốc!' : '🔒 Đã TẮT tự động cập nhật (Giữ giá cố định)!',
+      `Bảng giá "${pl.ten_bang_gia}" ${nextState ? 'sẽ tự động tính lại giá bán khi giá gốc thay đổi.' : 'sẽ giữ cố định mức giá bán hiện tại.'}`
+    )
+  } catch (err) {
+    console.error('Toggle auto sync error:', err)
+    showAsyncError('Lỗi cập nhật chế độ tự động', err.message)
+  }
+}
+
+/**
+ * Tự động đồng bộ các bảng giá có bật auto_sync_base_price trên Firebase mỗi khi hang_hoa thay đổi.
+ */
+const syncAutoUpdatePriceListsInFirebase = async () => {
+  try {
+    if (!items.value.length) return
+    const sysMap = new Map()
+    items.value.forEach(it => {
+      if (it && it.Ma_hang) sysMap.set(String(it.Ma_hang).trim(), it)
+    })
+
+    const snap = await get(dbRef(database, 'bang_gia'))
+    const data = snap.val() || {}
+    const batchUpdates = {}
+    let syncedListCount = 0
+
+    Object.entries(data).forEach(([fbKey, pl]) => {
+      if (!pl || typeof pl !== 'object') return
+      if (pl.auto_sync_base_price === false) return
+
+      const rawItems = Array.isArray(pl.items)
+        ? pl.items
+        : (pl.items && typeof pl.items === 'object' ? Object.values(pl.items) : [])
+      if (!rawItems.length) return
+
+      let hasChanged = false
+      const updatedItems = rawItems.filter(Boolean).map(entry => {
+        const cleanMa = String(entry.Ma_hang || '').trim()
+        const sysItem = sysMap.get(cleanMa)
+        if (!sysItem) return entry
+
+        const latestGiaGoc = Number(sysItem.Don_gia) || 0
+        const savedGiaGoc = Number(entry.gia_goc) || 0
+        const nextGiaBan = computeNewPriceFromBase(latestGiaGoc, entry, sysItem.Don_vi_tien_te || entry.Don_vi_tien_te)
+
+        if (latestGiaGoc !== savedGiaGoc || nextGiaBan !== Number(entry.gia_ban_moi)) {
+          hasChanged = true
+          return {
+            ...entry,
+            Ma_hang: cleanMa,
+            Ten_hang: String(sysItem.Ten_hang || entry.Ten_hang || ''),
+            Don_vi_tien_te: String(sysItem.Don_vi_tien_te || entry.Don_vi_tien_te || 'VND'),
+            DVT: String(sysItem.DVT || entry.DVT || ''),
+            gia_goc: latestGiaGoc,
+            gia_ban_moi: nextGiaBan
+          }
+        }
+        return entry
+      })
+
+      if (hasChanged) {
+        batchUpdates[`${fbKey}/items`] = updatedItems
+        batchUpdates[`${fbKey}/updated_at`] = Date.now()
+        syncedListCount++
+      }
+    })
+
+    if (syncedListCount > 0) {
+      await update(dbRef(database, 'bang_gia'), batchUpdates)
+      await fetchPriceLists()
+    }
+  } catch (err) {
+    console.error('Lỗi khi tự động đồng bộ bảng giá theo giá gốc:', err)
+  }
+}
+
+const savePriceList = async () => {
+  const name = String(priceListForm.value.ten_bang_gia || '').trim()
+  if (!name) {
+    showAsyncError('Thiếu tên bảng giá', 'Vui lòng nhập Tên bảng giá trước khi lưu.')
+    return
+  }
+
+  const startDate = String(priceListForm.value.ngay_bat_dau || '').trim()
+  const endDate = String(priceListForm.value.ngay_ket_thuc || '').trim()
+  if (startDate && endDate && endDate < startDate) {
+    showAsyncError('Thời hạn không hợp lệ', 'Thời gian kết thúc phải lớn hơn hoặc bằng thời gian bắt đầu áp dụng.')
+    return
+  }
+
+  const selectedRows = priceListRows.value.filter(r => r.selected)
+  if (!selectedRows.length) {
+    showAsyncError('Chưa chọn sản phẩm', 'Vui lòng chọn ít nhất 1 sản phẩm cho bảng giá.')
+    return
+  }
+
+  savingPriceList.value = true
+  try {
+    const now = Date.now()
+    const payload = {
+      ten_bang_gia: name,
+      ghi_chu: String(priceListForm.value.ghi_chu || '').trim(),
+      ngay_bat_dau: startDate,
+      ngay_ket_thuc: endDate,
+      auto_sync_base_price: Boolean(priceListForm.value.auto_sync_base_price),
+      updated_at: now,
+      default_rule: {
+        direction: priceListForm.value.bulkDirection || 'increase',
+        type: priceListForm.value.bulkType || 'percent',
+        value: Number(priceListForm.value.bulkValue) || 0
+      },
+      items: selectedRows.map(r => ({
+        Ma_hang: String(r.Ma_hang || ''),
+        Ten_hang: String(r.Ten_hang || ''),
+        Ten_nha_cung_cap: String(r.Ten_nha_cung_cap || ''),
+        Danh_muc: String(r.Danh_muc || ''),
+        Don_vi_tien_te: String(r.Don_vi_tien_te || 'VND'),
+        DVT: String(r.DVT || ''),
+        gia_goc: Number(r.gia_goc) || 0,
+        direction: r.direction || 'increase',
+        type: r.type || 'percent',
+        value: Number(r.value) || 0,
+        gia_ban_moi: Number(r.gia_ban_moi) || 0
+      }))
+    }
+
+    let targetKey = editingPriceListKey.value
+    if (isEditingPriceList.value && targetKey) {
+      await update(dbRef(database, `bang_gia/${targetKey}`), payload)
+      showAsyncSuccess('Đã cập nhật bảng giá!', `${name} (${selectedRows.length} sản phẩm)`)
+    } else {
+      const newRef = push(dbRef(database, 'bang_gia'))
+      targetKey = newRef.key
+      await set(newRef, { ...payload, id: targetKey, created_at: now })
+      showAsyncSuccess('Đã tạo bảng giá mới!', `${name} (${selectedRows.length} sản phẩm)`)
+    }
+
+    await fetchPriceLists()
+    if (targetKey) {
+      selectedPriceListId.value = targetKey
+    }
+    showPriceListModal.value = false
+  } catch (err) {
+    console.error('Save price list error:', err)
+    showAsyncError('Lỗi lưu bảng giá', err.message)
+  } finally {
+    savingPriceList.value = false
+  }
+}
+
+const requestDeletePriceList = (pl) => {
+  if (!pl) return
+  confirmDeletePriceListModal.value = { show: true, priceList: pl }
+}
+
+const executeDeletePriceList = async () => {
+  const pl = confirmDeletePriceListModal.value.priceList
+  if (!pl || !pl._firebaseKey) return
+  confirmDeletePriceListModal.value.show = false
+
+  showAsyncLoading('Đang xóa bảng giá...', pl.ten_bang_gia)
+  try {
+    await remove(dbRef(database, `bang_gia/${pl._firebaseKey}`))
+    if (selectedPriceListId.value === pl._firebaseKey) {
+      selectedPriceListId.value = ''
+    }
+    await fetchPriceLists()
+    showAsyncSuccess('Đã xóa bảng giá!', pl.ten_bang_gia)
+  } catch (err) {
+    console.error('Delete price list error:', err)
+    showAsyncError('Lỗi xóa bảng giá', err.message)
+  }
+}
+
+const buildAndDownloadPriceListExcel = (title, note, rows, startDate = '', endDate = '') => {
+  if (!rows || !rows.length) {
+    showAsyncError('Không có dữ liệu', 'Bảng giá chưa có sản phẩm nào để xuất Excel.')
+    return
+  }
+
+  const periodStr = formatPriceListPeriod({ ngay_bat_dau: startDate, ngay_ket_thuc: endDate })
+  const wsData = [
+    [title.toUpperCase()],
+    [`Thời gian áp dụng: ${periodStr}`],
+    [note ? `Ghi chú: ${note}` : `Ngày xuất: ${new Date().toLocaleDateString('vi-VN')}`],
+    [],
+    ['STT', 'Mã hàng', 'Tên hàng hóa', 'Hãng', 'Danh mục', 'ĐVT', 'Tiền tệ', 'Giá bán gốc', 'Mức điều chỉnh', 'Giá bán mới (Bảng giá)']
+  ]
+
+  rows.forEach((r, i) => {
+    const giaGoc = Number(r.gia_goc) || 0
+    const giaMoi = Number(r.gia_ban_moi) || 0
+    const diff = giaMoi - giaGoc
+    let ruleStr = 'Giữ nguyên'
+    if (r.type === 'percent' && Number(r.value) > 0) {
+      ruleStr = `${r.direction === 'decrease' ? 'Giảm' : 'Tăng'} ${r.value}%`
+    } else if (diff !== 0) {
+      ruleStr = `${diff > 0 ? '+' : '-'}${formatNumberPlain(Math.abs(diff))}`
+    }
+
+    wsData.push([
+      i + 1,
+      r.Ma_hang || '',
+      r.Ten_hang || '',
+      r.Ten_nha_cung_cap || '',
+      r.Danh_muc || '',
+      r.DVT || '',
+      r.Don_vi_tien_te || 'VND',
+      giaGoc,
+      ruleStr,
+      giaMoi
+    ])
+  })
+
+  const ws = XLSX.utils.aoa_to_sheet(wsData)
+  ws['!cols'] = [
+    { wch: 6 },
+    { wch: 24 },
+    { wch: 46 },
+    { wch: 14 },
+    { wch: 28 },
+    { wch: 10 },
+    { wch: 10 },
+    { wch: 16 },
+    { wch: 18 },
+    { wch: 20 }
+  ]
+
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Bang_Gia')
+  const safeFile = String(title || 'Bang_gia')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9_-]/g, '_')
+  XLSX.writeFile(wb, `${safeFile}.xlsx`)
+}
+
+const exportPriceListToExcel = (pl) => {
+  if (!pl) return
+  buildAndDownloadPriceListExcel(pl.ten_bang_gia, pl.ghi_chu, pl.items || [], pl.ngay_bat_dau, pl.ngay_ket_thuc)
+}
+
+const exportDraftPriceListToExcel = () => {
+  const selected = priceListRows.value.filter(r => r.selected)
+  const title = priceListForm.value.ten_bang_gia || 'Bang_Gia_Moi'
+  buildAndDownloadPriceListExcel(title, priceListForm.value.ghi_chu, selected, priceListForm.value.ngay_bat_dau, priceListForm.value.ngay_ket_thuc)
+}
 
 const totalGroupsCount = computed(() => {
   const categories = new Set(filteredItems.value.map(item => item.Danh_muc || 'CHƯA PHÂN LOẠI'))
@@ -1307,7 +3001,7 @@ const fetchData = async () => {
       if (!row || typeof row !== 'object') return
       mapped.push({
         _firebaseKey: firebaseKey,
-        Ma_hang: String(row.Ma_hang ?? ''),
+        Ma_hang: String(row.Ma_hang ?? '').trim(),
         Ten_hang: String(row.Ten_hang ?? ''),
         Main_img: String(row.Main_img ?? ''),
         Ma_nha_cung_cap: String(row.Ma_nha_cung_cap ?? ''),
@@ -1334,7 +3028,8 @@ const fetchData = async () => {
           : (row['muc_%_off'] !== undefined && row['muc_%_off'] !== '' ? Number(row['muc_%_off']) : 0),
         Type: String(row.Type ?? row.TYPE ?? '').trim(),
         thoi_han_bao_hanh: String(row.thoi_han_bao_hanh ?? ''),
-        volume: String(row.volume ?? '')
+        volume: String(row.volume ?? ''),
+        last_updated: String(row.last_updated ?? '')
       })
     })
     items.value = mapped
@@ -1406,10 +3101,82 @@ const openAddModal = () => {
 }
 
 const openEditModal = (item) => {
-  formData.value = { ...item }
-  originalItem.value = { ...item }
+  const normalizedFeatures = formatFeaturesHtml(item.Features)
+  const plEntry = activePriceList.value ? getPriceListEntry(item) : null
+  const giaGocHeThong = toNum(item.Don_gia, 0)
+
+  if (activePriceList.value && plEntry) {
+    const autoSync = activePriceList.value.auto_sync_base_price !== false
+    const refBasePrice = autoSync ? giaGocHeThong : toNum(plEntry.gia_goc, giaGocHeThong)
+    const giaBangGia = toNum(plEntry.gia_ban_moi, refBasePrice)
+    const diff = giaBangGia - refBasePrice
+    const pct = plEntry.type === 'percent' && plEntry.value !== undefined
+      ? toNum(plEntry.value, 0)
+      : (refBasePrice > 0 ? Math.round((Math.abs(diff) / refBasePrice) * 1000) / 10 : 0)
+    const dir = plEntry.direction || (diff < 0 ? 'decrease' : 'increase')
+    const baseObj = {
+      ...item,
+      Features: normalizedFeatures,
+      Don_gia: giaBangGia,
+      _has_pl_entry: true,
+      _gia_goc_he_thong: refBasePrice,
+      _real_hang_hoa_don_gia: giaGocHeThong,
+      _pl_direction: dir,
+      _pl_type: plEntry.type || 'percent',
+      _pl_value: toNum(plEntry.value, pct),
+      _pl_pct: pct
+    }
+    formData.value = { ...baseObj }
+    originalItem.value = { ...baseObj }
+  } else {
+    const baseObj = {
+      ...item,
+      Features: normalizedFeatures,
+      _has_pl_entry: false,
+      _gia_goc_he_thong: giaGocHeThong,
+      _real_hang_hoa_don_gia: giaGocHeThong
+    }
+    formData.value = { ...baseObj }
+    originalItem.value = { ...baseObj }
+  }
   isEditing.value = true
   showModal.value = true
+}
+
+const formatModalPriceListBadge = () => {
+  const giaGoc = toNum(formData.value._gia_goc_he_thong, 0)
+  const giaMoi = toNum(formData.value.Don_gia, 0)
+  const diff = giaMoi - giaGoc
+  if (diff === 0) return '0% (Giữ nguyên)'
+  const sign = diff > 0 ? '+' : '-'
+  const pct = formData.value._pl_type === 'percent' && toNum(formData.value._pl_pct, 0) > 0
+    ? toNum(formData.value._pl_pct, 0)
+    : (giaGoc > 0 ? Math.round((Math.abs(diff) / giaGoc) * 1000) / 10 : 0)
+  return `${sign}${pct}%`
+}
+
+const onModalDonGiaChange = () => {
+  if (!isEditing.value || !activePriceList.value || !formData.value._has_pl_entry) return
+  const giaGoc = toNum(formData.value._gia_goc_he_thong, 0)
+  const giaMoi = Math.max(0, toNum(formData.value.Don_gia, 0))
+  const diff = giaMoi - giaGoc
+  formData.value._pl_direction = diff < 0 ? 'decrease' : 'increase'
+  const pct = giaGoc > 0 ? Math.round((Math.abs(diff) / giaGoc) * 1000) / 10 : 0
+  formData.value._pl_pct = pct
+  formData.value._pl_type = 'percent'
+  formData.value._pl_value = pct
+}
+
+const onModalPriceListPctChange = () => {
+  if (!isEditing.value || !activePriceList.value || !formData.value._has_pl_entry) return
+  const giaGoc = toNum(formData.value._gia_goc_he_thong, 0)
+  const pct = Math.max(0, toNum(formData.value._pl_pct, 0))
+  const dir = formData.value._pl_direction || 'increase'
+  const delta = (giaGoc * pct) / 100
+  const rawNew = dir === 'decrease' ? giaGoc - delta : giaGoc + delta
+  formData.value.Don_gia = roundByCurrency(rawNew, formData.value.Don_vi_tien_te)
+  formData.value._pl_type = 'percent'
+  formData.value._pl_value = pct
 }
 
 const closeModal = () => {
@@ -1507,6 +3274,16 @@ const executeDelete = async () => {
   }
 }
 
+const hasSystemFieldsChanged = (cur, orig) => {
+  if (!cur || !orig) return false
+  const sysKeys = [
+    'Ten_hang', 'License_duration', 'thoi_han_bao_hanh', 'volume',
+    'Danh_muc', 'Type', 'Ten_nha_cung_cap', 'DVT', 'Features',
+    'Ghi_chu', 'Don_vi_tien_te', 'Ti_gia', 'Thue_VAT', 'gia_nhap'
+  ]
+  return sysKeys.some(k => String(cur[k] ?? '') !== String(orig[k] ?? ''))
+}
+
 const saveItem = async () => {
   if (!formData.value.Ma_hang || !formData.value.Ten_hang) {
     alert('Vui lòng điền mã hàng và tên hàng')
@@ -1515,10 +3292,71 @@ const saveItem = async () => {
   
   saving.value = true
   try {
-    const payloadObj = buildFirebaseHangHoaPayload(formData.value)
-
     if (isEditing.value) {
-      // Tương đương updateHangHoa_ trong backendOfficial
+      // Nếu đang chọn Bảng giá: cập nhật giá mới vào bảng giá đó
+      if (activePriceList.value && formData.value._has_pl_entry) {
+        const plKey = activePriceList.value._firebaseKey
+        const cleanMa = String(formData.value.Ma_hang || '').trim()
+        const newPlPrice = toNum(formData.value.Don_gia, 0)
+        const giaGoc = toNum(formData.value._gia_goc_he_thong, 0)
+        const realHangHoaDonGia = toNum(formData.value._real_hang_hoa_don_gia, giaGoc)
+
+        const currentPlItems = Array.isArray(activePriceList.value.items)
+          ? [...activePriceList.value.items]
+          : []
+
+        const updatedPlItems = currentPlItems.map(entry => {
+          if (entry && String(entry.Ma_hang || '').trim() === cleanMa) {
+            return {
+              ...entry,
+              Ma_hang: cleanMa,
+              Ten_hang: String(formData.value.Ten_hang || '').trim(),
+              Ten_nha_cung_cap: String(formData.value.Ten_nha_cung_cap || ''),
+              Danh_muc: String(formData.value.Danh_muc || '').trim().toUpperCase(),
+              Don_vi_tien_te: String(formData.value.Don_vi_tien_te || 'VND'),
+              DVT: String(formData.value.DVT || ''),
+              gia_goc: giaGoc,
+              direction: formData.value._pl_direction || 'increase',
+              type: formData.value._pl_type || 'percent',
+              value: toNum(formData.value._pl_value, 0),
+              gia_ban_moi: newPlPrice
+            }
+          }
+          return entry
+        })
+
+        await update(dbRef(database, `bang_gia/${plKey}`), {
+          items: updatedPlItems,
+          updated_at: Date.now()
+        })
+
+        // Nếu người dùng cũng có sửa thông tin chung của SP (Tên hàng, Features, Giá nhập, VAT...) thì cập nhật vào hang_hoa nhưng GIỮ NGUYÊN Don_gia gốc
+        const sysChanged = hasSystemFieldsChanged(formData.value, originalItem.value)
+        if (sysChanged) {
+          const fbKey = await findFirebaseKeyByMaHang(formData.value)
+          if (fbKey) {
+            const sysPayload = buildFirebaseHangHoaPayload({
+              ...formData.value,
+              Don_gia: realHangHoaDonGia
+            })
+            await update(dbRef(database, `hang_hoa/${fbKey}`), sysPayload)
+          }
+        }
+
+        closeModal()
+        await fetchPriceLists()
+        if (sysChanged) {
+          await fetchData()
+        }
+        showAsyncSuccess(
+          'Đã cập nhật giá vào bảng giá!',
+          `${activePriceList.value.ten_bang_gia} — Giá mới: ${formatCurrency(newPlPrice, formData.value.Don_vi_tien_te)} (${formatModalPriceListBadge()})`
+        )
+        return
+      }
+
+      // Chế độ mặc định (Giá gốc hệ thống): cập nhật trực tiếp vào hang_hoa
+      const payloadObj = buildFirebaseHangHoaPayload(formData.value)
       const fbKey = await findFirebaseKeyByMaHang(formData.value)
       if (!fbKey) {
         showAsyncError('Lỗi lưu dữ liệu', 'Không tìm thấy mã hàng cần cập nhật trên Firebase (NOT_FOUND)')
@@ -1528,6 +3366,7 @@ const saveItem = async () => {
       showAsyncSuccess('Cập nhật thành công!', `Mã hàng: ${formData.value.Ma_hang}`)
     } else {
       // Tương đương createHangHoa_ trong backendOfficial
+      const payloadObj = buildFirebaseHangHoaPayload(formData.value)
       const newRef = push(dbRef(database, 'hang_hoa'))
       await set(newRef, payloadObj)
 
@@ -1539,6 +3378,7 @@ const saveItem = async () => {
 
     closeModal()
     await fetchData()
+    await syncAutoUpdatePriceListsInFirebase()
   } catch (err) {
     console.error('Save error:', err)
     showAsyncError('Lỗi lưu dữ liệu Firebase', err.message)
@@ -1547,9 +3387,10 @@ const saveItem = async () => {
   }
 }
 
-onMounted(() => {
-  fetchData()
+onMounted(async () => {
   fetchLatestGiaOff()
+  await Promise.all([fetchData(), fetchPriceLists()])
+  await syncAutoUpdatePriceListsInFirebase()
 })
 </script>
 
@@ -2438,6 +4279,48 @@ onMounted(() => {
   field-sizing: content;
   overflow-y: hidden;
 }
+.imp-features-cell {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+.imp-input--rich {
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.5;
+  min-height: 38px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 34px;
+  background: rgba(0, 0, 0, 0.15);
+}
+.imp-features-edit-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid rgba(20, 184, 166, 0.35);
+  background: rgba(15, 23, 42, 0.85);
+  color: #2dd4bf;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 2;
+}
+.imp-features-edit-btn:hover {
+  background: rgba(20, 184, 166, 0.25);
+  color: #5eead4;
+  border-color: #14b8a6;
+}
+.features-excel-editor :deep(.editor-content) {
+  min-height: 160px;
+  max-height: 320px;
+}
 
 /* Footer */
 .import-modal__footer {
@@ -2884,5 +4767,493 @@ onMounted(() => {
   .modal-content.large-modal {
     padding-bottom: 80px;
   }
+}
+
+/* ═══ PRICE LIST (BẢNG GIÁ) STYLES ═══ */
+.btn-pricelist {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+.btn-pricelist:hover {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  box-shadow: 0 6px 16px rgba(245, 158, 11, 0.4);
+  transform: translateY(-1px);
+}
+
+.pricelist-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 99px;
+  padding: 5px 10px 5px 14px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.pricelist-select-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pricelist-select {
+  background: transparent;
+  border: none;
+  color: #f8fafc;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 6px 24px 6px 4px;
+  cursor: pointer;
+  outline: none;
+  min-width: 220px;
+}
+.pricelist-select option {
+  background: #0f172a;
+  color: #f8fafc;
+  padding: 8px;
+}
+
+.pricelist-period-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 11.5px;
+  font-weight: 600;
+  background: rgba(56, 189, 248, 0.12);
+  color: #7dd3fc;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.pricelist-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.pricelist-status-badge.active {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+.pricelist-status-badge.upcoming {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+}
+.pricelist-status-badge.expired {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.pricelist-rule-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 11.5px;
+  font-weight: 700;
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.pricelist-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+}
+.pricelist-action-btn.edit {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.3);
+}
+.pricelist-action-btn.edit:hover {
+  background: rgba(56, 189, 248, 0.25);
+}
+.pricelist-action-btn.export {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.3);
+}
+.pricelist-action-btn.export:hover {
+  background: rgba(16, 185, 129, 0.25);
+}
+.pricelist-action-btn.delete {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.3);
+  padding: 5px 8px;
+}
+.pricelist-action-btn.delete:hover {
+  background: rgba(239, 68, 68, 0.25);
+}
+
+.pl-card-diff-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 99px;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+.pl-card-diff-badge.up {
+  background: rgba(16, 185, 129, 0.18);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+.pl-card-diff-badge.down {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+.pl-card-diff-badge.neutral {
+  background: rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
+}
+
+.pricelist-modal {
+  max-width: 96vw !important;
+  width: 1500px !important;
+  height: 92vh !important;
+}
+
+.pl-config-section {
+  display: grid;
+  grid-template-columns: 1.25fr 1.25fr;
+  gap: 14px;
+  padding: 14px 20px;
+  background: #0b1120;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+@media (max-width: 1100px) {
+  .pl-config-section {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pl-config-card {
+  background: rgba(30, 41, 59, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 12px 16px;
+}
+.pl-config-card--highlight {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(15, 23, 42, 0.75));
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.pl-config-card__title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #e2e8f0;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 10px;
+}
+
+.pl-config-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 10px;
+}
+.pl-config-grid--4 {
+  grid-template-columns: 1.3fr 1fr 1fr 1.2fr;
+}
+@media (max-width: 900px) {
+  .pl-config-grid--4 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.pl-bulk-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pl-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pl-field label {
+  font-size: 11.5px;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.pl-input, .pl-select {
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 7px;
+  color: #f8fafc;
+  padding: 7px 10px;
+  font-size: 13px;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+.pl-input:focus, .pl-select:focus {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.15);
+}
+.pl-select--up {
+  color: #34d399;
+  font-weight: 700;
+}
+.pl-select--down {
+  color: #fbbf24;
+  font-weight: 700;
+}
+
+.pl-bulk-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pl-apply-btn {
+  padding: 8px 13px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.pl-apply-btn--selected {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(245, 158, 11, 0.25);
+}
+.pl-apply-btn--selected:hover {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  transform: translateY(-1px);
+}
+.pl-apply-btn--filtered {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.35);
+}
+.pl-apply-btn--filtered:hover {
+  background: rgba(16, 185, 129, 0.25);
+}
+
+.pl-filter-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 20px;
+  background: #111827;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.pl-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.pl-filter-select, .pl-filter-input {
+  background: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 7px;
+  color: #f8fafc;
+  padding: 6px 11px;
+  font-size: 12.5px;
+  outline: none;
+}
+.pl-filter-input {
+  width: 100%;
+  padding-right: 28px;
+  box-sizing: border-box;
+}
+.pl-filter-select:focus, .pl-filter-input:focus {
+  border-color: #38bdf8;
+}
+
+.pl-view-tabs {
+  display: inline-flex;
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 7px;
+  padding: 2px;
+}
+.pl-view-tab {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.pl-view-tab.active {
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+}
+
+.pl-selection-btns {
+  display: flex;
+  gap: 8px;
+}
+.pl-mini-btn {
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  color: #60a5fa;
+  padding: 5px 11px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.pl-mini-btn:hover {
+  background: rgba(59, 130, 246, 0.25);
+}
+.pl-mini-btn--muted {
+  background: rgba(148, 163, 184, 0.1);
+  border-color: rgba(148, 163, 184, 0.25);
+  color: #94a3b8;
+}
+.pl-mini-btn--muted:hover {
+  background: rgba(148, 163, 184, 0.2);
+  color: #e2e8f0;
+}
+
+.pl-row-selected {
+  background: rgba(16, 185, 129, 0.05) !important;
+}
+
+.pl-row-adjust {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.pl-row-select {
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 5px;
+  color: #e2e8f0;
+  padding: 4px 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  outline: none;
+}
+.pl-row-select.up {
+  color: #34d399;
+}
+.pl-row-select.down {
+  color: #fbbf24;
+}
+
+.pl-diff-up {
+  color: #34d399;
+  font-weight: 700;
+}
+.pl-diff-down {
+  color: #fbbf24;
+  font-weight: 700;
+}
+.pl-diff-zero {
+  color: #64748b;
+}
+
+.pricelist-autosync-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+.pricelist-autosync-btn.on {
+  background: rgba(16, 185, 129, 0.16);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.4);
+}
+.pricelist-autosync-btn.on:hover {
+  background: rgba(16, 185, 129, 0.26);
+}
+.pricelist-autosync-btn.off {
+  background: rgba(148, 163, 184, 0.14);
+  color: #cbd5e1;
+  border-color: rgba(148, 163, 184, 0.35);
+}
+.pricelist-autosync-btn.off:hover {
+  background: rgba(148, 163, 184, 0.24);
+}
+
+.pl-autosync-box {
+  margin-top: 10px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px dashed rgba(148, 163, 184, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  transition: all 0.2s;
+}
+.pl-autosync-box.active {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+.pl-autosync-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+.pl-autosync-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: #10b981;
+  cursor: pointer;
+}
+.pl-autosync-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #e2e8f0;
+}
+.pl-autosync-box.active .pl-autosync-title {
+  color: #34d399;
+}
+.pl-autosync-hint {
+  font-size: 11px;
+  color: #94a3b8;
+  padding-left: 24px;
 }
 </style>

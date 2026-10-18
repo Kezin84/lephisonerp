@@ -2890,7 +2890,8 @@ async function postApi(action: string, payload: any) {
       TYPE: String(row[23] ?? '').trim(),
       Type: String(row[23] ?? '').trim(),
       thoi_han_bao_hanh: String(row[24] ?? ''),
-      volume: String(row[25] ?? '')
+      volume: String(row[25] ?? ''),
+      last_updated: new Date().toISOString()
     }
     const newRef = push(dbRef(database, 'hang_hoa'))
     await set(newRef, newItemObj)
@@ -3647,7 +3648,8 @@ onMounted(async () => {
         muc_phan_tram_off: Number(item['muc_%_off'] ?? item.muc_phan_tram_off ?? 0),
         Type: String(item.TYPE ?? item.Type ?? '').trim(),
         thoi_han_bao_hanh: String(item.thoi_han_bao_hanh ?? ''),
-        volume: String(item.volume ?? '')
+        volume: String(item.volume ?? ''),
+        last_updated: String(item.last_updated ?? '')
       })
     })
     products.value = mappedProducts
@@ -3677,6 +3679,9 @@ onMounted(async () => {
   try {
     customTemplates.value = await fetchUploadFileMauFromFirebase()
   } catch (err) { console.error('Lỗi lấy template tùy chỉnh:', err) }
+
+  // bang_gia
+  fetchPriceListsFromFirebase().catch(err => console.error('Lỗi lấy bang_gia:', err))
 
   if (route.query.ma) {
     loadMode.value = 'MA'
@@ -3718,10 +3723,11 @@ onActivated(async () => {
   // Tránh đụng độ với onMounted trong lần tải trang đầu tiên
   if (contractsState.value === 'loading') return
 
-  // Luôn cập nhật lại danh sách điều khoản mới nhất từ Firebase (khi vừa thêm/sửa/xóa bên QuanLyDieuKhoanFirebase)
+  // Luôn cập nhật lại danh sách điều khoản và bảng giá mới nhất từ Firebase
   fetchDieuKhoanFromFirebase().then(dkRows => {
     termsRaw.value = Array.isArray(dkRows) ? dkRows : []
   }).catch(e => console.error('Lỗi refresh dieu_khoan:', e))
+  fetchPriceListsFromFirebase().catch(e => console.error('Lỗi refresh bang_gia:', e))
 
   if (route.query.ma) {
     const ma = String(route.query.ma)
@@ -3834,13 +3840,212 @@ function onBlurCongTy() {
 }
 
 /* ======================
+   BẢNG GIÁ (PRICE LIST) SUPPORT
+====================== */
+const priceLists = ref<any[]>([])
+const selectedPriceListId = ref<string>('')
+const filterOnlyPriceListItems = ref<boolean>(true)
+
+function formatDateVNPriceList(dateStr: string) {
+  if (!dateStr) return ''
+  const parts = String(dateStr).split('T')[0].split('-')
+  if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`
+  return String(dateStr)
+}
+
+function formatPriceListPeriod(pl: any) {
+  if (!pl) return ''
+  const s = formatDateVNPriceList(pl.ngay_bat_dau)
+  const e = formatDateVNPriceList(pl.ngay_ket_thuc)
+  if (s && e) return `${s} → ${e}`
+  if (s) return `Từ ${s}`
+  if (e) return `Đến ${e}`
+  return 'Không giới hạn'
+}
+
+function getPriceListStatusInfo(pl: any) {
+  if (!pl) return { label: '', color: '#94a3b8' }
+  const now = new Date()
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  const start = String(pl.ngay_bat_dau || '').trim()
+  const end = String(pl.ngay_ket_thuc || '').trim()
+  if (start && todayStr < start) return { label: '⏳ Chưa đến hạn', color: '#60a5fa' }
+  if (end && todayStr > end) return { label: '⚠️ Đã hết hạn', color: '#f87171' }
+  return { label: '✅ Đang hiệu lực', color: '#34d399' }
+}
+
+async function fetchPriceListsFromFirebase() {
+  try {
+    const snap = await get(dbRef(database, 'bang_gia'))
+    const data = snap.val() || {}
+    const list = Object.entries(data)
+      .map(([fbKey, row]: [string, any]) => {
+        if (!row || typeof row !== 'object') return null
+        const rawItems = Array.isArray(row.items)
+          ? row.items
+          : (row.items && typeof row.items === 'object' ? Object.values(row.items) : [])
+        return {
+          _firebaseKey: fbKey,
+          id: row.id || fbKey,
+          ten_bang_gia: String(row.ten_bang_gia || 'Bảng giá chưa đặt tên'),
+          ghi_chu: String(row.ghi_chu || ''),
+          ngay_bat_dau: String(row.ngay_bat_dau || ''),
+          ngay_ket_thuc: String(row.ngay_ket_thuc || ''),
+          auto_sync_base_price: row.auto_sync_base_price !== false,
+          created_at: Number(row.created_at) || 0,
+          updated_at: Number(row.updated_at) || 0,
+          default_rule: row.default_rule || { direction: 'increase', type: 'percent', value: 0 },
+          items: rawItems.filter(Boolean)
+        }
+      })
+      .filter(Boolean)
+    list.sort((a: any, b: any) => (b.updated_at || b.created_at) - (a.updated_at || a.created_at))
+    priceLists.value = list
+  } catch (err) {
+    console.error('Lỗi tải bang_gia trong baogiaFirebase:', err)
+  }
+}
+
+function computeBaoGiaSyncedPrice(basePrice: number, entry: any, currency?: string): number {
+  const giaGoc = toNum(basePrice, 0)
+  if (!entry) return giaGoc
+  const dir = entry.direction || 'increase'
+  const type = entry.type || 'percent'
+  const val = Math.max(0, toNum(entry.value, 0))
+  let rawNew = giaGoc
+  if (type === 'percent') {
+    const delta = (giaGoc * val) / 100
+    rawNew = dir === 'decrease' ? giaGoc - delta : giaGoc + delta
+  } else if (type === 'amount') {
+    rawNew = dir === 'decrease' ? giaGoc - val : giaGoc + val
+  } else {
+    const oldBase = toNum(entry.gia_goc, 0)
+    const oldPrice = toNum(entry.gia_ban_moi, 0)
+    rawNew = oldBase > 0 ? giaGoc * (oldPrice / oldBase) : giaGoc + (oldPrice - oldBase)
+  }
+  const cur = String(currency || entry.Don_vi_tien_te || 'VND').trim().toUpperCase()
+  const clamped = Math.max(0, rawNew)
+  return cur === 'VND' ? Math.round(clamped) : Math.round(clamped * 100) / 100
+}
+
+const activePriceList = computed(() => {
+  if (!selectedPriceListId.value) return null
+  return priceLists.value.find(pl => pl._firebaseKey === selectedPriceListId.value) || null
+})
+
+const activePriceListMap = computed(() => {
+  const map = new Map<string, any>()
+  const pl = activePriceList.value
+  if (!pl || !Array.isArray(pl.items)) return map
+
+  const autoSync = pl.auto_sync_base_price !== false
+  const sysMap = new Map<string, HangHoa>()
+  if (autoSync) {
+    products.value.forEach((p: HangHoa) => {
+      if (p && p.Ma_hang) sysMap.set(String(p.Ma_hang).trim(), p)
+    })
+  }
+
+  pl.items.forEach((entry: any) => {
+    if (entry && entry.Ma_hang) {
+      const cleanMa = String(entry.Ma_hang).trim()
+      if (autoSync) {
+        const sysItem = sysMap.get(cleanMa)
+        if (sysItem) {
+          const latestGiaGoc = toNum(sysItem.Don_gia, 0)
+          const savedGiaGoc = toNum(entry.gia_goc, 0)
+          if (latestGiaGoc !== savedGiaGoc) {
+            const newGiaBan = computeBaoGiaSyncedPrice(latestGiaGoc, entry, sysItem.Don_vi_tien_te || entry.Don_vi_tien_te)
+            map.set(cleanMa, {
+              ...entry,
+              gia_goc: latestGiaGoc,
+              gia_ban_moi: newGiaBan,
+              _auto_synced: true
+            })
+            return
+          }
+        }
+      }
+      map.set(cleanMa, entry)
+    }
+  })
+  return map
+})
+
+function formatPriceListRuleShortBaoGia(plEntry: any, baseGiaGoc?: any) {
+  if (!plEntry) return ''
+  const base = toNum(baseGiaGoc ?? plEntry.gia_goc, 0)
+  const next = toNum(plEntry.gia_ban_moi, 0)
+  const diff = next - base
+  if (plEntry.type === 'percent' && toNum(plEntry.value, 0) > 0) {
+    return `${plEntry.direction === 'decrease' ? '-' : '+'}${plEntry.value}%`
+  }
+  if (diff === 0) return 'Giữ nguyên'
+  const sign = diff > 0 ? '+' : '-'
+  return `${sign}${formatVND(Math.abs(diff))}`
+}
+
+function getProductWithPriceList(p: HangHoa): HangHoa {
+  if (!p) return p
+  const entry = activePriceListMap.value.get(String(p.Ma_hang || '').trim())
+  if (!entry) return p
+  return {
+    ...p,
+    _gia_he_thong_goc: p.Don_gia,
+    _pl_entry: entry,
+    Don_gia: toNum(entry.gia_ban_moi, p.Don_gia)
+  } as any
+}
+
+function applyPriceListToCurrentQuote() {
+  if (!selectedItems.value.length) return
+  let updatedCount = 0
+  if (activePriceList.value) {
+    selectedItems.value.forEach((it: any) => {
+      const rawMa = String(it.Ma_hang || '').trim()
+      const baseCode = rawMa.replace(/-V\d+$/, '')
+      const entry = activePriceListMap.value.get(rawMa) || activePriceListMap.value.get(baseCode)
+      if (entry) {
+        const newPrice = toNum(entry.gia_ban_moi, it.Don_gia)
+        it.Don_gia = newPrice
+        it._Don_gia_goc = newPrice
+        updatedCount++
+      }
+    })
+    if (updatedCount > 0) {
+      triggerToast(`Đã áp dụng "${activePriceList.value.ten_bang_gia}" cho ${updatedCount} SP trong báo giá!`)
+    }
+  } else {
+    selectedItems.value.forEach((it: any) => {
+      const rawMa = String(it.Ma_hang || '').trim()
+      const baseCode = rawMa.replace(/-V\d+$/, '')
+      const sysProd = products.value.find(p => String(p.Ma_hang || '').trim() === rawMa || String(p.Ma_hang || '').trim() === baseCode)
+      if (sysProd) {
+        it.Don_gia = toNum(sysProd.Don_gia, it.Don_gia)
+        it._Don_gia_goc = toNum(sysProd.Don_gia, it.Don_gia)
+        updatedCount++
+      }
+    })
+    if (updatedCount > 0) {
+      triggerToast(`Đã khôi phục giá gốc hệ thống cho ${updatedCount} SP trong báo giá!`)
+    }
+  }
+}
+
+watch(selectedPriceListId, () => {
+  displayLimit.value = 15
+  applyPriceListToCurrentQuote()
+})
+
+/* ======================
    AUTO FILL PRODUCT (manual modal)
 ====================== */
 function autoFillProduct(val: string) {
   const v = (val || '').trim()
   if (!v) return
-  const p = products.value.find(i => i.Ma_hang === v || i.Ten_hang === v)
-  if (!p) return
+  const rawP = products.value.find(i => i.Ma_hang === v || i.Ten_hang === v)
+  if (!rawP) return
+  const p = getProductWithPriceList(rawP)
   const keepQty = itemForm.value.So_luong
   itemForm.value = { ...JSON.parse(JSON.stringify(p)), So_luong: Math.max(1, toNum(keepQty, 1)) }
 }
@@ -3897,46 +4102,48 @@ const filteredProducts = computed(() => {
   const kw = keyword.value.trim()
   const uCount = parseInt(userVolumeFilter.value, 10)
   const hasVolumeFilter = userVolumeFilter.value !== '' && !isNaN(uCount)
+  const hasPriceListFilter = Boolean(selectedPriceListId.value && activePriceList.value && filterOnlyPriceListItems.value)
 
-  if (!kw && !hasVolumeFilter) {
-    return products.value.filter(p => {
-      return supplierFilter.value === 'ALL' || p.Ten_nha_cung_cap === supplierFilter.value || p.Ma_nha_cung_cap === supplierFilter.value
+  const words = kw ? kw.toLowerCase().split(/\s+/).filter(Boolean) : []
+
+  return products.value
+    .filter(p => {
+      if (hasPriceListFilter && !activePriceListMap.value.has(String(p.Ma_hang || '').trim())) {
+        return false
+      }
+
+      const okSupplier =
+        supplierFilter.value === 'ALL' ||
+        p.Ten_nha_cung_cap === supplierFilter.value ||
+        p.Ma_nha_cung_cap === supplierFilter.value
+      if (!okSupplier) return false
+
+      let okKw = true
+      if (words.length > 0) {
+        const ma = (p.Ma_hang || '').toLowerCase()
+        const ten = (p.Ten_hang || '').toLowerCase()
+        const ncc = (p.Ten_nha_cung_cap || '').toLowerCase()
+
+        const maN = normalizeString(ma)
+        const tenN = normalizeString(ten)
+        const nccN = normalizeString(ncc)
+
+        okKw = words.every(w => {
+          const wN = normalizeString(w)
+          return ma.includes(w) || maN.includes(wN) ||
+                 ten.includes(w) || tenN.includes(wN) ||
+                 ncc.includes(w) || nccN.includes(wN)
+        })
+      }
+
+      let okVolume = true
+      if (hasVolumeFilter) {
+        okVolume = checkVolumeMatch(p.volume || '', uCount)
+      }
+
+      return okKw && okVolume
     })
-  }
-  
-  const words = kw.toLowerCase().split(/\s+/).filter(Boolean)
-  
-  return products.value.filter(p => {
-    let okKw = true;
-    if (words.length > 0) {
-      const ma = (p.Ma_hang || '').toLowerCase()
-      const ten = (p.Ten_hang || '').toLowerCase()
-      const ncc = (p.Ten_nha_cung_cap || '').toLowerCase()
-      
-      const maN = normalizeString(ma)
-      const tenN = normalizeString(ten)
-      const nccN = normalizeString(ncc)
-      
-      okKw = words.every(w => {
-        const wN = normalizeString(w)
-        return ma.includes(w) || maN.includes(wN) ||
-               ten.includes(w) || tenN.includes(wN) ||
-               ncc.includes(w) || nccN.includes(wN)
-      })
-    }
-
-    const okSupplier =
-      supplierFilter.value === 'ALL' ||
-      p.Ten_nha_cung_cap === supplierFilter.value ||
-      p.Ma_nha_cung_cap === supplierFilter.value
-
-    let okVolume = true;
-    if (hasVolumeFilter) {
-      okVolume = checkVolumeMatch(p.volume || '', uCount);
-    }
-
-    return okKw && okSupplier && okVolume
-  })
+    .map(p => getProductWithPriceList(p))
 })
 
 const displayLimit = ref(15)
@@ -4008,7 +4215,8 @@ function insertItemIntoGroup(cloned: any) {
   }
 }
 
-function addItemFromCard(p: HangHoa) {
+function addItemFromCard(rawP: HangHoa) {
+  const p = getProductWithPriceList(rawP)
   const qty = Math.max(1, qtyMap[p.Ma_hang] || 1)
   const resolvedMaHang = resolveMaHang(p);
 
@@ -4019,6 +4227,8 @@ function addItemFromCard(p: HangHoa) {
   let highlightIdx = -1;
   if (foundIdx >= 0) {
     selectedItems.value[foundIdx].So_luong += qty
+    selectedItems.value[foundIdx].Don_gia = p.Don_gia
+    ;(selectedItems.value[foundIdx] as any)._Don_gia_goc = p.Don_gia
     highlightIdx = foundIdx;
   } else {
     const cloned = cloneHang(p, qty);
@@ -4050,7 +4260,7 @@ function getLinkedItems(p: HangHoa) {
 function addLinkedItem(code: string) {
   const foundProduct = products.value.find(x => x.Ma_hang === code);
   if (foundProduct) {
-    addItemFromCard(foundProduct);
+    addItemFromCard(getProductWithPriceList(foundProduct));
   }
 }
 
@@ -4375,9 +4585,9 @@ function openCardModal(p: HangHoa) {
 }
 
 function openSuggestedCardModal(code: string) {
-  const found = products.value.find(x => x.Ma_hang === code)
+  const found = products.value.find(x => String(x.Ma_hang || '').trim() === String(code || '').trim())
   if (found) {
-    openCardModal(found)
+    openCardModal(getProductWithPriceList(found))
   }
 }
 
@@ -5727,6 +5937,85 @@ function excelCellText(v: any): string {
 
 function toDescriptionRichText(text: string, baseFont: any): any {
   if (!text) return '';
+  if (/<(br|span|b|strong|i|em|u|s|strike|div|p|font|ul|ol|li)\b/i.test(text) && typeof document !== 'undefined') {
+    const temp = document.createElement('div');
+    temp.innerHTML = text;
+    const rgbToArgb = (rgbStr: string) => {
+      if (!rgbStr) return undefined;
+      const match = rgbStr.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+      if (match) {
+        const r = parseInt(match[1]).toString(16).padStart(2, '0');
+        const g = parseInt(match[2]).toString(16).padStart(2, '0');
+        const b = parseInt(match[3]).toString(16).padStart(2, '0');
+        return 'FF' + r.toUpperCase() + g.toUpperCase() + b.toUpperCase();
+      }
+      if (rgbStr.startsWith('#')) {
+        let hex = rgbStr.replace('#', '');
+        if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+        return 'FF' + hex.toUpperCase();
+      }
+      return undefined;
+    };
+    const blockTags = new Set(['p', 'div', 'li', 'ul', 'ol', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'tr', 'blockquote']);
+    const runs: any[] = [];
+    const traverse = (node: Node, currentFont: any) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        if (node.textContent) {
+          runs.push({ text: node.textContent, font: { ...currentFont } });
+        }
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        const el = node as HTMLElement;
+        const newFont = { ...currentFont };
+        const tag = el.tagName.toLowerCase();
+        if (blockTags.has(tag) && runs.length > 0 && !runs[runs.length - 1].text.endsWith('\n')) {
+          runs.push({ text: '\n', font: { ...currentFont } });
+        }
+        if (tag === 'br') {
+          runs.push({ text: '\n', font: { ...currentFont } });
+          return;
+        }
+        if (tag === 'li') {
+          runs.push({ text: '- ', font: { ...currentFont } });
+        }
+        if (tag === 'b' || tag === 'strong') newFont.bold = true;
+        if (tag === 'i' || tag === 'em') newFont.italic = true;
+        if (tag === 'u') newFont.underline = true;
+        if (tag === 's' || tag === 'strike') newFont.strike = true;
+        if (el.style) {
+          const fw = el.style.fontWeight;
+          if (fw === 'bold' || fw === 'bolder' || parseInt(fw) >= 700) newFont.bold = true;
+          const fs = el.style.fontStyle;
+          if (fs === 'italic' || fs === 'oblique') newFont.italic = true;
+          const td = el.style.textDecoration;
+          if (td && td.includes('underline')) newFont.underline = true;
+          if (td && td.includes('line-through')) newFont.strike = true;
+          if (el.style.color) {
+            const argb = rgbToArgb(el.style.color);
+            if (argb) newFont.color = { argb };
+          }
+          if (el.style.fontFamily) {
+            newFont.name = el.style.fontFamily.split(',')[0].replace(/['"]/g, '').trim();
+          }
+          if (el.style.fontSize) {
+            const pt = parseFloat(el.style.fontSize);
+            if (!isNaN(pt)) newFont.size = pt;
+          }
+        }
+        if (tag === 'font') {
+          if (el.hasAttribute('face')) newFont.name = el.getAttribute('face') || newFont.name;
+          if (el.hasAttribute('color')) {
+            const argb = rgbToArgb(el.getAttribute('color') || '');
+            if (argb) newFont.color = { argb };
+          }
+        }
+        el.childNodes.forEach(child => traverse(child, newFont));
+      }
+    };
+    traverse(temp, Object.assign({ bold: false }, baseFont || {}));
+    if (runs.length > 0) {
+      return { richText: runs };
+    }
+  }
   const lines = text.split('\n').map(l => l.replace(/\r/g, '').trim());
   
   const firstNonEmptyIdx = lines.findIndex(l => l.length > 0);
@@ -7306,6 +7595,65 @@ async function confirmImport(saveToDb: boolean) {
           <button class="icon-btn" @click="showProductSidebar = false">✕</button>
         </div>
         <div class="top-bar">
+          <!-- Khung chọn Bảng Giá áp dụng -->
+          <div style="margin-bottom: 8px; background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 8px; padding: 7px 10px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+              <span style="font-size: 11px; font-weight: 700; color: #fbbf24; text-transform: uppercase; letter-spacing: 0.3px;">
+                🏷️ Bảng giá áp dụng
+              </span>
+              <label v-if="selectedPriceListId" style="display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: #cbd5e1; cursor: pointer;">
+                <input type="checkbox" v-model="filterOnlyPriceListItems" style="accent-color: #f59e0b; cursor: pointer;" />
+                Chỉ hiện SP bảng giá
+              </label>
+            </div>
+            <select
+              v-model="selectedPriceListId"
+              style="width: 100%; background: #1e293b; border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; color: #f8fafc; padding: 6px 8px; font-size: 12.5px; font-weight: 600; outline: none; cursor: pointer;"
+            >
+              <option value="">📋 Giá gốc hệ thống ({{ products.length }} SP)</option>
+              <option v-for="pl in priceLists" :key="pl._firebaseKey" :value="pl._firebaseKey">
+                🏷️ {{ pl.ten_bang_gia }} ({{ (pl.items || []).length }} SP){{ (pl.ngay_bat_dau || pl.ngay_ket_thuc) ? ' • ' + formatPriceListPeriod(pl) : '' }}
+              </option>
+            </select>
+            <div
+              v-if="activePriceList"
+              style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; margin-top: 6px; padding-top: 5px; border-top: 1px dashed rgba(255,255,255,0.1); font-size: 11px;"
+            >
+              <span v-if="activePriceList.ngay_bat_dau || activePriceList.ngay_ket_thuc" style="color: #93c5fd; font-weight: 600;">
+                🗓️ {{ formatPriceListPeriod(activePriceList) }}
+              </span>
+              <div style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
+                <span
+                  :style="{
+                    color: activePriceList.auto_sync_base_price !== false ? '#34d399' : '#cbd5e1',
+                    background: activePriceList.auto_sync_base_price !== false ? 'rgba(16, 185, 129, 0.14)' : 'rgba(148, 163, 184, 0.14)',
+                    border: activePriceList.auto_sync_base_price !== false ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid rgba(148, 163, 184, 0.3)',
+                    padding: '2px 7px',
+                    borderRadius: '999px',
+                    fontWeight: '700',
+                    fontSize: '10px'
+                  }"
+                >
+                  {{ activePriceList.auto_sync_base_price !== false ? '🔄 Tự động theo giá gốc' : '🔒 Giá cố định' }}
+                </span>
+                <span
+                  v-if="(activePriceList.ngay_bat_dau || activePriceList.ngay_ket_thuc) && getPriceListStatusInfo(activePriceList)"
+                  :style="{
+                    color: getPriceListStatusInfo(activePriceList).color,
+                    background: getPriceListStatusInfo(activePriceList).bg,
+                    border: '1px solid ' + getPriceListStatusInfo(activePriceList).border,
+                    padding: '2px 7px',
+                    borderRadius: '999px',
+                    fontWeight: '700',
+                    fontSize: '10.5px'
+                  }"
+                >
+                  {{ getPriceListStatusInfo(activePriceList).label }}
+                </span>
+              </div>
+            </div>
+          </div>
+
           <div class="search-wrap" style="position: relative;">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
             <input v-model="keyword" placeholder="Tìm mã / tên hàng / NCC..." class="search-input" style="padding-right: 36px !important;" @focus="showRecentSearches = true" @blur="showRecentSearches = false" @keydown.enter="saveRecentSearch(keyword)" />
@@ -7352,11 +7700,17 @@ async function confirmImport(saveToDb: boolean) {
               <div class="card-badges">
                 <span class="card-ncc-badge" v-if="p.Ten_nha_cung_cap">{{ p.Ten_nha_cung_cap }}</span>
                 <span class="card-vat-badge-img" v-if="p.Thue_VAT">VAT {{ p.Thue_VAT }}%</span>
+                <span v-if="(p as any)._pl_entry" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 4px; padding: 1px 6px; font-size: 10px; font-weight: 700;">
+                  🏷️ Giá bảng giá ({{ formatPriceListRuleShortBaoGia((p as any)._pl_entry, (p as any)._gia_he_thong_goc) }})
+                </span>
               </div>
               <h4 class="clamp2" v-html="highlightText(p.Ten_hang, keyword)"></h4>
               <p class="card-license clamp1" v-if="p.License_duration">{{ p.License_duration }}</p>
               <p class="card-license clamp1" v-if="p.thoi_han_bao_hanh" style="color: #10b981;">Bảo hành: {{ p.thoi_han_bao_hanh }}</p>
               <p class="card-license clamp1" v-if="p.volume" style="color: #38bdf8;">Volume: {{ p.volume }}</p>
+              <p v-if="(p as any)._pl_entry && toNum((p as any)._gia_he_thong_goc) !== toNum(p.Don_gia)" style="font-size: 11px; color: #94a3b8; margin: 4px 0 0 0;">
+                Giá gốc: <span style="text-decoration: line-through; color: #64748b;">{{ formatVND((toNum(p.gia_hardware, 0) + toNum((p as any)._gia_he_thong_goc, 0)) * toNum(p.Ti_gia, 1)) }}</span>
+              </p>
               <div class="card-price-row">
                 <span class="price">{{ displayPrice(p) }}</span>
                 <span class="price-unit">/ {{ p.DVT }}</span>
@@ -7512,7 +7866,7 @@ async function confirmImport(saveToDb: boolean) {
                       <div class="preline">
                         <div v-if="r.item.Mo_ta_chung">{{ r.item.Mo_ta_chung }}</div>
                         <div v-if="r.item.Mo_ta_chi_tiet">{{ r.item.Mo_ta_chi_tiet }}</div>
-                        <div v-if="r.item.Features">{{ r.item.Features }}</div>
+                        <div v-if="r.item.Features" v-html="r.item.Features"></div>
                       </div>
                     </td>
                     <td data-label="Hãng" class="col-hang-cell" :title="r.item.Ten_nha_cung_cap" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Ten_nha_cung_cap')">{{ r.item.Ten_nha_cung_cap }}</td>
@@ -8705,7 +9059,7 @@ async function confirmImport(saveToDb: boolean) {
                     <div class="preline">
                       <div v-if="r.item.Mo_ta_chung">{{ r.item.Mo_ta_chung }}</div>
                       <div v-if="r.item.Mo_ta_chi_tiet">{{ r.item.Mo_ta_chi_tiet }}</div>
-                      <div v-if="r.item.Features">{{ r.item.Features }}</div>
+                      <div v-if="r.item.Features" v-html="r.item.Features"></div>
                     </div>
                   </td>
                   <td class="col-dvt-cell" :title="r.item.DVT" @click.stop="openQuoteEditRaw(r.idx, 'DVT')">{{ r.item.DVT }}</td>
@@ -8910,7 +9264,7 @@ async function confirmImport(saveToDb: boolean) {
               <!-- 7: Tính năng / Features -->
               <div class="modal-form-group" style="grid-column: 1 / -1;">
                 <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Diễn giải</label>
-                <textarea id="qe-Features" v-model="quoteEdit.Features" rows="3" style="width: 100%; padding: 10px 14px; border-radius: 8px; resize: vertical;" />
+                <ExcelEditor id="qe-Features" v-model="quoteEdit.Features" placeholder="Nhập diễn giải / tính năng..." />
               </div>
               
               <!-- 8: Ghi chú -->
