@@ -28,6 +28,7 @@ import KhoLuuTru from '../components/KhoLuuTru.vue'
 import KhoLuuTruFirebase from '../components/KhoLuuTruFirebase.vue'
 import QuanLyFile from '../components/QuanLyFile.vue'
 import DatabaseViewer from '../components/DatabaseViewer.vue'
+import QuanLyMauInFirebase from '../components/QuanLyMauInFirebase.vue'
 
 const routes = [
   {
@@ -121,6 +122,13 @@ const routes = [
     name: 'QuanLyDieuKhoanFirebase',
     component: QuanLyDieuKhoanFirebase,
     meta: { title: 'Quản lý Điều khoản Firebase' }
+  },
+  {
+    path: '/mau-in-firebase',
+    alias: ['/quanlymauinfirebase', '/thiet-lap-mau-in'],
+    name: 'QuanLyMauInFirebase',
+    component: QuanLyMauInFirebase,
+    meta: { title: 'Thiết lập Mẫu In Báo Giá' }
   },
   {
     path: '/quanlyhanghoa',

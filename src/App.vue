@@ -144,6 +144,10 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><path d="M14 3v5h5M16 13H8M16 17H8M10 9H8"/></svg>
           <span class="nav-text">Quản lý Điều khoản</span>
         </router-link>
+        <router-link to="/mau-in-firebase" class="nav-item hide-on-mobile" title="Thiết lập Mẫu In">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+          <span class="nav-text">Thiết lập Mẫu In</span>
+        </router-link>
         <router-link to="/po-preview-firebase" class="nav-item hide-on-mobile" title="Xem PO">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
           <span class="nav-text">Xem PO</span>
@@ -306,6 +310,10 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><path d="M14 3v5h5M16 13H8M16 17H8M10 9H8"/></svg>
           <span>Quản lý Điều khoản</span>
         </router-link>
+        <router-link to="/mau-in-firebase" class="drawer-item" @click="isMobileDrawerOpen = false">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+          <span>Thiết lập Mẫu In</span>
+        </router-link>
         <router-link to="/po-preview-firebase" class="drawer-item" @click="isMobileDrawerOpen = false">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
           <span>Xem PO</span>
@@ -332,12 +340,34 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
           <span>Đổi mật khẩu</span>
         </router-link>
+        <a v-if="!isStandaloneMode" href="#" class="drawer-item ios-guide-drawer-btn" @click.prevent="openIosInstallGuide">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
+          <span>Cài App SONAI ra màn hình chính</span>
+        </a>
         <div class="drawer-divider"></div>
         <a href="#" class="drawer-item logout-drawer-btn" @click.prevent="handleLogout">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
           <span>Đăng xuất</span>
         </a>
       </div>
+    </div>
+
+    <!-- iOS Safari PWA Install Banner -->
+    <div v-if="showIosInstallPrompt" class="ios-install-banner">
+      <img src="/apple-touch-icon.png" alt="SONAI" class="ios-install-icon" />
+      <div class="ios-install-text">
+        <div class="ios-install-title">Cài đặt WebApp SONAI trên iPhone</div>
+        <div class="ios-install-desc">
+          Bấm nút Chia sẻ
+          <span class="ios-share-badge">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
+          </span>
+          trên Safari rồi chọn <strong>"Thêm vào MH chính"</strong>
+        </div>
+      </div>
+      <button class="ios-install-close" @click="dismissIosInstallPrompt" title="Đóng">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
     </div>
   </div>
 </template>
@@ -364,6 +394,37 @@ const showAppscript = ref(false)
 const mainContentRef = ref(null)
 const showScrollTop = ref(false)
 const isMobileDrawerOpen = ref(false)
+const showIosInstallPrompt = ref(false)
+const isStandaloneMode = ref(false)
+
+const checkIosInstallPrompt = () => {
+  if (typeof window === 'undefined') return
+  const standalone =
+    window.navigator.standalone === true ||
+    window.matchMedia('(display-mode: standalone)').matches
+  isStandaloneMode.value = standalone
+  if (standalone) {
+    showIosInstallPrompt.value = false
+    return
+  }
+  const ua = window.navigator.userAgent || ''
+  const isIos = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  const dismissed = localStorage.getItem('sonai_ios_install_dismissed') === '1'
+  if (isIos && !dismissed) {
+    showIosInstallPrompt.value = true
+  }
+}
+
+const dismissIosInstallPrompt = () => {
+  showIosInstallPrompt.value = false
+  localStorage.setItem('sonai_ios_install_dismissed', '1')
+}
+
+const openIosInstallGuide = () => {
+  isMobileDrawerOpen.value = false
+  localStorage.removeItem('sonai_ios_install_dismissed')
+  showIosInstallPrompt.value = true
+}
 
 const incompleteTasksCount = ref(0)
 const API_URL = 'https://script.google.com/macros/s/AKfycbx1yDOQLxYgJb5w30KmxQHF8AYUZln_5q58HCKP4zlUmtJye6aJBiSt3oyT0j_3QaigdQ/exec'
@@ -405,6 +466,7 @@ const scrollToTop = () => {
 onMounted(() => {
   window.addEventListener('scroll', handleWindowScroll)
   fetchIncompleteTasks()
+  checkIosInstallPrompt()
 })
 
 onUnmounted(() => {
@@ -481,9 +543,13 @@ onUnmounted(() => {
   background: rgba(239, 68, 68, 0.1) !important;
 }
 
+.ios-guide-drawer-btn {
+  color: #38bdf8 !important;
+}
+
 @media (max-width: 768px) {
   .scroll-to-top {
-    bottom: 80px;
+    bottom: calc(80px + env(safe-area-inset-bottom, 0px));
     right: 20px;
     width: 40px;
     height: 40px;
@@ -492,6 +558,80 @@ onUnmounted(() => {
     width: 20px;
     height: 20px;
   }
+}
+
+/* iOS Safari PWA Install Banner */
+.ios-install-banner {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(66px + env(safe-area-inset-bottom, 0px));
+  z-index: 9998;
+  background: rgba(15, 23, 42, 0.96);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(10px);
+}
+
+.ios-install-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 9px;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.ios-install-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.ios-install-title {
+  color: #f8fafc;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.ios-install-desc {
+  color: #cbd5e1;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.ios-install-desc strong {
+  color: #38bdf8;
+}
+
+.ios-share-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(56, 189, 248, 0.16);
+  color: #38bdf8;
+  border-radius: 4px;
+  padding: 1px 4px;
+  margin: 0 2px;
+  vertical-align: middle;
+}
+
+.ios-install-close {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: #94a3b8;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
 /* Mobile Drawer Styles */
@@ -518,6 +658,9 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   box-shadow: -4px 0 24px rgba(0,0,0,0.5);
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-sizing: border-box;
 }
 .mobile-drawer.open {
   right: 0;
@@ -536,6 +679,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  -webkit-overflow-scrolling: touch;
 }
 .drawer-item {
   display: flex;

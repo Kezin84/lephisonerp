@@ -15,6 +15,17 @@ import * as XLSX from 'xlsx-js-style'
 import Tesseract from 'tesseract.js'
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getDatabase, ref as dbRef, get, set, update, remove, push } from "firebase/database";
+import {
+  fetchAndSyncPrintTemplates,
+  generateExcelBlobFromTemplate,
+  exportPdfOrPrintFromTemplate,
+  exportPngFromTemplate,
+  exportHtmlFileFromTemplate,
+  renderTemplateToHtml,
+  type PrintTemplateConfig,
+  type QuoteExportContext,
+  type QuoteExportRowItem
+} from '../utils/printTemplateEngine'
 
 const firebaseConfig = {
   apiKey: "AIzaSyB3fHD_sOqyqVygCxP2gZtvaipr-35a1s8",
@@ -3675,9 +3686,10 @@ onMounted(async () => {
   termsRaw.value = Array.isArray(dkRows) ? dkRows : []
   markLoaded(termsState)
 
-  // upload_file_mau
+  // upload_file_mau & mau_in_thiet_lap
   try {
     customTemplates.value = await fetchUploadFileMauFromFirebase()
+    await loadPrintTemplates()
   } catch (err) { console.error('Lỗi lấy template tùy chỉnh:', err) }
 
   // bang_gia
@@ -3723,11 +3735,12 @@ onActivated(async () => {
   // Tránh đụng độ với onMounted trong lần tải trang đầu tiên
   if (contractsState.value === 'loading') return
 
-  // Luôn cập nhật lại danh sách điều khoản và bảng giá mới nhất từ Firebase
+  // Luôn cập nhật lại danh sách điều khoản, mẫu in và bảng giá mới nhất từ Firebase
   fetchDieuKhoanFromFirebase().then(dkRows => {
     termsRaw.value = Array.isArray(dkRows) ? dkRows : []
   }).catch(e => console.error('Lỗi refresh dieu_khoan:', e))
   fetchPriceListsFromFirebase().catch(e => console.error('Lỗi refresh bang_gia:', e))
+  loadPrintTemplates().catch(e => console.error('Lỗi refresh mau_in_thiet_lap:', e))
 
   if (route.query.ma) {
     const ma = String(route.query.ma)
@@ -6865,15 +6878,159 @@ const pendingExportTemplateData = ref<string | null>(null);
 
 const pendingExportMappingConfig = ref<any[] | null>(null)
 
+/* ======================
+   MẪU IN THIẾT LẬP (`mau_in_thiet_lap`)
+====================== */
+const printTemplates = ref<PrintTemplateConfig[]>([])
+const selectedPrintTemplateId = ref<string>('')
+const showPrintPreviewInModal = ref<boolean>(false)
+
+async function loadPrintTemplates() {
+  const list = await fetchAndSyncPrintTemplates()
+  printTemplates.value = list
+  if (!selectedPrintTemplateId.value || !list.some(t => t.id === selectedPrintTemplateId.value)) {
+    const def = list.find(t => t.mac_dinh) || list[0]
+    if (def) selectedPrintTemplateId.value = def.id
+  }
+}
+
+const activePrintTemplate = computed<PrintTemplateConfig | null>(() => {
+  if (!printTemplates.value.length) return null
+  return (
+    printTemplates.value.find(t => t.id === selectedPrintTemplateId.value) ||
+    printTemplates.value.find(t => t.mac_dinh) ||
+    printTemplates.value[0] ||
+    null
+  )
+})
+
+function buildCurrentQuoteExportContext(): QuoteExportContext {
+  const isUsdExport = quoteCurrency.value === 'USD'
+  const mappedRows: QuoteExportRowItem[] = quoteRowsWithSTT.value.map((r: any) => {
+    if (r.type === 'group') {
+      return {
+        type: 'group',
+        roman: r.roman,
+        title: r.title,
+        supplier: r.supplier || ''
+      }
+    }
+    const i = r.item
+    const tg = toNum(i.Ti_gia, 1) || 1
+    const donGiaVND = unitPrice(i)
+    const truoc = lineTruocThue(i)
+    const vat = lineVAT(i)
+    const sau = lineSauThue(i)
+    const lpVND = round2(donGiaLP(i) * tg)
+    const stdVND = standardPrice(i)
+    const nhapVND = round2(toNum(i.gia_nhap, 0) * tg)
+
+    return {
+      type: 'item',
+      stt: r.stt,
+      item: i,
+      listPrice: isUsdExport ? round2(lpVND / tg) : Number(lpVND) || 0,
+      giaTieuChuan: isUsdExport ? round2(stdVND / tg) : Number(stdVND) || 0,
+      giaNhap: isUsdExport ? round2(nhapVND / tg) : Number(nhapVND) || 0,
+      pctOffHang: displayGiaTieuChuanPct(i),
+      pctOff: toNum(i.muc_phan_tram_off, 0),
+      donGiaKH: isUsdExport ? round2(donGiaVND / tg) : Number(donGiaVND) || 0,
+      truocThue: isUsdExport ? round2(truoc / tg) : Number(truoc) || 0,
+      pctVat: toNum(i.Thue_VAT, 0),
+      vatAmount: isUsdExport ? round2(vat / tg) : Number(vat) || 0,
+      sauThue: isUsdExport ? round2(sau / tg) : Number(sau) || 0
+    }
+  })
+
+  return {
+    khach: khach.value,
+    maHopDong: maHopDong.value || '',
+    soHopDong: soHopDong.value || '',
+    soPO: currentPO.value || '',
+    noiDungPO: contentOfContractPO.value.trim() || '',
+    currency: isUsdExport ? 'USD' : 'VND',
+    tiGia: mainTiGia.value || 1,
+    rows: mappedRows,
+    totals: {
+      truoc: isUsdExport ? Number(totalsUSD.value.truoc) || 0 : Number(totals.value.truoc) || 0,
+      vat: isUsdExport ? Number(totalsUSD.value.vat) || 0 : Number(totals.value.vat) || 0,
+      sau: isUsdExport ? Number(totalsUSD.value.sau) || 0 : Number(totals.value.sau) || 0,
+      off: isUsdExport ? Number(totalsUSD.value.off) || 0 : Number(totals.value.off) || 0
+    },
+    termsHtml: selectedTermId.value ? (editableTermContent.value || '') : '',
+    customDefaultFont: previewEditor.value?.getToolbarFont()
+  }
+}
+
+const livePrintPreviewHtml = computed(() => {
+  if (!activePrintTemplate.value || !showPrintPreviewInModal.value) return ''
+  return renderTemplateToHtml(activePrintTemplate.value, buildCurrentQuoteExportContext())
+})
+
+function openExportWithPrintTemplate(tplId?: string) {
+  if (tplId) {
+    selectedPrintTemplateId.value = tplId
+  }
+  maKHInput.value = khach.value.Ma_khach_hang || ''
+  tenKHInput.value = khach.value.Ten_khach_hang || ''
+  showPrintPreviewInModal.value = false
+  showExportExcelModal.value = true
+  loadPrintTemplates().catch(() => {})
+  fetchDieuKhoanFromFirebase().then(dkRows => {
+    termsRaw.value = Array.isArray(dkRows) ? dkRows : []
+  }).catch(e => console.error('Lỗi refresh dieu_khoan khi mở modal xuất:', e))
+}
+
 function openExportExcelModal(templateData?: string, mappingConfig?: any[]) {
   maKHInput.value = khach.value.Ma_khach_hang || '';
   tenKHInput.value = khach.value.Ten_khach_hang || '';
   pendingExportTemplateData.value = templateData || null;
   pendingExportMappingConfig.value = mappingConfig || null;
+  showPrintPreviewInModal.value = false;
   showExportExcelModal.value = true;
+  loadPrintTemplates().catch(() => {});
   fetchDieuKhoanFromFirebase().then(dkRows => {
     termsRaw.value = Array.isArray(dkRows) ? dkRows : [];
   }).catch(e => console.error('Lỗi refresh dieu_khoan khi mở modal xuất Excel:', e));
+}
+
+async function exportQuoteByPrintTemplate(format: 'excel' | 'pdf' | 'png' | 'html') {
+  const tpl = activePrintTemplate.value
+  const normalFileName = contentOfContractPO.value.trim() || `BaoGia_${soHopDong.value || maHopDong.value || 'NTS'}`
+
+  if (!tpl) {
+    if (format === 'excel') {
+      await exportQuoteExcel(pendingExportTemplateData.value)
+    }
+    return
+  }
+
+  const ctx = buildCurrentQuoteExportContext()
+  try {
+    if (format === 'excel') {
+      showAsyncLoading(`Đang xuất Excel theo mẫu "${tpl.ten_mau}"...`)
+      const blob = await generateExcelBlobFromTemplate(tpl, ctx)
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${normalFileName}.xlsx`
+      a.click()
+      window.URL.revokeObjectURL(url)
+      showAsyncSuccess('Xuất Excel thành công', `Đã tải về theo mẫu "${tpl.ten_mau}".`)
+    } else if (format === 'pdf') {
+      exportPdfOrPrintFromTemplate(tpl, ctx, normalFileName)
+    } else if (format === 'png') {
+      showAsyncLoading(`Đang kết xuất Ảnh (.png) theo mẫu "${tpl.ten_mau}"...`)
+      await exportPngFromTemplate(tpl, ctx, normalFileName)
+      showAsyncSuccess('Xuất Ảnh thành công', 'File ảnh (.png) đã được tải về.')
+    } else if (format === 'html') {
+      exportHtmlFileFromTemplate(tpl, ctx, normalFileName)
+      showAsyncSuccess('Xuất HTML thành công', 'File .html đã được tải về.')
+    }
+  } catch (e: any) {
+    console.error('Lỗi xuất báo giá theo mẫu in:', e)
+    showAsyncError('Xuất báo giá thất bại', String(e?.message || e))
+  }
 }
 
 async function exportQuoteExcel(templateData?: string | null) {
@@ -8363,58 +8520,78 @@ async function confirmImport(saveToDb: boolean) {
           <div class="export-vip-head-glow"></div>
           <div class="export-vip-title">
             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m8 17 4 4 4-4"/></svg>
-            Xuất dữ liệu
+            Xuất dữ liệu Báo giá
           </div>
           <button class="export-vip-close" @click="showExportInfoModal = false">&times;</button>
         </div>
 
         <div class="export-vip-body">
-          <!-- CỘT 1: Upload Template -->
+          <!-- CỘT 1: Chọn Mẫu In từ `mau_in_thiet_lap` -->
           <div class="export-vip-col export-vip-col-upload">
-            <div class="export-vip-col-label">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
-              Template tùy chỉnh
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 8px; flex-wrap: wrap;">
+              <div class="export-vip-col-label" style="margin-bottom: 0;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                Chọn Mẫu In ({{ printTemplates.length }} mẫu)
+              </div>
+              <button
+                @click="showExportInfoModal = false; router.push('/mau-in-firebase')"
+                style="background: linear-gradient(135deg, #10b981, #059669); color: #ffffff; border: none; border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 3px 10px rgba(16,185,129,0.25);"
+              >
+                Thiết lập / Tạo mẫu in mới
+              </button>
             </div>
 
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 12px;">
-              <!-- Danh sách các template đã upload -->
-              <div v-for="tpl in customTemplates" :key="tpl.id" class="export-tpl-loaded" style="margin-bottom: 0; display: flex; flex-direction: column;">
-                <div class="export-tpl-loaded-icon">
-                  <img src="/excel-icon.png" alt="Excel" style="width: 32px; height: 32px;" />
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; margin-bottom: 12px; max-height: 360px; overflow-y: auto; padding-right: 4px;">
+              <div
+                v-for="pt in printTemplates"
+                :key="pt.id"
+                class="export-tpl-loaded"
+                :style="{
+                  marginBottom: '0',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  cursor: 'pointer',
+                  border: selectedPrintTemplateId === pt.id ? '2px solid #10b981' : '1px solid rgba(255,255,255,0.1)',
+                  background: selectedPrintTemplateId === pt.id ? 'linear-gradient(135deg, rgba(16,185,129,0.16), rgba(15,23,42,0.92))' : 'rgba(15,23,42,0.6)',
+                  boxShadow: selectedPrintTemplateId === pt.id ? '0 6px 18px rgba(16,185,129,0.22)' : 'none'
+                }"
+                @click="selectedPrintTemplateId = pt.id"
+              >
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 6px;">
+                  <span style="font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px;" :style="pt.loai_mau === 'imported_excel' ? 'background: rgba(16,185,129,0.18); color: #34d399;' : 'background: rgba(59,130,246,0.18); color: #60a5fa;'">
+                    {{ pt.loai_mau === 'imported_excel' ? 'Excel Import' : 'Web Studio' }}
+                  </span>
+                  <span v-if="pt.mac_dinh" style="font-size: 10px; font-weight: 800; color: #fbbf24; background: rgba(245,158,11,0.18); padding: 2px 7px; border-radius: 999px; border: 1px solid rgba(245,158,11,0.35);">
+                    Mặc định
+                  </span>
                 </div>
-                <div class="export-tpl-loaded-name" style="text-align: center; text-decoration: underline; cursor: pointer; margin-bottom: 6px;" @click="downloadCustomTemplate(tpl)">{{ tpl.name }}</div>
 
-                <textarea v-model="tpl.content" @change="saveCustomTemplates" placeholder="Nội dung lưu kèm..." style="width: 100%; min-height: 50px; font-size: 11px; padding: 6px; border-radius: 6px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 8px; resize: vertical;"></textarea>
+                <div style="font-size: 13.5px; font-weight: 800; color: #f8fafc; margin-bottom: 4px; line-height: 1.35;">
+                  {{ pt.ten_mau }}
+                </div>
+                <div style="font-size: 11px; color: #94a3b8; margin-bottom: 6px;">
+                  Khổ {{ pt.cau_hinh_trang?.kho_giay || 'A4' }} ({{ pt.cau_hinh_trang?.huong_giay === 'portrait' ? 'Dọc' : 'Ngang' }}) • {{ pt.so_cot }} cột
+                </div>
+                <div v-if="pt.ghi_chu" style="font-size: 11px; color: #64748b; margin-bottom: 10px; line-height: 1.3;">
+                  {{ pt.ghi_chu }}
+                </div>
 
-                <div class="export-tpl-actions" style="margin-top: auto; width: 100%; display: flex; gap: 8px;">
-                  <button @click="showExportInfoModal = false; openExportExcelModal(tpl.data, tpl.mappingConfig)" class="export-tpl-change-btn" style="flex: 1; padding: 6px;">
+                <div class="export-tpl-actions" style="margin-top: auto; width: 100%; display: flex; gap: 6px;">
+                  <button
+                    @click.stop="showExportInfoModal = false; openExportWithPrintTemplate(pt.id)"
+                    class="export-tpl-change-btn"
+                    style="flex: 1; padding: 7px 8px; background: rgba(16,185,129,0.18); border-color: #10b981; color: #34d399;"
+                  >
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    <b>Tải về</b>
-                  </button>
-                  <button @click="openTemplateConfigModal(tpl)" class="export-tpl-change-btn" style="flex: 1; padding: 6px; border-color: #3b82f6; color: #3b82f6;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                    <b>Cấu hình</b>
-                  </button>
-                  <button @click="removeCustomTemplate(tpl.id)" class="export-tpl-remove-btn" style="flex: 1; justify-content: center; padding: 8px;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                    Xoá
+                    <b>Chọn &amp; Xuất</b>
                   </button>
                 </div>
               </div>
-
-              <!-- Upload thêm template mới -->
-              <label class="export-tpl-dropzone" style="margin-top: 0; padding: 20px 15px; height: 100%; min-height: 200px;">
-                <input type="file" multiple accept=".xlsx" @change="handleCustomTemplateUpload" style="display: none;" />
-                <div class="export-tpl-dropzone-icon" style="margin-bottom: 5px;">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                </div>
-                <div class="export-tpl-dropzone-text" style="font-size: 13px; text-align: center;">Tải lên template <b>.xlsx</b><br><span style="font-size: 11px; opacity: 0.7;">(Hỗ trợ chọn nhiều)</span></div>
-              </label>
             </div>
 
             <div class="export-tpl-note">
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-              Template cần chứa header: STT, Tên hàng, Đơn giá...
+              Mẫu đang chọn: <b style="color: #34d399; margin-left: 4px;">{{ activePrintTemplate?.ten_mau || 'Mẫu Báo Giá Chuẩn NTS' }}</b>
             </div>
           </div>
 
@@ -8426,21 +8603,16 @@ async function confirmImport(saveToDb: boolean) {
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 14px;">
-              <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-                <button class="export-vip-btn export-vip-btn-excel" @click="showExportInfoModal = false; openExportExcelModal()" style="margin-bottom: 0 !important; flex: 1;">
-                  <div class="export-vip-btn-icon">
-                    <img src="/excel-icon.png" alt="Excel" style="width: 26px; height: 26px;" />
-                  </div>
-                  <div class="export-vip-btn-text">
-                    <span class="export-vip-btn-label">Xuất Excel</span>
-                    <span class="export-vip-btn-desc">Báo giá chuẩn</span>
-                  </div>
-                  <svg class="export-vip-btn-arrow" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                </button>
-                <button @click="openDefaultConfigModal" class="export-vip-btn export-vip-btn-excel" style="margin-bottom: 0 !important; flex: 0 0 auto; width: 68px !important; padding: 0 !important; display: flex !important; justify-content: center !important; align-items: center !important; gap: 0 !important;" title="Cấu hình Data Mapping">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #34d399;"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-                </button>
-              </div>
+              <button class="export-vip-btn export-vip-btn-excel" @click="showExportInfoModal = false; openExportWithPrintTemplate(selectedPrintTemplateId)" style="margin-bottom: 0 !important;">
+                <div class="export-vip-btn-icon">
+                  <img src="/excel-icon.png" alt="Excel" style="width: 26px; height: 26px;" />
+                </div>
+                <div class="export-vip-btn-text">
+                  <span class="export-vip-btn-label">Xuất theo Mẫu In</span>
+                  <span class="export-vip-btn-desc">Excel, PDF/In, Ảnh PNG, HTML</span>
+                </div>
+                <svg class="export-vip-btn-arrow" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              </button>
 
               <button class="export-vip-btn export-vip-btn-agency" @click="showExportInfoModal = false; exportAgencyExcel()">
                 <div class="export-vip-btn-icon">
@@ -8463,18 +8635,6 @@ async function confirmImport(saveToDb: boolean) {
                 </div>
                 <svg class="export-vip-btn-arrow" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
               </button>
-
-              <button v-if="false" class="export-vip-btn export-vip-btn-image" @click="showExportInfoModal = false; openImageKitModal()">
-                <div class="export-vip-btn-icon">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                </div>
-                <div class="export-vip-btn-text">
-                  <span class="export-vip-btn-label">Xuất Ảnh</span>
-                  <span class="export-vip-btn-desc">Ảnh bảng báo giá</span>
-                </div>
-                <svg class="export-vip-btn-arrow" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-              </button>
-
             </div>
           </div>
         </div>
@@ -10226,12 +10386,43 @@ async function confirmImport(saveToDb: boolean) {
       </div>
     </div>
 
-    <!-- ================== MODAL: XUẤT EXCEL ================== -->
+    <!-- ================== MODAL: CHỌN MẪU IN & XUẤT BÁO GIÁ ĐA ĐỊNH DẠNG ================== -->
     <div v-if="showExportExcelModal" class="modal" @click.self="showExportExcelModal = false">
-      <div class="modal-card modal-wide">
+      <div class="modal-card modal-wide" style="max-width: 980px;">
         <div class="modal-head">
-          <h3><i class="lucide-file-spreadsheet"></i> Chọn khách hàng & Xuất Excel</h3>
+          <h3><i class="lucide-file-spreadsheet"></i> Chọn Mẫu In, Khách hàng &amp; Xuất Báo Giá</h3>
           <button class="x" @click="showExportExcelModal = false">✕</button>
+        </div>
+
+        <!-- THANH CHỌN MẪU IN TỪ `mau_in_thiet_lap` -->
+        <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 280px;">
+            <span style="font-size: 13px; font-weight: 800; color: #34d399; white-space: nowrap;">Mẫu in áp dụng:</span>
+            <select
+              v-model="selectedPrintTemplateId"
+              style="flex: 1; padding: 8px 12px; border-radius: 8px; border: 1px solid #10b981; background: #0f172a; color: #f8fafc; font-weight: 700; font-size: 13.5px; cursor: pointer;"
+            >
+              <option v-for="pt in printTemplates" :key="pt.id" :value="pt.id">
+                {{ pt.mac_dinh ? '[Mặc định] ' : '' }}{{ pt.ten_mau }} ({{ pt.cau_hinh_trang?.kho_giay || 'A4' }} - {{ pt.cau_hinh_trang?.huong_giay === 'portrait' ? 'Dọc' : 'Ngang' }})
+              </option>
+            </select>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <button
+              type="button"
+              @click="showPrintPreviewInModal = !showPrintPreviewInModal"
+              style="padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(56, 189, 248, 0.45); background: rgba(56, 189, 248, 0.14); color: #38bdf8; font-weight: 700; font-size: 12.5px; cursor: pointer;"
+            >
+              {{ showPrintPreviewInModal ? 'Ẩn xem trước' : 'Xem trước mẫu in' }}
+            </button>
+            <button
+              type="button"
+              @click="showExportExcelModal = false; router.push('/mau-in-firebase')"
+              style="padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: #1e293b; color: #e2e8f0; font-weight: 700; font-size: 12.5px; cursor: pointer;"
+            >
+              Thiết lập mẫu in
+            </button>
+          </div>
         </div>
         
         <div class="grid2">
@@ -10282,9 +10473,9 @@ async function confirmImport(saveToDb: boolean) {
               <option v-for="k in [...new Set(customers.filter(c => c.Ten_cong_ty).map(c => c.Ten_cong_ty))]" :key="k" :value="k" />
             </datalist>
             <label>Địa chỉ</label>
-            <input v-model="khach.Dia_chi_cong_ty" readonly />
+            <input v-model="khach.Dia_chi_cong_ty" />
             <label>Người nhận</label>
-            <input v-model="khach.Ten_khach_hang" readonly />
+            <input v-model="khach.Ten_khach_hang" />
           </div>
         </div>
 
@@ -10293,11 +10484,47 @@ async function confirmImport(saveToDb: boolean) {
           <ExcelEditor ref="previewEditor" v-model="editableTermContent" class="preview-editor" style="margin-top: 8px;" />
         </div>
 
-        <div class="modal-actions">
-          <button class="primary action-success" @click="exportQuoteExcel(pendingExportTemplateData); showExportExcelModal = false">
-            <i class="lucide-file-spreadsheet"></i> Xác nhận Xuất Excel
+        <!-- KHUNG XEM TRƯỚC BẢN IN TRỰC TIẾP -->
+        <div
+          v-if="showPrintPreviewInModal"
+          style="margin-top: 16px; border: 1px solid #334155; border-radius: 10px; background: #1e293b; padding: 14px; max-height: 420px; overflow: auto;"
+        >
+          <div style="font-size: 12px; font-weight: 700; color: #94a3b8; margin-bottom: 8px;">
+            Bản xem trước theo mẫu "{{ activePrintTemplate?.ten_mau }}":
+          </div>
+          <div style="background: #ffffff; border-radius: 6px; overflow: hidden;" v-html="livePrintPreviewHtml"></div>
+        </div>
+
+        <div class="modal-actions" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+          <button
+            class="primary action-success"
+            style="background: linear-gradient(135deg, #10b981, #059669); border: none; color: #fff; font-weight: 700; padding: 10px 16px; border-radius: 8px; cursor: pointer;"
+            @click="exportQuoteByPrintTemplate('excel'); showExportExcelModal = false"
+          >
+            Xuất Excel (.xlsx)
           </button>
-          <button @click="showExportExcelModal = false">Hủy</button>
+          <button
+            type="button"
+            style="background: linear-gradient(135deg, #3b82f6, #2563eb); border: none; color: #fff; font-weight: 700; padding: 10px 16px; border-radius: 8px; cursor: pointer;"
+            @click="exportQuoteByPrintTemplate('pdf')"
+          >
+            In / Xuất PDF
+          </button>
+          <button
+            type="button"
+            style="background: linear-gradient(135deg, #f59e0b, #d97706); border: none; color: #fff; font-weight: 700; padding: 10px 16px; border-radius: 8px; cursor: pointer;"
+            @click="exportQuoteByPrintTemplate('png'); showExportExcelModal = false"
+          >
+            Xuất Ảnh (.png)
+          </button>
+          <button
+            type="button"
+            style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); border: none; color: #fff; font-weight: 700; padding: 10px 16px; border-radius: 8px; cursor: pointer;"
+            @click="exportQuoteByPrintTemplate('html'); showExportExcelModal = false"
+          >
+            Xuất HTML (.html)
+          </button>
+          <button @click="showExportExcelModal = false" style="padding: 10px 16px; border-radius: 8px;">Đóng</button>
         </div>
       </div>
     </div>

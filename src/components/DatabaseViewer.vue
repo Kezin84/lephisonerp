@@ -148,7 +148,7 @@ const fetchRootNodes = async () => {
   } catch (error) {
     console.error("Failed to fetch root nodes:", error);
     // Fallback if REST API fails (e.g., due to rules)
-    availableNodes.value = ['khach_hang', 'quan_ly_file', 'sale_report', 'sale_report_craft', 'lich_su_thanh_toan', 'bao_gia', 'hang_hoa', 'Tasks'];
+    availableNodes.value = ['khach_hang', 'quan_ly_file', 'sale_report', 'sale_report_craft', 'lich_su_thanh_toan', 'bao_gia', 'hang_hoa', 'mau_in_thiet_lap', 'upload_file_mau', 'Tasks'];
     if (!selectedNode.value) {
       selectedNode.value = 'khach_hang';
       fetchData();
