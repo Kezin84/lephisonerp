@@ -661,7 +661,7 @@
     </div>
 
     <!-- MODAL TẠO / CẬP NHẬT BẢNG GIÁ -->
-    <div v-if="showPriceListModal" class="import-overlay" @click.self="showPriceListModal = false" style="z-index: 2600;">
+    <div v-if="showPriceListModal" class="import-overlay" @click.self="showPriceListModal = false" style="z-index: 10050;">
       <div class="import-modal pricelist-modal">
         <!-- Header -->
         <div class="import-modal__header">
@@ -3759,7 +3759,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 10050;
 }
 
 .modal-content {
@@ -3772,6 +3772,7 @@ onMounted(async () => {
   max-height: 90vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   color: #f8fafc;
 }
 
@@ -3781,6 +3782,7 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .modal-header h2 {
@@ -3812,7 +3814,11 @@ onMounted(async () => {
 
 .modal-body {
   padding: 24px;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .form-grid-2col {
@@ -3898,6 +3904,7 @@ onMounted(async () => {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+  flex-shrink: 0;
 }
 
 .spinner {
@@ -3922,7 +3929,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
+  z-index: 10050;
   animation: fadeIn 0.2s ease;
 }
 
@@ -4764,8 +4771,11 @@ onMounted(async () => {
   .col-span-2 {
     grid-column: 1 / -1;
   }
+  .modal-content,
   .modal-content.large-modal {
-    padding-bottom: 80px;
+    max-height: calc(100dvh - 16px);
+    width: 96vw;
+    padding-bottom: 0;
   }
 }
 
@@ -5255,5 +5265,132 @@ onMounted(async () => {
   font-size: 11px;
   color: #94a3b8;
   padding-left: 24px;
+}
+
+/* ═══ MOBILE RESPONSIVE & SCROLL FIX FOR PRICE LIST & IMPORT MODALS ═══ */
+@media (max-width: 900px) {
+  .import-overlay,
+  .modal-overlay {
+    z-index: 10050 !important;
+    padding: 6px;
+    box-sizing: border-box;
+  }
+
+  .import-modal,
+  .pricelist-modal {
+    width: 98vw !important;
+    max-width: 98vw !important;
+    height: auto !important;
+    max-height: calc(100dvh - 16px) !important;
+    display: block !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior: contain;
+    touch-action: pan-y pan-x;
+    border-radius: 14px;
+  }
+
+  .import-modal__header {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: rgba(15, 23, 42, 0.98);
+    backdrop-filter: blur(12px);
+    padding: 12px 14px;
+  }
+
+  .import-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    padding: 12px 14px;
+  }
+
+  .import-tabs {
+    padding: 0 14px 12px;
+  }
+
+  .pl-config-section {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .pl-config-card {
+    padding: 10px 12px;
+  }
+
+  .pl-filter-bar {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  .pl-filter-group {
+    width: 100%;
+  }
+
+  .pl-filter-select {
+    flex: 1 1 140px;
+    max-width: 100% !important;
+  }
+
+  .pl-view-tabs {
+    width: 100%;
+    display: flex;
+  }
+
+  .pl-view-tab {
+    flex: 1;
+    text-align: center;
+  }
+
+  .pl-selection-btns {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .pl-mini-btn {
+    flex: 1 1 auto;
+    text-align: center;
+  }
+
+  .import-modal .import-table-wrap,
+  .pricelist-modal .import-table-wrap {
+    flex: none !important;
+    height: auto !important;
+    min-height: 280px;
+    max-height: 62dvh;
+    margin: 10px 12px !important;
+    overflow: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-x pan-y;
+  }
+
+  .import-modal__footer {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px 14px calc(16px + env(safe-area-inset-bottom, 0px)) 14px;
+    background: rgba(15, 23, 42, 0.98);
+  }
+}
+
+@media (max-width: 640px) {
+  .pl-config-grid--4 {
+    grid-template-columns: 1fr;
+  }
+
+  .pl-bulk-controls > .pl-field {
+    width: 100%;
+    flex: 1 1 100% !important;
+  }
+
+  .pl-bulk-actions {
+    width: 100%;
+  }
+
+  .pl-apply-btn {
+    flex: 1 1 100%;
+    text-align: center;
+    white-space: normal;
+  }
 }
 </style>

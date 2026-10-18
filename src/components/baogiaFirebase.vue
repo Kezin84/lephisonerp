@@ -20,8 +20,12 @@ import {
   generateExcelBlobFromTemplate,
   exportPdfOrPrintFromTemplate,
   exportPngFromTemplate,
+  exportWordFromTemplate,
   exportHtmlFileFromTemplate,
+  deliverExportedFile,
+  isMobileOrIOSPWA,
   renderTemplateToHtml,
+  parseTermsHtmlToExcelLines,
   type PrintTemplateConfig,
   type QuoteExportContext,
   type QuoteExportRowItem
@@ -1394,15 +1398,14 @@ const availableExcelFields = [
 
 const defaultExcelConfig = [
   { header: 'STT', field: 'stt' },
-  { header: 'TÊN HÀNG', field: 'ten_hang' },
-  { header: 'Diễn Giải', field: 'features' },
-  { header: 'Đơn vị tính', field: 'dvt' },
-  { header: 'Thời hạn', field: 'license_duration' },
+  { header: 'TÊN HÀNG HÓA', field: 'ten_hang' },
+  { header: 'DIỄN GIẢI', field: 'features' },
+  { header: 'DVT', field: 'dvt' },
   { header: 'S.L', field: 'so_luong' },
-  { header: 'ĐƠN GIÁ', field: 'don_gia_kh' },
-  { header: 'THÀNH TIỀN', field: 'truoc_thue' },
-  { header: 'VAT', field: 'vat' },
-  { header: 'THÀNH TIỀN + VAT', field: 'sau_thue' }
+  { header: 'ĐƠN GIÁ (VND)', field: 'don_gia_kh' },
+  { header: 'THÀNH TIỀN TRƯỚC THUẾ', field: 'truoc_thue' },
+  { header: 'THUẾ VAT', field: 'vat' },
+  { header: 'THÀNH TIỀN SAU THUẾ', field: 'sau_thue' }
 ]
 
 const excelMappingConfig = ref(JSON.parse(JSON.stringify(defaultExcelConfig)))
@@ -1414,7 +1417,17 @@ function loadExcelConfig() {
     if (saved) {
       const parsed = JSON.parse(saved)
       if (Array.isArray(parsed) && parsed.length >= 3) {
-        excelMappingConfig.value = parsed
+        const isLegacy10ColDefault =
+          parsed.length === 10 &&
+          parsed[0]?.field === 'stt' &&
+          parsed[1]?.header === 'TÊN HÀNG' &&
+          parsed[4]?.field === 'license_duration'
+        if (isLegacy10ColDefault) {
+          excelMappingConfig.value = JSON.parse(JSON.stringify(defaultExcelConfig))
+          localStorage.setItem('baogia_excelMappingConfig', JSON.stringify(defaultExcelConfig))
+        } else {
+          excelMappingConfig.value = parsed
+        }
       }
     }
     const savedDynamic = localStorage.getItem('baogia_useDynamicExcelMapping')
@@ -1910,16 +1923,32 @@ const exportToImage = async () => {
     const canvas = await html2canvas(exportImageContainer.value, {
       scale: 2,
       useCORS: true,
+      allowTaint: true,
       backgroundColor: '#ffffff'
     })
     const dataUrl = canvas.toDataURL('image/png')
-    
-    const link = document.createElement('a')
-    link.download = `BaoGia_${soHopDong.value || maHopDong.value || 'Image'}.png`
-    link.href = dataUrl
-    link.click()
+    const blob = await new Promise<Blob>((resolve) => {
+      canvas.toBlob((b) => {
+        if (b) {
+          resolve(b)
+        } else {
+          const parts = dataUrl.split(',')
+          const bstr = atob(parts[1] || '')
+          const u8 = new Uint8Array(bstr.length)
+          for (let i = 0; i < bstr.length; i++) u8[i] = bstr.charCodeAt(i)
+          resolve(new Blob([u8], { type: 'image/png' }))
+        }
+      }, 'image/png')
+    })
+    const imgFileName = `BaoGia_${soHopDong.value || maHopDong.value || 'Image'}.png`
 
-    showAsyncSuccess('Thành công', 'Đã tải ảnh báo giá về máy.')
+    if (isMobileOrIOSPWA()) {
+      asyncResultModal.value.show = false
+      await deliverExportedFile(blob, imgFileName, 'image/png', { previewDataUrl: dataUrl })
+    } else {
+      await deliverExportedFile(blob, imgFileName, 'image/png', { previewDataUrl: dataUrl })
+      showAsyncSuccess('Thành công', 'Đã tải ảnh báo giá về máy.')
+    }
   } catch (err) {
     console.error('Lỗi khi xuất ảnh', err)
     showAsyncError('Lỗi', 'Không thể tạo ảnh, vui lòng thử lại.')
@@ -2060,6 +2089,19 @@ const importedTermsHtml = ref('')
 const selectedTermId = ref('')
 const editableTermContent = ref('')
 const previewEditor = ref<any>(null)
+
+watch(contractTerms, (list) => {
+  if (!selectedTermId.value && list.length > 0) {
+    const defaultTerm = list.find(t => {
+      const m = (t.mau || '').toLowerCase()
+      return m.includes('mặc định') || m.includes('mac dinh')
+    }) || list[0]
+    selectedTermId.value = defaultTerm.id
+  } else if (selectedTermId.value && selectedTermId.value !== 'custom_import' && !editableTermContent.value) {
+    const term = list.find(t => t.id === selectedTermId.value)
+    if (term) editableTermContent.value = term.noiDung
+  }
+}, { immediate: true })
 
 watch(selectedTermId, (newId) => {
   if (newId === 'custom_import') {
@@ -6122,7 +6164,7 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value, specificTe
           Object.keys(rm).forEach(k => {
              origWidths[k] = ws.getColumn(rm[k]).width || 15;
           });
-          origWidths['features'] = Math.max(origWidths['mo_ta'] || 0, 45);
+          origWidths['features'] = origWidths['mo_ta'] || 28.43;
           origWidths['don_gia_kh'] = origWidths['don_gia'] || 15;
           origWidths['gia_tieu_chuan'] = origWidths['don_gia'] || 15;
           origWidths['list_price'] = origWidths['don_gia'] || 15;
@@ -6138,14 +6180,10 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value, specificTe
           origWidths['license_duration'] = 15;
           origWidths['thoi_gian_bao_hanh'] = 15;
           origWidths['ghi_chu'] = 25;
-          // Ensure monetary columns have enough width to avoid ########
-          origWidths['don_gia_kh'] = Math.max(origWidths['don_gia_kh'] || 0, 18);
-          origWidths['gia_tieu_chuan'] = Math.max(origWidths['gia_tieu_chuan'] || 0, 18);
-          origWidths['list_price'] = Math.max(origWidths['list_price'] || 0, 18);
-          origWidths['don_gia_nhap'] = Math.max(origWidths['don_gia_nhap'] || 0, 18);
-          origWidths['truoc_thue'] = Math.max(origWidths['truoc_thue'] || 0, 18);
-          origWidths['sau_thue'] = Math.max(origWidths['sau_thue'] || 0, 18);
-          origWidths['vat_amount'] = Math.max(origWidths['vat_amount'] || 0, 15);
+          origWidths['truoc_thue'] = origWidths['truoc_thue'] || 16.43;
+          origWidths['vat'] = origWidths['vat'] || 13.43;
+          origWidths['sau_thue'] = origWidths['sau_thue'] || 16.86;
+          origWidths['vat_amount'] = origWidths['vat_amount'] || 13.43;
           
           // Apply dynamic currency suffix to headers before rendering
           applyCurrencyToHeaders(actualMappingConfig, targetKhach?.Don_vi_tien_te);
@@ -6496,168 +6534,53 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value, specificTe
       const currentTermStart = origTermStart + diff;
       const currentSigStart = origSigStart + diff;
       const rowsToDelete = currentSigStart - currentTermStart; // xóa TOÀN BỘ rows cũ từ termStart đến sigStart
-      
-      // Parse original HTML DOM directly (no regex mangling that causes duplicates)
-      const temp = document.createElement('div');
-      temp.innerHTML = editableTermContent.value;
 
-      const rgbToArgb = (rgbStr: string) => {
-        if (!rgbStr) return undefined;
-        const match = rgbStr.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-        if (match) {
-          const r = parseInt(match[1]).toString(16).padStart(2, '0');
-          const g = parseInt(match[2]).toString(16).padStart(2, '0');
-          const b = parseInt(match[3]).toString(16).padStart(2, '0');
-          return 'FF' + r.toUpperCase() + g.toUpperCase() + b.toUpperCase();
-        }
-        if (rgbStr.startsWith('#')) {
-           let hex = rgbStr.replace('#', '');
-           if (hex.length === 3) hex = hex.split('').map(c => c+c).join('');
-           return 'FF' + hex.toUpperCase();
-        }
-        return undefined;
-      };
+      const sampleTermFont = ws.getRow(currentTermStart)?.getCell(2)?.font || ws.getRow(currentTermStart)?.getCell(1)?.font;
+      const defaultExportFont = customDefaultFont || (sampleTermFont?.name ? { name: sampleTermFont.name, size: sampleTermFont.size || 10 } : { name: 'Arial', size: 10 });
+      const parsedTermLines = parseTermsHtmlToExcelLines(editableTermContent.value, defaultExportFont);
 
-      // Block-level tags that should cause a line break
-      const blockTags = new Set(['p', 'div', 'br', 'li', 'ul', 'ol', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'tr', 'blockquote', 'hr']);
-
-      const allNodes: any[] = [];
-      const traverse = (node: Node, currentFont: any) => {
-        if (node.nodeType === Node.TEXT_NODE) {
-          if (node.textContent) {
-            allNodes.push({ text: node.textContent, font: { ...currentFont } });
-          }
-        } else if (node.nodeType === Node.ELEMENT_NODE) {
-          const el = node as HTMLElement;
-          const newFont = { ...currentFont };
-          const tag = el.tagName.toLowerCase();
-          
-          // Insert a line-break marker BEFORE block-level elements
-          if (blockTags.has(tag) && tag !== 'br') {
-            allNodes.push({ text: '\n', font: { ...currentFont } });
-          }
-          
-          if (tag === 'br') {
-            allNodes.push({ text: '\n', font: { ...currentFont } });
-            return; // <br> has no children
-          }
-          
-          if (tag === 'li') {
-            allNodes.push({ text: '- ', font: { ...currentFont } });
-          }
-          
-          if (tag === 'b' || tag === 'strong') newFont.bold = true;
-          if (tag === 'i' || tag === 'em') newFont.italic = true;
-          if (tag === 'u') newFont.underline = true;
-          if (tag === 's' || tag === 'strike') newFont.strike = true;
-          
-          if (el.style) {
-            const fw = el.style.fontWeight;
-            if (fw === 'bold' || fw === 'bolder' || parseInt(fw) >= 700) {
-              newFont.bold = true;
-            }
-            const fs = el.style.fontStyle;
-            if (fs === 'italic' || fs === 'oblique') {
-              newFont.italic = true;
-            }
-            const td = el.style.textDecoration;
-            if (td && td.includes('underline')) {
-              newFont.underline = true;
-            }
-            if (td && td.includes('line-through')) {
-              newFont.strike = true;
-            }
-            
-            if (el.style.color) {
-              const argb = rgbToArgb(el.style.color);
-              if (argb) newFont.color = { argb };
-            }
-            if (el.style.fontFamily) {
-              newFont.name = el.style.fontFamily.split(',')[0].replace(/['"]/g, '').trim();
-            }
-            if (el.style.fontSize) {
-              const pt = parseInt(el.style.fontSize);
-              if (!isNaN(pt)) newFont.size = pt;
-            }
-          }
-          
-          if (tag === 'font') {
-            if (el.hasAttribute('face')) newFont.name = el.getAttribute('face') || newFont.name;
-            if (el.hasAttribute('color')) {
-              const argb = rgbToArgb(el.getAttribute('color') || '');
-              if (argb) newFont.color = { argb };
-            }
-          }
-          
-          el.childNodes.forEach(child => traverse(child, newFont));
-        }
-      };
-      
-      const defaultExportFont = customDefaultFont || { name: 'Calibri', size: 12 };
-      traverse(temp, defaultExportFont);
-
-      const linesRT: any[][] = [[]];
-      allNodes.forEach(node => {
-        const parts = node.text.split('\n');
-        for (let i = 0; i < parts.length; i++) {
-          if (i > 0) linesRT.push([]);
-          if (parts[i]) {
-            linesRT[linesRT.length - 1].push({ text: parts[i], font: node.font });
-          }
-        }
-      });
-
-      const cleanLinesRT = linesRT.filter(l => l.some(n => n.text.trim().length > 0));
-      
       if (rowsToDelete > 0) {
         ws.spliceRows(currentTermStart, rowsToDelete);
       }
-      if (cleanLinesRT.length > 0) {
-        ws.spliceRows(currentTermStart, 0, ...Array(cleanLinesRT.length).fill([]));
+      if (parsedTermLines.length > 0) {
+        ws.spliceRows(currentTermStart, 0, ...Array(parsedTermLines.length).fill([]));
       }
-      
-      termsDiff = cleanLinesRT.length - rowsToDelete;
-      
-      for (let i = 0; i < cleanLinesRT.length; i++) {
+
+      termsDiff = parsedTermLines.length - rowsToDelete;
+      const sttColIdx = colMap.stt || 1;
+      const contentColIdx = Math.min(sttColIdx + 1, maxCol);
+
+      for (let i = 0; i < parsedTermLines.length; i++) {
         const row = ws.getRow(currentTermStart + i);
-        const lineArr = cleanLinesRT[i];
-        
+        const lineObj = parsedTermLines[i];
+
         // Clear tất cả cells trên row để không bị sót data cũ từ template
         for (let c = 1; c <= maxCol; c++) {
           row.getCell(c).value = null;
           row.getCell(c).style = {};
         }
-        
-        let bulletNumber: number | null = null;
-        if (lineArr.length > 0 && lineArr[0].text) {
-           const match = lineArr[0].text.match(/^(\s*\d+)[\.:\)\s]+(.*)/)  ;
-           if (match) {
-             bulletNumber = Number(match[1]);
-             lineArr[0].text = match[2];
-           }
+
+        if (lineObj.bulletNumber !== null) {
+          row.getCell(sttColIdx).value = lineObj.bulletNumber;
+          row.getCell(sttColIdx).font = { name: defaultExportFont.name, size: defaultExportFont.size };
+          row.getCell(sttColIdx).alignment = { horizontal: 'right', vertical: 'middle' };
         }
-        
-        const finalArr = lineArr.filter(n => n.text !== '');
-        
-        if (bulletNumber !== null) {
-          row.getCell(1).value = bulletNumber;
-          const defaultExportFont = customDefaultFont || { name: 'Calibri', size: 12 };
-          row.getCell(1).font = { name: defaultExportFont.name, size: defaultExportFont.size, bold: true };
-          row.getCell(1).alignment = { horizontal: 'center', vertical: 'top' };
-        }
-        
-        const defaultExportFont = customDefaultFont || { name: 'Calibri', size: 12 };
-        if (finalArr.length > 0) {
-          row.getCell(2).value = { richText: finalArr };
+
+        if (lineObj.richText.length > 0) {
+          row.getCell(contentColIdx).value = { richText: lineObj.richText };
         } else {
-          row.getCell(2).value = '';
+          row.getCell(contentColIdx).value = lineObj.plainText || '';
         }
-        row.getCell(2).font = { name: defaultExportFont.name, size: defaultExportFont.size };
-        
-        // Merge from Col 2 to maxCol and style
-        ws.mergeCells(currentTermStart + i, 2, currentTermStart + i, maxCol);
-        const cell2 = row.getCell(2);
-        cell2.alignment = { wrapText: true, vertical: 'top', horizontal: 'left' };
+        row.getCell(contentColIdx).font = { name: defaultExportFont.name, size: defaultExportFont.size };
+
+        // Merge from contentColIdx to maxCol and style
+        if (contentColIdx < maxCol) {
+          ws.mergeCells(currentTermStart + i, contentColIdx, currentTermStart + i, maxCol);
+        }
+        const cellContent = row.getCell(contentColIdx);
+        cellContent.alignment = { wrapText: true, vertical: 'middle', horizontal: 'left' };
+        const estLines = Math.max(1, Math.ceil(lineObj.plainText.length / 88));
+        row.height = estLines * 14.25;
       }
     }
   } else if (!selectedTermId.value && origTermStart !== -1 && origSigStart !== -1) {
@@ -6721,19 +6644,52 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value, specificTe
       const val = typeof cell.value === 'string' ? cell.value : (cell.value?.richText ? cell.value.richText.map((rt: any) => rt.text).join('') : '');
       if (val) {
         const lower = val.toLowerCase().trim();
+        const baseFont = cell.font || { name: 'Arial', size: 10 };
         if (lower.startsWith('kính gởi') || lower.startsWith('kính gửi')) {
-          cell.value = `Kính gởi: ${targetKhach?.Ten_cong_ty || ''}`;
+          cell.value = {
+            richText: [
+              { text: 'Kính gửi: ', font: { ...baseFont, bold: true } },
+              { text: `${targetKhach?.Ten_cong_ty || targetKhach?.COMPANY || ''}`, font: { ...baseFont, bold: false } }
+            ]
+          };
           foundKinhGoi = true;
-        } else if (lower.startsWith('địa chỉ') && !lower.includes('giao hàng') && !lower.includes('công ty')) {
-          cell.value = `Địa chỉ: ${targetKhach?.Dia_chi_cong_ty || targetKhach?.ADDRESS || ''}`;
-          cell.font = { ...cell.font, italic: true };
+        } else if (lower.startsWith('địa chỉ') && !lower.includes('giao hàng') && !lower.includes('tăng bạt hổ') && !lower.includes('tang bat ho')) {
+          cell.value = {
+            richText: [
+              { text: 'Địa chỉ: ', font: { ...baseFont, bold: true } },
+              { text: `${targetKhach?.Dia_chi_cong_ty || targetKhach?.ADDRESS || ''}`, font: { ...baseFont, bold: false } }
+            ]
+          };
           foundDiaChi = true;
         } else if (lower.startsWith('người nhận') && !lower.includes('hàng')) {
-          cell.value = `Người nhận: ${targetKhach?.Ten_khach_hang || targetKhach?.CUS_CONTACT || ''}`;
-          cell.font = { ...cell.font, italic: true };
+          cell.value = {
+            richText: [
+              { text: 'Người nhận: ', font: { ...baseFont, bold: true } },
+              { text: `${targetKhach?.Ten_khach_hang || (targetKhach as any)?.CUS_CONTACT || ''}`, font: { ...baseFont, bold: false } }
+            ]
+          };
           foundNguoiNhan = true;
+        } else if (lower.startsWith('mobile:')) {
+          cell.value = {
+            richText: [
+              { text: 'Mobile: ', font: { ...baseFont, bold: true } },
+              { text: `${targetKhach?.So_dien_thoai_ca_nhan || targetKhach?.So_dien_thoai_cong_ty || targetKhach?.TEL || ''}`, font: { ...baseFont, bold: false } }
+            ]
+          };
+        } else if (lower.startsWith('email:') && Number(cell.col) === 1) {
+          cell.value = {
+            richText: [
+              { text: 'Email: ', font: { ...baseFont, bold: true } },
+              { text: `${targetKhach?.Email_ca_nhan || targetKhach?.Email_cong_ty || ''}`, font: { ...baseFont, bold: false } }
+            ]
+          };
         } else if (lower.startsWith('ngày :') || lower.startsWith('ngày:')) {
-          cell.value = `Ngày : ${dd}/${mm}/${yyyy}`;
+          cell.value = {
+            richText: [
+              { text: 'Ngày : ', font: { ...baseFont, bold: true } },
+              { text: `${dd}/${mm}/${yyyy}`, font: { ...baseFont, bold: false } }
+            ]
+          };
           foundNgay = true;
         }
       }
@@ -6741,34 +6697,65 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value, specificTe
   }
 
   if (!specificTemplateData) {
-    if (!foundKinhGoi) ws.getCell('A7').value = `Kính gởi: ${targetKhach?.Ten_cong_ty || ''}`;
+    if (!foundKinhGoi) ws.getCell('A7').value = `Kính gửi: ${targetKhach?.Ten_cong_ty || ''}`;
     if (!foundDiaChi) {
       const cellA8 = ws.getCell('A8');
       cellA8.value = `Địa chỉ: ${targetKhach?.Dia_chi_cong_ty || targetKhach?.ADDRESS || ''}`;
-      cellA8.font = { ...cellA8.font, italic: true };
     }
     if (!foundNguoiNhan) {
       const cellA9 = ws.getCell('A9');
-      cellA9.value = `Người nhận: ${targetKhach?.Ten_khach_hang || targetKhach?.CUS_CONTACT || ''}`;
-      cellA9.font = { ...cellA9.font, italic: true };
+      cellA9.value = `Người nhận: ${targetKhach?.Ten_khach_hang || (targetKhach as any)?.CUS_CONTACT || ''}`;
     }
     if (!foundNgay) ws.getCell('G7').value = `Ngày : ${dd}/${mm}/${yyyy}`;
   }
   
   // The colored line above the footer is actually an Image in the Excel template.
   // ExcelJS spliceRows shifts cell values but DOES NOT shift images.
-  // We must manually shift the footer image down by the total number of rows added/removed.
+  // We must manually shift the footer image down by the total number of rows added/removed,
+  // and clamp right anchors so images never cause a horizontal page break.
   const totalShift = diff + termsDiff;
-  if (totalShift !== 0) {
-    const images = ws.getImages();
-    images.forEach((img: any) => {
-      // If the image is located below the header, it's the footer line.
-      if (img.range && img.range.tl && img.range.tl.row > headerRowIdx) {
-        img.range.tl.row += totalShift;
-        img.range.br.row += totalShift;
-      }
-    });
+  const images = ws.getImages();
+  images.forEach((img: any) => {
+    if (totalShift !== 0 && img.range && img.range.tl && img.range.tl.row > headerRowIdx) {
+      img.range.tl.row += totalShift;
+      img.range.br.row += totalShift;
+    }
+    if (img.range?.br && img.range.br.col > maxCol) {
+      img.range.br.col = maxCol;
+      img.range.br.nativeCol = maxCol;
+      img.range.br.nativeColOff = 0;
+    }
+  });
+
+  // Strictly lock horizontal PageView to 1 page wide (no horizontal page split)
+  const finalLastRow = Math.max(ws.rowCount, 1);
+  const lastColLetter = getExcelAlpha(maxCol);
+  ws.pageSetup.paperSize = 9; // A4
+  ws.pageSetup.orientation = 'portrait';
+  ws.pageSetup.margins = {
+    left: 0.25,
+    right: 0.25,
+    top: 0.25,
+    bottom: 0.25,
+    header: 0.3,
+    footer: 0.3
+  };
+  ws.pageSetup.fitToPage = true;
+  ws.pageSetup.fitToWidth = 1;
+  ws.pageSetup.fitToHeight = 0;
+  (ws.pageSetup as any).scale = undefined;
+  ws.pageSetup.printArea = `A1:${lastColLetter}${finalLastRow}`;
+  if ((ws as any).properties?.pageSetup) {
+    (ws as any).properties.pageSetup.fitToPage = true;
   }
+  ws.views = [
+    {
+      state: 'normal',
+      style: 'pageBreakPreview',
+      zoomScale: 85,
+      zoomScaleNormal: 85
+    } as any
+  ];
   
   const outBuffer = await workbook.xlsx.writeBuffer();
   return new Blob([outBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -6854,7 +6841,11 @@ async function downloadCustomTemplate(tpl: any) {
       a.href = tpl.data
       a.download = tpl.name || 'template.xlsx'
       a.target = '_blank'
+      document.body.appendChild(a)
       a.click()
+      setTimeout(() => {
+        if (a.parentNode) a.parentNode.removeChild(a)
+      }, 1500)
     } else {
       const rawData = atob(tpl.data)
       const array = new Uint8Array(rawData.length)
@@ -6862,12 +6853,11 @@ async function downloadCustomTemplate(tpl: any) {
         array[i] = rawData.charCodeAt(i)
       }
       const blob = new Blob([array], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = tpl.name || 'template.xlsx'
-      a.click()
-      window.URL.revokeObjectURL(url)
+      await deliverExportedFile(
+        blob,
+        tpl.name || 'template.xlsx',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      )
     }
   } catch(e) {
     console.error('Không thể tải file mẫu', e)
@@ -6942,6 +6932,28 @@ function buildCurrentQuoteExportContext(): QuoteExportContext {
     }
   })
 
+  const drRow = loadedPipelineExtraData.value?.dealReg?.[0]
+  const dealRegCtx = drRow
+    ? {
+        country: String(drRow[13] || 'VIET NAM'),
+        isExistingCustomer: String(drRow[14] || ''),
+        companySize: String(drRow[15] || ''),
+        budget: String(drRow[16] || ''),
+        closeDate: String(drRow[17] || ''),
+        competition: String(drRow[18] || ''),
+        pocSchedule: String(drRow[19] || ''),
+        partnerName: String(drRow[20] || 'Nam Truong Son System Integration Corp'),
+        partnerAddress: String(drRow[21] || '55/10 Trần Đình Xu, Phường Cầu Kho, Quận 1, Thành phố Hồ Chí Minh, Việt Nam'),
+        amName: String(drRow[22] || 'LÊ PHI SƠN'),
+        amEmail: String(drRow[23] || 'sonlp@nts.com.vn'),
+        amPhone: String(drRow[24] || '090 8137488'),
+        remarks: String(drRow[25] || ghiChuHopDong.value || '')
+      }
+    : {
+        country: 'VIET NAM',
+        remarks: ghiChuHopDong.value || ''
+      }
+
   return {
     khach: khach.value,
     maHopDong: maHopDong.value || '',
@@ -6958,7 +6970,8 @@ function buildCurrentQuoteExportContext(): QuoteExportContext {
       off: isUsdExport ? Number(totalsUSD.value.off) || 0 : Number(totals.value.off) || 0
     },
     termsHtml: selectedTermId.value ? (editableTermContent.value || '') : '',
-    customDefaultFont: previewEditor.value?.getToolbarFont()
+    customDefaultFont: previewEditor.value?.getToolbarFont(),
+    dealReg: dealRegCtx
   }
 }
 
@@ -6994,7 +7007,7 @@ function openExportExcelModal(templateData?: string, mappingConfig?: any[]) {
   }).catch(e => console.error('Lỗi refresh dieu_khoan khi mở modal xuất Excel:', e));
 }
 
-async function exportQuoteByPrintTemplate(format: 'excel' | 'pdf' | 'png' | 'html') {
+async function exportQuoteByPrintTemplate(format: 'excel' | 'word' | 'pdf' | 'png' | 'html') {
   const tpl = activePrintTemplate.value
   const normalFileName = contentOfContractPO.value.trim() || `BaoGia_${soHopDong.value || maHopDong.value || 'NTS'}`
 
@@ -7010,22 +7023,46 @@ async function exportQuoteByPrintTemplate(format: 'excel' | 'pdf' | 'png' | 'htm
     if (format === 'excel') {
       showAsyncLoading(`Đang xuất Excel theo mẫu "${tpl.ten_mau}"...`)
       const blob = await generateExcelBlobFromTemplate(tpl, ctx)
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${normalFileName}.xlsx`
-      a.click()
-      window.URL.revokeObjectURL(url)
-      showAsyncSuccess('Xuất Excel thành công', `Đã tải về theo mẫu "${tpl.ten_mau}".`)
+      if (isMobileOrIOSPWA()) {
+        asyncResultModal.value.show = false
+        await deliverExportedFile(
+          blob,
+          `${normalFileName}.xlsx`,
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+      } else {
+        await deliverExportedFile(
+          blob,
+          `${normalFileName}.xlsx`,
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        showAsyncSuccess('Xuất Excel thành công', `Đã tải về theo mẫu "${tpl.ten_mau}".`)
+      }
+    } else if (format === 'word') {
+      showAsyncLoading(`Đang xuất Word (.doc) theo mẫu "${tpl.ten_mau}"...`)
+      await exportWordFromTemplate(tpl, ctx, normalFileName)
+      if (isMobileOrIOSPWA()) {
+        asyncResultModal.value.show = false
+      } else {
+        showAsyncSuccess('Xuất Word thành công', `Đã tải về file Word (.doc) theo mẫu "${tpl.ten_mau}".`)
+      }
     } else if (format === 'pdf') {
       exportPdfOrPrintFromTemplate(tpl, ctx, normalFileName)
     } else if (format === 'png') {
       showAsyncLoading(`Đang kết xuất Ảnh (.png) theo mẫu "${tpl.ten_mau}"...`)
       await exportPngFromTemplate(tpl, ctx, normalFileName)
-      showAsyncSuccess('Xuất Ảnh thành công', 'File ảnh (.png) đã được tải về.')
+      if (isMobileOrIOSPWA()) {
+        asyncResultModal.value.show = false
+      } else {
+        showAsyncSuccess('Xuất Ảnh thành công', 'File ảnh (.png) đã được tải về.')
+      }
     } else if (format === 'html') {
-      exportHtmlFileFromTemplate(tpl, ctx, normalFileName)
-      showAsyncSuccess('Xuất HTML thành công', 'File .html đã được tải về.')
+      await exportHtmlFileFromTemplate(tpl, ctx, normalFileName)
+      if (isMobileOrIOSPWA()) {
+        asyncResultModal.value.show = false
+      } else {
+        showAsyncSuccess('Xuất HTML thành công', 'File .html đã được tải về.')
+      }
     }
   } catch (e: any) {
     console.error('Lỗi xuất báo giá theo mẫu in:', e)
@@ -7037,14 +7074,22 @@ async function exportQuoteExcel(templateData?: string | null) {
   try {
     showAsyncLoading('Đang xuất file Excel...')
     const blob = await generateQuoteExcelBlob(khach.value, templateData || undefined, previewEditor.value?.getToolbarFont(), pendingExportMappingConfig.value || undefined);
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
     const normalFileName = contentOfContractPO.value.trim() || `BaoGia_${soHopDong.value || maHopDong.value || 'NTS'}`;
-    a.download = `${normalFileName}.xlsx`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-    showAsyncSuccess('Xuất Excel thành công', 'File đã được tải về.')
+    if (isMobileOrIOSPWA()) {
+      asyncResultModal.value.show = false
+      await deliverExportedFile(
+        blob,
+        `${normalFileName}.xlsx`,
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      )
+    } else {
+      await deliverExportedFile(
+        blob,
+        `${normalFileName}.xlsx`,
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      )
+      showAsyncSuccess('Xuất Excel thành công', 'File đã được tải về.')
+    }
   } catch(e: any) {
     console.error('Lỗi xuất Excel:', e)
     showAsyncError('Xuất Excel thất bại', String(e?.message || e))
@@ -7187,15 +7232,23 @@ async function exportAgencyExcel() {
     
     const outBuffer = await workbook.xlsx.writeBuffer()
     const blob = new Blob([outBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-    
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
     const dlFileName = contentOfContractPO.value.trim() ? contentOfContractPO.value.trim() : `BaoGia_DaiLy_${soHopDong.value || maHopDong.value || 'NTS'}`
-    a.download = `${dlFileName}.xlsx`
-    a.click()
-    window.URL.revokeObjectURL(url)
-    showAsyncSuccess('Xuất Excel thành công', 'File báo giá Đại lý đã được tải về.')
+
+    if (isMobileOrIOSPWA()) {
+      asyncResultModal.value.show = false
+      await deliverExportedFile(
+        blob,
+        `${dlFileName}.xlsx`,
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      )
+    } else {
+      await deliverExportedFile(
+        blob,
+        `${dlFileName}.xlsx`,
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      )
+      showAsyncSuccess('Xuất Excel thành công', 'File báo giá Đại lý đã được tải về.')
+    }
   } catch(e: any) {
     console.error('Lỗi xuất Excel Đại lý:', e)
     showAsyncError('Xuất Excel thất bại', String(e?.message || e))
@@ -10505,7 +10558,14 @@ async function confirmImport(saveToDb: boolean) {
           </button>
           <button
             type="button"
-            style="background: linear-gradient(135deg, #3b82f6, #2563eb); border: none; color: #fff; font-weight: 700; padding: 10px 16px; border-radius: 8px; cursor: pointer;"
+            style="background: linear-gradient(135deg, #2563eb, #1d4ed8); border: none; color: #fff; font-weight: 700; padding: 10px 16px; border-radius: 8px; cursor: pointer;"
+            @click="exportQuoteByPrintTemplate('word'); showExportExcelModal = false"
+          >
+            Xuất Word (.doc)
+          </button>
+          <button
+            type="button"
+            style="background: linear-gradient(135deg, #0ea5e9, #0284c7); border: none; color: #fff; font-weight: 700; padding: 10px 16px; border-radius: 8px; cursor: pointer;"
             @click="exportQuoteByPrintTemplate('pdf')"
           >
             In / Xuất PDF
@@ -14693,7 +14753,8 @@ td.dvt { font-family: inherit; white-space: normal; }
 
   /* ================= NATIVE APP MOBILE LAYOUT ================= */
   html, body {
-    overflow-x: hidden !important;
+    overflow-x: clip !important;
+    overflow-y: auto !important;
     width: 100% !important;
     max-width: 100% !important;
   }

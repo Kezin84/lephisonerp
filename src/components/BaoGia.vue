@@ -13,6 +13,7 @@ import PipelinePreviewModal from './PipelinePreviewModal.vue'
 import html2canvas from 'html2canvas'
 import * as XLSX from 'xlsx-js-style'
 import Tesseract from 'tesseract.js'
+import { deliverExportedFile, isMobileOrIOSPWA } from '../utils/printTemplateEngine'
 const route = useRoute()
 const router = useRouter()
 
@@ -1243,16 +1244,32 @@ const exportToImage = async () => {
     const canvas = await html2canvas(exportImageContainer.value, {
       scale: 2,
       useCORS: true,
+      allowTaint: true,
       backgroundColor: '#ffffff'
     })
     const dataUrl = canvas.toDataURL('image/png')
-    
-    const link = document.createElement('a')
-    link.download = `BaoGia_${soHopDong.value || maHopDong.value || 'Image'}.png`
-    link.href = dataUrl
-    link.click()
+    const blob = await new Promise<Blob>((resolve) => {
+      canvas.toBlob((b) => {
+        if (b) {
+          resolve(b)
+        } else {
+          const parts = dataUrl.split(',')
+          const bstr = atob(parts[1] || '')
+          const u8 = new Uint8Array(bstr.length)
+          for (let i = 0; i < bstr.length; i++) u8[i] = bstr.charCodeAt(i)
+          resolve(new Blob([u8], { type: 'image/png' }))
+        }
+      }, 'image/png')
+    })
+    const imgFileName = `BaoGia_${soHopDong.value || maHopDong.value || 'Image'}.png`
 
-    showAsyncSuccess('Thành công', 'Đã tải ảnh báo giá về máy.')
+    if (isMobileOrIOSPWA()) {
+      asyncResultModal.value.show = false
+      await deliverExportedFile(blob, imgFileName, 'image/png', { previewDataUrl: dataUrl })
+    } else {
+      await deliverExportedFile(blob, imgFileName, 'image/png', { previewDataUrl: dataUrl })
+      showAsyncSuccess('Thành công', 'Đã tải ảnh báo giá về máy.')
+    }
   } catch (err) {
     console.error('Lỗi khi xuất ảnh', err)
     showAsyncError('Lỗi', 'Không thể tạo ảnh, vui lòng thử lại.')
@@ -5684,7 +5701,11 @@ async function downloadCustomTemplate(tpl: any) {
       a.href = tpl.data
       a.download = tpl.name || 'template.xlsx'
       a.target = '_blank'
+      document.body.appendChild(a)
       a.click()
+      setTimeout(() => {
+        if (a.parentNode) a.parentNode.removeChild(a)
+      }, 1500)
     } else {
       const rawData = atob(tpl.data)
       const array = new Uint8Array(rawData.length)
@@ -5692,12 +5713,11 @@ async function downloadCustomTemplate(tpl: any) {
         array[i] = rawData.charCodeAt(i)
       }
       const blob = new Blob([array], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = tpl.name || 'template.xlsx'
-      a.click()
-      window.URL.revokeObjectURL(url)
+      await deliverExportedFile(
+        blob,
+        tpl.name || 'template.xlsx',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      )
     }
   } catch(e) {
     console.error('Không thể tải file mẫu', e)
@@ -5720,14 +5740,22 @@ async function exportQuoteExcel(templateData?: string | null) {
   try {
     showAsyncLoading('Đang xuất file Excel...')
     const blob = await generateQuoteExcelBlob(khach.value, templateData || undefined, previewEditor.value?.getToolbarFont(), pendingExportMappingConfig.value || undefined);
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
     const normalFileName = contentOfContractPO.value.trim() || `BaoGia_${soHopDong.value || maHopDong.value || 'NTS'}`;
-    a.download = `${normalFileName}.xlsx`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-    showAsyncSuccess('Xuất Excel thành công', 'File đã được tải về.')
+    if (isMobileOrIOSPWA()) {
+      asyncResultModal.value.show = false
+      await deliverExportedFile(
+        blob,
+        `${normalFileName}.xlsx`,
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      )
+    } else {
+      await deliverExportedFile(
+        blob,
+        `${normalFileName}.xlsx`,
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      )
+      showAsyncSuccess('Xuất Excel thành công', 'File đã được tải về.')
+    }
   } catch(e: any) {
     console.error('Lỗi xuất Excel:', e)
     showAsyncError('Xuất Excel thất bại', String(e?.message || e))
@@ -5870,15 +5898,23 @@ async function exportAgencyExcel() {
     
     const outBuffer = await workbook.xlsx.writeBuffer()
     const blob = new Blob([outBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-    
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
     const dlFileName = contentOfContractPO.value.trim() ? contentOfContractPO.value.trim() : `BaoGia_DaiLy_${soHopDong.value || maHopDong.value || 'NTS'}`
-    a.download = `${dlFileName}.xlsx`
-    a.click()
-    window.URL.revokeObjectURL(url)
-    showAsyncSuccess('Xuất Excel thành công', 'File báo giá Đại lý đã được tải về.')
+
+    if (isMobileOrIOSPWA()) {
+      asyncResultModal.value.show = false
+      await deliverExportedFile(
+        blob,
+        `${dlFileName}.xlsx`,
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      )
+    } else {
+      await deliverExportedFile(
+        blob,
+        `${dlFileName}.xlsx`,
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      )
+      showAsyncSuccess('Xuất Excel thành công', 'File báo giá Đại lý đã được tải về.')
+    }
   } catch(e: any) {
     console.error('Lỗi xuất Excel Đại lý:', e)
     showAsyncError('Xuất Excel thất bại', String(e?.message || e))
@@ -13240,7 +13276,8 @@ td.dvt { font-family: inherit; white-space: normal; }
 
   /* ================= NATIVE APP MOBILE LAYOUT ================= */
   html, body {
-    overflow-x: hidden !important;
+    overflow-x: clip !important;
+    overflow-y: auto !important;
     width: 100% !important;
     max-width: 100% !important;
   }

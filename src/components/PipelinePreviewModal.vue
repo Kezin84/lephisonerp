@@ -294,6 +294,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from 'vue'
 import FormattedInput from './FormattedInput.vue'
+import { deliverExportedFile } from '../utils/printTemplateEngine'
 import { initializeApp, getApps, getApp } from 'firebase/app'
 import { getDatabase, ref as dbRef, get, set, update, push } from 'firebase/database'
 
@@ -396,17 +397,8 @@ const downloadWord = () => {
   `;
   
   const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  
   const po = nextPoNumber.value !== 'Đang lấy số...' ? nextPoNumber.value : new Date().getTime().toString();
-  link.download = `DealReg_${po}.doc`;
-  
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  deliverExportedFile(blob, `DealReg_${po}.doc`, 'application/msword');
 }
 
 onMounted(async () => {

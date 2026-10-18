@@ -337,16 +337,16 @@
                 <div v-if="loading" class="loading-state">
                   <div class="spinner"></div>
                 </div>
-                <div v-else-if="col.reports.filter(r => formatDisplayTime(r.thoi_gian).period === 'Sáng').length === 0" class="empty-state" style="padding: 2rem 1rem;">
+                <div v-else-if="col.morningTotal === 0" class="empty-state" style="padding: 2rem 1rem;">
                   <div v-if="col.status === 'Chưa xử lý'" class="empty-add-btn-simple" @click="openAddModalForPeriod('Sáng')" title="Thêm công việc">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                   </div>
                   <span v-else style="font-size: 0.75rem; opacity: 0.5;">Trống</span>
                 </div>
                 <template v-else>
-                  <div v-for="(report, index) in col.reports.filter(r => formatDisplayTime(r.thoi_gian).period === 'Sáng')" :key="'card-' + report.id" 
+                  <div v-for="(report, index) in col.morningReports" :key="'card-' + report.id" 
                        class="report-card-timeline" :id="'report-card-' + report.id" :class="{ 'highlight-card': report.id === highlightedReportId, 'deleting-row': deletingIds.includes(report.id), 'dropped-success': report.id === droppedReportId, 'is-failed': report.isFailed === true || report.isFailed === 'TRUE' }" 
-                       :style="{ animationDelay: (index * 0.07) + 's' }"
+                       :style="{ animationDelay: (Math.min(index % LAZY_BATCH_SIZE, 10) * 0.04) + 's' }"
                        draggable="true"
                        @dragstart="onDragStartReport($event, report)"
                        @dragend="onDragEndReport"
@@ -390,7 +390,7 @@
                       </div>
                       <div v-if="report.img_save" style="display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.5rem 0.5rem 0 0.5rem;">
                         <a v-for="(link, i) in report.img_save.split('\n').filter(Boolean)" :key="'img'+i" href="#" @click.prevent.stop="selectedImage = link" style="width: 45px; height: 45px; border-radius: 6px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); display: block; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-                           <img :src="link" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'" />
+                           <img :src="link" loading="lazy" decoding="async" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'" />
                         </a>
                       </div>
                       <div class="tl-rect-body">
@@ -455,6 +455,9 @@
                       </div>
                     </div>
                   </div>
+                  <button v-if="col.morningTotal > col.morningReports.length" type="button" class="lazy-subcol-more-btn" @click.stop="loadMoreReports">
+                    +{{ col.morningTotal - col.morningReports.length }} công việc buổi sáng — Tải thêm
+                  </button>
                 </template>
               </div>
             </div>
@@ -472,16 +475,16 @@
                 <div v-if="loading" class="loading-state">
                   <div class="spinner"></div>
                 </div>
-                <div v-else-if="col.reports.filter(r => formatDisplayTime(r.thoi_gian).period === 'Chiều').length === 0" class="empty-state" style="padding: 2rem 1rem;">
+                <div v-else-if="col.afternoonTotal === 0" class="empty-state" style="padding: 2rem 1rem;">
                   <div v-if="col.status === 'Chưa xử lý'" class="empty-add-btn-simple" @click="openAddModalForPeriod('Chiều')" title="Thêm công việc">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                   </div>
                   <span v-else style="font-size: 0.75rem; opacity: 0.5;">Trống</span>
                 </div>
                 <template v-else>
-                  <div v-for="(report, index) in col.reports.filter(r => formatDisplayTime(r.thoi_gian).period === 'Chiều')" :key="'card-' + report.id" 
+                  <div v-for="(report, index) in col.afternoonReports" :key="'card-' + report.id" 
                        class="report-card-timeline" :id="'report-card-' + report.id" :class="{ 'highlight-card': report.id === highlightedReportId, 'deleting-row': deletingIds.includes(report.id), 'dropped-success': report.id === droppedReportId, 'is-failed': report.isFailed === true || report.isFailed === 'TRUE' }" 
-                       :style="{ animationDelay: (index * 0.07) + 's' }"
+                       :style="{ animationDelay: (Math.min(index % LAZY_BATCH_SIZE, 10) * 0.04) + 's' }"
                        draggable="true"
                        @dragstart="onDragStartReport($event, report)"
                        @dragend="onDragEndReport"
@@ -525,7 +528,7 @@
                       </div>
                       <div v-if="report.img_save" style="display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.5rem 0.5rem 0 0.5rem;">
                         <a v-for="(link, i) in report.img_save.split('\n').filter(Boolean)" :key="'img'+i" href="#" @click.prevent.stop="selectedImage = link" style="width: 45px; height: 45px; border-radius: 6px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); display: block; box-shadow: 0 2px 4px rgba(0,0,0,0.2);" :title="`Ảnh ${i + 1}`">
-                           <img :src="link" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'" />
+                           <img :src="link" loading="lazy" decoding="async" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'" />
                         </a>
                       </div>
                       <div class="tl-rect-body">
@@ -590,6 +593,9 @@
                       </div>
                     </div>
                   </div>
+                  <button v-if="col.afternoonTotal > col.afternoonReports.length" type="button" class="lazy-subcol-more-btn" @click.stop="loadMoreReports">
+                    +{{ col.afternoonTotal - col.afternoonReports.length }} công việc buổi chiều — Tải thêm
+                  </button>
                 </template>
               </div>
             </div>
@@ -603,14 +609,14 @@
         <div v-else-if="dailyColumns.length === 0" class="empty-state" style="padding: 4rem 2rem; text-align: center;">
           <p style="opacity: 0.5; font-size: 0.9rem;">Không có dữ liệu trong khoảng thời gian này.</p>
         </div>
-        <div v-else v-for="day in dailyColumns" :key="day.dateKey" class="daily-day-block">
+        <div v-else v-for="day in visibleDailyColumns" :key="day.dateKey" class="daily-day-block">
           <!-- Day Header Badge -->
           <div class="daily-day-header">
             <div class="daily-day-badge">
               <span class="daily-badge-thu">{{ day.thuLabel }}</span>
               <span class="daily-badge-date">{{ day.dateLabel }}</span>
             </div>
-            <span class="daily-count-badge">{{ day.morning.length + day.afternoon.length }} việc</span>
+            <span class="daily-count-badge">{{ day.totalTasks }} việc</span>
           </div>
           <!-- Two Period Sections -->
           <div class="daily-periods">
@@ -622,7 +628,7 @@
                  @dragleave="onDragLeaveColumn($event, $el)"
                  @drop="onDropReport($event, null, 'Sáng', day.dateKey)">
               <div class="daily-period-label-v2">BUỔI SÁNG</div>
-              <div v-if="day.morning.length === 0" class="daily-empty-slot">
+              <div v-if="day.morningTotal === 0" class="daily-empty-slot">
                 <div class="empty-add-btn-simple" @click="openAddModalForPeriod('Sáng')" title="Thêm công việc buổi sáng">
                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                 </div>
@@ -630,7 +636,7 @@
               <div v-else class="daily-task-list">
                 <div v-for="(report, index) in day.morning" :key="'dm-'+report.id"
                      class="report-card-timeline" :id="'report-card-' + report.id" :class="{ 'highlight-card': report.id === highlightedReportId, 'deleting-row': deletingIds.includes(report.id), 'dropped-success': report.id === droppedReportId, 'is-failed': report.isFailed === true || report.isFailed === 'TRUE' }"
-                     :style="{ animationDelay: (index * 0.07) + 's' }"
+                     :style="{ animationDelay: (Math.min(index % LAZY_BATCH_SIZE, 10) * 0.04) + 's' }"
                      draggable="true"
                      @dragstart="onDragStartReport($event, report)"
                      @dragend="onDragEndReport"
@@ -671,7 +677,7 @@
                     </div>
                     <div v-if="report.img_save" style="display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.5rem 0.5rem 0 0.5rem;">
                       <a v-for="(link, i) in report.img_save.split('\n').filter(Boolean)" :key="'img'+i" href="#" @click.prevent.stop="selectedImage = link" style="width: 45px; height: 45px; border-radius: 6px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); display: block; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-                         <img :src="link" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'" />
+                         <img :src="link" loading="lazy" decoding="async" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'" />
                       </a>
                     </div>
                     <div class="tl-rect-body">
@@ -736,6 +742,9 @@
                     </div>
                   </div>
                 </div>
+                <button v-if="day.morningTotal > day.morning.length" type="button" class="lazy-subcol-more-btn" @click.stop="loadMoreReports">
+                  +{{ day.morningTotal - day.morning.length }} công việc buổi sáng — Tải thêm
+                </button>
               </div>
             </div>
             <!-- Buổi Chiều -->
@@ -746,7 +755,7 @@
                  @dragleave="onDragLeaveColumn($event, $el)"
                  @drop="onDropReport($event, null, 'Chiều', day.dateKey)">
               <div class="daily-period-label-v2">BUỔI CHIỀU</div>
-              <div v-if="day.afternoon.length === 0" class="daily-empty-slot">
+              <div v-if="day.afternoonTotal === 0" class="daily-empty-slot">
                 <div class="empty-add-btn-simple" @click="openAddModalForPeriod('Chiều')" title="Thêm công việc buổi chiều">
                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                 </div>
@@ -754,7 +763,7 @@
               <div v-else class="daily-task-list">
                 <div v-for="(report, index) in day.afternoon" :key="'da-'+report.id"
                      class="report-card-timeline" :id="'report-card-' + report.id" :class="{ 'highlight-card': report.id === highlightedReportId, 'deleting-row': deletingIds.includes(report.id), 'dropped-success': report.id === droppedReportId, 'is-failed': report.isFailed === true || report.isFailed === 'TRUE' }"
-                     :style="{ animationDelay: (index * 0.07) + 's' }"
+                     :style="{ animationDelay: (Math.min(index % LAZY_BATCH_SIZE, 10) * 0.04) + 's' }"
                      draggable="true"
                      @dragstart="onDragStartReport($event, report)"
                      @dragend="onDragEndReport"
@@ -795,7 +804,7 @@
                     </div>
                     <div v-if="report.img_save" style="display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.5rem 0.5rem 0 0.5rem;">
                       <a v-for="(link, i) in report.img_save.split('\n').filter(Boolean)" :key="'img'+i" href="#" @click.prevent.stop="selectedImage = link" style="width: 45px; height: 45px; border-radius: 6px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); display: block; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-                         <img :src="link" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'" />
+                         <img :src="link" loading="lazy" decoding="async" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'" />
                       </a>
                     </div>
                     <div class="tl-rect-body">
@@ -860,6 +869,9 @@
                     </div>
                   </div>
                 </div>
+                <button v-if="day.afternoonTotal > day.afternoon.length" type="button" class="lazy-subcol-more-btn" @click.stop="loadMoreReports">
+                  +{{ day.afternoonTotal - day.afternoon.length }} công việc buổi chiều — Tải thêm
+                </button>
               </div>
             </div>
           </div>
@@ -878,9 +890,9 @@
           </div>
           <p style="opacity: 0.5; font-size: 0.85rem; margin-top: 1rem;">Trống</p>
         </div>
-        <div v-else v-for="(report, index) in filteredReports" :key="'mob-' + report.id"
+        <div v-else v-for="(report, index) in visibleMobileReports" :key="'mob-' + report.id"
              class="report-card-timeline" :id="'report-card-' + report.id" :class="{ 'highlight-card': report.id === highlightedReportId, 'deleting-row': deletingIds.includes(report.id), 'dropped-success': report.id === droppedReportId, 'is-failed': report.isFailed === true || report.isFailed === 'TRUE' }"
-             :style="{ animationDelay: (index * 0.07) + 's' }"
+             :style="{ animationDelay: (Math.min(index % LAZY_BATCH_SIZE, 10) * 0.04) + 's' }"
              @click="openEditModal(report)">
 
           <!-- Hình tròn: STT + Thời gian -->
@@ -925,7 +937,7 @@
             </div>
             <div v-if="report.img_save" style="display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.5rem 0.5rem 0 0.5rem;">
               <a v-for="(link, i) in report.img_save.split('\n').filter(Boolean)" :key="'img'+i" href="#" @click.prevent.stop="selectedImage = link" style="width: 45px; height: 45px; border-radius: 6px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); display: block; box-shadow: 0 2px 4px rgba(0,0,0,0.2);" :title="`Ảnh ${i + 1}`">
-                 <img :src="link" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'" />
+                 <img :src="link" loading="lazy" decoding="async" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'" />
               </a>
             </div>
             <div class="tl-rect-body">
@@ -989,6 +1001,36 @@
               </button>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Lazy Loading Sentinel & Footer (25 công việc mỗi đợt) -->
+      <div v-if="!loading && (hasMoreReports || filteredReports.length > LAZY_BATCH_SIZE)" ref="lazyLoadSentinel" class="lazy-load-footer">
+        <template v-if="hasMoreReports">
+          <div class="lazy-load-status">
+            <span class="lazy-load-dot"></span>
+            <span v-if="filteredReports.length > currentlyRenderedCount">
+              Đang hiển thị <strong>{{ currentlyRenderedCount }}</strong> / <strong>{{ filteredReports.length }}</strong> công việc (Lazy Load {{ LAZY_BATCH_SIZE }} việc/lần)
+            </span>
+            <span v-else>
+              Đang hiển thị <strong>{{ visibleDailyColumns.length }}</strong> / <strong>{{ dailyColumns.length }}</strong> ngày
+            </span>
+          </div>
+          <div class="lazy-load-actions">
+            <button type="button" class="lazy-load-btn primary" @click="loadMoreReports">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              <span v-if="filteredReports.length > currentlyRenderedCount">
+                Tải thêm {{ Math.min(LAZY_BATCH_SIZE, filteredReports.length - currentlyRenderedCount) }} công việc
+              </span>
+              <span v-else>Tải thêm ngày</span>
+            </button>
+            <button type="button" class="lazy-load-btn secondary" @click="showAllReports">
+              Hiển thị tất cả ({{ filteredReports.length }})
+            </button>
+          </div>
+        </template>
+        <div v-else class="lazy-load-complete">
+          Đã hiển thị toàn bộ {{ filteredReports.length }} công việc
         </div>
       </div>
     </div><!-- end tableSection -->
@@ -2591,7 +2633,7 @@
             <!-- Cột Việc chưa xử lý -->
             <div :style="!isMobile ? 'display: flex; flex-direction: column; gap: 1.25rem; background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 12px; border: 1px dashed rgba(255,255,255,0.1);' : 'display: contents;'">
               <h3 v-if="!isMobile" style="color: #94a3b8; font-size: 1rem; text-align: center; margin: 0 0 0.5rem 0; text-transform: uppercase; letter-spacing: 0.05em;">Việc Chưa Xử Lý ({{ pendingOtherReports.length }})</h3>
-              <div v-for="(report, idx) in (!isMobile ? pendingOtherReports : filteredPendingReports)" :key="report.id" 
+              <div v-for="(report, idx) in (!isMobile ? visiblePendingOtherReports : visiblePendingMobileReports)" :key="report.id" 
                    @click="navigateToReportDate(report)" 
                    :draggable="!isMobile"
                    @dragstart="!isMobile && onDragStartReport($event, report)"
@@ -2642,6 +2684,12 @@
                   </button>
                 </div>
               </div>
+              <button v-if="!isMobile && visiblePendingOtherReports.length < pendingOtherReports.length"
+                      type="button"
+                      class="lazy-subcol-more-btn"
+                      @click="loadMorePendingModalReports">
+                <span>+{{ Math.min(LAZY_BATCH_SIZE, pendingOtherReports.length - visiblePendingOtherReports.length) }} việc nữa ({{ visiblePendingOtherReports.length }}/{{ pendingOtherReports.length }})</span>
+              </button>
             </div>
 
             <!-- Cột Việc làm hôm nay -->
@@ -2657,7 +2705,7 @@
                 Kéo việc chưa xử lý thả vào đây để làm hôm nay
               </div>
 
-              <div v-for="(report, idx) in pendingTodayReports" :key="'today-'+report.id" 
+              <div v-for="(report, idx) in visiblePendingTodayReports" :key="'today-'+report.id" 
                    @click="navigateToReportDate(report)" 
                    :draggable="true"
                    @dragstart="onDragStartReport($event, report)"
@@ -2708,6 +2756,38 @@
                   </button>
                 </div>
               </div>
+              <button v-if="visiblePendingTodayReports.length < pendingTodayReports.length"
+                      type="button"
+                      class="lazy-subcol-more-btn"
+                      @click="loadMorePendingModalReports">
+                <span>+{{ Math.min(LAZY_BATCH_SIZE, pendingTodayReports.length - visiblePendingTodayReports.length) }} việc nữa ({{ visiblePendingTodayReports.length }}/{{ pendingTodayReports.length }})</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Lazy Load Footer trong Modal Việc chưa hoàn thành -->
+          <div v-if="!loading && filteredPendingReports.length > LAZY_BATCH_SIZE"
+               ref="pendingModalSentinel"
+               class="lazy-load-footer"
+               style="margin-top: 0.5rem;">
+            <div class="lazy-load-status">
+              <span class="lazy-load-dot"></span>
+              <span>Đang hiển thị <strong>{{ currentlyRenderedPendingCount }}</strong> / <strong>{{ filteredPendingReports.length }}</strong> công việc tồn đọng</span>
+            </div>
+            <div v-if="hasMorePendingModalReports" class="lazy-load-actions">
+              <button type="button" class="lazy-load-btn primary" @click="loadMorePendingModalReports">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                Tải thêm {{ Math.min(LAZY_BATCH_SIZE, filteredPendingReports.length - currentlyRenderedPendingCount) }} việc
+              </button>
+              <button v-if="filteredPendingReports.length - currentlyRenderedPendingCount > LAZY_BATCH_SIZE"
+                      type="button"
+                      class="lazy-load-btn secondary"
+                      @click="showAllPendingModalReports">
+                Hiển thị tất cả ({{ filteredPendingReports.length }})
+              </button>
+            </div>
+            <div v-else class="lazy-load-complete">
+              ✓ Đã hiển thị toàn bộ {{ filteredPendingReports.length }} công việc tồn đọng
             </div>
           </div>
         </div>
@@ -3524,6 +3604,52 @@ const getRelativeDateText = (thoi_gian) => {
   }
 };
 
+const LAZY_BATCH_SIZE = 25;
+const visibleReportCount = ref(LAZY_BATCH_SIZE);
+const lazyLoadSentinel = ref(null);
+const visiblePendingModalCount = ref(LAZY_BATCH_SIZE);
+const pendingModalSentinel = ref(null);
+
+// Phân bổ hạn ngạch hiển thị đồng đều (water-filling) giữa các cột con để tổng số card hiển thị = totalBudget
+// nhưng không có cột con nào có dữ liệu mà bị hiển thị 0 card.
+const allocateLazyBudgets = (lengths, totalBudget) => {
+  const n = lengths.length;
+  const totalAvailable = lengths.reduce((sum, len) => sum + len, 0);
+  if (totalBudget >= totalAvailable) return [...lengths];
+  if (totalBudget <= 0) return new Array(n).fill(0);
+
+  const alloc = new Array(n).fill(0);
+  let remaining = totalBudget;
+  const active = new Set();
+  for (let i = 0; i < n; i++) {
+    if (lengths[i] > 0) active.add(i);
+  }
+
+  while (remaining > 0 && active.size > 0) {
+    const share = Math.max(1, Math.floor(remaining / active.size));
+    let progressed = false;
+    for (const i of Array.from(active)) {
+      if (remaining <= 0) break;
+      const cap = lengths[i] - alloc[i];
+      if (cap <= 0) {
+        active.delete(i);
+        continue;
+      }
+      const take = Math.min(cap, share, remaining);
+      if (take > 0) {
+        alloc[i] += take;
+        remaining -= take;
+        progressed = true;
+      }
+      if (alloc[i] >= lengths[i]) {
+        active.delete(i);
+      }
+    }
+    if (!progressed) break;
+  }
+  return alloc;
+};
+
 const navigateToReportDate = (report) => {
   const dObj = parseDateFromReport(report.thoi_gian);
   if (dObj) {
@@ -3543,15 +3669,23 @@ const navigateToReportDate = (report) => {
     // Cập nhật highlight cho thẻ được chọn
     highlightedReportId.value = report.id;
     
+    // Đảm bảo card mục tiêu nằm trong vùng được render của lazy loading
+    nextTick(() => {
+      ensureReportVisible(report.id);
+    });
+
     // Cuộn xuống bảng
     scrollToTable();
 
     // Cuộn tới thẻ tương ứng
     setTimeout(() => {
-      const el = document.getElementById(`report-card-${report.id}`);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
+      ensureReportVisible(report.id);
+      nextTick(() => {
+        const el = document.getElementById(`report-card-${report.id}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      });
       
       // Xóa highlight sau 1.3 giây
       setTimeout(() => {
@@ -3831,6 +3965,47 @@ const pendingOtherReports = computed(() => {
   });
 });
 
+// Lazy loading cho Modal Việc chưa hoàn thành (25 công việc mỗi đợt)
+const pendingModalBudgets = computed(() => {
+  return allocateLazyBudgets(
+    [pendingOtherReports.value.length, pendingTodayReports.value.length],
+    visiblePendingModalCount.value
+  );
+});
+
+const visiblePendingOtherReports = computed(() => {
+  return pendingOtherReports.value.slice(0, pendingModalBudgets.value[0]);
+});
+
+const visiblePendingTodayReports = computed(() => {
+  return pendingTodayReports.value.slice(0, pendingModalBudgets.value[1]);
+});
+
+const visiblePendingMobileReports = computed(() => {
+  return filteredPendingReports.value.slice(0, visiblePendingModalCount.value);
+});
+
+const currentlyRenderedPendingCount = computed(() => {
+  return Math.min(filteredPendingReports.value.length, visiblePendingModalCount.value);
+});
+
+const hasMorePendingModalReports = computed(() => {
+  return currentlyRenderedPendingCount.value < filteredPendingReports.value.length;
+});
+
+const loadMorePendingModalReports = () => {
+  if (visiblePendingModalCount.value < filteredPendingReports.value.length) {
+    visiblePendingModalCount.value = Math.min(
+      filteredPendingReports.value.length,
+      visiblePendingModalCount.value + LAZY_BATCH_SIZE
+    );
+  }
+};
+
+const showAllPendingModalReports = () => {
+  visiblePendingModalCount.value = Math.max(LAZY_BATCH_SIZE, filteredPendingReports.value.length);
+};
+
 const onDropToToday = async (e) => {
   const id = draggedReportId.value;
   if (!id) return;
@@ -3930,23 +4105,44 @@ const moveToToday = async (report) => {
     alert('Lỗi kết nối: ' + error.message);
   }
 };
-const kanbanColumns = computed(() => [
-  {
-    status: 'Chưa xử lý',
-    title: 'CHƯA XỬ LÝ',
-    dotClass: 'bg-amber-500 shadow-amber-500/50',
-    reports: pendingReports.value
-  },
-  {
-    status: 'Hoàn thành',
-    title: 'HOÀN THÀNH',
-    dotClass: 'bg-emerald-500 shadow-emerald-500/50',
-    reports: completedReports.value
-  }
-]);
 
 // View mode: 'detail' (kanban) or 'daily' (single column by day)
 const desktopViewMode = ref('detail');
+
+const kanbanColumns = computed(() => {
+  const pMorning = pendingReports.value.filter(r => formatDisplayTime(r.thoi_gian).period === 'Sáng');
+  const pAfternoon = pendingReports.value.filter(r => formatDisplayTime(r.thoi_gian).period !== 'Sáng');
+  const cMorning = completedReports.value.filter(r => formatDisplayTime(r.thoi_gian).period === 'Sáng');
+  const cAfternoon = completedReports.value.filter(r => formatDisplayTime(r.thoi_gian).period !== 'Sáng');
+
+  const [bPM, bPA, bCM, bCA] = allocateLazyBudgets(
+    [pMorning.length, pAfternoon.length, cMorning.length, cAfternoon.length],
+    visibleReportCount.value
+  );
+
+  return [
+    {
+      status: 'Chưa xử lý',
+      title: 'CHƯA XỬ LÝ',
+      dotClass: 'bg-amber-500 shadow-amber-500/50',
+      reports: pendingReports.value,
+      morningReports: pMorning.slice(0, bPM),
+      morningTotal: pMorning.length,
+      afternoonReports: pAfternoon.slice(0, bPA),
+      afternoonTotal: pAfternoon.length
+    },
+    {
+      status: 'Hoàn thành',
+      title: 'HOÀN THÀNH',
+      dotClass: 'bg-emerald-500 shadow-emerald-500/50',
+      reports: completedReports.value,
+      morningReports: cMorning.slice(0, bCM),
+      morningTotal: cMorning.length,
+      afternoonReports: cAfternoon.slice(0, bCA),
+      afternoonTotal: cAfternoon.length
+    }
+  ];
+});
 
 const dailyColumns = computed(() => {
   const grouped = {};
@@ -4029,6 +4225,107 @@ const dailyColumns = computed(() => {
   arr.sort((a, b) => filters.value.sortOrder === 'desc' ? b.dateObj - a.dateObj : a.dateObj - b.dateObj);
   return arr;
 });
+
+// Lazy loading cho chế độ Xem theo ngày, Mobile và toàn trang (25 công việc mỗi đợt)
+const visibleDailyColumns = computed(() => {
+  const allDays = dailyColumns.value;
+  const totalTasksAllDays = filteredReports.value.length;
+  const result = [];
+  let remainingTasks = visibleReportCount.value;
+  let emptyDaysIncluded = 0;
+  const maxEmptyDaysWhenPaginated = Math.max(14, visibleReportCount.value);
+
+  for (const day of allDays) {
+    const mLen = day.morning.length;
+    const aLen = day.afternoon.length;
+    const dayTotal = mLen + aLen;
+
+    if (dayTotal === 0) {
+      // Nếu tất cả công việc đã hiển thị hết (hoặc tổng <= budget), hiển thị các ngày trống trong phạm vi lọc
+      if (totalTasksAllDays <= visibleReportCount.value || remainingTasks > 0) {
+        if (emptyDaysIncluded < maxEmptyDaysWhenPaginated || totalTasksAllDays <= visibleReportCount.value) {
+          result.push({
+            ...day,
+            morning: [],
+            morningTotal: 0,
+            afternoon: [],
+            afternoonTotal: 0,
+            totalTasks: 0
+          });
+          emptyDaysIncluded++;
+        }
+      }
+      continue;
+    }
+
+    if (remainingTasks <= 0) break;
+
+    const dayBudget = Math.min(dayTotal, remainingTasks);
+    const [mBudget, aBudget] = allocateLazyBudgets([mLen, aLen], dayBudget);
+    remainingTasks -= (mBudget + aBudget);
+
+    result.push({
+      ...day,
+      morning: day.morning.slice(0, mBudget),
+      morningTotal: mLen,
+      afternoon: day.afternoon.slice(0, aBudget),
+      afternoonTotal: aLen,
+      totalTasks: dayTotal
+    });
+  }
+
+  return result;
+});
+
+const visibleMobileReports = computed(() => {
+  return filteredReports.value.slice(0, visibleReportCount.value);
+});
+
+const currentlyRenderedCount = computed(() => {
+  return Math.min(filteredReports.value.length, visibleReportCount.value);
+});
+
+const hasMoreReports = computed(() => {
+  return currentlyRenderedCount.value < filteredReports.value.length;
+});
+
+const loadMoreReports = () => {
+  if (visibleReportCount.value < filteredReports.value.length) {
+    visibleReportCount.value = Math.min(
+      filteredReports.value.length,
+      visibleReportCount.value + LAZY_BATCH_SIZE
+    );
+  }
+};
+
+const showAllReports = () => {
+  visibleReportCount.value = Math.max(LAZY_BATCH_SIZE, filteredReports.value.length);
+};
+
+const ensureReportVisible = (reportId) => {
+  if (!reportId) return;
+  const idx = filteredReports.value.findIndex(r => String(r.id) === String(reportId));
+  if (idx === -1) return;
+  // Tăng visibleReportCount đủ lớn để đảm bảo card ở mọi cột con đều đã được render
+  const requiredBatches = Math.ceil(( filteredReports.value.length ) / LAZY_BATCH_SIZE);
+  if (idx >= Math.floor(visibleReportCount.value / 4)) {
+    visibleReportCount.value = Math.max(
+      visibleReportCount.value,
+      Math.min(
+        filteredReports.value.length,
+        Math.ceil(((idx + 1) * 4) / LAZY_BATCH_SIZE) * LAZY_BATCH_SIZE
+      )
+    );
+  }
+  // Kiểm tra chắc chắn lần nữa xem card đã nằm trong kanbanColumns chưa
+  const inKanban = kanbanColumns.value.some(col =>
+    col.morningReports.some(r => String(r.id) === String(reportId)) ||
+    col.afternoonReports.some(r => String(r.id) === String(reportId))
+  );
+  if (!inKanban) {
+    visibleReportCount.value = Math.max(LAZY_BATCH_SIZE, filteredReports.value.length);
+  }
+};
 
 const draggedReportId = ref(null);
 const draggedReminderId = ref(null);
@@ -4471,17 +4768,23 @@ const fetchReports = async () => {
           }
           
           highlightedReportId.value = r.id;
+          nextTick(() => {
+            ensureReportVisible(r.id);
+          });
           
           setTimeout(() => {
-            const el = document.getElementById('report-card-' + r.id)
-            if (el) {
-              el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-              setTimeout(() => {
-                if (highlightedReportId.value === r.id) {
-                  highlightedReportId.value = null;
-                }
-              }, 3000);
-            }
+            ensureReportVisible(r.id);
+            nextTick(() => {
+              const el = document.getElementById('report-card-' + r.id)
+              if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                setTimeout(() => {
+                  if (highlightedReportId.value === r.id) {
+                    highlightedReportId.value = null;
+                  }
+                }, 3000);
+              }
+            });
           }, 300);
         }
       }
@@ -6738,6 +7041,109 @@ const getOfficeViewUrl = (fileObj) => {
   return `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(url)}`;
 };
 
+// --- LAZY LOADING WATCHERS & INTERSECTION OBSERVERS (25 CÔNG VIỆC / ĐỢT) ---
+let lazyLoadObserver = null;
+let pendingModalObserver = null;
+
+const setupLazyLoadObserver = () => {
+  if (lazyLoadObserver) {
+    lazyLoadObserver.disconnect();
+    lazyLoadObserver = null;
+  }
+  if (typeof window === 'undefined' || !('IntersectionObserver' in window)) return;
+  const el = lazyLoadSentinel.value;
+  if (!el) return;
+
+  lazyLoadObserver = new IntersectionObserver(
+    (entries) => {
+      const entry = entries[0];
+      if (entry && entry.isIntersecting && hasMoreReports.value && !loading.value) {
+        loadMoreReports();
+      }
+    },
+    {
+      root: null,
+      rootMargin: '350px 0px',
+      threshold: 0.01
+    }
+  );
+  lazyLoadObserver.observe(el);
+};
+
+const setupPendingModalObserver = () => {
+  if (pendingModalObserver) {
+    pendingModalObserver.disconnect();
+    pendingModalObserver = null;
+  }
+  if (typeof window === 'undefined' || !('IntersectionObserver' in window)) return;
+  const el = pendingModalSentinel.value;
+  if (!el) return;
+  const scrollRoot = el.closest('.elite-modal-body') || null;
+
+  pendingModalObserver = new IntersectionObserver(
+    (entries) => {
+      const entry = entries[0];
+      if (entry && entry.isIntersecting && hasMorePendingModalReports.value && !loading.value) {
+        loadMorePendingModalReports();
+      }
+    },
+    {
+      root: scrollRoot,
+      rootMargin: '250px 0px',
+      threshold: 0.01
+    }
+  );
+  pendingModalObserver.observe(el);
+};
+
+watch(
+  [
+    () => filters.value.filterMode,
+    () => filters.value.weekFrom,
+    () => filters.value.weekTo,
+    () => filters.value.dateFrom,
+    () => filters.value.dateTo,
+    () => filters.value.monthFrom,
+    () => filters.value.monthTo,
+    () => filters.value.yearFrom,
+    () => filters.value.yearTo,
+    () => filters.value.tag,
+    () => filters.value.phan_loai,
+    () => filters.value.trang_thai,
+    () => filters.value.period,
+    () => filters.value.sortOrder,
+    () => desktopViewMode.value
+  ],
+  () => {
+    visibleReportCount.value = LAZY_BATCH_SIZE;
+    nextTick(() => {
+      setupLazyLoadObserver();
+    });
+  }
+);
+
+watch(
+  [() => pendingFilterMode.value, () => isPendingModalOpen.value],
+  () => {
+    visiblePendingModalCount.value = LAZY_BATCH_SIZE;
+    nextTick(() => {
+      setupPendingModalObserver();
+    });
+  }
+);
+
+watch(lazyLoadSentinel, () => {
+  nextTick(() => {
+    setupLazyLoadObserver();
+  });
+});
+
+watch(pendingModalSentinel, () => {
+  nextTick(() => {
+    setupPendingModalObserver();
+  });
+});
+
 onMounted(() => {
   listenCustomersRealtime();
   listenQuanLyFileRealtime();
@@ -6750,10 +7156,21 @@ onMounted(() => {
   }
   fetchReports()
   window.addEventListener('resize', onResize)
+  nextTick(() => {
+    setupLazyLoadObserver();
+  });
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', onResize)
+  if (lazyLoadObserver) {
+    lazyLoadObserver.disconnect();
+    lazyLoadObserver = null;
+  }
+  if (pendingModalObserver) {
+    pendingModalObserver.disconnect();
+    pendingModalObserver = null;
+  }
   if (unsubscribeReports) {
     unsubscribeReports();
   }
@@ -6767,6 +7184,151 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* =========================================
+   LAZY LOADING FOOTER & SUB-COLUMN CONTROLS
+========================================= */
+.lazy-load-footer {
+  margin: 1.5rem auto 0.75rem;
+  padding: 0.9rem 1.25rem;
+  max-width: 720px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(30, 41, 59, 0.85));
+  border: 1px solid rgba(52, 211, 153, 0.22);
+  box-shadow: 0 12px 28px -10px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  backdrop-filter: blur(10px);
+}
+
+.lazy-load-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: #cbd5e1;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.lazy-load-status strong {
+  color: #34d399;
+  font-weight: 800;
+}
+
+.lazy-load-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #10b981;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.85);
+  animation: lazyPulseDot 1.8s ease-in-out infinite;
+}
+
+@keyframes lazyPulseDot {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.3); opacity: 0.45; }
+}
+
+.lazy-load-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.lazy-load-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.48rem 0.95rem;
+  border-radius: 9px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.lazy-load-btn.primary {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  box-shadow: 0 6px 16px -4px rgba(16, 185, 129, 0.5);
+}
+
+.lazy-load-btn.primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px -4px rgba(16, 185, 129, 0.65);
+  filter: brightness(1.06);
+}
+
+.lazy-load-btn.secondary {
+  background: rgba(255, 255, 255, 0.06);
+  color: #e2e8f0;
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.lazy-load-btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(52, 211, 153, 0.4);
+  color: #34d399;
+}
+
+.lazy-load-complete {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.28);
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+}
+
+.lazy-subcol-more-btn {
+  width: 100%;
+  margin-top: 0.65rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 10px;
+  border: 1px dashed rgba(52, 211, 153, 0.38);
+  background: rgba(16, 185, 129, 0.08);
+  color: #6ee7b7;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  transition: all 0.2s ease;
+}
+
+.lazy-subcol-more-btn:hover {
+  background: rgba(16, 185, 129, 0.16);
+  border-color: rgba(52, 211, 153, 0.7);
+  color: #a7f3d0;
+  transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+  .lazy-load-footer {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+    padding: 0.85rem 1rem;
+  }
+  .lazy-load-status {
+    justify-content: center;
+  }
+  .lazy-load-actions {
+    justify-content: center;
+  }
+  .lazy-load-btn {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
 /* =========================================
    CUSTOMER PICKER & BADGES
 ========================================= */
