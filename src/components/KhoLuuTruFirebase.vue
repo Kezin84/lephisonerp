@@ -1538,7 +1538,8 @@ const saveNewCustomer = async () => {
     ma_khach_hang: ma_kh,
     ten_khach_hang: ten_kh,
     ma_cong_ty: ma_ct,
-    ten_cong_ty: ten_ct
+    ten_cong_ty: ten_ct,
+    last_updated: new Date().toISOString()
   }
   customersList.value.unshift(newCustomer)
 

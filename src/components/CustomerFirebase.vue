@@ -187,6 +187,13 @@
                 </span>
                 <span class="stat-val" style="color: #60a5fa; font-size: 0.95rem;">{{ kh.lastPurchaseText || 'Chưa có' }}</span>
               </div>
+              <div class="stat-item">
+                <span class="stat-label" style="text-transform: uppercase; display: inline-flex; align-items: center; gap: 8px; font-size: 0.8rem;">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                  Cập nhật cuối:
+                </span>
+                <span class="stat-val" style="color: #94a3b8; font-size: 0.9rem;">{{ formatLastUpdated(kh.last_updated) }}</span>
+              </div>
               <div class="stat-item" v-if="kh.renewalCount > 0">
                 <span class="stat-label" style="text-transform: uppercase; display: inline-flex; align-items: center; gap: 8px; font-size: 0.8rem;">
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
@@ -288,7 +295,12 @@
     <div class="modal-overlay" v-if="isModalOpen" @click.self="closeModal">
       <div class="modal modal-lg">
         <div class="modal-header">
-          <h2>{{ isEditing ? 'Chỉnh Sửa Khách Hàng' : 'Thêm Khách Hàng Mới' }}</h2>
+          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <h2>{{ isEditing ? 'Chỉnh Sửa Khách Hàng' : 'Thêm Khách Hàng Mới' }}</h2>
+            <span v-if="isEditing && formData.last_updated" style="font-size: 12px; color: #94a3b8; background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 99px;">
+              🕒 Cập nhật cuối: <strong style="color: #38bdf8;">{{ formatLastUpdated(formData.last_updated) }}</strong>
+            </span>
+          </div>
           <div v-if="isMultiImport" class="multi-import-pagination">
             <button type="button" class="btn-page" @click.prevent="prevPage" :disabled="currentImportIndex === 0">&lt;</button>
             <span class="page-info">File {{ currentImportIndex + 1 }} / {{ importedList.length }}: <strong>{{ importedList[currentImportIndex].fileName }}</strong></span>
@@ -1265,6 +1277,14 @@ const normalizeCustomerRecord = (raw, fbKey) => {
   obj.tagKH = Array.isArray(raw.tagKH)
     ? [...raw.tagKH]
     : (typeof raw.tagKH === 'string' && raw.tagKH.trim() ? [raw.tagKH.trim()] : [])
+  obj.last_updated =
+    raw.last_updated ||
+    raw.lastupdated ||
+    raw.lastUpdated ||
+    raw.lastupadted ||
+    raw.created_time ||
+    raw.createdAt ||
+    ''
   return obj
 }
 
@@ -1544,8 +1564,24 @@ const initFormData = () => ({
   address: '',
   tel: '',
   cong_no: 0,
-  tagKH: []
+  tagKH: [],
+  last_updated: ''
 })
+
+const formatLastUpdated = (val) => {
+  if (!val && val !== 0) return 'Chưa ghi nhận'
+  const rawStr = String(val).trim()
+  if (!rawStr) return 'Chưa ghi nhận'
+  let dt = null
+  if (/^\d+$/.test(rawStr)) {
+    dt = new Date(Number(rawStr))
+  } else {
+    dt = parseDateStr(rawStr) || new Date(rawStr)
+  }
+  if (!dt || isNaN(dt.getTime())) return rawStr
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${pad(dt.getDate())}/${pad(dt.getMonth() + 1)}/${dt.getFullYear()} ${pad(dt.getHours())}:${pad(dt.getMinutes())}`
+}
 
 // ─── Quản lý Nhóm Khách Hàng (tagKH) ───
 const isTagModalOpen = ref(false)
@@ -1610,14 +1646,17 @@ const saveTagEdit = async (oldTagName) => {
   }
 
   const updates = {}
+  const nowIso = new Date().toISOString()
   customers.value.forEach(c => {
     if (Array.isArray(c.tagKH) && c.tagKH.includes(oldTagName)) {
       const newTags = Array.from(new Set(c.tagKH.map(t => (t === oldTagName ? newTagName : t))))
       const fbKey = c._firebaseKey || sanitizeFirebaseKey(c.ma_khach_hang)
       if (fbKey) {
         updates[`khach_hang/${fbKey}/tagKH`] = newTags
+        updates[`khach_hang/${fbKey}/last_updated`] = nowIso
       }
       c.tagKH = newTags
+      c.last_updated = nowIso
     }
   })
 
@@ -1636,14 +1675,17 @@ const deleteTagGlobal = async (tagName) => {
   if (!confirm(`Bạn có chắc muốn xóa nhóm "${tagName}" khỏi tất cả khách hàng không?`)) return
 
   const updates = {}
+  const nowIso = new Date().toISOString()
   customers.value.forEach(c => {
     if (Array.isArray(c.tagKH) && c.tagKH.includes(tagName)) {
       const newTags = c.tagKH.filter(t => t !== tagName)
       const fbKey = c._firebaseKey || sanitizeFirebaseKey(c.ma_khach_hang)
       if (fbKey) {
         updates[`khach_hang/${fbKey}/tagKH`] = newTags
+        updates[`khach_hang/${fbKey}/last_updated`] = nowIso
       }
       c.tagKH = newTags
+      c.last_updated = nowIso
     }
   })
 
@@ -2926,6 +2968,7 @@ const saveSingleCustomerToFirebase = async (data, isUpd) => {
   recordToSave.ma_cong_ty = maCT
   recordToSave.cong_no = Number(data.cong_no) || 0
   recordToSave.tagKH = Array.isArray(data.tagKH) ? [...data.tagKH] : []
+  recordToSave.last_updated = new Date().toISOString()
 
   const existing = customers.value.find(
     c => (data._firebaseKey && c._firebaseKey === data._firebaseKey) || String(c.ma_khach_hang) === id

@@ -1707,7 +1707,12 @@
     <div v-if="isCustomerModalOpen" class="elite-modal-overlay" @click.self="isCustomerModalOpen = false" style="position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 100065;">
       <div class="elite-modal report-form-modal customer-modal">
         <div class="elite-modal-header">
-          <div class="elite-modal-title" style="display: flex; align-items: flex-start; gap: 0.6rem;"><h2>{{ customerFormData.id ? 'Sửa Khách Hàng' : 'Tạo Khách Hàng Mới' }}</h2></div>
+          <div class="elite-modal-title" style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+            <h2>{{ customerFormData.id ? 'Sửa Khách Hàng' : 'Tạo Khách Hàng Mới' }}</h2>
+            <span v-if="customerFormData.id && (customerFormData.last_updated || customerFormData.created_time || customerFormData.createdAt)" style="font-size: 12px; color: #475569; background: #f1f5f9; border: 1px solid #cbd5e1; padding: 3px 10px; border-radius: 99px; font-weight: 500;">
+              🕒 Cập nhật cuối: <strong style="color: #0284c7;">{{ formatCustomerLastUpdated(customerFormData.last_updated || customerFormData.created_time || customerFormData.createdAt) }}</strong>
+            </span>
+          </div>
           <button class="elite-btn-close" @click="isCustomerModalOpen = false">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           </button>
@@ -5100,10 +5105,12 @@ const saveTagEdit = async (oldTagName) => {
   }
   
   const updates = {}
+  const nowIso = new Date().toISOString()
   customersList.value.forEach(c => {
     if (c.tagKH && c.tagKH.includes(oldTagName)) {
       const newTags = c.tagKH.map(t => t === oldTagName ? newTagName : t)
       updates[`khach_hang/${c.id}/tagKH`] = newTags
+      updates[`khach_hang/${c.id}/last_updated`] = nowIso
     }
   })
   
@@ -5126,10 +5133,12 @@ const deleteTagGlobal = async (tagName) => {
   if (!confirmDel) return
   
   const updates = {}
+  const nowIso = new Date().toISOString()
   customersList.value.forEach(c => {
     if (c.tagKH && c.tagKH.includes(tagName)) {
       const newTags = c.tagKH.filter(t => t !== tagName)
       updates[`khach_hang/${c.id}/tagKH`] = newTags
+      updates[`khach_hang/${c.id}/last_updated`] = nowIso
     }
   })
   
@@ -5163,9 +5172,20 @@ const defaultCustomerForm = {
   so_fax_cong_ty: '',
   ghi_chu: '',
   hoa_hong: '',
-  trang_thai: 'Active'
+  trang_thai: 'Active',
+  last_updated: ''
 }
 const customerFormData = ref({ ...defaultCustomerForm })
+
+const formatCustomerLastUpdated = (val) => {
+  if (!val && val !== 0) return 'Chưa ghi nhận'
+  const rawStr = String(val).trim()
+  if (!rawStr) return 'Chưa ghi nhận'
+  const dt = /^\d+$/.test(rawStr) ? new Date(Number(rawStr)) : new Date(rawStr)
+  if (isNaN(dt.getTime())) return rawStr
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${pad(dt.getDate())}/${pad(dt.getMonth() + 1)}/${dt.getFullYear()} ${pad(dt.getHours())}:${pad(dt.getMinutes())}`
+}
 
 // --- HÀM TẠO MÃ KHÁCH HÀNG TỰ ĐỘNG ---
 const removeDiacritics = (str) => {
@@ -5218,9 +5238,13 @@ const saveNewCustomer = async () => {
     return
   }
   try {
+    const nowIso = new Date().toISOString();
     if (customerFormData.value.id) {
       const cusRef = dbRef(database, 'khach_hang/' + customerFormData.value.id);
-      const dataToSave = { ...customerFormData.value };
+      const dataToSave = {
+        ...customerFormData.value,
+        last_updated: nowIso
+      };
       delete dataToSave.id;
       await update(cusRef, dataToSave);
       await showAlert('Cập nhật thông tin khách hàng thành công!');
@@ -5228,7 +5252,8 @@ const saveNewCustomer = async () => {
       const newCusRef = push(dbRef(database, 'khach_hang'));
       await set(newCusRef, {
         ...customerFormData.value,
-        created_time: Date.now()
+        created_time: Date.now(),
+        last_updated: nowIso
       });
       await showAlert('Tạo khách hàng mới thành công!');
     }

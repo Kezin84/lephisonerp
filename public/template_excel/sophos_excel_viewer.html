@@ -1,0 +1,1491 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sophos Excel Viewer — Định vị dòng SKU</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Segoe UI', Calibri, Aptos, Arial, sans-serif;
+      background: #f3f2f1;
+      color: #201f1e;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Excel Top Green Ribbon Bar */
+    .excel-topbar {
+      background: #107c41;
+      color: #ffffff;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+      z-index: 20;
+    }
+    .excel-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .excel-logo {
+      width: 28px;
+      height: 28px;
+      border-radius: 5px;
+      background: #185c37;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 16px;
+      color: #ffffff;
+    }
+    .file-switcher {
+      display: inline-flex;
+      background: rgba(0, 0, 0, 0.22);
+      padding: 3px;
+      border-radius: 6px;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+    .file-btn {
+      padding: 5px 11px;
+      border-radius: 4px;
+      border: none;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.85);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .file-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+    }
+    .file-btn.active {
+      background: #ffffff;
+      color: #107c41;
+      font-weight: 700;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+
+    .target-badges {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .badge-sku {
+      background: rgba(255, 255, 255, 0.18);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      padding: 4px 10px;
+      border-radius: 5px;
+      font-family: Consolas, monospace;
+      font-size: 13px;
+    }
+    .badge-coord {
+      background: #fff2cc;
+      color: #7f6000;
+      border: 1px solid #d6b656;
+      padding: 4px 10px;
+      border-radius: 5px;
+      font-family: Consolas, monospace;
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .top-btn {
+      padding: 6px 12px;
+      border-radius: 5px;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      background: rgba(255, 255, 255, 0.14);
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s;
+    }
+    .top-btn:hover {
+      background: rgba(255, 255, 255, 0.26);
+    }
+    .top-btn--primary {
+      background: #ffc000;
+      border-color: #ffd966;
+      color: #1f1f1f;
+      font-weight: 700;
+    }
+    .top-btn--primary:hover {
+      background: #ffd966;
+    }
+
+    /* Quick Jump Occurrences Bar */
+    .locations-bar {
+      background: #e1dfdd;
+      border-bottom: 1px solid #c8c6c4;
+      padding: 6px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-size: 12px;
+    }
+    .loc-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: #ffffff;
+      border: 1px solid #8a8886;
+      color: #323130;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .loc-pill:hover {
+      border-color: #107c41;
+      color: #107c41;
+    }
+    .loc-pill.active {
+      background: #107c41;
+      border-color: #0b5a2e;
+      color: #ffffff;
+      font-weight: 700;
+    }
+
+    /* Excel Formula Bar */
+    .formula-bar {
+      background: #ffffff;
+      border-bottom: 1px solid #d2d0ce;
+      padding: 5px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .name-box {
+      min-width: 82px;
+      padding: 4px 8px;
+      border: 1px solid #c8c6c4;
+      border-radius: 3px;
+      background: #faf9f8;
+      font-family: Consolas, monospace;
+      font-weight: 700;
+      font-size: 13px;
+      color: #201f1e;
+      text-align: center;
+    }
+    .fx-label {
+      font-family: Georgia, serif;
+      font-style: italic;
+      font-weight: 700;
+      color: #605e5c;
+      padding: 0 4px;
+      user-select: none;
+    }
+    .formula-input {
+      flex: 1;
+      padding: 4px 10px;
+      border: 1px solid #c8c6c4;
+      border-radius: 3px;
+      background: #ffffff;
+      font-family: Calibri, 'Segoe UI', sans-serif;
+      font-size: 13px;
+      color: #201f1e;
+      min-height: 28px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .search-input {
+      width: 240px;
+      padding: 4px 10px;
+      border: 1px solid #8a8886;
+      border-radius: 3px;
+      font-size: 12.5px;
+    }
+    .search-btn {
+      padding: 4px 10px;
+      border-radius: 3px;
+      border: 1px solid #107c41;
+      background: #107c41;
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* Window Banner for 200k+ rows sheets */
+    .window-banner {
+      background: #fff4ce;
+      border-bottom: 1px solid #d6b656;
+      color: #323130;
+      padding: 6px 16px;
+      font-size: 12.5px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .window-btn {
+      padding: 3px 10px;
+      border-radius: 4px;
+      border: 1px solid #8a8886;
+      background: #ffffff;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* Authentic Excel Grid Container */
+    .grid-container {
+      flex: 1;
+      overflow: auto;
+      background: #ffffff;
+      position: relative;
+    }
+    table.excel-grid {
+      border-collapse: collapse;
+      table-layout: fixed;
+      background: #ffffff;
+      font-family: Calibri, 'Aptos Narrow', 'Segoe UI', Arial, sans-serif;
+      font-size: 11pt;
+      color: #000000;
+    }
+    table.excel-grid thead th {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: #f3f2f1;
+      color: #323130;
+      font-weight: 600;
+      font-size: 12px;
+      font-family: 'Segoe UI', sans-serif;
+      border: 1px solid #d4d4d4;
+      height: 25px;
+      text-align: center;
+      user-select: none;
+    }
+    table.excel-grid thead th.col-corner {
+      position: sticky;
+      left: 0;
+      z-index: 12;
+      width: 58px;
+      min-width: 58px;
+      background: #e1dfdd;
+    }
+    table.excel-grid thead th.col-active {
+      background: #d2e6d8;
+      color: #0b5a2e;
+      font-weight: 800;
+      border-bottom: 2px solid #107c41;
+    }
+
+    table.excel-grid tbody td {
+      border: 1px solid #d4d4d4;
+      padding: 3px 6px;
+      vertical-align: middle;
+      color: #000000;
+      background: #ffffff;
+      line-height: 1.3;
+      white-space: pre-wrap;
+      word-break: break-word;
+      cursor: cell;
+    }
+    table.excel-grid tbody td.row-header {
+      position: sticky;
+      left: 0;
+      z-index: 8;
+      background: #f3f2f1 !important;
+      color: #323130 !important;
+      font-family: 'Segoe UI', sans-serif !important;
+      font-size: 12px !important;
+      font-weight: 600 !important;
+      text-align: center !important;
+      width: 58px;
+      min-width: 58px;
+      user-select: none;
+      border-right: 1px solid #b3b0ad;
+    }
+
+    /* Full-Row Highlight that preserves the original Excel cell background color underneath! */
+    @keyframes targetRowPulse {
+      0%, 100% {
+        box-shadow: inset 0 0 0 9999px rgba(255, 193, 7, 0.24);
+      }
+      50% {
+        box-shadow: inset 0 0 0 9999px rgba(16, 185, 129, 0.26);
+      }
+    }
+    tr.excel-target-row {
+      position: relative;
+      z-index: 5;
+    }
+    tr.excel-target-row td {
+      border-top: 2.5px solid #d97706 !important;
+      border-bottom: 2.5px solid #d97706 !important;
+      animation: targetRowPulse 2s infinite ease-in-out;
+    }
+    tr.excel-target-row td.row-header {
+      background: #d97706 !important;
+      color: #ffffff !important;
+      font-weight: 900 !important;
+      border-left: 4px solid #107c41 !important;
+      animation: none;
+    }
+    td.excel-target-cell {
+      outline: 3px solid #107c41 !important;
+      outline-offset: -2px;
+      position: relative;
+      z-index: 6;
+    }
+
+    /* Bottom Sheet Tabs Bar (like real Excel) */
+    .sheet-bar {
+      background: #f3f2f1;
+      border-top: 1px solid #c8c6c4;
+      padding: 0 12px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      z-index: 20;
+    }
+    .sheet-tabs {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      overflow-x: auto;
+      height: 100%;
+    }
+    .sheet-tab {
+      height: 30px;
+      padding: 0 14px;
+      border: 1px solid transparent;
+      border-bottom: 3px solid transparent;
+      background: transparent;
+      color: #323130;
+      font-size: 12.5px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 3px 3px 0 0;
+    }
+    .sheet-tab:hover {
+      background: #e1dfdd;
+    }
+    .sheet-tab.active {
+      background: #ffffff;
+      color: #107c41;
+      font-weight: 700;
+      border-color: #d2d0ce;
+      border-bottom: 3px solid #107c41;
+    }
+    .sheet-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #d97706;
+    }
+    .status-info {
+      font-size: 12px;
+      color: #605e5c;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <!-- Top Green Excel Bar -->
+  <div class="excel-topbar">
+    <div class="excel-brand">
+      <div class="excel-logo">X</div>
+      <div class="file-switcher">
+        <button id="btnFileGoc" type="button" class="file-btn" onclick="switchFile('goc')">
+          📗 file_goc_SOPHOS.xlsx
+        </button>
+        <button id="btnFileSkulist" type="button" class="file-btn" onclick="switchFile('skulist')">
+          📙 SKU_list-asean-usd-2026-3.0.xlsb
+        </button>
+        <button id="btnFileTg" type="button" class="file-btn" onclick="switchFile('tg')">
+          📘 file_trung_gian_SOPHOS.xlsx
+        </button>
+      </div>
+      <div class="target-badges">
+        <span class="badge-sku">SKU: <strong id="lblSku">—</strong></span>
+        <span id="lblItemName" style="font-size: 13px; font-weight: 600;"></span>
+        <span id="lblCoord" class="badge-coord">📍 —</span>
+      </div>
+    </div>
+
+    <div class="top-actions">
+      <button id="btnCopyRow" type="button" class="top-btn top-btn--primary" onclick="copyRowCoord()">
+        📋 Copy tọa độ dòng (Ctrl+G)
+      </button>
+      <button type="button" class="top-btn" onclick="scrollToTargetRow()">
+        🎯 Cuộn tới Dòng mục tiêu
+      </button>
+      <button type="button" class="top-btn" onclick="openDesktopExcel()">
+        📗 Mở bằng App Excel Desktop
+      </button>
+      <a id="lnkDownload" href="/template_excel/file_trung_gian_SOPHOS.xlsx" download class="top-btn">
+        ⬇️ Tải file gốc
+      </a>
+    </div>
+  </div>
+
+  <!-- Occurrences Bar -->
+  <div id="locationsBar" class="locations-bar" style="display: none;"></div>
+
+  <!-- Formula Bar -->
+  <div class="formula-bar">
+    <div id="nameBox" class="name-box">B1</div>
+    <div class="fx-label">fx</div>
+    <div id="formulaVal" class="formula-input"></div>
+    <div class="search-box">
+      <input
+        id="searchInput"
+        type="text"
+        class="search-input"
+        placeholder="Tìm SKU / Model hoặc nhập số dòng..."
+        onkeydown="if(event.key==='Enter') runSearch()"
+      />
+      <button type="button" class="search-btn" onclick="runSearch()">Tìm &amp; Nhảy</button>
+    </div>
+  </div>
+
+  <!-- Window Banner for MSRPs&BuyCost / SKU_Tab -->
+  <div id="windowBanner" class="window-banner" style="display: none;">
+    <span id="windowBannerText"></span>
+    <button type="button" class="window-btn" onclick="expandMsrpWindow()">+ Mở rộng thêm ±80 dòng lân cận</button>
+  </div>
+
+  <!-- Spreadsheet Grid -->
+  <div id="gridContainer" class="grid-container">
+    <div style="padding: 40px; text-align: center; color: #605e5c; font-size: 14px;">
+      Đang tải dữ liệu và định dạng gốc từ file Excel...
+    </div>
+  </div>
+
+  <!-- Bottom Sheet Tabs -->
+  <div class="sheet-bar">
+    <div id="sheetTabs" class="sheet-tabs"></div>
+    <div id="statusInfo" class="status-info"></div>
+  </div>
+
+  <script>
+    let refData = null;
+    let sortedMsrpCache = [];
+    let sortedSkuTabCache = [];
+    let msrpWindowRadius = 50;
+    let viewerContext = { settings: {}, rows: [] };
+
+    const state = {
+      fileType: 'tg', // 'goc' | 'skulist' | 'tg'
+      sheet: 'XGS - 1U + 10%',
+      targetRow: 1,
+      colLetter: 'B',
+      colIndex: 1,
+      sku: '',
+      itemName: ''
+    };
+
+    function letterToColIndex(letter) {
+      const clean = String(letter || 'A').trim().toUpperCase();
+      let col = 0;
+      for (let i = 0; i < clean.length; i++) {
+        col = col * 26 + (clean.charCodeAt(i) - 64);
+      }
+      return Math.max(0, col - 1);
+    }
+
+    function colIndexToLetter(colIdx0) {
+      let temp, letter = '';
+      let col = colIdx0 + 1;
+      while (col > 0) {
+        temp = (col - 1) % 26;
+        letter = String.fromCharCode(temp + 65) + letter;
+        col = (col - temp - 1) / 26;
+      }
+      return letter;
+    }
+
+    function getFirewallRowForItem(itemName, sku) {
+      const nl = String(itemName || '').toLowerCase();
+      const s = String(sku || '').toUpperCase();
+      if (nl.includes('standard hardware bundle')) return 23;
+      if (nl.includes('xstream hardware bundle')) return 25;
+      if (nl.includes('hardware appliance') || s.startsWith('XG')) return 27;
+      if ((nl.includes('xstream protection') || nl.includes('xtsream protection') || s.startsWith('XS')) && !nl.includes('bundle')) return 31;
+      if ((nl.includes('standard protection') || s.startsWith('SP')) && !nl.includes('bundle')) return 33;
+      if (nl.includes('enhanced to enhanced plus') || nl.includes('plus upgrade') || s.startsWith('UP')) return 37;
+      if (nl.includes('enhanced protection') || nl.includes('enhanced support') || s.startsWith('SE')) return 35;
+      if (nl.includes('network protection') || s.startsWith('NS')) return 39;
+      if ((nl.includes('web protection') && !nl.includes('webserver')) || s.startsWith('WS')) return 41;
+      if (nl.includes('zero-day') || s.startsWith('ZD')) return 43;
+      if (nl.includes('orchestration') || nl.includes('orchestation') || s.startsWith('CO')) return 45;
+      if (nl.includes('email protection') || s.startsWith('ES')) return 47;
+      if (nl.includes('webserver protection') || s.startsWith('SS')) return 49;
+      if (nl.includes('central firewall reporting') || s.startsWith('CFR')) return 51;
+      return null;
+    }
+
+    function formatCell(val) {
+      if (val === null || val === undefined || val === '') return '';
+      if (typeof val === 'number') {
+        return Number.isInteger(val)
+          ? val.toLocaleString('en-US')
+          : val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+      return String(val);
+    }
+
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function getAllLocationsForCurrentSku() {
+      if (!refData || !state.sku) return [];
+      const sku = state.sku.toUpperCase();
+      const locs = [];
+
+      if (state.fileType === 'kas_goc' || state.fileType === 'kas_mau') {
+        const band = state.band || '';
+        const gp = (refData.gocPivotBySku && refData.gocPivotBySku[sku]) || null;
+        if (gp && gp.rowNum) {
+          locs.push({
+            fileType: 'kas_goc',
+            sheet: 'SMB+Enterprise (License)',
+            rowNum: gp.rowNum,
+            colLetter: 'I',
+            sku,
+            itemName: state.itemName
+          });
+        }
+        if (band && refData.gocSaleBySkuBand && refData.gocSaleBySkuBand[sku + '||' + band]) {
+          const gs = refData.gocSaleBySkuBand[sku + '||' + band];
+          locs.push({
+            fileType: 'kas_goc',
+            sheet: 'SaleListSMB+Enterprise',
+            rowNum: gs.rowNum,
+            colLetter: 'B',
+            sku,
+            itemName: state.itemName
+          });
+        }
+        const mp = (refData.mauPivotBySku && refData.mauPivotBySku[sku]) || null;
+        if (mp && mp.rowNum) {
+          locs.push({
+            fileType: 'kas_mau',
+            sheet: 'SMB+Enterprise (License)',
+            rowNum: mp.rowNum,
+            colLetter: 'I',
+            sku,
+            itemName: state.itemName
+          });
+        }
+        if (band && refData.mauSaleBySkuBand && refData.mauSaleBySkuBand[sku + '||' + band]) {
+          const ms = refData.mauSaleBySkuBand[sku + '||' + band];
+          locs.push({
+            fileType: 'kas_mau',
+            sheet: 'SaleListSMB+Enterprise',
+            rowNum: ms.rowNum,
+            colLetter: 'B',
+            sku,
+            itemName: state.itemName
+          });
+        }
+        return locs;
+      }
+
+      const gocMap = refData.gocSkus || {};
+      const gocEntry = gocMap[sku] || (sku === 'CFRAAB12ZZCAA' ? gocMap['CFRAAB12BANCAA'] : null);
+      if (gocEntry && gocEntry.rowNum) {
+        locs.push({
+          fileType: 'goc',
+          sheet: 'MSRPs&BuyCost',
+          rowNum: gocEntry.rowNum,
+          colLetter: 'B',
+          sku: gocMap[sku] ? sku : 'CFRAAB12BANCAA',
+          itemName: state.itemName
+        });
+      }
+      const fwRow = getFirewallRowForItem(state.itemName, sku);
+      if (fwRow) {
+        locs.push({
+          fileType: 'goc',
+          sheet: 'Firewall',
+          rowNum: fwRow,
+          colLetter: 'H',
+          sku,
+          itemName: state.itemName
+        });
+      }
+      if (gocEntry && gocEntry.skuTabRow) {
+        locs.push({
+          fileType: 'skulist',
+          sheet: 'SKU_Tab',
+          rowNum: gocEntry.skuTabRow,
+          colLetter: 'G',
+          sku: gocMap[sku] ? sku : 'CFRAAB12BANCAA',
+          itemName: state.itemName
+        });
+      }
+      if (gocEntry && gocEntry.hwRow) {
+        locs.push({
+          fileType: 'skulist',
+          sheet: 'HW_Compliance',
+          rowNum: gocEntry.hwRow,
+          colLetter: 'B',
+          sku: gocMap[sku] ? sku : 'CFRAAB12BANCAA',
+          itemName: state.itemName
+        });
+      }
+      const tgLocs = (refData.tgSkuLocations && refData.tgSkuLocations[sku]) || [];
+      for (const tl of tgLocs) {
+        locs.push({
+          fileType: 'tg',
+          sheet: tl.sheet,
+          rowNum: tl.rowNum,
+          colLetter: tl.colLetter || 'B',
+          sku,
+          itemName: state.itemName
+        });
+      }
+      const modelStr = String(viewerContext.settings?.model || '').trim().toUpperCase();
+      const lpRow = (refData.lpSophos || []).find(x => String(x.model || '').toUpperCase() === modelStr);
+      if (lpRow && lpRow.rowNum) {
+        locs.push({
+          fileType: 'tg',
+          sheet: 'LP Sophos',
+          rowNum: lpRow.rowNum,
+          colLetter: 'A',
+          sku,
+          itemName: state.itemName
+        });
+      }
+      return locs;
+    }
+
+    function buildCellCss(stObj) {
+      if (!stObj) return '';
+      let css = '';
+      if (stObj.bg) css += `background-color:${stObj.bg};`;
+      if (stObj.fg) css += `color:${stObj.fg};`;
+      if (stObj.b) css += 'font-weight:700;';
+      if (stObj.i) css += 'font-style:italic;';
+      if (stObj.sz) css += `font-size:${stObj.sz}pt;`;
+      if (stObj.al) css += `text-align:${stObj.al};`;
+      if (stObj.val) css += `vertical-align:${stObj.val === 'center' ? 'middle' : stObj.val};`;
+      if (stObj.bd) css += 'border:1px solid #8a8886;';
+      return css;
+    }
+
+    function renderAll() {
+      if (!refData) return;
+
+      const fileMap = {
+        goc: { name: 'file_goc_SOPHOS.xlsx', path: '/template_excel/file_goc_SOPHOS.xlsx' },
+        skulist: { name: 'sophos-pricelist-reseller_SKU_list-asean-usd-2026-3.0.xlsb', path: '/template_excel/sophos-pricelist-reseller_SKU_list-asean-usd-2026-3.0.xlsb' },
+        tg: { name: 'file_trung_gian_SOPHOS.xlsx', path: '/template_excel/file_trung_gian_SOPHOS.xlsx' },
+        kas_goc: { name: 'filegocKas.xlsx', path: '/template_excel/filegocKas.xlsx' },
+        kas_mau: { name: 'KASPERSKY_file_mau_import.xlsx', path: '/template_excel/KASPERSKY_file_mau_import.xlsx' }
+      };
+      const fInfo = fileMap[state.fileType] || fileMap.tg;
+      const isKasMode = state.fileType === 'kas_goc' || state.fileType === 'kas_mau';
+
+      document.title = `[Dòng ${state.targetRow}] ${state.sku || state.sheet} — ${fInfo.name}`;
+      if (isKasMode) {
+        document.getElementById('btnFileGoc').textContent = '📗 filegocKas.xlsx (01/07/2026)';
+        document.getElementById('btnFileGoc').onclick = () => switchFile('kas_goc');
+        document.getElementById('btnFileGoc').className = 'file-btn' + (state.fileType === 'kas_goc' ? ' active' : '');
+        document.getElementById('btnFileSkulist').style.display = 'none';
+        document.getElementById('btnFileTg').textContent = '📘 KASPERSKY_file_mau_import.xlsx';
+        document.getElementById('btnFileTg').onclick = () => switchFile('kas_mau');
+        document.getElementById('btnFileTg').className = 'file-btn' + (state.fileType === 'kas_mau' ? ' active' : '');
+      } else {
+        document.getElementById('btnFileGoc').className = 'file-btn' + (state.fileType === 'goc' ? ' active' : '');
+        document.getElementById('btnFileSkulist').className = 'file-btn' + (state.fileType === 'skulist' ? ' active' : '');
+        document.getElementById('btnFileTg').className = 'file-btn' + (state.fileType === 'tg' ? ' active' : '');
+      }
+      document.getElementById('lblSku').textContent = state.sku || '—';
+      document.getElementById('lblItemName').textContent = state.itemName ? `(${state.itemName})` : '';
+
+      const cellRef = `${state.colLetter}${state.targetRow}`;
+      const fullRowRef = `'${state.sheet}'!${state.targetRow}:${state.targetRow}`;
+      document.getElementById('lblCoord').textContent = `📍 '${state.sheet}'!${cellRef} • Dòng ${state.targetRow}`;
+      document.getElementById('nameBox').textContent = cellRef;
+      document.getElementById('statusInfo').innerHTML = `Đang tô sáng toàn bộ <strong>Dòng ${state.targetRow}</strong> (Tọa độ Excel Ctrl+G: <code>${escapeHtml(fullRowRef)}</code>)`;
+
+      const dlLink = document.getElementById('lnkDownload');
+      dlLink.href = fInfo.path;
+      dlLink.download = fInfo.name;
+
+      // Render Quick Locations Bar
+      const locs = getAllLocationsForCurrentSku();
+      const locBar = document.getElementById('locationsBar');
+      if (locs.length > 0) {
+        locBar.style.display = 'flex';
+        locBar.innerHTML = `<span style="font-weight:700;color:#323130;">⚡ Nhảy nhanh giữa các vị trí của mã ${escapeHtml(state.sku)}:</span>` +
+          locs.map((l, idx) => {
+            const isAct = l.fileType === state.fileType && l.sheet === state.sheet && l.rowNum === state.targetRow;
+            const badgeIcon = l.fileType === 'goc' || l.fileType === 'kas_goc'
+              ? '📗 File Gốc'
+              : (l.fileType === 'skulist' ? '📙 SKU_List' : '📘 File Mẫu/TG');
+            return `<button type="button" class="loc-pill ${isAct ? 'active' : ''}" onclick="jumpToLocationIndex(${idx})">
+              <span>${badgeIcon}:</span>
+              <strong>${escapeHtml(l.sheet)}</strong>
+              <span>• Ô ${l.colLetter}${l.rowNum} (Dòng ${l.rowNum})</span>
+            </button>`;
+          }).join('');
+      } else {
+        locBar.style.display = 'none';
+      }
+
+      // Render Sheet Tabs
+      const sheetNames = (state.fileType === 'kas_goc' || state.fileType === 'kas_mau')
+        ? ['SMB+Enterprise (License)', 'SaleListSMB+Enterprise']
+        : (state.fileType === 'goc'
+          ? ['MSRPs&BuyCost', 'Firewall']
+          : (state.fileType === 'skulist'
+            ? ['SKU_Tab', 'HW_Compliance']
+            : Object.keys(refData.tgSheetsRaw || {})));
+      const tabsEl = document.getElementById('sheetTabs');
+      tabsEl.innerHTML = sheetNames.map(sh => {
+        const isAct = sh === state.sheet;
+        const hasSku = locs.some(l => l.fileType === state.fileType && l.sheet === sh);
+        return `<button type="button" class="sheet-tab ${isAct ? 'active' : ''}" onclick="switchSheet('${escapeHtml(sh).replace(/'/g, "\\'")}')">
+          ${hasSku ? '<span class="sheet-dot" title="Sheet này có chứa SKU đang đối chiếu"></span>' : ''}
+          <span>${escapeHtml(sh)}</span>
+        </button>`;
+      }).join('');
+
+      renderSheetGrid();
+    }
+
+    function renderSheetGrid() {
+      const container = document.getElementById('gridContainer');
+      const banner = document.getElementById('windowBanner');
+
+      // CASE KASPERSKY: filegocKas.xlsx / KASPERSKY_file_mau_import.xlsx
+      if (state.fileType === 'kas_goc' || state.fileType === 'kas_mau') {
+        const isGoc = state.fileType === 'kas_goc';
+        if (state.sheet === 'SMB+Enterprise (License)') {
+          banner.style.display = 'none';
+          const rawRows = isGoc ? (refData.gocPivotRaw || []) : (refData.mauPivotRaw || []);
+          let maxCols = 14;
+          for (const r of rawRows) {
+            if (r && r.length > maxCols) maxCols = r.length;
+          }
+          let html = '<table class="excel-grid"><thead><tr><th class="col-corner">#</th>';
+          for (let c = 0; c < maxCols; c++) {
+            const letStr = colIndexToLetter(c);
+            const w = c === 0 ? 35 : (c === 1 ? 65 : (c === 2 ? 250 : (c === 8 ? 135 : 120)));
+            html += `<th style="width:${w}px" class="${letStr === state.colLetter ? 'col-active' : ''}">${letStr}</th>`;
+          }
+          html += '</tr></thead><tbody>';
+
+          let selectedFormulaText = '';
+          for (let rIdx = 0; rIdx < rawRows.length; rIdx++) {
+            const rNum = rIdx + 1;
+            const rowArr = rawRows[rIdx] || [];
+            const isTarget = rNum === state.targetRow;
+            if (isTarget) {
+              selectedFormulaText = rowArr[state.colIndex] ?? '';
+            }
+            html += `<tr id="row-${rNum}" class="${isTarget ? 'excel-target-row' : ''}" onclick="selectCell(${rNum}, ${state.colIndex})">`;
+            html += `<td class="row-header">${isTarget ? '▶ ' : ''}${rNum}</td>`;
+            for (let c = 0; c < maxCols; c++) {
+              const val = rowArr[c];
+              const isTargetCell = isTarget && c === state.colIndex;
+              let bg = '#ffffff';
+              let fg = '#1e293b';
+              let fw = '';
+              let align = typeof val === 'number' ? 'right' : 'left';
+              if (rNum <= 5) {
+                bg = '#006D5C'; fg = '#ffffff'; fw = 'font-weight:700;';
+              } else if (rNum === 7 || rNum === 8) {
+                bg = '#2ECC9A'; fg = '#063B2C';
+              } else if (rNum === 9 || rNum === 10) {
+                bg = '#1D4F3E'; fg = '#ffffff'; fw = 'font-weight:700;';
+              } else if (rNum >= 11) {
+                if (c >= 1 && c <= 8) bg = '#D9F2E6';
+                if (c === 8) fw = 'font-weight:700;';
+              }
+              html += `<td class="${isTargetCell ? 'excel-target-cell' : ''}" style="background:${bg};color:${fg};text-align:${align};${fw}" onclick="event.stopPropagation();selectCell(${rNum}, ${c})">${escapeHtml(formatCell(val))}</td>`;
+            }
+            html += '</tr>';
+          }
+          html += '</tbody></table>';
+          container.innerHTML = html;
+          document.getElementById('formulaVal').textContent = selectedFormulaText !== null && selectedFormulaText !== undefined ? String(selectedFormulaText) : '';
+          return;
+        }
+
+        // SaleListSMB+Enterprise
+        const allSaleRows = isGoc ? (refData.gocSaleRows || []) : (refData.mauSaleRows || []);
+        const headers = ['PositionCode', 'PartNumber (SKU)', 'Category', 'Code', 'Product', 'LicenceDescription', 'LicenceObject', 'Package', 'Band', 'LicenceComposition', 'LicenceType', 'Term', 'Price (VND)'];
+        const widths = [135, 135, 130, 65, 240, 120, 100, 90, 135, 120, 115, 80, 130];
+
+        let centerIdx = allSaleRows.findIndex(x => x.rowNum === state.targetRow);
+        if (centerIdx === -1) {
+          centerIdx = allSaleRows.findIndex(x => x.rowNum >= state.targetRow);
+          if (centerIdx === -1) centerIdx = 0;
+        }
+        const startIdx = Math.max(0, centerIdx - msrpWindowRadius);
+        const endIdx = Math.min(allSaleRows.length - 1, centerIdx + msrpWindowRadius);
+        const slice = allSaleRows.slice(startIdx, endIdx + 1);
+
+        banner.style.display = 'flex';
+        document.getElementById('windowBannerText').innerHTML =
+          `Đang hiển thị từ <strong>Dòng ${slice[0]?.rowNum || 2}</strong> đến <strong>Dòng ${slice[slice.length - 1]?.rowNum || 2}</strong> quanh <strong>Dòng mục tiêu #${state.targetRow}</strong> (Sheet <code>SaleListSMB+Enterprise</code> - ${allSaleRows.length.toLocaleString()} dòng).`;
+
+        let html = '<table class="excel-grid"><thead><tr><th class="col-corner">#</th>';
+        for (let c = 0; c < headers.length; c++) {
+          const letStr = colIndexToLetter(c);
+          html += `<th style="width:${widths[c]}px" class="${letStr === state.colLetter ? 'col-active' : ''}">${letStr}</th>`;
+        }
+        html += '</tr></thead><tbody>';
+
+        html += `<tr id="row-1"><td class="row-header">1</td>`;
+        for (let c = 0; c < headers.length; c++) {
+          html += `<td style="background:#006D5C;color:#ffffff;font-weight:700;text-align:center;">${escapeHtml(headers[c])}</td>`;
+        }
+        html += '</tr>';
+
+        let selectedFormulaText = '';
+        for (const item of slice) {
+          const rNum = item.rowNum;
+          const isTarget = rNum === state.targetRow;
+          const cells = [
+            item.posCode, item.sku, item.category, item.code, item.product,
+            item.licDesc, item.licObj, item.pkg, item.band, item.comp, item.type, item.term, item.price
+          ];
+          if (isTarget) {
+            selectedFormulaText = cells[state.colIndex] ?? '';
+          }
+          html += `<tr id="row-${rNum}" class="${isTarget ? 'excel-target-row' : ''}" onclick="selectCell(${rNum}, ${state.colIndex})">`;
+          html += `<td class="row-header">${isTarget ? '▶ ' : ''}${rNum}</td>`;
+          for (let c = 0; c < cells.length; c++) {
+            const isTargetCell = isTarget && c === state.colIndex;
+            const align = c === 12 ? 'right' : (c === 3 || c === 11 ? 'center' : 'left');
+            const bg = c === 12 ? '#D9F2E6' : '#ffffff';
+            const fw = (c === 0 || c === 1 || c === 12) ? 'font-weight:700;' : '';
+            html += `<td class="${isTargetCell ? 'excel-target-cell' : ''}" style="background:${bg};text-align:${align};${fw}" onclick="event.stopPropagation();selectCell(${rNum}, ${c})">${escapeHtml(formatCell(cells[c]))}</td>`;
+          }
+          html += '</tr>';
+        }
+        html += '</tbody></table>';
+        container.innerHTML = html;
+        document.getElementById('formulaVal').textContent = selectedFormulaText !== null && selectedFormulaText !== undefined ? String(selectedFormulaText) : '';
+        return;
+      }
+
+      // CASE 1A: sophos-pricelist-reseller_SKU_list-asean-usd-2026-3.0.xlsb -> SKU_Tab
+      if (state.fileType === 'skulist' && state.sheet === 'SKU_Tab') {
+        const headers = [
+          'Changes made in Pricelist version', 'Change Key', 'Previous Description', 'Previous Price',
+          'SKU Availability Status', 'Product Code', 'SKU', 'Old SKU', 'Description', 'MSRP/RRP',
+          'Min Qty', 'Max Qty', 'Term', 'Sector', 'Transaction Type', 'Product Family', 'Product Type',
+          'HS Code', 'Country of Origin',
+          'Standard Authorized Reseller Cost', 'Registered Authorized Reseller Cost', 'Incumbent Authorized Reseller Cost',
+          'Standard Silver Reseller Cost', 'Registered Silver Reseller Cost',
+          'Standard Gold Reseller Cost', 'Registered Gold Reseller Cost',
+          'Standard Platinum Reseller Cost', 'Registered Platinum Reseller Cost'
+        ];
+        const colWidths = [
+          150, 90, 140, 115,
+          130, 130, 155, 120, 310, 120,
+          75, 90, 70, 75, 115, 150, 110,
+          115, 110,
+          130, 130, 130,
+          125, 125,
+          125, 125,
+          125, 125
+        ];
+        const colBgs = [
+          '#D9E1F2', '#D9E1F2', '#D9E1F2', '#D9E1F2',
+          '#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff', '#FFFF99',
+          '#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff',
+          '#ffffff', '#ffffff',
+          '#FCE4D6', '#FCE4D6', '#FCE4D6',
+          '#E3E3E3', '#E3E3E3',
+          '#FFF2CC', '#FFF2CC',
+          '#F2F2F2', '#F2F2F2'
+        ];
+
+        let centerIdx = sortedSkuTabCache.findIndex(x => x.skuTabRow === state.targetRow);
+        if (centerIdx === -1) {
+          centerIdx = sortedSkuTabCache.findIndex(x => x.skuTabRow >= state.targetRow);
+          if (centerIdx === -1) centerIdx = 0;
+        }
+        const startIdx = Math.max(0, centerIdx - msrpWindowRadius);
+        const endIdx = Math.min(sortedSkuTabCache.length - 1, centerIdx + msrpWindowRadius);
+        const slice = sortedSkuTabCache.slice(startIdx, endIdx + 1);
+
+        banner.style.display = 'flex';
+        document.getElementById('windowBannerText').innerHTML =
+          `Đang hiển thị từ <strong>Dòng ${slice[0]?.skuTabRow || 8}</strong> đến <strong>Dòng ${slice[slice.length - 1]?.skuTabRow || 8}</strong> quanh <strong>Dòng mục tiêu #${state.targetRow}</strong> (Sheet <code>SKU_Tab</code> - 199,995 dòng).`;
+
+        let html = '<table class="excel-grid"><thead><tr><th class="col-corner">#</th>';
+        for (let c = 0; c < headers.length; c++) {
+          const letStr = colIndexToLetter(c);
+          html += `<th style="width:${colWidths[c]}px" class="${letStr === state.colLetter ? 'col-active' : ''}">${letStr}</th>`;
+        }
+        html += '</tr></thead><tbody>';
+
+        // Row 6 ("giá tham khảo" above Col J)
+        html += `<tr id="row-6"><td class="row-header">6</td>`;
+        for (let c = 0; c < headers.length; c++) {
+          if (c === 9) {
+            html += `<td style="background:#FFFF00;color:#FF0000;font-weight:700;text-align:center;">giá tham khảo</td>`;
+          } else {
+            html += `<td></td>`;
+          }
+        }
+        html += '</tr>';
+
+        // Row 7 Header
+        html += `<tr id="row-7"><td class="row-header">7</td>`;
+        for (let c = 0; c < headers.length; c++) {
+          const hdrBg = c < 4 ? '#2F5597' : (c < 19 ? '#002060' : colBgs[c]);
+          const hdrFg = c < 19 ? '#ffffff' : '#000000';
+          html += `<td style="background:${hdrBg};color:${hdrFg};font-weight:700;text-align:center;">${escapeHtml(headers[c])}</td>`;
+        }
+        html += '</tr>';
+
+        let selectedFormulaText = '';
+        for (const item of slice) {
+          const rNum = item.skuTabRow;
+          const isTarget = rNum === state.targetRow;
+          const cells = [
+            item.changeVer || '', item.changeKey || '', '', item.prevPrice ?? '',
+            item.status || 'Available', item.pc || '', item.sku || '', item.oldSku || '', item.desc || '', item.msrp ?? '',
+            1, 9999999, item.term ?? '', item.sector || 'CORP', item.transType || 'New', item.family || 'UTM/Network Security', item.prodType || '',
+            item.hsCode || '', item.coo || '',
+            item.stdAuth ?? '', item.regAuth ?? '', item.incAuth ?? '',
+            item.stdSilv ?? '', item.regSilv ?? '',
+            item.stdGold ?? '', item.regGold ?? '',
+            item.stdPlat ?? '', item.regPlat ?? ''
+          ];
+          if (isTarget) {
+            selectedFormulaText = cells[state.colIndex] ?? '';
+          }
+          html += `<tr id="row-${rNum}" class="${isTarget ? 'excel-target-row' : ''}" onclick="selectCell(${rNum}, ${state.colIndex})">`;
+          html += `<td class="row-header">${isTarget ? '▶ ' : ''}${rNum}</td>`;
+          for (let c = 0; c < cells.length; c++) {
+            const isTargetCell = isTarget && c === state.colIndex;
+            const align = (c === 3 || c === 9 || c >= 19) ? 'right' : (c <= 2 || c === 4 || (c >= 10 && c <= 14) ? 'center' : 'left');
+            const bold = (c === 6 || c === 9) ? 'font-weight:700;' : '';
+            html += `<td class="${isTargetCell ? 'excel-target-cell' : ''}" style="background:${colBgs[c]};text-align:${align};${bold}" onclick="event.stopPropagation();selectCell(${rNum}, ${c})">${escapeHtml(formatCell(cells[c]))}</td>`;
+          }
+          html += '</tr>';
+        }
+        html += '</tbody></table>';
+        container.innerHTML = html;
+        document.getElementById('formulaVal').textContent = selectedFormulaText;
+        return;
+      }
+
+      // CASE 1B: sophos-pricelist-reseller_SKU_list-asean-usd-2026-3.0.xlsb -> HW_Compliance
+      if (state.fileType === 'skulist' && state.sheet === 'HW_Compliance') {
+        banner.style.display = 'none';
+        const hwRows = refData.hwComplianceRaw || [];
+        const maxCols = 16;
+        const colWidths = [130, 150, 320, 130, 110, 95, 95, 95, 95, 115, 115, 115, 115, 140, 120, 120];
+
+        let html = '<table class="excel-grid"><thead><tr><th class="col-corner">#</th>';
+        for (let c = 0; c < maxCols; c++) {
+          const letStr = colIndexToLetter(c);
+          html += `<th style="width:${colWidths[c] || 110}px" class="${letStr === state.colLetter ? 'col-active' : ''}">${letStr}</th>`;
+        }
+        html += '</tr></thead><tbody>';
+
+        let selectedFormulaText = '';
+        for (const rObj of hwRows) {
+          const rNum = rObj.rowNum;
+          const rowArr = rObj.cells || [];
+          const isTarget = rNum === state.targetRow;
+          const isHdr = rNum === 7;
+          if (isTarget) {
+            selectedFormulaText = rowArr[state.colIndex] ?? '';
+          }
+          html += `<tr id="row-${rNum}" class="${isTarget ? 'excel-target-row' : ''}" onclick="selectCell(${rNum}, ${state.colIndex})">`;
+          html += `<td class="row-header">${isTarget ? '▶ ' : ''}${rNum}</td>`;
+          for (let c = 0; c < maxCols; c++) {
+            const isTargetCell = isTarget && c === state.colIndex;
+            const style = isHdr ? 'background:#002060;color:#ffffff;font-weight:700;text-align:center;' : (c === 1 ? 'font-weight:700;' : '');
+            html += `<td class="${isTargetCell ? 'excel-target-cell' : ''}" style="${style}" onclick="event.stopPropagation();selectCell(${rNum}, ${c})">${escapeHtml(formatCell(rowArr[c]))}</td>`;
+          }
+          html += '</tr>';
+        }
+        html += '</tbody></table>';
+        container.innerHTML = html;
+        document.getElementById('formulaVal').textContent = selectedFormulaText;
+        return;
+      }
+
+      // CASE 2: file_goc_SOPHOS -> MSRPs&BuyCost (Original Column Colors: White, #FCE4D6 Peach, #E3E3E3 Silver, #FFF2CC Gold, #F2F2F2 Platinum, #D5F1FF Sky Blue)
+      if (state.fileType === 'goc' && state.sheet === 'MSRPs&BuyCost') {
+        const colWidths = [165, 160, 120, 130, 130, 130, 125, 125, 125, 125, 125, 125, 320];
+        const colBgs = [
+          '#ffffff', '#ffffff', '#ffffff',
+          '#FCE4D6', '#FCE4D6', '#FCE4D6',
+          '#E3E3E3', '#E3E3E3',
+          '#FFF2CC', '#FFF2CC',
+          '#F2F2F2', '#F2F2F2',
+          '#D5F1FF'
+        ];
+        const headers = [
+          'Product Code', 'SKU', 'MSRP/RRP',
+          'Standard Authorized Reseller Cost', 'Registered Authorized Reseller Cost', 'Incumbent Authorized Reseller Cost',
+          'Standard Silver Reseller Cost', 'Registered Silver Reseller Cost',
+          'Standard Gold Reseller Cost', 'Registered Gold Reseller Cost',
+          'Standard Platinum Reseller Cost', 'Registered Platinum Reseller Cost',
+          'Description (Product2)'
+        ];
+
+        let centerIdx = sortedMsrpCache.findIndex(x => x.rowNum === state.targetRow);
+        if (centerIdx === -1) {
+          centerIdx = sortedMsrpCache.findIndex(x => x.rowNum >= state.targetRow);
+          if (centerIdx === -1) centerIdx = 0;
+        }
+        const startIdx = Math.max(0, centerIdx - msrpWindowRadius);
+        const endIdx = Math.min(sortedMsrpCache.length - 1, centerIdx + msrpWindowRadius);
+        const slice = sortedMsrpCache.slice(startIdx, endIdx + 1);
+
+        banner.style.display = 'flex';
+        document.getElementById('windowBannerText').innerHTML =
+          `Đang hiển thị từ <strong>Dòng ${slice[0]?.rowNum || 3}</strong> đến <strong>Dòng ${slice[slice.length - 1]?.rowNum || 3}</strong> quanh <strong>Dòng mục tiêu #${state.targetRow}</strong> (Sheet <code>MSRPs&amp;BuyCost</code> - 270,000 dòng).`;
+
+        let html = '<table class="excel-grid"><thead><tr><th class="col-corner">#</th>';
+        for (let c = 0; c < headers.length; c++) {
+          const letStr = colIndexToLetter(c);
+          html += `<th style="width:${colWidths[c]}px" class="${letStr === state.colLetter ? 'col-active' : ''}">${letStr}</th>`;
+        }
+        html += '</tr></thead><tbody>';
+
+        // Row 2 Header
+        html += `<tr id="row-2"><td class="row-header">2</td>`;
+        for (let c = 0; c < headers.length; c++) {
+          html += `<td style="background:${colBgs[c]};font-weight:700;text-align:center;">${escapeHtml(headers[c])}</td>`;
+        }
+        html += '</tr>';
+
+        let selectedFormulaText = '';
+        for (const item of slice) {
+          const rNum = item.rowNum;
+          const isTarget = rNum === state.targetRow;
+          const cells = [
+            item.pc || '', item.sku || '', item.msrp ?? '',
+            item.stdAuth ?? '', item.regAuth ?? '', item.incAuth ?? '',
+            item.stdSilv ?? '', item.regSilv ?? '',
+            item.stdGold ?? '', item.regGold ?? '',
+            item.stdPlat ?? '', item.regPlat ?? '',
+            item.desc || ''
+          ];
+          if (isTarget) {
+            selectedFormulaText = cells[state.colIndex] ?? '';
+          }
+          html += `<tr id="row-${rNum}" class="${isTarget ? 'excel-target-row' : ''}" onclick="selectCell(${rNum}, ${state.colIndex})">`;
+          html += `<td class="row-header">${isTarget ? '▶ ' : ''}${rNum}</td>`;
+          for (let c = 0; c < cells.length; c++) {
+            const isTargetCell = isTarget && c === state.colIndex;
+            const align = c >= 2 && c <= 11 ? 'right' : 'left';
+            const bold = c === 1 && isTarget ? 'font-weight:700;' : '';
+            html += `<td class="${isTargetCell ? 'excel-target-cell' : ''}" style="background:${colBgs[c]};text-align:${align};${bold}" onclick="event.stopPropagation();selectCell(${rNum}, ${c})">${escapeHtml(formatCell(cells[c]))}</td>`;
+          }
+          html += '</tr>';
+        }
+        html += '</tbody></table>';
+        container.innerHTML = html;
+        document.getElementById('formulaVal').textContent = selectedFormulaText;
+        return;
+      }
+
+      banner.style.display = 'none';
+
+      // CASE 2: file_trung_gian_SOPHOS (any of the 14 sheets) or file_goc_SOPHOS -> Firewall
+      let rawRows = [];
+      let styledMeta = null;
+
+      if (state.fileType === 'tg') {
+        rawRows = (refData.tgSheetsRaw && refData.tgSheetsRaw[state.sheet]) || [];
+        styledMeta = (refData.tgSheetsStyled && refData.tgSheetsStyled[state.sheet]) || null;
+      } else {
+        // Firewall sheet in file_goc_SOPHOS
+        const baseFw = refData.gocFirewallRaw || [];
+        rawRows = baseFw.map(r => [...(r || [])]);
+        const s = viewerContext.settings || {};
+        if (rawRows[3] && s.sector) rawRows[3][7] = s.sector;
+        if (rawRows[8] && s.termSubscription) rawRows[8][3] = s.termSubscription;
+        if (rawRows[10] && s.qty) rawRows[10][3] = s.qty;
+        if (rawRows[12] && s.specialAttribute) rawRows[12][3] = s.specialAttribute;
+        if (rawRows[15] && s.model) rawRows[15][7] = s.model;
+        if (rawRows[53] && s.description) rawRows[53][7] = s.description;
+        if (Array.isArray(viewerContext.rows)) {
+          for (const r of viewerContext.rows) {
+            const fwR = getFirewallRowForItem(r.name, r.sku);
+            if (fwR && rawRows[fwR - 1]) {
+              rawRows[fwR - 1][7] = r.sku;
+              rawRows[fwR - 1][9] = r.available ? r.msrp : 'NA';
+              rawRows[fwR - 1][11] = r.available ? `${r.resellerDisc}%` : '0%';
+            }
+          }
+        }
+        styledMeta = refData.gocFirewallStyled || null;
+      }
+
+      let maxCols = 8;
+      for (const r of rawRows) {
+        if (r && r.length > maxCols) maxCols = r.length;
+      }
+      const colWidths = (styledMeta && styledMeta.colWidths && styledMeta.colWidths.length >= maxCols)
+        ? styledMeta.colWidths
+        : Array.from({ length: maxCols }, (_, i) => (i === 4 ? 360 : (i === 2 || i === 3 ? 220 : 120)));
+
+      // Build merge lookup: top-left (r,c) -> { rowspan, colspan }, covered (r,c) -> skipped
+      const mergeOwner = new Map();
+      const mergeCovered = new Set();
+      if (styledMeta && Array.isArray(styledMeta.merges)) {
+        for (const m of styledMeta.merges) {
+          const rowspan = m.bottom - m.top + 1;
+          const colspan = m.right - m.left + 1;
+          if (rowspan > 1 || colspan > 1) {
+            mergeOwner.set(`${m.top},${m.left}`, { rowspan, colspan });
+            for (let rr = m.top; rr <= m.bottom; rr++) {
+              for (let cc = m.left; cc <= m.right; cc++) {
+                if (rr !== m.top || cc !== m.left) {
+                  mergeCovered.add(`${rr},${cc}`);
+                }
+              }
+            }
+          }
+        }
+      }
+
+      let html = '<table class="excel-grid"><thead><tr><th class="col-corner">#</th>';
+      for (let c = 0; c < maxCols; c++) {
+        const letStr = colIndexToLetter(c);
+        const w = Math.max(70, Math.min(480, colWidths[c] || 115));
+        html += `<th style="width:${w}px" class="${letStr === state.colLetter ? 'col-active' : ''}">${letStr}</th>`;
+      }
+      html += '</tr></thead><tbody>';
+
+      let selectedFormulaText = '';
+      const palette = (styledMeta && styledMeta.stylePalette) || [];
+      const cellStyles2D = (styledMeta && styledMeta.cellStyles) || [];
+
+      for (let rIdx = 0; rIdx < rawRows.length; rIdx++) {
+        const rNum = rIdx + 1;
+        const rowArr = rawRows[rIdx] || [];
+        const isTarget = rNum === state.targetRow;
+        if (isTarget) {
+          selectedFormulaText = rowArr[state.colIndex] ?? '';
+        }
+
+        html += `<tr id="row-${rNum}" class="${isTarget ? 'excel-target-row' : ''}" onclick="selectCell(${rNum}, ${state.colIndex})">`;
+        html += `<td class="row-header">${isTarget ? '▶ ' : ''}${rNum}</td>`;
+
+        for (let cIdx = 0; cIdx < maxCols; cIdx++) {
+          const cNum = cIdx + 1;
+          const key = `${rNum},${cNum}`;
+          if (mergeCovered.has(key)) continue;
+
+          const spanInfo = mergeOwner.get(key);
+          const spanAttr = spanInfo
+            ? `${spanInfo.rowspan > 1 ? ` rowspan="${spanInfo.rowspan}"` : ''}${spanInfo.colspan > 1 ? ` colspan="${spanInfo.colspan}"` : ''}`
+            : '';
+
+          const stIdx = cellStyles2D[rIdx] ? cellStyles2D[rIdx][cIdx] : null;
+          const stObj = (stIdx !== null && stIdx !== undefined) ? palette[stIdx] : null;
+          let css = buildCellCss(stObj);
+          const cellVal = rowArr[cIdx];
+          if (typeof cellVal === 'number' && (!stObj || !stObj.al)) {
+            css += 'text-align:right;';
+          }
+          const isTargetCell = isTarget && cIdx === state.colIndex;
+
+          html += `<td${spanAttr} class="${isTargetCell ? 'excel-target-cell' : ''}" style="${css}" onclick="event.stopPropagation();selectCell(${rNum}, ${cIdx})">${escapeHtml(formatCell(cellVal))}</td>`;
+        }
+
+        html += '</tr>';
+      }
+
+      html += '</tbody></table>';
+      container.innerHTML = html;
+      document.getElementById('formulaVal').textContent = selectedFormulaText !== null && selectedFormulaText !== undefined ? String(selectedFormulaText) : '';
+    }
+
+    function scrollToTargetRow() {
+      setTimeout(() => {
+        const el = document.getElementById(`row-${state.targetRow}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 60);
+    }
+
+    function selectCell(rowNum, colIdx) {
+      state.targetRow = Number(rowNum) || 1;
+      state.colIndex = Number(colIdx) || 0;
+      state.colLetter = colIndexToLetter(state.colIndex);
+      renderAll();
+      copyRowCoord(true);
+    }
+
+    function switchFile(newFileType) {
+      if (state.fileType === newFileType) return;
+      const locs = getAllLocationsForCurrentSku();
+      const match = locs.find(l => l.fileType === newFileType);
+      if (match) {
+        state.fileType = match.fileType;
+        state.sheet = match.sheet;
+        state.targetRow = match.rowNum;
+        state.colLetter = match.colLetter;
+        state.colIndex = letterToColIndex(match.colLetter);
+      } else {
+        state.fileType = newFileType;
+        if (newFileType === 'kas_goc' || newFileType === 'kas_mau') {
+          state.sheet = 'SMB+Enterprise (License)';
+          state.targetRow = 11;
+          state.colLetter = 'I';
+        } else {
+          state.sheet = newFileType === 'goc' ? 'MSRPs&BuyCost' : (newFileType === 'skulist' ? 'SKU_Tab' : 'XGS - 1U + 10%');
+          state.targetRow = newFileType === 'goc' ? 3 : (newFileType === 'skulist' ? 8 : 6);
+          state.colLetter = newFileType === 'skulist' ? 'G' : 'B';
+        }
+        state.colIndex = letterToColIndex(state.colLetter);
+      }
+      renderAll();
+      scrollToTargetRow();
+    }
+
+    function switchSheet(sheetName) {
+      const locs = getAllLocationsForCurrentSku();
+      const match = locs.find(l => l.fileType === state.fileType && l.sheet === sheetName);
+      state.sheet = sheetName;
+      if (match) {
+        state.targetRow = match.rowNum;
+        state.colLetter = match.colLetter;
+        state.colIndex = letterToColIndex(match.colLetter);
+      } else if (state.fileType === 'kas_goc' || state.fileType === 'kas_mau') {
+        state.targetRow = sheetName === 'SMB+Enterprise (License)' ? 11 : 191;
+        state.colLetter = sheetName === 'SMB+Enterprise (License)' ? 'I' : 'B';
+        state.colIndex = letterToColIndex(state.colLetter);
+      } else {
+        state.targetRow = sheetName === 'LP Sophos' ? 3 : (sheetName === 'Firewall' ? 27 : (sheetName === 'SKU_Tab' || sheetName === 'HW_Compliance' ? 8 : 6));
+        state.colLetter = sheetName === 'LP Sophos' ? 'A' : (sheetName === 'Firewall' ? 'H' : (sheetName === 'SKU_Tab' ? 'G' : 'B'));
+        state.colIndex = letterToColIndex(state.colLetter);
+      }
+      renderAll();
+      scrollToTargetRow();
+    }
+
+    function jumpToLocationIndex(idx) {
+      const locs = getAllLocationsForCurrentSku();
+      const loc = locs[idx];
+      if (!loc) return;
+      state.fileType = loc.fileType;
+      state.sheet = loc.sheet;
+      state.targetRow = loc.rowNum;
+      state.colLetter = loc.colLetter || 'B';
+      state.colIndex = letterToColIndex(state.colLetter);
+      renderAll();
+      scrollToTargetRow();
+      copyRowCoord(true);
+    }
+
+    function expandMsrpWindow() {
+      msrpWindowRadius += 80;
+      renderSheetGrid();
+    }
+
+    function runSearch() {
+      const q = String(document.getElementById('searchInput').value || '').trim().toUpperCase();
+      if (!q || !refData) return;
+
+      if (/^\d+$/.test(q)) {
+        state.targetRow = parseInt(q, 10);
+        renderAll();
+        scrollToTargetRow();
+        return;
+      }
+
+      if (state.fileType === 'goc' && state.sheet === 'MSRPs&BuyCost') {
+        const found = sortedMsrpCache.find(x =>
+          x.sku.includes(q) || String(x.pc || '').toUpperCase().includes(q) || String(x.desc || '').toUpperCase().includes(q)
+        );
+        if (found) {
+          state.sku = found.sku;
+          state.targetRow = found.rowNum;
+          state.colLetter = 'B';
+          state.colIndex = 1;
+          renderAll();
+          scrollToTargetRow();
+        }
+        return;
+      }
+
+      if (state.fileType === 'skulist' && state.sheet === 'SKU_Tab') {
+        const found = sortedSkuTabCache.find(x =>
+          x.sku.includes(q) || String(x.pc || '').toUpperCase().includes(q) || String(x.desc || '').toUpperCase().includes(q)
+        );
+        if (found) {
+          state.sku = found.sku;
+          state.targetRow = found.skuTabRow;
+          state.colLetter = 'G';
+          state.colIndex = 6;
+          renderAll();
+          scrollToTargetRow();
+        }
+        return;
+      }
+
+      if (state.fileType === 'skulist' && state.sheet === 'HW_Compliance') {
+        const hwRows = refData.hwComplianceRaw || [];
+        for (const rObj of hwRows) {
+          const cIdx = (rObj.cells || []).findIndex(v => v !== null && v !== undefined && String(v).toUpperCase().includes(q));
+          if (cIdx !== -1) {
+            state.targetRow = rObj.rowNum;
+            state.colIndex = cIdx;
+            state.colLetter = colIndexToLetter(cIdx);
+            renderAll();
+            scrollToTargetRow();
+            return;
+          }
+        }
+        return;
+      }
+
+      const rows = state.fileType === 'tg'
+        ? (refData.tgSheetsRaw && refData.tgSheetsRaw[state.sheet]) || []
+        : (refData.gocFirewallRaw || []);
+      for (let r = 0; r < rows.length; r++) {
+        const rowArr = rows[r] || [];
+        const cIdx = rowArr.findIndex(v => v !== null && v !== undefined && String(v).toUpperCase().includes(q));
+        if (cIdx !== -1) {
+          state.targetRow = r + 1;
+          state.colIndex = cIdx;
+          state.colLetter = colIndexToLetter(cIdx);
+          renderAll();
+          scrollToTargetRow();
+          return;
+        }
+      }
+    }
+
+    async function copyRowCoord(silent) {
+      const fullRowRef = `'${state.sheet}'!${state.targetRow}:${state.targetRow}`;
+      try {
+        await navigator.clipboard.writeText(fullRowRef);
+        if (!silent) {
+          const btn = document.getElementById('btnCopyRow');
+          btn.textContent = `✓ Đã copy ${fullRowRef}`;
+          setTimeout(() => {
+            btn.textContent = '📋 Copy tọa độ dòng (Ctrl+G)';
+          }, 2200);
+        }
+      } catch (_) {}
+    }
+
+    function openDesktopExcel() {
+      copyRowCoord(true);
+      const rel = state.fileType === 'kas_goc'
+        ? '/template_excel/filegocKas.xlsx'
+        : (state.fileType === 'kas_mau'
+          ? '/template_excel/KASPERSKY_file_mau_import.xlsx'
+          : (state.fileType === 'goc'
+            ? '/template_excel/file_goc_SOPHOS.xlsx'
+            : (state.fileType === 'skulist'
+              ? '/template_excel/sophos-pricelist-reseller_SKU_list-asean-usd-2026-3.0.xlsb'
+              : '/template_excel/file_trung_gian_SOPHOS.xlsx')));
+      window.location.href = `ms-excel:ofe|u|${window.location.origin}${rel}`;
+    }
+
+    async function init() {
+      try {
+        const savedCtx = localStorage.getItem('sophos_excel_viewer_context');
+        if (savedCtx) {
+          viewerContext = JSON.parse(savedCtx);
+        }
+      } catch (_) {}
+
+      const params = new URLSearchParams(window.location.search);
+      state.fileType = params.get('file') || 'tg';
+      state.sheet = params.get('sheet') || (
+        (state.fileType === 'kas_goc' || state.fileType === 'kas_mau')
+          ? 'SMB+Enterprise (License)'
+          : (state.fileType === 'goc' ? 'MSRPs&BuyCost' : (state.fileType === 'skulist' ? 'SKU_Tab' : 'XGS - 1U + 10%'))
+      );
+      state.targetRow = parseInt(params.get('row') || '1', 10) || 1;
+      state.colLetter = (params.get('col') || (state.fileType === 'skulist' && state.sheet === 'SKU_Tab' ? 'G' : 'B')).toUpperCase();
+      state.colIndex = letterToColIndex(state.colLetter);
+      state.sku = (params.get('sku') || '').toUpperCase();
+      state.itemName = params.get('name') || '';
+      state.band = params.get('band') || '';
+
+      const isKasMode = state.fileType === 'kas_goc' || state.fileType === 'kas_mau';
+      const res = await fetch(isKasMode ? '/template_excel/kas_ref_index.json' : '/template_excel/sophos_ref_index.json');
+      refData = await res.json();
+
+      // Build sorted MSRPs&BuyCost cache & SKU_Tab cache
+      const gocMap = refData.gocSkus || {};
+      const arrMsrp = [];
+      const arrSkuTab = [];
+      for (const [sku, info] of Object.entries(gocMap)) {
+        if (info && info.rowNum) {
+          arrMsrp.push({ sku, ...info });
+        }
+        if (info && info.skuTabRow) {
+          arrSkuTab.push({ sku, ...info });
+        }
+      }
+      arrMsrp.sort((a, b) => a.rowNum - b.rowNum);
+      arrSkuTab.sort((a, b) => a.skuTabRow - b.skuTabRow);
+      sortedMsrpCache = arrMsrp;
+      sortedSkuTabCache = arrSkuTab;
+
+      renderAll();
+      scrollToTargetRow();
+      copyRowCoord(true);
+    }
+
+    init();
+  </script>
+</body>
+</html>

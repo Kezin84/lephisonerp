@@ -2361,7 +2361,8 @@ const submitNewCustomer = async () => {
       ma_khach_hang: ma_kh,
       ten_khach_hang: newCustomerForm.value.ten_khach_hang.toUpperCase(),
       ma_cong_ty: ma_ct,
-      ten_cong_ty: newCustomerForm.value.ten_cong_ty.toUpperCase()
+      ten_cong_ty: newCustomerForm.value.ten_cong_ty.toUpperCase(),
+      last_updated: new Date().toISOString()
     }
 
     // Optimistic Update: Đóng modal, hiện thông báo, cập nhật list ngay lập tức

@@ -15,8 +15,10 @@ import * as XLSX from 'xlsx-js-style'
 import Tesseract from 'tesseract.js'
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getDatabase, ref as dbRef, get, set, update, remove, push } from "firebase/database";
+import { callDeepSeek, DEEPSEEK_MODEL } from '../services/deepseek'
 import {
   fetchAndSyncPrintTemplates,
+  deletePrintTemplateFromFirebase,
   generateExcelBlobFromTemplate,
   exportPdfOrPrintFromTemplate,
   exportPngFromTemplate,
@@ -516,12 +518,32 @@ async function fetchDieuKhoanFromFirebase(): Promise<any[][]> {
 
 async function fetchUploadFileMauFromFirebase(): Promise<any[]> {
   try {
-    const snap = await get(dbRef(database, 'upload_file_mau'))
+    const [snap, delSnap] = await Promise.all([
+      get(dbRef(database, 'upload_file_mau')),
+      get(dbRef(database, 'mau_in_da_xoa')).catch(() => null)
+    ])
+    const deletedIds = new Set<string>()
+    try {
+      const localRaw = localStorage.getItem('nts_deleted_print_templates')
+      if (localRaw) {
+        const arr = JSON.parse(localRaw)
+        if (Array.isArray(arr)) arr.forEach((x: any) => deletedIds.add(String(x)))
+      }
+    } catch {}
+    if (delSnap && delSnap.exists()) {
+      const dv = delSnap.val()
+      if (dv && typeof dv === 'object') {
+        for (const [k, v] of Object.entries(dv)) {
+          if (v) deletedIds.add(String(k))
+        }
+      }
+    }
     const data = snap.val()
     if (!data || typeof data !== 'object') return []
     return Object.entries(data).map(([k, v]: [string, any]) => {
       if (Array.isArray(v)) {
         return {
+          _fbKey: k,
           id: String(v[0] || k),
           name: String(v[1] || ''),
           data: String(v[2] || ''),
@@ -536,26 +558,37 @@ async function fetchUploadFileMauFromFirebase(): Promise<any[]> {
         try { parsedStruct = JSON.parse(rawStruct) } catch { parsedStruct = [] }
       }
       return {
+        _fbKey: k,
         id: String(v?.ID ?? v?.id ?? k ?? ''),
         name: String(v?.TEN_FILE ?? v?.ten_file ?? ''),
         data: String(v?.LINK_FILE ?? v?.link_file ?? ''),
         mappingConfig: parsedStruct,
         content: String(v?.GHI_CHU ?? v?.ghi_chu ?? '')
       }
-    }).filter(x => x.id)
+    }).filter(x => x.id && !deletedIds.has(x.id) && !deletedIds.has(x._fbKey) && !deletedIds.has(`MINTL_${x.id}`))
   } catch (e) {
     console.error('Lỗi đọc upload_file_mau từ Firebase:', e)
     return []
   }
 }
 
+const sanitizeCustomerFirebaseKey = (key: string) => String(key || '').trim().replace(/[.#$/\[\]]/g, '_')
+
+let pendingCustomerSavePromise: Promise<void> | null = null
+
 async function findCustomerInFirebase(maKH: string): Promise<{ key: string; data: any } | null> {
   const target = String(maKH || '').trim()
   if (!target) return null
   try {
-    const directSnap = await get(dbRef(database, `khach_hang/${target}`))
-    if (directSnap.exists()) {
-      return { key: target, data: directSnap.val() }
+    if (pendingCustomerSavePromise) {
+      try { await pendingCustomerSavePromise } catch {}
+    }
+    const safeKey = sanitizeCustomerFirebaseKey(target)
+    if (safeKey) {
+      const directSnap = await get(dbRef(database, `khach_hang/${safeKey}`))
+      if (directSnap.exists()) {
+        return { key: safeKey, data: directSnap.val() }
+      }
     }
     const allSnap = await get(dbRef(database, 'khach_hang'))
     const allData = allSnap.val()
@@ -800,24 +833,41 @@ const tenKHInput = ref('')
 /* ── Auto-gen Mã KH & Mã CT (giống logic Import PO) ── */
 const isExistingCustomer = ref(false) // true khi chọn KH từ danh sách có sẵn
 const originalKhach = ref<KhachHang | null>(null) // snapshot KH gốc khi chọn từ danh sách
+const hasImportedCustomerPendingSave = ref(false)
+const customerFileInput = ref<HTMLInputElement | null>(null)
+
+// Kiểm tra khách hàng đã tồn tại trong DB hay chưa
+const isCustomerInDB = computed(() => {
+  const ma = (maKHInput.value?.trim() || khach.value.Ma_khach_hang?.trim() || '').toUpperCase()
+  if (ma && customers.value.some(c => String(c.Ma_khach_hang || '').trim().toUpperCase() === ma)) {
+    return true
+  }
+  return isExistingCustomer.value
+})
 
 // Hiển thị nút "THÊM VÀO DB" khi KH mới có data hoặc KH cũ bị thay đổi
 const showSaveToDBBtn = computed(() => {
   const k = khach.value
   const ma = maKHInput.value?.trim() || k.Ma_khach_hang?.trim()
   const ten = tenKHInput.value?.trim() || k.Ten_khach_hang?.trim()
-  if (!ma && !ten) return false // chưa có gì → ẩn
+  const congTy = k.Ten_cong_ty?.trim()
+  if (!ma && !ten && !congTy) return false // chưa có gì → ẩn
+
+  if (hasImportedCustomerPendingSave.value) {
+    return true
+  }
 
   if (!isExistingCustomer.value) {
-    // KH mới → hiện nếu có tên hoặc mã
-    return !!(ma || ten)
+    // KH mới → hiện nếu có tên, mã hoặc công ty
+    return !!(ma || ten || congTy)
   }
 
   // KH cũ → so sánh với snapshot gốc
   if (!originalKhach.value) return false
   const o = originalKhach.value
   return (
-    (tenKHInput.value || '') !== (o.Ten_khach_hang || '') ||
+    (maKHInput.value || k.Ma_khach_hang || '') !== (o.Ma_khach_hang || '') ||
+    (tenKHInput.value || k.Ten_khach_hang || '') !== (o.Ten_khach_hang || '') ||
     (k.Email_ca_nhan || '') !== (o.Email_ca_nhan || '') ||
     (k.So_dien_thoai_ca_nhan || '') !== (o.So_dien_thoai_ca_nhan || '') ||
     (k.Ten_cong_ty || '') !== (o.Ten_cong_ty || '') ||
@@ -858,19 +908,83 @@ const genMaKH = (tenKH: string, congTy: string) => {
   return [tenClean, maCT].filter(Boolean).join('-')
 }
 
+// Đồng bộ 2 chiều giữa maKHInput / tenKHInput và khach.value
+watch(tenKHInput, (val) => {
+  const clean = val ?? ''
+  if (khach.value.Ten_khach_hang !== clean) {
+    khach.value.Ten_khach_hang = clean
+  }
+})
+
+watch(
+  () => khach.value.Ten_khach_hang,
+  (val) => {
+    const clean = val ?? ''
+    if (tenKHInput.value !== clean) {
+      tenKHInput.value = clean
+    }
+  }
+)
+
+watch(maKHInput, (val) => {
+  const clean = val ?? ''
+  if (khach.value.Ma_khach_hang !== clean) {
+    khach.value.Ma_khach_hang = clean
+  }
+})
+
+watch(
+  () => khach.value.Ma_khach_hang,
+  (val) => {
+    const clean = val ?? ''
+    if (maKHInput.value !== clean) {
+      maKHInput.value = clean
+    }
+  }
+)
+
 // Watcher: chỉ tự động gen mã KH & mã CT khi khách hàng MỚI (nhập tay)
 watch(
   () => [tenKHInput.value, khach.value.Ten_cong_ty],
   ([ten, congTy]) => {
+    const tenStr = (ten as string) || ''
+    const ctStr = (congTy as string) || ''
+    if (khach.value.Ten_khach_hang !== tenStr) {
+      khach.value.Ten_khach_hang = tenStr
+    }
     if (isExistingCustomer.value) return // KH đã tồn tại → giữ mã cũ
-    const newMaKH = genMaKH(ten as string, congTy as string)
+    const newMaKH = genMaKH(tenStr, ctStr)
     if (newMaKH) {
       maKHInput.value = newMaKH
       khach.value.Ma_khach_hang = newMaKH
     }
-    khach.value.Ma_cong_ty = genMaCT(congTy as string)
+    khach.value.Ma_cong_ty = genMaCT(ctStr)
   }
 )
+
+function syncCustomerInputsToKhach() {
+  const k = khach.value
+  if (tenKHInput.value?.trim() && !k.Ten_khach_hang?.trim()) {
+    k.Ten_khach_hang = tenKHInput.value.trim()
+  } else if (k.Ten_khach_hang?.trim() && !tenKHInput.value?.trim()) {
+    tenKHInput.value = k.Ten_khach_hang.trim()
+  }
+  if (maKHInput.value?.trim() && !k.Ma_khach_hang?.trim()) {
+    k.Ma_khach_hang = maKHInput.value.trim()
+  } else if (k.Ma_khach_hang?.trim() && !maKHInput.value?.trim()) {
+    maKHInput.value = k.Ma_khach_hang.trim()
+  }
+  if (!k.Ma_cong_ty?.trim() && k.Ten_cong_ty?.trim()) {
+    k.Ma_cong_ty = genMaCT(k.Ten_cong_ty)
+  }
+  if (!k.Ma_khach_hang?.trim() && (k.Ten_khach_hang?.trim() || k.Ten_cong_ty?.trim())) {
+    const autoMa = genMaKH(k.Ten_khach_hang || '', k.Ten_cong_ty || '')
+    if (autoMa) {
+      k.Ma_khach_hang = autoMa
+      maKHInput.value = autoMa
+    }
+  }
+}
 
 /* ======================
    5. HỢP ĐỒNG
@@ -1815,6 +1929,7 @@ function onTenKhachHangChange() {
   const found = customers.value.find(c => c.Ten_khach_hang === val);
   if (found) {
     isExistingCustomer.value = true;
+    hasImportedCustomerPendingSave.value = false;
     originalKhach.value = JSON.parse(JSON.stringify(found));
     Object.assign(khach.value, found);
     maKHInput.value = found.Ma_khach_hang;
@@ -1828,6 +1943,7 @@ function onTenCongTyChange() {
   const found = customers.value.find(c => c.Ten_cong_ty === val);
   if (found) {
     isExistingCustomer.value = true;
+    hasImportedCustomerPendingSave.value = false;
     originalKhach.value = JSON.parse(JSON.stringify(found));
     Object.assign(khach.value, found);
     maKHInput.value = found.Ma_khach_hang;
@@ -1841,6 +1957,7 @@ function onMSTChange() {
   const found = customers.value.find(c => c.MST === val);
   if (found) {
     isExistingCustomer.value = true;
+    hasImportedCustomerPendingSave.value = false;
     originalKhach.value = JSON.parse(JSON.stringify(found));
     Object.assign(khach.value, found);
     maKHInput.value = found.Ma_khach_hang;
@@ -2888,7 +3005,8 @@ async function postApi(action: string, payload: any) {
           tong_chi_tieu: curChiTieu + tongSau,
           Tong_chi_tieu: curChiTieu + tongSau,
           tong_loi_nhuan: congNoCu + ps,
-          Tong_loi_nhuan: congNoCu + ps
+          Tong_loi_nhuan: congNoCu + ps,
+          last_updated: new Date().toISOString()
         })
       }
     }
@@ -3010,6 +3128,7 @@ function buildHopDongTongQuatRow(
   tenFileBaoGia: string = '',
   linkBaoGia: string = ''
 ) {
+  syncCustomerInputsToKhach()
   const ngay = formatDateTimeVN(new Date())
 
   // ✅ totals: theo VND
@@ -3038,8 +3157,8 @@ function buildHopDongTongQuatRow(
   return [
     maHopDong.value,
     soHopDong.value,
-    (khach.value.Ma_khach_hang || '').trim(),
-    (khach.value.Ten_khach_hang || '').trim(),
+    (khach.value.Ma_khach_hang || maKHInput.value || '').trim(),
+    (khach.value.Ten_khach_hang || tenKHInput.value || khach.value.Ten_cong_ty || '').trim(),
     ngay,
     truoc,
     vat,
@@ -3161,7 +3280,9 @@ async function saveContractTemp(force = false) {
     return
   }
 
-  if (!force && (!khach.value.Ma_khach_hang?.trim() || !khach.value.Ten_khach_hang?.trim())) {
+  syncCustomerInputsToKhach()
+
+  if (!force && (!khach.value.Ma_khach_hang?.trim() || (!khach.value.Ten_khach_hang?.trim() && !khach.value.Ten_cong_ty?.trim()))) {
     pendingSaveAction.value = 'temp'
     showConfirmSaveEmptyCustomer.value = true
     return
@@ -3208,7 +3329,9 @@ async function saveContractOfficialAndSaleReport(force = false) {
     return
   }
 
-  if (!force && (!khach.value.Ma_khach_hang?.trim() || !khach.value.Ten_khach_hang?.trim())) {
+  syncCustomerInputsToKhach()
+
+  if (!force && (!khach.value.Ma_khach_hang?.trim() || (!khach.value.Ten_khach_hang?.trim() && !khach.value.Ten_cong_ty?.trim()))) {
     pendingSaveAction.value = 'official'
     showConfirmSaveEmptyCustomer.value = true
     return
@@ -3858,6 +3981,7 @@ function fillCustomerByMa(val: string) {
   const found = customers.value.find(c => c.Ma_khach_hang === val)
   if (!found) return
   isExistingCustomer.value = true
+  hasImportedCustomerPendingSave.value = false
   originalKhach.value = JSON.parse(JSON.stringify(found))
   khach.value = JSON.parse(JSON.stringify(found))
   maKHInput.value = found.Ma_khach_hang
@@ -3868,6 +3992,7 @@ function fillCustomerByTen(val: string) {
   const found = customers.value.find(c => c.Ten_khach_hang === val)
   if (!found) return
   isExistingCustomer.value = true
+  hasImportedCustomerPendingSave.value = false
   originalKhach.value = JSON.parse(JSON.stringify(found))
   khach.value = JSON.parse(JSON.stringify(found))
   maKHInput.value = found.Ma_khach_hang
@@ -3885,6 +4010,7 @@ function fillCustomerByCongTy(val: string) {
   const found = customers.value.find(c => c.Ten_cong_ty === val)
   if (!found) return
   isExistingCustomer.value = true
+  hasImportedCustomerPendingSave.value = false
   originalKhach.value = JSON.parse(JSON.stringify(found))
   khach.value = JSON.parse(JSON.stringify(found))
   maKHInput.value = found.Ma_khach_hang
@@ -4520,6 +4646,7 @@ function resetItem() {
 function resetCustomer() {
   isExistingCustomer.value = false
   originalKhach.value = null
+  hasImportedCustomerPendingSave.value = false
   khach.value = {
     Ma_khach_hang: '',
     Ten_khach_hang: '',
@@ -4532,26 +4659,210 @@ function resetCustomer() {
     Dia_chi_cong_ty: '',
     Email_cong_ty: '',
     Website_cong_ty: '',
+    Hoa_hong: '',
+    Tong_chi_tieu: '',
     Trang_thai: '',
     Tong_loi_nhuan: '',
-    Ghi_chu: ''
+    Ghi_chu: '',
+    Ten_khach_hang_phu: '',
+    So_dien_thoai_ca_nhan_phu: '',
+    Email_ca_nhan_phu: '',
+    MST: '',
+    COMPANY: '',
+    ADDRESS: '',
+    TEL: ''
   }
   maKHInput.value = ''
   tenKHInput.value = ''
 }
 
+function triggerCustomerFileInput() {
+  if (customerFileInput.value) {
+    customerFileInput.value.click()
+  }
+}
+
+async function handleCustomerFileUpload(event: Event) {
+  const target = event.target as HTMLInputElement
+  const files = target.files
+  if (!files || files.length === 0) return
+
+  try {
+    const file = files[0]
+    const data = await file.arrayBuffer()
+    const workbook = XLSX.read(data, { type: 'array' })
+    const sheetNamePO = workbook.SheetNames.find(name => name.toUpperCase().trim() === 'PO')
+    const sheetNameDH = workbook.SheetNames.find(name => {
+      const upper = name.toUpperCase().trim()
+      return upper.includes('ĐƠN HÀNG') || upper.includes('DON HANG')
+    })
+
+    let worksheet = null
+    if (sheetNamePO) worksheet = workbook.Sheets[sheetNamePO]
+    else if (sheetNameDH) worksheet = workbook.Sheets[sheetNameDH]
+    else worksheet = workbook.Sheets[workbook.SheetNames[0]]
+
+    const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as any[][]
+    if (rawData.length < 2) {
+      alert('Không tìm thấy thông tin khách hàng hợp lệ trong file đã chọn.')
+      return
+    }
+
+    const record: Record<string, any> = {}
+    for (let r = 0; r < rawData.length; r++) {
+      const row = rawData[r]
+      if (!row) continue
+
+      const label1 = (row[0] || row[1] || '').toString().trim()
+      let val1 = row[2] !== undefined ? row[2] : ''
+      if (row[0] && row[1] && row[0] !== label1) val1 = row[1]
+
+      if (label1.includes('Company')) record['CUS_COMPANY'] = val1
+      if (label1.includes('Address')) record['CUS_ADDRESS'] = val1
+      if (label1.includes('Tel')) record['CUS_TEL'] = val1
+      if (label1 === 'Fax' || label1.includes('Fax')) record['CUS_FAX'] = val1
+      if (label1.includes('Contact')) record['CUS_CONTACT'] = val1
+      if (label1.includes('Email')) {
+        if (r < 13) record['CUS_EMAIL'] = val1
+        else record['INV_EMAIL'] = val1
+      }
+      if (label1 === 'Mobile') record['CUS_MOBILE'] = val1
+      if (label1 === 'Website') record['CUS_WEBSITE'] = val1
+
+      if (label1.includes('Công ty')) record['INV_CONG_TY'] = val1
+      if (label1 === 'Địa chỉ (*)' || label1 === 'Địa chỉ') {
+        if (r > 12) record['INV_DIA_CHI'] = val1
+      }
+      if (label1.includes('MST')) record['INV_MST'] = val1
+
+      const label2 = (row[3] || row[4] || '').toString().trim()
+      let val2 = row[5] !== undefined ? row[5] : ''
+      if (row[3] && row[4] && row[3] !== label2) val2 = row[4]
+
+      if (label2.includes('Người nhận hàng')) record['DEL_NGUOI_NHAN'] = val2
+      if (label2.includes('Số điện thoại')) record['DEL_SDT'] = val2
+    }
+
+    const contactRaw = String(record.CUS_CONTACT || '').trim()
+    const nguoiNhan = String(record.DEL_NGUOI_NHAN || '').trim()
+
+    const tenKHRaw = contactRaw || nguoiNhan
+    const tenKH = tenKHRaw ? tenKHRaw.toUpperCase() : ''
+    const sdt = contactRaw ? String(record.CUS_MOBILE || '').trim() : String(record.DEL_SDT || '').trim()
+    const email = contactRaw ? String(record.CUS_EMAIL || '').trim() : ''
+
+    const hasSecondary = contactRaw && nguoiNhan && contactRaw !== nguoiNhan
+    const tenKHPhu = hasSecondary ? nguoiNhan : ''
+    const sdtPhu = hasSecondary ? String(record.DEL_SDT || '').trim() : ''
+
+    const tenCTRaw = String(record.INV_CONG_TY || record.CUS_COMPANY || '').trim()
+    const tenCT = tenCTRaw ? tenCTRaw.toUpperCase() : ''
+
+    if (!tenKH && !tenCT) {
+      alert('Không tìm thấy thông tin khách hàng hợp lệ trong file đã chọn.')
+      return
+    }
+
+    const expectedMaKH = genMaKH(tenKH, tenCT)
+    const maCT = genMaCT(tenCT)
+    const existingCustomer = customers.value.find(c => c.Ma_khach_hang === expectedMaKH)
+
+    const importedFields: Partial<KhachHang> = {
+      Ma_khach_hang: expectedMaKH,
+      Ten_khach_hang: tenKH,
+      Email_ca_nhan: email,
+      So_dien_thoai_ca_nhan: sdt,
+      Ma_cong_ty: maCT,
+      Ten_cong_ty: tenCT,
+      So_dien_thoai_cong_ty: String(record.CUS_TEL || '').trim(),
+      So_fax_cong_ty: String(record.CUS_FAX || '').trim(),
+      Dia_chi_cong_ty: String(record.INV_DIA_CHI || '').trim(),
+      Email_cong_ty: String(record.INV_EMAIL || record.CUS_EMAIL || '').trim(),
+      Website_cong_ty: String(record.CUS_WEBSITE || '').trim(),
+      MST: String(record.INV_MST || '').trim(),
+      Ten_khach_hang_phu: tenKHPhu,
+      So_dien_thoai_ca_nhan_phu: sdtPhu,
+      COMPANY: String(record.CUS_COMPANY || '').trim(),
+      ADDRESS: String(record.CUS_ADDRESS || '').trim(),
+      TEL: String(record.CUS_TEL || '').trim()
+    }
+
+    if (existingCustomer) {
+      isExistingCustomer.value = true
+      originalKhach.value = JSON.parse(JSON.stringify(existingCustomer))
+      const nonEmptyImported = Object.fromEntries(
+        Object.entries(importedFields).filter(([_, v]) => v !== '' && v !== undefined)
+      )
+      khach.value = {
+        ...JSON.parse(JSON.stringify(existingCustomer)),
+        ...nonEmptyImported
+      }
+    } else {
+      isExistingCustomer.value = false
+      originalKhach.value = null
+      khach.value = {
+        Ma_khach_hang: expectedMaKH,
+        Ten_khach_hang: tenKH,
+        Email_ca_nhan: email,
+        So_dien_thoai_ca_nhan: sdt,
+        Ma_cong_ty: maCT,
+        Ten_cong_ty: tenCT,
+        So_dien_thoai_cong_ty: String(record.CUS_TEL || '').trim(),
+        So_fax_cong_ty: String(record.CUS_FAX || '').trim(),
+        Dia_chi_cong_ty: String(record.INV_DIA_CHI || '').trim(),
+        Email_cong_ty: String(record.INV_EMAIL || record.CUS_EMAIL || '').trim(),
+        Website_cong_ty: String(record.CUS_WEBSITE || '').trim(),
+        Hoa_hong: '',
+        Tong_chi_tieu: '',
+        Trang_thai: 'Tiềm năng',
+        Tong_loi_nhuan: '',
+        Ghi_chu: '',
+        Ten_khach_hang_phu: tenKHPhu,
+        So_dien_thoai_ca_nhan_phu: sdtPhu,
+        Email_ca_nhan_phu: '',
+        MST: String(record.INV_MST || '').trim(),
+        COMPANY: String(record.CUS_COMPANY || '').trim(),
+        ADDRESS: String(record.CUS_ADDRESS || '').trim(),
+        TEL: String(record.CUS_TEL || '').trim()
+      }
+    }
+
+    maKHInput.value = khach.value.Ma_khach_hang || expectedMaKH
+    tenKHInput.value = khach.value.Ten_khach_hang || tenKH
+    hasImportedCustomerPendingSave.value = true
+    triggerToast('Đã import thông tin khách hàng thành công!')
+  } catch (e) {
+    console.error('Lỗi đọc file Excel khách hàng:', e)
+    alert('Lỗi khi đọc file Excel. Định dạng không hợp lệ.')
+  } finally {
+    target.value = ''
+  }
+}
+
 const savingCustomer = ref(false)
 
-async function saveCustomerToDB() {
+async function saveCustomerToDB(closeDetailModal = true) {
   const k = khach.value
-  const ma = maKHInput.value?.trim() || k.Ma_khach_hang?.trim()
+  const tenKHVal = (tenKHInput.value || k.Ten_khach_hang || '').trim()
+  const tenCTVal = (k.Ten_cong_ty || '').trim()
+  const maCTVal = (k.Ma_cong_ty || genMaCT(tenCTVal) || '').trim()
+  const ma = (maKHInput.value?.trim() || k.Ma_khach_hang?.trim() || genMaKH(tenKHVal, tenCTVal)).trim()
   if (!ma) {
     alert('Vui lòng nhập hoặc tự động tạo Mã KH trước!')
     return
   }
 
-  const isUpdate = isExistingCustomer.value
-  const tenKHVal = tenKHInput.value || k.Ten_khach_hang || ''
+  const isUpdate = isCustomerInDB.value
+
+  // Đồng bộ đầy đủ vào state khach và input ngay lập tức để Lưu tạm / Chốt deal nhận diện ngay (không cần F5)
+  k.Ma_khach_hang = ma
+  k.Ten_khach_hang = tenKHVal
+  k.Ma_cong_ty = maCTVal
+  k.Ten_cong_ty = tenCTVal
+  maKHInput.value = ma
+  tenKHInput.value = tenKHVal
+  hasImportedCustomerPendingSave.value = false
+
   const fbPayload: Record<string, any> = {
     ma_khach_hang: ma,
     Ma_khach_hang: ma,
@@ -4561,10 +4872,10 @@ async function saveCustomerToDB() {
     Email_ca_nhan: k.Email_ca_nhan || '',
     so_dien_thoai_ca_nhan: k.So_dien_thoai_ca_nhan || '',
     So_dien_thoai_ca_nhan: k.So_dien_thoai_ca_nhan || '',
-    ma_cong_ty: k.Ma_cong_ty || '',
-    Ma_cong_ty: k.Ma_cong_ty || '',
-    ten_cong_ty: k.Ten_cong_ty || '',
-    Ten_cong_ty: k.Ten_cong_ty || '',
+    ma_cong_ty: maCTVal,
+    Ma_cong_ty: maCTVal,
+    ten_cong_ty: tenCTVal,
+    Ten_cong_ty: tenCTVal,
     so_dien_thoai_cong_ty: k.So_dien_thoai_cong_ty || '',
     So_dien_thoai_cong_ty: k.So_dien_thoai_cong_ty || '',
     so_fax_cong_ty: k.So_fax_cong_ty || '',
@@ -4581,8 +4892,8 @@ async function saveCustomerToDB() {
     Tong_chi_tieu: k.Tong_chi_tieu || 0,
     tong_loi_nhuan: k.Tong_loi_nhuan || 0,
     Tong_loi_nhuan: k.Tong_loi_nhuan || 0,
-    trang_thai: k.Trang_thai || '',
-    Trang_thai: k.Trang_thai || '',
+    trang_thai: k.Trang_thai || 'Tiềm năng',
+    Trang_thai: k.Trang_thai || 'Tiềm năng',
     ghi_chu: k.Ghi_chu || '',
     Ghi_chu: k.Ghi_chu || '',
     ten_khach_hang_phu: k.Ten_khach_hang_phu || '',
@@ -4598,24 +4909,35 @@ async function saveCustomerToDB() {
     address: k.ADDRESS || '',
     ADDRESS: k.ADDRESS || '',
     tel: k.TEL || '',
-    TEL: k.TEL || ''
+    TEL: k.TEL || '',
+    last_updated: new Date().toISOString()
   }
 
-  // Optimistic: update FE immediately
+  // Optimistic: update FE immediately (cả khach, originalKhach và danh sách customers trong bộ nhớ)
   isExistingCustomer.value = true
-  originalKhach.value = JSON.parse(JSON.stringify(k))
+  const snapshotKhach: KhachHang = JSON.parse(JSON.stringify(k))
+  originalKhach.value = snapshotKhach
+  const existingIdx = customers.value.findIndex(c => c.Ma_khach_hang === ma)
+  if (existingIdx >= 0) {
+    customers.value[existingIdx] = JSON.parse(JSON.stringify(snapshotKhach))
+  } else {
+    customers.value.unshift(JSON.parse(JSON.stringify(snapshotKhach)))
+  }
+
   savingCustomer.value = false
   showAsyncLoading(`Đang ${isUpdate ? 'cập nhật' : 'thêm'} khách hàng...`)
 
-  ;(async () => {
+  const saveTask = (async () => {
     const existing = await findCustomerInFirebase(ma)
-    const targetKey = existing ? existing.key : ma
+    const targetKey = existing ? existing.key : sanitizeCustomerFirebaseKey(ma)
     if (existing) {
       await update(dbRef(database, `khach_hang/${targetKey}`), fbPayload)
     } else {
       await set(dbRef(database, `khach_hang/${targetKey}`), fbPayload)
     }
-    showCustomerDetailModal.value = false
+    if (closeDetailModal) {
+      showCustomerDetailModal.value = false
+    }
     showAsyncSuccess(
       `${isUpdate ? 'Cập nhật' : 'Thêm'} KH thành công`,
       `Mã KH: ${ma}`
@@ -4623,7 +4945,15 @@ async function saveCustomerToDB() {
     try {
       customers.value = await fetchKhachHangFromFirebase()
     } catch {}
-  })().catch((err: any) => {
+  })()
+
+  pendingCustomerSavePromise = saveTask.finally(() => {
+    if (pendingCustomerSavePromise === saveTask) {
+      pendingCustomerSavePromise = null
+    }
+  })
+
+  saveTask.catch((err: any) => {
     showAsyncError('Lưu KH thất bại', 'Lỗi kết nối: ' + (err?.message || err))
   })
 }
@@ -6830,8 +7160,15 @@ async function saveCustomTemplates() {
 }
 
 async function removeCustomTemplate(id: string) {
+  const target = customTemplates.value.find(t => t.id === id)
   customTemplates.value = customTemplates.value.filter(t => t.id !== id)
-  await remove(dbRef(database, `upload_file_mau/${id}`))
+  const prefixedId = id.startsWith('MINTL_') ? id : `MINTL_${id}`
+  printTemplates.value = printTemplates.value.filter(t => t.id !== id && t.id !== prefixedId && t.source_upload_id !== id)
+  await deletePrintTemplateFromFirebase({
+    id: prefixedId,
+    source_upload_id: target?._fbKey || id,
+    link_file_goc: target?.data || ''
+  } as PrintTemplateConfig)
 }
 
 async function downloadCustomTemplate(tpl: any) {
@@ -7403,7 +7740,13 @@ const onPipelineSaved = () => {
 
 const hasUnsavedChanges = () => {
   if (isDataSaved.value) return false
-  return (flatQuoteRows.value?.length || 0) > 0 || (khach.value?.ten || '').trim() !== '' || (khach.value?.congTy || '').trim() !== ''
+  return (
+    (flatQuoteRows.value?.length || 0) > 0 ||
+    (khach.value?.Ten_khach_hang || (khach.value as any)?.ten || '').trim() !== '' ||
+    (khach.value?.Ten_cong_ty || (khach.value as any)?.congTy || '').trim() !== '' ||
+    (maKHInput.value || '').trim() !== '' ||
+    (tenKHInput.value || '').trim() !== ''
+  )
 }
 
 const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -7759,6 +8102,644 @@ async function confirmImport(saveToDb: boolean) {
   pendingImportItems.value = [];
 }
 
+/* =====================================================================
+   🎙️ BÁO GIÁ BẰNG GIỌNG NÓI (WEB SPEECH API vi-VN + DEEPSEEK AI) - 6 BƯỚC
+===================================================================== */
+interface VoiceCandidateEntry {
+  product: HangHoa
+  relationType: 'direct' | 'linked'
+  matchType: 'direct' | 'related'
+  matchReason: string
+  selected: boolean
+  quantity: number
+}
+
+interface VoiceExtractedGroup {
+  id: string
+  rawName: string
+  searchKeyword: string
+  requestedQty: number
+  note: string
+  candidates: VoiceCandidateEntry[]
+}
+
+const showVoiceQuoteModal = ref(false)
+// step: 1 = Ghi âm & Xác nhận/Sửa Text (Bước 1, 2, 3), 2 = Đang gọi DeepSeek (Bước 4), 3 = Đối chiếu hàng hóa liên quan & Xác nhận đưa vào báo giá (Bước 5, 6)
+const voiceQuoteStep = ref<1 | 2 | 3>(1)
+const isVoiceListening = ref(false)
+const voiceTranscript = ref('')
+const voiceInterimText = ref('')
+const voiceErrorMsg = ref('')
+const voiceAnalysisSource = ref<'deepseek' | 'local'>('deepseek')
+
+const voiceExtractedGroups = ref<VoiceExtractedGroup[]>([])
+
+let speechRecInstance: any = null
+
+/**
+ * Chuẩn hóa thông minh phát âm tiếng Việt tốc độ nhanh cho các mã thiết bị / số đếm
+ * Ví dụ: "ích gờ ét một một tám" -> "xgs118", "x g s 330" -> "xgs330"
+ */
+function normalizeVietnameseFastSpeech(raw: string): string {
+  if (!raw) return ''
+  let s = raw
+  // Chuẩn hóa cách đọc chữ cái mã sản phẩm phổ biến khi nói nhanh
+  s = s.replace(/\b(ích|ít|íc|x)\s*(gờ|g)\s*(ét|s|x)\b/gi, 'XGS')
+  s = s.replace(/\b(ích|ít|íc|x)\s*(gờ|g)\b/gi, 'XG')
+  s = s.replace(/\b(ép|f)\s*(gờ|g)\b/gi, 'FG')
+  s = s.replace(/\b(ây|a)\s*(pi|p)\s*(ích|x)\b/gi, 'APX')
+  // Ghép các chữ cái rời rạc đứng trước cụm số: "x g s 118" -> "xgs 118"
+  s = s.replace(/\b([a-zA-Z])\s+([a-zA-Z])\s+([a-zA-Z])\s*(\d+)/g, '$1$2$3$4')
+  s = s.replace(/\b([a-zA-Z])\s+([a-zA-Z])\s*(\d+)/g, '$1$2$3')
+  // Ghép mã chữ và số bị tách rời: "XGS 118" hoặc "xgs 118" -> giữ nguyên dễ đọc nhưng đồng nhất
+  s = s.replace(/\b(xgs|xg|fg|apx)\s+(\d{2,4}[a-zA-Z]?)\b/gi, (_, p1, p2) => `${p1.toUpperCase()}${p2.toUpperCase()}`)
+  return s.replace(/\s+/g, ' ').trim()
+}
+
+function openVoiceQuoteModal() {
+  showVoiceQuoteModal.value = true
+  voiceQuoteStep.value = 1
+  voiceErrorMsg.value = ''
+}
+
+function closeVoiceQuoteModal() {
+  stopVoiceRecording()
+  showVoiceQuoteModal.value = false
+}
+
+function startVoiceRecording(clearExisting = false) {
+  voiceErrorMsg.value = ''
+  if (clearExisting) {
+    voiceTranscript.value = ''
+    voiceInterimText.value = ''
+  }
+
+  const SpeechRecognitionCtor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+  if (!SpeechRecognitionCtor) {
+    voiceErrorMsg.value = 'Trình duyệt hiện tại không hỗ trợ Web Speech API trực tiếp. Bạn có thể gõ hoặc dùng mic bàn phím để nhập vào ô bên dưới.'
+    return
+  }
+
+  try {
+    if (speechRecInstance) {
+      try { speechRecInstance.stop() } catch {}
+    }
+    const rec = new SpeechRecognitionCtor()
+    rec.lang = 'vi-VN'
+    rec.continuous = true
+    rec.interimResults = true
+    rec.maxAlternatives = 1
+
+    const baseBeforeSession = voiceTranscript.value ? voiceTranscript.value.trim() + ' ' : ''
+    let sessionFinal = ''
+
+    rec.onstart = () => {
+      isVoiceListening.value = true
+      voiceErrorMsg.value = ''
+    }
+
+    rec.onresult = (event: any) => {
+      let interim = ''
+      let finalChunk = ''
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const res = event.results[i]
+        const txt = res[0]?.transcript || ''
+        if (res.isFinal) {
+          finalChunk += txt + ' '
+        } else {
+          interim += txt
+        }
+      }
+      if (finalChunk) {
+        sessionFinal += finalChunk
+        voiceTranscript.value = normalizeVietnameseFastSpeech(baseBeforeSession + sessionFinal)
+      }
+      voiceInterimText.value = normalizeVietnameseFastSpeech(interim)
+    }
+
+    rec.onerror = (event: any) => {
+      if (event?.error === 'no-speech') return
+      if (event?.error === 'aborted') return
+      voiceErrorMsg.value = 'Lỗi thu âm: ' + (event?.error || 'Không xác định')
+      isVoiceListening.value = false
+    }
+
+    rec.onend = () => {
+      if (voiceInterimText.value) {
+        voiceTranscript.value = normalizeVietnameseFastSpeech(
+          (voiceTranscript.value ? voiceTranscript.value + ' ' : '') + voiceInterimText.value
+        )
+        voiceInterimText.value = ''
+      }
+      isVoiceListening.value = false
+    }
+
+    speechRecInstance = rec
+    rec.start()
+  } catch (err: any) {
+    voiceErrorMsg.value = 'Không thể khởi động microphone: ' + String(err?.message || err)
+    isVoiceListening.value = false
+  }
+}
+
+function stopVoiceRecording() {
+  if (speechRecInstance) {
+    try {
+      speechRecInstance.stop()
+    } catch {}
+  }
+  isVoiceListening.value = false
+}
+
+function toggleVoiceRecording() {
+  if (isVoiceListening.value) {
+    stopVoiceRecording()
+  } else {
+    startVoiceRecording(false)
+  }
+}
+
+/**
+ * Fallback phân tích cục bộ (khi mất kết nối mạng tới DeepSeek)
+ */
+function parseVoiceTextLocally(text: string): { raw_name: string; normalized_keyword: string; quantity: number; note: string }[] {
+  const cleaned = normalizeVietnameseFastSpeech(text)
+    .replace(/^(alo|ơi|ê|này|báo giá|làm báo giá|tạo báo giá|cho tao|cho tôi|cho anh|cho em|giúp tao|giúp tôi|lấy cho tao|lấy)\s+/gi, '')
+    .trim()
+
+  // Tách theo các từ nối phổ biến trong câu nói tiếng Việt
+  const parts = cleaned
+    .split(/\s+(?:với|và|cùng với|cùng|kèm theo|kèm|thêm|cộng với|cộng|,|;|\+)\s+|[,;+]+/i)
+    .map(p => p.trim())
+    .filter(Boolean)
+
+  const results: { raw_name: string; normalized_keyword: string; quantity: number; note: string }[] = []
+
+  const vnNumMap: Record<string, number> = {
+    'một': 1, 'hai': 2, 'ba': 3, 'bốn': 4, 'năm': 5,
+    'sáu': 6, 'bảy': 7, 'tám': 8, 'chín': 9, 'mười': 10
+  }
+
+  for (const part of parts) {
+    let p = part
+      .replace(/^(báo giá|cho tao|cho tôi|cho mình|lấy|thêm|mặt hàng|sản phẩm|con|cái|bộ|chiếc|thiết bị)\s+/gi, '')
+      .trim()
+    if (!p) continue
+
+    let qty = 1
+    // Kiểm tra số lượng ở đầu cụm: "2 con xgs118", "ba cái xgs330"
+    const numMatch = p.match(/^(\d+|một|hai|ba|bốn|năm|sáu|bảy|tám|chín|mười)\s*(?:con|cái|bộ|chiếc|cục|gói|license|lic|mã|sản phẩm|thiết bị)?\s+(.+)$/i)
+    if (numMatch) {
+      const rawNum = numMatch[1].toLowerCase()
+      qty = vnNumMap[rawNum] || Math.max(1, parseInt(rawNum, 10) || 1)
+      p = numMatch[2].trim()
+    }
+
+    // Chuẩn hóa khoảng trắng giữa chữ và số để dễ tìm kiếm (VD: "XGS118" -> "XGS 118")
+    const formattedKw = p.replace(/^([a-zA-Z]+)(\d+.*)$/, '$1 $2').trim()
+    if (formattedKw) {
+      results.push({
+        raw_name: p,
+        normalized_keyword: formattedKw,
+        quantity: qty,
+        note: ''
+      })
+    }
+  }
+
+  // Nếu không tách được theo từ nối nhưng có các mã kiểu XGS118, XGS330 trong câu
+  if (results.length === 0 && cleaned) {
+    results.push({
+      raw_name: cleaned,
+      normalized_keyword: cleaned,
+      quantity: 1,
+      note: ''
+    })
+  }
+
+  return results
+}
+
+/**
+ * Bước 5: Từ tên/từ khóa mặt hàng, đối chiếu với kho `products` VÀ lấy cả danh sách hàng hóa liên quan (`Ma_hang_lien_ket` + cùng `Danh_muc`)
+ */
+function findMatchingAndRelatedProducts(keywordStr: string, defaultQty = 1): VoiceCandidateEntry[] {
+  const kwRaw = String(keywordStr || '').trim().toLowerCase()
+  if (!kwRaw) return []
+
+  const kwNorm = normalizeString(kwRaw)
+  // Tách từ khóa thành các token chữ và số (VD: "xgs118" -> ["xgs", "118"])
+  const expandedKw = kwRaw.replace(/([a-zA-Z]+)(\d+)/g, '$1 $2')
+  const tokens = expandedKw.split(/\s+/).map(t => normalizeString(t)).filter(Boolean)
+
+  const scoredDirect: { prod: HangHoa; score: number; reason: string }[] = []
+
+  for (const rawP of products.value) {
+    const p = getProductWithPriceList(rawP)
+    const tenLower = (p.Ten_hang || '').toLowerCase()
+    const maLower = (p.Ma_hang || '').toLowerCase()
+    const catLower = (p.Danh_muc || '').toLowerCase()
+    const tenNorm = normalizeString(tenLower)
+    const maNorm = normalizeString(maLower)
+    const catNorm = normalizeString(catLower)
+
+    let score = 0
+    let reason = 'Khớp mã / tên hàng'
+    if (maNorm === kwNorm || tenNorm === kwNorm) {
+      score = 100
+      reason = 'Khớp chính xác mã/tên hàng'
+    } else if (tenNorm.includes(kwNorm) || maNorm.includes(kwNorm)) {
+      score = 80
+      reason = 'Khớp tên/mã hàng'
+      if (catNorm === kwNorm || normalizeString(catLower).includes(kwNorm)) score += 10
+      if (!tenLower.includes('renewal') && !tenLower.includes('license') && !tenLower.includes('support')) {
+        score += 6
+        reason = 'Thiết bị chính khớp từ khóa'
+      }
+    } else if (tokens.length > 0 && tokens.every(tk => tenNorm.includes(tk) || maNorm.includes(tk) || catNorm.includes(tk))) {
+      score = 65
+      reason = 'Khớp các từ khóa thành phần'
+      if (!tenLower.includes('renewal')) score += 4
+    }
+
+    if (score > 0) {
+      scoredDirect.push({ prod: p, score, reason })
+    }
+  }
+
+  scoredDirect.sort((a, b) => b.score - a.score)
+
+  const resultMap = new Map<string, VoiceCandidateEntry>()
+
+  // 1. Đưa các mặt hàng khớp trực tiếp vào danh sách (tự động tick chọn mặt hàng khớp nhất đầu tiên)
+  scoredDirect.slice(0, 12).forEach((entry, idx) => {
+    const code = String(entry.prod.Ma_hang || entry.prod.Ten_hang)
+    if (!resultMap.has(code)) {
+      resultMap.set(code, {
+        product: entry.prod,
+        relationType: 'direct',
+        matchType: 'direct',
+        matchReason: entry.reason,
+        selected: idx === 0, // Tự động chọn mặt hàng khớp nhất đầu tiên
+        quantity: Math.max(1, defaultQty)
+      })
+    }
+  })
+
+  // 2. Lấy thêm các hàng hóa liên quan từ `Ma_hang_lien_ket` và cùng `Danh_muc` của các mặt hàng khớp chính
+  const topMatched = scoredDirect.slice(0, 3).map(x => x.prod)
+  for (const mainProd of topMatched) {
+    // Từ Ma_hang_lien_ket
+    const linkedList = getLinkedItems(mainProd)
+    for (const link of linkedList) {
+      const found = products.value.find(x => String(x.Ma_hang || '').trim() === String(link.code || '').trim())
+      if (found) {
+        const priced = getProductWithPriceList(found)
+        const key = String(priced.Ma_hang || priced.Ten_hang)
+        if (!resultMap.has(key)) {
+          resultMap.set(key, {
+            product: priced,
+            relationType: 'linked',
+            matchType: 'related',
+            matchReason: `Hàng liên kết với ${mainProd.Ma_hang}`,
+            selected: false,
+            quantity: Math.max(1, defaultQty)
+          })
+        }
+      }
+    }
+
+    // Từ cùng Danh_muc (nếu có)
+    const cat = String(mainProd.Danh_muc || '').trim().toUpperCase()
+    if (cat) {
+      const sameCatProds = products.value.filter(x => String(x.Danh_muc || '').trim().toUpperCase() === cat)
+      for (const rawSame of sameCatProds.slice(0, 12)) {
+        const priced = getProductWithPriceList(rawSame)
+        const key = String(priced.Ma_hang || priced.Ten_hang)
+        if (!resultMap.has(key)) {
+          resultMap.set(key, {
+            product: priced,
+            relationType: 'linked',
+            matchType: 'related',
+            matchReason: `Cùng danh mục ${cat}`,
+            selected: false,
+            quantity: Math.max(1, defaultQty)
+          })
+        }
+      }
+    }
+  }
+
+  return Array.from(resultMap.values())
+}
+
+function refreshGroupCandidates(group: VoiceExtractedGroup) {
+  group.candidates = findMatchingAndRelatedProducts(group.searchKeyword, group.requestedQty)
+}
+
+function addManualVoiceGroup() {
+  voiceExtractedGroups.value.push({
+    id: 'vg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+    rawName: 'Mặt hàng bổ sung',
+    searchKeyword: '',
+    requestedQty: 1,
+    note: '',
+    candidates: []
+  })
+}
+
+function removeVoiceGroup(idx: number) {
+  voiceExtractedGroups.value.splice(idx, 1)
+}
+
+/**
+ * Bước 3 & 4: Người dùng xác nhận Text đúng -> Gửi sang DeepSeek (`src/services/deepseek.ts`) phân tích ra danh sách mặt hàng,
+ * sau đó thực hiện Bước 5 (đối chiếu với danh sách hàng hóa & hàng hóa liên quan)
+ */
+async function confirmVoiceTextAndAnalyze() {
+  stopVoiceRecording()
+  const finalTxt = normalizeVietnameseFastSpeech(voiceTranscript.value || voiceInterimText.value)
+  voiceTranscript.value = finalTxt
+  voiceInterimText.value = ''
+  if (!finalTxt) {
+    voiceErrorMsg.value = 'Vui lòng ghi âm hoặc nhập nội dung yêu cầu báo giá trước khi xác nhận!'
+    return
+  }
+
+  voiceErrorMsg.value = ''
+  voiceQuoteStep.value = 2
+
+  let extractedItems: { raw_name: string; normalized_keyword: string; quantity: number; note: string }[] = []
+
+  try {
+    const systemPrompt = `Tách các mặt hàng cần báo giá từ câu nói tiếng Việt của người dùng.
+Quy tắc:
+1. Tách riêng từng mặt hàng và số lượng (mặc định quantity = 1).
+2. Chuẩn hóa lỗi phiên âm mã sản phẩm nếu có (VD: "ích gờ ét 118" -> "XGS 118", "xgs118" -> "XGS 118").
+3. Chỉ trả về JSON thuần (không markdown):
+{"items":[{"raw_name":"tên gốc","normalized_keyword":"mã/tên chuẩn","quantity":1,"note":""}]}`
+
+    const messagesToSend = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: finalTxt }
+    ]
+
+    const result = await callDeepSeek(messagesToSend, false, false)
+
+    let aiContent = ''
+    if (result?.choices && result.choices.length > 0) {
+      aiContent = result.choices[0]?.message?.content || result.choices[0]?.text || ''
+    } else if (result?.output && Array.isArray(result.output)) {
+      const messageObj = result.output.find((item: any) => item.type === 'message')
+      if (messageObj && messageObj.content && Array.isArray(messageObj.content)) {
+        const textObj = messageObj.content.find((c: any) => c.type === 'output_text')
+        aiContent = textObj ? textObj.text : ''
+      } else {
+        const errObj = result.output.find((item: any) => item.type === 'error')
+        if (errObj) throw new Error(errObj.message || JSON.stringify(errObj))
+        aiContent = JSON.stringify(result.output)
+      }
+    } else if (result?.output && typeof result.output === 'object' && result.output.text) {
+      aiContent = result.output.text
+    } else if (result?.error) {
+      throw new Error(result.error.message || JSON.stringify(result.error))
+    } else {
+      aiContent = typeof result === 'string' ? result : JSON.stringify(result)
+    }
+
+    const cleanedJson = aiContent.replace(/```json/gi, '').replace(/```/g, '').trim()
+    const jsonMatch = cleanedJson.match(/\{[\s\S]*\}/)
+    const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : cleanedJson)
+
+    if (Array.isArray(parsed?.items) && parsed.items.length > 0) {
+      extractedItems = parsed.items.map((it: any) => ({
+        raw_name: String(it.raw_name || it.normalized_keyword || '').trim(),
+        normalized_keyword: String(it.normalized_keyword || it.raw_name || '').trim(),
+        quantity: Math.max(1, Number(it.quantity) || 1),
+        note: String(it.note || '').trim()
+      }))
+      voiceAnalysisSource.value = 'deepseek'
+    } else {
+      extractedItems = parseVoiceTextLocally(finalTxt)
+      voiceAnalysisSource.value = 'local'
+    }
+  } catch (err: any) {
+    console.warn('Lỗi gọi DeepSeek API, chuyển sang bộ phân tích cục bộ:', err)
+    voiceErrorMsg.value = `Lưu ý: Không kết nối được máy chủ DeepSeek AI (${err?.message || err}) — Hệ thống đã tự động tách mặt hàng bằng bộ phân tích nội bộ.`
+    extractedItems = parseVoiceTextLocally(finalTxt)
+    voiceAnalysisSource.value = 'local'
+  }
+
+  if (extractedItems.length === 0) {
+    extractedItems = [{
+      raw_name: finalTxt,
+      normalized_keyword: finalTxt,
+      quantity: 1,
+      note: ''
+    }]
+  }
+
+  // Bước 5: Lấy từng tên mặt hàng đối chiếu với danh sách hàng hóa & hàng hóa liên quan
+  voiceExtractedGroups.value = extractedItems.map((it, idx) => {
+    const kw = it.normalized_keyword || it.raw_name
+    const qty = Math.max(1, it.quantity || 1)
+    return {
+      id: `vg_${Date.now()}_${idx}`,
+      rawName: it.raw_name || kw,
+      searchKeyword: kw,
+      requestedQty: qty,
+      note: it.note || '',
+      candidates: findMatchingAndRelatedProducts(kw, qty)
+    }
+  })
+
+  voiceQuoteStep.value = 3
+}
+
+const totalSelectedVoiceCandidates = computed(() => {
+  let count = 0
+  voiceExtractedGroups.value.forEach(g => {
+    g.candidates.forEach(c => {
+      if (c.selected) count++
+    })
+  })
+  return count
+})
+
+/**
+ * Bước 6: Người dùng xác nhận đúng rồi đưa thẳng vào trong bảng báo giá
+ */
+function confirmAddVoiceItemsToQuote() {
+  const chosenEntries: { product: HangHoa; quantity: number }[] = []
+  voiceExtractedGroups.value.forEach(group => {
+    group.candidates.forEach(cand => {
+      if (cand.selected) {
+        chosenEntries.push({
+          product: cand.product,
+          quantity: Math.max(1, toNum(cand.quantity, 1))
+        })
+      }
+    })
+  })
+
+  if (chosenEntries.length === 0) {
+    voiceErrorMsg.value = 'Vui lòng tick chọn ít nhất 1 mặt hàng để đưa vào bảng báo giá!'
+    return
+  }
+
+  let lastHighlightIdx = -1
+  const touchedCategories = new Set<string>()
+
+  for (const entry of chosenEntries) {
+    const p = getProductWithPriceList(entry.product)
+    const qty = Math.max(1, entry.quantity)
+    const resolvedMaHang = resolveMaHang(p)
+
+    const foundIdx = selectedItems.value.findIndex(it => it.Ma_hang === resolvedMaHang)
+    if (foundIdx >= 0) {
+      selectedItems.value[foundIdx].So_luong += qty
+      selectedItems.value[foundIdx].Don_gia = p.Don_gia
+      ;(selectedItems.value[foundIdx] as any)._Don_gia_goc = p.Don_gia
+      lastHighlightIdx = foundIdx
+    } else {
+      const cloned = cloneHang(p, qty)
+      cloned.Ma_hang = resolvedMaHang
+      lastHighlightIdx = insertItemIntoGroup(cloned)
+    }
+
+    qtyMap[p.Ma_hang] = qty
+    const cat = (p.Danh_muc || '').trim().toUpperCase()
+    if (cat) touchedCategories.add(cat)
+  }
+
+  touchedCategories.forEach(cat => rebuildCategoryLinks(cat))
+  syncFlatRows()
+
+  showVoiceQuoteModal.value = false
+  if (isMobileDevice.value) {
+    setMobileStep(2)
+  }
+  if (lastHighlightIdx >= 0) {
+    scrollToAndHighlightRow(lastHighlightIdx)
+  }
+  triggerToast(`Đã đưa ${chosenEntries.length} mặt hàng vào bảng báo giá!`)
+}
+
+/* =====================================================================
+   THIẾT LẬP HIỂN THỊ CỘT TRONG BẢNG BÁO GIÁ CHI TIẾT
+===================================================================== */
+const QUOTE_TABLE_COLUMNS = [
+  { key: 'stt', label: 'STT' },
+  { key: 'pn', label: 'P/N' },
+  { key: 'ten_hang', label: 'Tên hàng' },
+  { key: 'dien_giai', label: 'Diễn giải' },
+  { key: 'hang', label: 'Hãng' },
+  { key: 'dvt', label: 'ĐVT' },
+  { key: 'sl', label: 'SL' },
+  { key: 'ti_gia', label: 'Tỉ giá (USD)' },
+  { key: 'gia_off_hang', label: 'Giá off hãng' },
+  { key: 'list_price', label: 'List Price' },
+  { key: 'gia_nhap', label: 'Giá nhập' },
+  { key: 'muc_off', label: 'Mức off' },
+  { key: 'don_gia_kh', label: 'Đơn giá (KH)' },
+  { key: 'tt_truoc_thue', label: 'TT trước thuế' },
+  { key: 'vat', label: 'VAT' },
+  { key: 'tt_sau_thue', label: 'TT sau thuế' },
+  { key: 'net_margin', label: 'Net Margin' },
+  { key: 'xoa', label: 'Xóa' }
+] as const
+
+type QuoteColKey = typeof QUOTE_TABLE_COLUMNS[number]['key']
+
+const showQuoteColSetting = ref(false)
+
+function loadSavedQuoteCols(): Record<QuoteColKey, boolean> {
+  const defaults: Record<QuoteColKey, boolean> = {
+    stt: true,
+    pn: true,
+    ten_hang: true,
+    dien_giai: true,
+    hang: true,
+    dvt: true,
+    sl: true,
+    ti_gia: true,
+    gia_off_hang: true,
+    list_price: true,
+    gia_nhap: true,
+    muc_off: true,
+    don_gia_kh: true,
+    tt_truoc_thue: true,
+    vat: true,
+    tt_sau_thue: true,
+    net_margin: true,
+    xoa: true
+  }
+  try {
+    const raw = localStorage.getItem('nts_quote_col_visible_v1')
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (parsed && typeof parsed === 'object') {
+        ;(Object.keys(defaults) as QuoteColKey[]).forEach(k => {
+          if (typeof parsed[k] === 'boolean') {
+            defaults[k] = parsed[k]
+          }
+        })
+      }
+    }
+  } catch {}
+  return defaults
+}
+
+const quoteColVisible = reactive<Record<QuoteColKey, boolean>>(loadSavedQuoteCols())
+
+watch(
+  quoteColVisible,
+  val => {
+    try {
+      localStorage.setItem('nts_quote_col_visible_v1', JSON.stringify(val))
+    } catch {}
+  },
+  { deep: true }
+)
+
+function setAllQuoteCols(visible: boolean) {
+  QUOTE_TABLE_COLUMNS.forEach(c => {
+    quoteColVisible[c.key] = visible
+  })
+  if (!visible) {
+    // Luôn giữ ít nhất cột Tên hàng để bảng không trống hoàn toàn
+    quoteColVisible.ten_hang = true
+  }
+}
+
+const visibleQuoteColCount = computed(() => {
+  let count = 0
+  for (const col of QUOTE_TABLE_COLUMNS) {
+    if (col.key === 'ti_gia') {
+      if (quoteCurrency.value === 'USD' && quoteColVisible.ti_gia) count++
+    } else if (quoteColVisible[col.key]) {
+      count++
+    }
+  }
+  return Math.max(1, count)
+})
+
+const visibleLeadingFooterColSpan = computed(() => {
+  const leadingKeys: QuoteColKey[] = [
+    'stt', 'pn', 'ten_hang', 'dien_giai', 'hang', 'dvt', 'sl',
+    'ti_gia', 'gia_off_hang', 'list_price', 'gia_nhap'
+  ]
+  let count = 0
+  for (const k of leadingKeys) {
+    if (k === 'ti_gia') {
+      if (quoteCurrency.value === 'USD' && quoteColVisible.ti_gia) count++
+    } else if (quoteColVisible[k]) {
+      count++
+    }
+  }
+  return count
+})
+
 </script>
 
 <template>
@@ -7801,6 +8782,15 @@ async function confirmImport(saveToDb: boolean) {
             <h3><i class="lucide-package"></i> Kho sản phẩm</h3>
             <span class="product-count">{{ filteredProducts.length }} SP</span>
             <button class="btn-manual-circle" @click="showManualModal = true" title="Nhập tay">+</button>
+            <button
+              type="button"
+              @click="openVoiceQuoteModal"
+              title="Báo giá bằng giọng nói"
+              style="background: #1e293b; color: #e2e8f0; border: 1px solid #334155; border-radius: 6px; padding: 4px 10px; font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; cursor: pointer;"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" x2="12" y1="19" y2="22"></line></svg>
+              <span>Giọng nói</span>
+            </button>
           </div>
           <button class="icon-btn" @click="showProductSidebar = false">✕</button>
         </div>
@@ -7976,10 +8966,14 @@ async function confirmImport(saveToDb: boolean) {
       <!-- ================== CENTER: BẢNG BÁO GIÁ VÀ TỔNG TIỀN ================== -->
       <section class="box center quote-center">
         <div class="quote-table-container">
-          <div class="sidebar-head table-header-box" style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;">
+          <div class="sidebar-head table-header-box" style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; z-index: 35;">
             <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap; width: 100%;">
               <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                 <h3 style="margin: 0; white-space: nowrap; width: auto; flex-shrink: 0;"><i class="lucide-file-text"></i> Bảng báo giá chi tiết</h3>
+                <button @click="openVoiceQuoteModal" style="background: #1e293b; color: #e2e8f0; border: 1px solid #334155; padding: 4px 10px; border-radius: 6px; font-weight: 700; display: flex; align-items: center; gap: 6px; transition: all 0.2s; font-size: 12px; white-space: nowrap; flex-shrink: 0; width: max-content; cursor: pointer; height: fit-content;" title="Ghi âm giọng nói để thêm mặt hàng vào báo giá">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" x2="12" y1="19" y2="22"></line></svg>
+                  Báo giá giọng nói
+                </button>
                 <button v-show="selectedItems.length > 0" @click="resetToanBoBaoGia" style="background: #ef4444; color: #ffffff; border: none; padding: 4px 10px; border-radius: 6px; font-weight: 700; display: flex; align-items: center; gap: 6px; transition: all 0.2s; box-shadow: 0 1px 3px rgba(239, 68, 68, 0.4); font-size: 12px; white-space: nowrap; flex-shrink: 0; width: max-content; cursor: pointer; height: fit-content;" title="Xóa toàn bộ hàng hóa trong báo giá" onmouseover="this.style.background='#dc2626'; this.style.boxShadow='0 2px 5px rgba(239,68,68,0.5)';" onmouseout="this.style.background='#ef4444'; this.style.boxShadow='0 1px 3px rgba(239,68,68,0.4)';">
                   <i class="lucide-rotate-ccw" style="font-size: 13px; color: #ffffff;"></i> Làm mới
                 </button>
@@ -7999,31 +8993,73 @@ async function confirmImport(saveToDb: boolean) {
                 <span class="contract-badge">Số HĐ: <b>{{ soHopDong }}</b></span>
                 <span class="contract-badge">Số PO: <b>{{ currentPO }}</b></span>
               </div>
-              <span class="hint" style="margin-left: auto;">Click vào ô <b>SL / MỨC OFF / VAT</b> để sửa trực tiếp.</span>
+              <div style="margin-left: auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <span class="hint">Click vào ô <b>SL / MỨC OFF / VAT</b> để sửa trực tiếp.</span>
+                <div style="position: relative;">
+                  <button
+                    type="button"
+                    @click.stop="showQuoteColSetting = !showQuoteColSetting"
+                    style="background: #1e293b; color: #e2e8f0; border: 1px solid #334155; padding: 5px 10px; border-radius: 6px; font-weight: 700; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap;"
+                    title="Chọn các cột hiển thị trong bảng báo giá"
+                  >
+                    <i class="lucide-settings" style="font-size: 13px; color: #38bdf8;"></i>
+                    Thiết lập hiển thị
+                  </button>
+
+                  <div
+                    v-if="showQuoteColSetting"
+                    @click.stop
+                    style="position: absolute; top: calc(100% + 6px); right: 0; width: 320px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; box-shadow: 0 12px 30px rgba(0,0,0,0.65); padding: 12px; z-index: 120;"
+                  >
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #1e293b;">
+                      <span style="font-size: 12.5px; font-weight: 700; color: #f8fafc;">Cột hiển thị bảng báo giá</span>
+                      <div style="display: flex; align-items: center; gap: 6px;">
+                        <button type="button" @click="setAllQuoteCols(true)" style="background: #1e293b; color: #10b981; border: 1px solid #334155; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer;">Tất cả</button>
+                        <button type="button" @click="showQuoteColSetting = false" style="background: transparent; color: #94a3b8; border: none; font-size: 14px; font-weight: 700; cursor: pointer; padding: 0 4px;">✕</button>
+                      </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; max-height: 260px; overflow-y: auto;">
+                      <label
+                        v-for="col in QUOTE_TABLE_COLUMNS"
+                        :key="col.key"
+                        style="display: flex; align-items: center; gap: 7px; font-size: 12px; color: #e2e8f0; cursor: pointer; padding: 4px 6px; border-radius: 4px; user-select: none;"
+                      >
+                        <input
+                          type="checkbox"
+                          v-model="quoteColVisible[col.key]"
+                          style="width: 14px; height: 14px; accent-color: #10b981; cursor: pointer; margin: 0;"
+                        />
+                        <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ col.label }}</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
+          <div v-if="showQuoteColSetting" @click="showQuoteColSetting = false" style="position: fixed; inset: 0; z-index: 30; background: transparent;"></div>
           <div class="quote-table-wrap">
             <table>
               <thead>
                 <tr style="color: #ffffff !important; font-weight: 800 !important;">
-                  <th class="col-stt" style="border-top-left-radius: 6px;">STT</th>
-                  <th class="col-pn">P/N</th>
-                  <th class="col-name">Tên hàng</th>
-                  <th class="col-desc">Diễn giải</th>
-                  <th class="col-hang">Hãng</th>
-                  <th class="col-dvt">ĐVT</th>
-                  <th class="col-sl">SL</th>
-                  <th v-if="quoteCurrency === 'USD'" class="col-dg" style="min-width: 70px;">TỈ GIÁ</th>
-                  <th class="col-dg">GIÁ OFF HÃNG</th>
-                  <th class="col-dg">LIST PRICE</th> 
-                  <th class="col-dg">GIÁ NHẬP</th>
-                  <th class="col-dg">MỨC OFF</th>
-                  <th class="col-dg">ĐƠN GIÁ (KH)</th>
-                  <th class="col-tt">TT trước thuế ({{ quoteCurrency }})</th>
-                  <th class="col-vat">VAT</th>
-                  <th class="col-tt">TT sau thuế ({{ quoteCurrency }})</th>
-                  <th class="col-tt" style="color: #ffffff !important;">Net Margin</th>
-                  <th class="col-del" style="border-top-right-radius: 6px;">Xóa</th>
+                  <th v-if="quoteColVisible.stt" class="col-stt" style="border-top-left-radius: 6px;">STT</th>
+                  <th v-if="quoteColVisible.pn" class="col-pn">P/N</th>
+                  <th v-if="quoteColVisible.ten_hang" class="col-name">Tên hàng</th>
+                  <th v-if="quoteColVisible.dien_giai" class="col-desc">Diễn giải</th>
+                  <th v-if="quoteColVisible.hang" class="col-hang">Hãng</th>
+                  <th v-if="quoteColVisible.dvt" class="col-dvt">ĐVT</th>
+                  <th v-if="quoteColVisible.sl" class="col-sl">SL</th>
+                  <th v-if="quoteCurrency === 'USD' && quoteColVisible.ti_gia" class="col-dg" style="min-width: 70px;">TỈ GIÁ</th>
+                  <th v-if="quoteColVisible.gia_off_hang" class="col-dg">GIÁ OFF HÃNG</th>
+                  <th v-if="quoteColVisible.list_price" class="col-dg">LIST PRICE</th> 
+                  <th v-if="quoteColVisible.gia_nhap" class="col-dg">GIÁ NHẬP</th>
+                  <th v-if="quoteColVisible.muc_off" class="col-dg">MỨC OFF</th>
+                  <th v-if="quoteColVisible.don_gia_kh" class="col-dg">ĐƠN GIÁ (KH)</th>
+                  <th v-if="quoteColVisible.tt_truoc_thue" class="col-tt">TT trước thuế ({{ quoteCurrency }})</th>
+                  <th v-if="quoteColVisible.vat" class="col-vat">VAT</th>
+                  <th v-if="quoteColVisible.tt_sau_thue" class="col-tt">TT sau thuế ({{ quoteCurrency }})</th>
+                  <th v-if="quoteColVisible.net_margin" class="col-tt" style="color: #ffffff !important;">Net Margin</th>
+                  <th v-if="quoteColVisible.xoa" class="col-del" style="border-top-right-radius: 6px;">Xóa</th>
                 </tr>
               </thead>
               <draggable 
@@ -8046,12 +9082,12 @@ async function confirmImport(saveToDb: boolean) {
               >
                 <template #item="{ element: r }">
                   <tr v-if="r.type === 'group'" :class="['group-row', isMobileDevice ? '' : 'drag-handle']" style="cursor: grab;" title="Kéo thả danh mục">
-                    <td class="group-stt">
+                    <td v-if="quoteColVisible.stt" class="group-stt">
                       <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
                         <i class="lucide-grip-vertical" style="opacity: 0.5;"></i> {{ r.roman }}
                       </div>
                     </td>
-                    <td :colspan="quoteCurrency === 'USD' ? 17 : 16" class="group-title">
+                    <td :colspan="Math.max(1, visibleQuoteColCount - (quoteColVisible.stt ? 1 : 0))" class="group-title">
                       <div style="display: flex; align-items: center;">
                         <span>{{ r.title }}</span>
                         <button class="util-btn small inline-normal-edit" style="margin-left: 6px; padding: 2px 6px; font-size: 11px;" @click.stop="openAdjustPrice('group', r.key, r.title, undefined, true)" title="Sửa thường - cập nhật giá thực tế">
@@ -8064,53 +9100,53 @@ async function confirmImport(saveToDb: boolean) {
                     </td>
                   </tr>
                   <tr v-else-if="r.type === 'item'" v-show="!draggingGroupKey" :class="['quote-item-row', isMobileDevice ? '' : 'drag-handle']" style="cursor: grab;" title="Nhấn giữ để kéo thả sản phẩm" :id="'quote-row-' + r.idx" @click="openQuoteEdit(r.idx)">
-                    <td data-label="STT" style="color: #ffffff; font-weight: 700;">
+                    <td v-if="quoteColVisible.stt" data-label="STT" style="color: #ffffff; font-weight: 700;">
                       <div style="display: flex; justify-content: center; align-items: center; gap: 4px;">
                         <i class="lucide-grip-vertical" style="opacity: 0.3;"></i>
                         {{ r.stt }}
                       </div>
                     </td>
-                    <td data-label="P/N" class="col-pn-cell" :title="r.item.Ma_hang" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Ma_hang')">{{ r.item.Ma_hang }}</td>
-                    <td data-label="Tên hàng" class="nowrap" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Ten_hang')">{{ r.item.Ten_hang }}</td>
-                    <td data-label="Diễn giải" class="col-desc-cell" :title="[r.item.Mo_ta_chung, r.item.Mo_ta_chi_tiet, r.item.Features].filter(Boolean).join(' - ')" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Features')">
+                    <td v-if="quoteColVisible.pn" data-label="P/N" class="col-pn-cell" :title="r.item.Ma_hang" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Ma_hang')">{{ r.item.Ma_hang }}</td>
+                    <td v-if="quoteColVisible.ten_hang" data-label="Tên hàng" class="nowrap" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Ten_hang')">{{ r.item.Ten_hang }}</td>
+                    <td v-if="quoteColVisible.dien_giai" data-label="Diễn giải" class="col-desc-cell" :title="[r.item.Mo_ta_chung, r.item.Mo_ta_chi_tiet, r.item.Features].filter(Boolean).join(' - ')" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Features')">
                       <div class="preline">
                         <div v-if="r.item.Mo_ta_chung">{{ r.item.Mo_ta_chung }}</div>
                         <div v-if="r.item.Mo_ta_chi_tiet">{{ r.item.Mo_ta_chi_tiet }}</div>
                         <div v-if="r.item.Features" v-html="r.item.Features"></div>
                       </div>
                     </td>
-                    <td data-label="Hãng" class="col-hang-cell" :title="r.item.Ten_nha_cung_cap" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Ten_nha_cung_cap')">{{ r.item.Ten_nha_cung_cap }}</td>
-                    <td data-label="ĐVT" class="col-dvt-cell" :title="r.item.DVT" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'DVT')">{{ r.item.DVT }}</td>
-                    <td data-label="SL" class="center" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'So_luong')">{{ r.item.So_luong }}</td>
-                    <td data-label="Tỉ giá" v-if="quoteCurrency === 'USD'" class="center" style="line-height: 1.3;" @click.stop="openQuoteEdit(r.idx, 'Ti_gia')">
+                    <td v-if="quoteColVisible.hang" data-label="Hãng" class="col-hang-cell" :title="r.item.Ten_nha_cung_cap" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Ten_nha_cung_cap')">{{ r.item.Ten_nha_cung_cap }}</td>
+                    <td v-if="quoteColVisible.dvt" data-label="ĐVT" class="col-dvt-cell" :title="r.item.DVT" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'DVT')">{{ r.item.DVT }}</td>
+                    <td v-if="quoteColVisible.sl" data-label="SL" class="center" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'So_luong')">{{ r.item.So_luong }}</td>
+                    <td data-label="Tỉ giá" v-if="quoteCurrency === 'USD' && quoteColVisible.ti_gia" class="center" style="line-height: 1.3;" @click.stop="openQuoteEdit(r.idx, 'Ti_gia')">
                       <div style="color: #fbbf24; font-weight: 800; font-size: 13px;">{{ formatVND(toNum(r.item.Ti_gia, 1)) }}</div>
                       <div style="font-size: 10px; color: #94a3b8; font-weight: 700;">USD</div>
                     </td>
-                    <td data-label="Giá off hãng" class="right" style="line-height: 1.3; font-weight: 700; color: #10b981;" @click.stop="openQuoteEdit(r.idx, 'Gia_tieu_chuan')">
+                    <td v-if="quoteColVisible.gia_off_hang" data-label="Giá off hãng" class="right" style="line-height: 1.3; font-weight: 700; color: #10b981;" @click.stop="openQuoteEdit(r.idx, 'Gia_tieu_chuan')">
                       <div>{{ displayGiaTieuChuan(r.item) }}</div>
                       <div class="muted" style="font-size: 11px; margin-top: 2px; color: #10b981 !important;">({{ displayGiaTieuChuanPct(r.item) }}%)</div>
                     </td>
-                    <td data-label="List Price" class="right" style="color: #10b981; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Don_gia')">{{ displayDonGiaLP(r.item) }}</td> 
-                    <td data-label="Giá nhập" class="right" style="color: #ef4444; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'gia_nhap')">{{ fmtPrice(toNum(r.item.gia_nhap, 0) * toNum(r.item.Ti_gia, 1), toNum(r.item.Ti_gia, 1)) }}</td>
-                    <td data-label="Mức off" class="right" style="line-height: 1.3; font-weight: 700; color: #ef4444;" @click.stop="openQuoteEdit(r.idx, 'muc_phan_tram_off')">
+                    <td v-if="quoteColVisible.list_price" data-label="List Price" class="right" style="color: #10b981; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Don_gia')">{{ displayDonGiaLP(r.item) }}</td> 
+                    <td v-if="quoteColVisible.gia_nhap" data-label="Giá nhập" class="right" style="color: #ef4444; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'gia_nhap')">{{ fmtPrice(toNum(r.item.gia_nhap, 0) * toNum(r.item.Ti_gia, 1), toNum(r.item.Ti_gia, 1)) }}</td>
+                    <td v-if="quoteColVisible.muc_off" data-label="Mức off" class="right" style="line-height: 1.3; font-weight: 700; color: #ef4444;" @click.stop="openQuoteEdit(r.idx, 'muc_phan_tram_off')">
                       <div>{{ displayMucOffAmount(r.item) }}</div>
                       <div class="muted" style="font-size: 11px; margin-top: 2px; color: #ef4444 !important;">(-{{ toNum(r.item.muc_phan_tram_off, 0) }}%)</div>
                     </td>
-                    <td data-label="Đơn giá (KH)" class="right" style="color: #10b981; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'unit_price_kh')">{{ fmtPrice(unitPrice(r.item), toNum(r.item.Ti_gia, 1)) }}</td>
-                    <td data-label="TT trước thuế" class="right" style="color: #10b981; font-weight: 800;" @click.stop="openQuoteEdit(r.idx, 'line_truoc_thue')">{{ fmtPrice(lineTruocThue(r.item), toNum(r.item.Ti_gia, 1)) }}</td>
-                    <td data-label="VAT" class="right" style="line-height: 1.3; color: #10b981; font-weight: 800;" @click.stop="openQuoteEdit(r.idx, 'Thue_VAT')">
+                    <td v-if="quoteColVisible.don_gia_kh" data-label="Đơn giá (KH)" class="right" style="color: #10b981; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'unit_price_kh')">{{ fmtPrice(unitPrice(r.item), toNum(r.item.Ti_gia, 1)) }}</td>
+                    <td v-if="quoteColVisible.tt_truoc_thue" data-label="TT trước thuế" class="right" style="color: #10b981; font-weight: 800;" @click.stop="openQuoteEdit(r.idx, 'line_truoc_thue')">{{ fmtPrice(lineTruocThue(r.item), toNum(r.item.Ti_gia, 1)) }}</td>
+                    <td v-if="quoteColVisible.vat" data-label="VAT" class="right" style="line-height: 1.3; color: #10b981; font-weight: 800;" @click.stop="openQuoteEdit(r.idx, 'Thue_VAT')">
                       <div>{{ fmtPrice(lineVAT(r.item), toNum(r.item.Ti_gia, 1)) }}</div>
                       <div class="muted" style="font-size: 11px; margin-top: 2px; color: #34d399 !important;">({{ toNum(r.item.Thue_VAT, 0) }}%)</div>
                     </td>
-                    <td data-label="TT sau thuế" class="right" style="color: #10b981; font-weight: 800;" @click.stop="openQuoteEdit(r.idx, 'Thue_VAT')">{{ fmtPrice(lineSauThue(r.item), toNum(r.item.Ti_gia, 1)) }}</td>
-                    <td data-label="Net Margin" class="right" :style="{ color: lineLoiNhuan(r.item) >= 0 ? '#10b981' : '#ef4444', fontWeight: 800 }">
+                    <td v-if="quoteColVisible.tt_sau_thue" data-label="TT sau thuế" class="right" style="color: #10b981; font-weight: 800;" @click.stop="openQuoteEdit(r.idx, 'Thue_VAT')">{{ fmtPrice(lineSauThue(r.item), toNum(r.item.Ti_gia, 1)) }}</td>
+                    <td v-if="quoteColVisible.net_margin" data-label="Net Margin" class="right" :style="{ color: lineLoiNhuan(r.item) >= 0 ? '#10b981' : '#ef4444', fontWeight: 800 }">
                       <div style="display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
                         <span v-if="lineLoiNhuan(r.item) >= 0" style="font-size: 12px; margin-right: 2px;">▲</span>
                         <span v-else style="font-size: 12px; margin-right: 2px;">▼</span>
                         {{ fmtPrice(Math.abs(lineLoiNhuan(r.item)), toNum(r.item.Ti_gia, 1)) }}
                       </div>
                     </td>
-                    <td data-label="Thao tác" class="center">
+                    <td v-if="quoteColVisible.xoa" data-label="Thao tác" class="center">
                       <div style="display: flex; gap: 4px; justify-content: center;">
                         <button class="btn-del" @click.stop="removeSelected(r.idx)" title="Xóa">✕</button>
                       </div>
@@ -8118,33 +9154,33 @@ async function confirmImport(saveToDb: boolean) {
                   </tr>
                 </template>
                 <template #footer>
-                  <tr class="spacer-row"><td :colspan="quoteCurrency === 'USD' ? 18 : 17" style="padding: 0; border: none; background: transparent;"></td></tr>
+                  <tr class="spacer-row"><td :colspan="visibleQuoteColCount" style="padding: 0; border: none; background: transparent;"></td></tr>
                 </template>
               </draggable>
               <tfoot>
                 <tr class="table-footer-sticky" style="background: #fadb14; font-weight: 700; color: #000000; white-space: nowrap;">
-                  <td :colspan="quoteCurrency === 'USD' ? 11 : 10" class="center" style="font-size: 14px; color: #15803d; font-weight: 900;">TỔNG CỘNG + THUẾ</td>
-                  <td class="right">
+                  <td v-if="visibleLeadingFooterColSpan > 0" :colspan="visibleLeadingFooterColSpan" class="center" style="font-size: 14px; color: #15803d; font-weight: 900;">TỔNG CỘNG + THUẾ</td>
+                  <td v-if="quoteColVisible.muc_off" class="right">
                     <span class="fast-tooltip-container" data-tooltip="Tổng Mức OFF" style="display: inline-block; padding: 2px 6px; border-radius: 12px; background: #dc2626; color: #fff; font-size: 12px; font-weight: 800; white-space: nowrap;">-{{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.off) : formatVND(totals.off) }}</span>
                   </td>
-                  <td></td>
-                  <td class="right">
+                  <td v-if="quoteColVisible.don_gia_kh"></td>
+                  <td v-if="quoteColVisible.tt_truoc_thue" class="right">
                     <span class="fast-tooltip-container" data-tooltip="Tổng TT trước thuế" style="display: inline-block; padding: 2px 6px; border-radius: 12px; background: #1d4ed8; color: #fff; font-size: 12px; font-weight: 800; white-space: nowrap;">{{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.truoc) : formatVND(totals.truoc) }}</span>
                   </td>
-                  <td class="center">
+                  <td v-if="quoteColVisible.vat" class="center">
                     <span class="fast-tooltip-container" data-tooltip="Tổng VAT" style="display: inline-block; padding: 2px 6px; border-radius: 12px; background: #1d4ed8; color: #fff; font-size: 12px; font-weight: 800; white-space: nowrap;">{{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.vat) : formatVND(totals.vat) }}</span>
                   </td>
-                  <td class="right">
+                  <td v-if="quoteColVisible.tt_sau_thue" class="right">
                     <span class="fast-tooltip-container" data-tooltip="Tổng TT sau thuế" style="display: inline-block; padding: 2px 6px; border-radius: 12px; background: #2563eb; color: #fff; font-size: 12px; font-weight: 800; white-space: nowrap;">{{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.sau) : formatVND(totals.sau) }}</span>
                   </td>
-                  <td class="right">
+                  <td v-if="quoteColVisible.net_margin" class="right">
                     <div class="fast-tooltip-container" data-tooltip="Tổng Net Margin" :style="{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px', padding: '2px 6px', borderRadius: '12px', background: totals.loi >= 0 ? '#10b981' : '#ef4444', color: '#fff', fontSize: '12px', fontWeight: 800, whiteSpace: 'nowrap' }">
                       <span v-if="totals.loi >= 0" style="font-size: 10px;">▲</span>
                       <span v-else style="font-size: 10px;">▼</span>
                       {{ quoteCurrency === 'USD' ? formatUSD(Math.abs(totalsUSD.loi)) : formatVND(Math.abs(totals.loi)) }}
                     </div>
                   </td>
-                  <td></td>
+                  <td v-if="quoteColVisible.xoa"></td>
                 </tr>
               </tfoot>
             </table>
@@ -8429,6 +9465,7 @@ async function confirmImport(saveToDb: boolean) {
     </div>
 
     <!-- ================== MODAL: THÔNG TIN KHÁCH HÀNG ================== -->
+    <input type="file" ref="customerFileInput" accept=".xlsx, .xls" style="display: none;" @change="handleCustomerFileUpload" />
     <div v-if="showCustomerDetailModal" class="modal vip-modal-overlay" @click.self="showCustomerDetailModal = false">
       <div class="modal-card modal-wide vip-modal-card" style="width: 1060px; max-width: 95vw;">
         <div class="modal-head" style="background: linear-gradient(135deg, #34d399, #10b981) !important; justify-content: center; position: relative; padding: 16px 24px; border-bottom: none; border-radius: 12px 12px 0 0;">
@@ -8439,9 +9476,13 @@ async function confirmImport(saveToDb: boolean) {
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
           <!-- LEFT: KHÁCH HÀNG -->
           <div style="background: rgba(16,185,129,0.04); border: 1px solid rgba(16,185,129,0.12); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 14px;">
-            <div style="display: flex; justify-content: flex-start; align-items: center; gap: 10px; margin-bottom: 2px;">
+            <div style="display: flex; justify-content: flex-start; align-items: center; gap: 10px; margin-bottom: 2px; flex-wrap: wrap;">
               <div style="font-size: 12px; text-transform: uppercase; font-weight: 800; color: #34d399; letter-spacing: 1px; white-space: nowrap;">KHÁCH HÀNG</div>
               <button @click="resetCustomer" style="padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 800; text-transform: uppercase; background: #ef4444; color: #ffffff; border: none; cursor: pointer; white-space: nowrap; width: fit-content; flex-shrink: 0; line-height: 1; box-shadow: 0 2px 4px rgba(239,68,68,0.3);">Reset</button>
+              <button type="button" @click="triggerCustomerFileInput" style="padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 800; text-transform: uppercase; background: #2563eb; color: #ffffff; border: none; cursor: pointer; white-space: nowrap; width: fit-content; flex-shrink: 0; line-height: 1; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 4px rgba(37,99,235,0.3);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                <span>Import File</span>
+              </button>
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
               <div style="display: flex; flex-direction: column; gap: 3px;">
@@ -8556,10 +9597,14 @@ async function confirmImport(saveToDb: boolean) {
           </div>
         </div>
         <!-- ACTIONS -->
-        <div style="padding: 16px 24px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: flex-end; gap: 12px;">
-          <button v-if="showSaveToDBBtn" @click="saveCustomerToDB" :disabled="savingCustomer" style="padding: 12px 20px; border-radius: 8px; font-weight: 700; font-size: 14px; color: #fff; background: linear-gradient(135deg, #10b981, #059669); border: none; cursor: pointer; transition: all 0.25s; letter-spacing: 0.3px; box-shadow: 0 2px 8px rgba(16,185,129,0.25); display: flex; align-items: center; gap: 6px;" onmouseover="this.style.boxShadow='0 4px 16px rgba(16,185,129,0.4)'; this.style.transform='translateY(-1px)'" onmouseout="this.style.boxShadow='0 2px 8px rgba(16,185,129,0.25)'; this.style.transform='translateY(0)'">
+        <div style="padding: 16px 24px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: flex-end; gap: 12px; flex-wrap: wrap;">
+          <button type="button" @click="triggerCustomerFileInput" style="margin-right: auto; padding: 12px 20px; border-radius: 8px; font-weight: 700; font-size: 14px; color: #fff; background: linear-gradient(135deg, #3b82f6, #2563eb); border: none; cursor: pointer; transition: all 0.25s; letter-spacing: 0.3px; box-shadow: 0 2px 8px rgba(37,99,235,0.25); display: flex; align-items: center; gap: 6px;" onmouseover="this.style.boxShadow='0 4px 16px rgba(37,99,235,0.4)'; this.style.transform='translateY(-1px)'" onmouseout="this.style.boxShadow='0 2px 8px rgba(37,99,235,0.25)'; this.style.transform='translateY(0)'">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            <span>IMPORT KHÁCH HÀNG</span>
+          </button>
+          <button v-if="showSaveToDBBtn" @click="saveCustomerToDB(true)" :disabled="savingCustomer" style="padding: 12px 20px; border-radius: 8px; font-weight: 700; font-size: 14px; color: #fff; background: linear-gradient(135deg, #10b981, #059669); border: none; cursor: pointer; transition: all 0.25s; letter-spacing: 0.3px; box-shadow: 0 2px 8px rgba(16,185,129,0.25); display: flex; align-items: center; gap: 6px;" onmouseover="this.style.boxShadow='0 4px 16px rgba(16,185,129,0.4)'; this.style.transform='translateY(-1px)'" onmouseout="this.style.boxShadow='0 2px 8px rgba(16,185,129,0.25)'; this.style.transform='translateY(0)'">
             <span v-if="savingCustomer">⏳ Đang lưu...</span>
-            <span v-else>💾 THÊM VÀO DB</span>
+            <span v-else>{{ isCustomerInDB ? '💾 LƯU KHÁCH HÀNG' : '💾 THÊM VÀO DB' }}</span>
           </button>
           <button @click="showCustomerDetailModal = false" style="padding: 12px 20px; border-radius: 8px; font-weight: 700; font-size: 14px; color: #fff; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); cursor: pointer; transition: all 0.25s; letter-spacing: 0.3px;">Đóng</button>
         </div>
@@ -10315,9 +11360,16 @@ async function confirmImport(saveToDb: boolean) {
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
           <!-- LEFT: KHÁCH HÀNG -->
           <div style="background: rgba(16,185,129,0.04); border: 1px solid rgba(16,185,129,0.12); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 14px;">
-            <div style="display: flex; justify-content: flex-start; align-items: center; gap: 10px; margin-bottom: 2px;">
+            <div style="display: flex; justify-content: flex-start; align-items: center; gap: 10px; margin-bottom: 2px; flex-wrap: wrap;">
               <div style="font-size: 12px; text-transform: uppercase; font-weight: 800; color: #34d399; letter-spacing: 1px; white-space: nowrap;">KHÁCH HÀNG</div>
               <button @click="resetCustomer" style="padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 800; text-transform: uppercase; background: #ef4444; color: #ffffff; border: none; cursor: pointer; white-space: nowrap; width: fit-content; flex-shrink: 0; line-height: 1; box-shadow: 0 2px 4px rgba(239,68,68,0.3);">Reset</button>
+              <button type="button" @click="triggerCustomerFileInput" style="padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 800; text-transform: uppercase; background: #2563eb; color: #ffffff; border: none; cursor: pointer; white-space: nowrap; width: fit-content; flex-shrink: 0; line-height: 1; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 4px rgba(37,99,235,0.3);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                <span>Import File</span>
+              </button>
+              <button v-if="showSaveToDBBtn" type="button" @click="saveCustomerToDB(false)" :disabled="savingCustomer" style="padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 800; text-transform: uppercase; background: #10b981; color: #ffffff; border: none; cursor: pointer; white-space: nowrap; width: fit-content; flex-shrink: 0; line-height: 1; box-shadow: 0 2px 4px rgba(16,185,129,0.3);">
+                {{ savingCustomer ? '⏳ Đang lưu...' : (isCustomerInDB ? '💾 Lưu khách hàng' : '💾 Thêm vào DB') }}
+              </button>
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
               <div style="display: flex; flex-direction: column; gap: 3px;">
@@ -11254,6 +12306,255 @@ async function confirmImport(saveToDb: boolean) {
       <div style="position: relative; max-width: 95vw; max-height: 95vh; display: flex; justify-content: center; align-items: center;">
         <button style="position: absolute; top: -40px; right: 0; background: none; border: none; color: #fff; cursor: pointer; font-size: 24px; z-index: 10;" @click="showKasperskyImageFullscreen = false" title="Đóng"><i class="fas fa-times"></i></button>
         <img :src="previewImageLink" style="max-width: 100%; max-height: 90vh; border-radius: 8px; box-shadow: 0 0 40px rgba(0,0,0,0.5);" />
+      </div>
+    </div>
+
+    <!-- ================== MODAL BÁO GIÁ BẰNG GIỌNG NÓI ================== -->
+    <div v-if="showVoiceQuoteModal" class="modal-overlay" @click.self="closeVoiceQuoteModal" style="z-index: 100020; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; padding: 16px;">
+      <div class="modal-content" style="width: 100%; max-width: 820px; max-height: 90vh; background: #1e293b; border: 1px solid #334155; border-radius: 12px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); display: flex; flex-direction: column; overflow: hidden; color: #f8fafc;">
+        <!-- Header -->
+        <div style="padding: 14px 20px; background: #0f172a; border-bottom: 1px solid #334155; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+          <h3 style="margin: 0; font-size: 15px; font-weight: 700; color: #ffffff; display: flex; align-items: center; gap: 8px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" x2="12" y1="19" y2="22"></line></svg>
+            Báo giá bằng giọng nói
+          </h3>
+          <button @click="closeVoiceQuoteModal" style="background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 16px; padding: 4px;" title="Đóng">✕</button>
+        </div>
+
+        <!-- Body -->
+        <div style="padding: 20px; overflow-y: auto; -webkit-overflow-scrolling: touch; flex: 1; display: flex; flex-direction: column; gap: 16px;">
+          <!-- Thông báo lỗi (nếu có) -->
+          <div v-if="voiceErrorMsg" style="padding: 10px 14px; border-radius: 8px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.35); color: #fde68a; font-size: 12.5px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+            <span>{{ voiceErrorMsg }}</span>
+            <button @click="voiceErrorMsg = ''" style="background: transparent; border: none; color: #fde68a; cursor: pointer; font-weight: 700;">✕</button>
+          </div>
+
+          <!-- BƯỚC 1: GHI ÂM & XÁC NHẬN VĂN BẢN -->
+          <div v-if="voiceQuoteStep === 1" style="display: flex; flex-direction: column; gap: 16px;">
+            <div style="padding: 16px; border-radius: 8px; background: #0f172a; border: 1px solid #334155; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+              <div style="display: flex; align-items: center; gap: 14px; flex: 1; min-width: 240px;">
+                <button
+                  type="button"
+                  @click="toggleVoiceRecording"
+                  :style="{
+                    width: '46px',
+                    height: '46px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#fff',
+                    flexShrink: 0,
+                    background: isVoiceListening ? '#ef4444' : '#10b981',
+                    boxShadow: isVoiceListening ? '0 0 0 4px rgba(239, 68, 68, 0.25)' : 'none',
+                    transition: 'all 0.2s'
+                  }"
+                  :title="isVoiceListening ? 'Dừng thu âm' : 'Bắt đầu thu âm'"
+                >
+                  <svg v-if="!isVoiceListening" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" x2="12" y1="19" y2="22"></line><line x1="8" x2="16" y1="22" y2="22"></line></svg>
+                  <svg v-else xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="#ffffff" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>
+                </button>
+                <div>
+                  <div style="font-size: 13.5px; font-weight: 600;" :style="{ color: isVoiceListening ? '#fca5a5' : '#f8fafc' }">
+                    {{ isVoiceListening ? 'Đang nghe... Nhấn lần nữa để dừng' : 'Nhấn nút thu âm và đọc tên/mã hàng cần báo giá' }}
+                  </div>
+                  <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">
+                    Ví dụ: "Báo giá cho tao XGS118 với XGS330"
+                  </div>
+                  <div v-if="voiceInterimText" style="margin-top: 6px; font-size: 12.5px; color: #38bdf8; font-style: italic;">
+                    {{ voiceInterimText }}
+                  </div>
+                </div>
+              </div>
+
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button v-if="!isVoiceListening && voiceTranscript" type="button" @click="startVoiceRecording(false)" style="background: #1e293b; color: #cbd5e1; border: 1px solid #334155; padding: 7px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">
+                  Ghi âm lại
+                </button>
+                <button v-if="!isVoiceListening && voiceTranscript" type="button" @click="startVoiceRecording(true)" style="background: #1e293b; color: #38bdf8; border: 1px solid #334155; padding: 7px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">
+                  Nói thêm
+                </button>
+                <button v-if="isVoiceListening" type="button" @click="stopVoiceRecording" style="background: #ef4444; color: #fff; border: none; padding: 7px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">
+                  Dừng thu
+                </button>
+              </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <label style="font-size: 12px; font-weight: 600; color: #cbd5e1;">
+                Nội dung văn bản (có thể chỉnh sửa lại trước khi xác nhận):
+              </label>
+              <textarea
+                v-model="voiceTranscript"
+                rows="3"
+                placeholder="Nội dung thu âm sẽ hiển thị tại đây, hoặc nhập trực tiếp..."
+                style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #f8fafc; font-size: 13.5px; line-height: 1.5; outline: none; resize: vertical;"
+              ></textarea>
+            </div>
+          </div>
+
+          <!-- BƯỚC 2: ĐANG PHÂN TÍCH -->
+          <div v-else-if="voiceQuoteStep === 2" style="padding: 36px 20px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px;">
+            <div style="width: 36px; height: 36px; border: 3px solid #334155; border-top-color: #10b981; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+            <div style="font-size: 14px; font-weight: 600; color: #e2e8f0;">
+              Đang phân tích mặt hàng và đối chiếu kho sản phẩm...
+            </div>
+            <div style="font-size: 12.5px; color: #94a3b8;">
+              "{{ voiceTranscript }}"
+            </div>
+          </div>
+
+          <!-- BƯỚC 3: XÁC NHẬN MẶT HÀNG & HÀNG LIÊN QUAN -->
+          <div v-else-if="voiceQuoteStep === 3" style="display: flex; flex-direction: column; gap: 12px;">
+            <div style="padding: 10px 14px; border-radius: 8px; background: #0f172a; border: 1px solid #334155; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+              <div style="font-size: 12.5px; color: #cbd5e1;">
+                <span style="color: #94a3b8;">Nội dung:</span> <strong style="color: #f8fafc;">"{{ voiceTranscript }}"</strong>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <button type="button" @click="voiceQuoteStep = 1" style="background: #1e293b; color: #cbd5e1; border: 1px solid #334155; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">
+                  Sửa văn bản
+                </button>
+                <button type="button" @click="addManualVoiceGroup" style="background: #1e293b; color: #38bdf8; border: 1px solid #334155; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">
+                  + Thêm từ khóa
+                </button>
+              </div>
+            </div>
+
+            <div v-for="(group, gIdx) in voiceExtractedGroups" :key="group.id" style="border: 1px solid #334155; border-radius: 8px; background: #0f172a; overflow: hidden;">
+              <!-- Thanh từ khóa tìm kiếm của từng mặt hàng -->
+              <div style="padding: 8px 12px; background: rgba(30, 41, 59, 0.7); border-bottom: 1px solid #334155; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: 1;">
+                  <span style="font-size: 12px; font-weight: 700; color: #94a3b8;">
+                    #{{ gIdx + 1 }}
+                  </span>
+                  <input
+                    type="text"
+                    v-model="group.searchKeyword"
+                    @keyup.enter="refreshGroupCandidates(group)"
+                    placeholder="Mã hoặc tên hàng..."
+                    style="padding: 5px 10px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #f8fafc; font-size: 12.5px; font-weight: 600; min-width: 180px; outline: none;"
+                  />
+                  <div style="display: flex; align-items: center; gap: 4px; font-size: 12px; color: #94a3b8;">
+                    <span>SL:</span>
+                    <input
+                      type="number"
+                      min="1"
+                      v-model.number="group.requestedQty"
+                      @change="refreshGroupCandidates(group)"
+                      style="width: 54px; padding: 4px 6px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #f8fafc; font-weight: 600; text-align: center; outline: none;"
+                    />
+                  </div>
+                  <button type="button" @click="refreshGroupCandidates(group)" style="background: #3b82f6; color: #fff; border: none; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">
+                    Tìm lại
+                  </button>
+                </div>
+                <button v-if="voiceExtractedGroups.length > 1" type="button" @click="removeVoiceGroup(gIdx)" style="background: transparent; color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 4px 8px; border-radius: 6px; font-size: 11.5px; cursor: pointer;">
+                  Xóa
+                </button>
+              </div>
+
+              <!-- Danh sách mặt hàng khớp & hàng liên quan (chỉ hiện Tên : Giá) -->
+              <div style="padding: 8px 12px;">
+                <div v-if="group.candidates.length === 0" style="padding: 12px; text-align: center; color: #94a3b8; font-size: 12.5px;">
+                  Không tìm thấy sản phẩm khớp với "{{ group.searchKeyword }}".
+                </div>
+
+                <div v-else style="display: flex; flex-direction: column; gap: 6px;">
+                  <div
+                    v-for="(cand, cIdx) in group.candidates"
+                    :key="cand.product.Ma_hang + '_' + cIdx"
+                    @click="cand.selected = !cand.selected"
+                    :style="{
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      border: cand.selected ? '1px solid rgba(16, 185, 129, 0.5)' : '1px solid #1e293b',
+                      background: cand.selected ? 'rgba(16, 185, 129, 0.08)' : '#1e293b',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '12px',
+                      cursor: 'pointer',
+                      flexWrap: 'wrap'
+                    }"
+                  >
+                    <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 220px;">
+                      <input
+                        type="checkbox"
+                        v-model="cand.selected"
+                        @click.stop
+                        style="width: 16px; height: 16px; accent-color: #10b981; cursor: pointer; flex-shrink: 0;"
+                      />
+                      <div style="font-size: 13px; color: #f8fafc; line-height: 1.4;">
+                        <span style="font-weight: 600;">{{ cand.product.Ten_hang }}</span>
+                        <span style="color: #94a3b8; margin: 0 6px;">:</span>
+                        <span style="font-weight: 700; color: #10b981;">{{ formatVND(getProductWithPriceList(cand.product).Don_gia) }}</span>
+                      </div>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 6px;" @click.stop>
+                      <span style="font-size: 11.5px; color: #94a3b8;">SL:</span>
+                      <input
+                        type="number"
+                        min="1"
+                        v-model.number="cand.quantity"
+                        style="width: 54px; padding: 4px 6px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #f8fafc; font-weight: 600; text-align: center; outline: none;"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="padding: 14px 20px; background: #0f172a; border-top: 1px solid #334155; display: flex; align-items: center; justify-content: flex-end; gap: 10px;">
+          <button type="button" @click="closeVoiceQuoteModal" style="padding: 8px 16px; border-radius: 8px; border: 1px solid #334155; background: transparent; color: #cbd5e1; cursor: pointer; font-weight: 600; font-size: 13px;">
+            Đóng
+          </button>
+
+          <button
+            v-if="voiceQuoteStep === 1"
+            type="button"
+            @click="confirmVoiceTextAndAnalyze"
+            :disabled="!voiceTranscript.trim() && !voiceInterimText.trim()"
+            :style="{
+              opacity: (!voiceTranscript.trim() && !voiceInterimText.trim()) ? 0.5 : 1,
+              cursor: (!voiceTranscript.trim() && !voiceInterimText.trim()) ? 'not-allowed' : 'pointer',
+              padding: '8px 18px',
+              borderRadius: '8px',
+              border: 'none',
+              background: '#10b981',
+              color: '#ffffff',
+              fontWeight: 700,
+              fontSize: '13px'
+            }"
+          >
+            Xác nhận & Phân tích
+          </button>
+
+          <button
+            v-else-if="voiceQuoteStep === 3"
+            type="button"
+            @click="confirmAddVoiceItemsToQuote"
+            :disabled="totalSelectedVoiceCandidates === 0"
+            :style="{
+              opacity: totalSelectedVoiceCandidates === 0 ? 0.5 : 1,
+              cursor: totalSelectedVoiceCandidates === 0 ? 'not-allowed' : 'pointer',
+              padding: '8px 18px',
+              borderRadius: '8px',
+              border: 'none',
+              background: '#10b981',
+              color: '#ffffff',
+              fontWeight: 700,
+              fontSize: '13px'
+            }"
+          >
+            Thêm vào báo giá ({{ totalSelectedVoiceCandidates }})
+          </button>
+        </div>
       </div>
     </div>
 </template>

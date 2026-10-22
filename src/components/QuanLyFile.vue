@@ -1921,7 +1921,12 @@
     <div v-if="isCustomerModalOpen" class="elite-modal-overlay" @click.self="isCustomerModalOpen = false" style="position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 60;">
       <div class="elite-modal report-form-modal customer-modal">
         <div class="elite-modal-header">
-          <div class="elite-modal-title" style="display: flex; align-items: flex-start; gap: 0.6rem;"><h2>{{ customerFormData.id ? 'Sửa Khách Hàng' : 'Tạo Khách Hàng Mới' }}</h2></div>
+          <div class="elite-modal-title" style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+            <h2>{{ customerFormData.id ? 'Sửa Khách Hàng' : 'Tạo Khách Hàng Mới' }}</h2>
+            <span v-if="customerFormData.id && (customerFormData.last_updated || customerFormData.created_time || customerFormData.createdAt)" style="font-size: 12px; color: #475569; background: #f1f5f9; border: 1px solid #cbd5e1; padding: 3px 10px; border-radius: 99px; font-weight: 500;">
+              🕒 Cập nhật cuối: <strong style="color: #0284c7;">{{ formatCustomerLastUpdated(customerFormData.last_updated || customerFormData.created_time || customerFormData.createdAt) }}</strong>
+            </span>
+          </div>
           <button class="elite-btn-close" @click="isCustomerModalOpen = false">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           </button>
@@ -4890,10 +4895,12 @@ const saveTagEdit = async (oldTagName) => {
   }
   
   const updates = {}
+  const nowIso = new Date().toISOString()
   customers.value.forEach(c => {
     if (c.tagKH && c.tagKH.includes(oldTagName)) {
       const newTags = c.tagKH.map(t => t === oldTagName ? newTagName : t)
       updates[`khach_hang/${c.id}/tagKH`] = newTags
+      updates[`khach_hang/${c.id}/last_updated`] = nowIso
     }
   })
   
@@ -4913,10 +4920,12 @@ const deleteTagGlobal = async (tagName) => {
   if (!confirmDel) return
   
   const updates = {}
+  const nowIso = new Date().toISOString()
   customers.value.forEach(c => {
     if (c.tagKH && c.tagKH.includes(tagName)) {
       const newTags = c.tagKH.filter(t => t !== tagName)
       updates[`khach_hang/${c.id}/tagKH`] = newTags
+      updates[`khach_hang/${c.id}/last_updated`] = nowIso
     }
   })
   
@@ -4948,9 +4957,20 @@ const defaultCustomerForm = {
   ghi_chu: '',
   hoa_hong: '',
   cong_no: 0,
-  trang_thai: 'Active'
+  trang_thai: 'Active',
+  last_updated: ''
 }
 const customerFormData = ref({ ...defaultCustomerForm })
+
+const formatCustomerLastUpdated = (val) => {
+  if (!val && val !== 0) return 'Chưa ghi nhận'
+  const rawStr = String(val).trim()
+  if (!rawStr) return 'Chưa ghi nhận'
+  const dt = /^\d+$/.test(rawStr) ? new Date(Number(rawStr)) : new Date(rawStr)
+  if (isNaN(dt.getTime())) return rawStr
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${pad(dt.getDate())}/${pad(dt.getMonth() + 1)}/${dt.getFullYear()} ${pad(dt.getHours())}:${pad(dt.getMinutes())}`
+}
 
 const defaultForm = {
   maKH: '',
@@ -5055,11 +5075,13 @@ const saveNewCustomer = async () => {
     return
   }
   try {
+    const nowIso = new Date().toISOString();
     if (customerFormData.value.id) {
       const cusRef = dbRef(db, 'khach_hang/' + customerFormData.value.id);
       const dataToSave = {
         ...customerFormData.value,
-        cong_no: Number(customerFormData.value.cong_no || 0)
+        cong_no: Number(customerFormData.value.cong_no || 0),
+        last_updated: nowIso
       };
       delete dataToSave.id;
       await update(cusRef, dataToSave);
@@ -5069,7 +5091,8 @@ const saveNewCustomer = async () => {
       await set(newCusRef, {
         ...customerFormData.value,
         cong_no: Number(customerFormData.value.cong_no || 0),
-        created_time: Date.now()
+        created_time: Date.now(),
+        last_updated: nowIso
       });
       await showAlert('Tạo khách hàng mới thành công!');
     }
@@ -8539,6 +8562,7 @@ async function updateCurrentDbCustomerNameFromCraft(targetItem) {
   try {
     deepUnproxyFirebaseObj(db)
     if (Object.keys(updates).length > 0) {
+      updates.last_updated = new Date().toISOString()
       await update(dbRef(db, 'khach_hang/' + fileCus.id), toPlainFirebaseData(updates))
     }
     item.linkedMaKH = fixedMaKH
@@ -8595,6 +8619,7 @@ async function resolveMismatchUseModalCraft(targetItem) {
     }
     if (Object.keys(khUpdates).length > 0 && matchedCus.id) {
       try {
+        khUpdates.last_updated = new Date().toISOString()
         await update(dbRef(db, 'khach_hang/' + matchedCus.id), toPlainFirebaseData(khUpdates))
       } catch (e) {
         console.warn('Lỗi cập nhật thông tin KH từ Craft:', e)
@@ -8622,7 +8647,8 @@ async function resolveMismatchUseModalCraft(targetItem) {
         doanh_so: 0,
         cong_no: 0,
         ghi_chu: 'Tạo tự động từ Sale Report Craft',
-        createdAt: Date.now()
+        createdAt: Date.now(),
+        last_updated: new Date().toISOString()
       }))
     } catch (e) {
       console.warn('Lỗi tạo mới KH từ Craft:', e)
@@ -9513,6 +9539,7 @@ async function upsertCustomerFromCraftItem(item) {
 
     if (Object.keys(khUpdates).length > 0 && existingCus.id) {
       try {
+        khUpdates.last_updated = new Date().toISOString()
         await update(dbRef(db, 'khach_hang/' + existingCus.id), toPlainFirebaseData(khUpdates))
       } catch (e) {
         console.warn('Lỗi cập nhật khach_hang từ Craft:', e)
@@ -9570,7 +9597,8 @@ async function upsertCustomerFromCraftItem(item) {
         doanh_so: 0,
         cong_no: 0,
         ghi_chu: 'Tạo tự động từ Sale Report / Báo giá',
-        createdAt: Date.now()
+        createdAt: Date.now(),
+        last_updated: new Date().toISOString()
       })
       await set(newKhRef, newKhPayload)
       item.linkedMaKH = maKHGen
@@ -10164,7 +10192,8 @@ const saveFile = async () => {
         trang_thai: 'Tiềm năng',
         tagKH: [],
         cong_no: 0,
-        created_time: Date.now()
+        created_time: Date.now(),
+        last_updated: new Date().toISOString()
       })
     } else {
       // Bỏ update tagKH ở đây vì nhóm KH được quản lý riêng trong modal Khách hàng

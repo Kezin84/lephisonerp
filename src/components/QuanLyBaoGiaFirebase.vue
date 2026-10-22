@@ -3232,7 +3232,8 @@ async function postApi(action: string, payload: any) {
           tong_chi_tieu: curChiTieu + tongSau,
           Tong_chi_tieu: curChiTieu + tongSau,
           tong_loi_nhuan: congNoCu + ps,
-          Tong_loi_nhuan: congNoCu + ps
+          Tong_loi_nhuan: congNoCu + ps,
+          last_updated: new Date().toISOString()
         })
       }
     }

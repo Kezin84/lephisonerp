@@ -2,41 +2,77 @@
   <div class="quan-ly-mau-in" @click="closeFloatingMenus">
     <!-- HEADER -->
     <div class="page-header">
-      <div class="header-left">
-        <h1 class="page-title">Thiết lập Mẫu In Báo Giá</h1>
-        <p class="page-subtitle">
-          Thao tác trực tiếp trên bảng lưới bên trái và đối chiếu kết quả trực quan ngay bên phải
-        </p>
+      <div class="header-top-row">
+        <div class="header-left">
+          <h1 class="page-title">Thiết lập Mẫu In Báo Giá</h1>
+          <p class="page-subtitle">
+            Thao tác trực tiếp trên bảng lưới bên trái và đối chiếu kết quả trực quan ngay bên phải
+          </p>
+        </div>
+
+        <div class="header-actions" v-if="activeTpl">
+          <!-- NÚT CHỌN MẪU IN (MỞ MODAL QUẢN LÝ MẪU) -->
+          <button class="btn btn-template-picker" @click="showTemplateModal = true" title="Bấm để đổi mẫu in, tạo mẫu mới hoặc import file Excel">
+            <span class="picker-label">Mẫu đang chọn:</span>
+            <strong class="picker-name">{{ activeTpl.ten_mau || 'Mẫu in' }}</strong>
+            <span v-if="activeTpl.mac_dinh" class="picker-default-tag">Mặc định</span>
+            <span class="picker-count">({{ templates.length }} mẫu)</span>
+          </button>
+
+          <button class="btn btn-indigo" @click="showTokenModal = !showTokenModal">
+            <span>Kho Token</span>
+          </button>
+
+          <button class="btn btn-blue" @click="showSettingsModal = true">
+            <span>Cấu hình Trang &amp; Người lập</span>
+          </button>
+
+          <button class="btn btn-secondary" @click="handleRestoreStandardHeader" title="Điền lại khung Header chuẩn vào lưới">
+            <span>Khôi phục Header</span>
+          </button>
+
+          <button class="btn btn-emerald" @click="handleSaveCurrentTemplate" :disabled="saving">
+            <span v-if="saving" class="spinner"></span>
+            <span>Lưu Mẫu In</span>
+          </button>
+
+          <button class="btn btn-ghost" @click="router.push('/baogiafirebase')">
+            <span>Về trang Báo giá</span>
+          </button>
+        </div>
       </div>
 
-      <div class="header-actions" v-if="activeTpl">
-        <!-- NÚT CHỌN MẪU IN (MỞ MODAL QUẢN LÝ MẪU) -->
-        <button class="btn btn-template-picker" @click="showTemplateModal = true" title="Bấm để đổi mẫu in, tạo mẫu mới hoặc import file Excel">
-          <span class="picker-label">Mẫu đang chọn:</span>
-          <strong class="picker-name">{{ activeTpl.ten_mau }}</strong>
-          <span v-if="activeTpl.mac_dinh" class="picker-default-tag">Mặc định</span>
-          <span class="picker-count">({{ templates.length }} mẫu)</span>
-        </button>
-
-        <button class="btn btn-indigo" @click="showTokenModal = !showTokenModal">
-          <span>Kho Token</span>
-        </button>
-
-        <button class="btn btn-blue" @click="showSettingsModal = true">
-          <span>Cấu hình Trang &amp; Người lập</span>
-        </button>
-
-        <button class="btn btn-secondary" @click="handleRestoreStandardHeader" title="Điền lại khung Header chuẩn vào lưới">
-          <span>Khôi phục Header</span>
-        </button>
-
-        <button class="btn btn-emerald" @click="handleSaveCurrentTemplate" :disabled="saving">
+      <!-- THANH SỬA NHANH TÊN MẪU IN & GHI CHÚ MẪU IN -->
+      <div v-if="activeTpl" class="header-meta-bar">
+        <div class="header-meta-field meta-name-field">
+          <label>Tên mẫu in:</label>
+          <input
+            v-model="activeTpl.ten_mau"
+            type="text"
+            placeholder="Nhập tên mẫu in..."
+            @input="syncActiveMetaToList"
+            @keyup.enter="handleSaveCurrentTemplate"
+          />
+        </div>
+        <div class="header-meta-field meta-note-field">
+          <label>Ghi chú mẫu in:</label>
+          <input
+            v-model="activeTpl.ghi_chu"
+            type="text"
+            placeholder="Nhập ghi chú / mô tả cho mẫu in này..."
+            @input="syncActiveMetaToList"
+            @keyup.enter="handleSaveCurrentTemplate"
+          />
+        </div>
+        <button
+          type="button"
+          class="btn btn-emerald header-meta-save-btn"
+          :disabled="saving"
+          @click="handleSaveCurrentTemplate"
+          title="Lưu tên mẫu in, ghi chú và toàn bộ thiết lập hiện tại"
+        >
           <span v-if="saving" class="spinner"></span>
-          <span>Lưu Mẫu In</span>
-        </button>
-
-        <button class="btn btn-ghost" @click="router.push('/baogiafirebase')">
-          <span>Về trang Báo giá</span>
+          <span>Lưu tên &amp; ghi chú</span>
         </button>
       </div>
     </div>
@@ -616,9 +652,20 @@
         <div class="modal-head">
           <div>
             <h3>Chọn &amp; Quản lý Mẫu In Báo Giá</h3>
-            <p>Chọn mẫu đang có, đổi tên mẫu hiện tại, tạo mẫu mới hoặc tải lên file Excel (.xlsx)</p>
+            <p>Chọn mẫu đang có, sửa tên &amp; ghi chú mẫu in, tạo mẫu mới hoặc tải lên file Excel (.xlsx)</p>
           </div>
-          <button class="modal-close-btn" @click="showTemplateModal = false">Đóng</button>
+          <div class="modal-head-actions">
+            <button
+              type="button"
+              class="btn btn-emerald"
+              :disabled="saving"
+              @click="handleSaveCurrentTemplate"
+            >
+              <span v-if="saving" class="spinner"></span>
+              <span>Lưu Mẫu In</span>
+            </button>
+            <button class="modal-close-btn" @click="showTemplateModal = false">Đóng</button>
+          </div>
         </div>
 
         <div class="modal-body">
@@ -626,11 +673,34 @@
           <div class="current-tpl-edit-box">
             <div class="form-field">
               <label>Tên mẫu đang chọn</label>
-              <input v-model="activeTpl.ten_mau" type="text" placeholder="Nhập tên mẫu in..." />
+              <input
+                v-model="activeTpl.ten_mau"
+                type="text"
+                placeholder="Nhập tên mẫu in..."
+                @input="syncActiveMetaToList"
+                @keyup.enter="handleSaveCurrentTemplate"
+              />
             </div>
             <div class="form-field">
               <label>Ghi chú / Mô tả mẫu</label>
-              <input v-model="activeTpl.ghi_chu" type="text" placeholder="Mô tả ngắn..." />
+              <input
+                v-model="activeTpl.ghi_chu"
+                type="text"
+                placeholder="Mô tả ngắn..."
+                @input="syncActiveMetaToList"
+                @keyup.enter="handleSaveCurrentTemplate"
+              />
+            </div>
+            <div class="current-tpl-save-col">
+              <button
+                type="button"
+                class="btn btn-emerald current-tpl-save-btn"
+                :disabled="saving"
+                @click="handleSaveCurrentTemplate"
+              >
+                <span v-if="saving" class="spinner"></span>
+                <span>Lưu tên &amp; ghi chú</span>
+              </button>
             </div>
           </div>
 
@@ -661,7 +731,7 @@
               :key="tpl.id"
               class="tpl-card"
               :class="{ active: activeTpl && activeTpl.id === tpl.id, isDefault: tpl.mac_dinh }"
-              @click="selectTemplate(tpl); showTemplateModal = false"
+              @click="handleSelectCardInModal(tpl)"
             >
               <div class="tpl-card-top">
                 <span class="tpl-type-badge" :class="tpl.loai_mau">
@@ -669,13 +739,63 @@
                 </span>
                 <span v-if="tpl.mac_dinh" class="tpl-default-badge">Mặc định</span>
               </div>
-              <div class="tpl-card-name">{{ tpl.ten_mau }}</div>
-              <div class="tpl-card-meta">
-                <span>{{ tpl.so_dong }} dòng x {{ tpl.so_cot }} cột</span>
-                <span>• {{ tpl.cau_hinh_trang?.kho_giay || 'A4' }} ({{ tpl.cau_hinh_trang?.huong_giay === 'portrait' ? 'Dọc' : 'Ngang' }})</span>
+
+              <!-- Chế độ sửa trực tiếp Tên & Ghi chú trên thẻ mẫu in -->
+              <div v-if="editingCardId === tpl.id" class="tpl-card-inline-edit" @click.stop>
+                <div class="form-field">
+                  <label>Tên mẫu in</label>
+                  <input
+                    v-model="editCardName"
+                    type="text"
+                    placeholder="Nhập tên mẫu in..."
+                    @keyup.enter="saveCardMeta(tpl)"
+                  />
+                </div>
+                <div class="form-field">
+                  <label>Ghi chú mẫu in</label>
+                  <input
+                    v-model="editCardNote"
+                    type="text"
+                    placeholder="Nhập ghi chú mẫu in..."
+                    @keyup.enter="saveCardMeta(tpl)"
+                  />
+                </div>
+                <div class="tpl-card-inline-actions">
+                  <button
+                    type="button"
+                    class="mini-btn mini-save"
+                    :disabled="saving"
+                    @click="saveCardMeta(tpl)"
+                  >
+                    Lưu
+                  </button>
+                  <button
+                    type="button"
+                    class="mini-btn"
+                    @click="cancelEditCardMeta"
+                  >
+                    Hủy
+                  </button>
+                </div>
               </div>
-              <div class="tpl-card-note" v-if="tpl.ghi_chu">{{ tpl.ghi_chu }}</div>
+
+              <template v-else>
+                <div class="tpl-card-name">{{ tpl.ten_mau }}</div>
+                <div class="tpl-card-meta">
+                  <span>{{ tpl.so_dong }} dòng x {{ tpl.so_cot }} cột</span>
+                  <span>• {{ tpl.cau_hinh_trang?.kho_giay || 'A4' }} ({{ tpl.cau_hinh_trang?.huong_giay === 'portrait' ? 'Dọc' : 'Ngang' }})</span>
+                </div>
+                <div class="tpl-card-note" v-if="tpl.ghi_chu">{{ tpl.ghi_chu }}</div>
+                <div class="tpl-card-note tpl-card-note-empty" v-else>Chưa có ghi chú mẫu in</div>
+              </template>
+
               <div class="tpl-card-actions" @click.stop>
+                <button
+                  class="mini-btn mini-edit"
+                  @click="startEditCardMeta(tpl)"
+                >
+                  Sửa tên / ghi chú
+                </button>
                 <button
                   v-if="!tpl.mac_dinh"
                   class="mini-btn mini-star"
@@ -715,14 +835,47 @@
             <h3>Cấu hình Trang in, Logo &amp; Thông tin Người lập</h3>
             <p>Mọi thay đổi sẽ tự động cập nhật trực tiếp lên Bảng lưới và Khung xem trước</p>
           </div>
-          <button class="modal-close-btn" @click="showSettingsModal = false">Đóng</button>
+          <div class="modal-head-actions">
+            <button
+              type="button"
+              class="btn btn-emerald"
+              :disabled="saving"
+              @click="handleSaveCurrentTemplate"
+            >
+              <span v-if="saving" class="spinner"></span>
+              <span>Lưu Mẫu In</span>
+            </button>
+            <button class="modal-close-btn" @click="showSettingsModal = false">Đóng</button>
+          </div>
         </div>
 
         <div class="modal-body">
           <div class="settings-grid">
             <!-- CARD 1: KHỔ GIẤY & LOGO CLOUDINARY -->
             <div class="settings-card">
-              <h4>Cấu hình Trang in &amp; Logo Công ty</h4>
+              <h4>Thông tin Mẫu in, Trang in &amp; Logo Công ty</h4>
+              <div class="form-row-2">
+                <div class="form-field">
+                  <label>Tên mẫu in</label>
+                  <input
+                    v-model="activeTpl.ten_mau"
+                    type="text"
+                    placeholder="Nhập tên mẫu in..."
+                    @input="syncActiveMetaToList"
+                    @keyup.enter="handleSaveCurrentTemplate"
+                  />
+                </div>
+                <div class="form-field">
+                  <label>Ghi chú / Mô tả mẫu in</label>
+                  <input
+                    v-model="activeTpl.ghi_chu"
+                    type="text"
+                    placeholder="Nhập ghi chú mẫu in..."
+                    @input="syncActiveMetaToList"
+                    @keyup.enter="handleSaveCurrentTemplate"
+                  />
+                </div>
+              </div>
               <div class="form-row-2">
                 <div class="form-field">
                   <label>Khổ giấy</label>
@@ -2773,6 +2926,68 @@ async function loadTemplates(notify = false) {
   }
 }
 
+const editingCardId = ref<string | null>(null)
+const editCardName = ref('')
+const editCardNote = ref('')
+
+function syncActiveMetaToList() {
+  if (!activeTpl.value) return
+  const idx = templates.value.findIndex(t => t.id === activeTpl.value!.id)
+  if (idx >= 0) {
+    templates.value[idx].ten_mau = activeTpl.value.ten_mau
+    templates.value[idx].ghi_chu = activeTpl.value.ghi_chu
+  }
+}
+
+function startEditCardMeta(tpl: PrintTemplateConfig) {
+  editingCardId.value = tpl.id
+  editCardName.value = tpl.ten_mau || ''
+  editCardNote.value = tpl.ghi_chu || ''
+}
+
+function cancelEditCardMeta() {
+  editingCardId.value = null
+  editCardName.value = ''
+  editCardNote.value = ''
+}
+
+async function saveCardMeta(tpl: PrintTemplateConfig) {
+  const newName = (editCardName.value || '').trim() || 'Mẫu in'
+  const newNote = (editCardNote.value ?? '').trim()
+  saving.value = true
+  try {
+    tpl.ten_mau = newName
+    tpl.ghi_chu = newNote
+    if (activeTpl.value && activeTpl.value.id === tpl.id) {
+      activeTpl.value.ten_mau = newName
+      activeTpl.value.ghi_chu = newNote
+      await savePrintTemplateToFirebase(activeTpl.value)
+      const idx = templates.value.findIndex(t => t.id === activeTpl.value!.id)
+      if (idx >= 0) {
+        templates.value[idx] = JSON.parse(JSON.stringify(activeTpl.value))
+      }
+    } else {
+      await savePrintTemplateToFirebase(tpl)
+    }
+    editingCardId.value = null
+    showToast(`Đã lưu tên & ghi chú cho mẫu "${newName}"!`)
+  } catch (e: any) {
+    showToast('Lỗi lưu thông tin mẫu: ' + (e.message || e))
+  } finally {
+    saving.value = false
+  }
+}
+
+function handleSelectCardInModal(tpl: PrintTemplateConfig) {
+  if (editingCardId.value === tpl.id) return
+  if (activeTpl.value && activeTpl.value.id === tpl.id) {
+    showTemplateModal.value = false
+    return
+  }
+  selectTemplate(tpl)
+  showTemplateModal.value = false
+}
+
 function selectTemplate(tpl: PrintTemplateConfig) {
   const copy = ensureGridHeaderPopulated(JSON.parse(JSON.stringify(tpl)))
   activeTpl.value = copy
@@ -2783,6 +2998,8 @@ function selectTemplate(tpl: PrintTemplateConfig) {
 
 async function handleSaveCurrentTemplate() {
   if (!activeTpl.value) return
+  activeTpl.value.ten_mau = (activeTpl.value.ten_mau || '').trim() || 'Mẫu in'
+  activeTpl.value.ghi_chu = (activeTpl.value.ghi_chu ?? '').trim()
   saving.value = true
   try {
     await savePrintTemplateToFirebase(activeTpl.value)
@@ -2933,12 +3150,23 @@ function handleDownloadOriginal(tpl: PrintTemplateConfig) {
 
 async function handleDeleteTemplate(tpl: PrintTemplateConfig) {
   if (!confirm(`Bạn có chắc chắn muốn xóa mẫu in "${tpl.ten_mau}" không?`)) return
-  await deletePrintTemplateFromFirebase(tpl)
-  templates.value = templates.value.filter(t => t.id !== tpl.id)
-  if (activeTpl.value?.id === tpl.id) {
-    selectTemplate(templates.value[0])
+  saving.value = true
+  try {
+    await deletePrintTemplateFromFirebase(tpl)
+    templates.value = templates.value.filter(t => t.id !== tpl.id)
+    if (templates.value.length > 0 && !templates.value.some(t => t.mac_dinh)) {
+      templates.value[0].mac_dinh = true
+      await setDefaultPrintTemplateInFirebase(templates.value[0].id, templates.value)
+    }
+    if (activeTpl.value?.id === tpl.id && templates.value.length > 0) {
+      selectTemplate(templates.value[0])
+    }
+    showToast(`Đã xóa vĩnh viễn mẫu "${tpl.ten_mau}"`)
+  } catch (e: any) {
+    showToast('Lỗi xóa mẫu in: ' + (e.message || e))
+  } finally {
+    saving.value = false
   }
-  showToast(`Đã xóa mẫu "${tpl.ten_mau}"`)
 }
 
 onMounted(() => {
@@ -2968,14 +3196,71 @@ onMounted(() => {
 /* ===== PAGE HEADER ===== */
 .page-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
+  flex-direction: column;
+  gap: 10px;
   background: linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.9));
   border: 1px solid rgba(16, 185, 129, 0.28);
   border-radius: 12px;
   padding: 10px 16px;
+}
+
+.header-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  width: 100%;
+}
+
+.header-meta-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  width: 100%;
+}
+
+.header-meta-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 240px;
+}
+
+.header-meta-field.meta-note-field {
+  flex: 1.5 1 300px;
+}
+
+.header-meta-field label {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #34d399;
+  white-space: nowrap;
+}
+
+.header-meta-field input {
+  flex: 1;
+  min-width: 140px;
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #f8fafc;
+  padding: 6px 10px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  transition: border-color 0.15s ease;
+}
+
+.header-meta-field input:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.18);
+}
+
+.header-meta-save-btn {
+  flex-shrink: 0;
 }
 
 .page-title {
@@ -4197,6 +4482,13 @@ tr.isPreviewRowHighlighted > td.grid-cell-td {
   color: #94a3b8;
 }
 
+.modal-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .modal-close-btn {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.16);
@@ -4222,12 +4514,23 @@ tr.isPreviewRowHighlighted > td.grid-cell-td {
 
 .current-tpl-edit-box {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1.2fr auto;
+  align-items: end;
   gap: 12px;
   background: #1e293b;
   padding: 12px 14px;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.current-tpl-save-col {
+  display: flex;
+  align-items: flex-end;
+}
+
+.current-tpl-save-btn {
+  height: 33px;
+  white-space: nowrap;
 }
 
 .modal-tpl-toolbar {
@@ -4311,6 +4614,28 @@ tr.isPreviewRowHighlighted > td.grid-cell-td {
   color: #cbd5e1;
 }
 
+.tpl-card-note-empty {
+  color: #64748b;
+  font-style: italic;
+}
+
+.tpl-card-inline-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin: 2px 0;
+}
+
+.tpl-card-inline-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
 .tpl-card-actions {
   display: flex;
   flex-wrap: wrap;
@@ -4327,6 +4652,18 @@ tr.isPreviewRowHighlighted > td.grid-cell-td {
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: #cbd5e1;
   cursor: pointer;
+}
+
+.mini-btn.mini-edit {
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.4);
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.mini-btn.mini-save {
+  color: #ffffff;
+  background: #10b981;
+  border-color: #059669;
 }
 
 .mini-btn.mini-star {
@@ -4868,6 +5205,24 @@ tr.isPreviewRowHighlighted > td.grid-cell-td {
   .header-actions {
     width: 100%;
     gap: 6px;
+  }
+
+  .header-meta-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .header-meta-field,
+  .header-meta-field.meta-note-field {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+
+  .header-meta-save-btn,
+  .current-tpl-save-btn {
+    width: 100%;
+    justify-content: center;
   }
 
   .btn-template-picker {

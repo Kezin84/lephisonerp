@@ -853,6 +853,7 @@ const saveRecord = async (rec, index) => {
           ADDRESS: rec.CUS_ADDRESS || '',
           tel: rec.CUS_TEL || '',
           TEL: rec.CUS_TEL || '',
+          last_updated: new Date().toISOString()
         }
         await set(dbRef(db, `khach_hang/${maKH}`), khPayload)
         existingKH = { key: maKH, data: khPayload }
@@ -947,7 +948,8 @@ const saveRecord = async (rec, index) => {
       congNoCuSaved = curLoiNhuan
       await update(dbRef(db, `khach_hang/${existingKH.key}`), {
         tong_chi_tieu: newChiTieu,
-        Tong_chi_tieu: newChiTieu
+        Tong_chi_tieu: newChiTieu,
+        last_updated: new Date().toISOString()
       })
     }
 

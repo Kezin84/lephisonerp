@@ -623,7 +623,8 @@ const saveRecord = async () => {
           tong_loi_nhuan: congNoCu,
           Tong_loi_nhuan: congNoCu,
           hoa_hong: hoaHongVal,
-          Hoa_hong: hoaHongVal
+          Hoa_hong: hoaHongVal,
+          last_updated: new Date().toISOString()
         }
         if (existingKhData) {
           await update(dbRef(database, `khach_hang/${targetKhKey}`), fbKhObj)

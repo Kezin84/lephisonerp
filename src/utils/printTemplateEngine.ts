@@ -1537,14 +1537,45 @@ export function getDefaultTermsHtmlFromCache(): string {
   return cachedDefaultTermsHtml || DEFAULT_1910_TERMS_HTML
 }
 
+const DELETED_TPL_STORAGE_KEY = 'nts_deleted_print_templates'
+
+function getLocalDeletedTemplateIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(DELETED_TPL_STORAGE_KEY)
+    if (!raw) return new Set()
+    const arr = JSON.parse(raw)
+    return Array.isArray(arr) ? new Set(arr.map((x: any) => String(x))) : new Set()
+  } catch {
+    return new Set()
+  }
+}
+
+function saveLocalDeletedTemplateIds(ids: Set<string>): void {
+  try {
+    localStorage.setItem(DELETED_TPL_STORAGE_KEY, JSON.stringify(Array.from(ids)))
+  } catch {}
+}
+
 export async function fetchAndSyncPrintTemplates(): Promise<PrintTemplateConfig[]> {
   const database = getDb()
   try {
-    const [mauInSnap, legacySnap, dieuKhoanSnap] = await Promise.all([
+    const [mauInSnap, legacySnap, dieuKhoanSnap, deletedSnap] = await Promise.all([
       get(dbRef(database, 'mau_in_thiet_lap')),
       get(dbRef(database, 'upload_file_mau')),
-      get(dbRef(database, 'dieu_khoan')).catch(() => null)
+      get(dbRef(database, 'dieu_khoan')).catch(() => null),
+      get(dbRef(database, 'mau_in_da_xoa')).catch(() => null)
     ])
+
+    const deletedIds = getLocalDeletedTemplateIds()
+    if (deletedSnap && deletedSnap.exists()) {
+      const delVal = deletedSnap.val()
+      if (delVal && typeof delVal === 'object') {
+        for (const [dk, dv] of Object.entries(delVal)) {
+          if (dv) deletedIds.add(String(dk))
+        }
+      }
+    }
+    saveLocalDeletedTemplateIds(deletedIds)
 
     // Sync default commercial terms from `dieu_khoan` schema (prioritize "Mẫu mặc định")
     if (dieuKhoanSnap && dieuKhoanSnap.exists()) {
@@ -1586,6 +1617,18 @@ export async function fetchAndSyncPrintTemplates(): Promise<PrintTemplateConfig[
       for (const [k, raw] of Object.entries(mauInData) as [string, any][]) {
         if (!raw || typeof raw !== 'object') continue
         const id = String(raw.id || k)
+        const bareId = id.replace(/^MINTL_/, '')
+        const srcId = raw.source_upload_id ? String(raw.source_upload_id) : ''
+
+        if (
+          deletedIds.has(id) ||
+          deletedIds.has(k) ||
+          (bareId && deletedIds.has(bareId)) ||
+          (srcId && deletedIds.has(srcId))
+        ) {
+          newSyncUpdates[`mau_in_thiet_lap/${k}`] = null
+          continue
+        }
 
         const parsedGridCells = typeof raw.grid_cells === 'string'
           ? JSON.parse(raw.grid_cells || '{}')
@@ -1600,10 +1643,12 @@ export async function fetchAndSyncPrintTemplates(): Promise<PrintTemplateConfig[
           )
 
         if (isOldStarterDefault) {
-          const upgraded = createStarterTemplateConfig('MINTL_DEFAULT_NTS', 'Mẫu Báo Giá Chuẩn NTS (1910)')
+          const upgraded = createStarterTemplateConfig('MINTL_DEFAULT_NTS', raw.ten_mau || 'Mẫu Báo Giá Chuẩn NTS (1910)')
+          if (raw.ghi_chu !== undefined) upgraded.ghi_chu = String(raw.ghi_chu)
           upgraded.mac_dinh = raw.mac_dinh !== false
           templatesMap.set(id, upgraded)
           syncedLegacyIds.add(id)
+          syncedLegacyIds.add(k)
           newSyncUpdates[`mau_in_thiet_lap/${id}`] = serializeTemplateForFirebase(upgraded)
           continue
         }
@@ -1626,6 +1671,8 @@ export async function fetchAndSyncPrintTemplates(): Promise<PrintTemplateConfig[
           ...starter,
           ...raw,
           id,
+          ten_mau: (raw.ten_mau && String(raw.ten_mau).trim()) ? String(raw.ten_mau).trim() : starter.ten_mau,
+          ghi_chu: raw.ghi_chu !== undefined ? String(raw.ghi_chu) : starter.ghi_chu,
           cau_hinh_trang: { ...starter.cau_hinh_trang, ...(raw.cau_hinh_trang || {}) },
           thong_tin_nguoi_lap: { ...starter.thong_tin_nguoi_lap, ...(raw.thong_tin_nguoi_lap || {}) },
           mapping_vung: {
@@ -1646,7 +1693,9 @@ export async function fetchAndSyncPrintTemplates(): Promise<PrintTemplateConfig[
         }
         templatesMap.set(id, tpl)
         if (tpl.source_upload_id) syncedLegacyIds.add(String(tpl.source_upload_id))
+        if (bareId) syncedLegacyIds.add(bareId)
         syncedLegacyIds.add(id)
+        syncedLegacyIds.add(k)
       }
     }
 
@@ -1678,9 +1727,30 @@ export async function fetchAndSyncPrintTemplates(): Promise<PrintTemplateConfig[
           }
         }
 
-        if (!legId || syncedLegacyIds.has(legId) || syncedLegacyIds.has(`MINTL_${legId}`)) continue
+        const prefixedLegId = legId.startsWith('MINTL_') ? legId : `MINTL_${legId}`
+        const bareLegId = legId.replace(/^MINTL_/, '')
 
-        const newId = `MINTL_${legId}`
+        if (
+          deletedIds.has(k) ||
+          deletedIds.has(legId) ||
+          deletedIds.has(prefixedLegId) ||
+          (bareLegId && deletedIds.has(bareLegId))
+        ) {
+          newSyncUpdates[`upload_file_mau/${k}`] = null
+          continue
+        }
+
+        if (
+          !legId ||
+          syncedLegacyIds.has(k) ||
+          syncedLegacyIds.has(legId) ||
+          syncedLegacyIds.has(prefixedLegId) ||
+          (bareLegId && syncedLegacyIds.has(bareLegId))
+        ) {
+          continue
+        }
+
+        const newId = prefixedLegId
         let migratedTpl = createStarterTemplateConfig(newId, legName.replace(/\.xlsx$/i, ''))
         migratedTpl.loai_mau = 'imported_excel'
         migratedTpl.link_file_goc = legUrl
@@ -1738,8 +1808,8 @@ export async function fetchAndSyncPrintTemplates(): Promise<PrintTemplateConfig[
       }
     }
 
-    // 4. Auto-seed built-in Deal Registration template (`MINTL_DEAL_REG`) if not yet present
-    if (!templatesMap.has('MINTL_DEAL_REG')) {
+    // 4. Auto-seed built-in Deal Registration template (`MINTL_DEAL_REG`) if not yet present and not deleted by user
+    if (!templatesMap.has('MINTL_DEAL_REG') && !deletedIds.has('MINTL_DEAL_REG')) {
       const dealRegTpl = createDealRegTemplateConfig('MINTL_DEAL_REG', 'Mẫu Deal Registration')
       dealRegTpl.mac_dinh = false
       templatesMap.set(dealRegTpl.id, dealRegTpl)
@@ -1763,8 +1833,11 @@ export async function fetchAndSyncPrintTemplates(): Promise<PrintTemplateConfig[
 }
 
 export function serializeTemplateForFirebase(tpl: PrintTemplateConfig): any {
+  const cloned = JSON.parse(JSON.stringify(tpl))
   return {
-    ...JSON.parse(JSON.stringify(tpl)),
+    ...cloned,
+    ten_mau: (cloned.ten_mau || '').trim() || 'Mẫu in',
+    ghi_chu: cloned.ghi_chu !== undefined && cloned.ghi_chu !== null ? String(cloned.ghi_chu) : '',
     ngay_cap_nhat: formatNowVN()
   }
 }
@@ -1773,7 +1846,20 @@ export async function savePrintTemplateToFirebase(tpl: PrintTemplateConfig): Pro
   const database = getDb()
   tpl.ngay_cap_nhat = formatNowVN()
   const payload = serializeTemplateForFirebase(tpl)
-  await set(dbRef(database, `mau_in_thiet_lap/${tpl.id}`), payload)
+
+  const deletedIds = getLocalDeletedTemplateIds()
+  const bareId = tpl.id.replace(/^MINTL_/, '')
+  deletedIds.delete(tpl.id)
+  if (bareId) deletedIds.delete(bareId)
+  if (tpl.source_upload_id) deletedIds.delete(String(tpl.source_upload_id))
+  saveLocalDeletedTemplateIds(deletedIds)
+
+  const updates: Record<string, any> = {
+    [`mau_in_thiet_lap/${tpl.id}`]: payload,
+    [`mau_in_da_xoa/${tpl.id}`]: null
+  }
+  if (bareId) updates[`mau_in_da_xoa/${bareId}`] = null
+  if (tpl.source_upload_id) updates[`mau_in_da_xoa/${tpl.source_upload_id}`] = null
 
   // Đồng bộ ngược sang upload_file_mau nếu có link_file_goc để tương thích hoàn toàn
   if (tpl.link_file_goc) {
@@ -1785,7 +1871,7 @@ export async function savePrintTemplateToFirebase(tpl: PrintTemplateConfig): Pro
         field: c.field
       }))
     )
-    await set(dbRef(database, `upload_file_mau/${legacyId}`), {
+    updates[`upload_file_mau/${legacyId}`] = {
       ID: legacyId,
       id: legacyId,
       TEN_FILE: tpl.ten_mau.endsWith('.xlsx') ? tpl.ten_mau : `${tpl.ten_mau}.xlsx`,
@@ -1796,8 +1882,10 @@ export async function savePrintTemplateToFirebase(tpl: PrintTemplateConfig): Pro
       structure: structStr,
       GHI_CHU: tpl.ghi_chu || '',
       ghi_chu: tpl.ghi_chu || ''
-    })
+    }
   }
+
+  await update(dbRef(database), updates)
 }
 
 export async function setDefaultPrintTemplateInFirebase(targetId: string, allTemplates: PrintTemplateConfig[]): Promise<void> {
@@ -1813,11 +1901,87 @@ export async function setDefaultPrintTemplateInFirebase(targetId: string, allTem
 
 export async function deletePrintTemplateFromFirebase(tpl: PrintTemplateConfig): Promise<void> {
   const database = getDb()
-  await remove(dbRef(database, `mau_in_thiet_lap/${tpl.id}`))
-  if (tpl.source_upload_id) {
-    await remove(dbRef(database, `upload_file_mau/${tpl.source_upload_id}`))
+  const candidateIds = new Set<string>()
+  if (tpl.id) {
+    candidateIds.add(String(tpl.id))
+    const bare = String(tpl.id).replace(/^MINTL_/, '')
+    if (bare) {
+      candidateIds.add(bare)
+      candidateIds.add(`MINTL_${bare}`)
+    }
   }
+  if (tpl.source_upload_id) {
+    const src = String(tpl.source_upload_id)
+    candidateIds.add(src)
+    candidateIds.add(`MINTL_${src}`)
+    const bareSrc = src.replace(/^MINTL_/, '')
+    if (bareSrc) candidateIds.add(bareSrc)
+  }
+
+  const deletedIds = getLocalDeletedTemplateIds()
+  candidateIds.forEach(cid => deletedIds.add(cid))
+  saveLocalDeletedTemplateIds(deletedIds)
+
+  const updates: Record<string, any> = {}
+  candidateIds.forEach(cid => {
+    updates[`mau_in_thiet_lap/${cid}`] = null
+    updates[`upload_file_mau/${cid}`] = null
+    updates[`mau_in_da_xoa/${cid}`] = true
+  })
+
+  try {
+    const [mauInSnap, legacySnap] = await Promise.all([
+      get(dbRef(database, 'mau_in_thiet_lap')).catch(() => null),
+      get(dbRef(database, 'upload_file_mau')).catch(() => null)
+    ])
+
+    if (mauInSnap && mauInSnap.exists()) {
+      const mauInData = mauInSnap.val()
+      if (mauInData && typeof mauInData === 'object') {
+        for (const [k, v] of Object.entries(mauInData) as [string, any][]) {
+          if (!v || typeof v !== 'object') continue
+          const recId = String(v.id || k)
+          const recSrc = v.source_upload_id ? String(v.source_upload_id) : ''
+          if (candidateIds.has(k) || candidateIds.has(recId) || (recSrc && candidateIds.has(recSrc))) {
+            updates[`mau_in_thiet_lap/${k}`] = null
+            updates[`mau_in_da_xoa/${k}`] = true
+            updates[`mau_in_da_xoa/${recId}`] = true
+          }
+        }
+      }
+    }
+
+    if (legacySnap && legacySnap.exists()) {
+      const legacyData = legacySnap.val()
+      if (legacyData && typeof legacyData === 'object') {
+        for (const [k, v] of Object.entries(legacyData) as [string, any][]) {
+          if (!v) continue
+          const legId = Array.isArray(v)
+            ? String(v[0] || k)
+            : String(v.ID ?? v.id ?? k)
+          const legUrl = Array.isArray(v)
+            ? String(v[2] || '')
+            : String(v.LINK_FILE ?? v.link_file ?? '')
+          const matchById = candidateIds.has(k) || candidateIds.has(legId) || candidateIds.has(`MINTL_${legId}`)
+          const matchByUrl = Boolean(tpl.link_file_goc && legUrl && tpl.link_file_goc === legUrl)
+          if (matchById || matchByUrl) {
+            updates[`upload_file_mau/${k}`] = null
+            updates[`mau_in_da_xoa/${k}`] = true
+            if (legId) {
+              updates[`mau_in_da_xoa/${legId}`] = true
+              updates[`mau_in_da_xoa/MINTL_${legId}`] = true
+            }
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Lỗi quét xóa đồng bộ mẫu in:', err)
+  }
+
+  await update(dbRef(database), updates)
 }
+
 
 /* =====================================================
    7. ENGINE KẾT XUẤT ĐA ĐỊNH DẠNG (EXCEL, HTML, PDF, PNG, WORD)
@@ -2309,9 +2473,13 @@ export function renderTemplateToHtml(tpl: PrintTemplateConfig, ctx: QuoteExportC
   expandedRows.forEach(er => {
     const r = er.sourceRow
     const { map: mergeMap, skipped } = getRowMerges(r)
-    const rowH = er.height
-    const isZeroRow = rowH !== undefined && rowH <= 0
-    const isCompactRow = rowH !== undefined && rowH > 0 && rowH < 20
+    const rowHasLogo = showLogo && (
+      tpl.grid_cells?.[`${r}_1`]?.value?.includes('{{LOGO}}') ||
+      tpl.grid_cells?.[`${r}_1`]?.value?.includes('{{LOGO_TRAI}}')
+    )
+    const rowH = rowHasLogo && (!er.height || er.height <= 0) ? logoHeight + 6 : er.height
+    const isZeroRow = !rowHasLogo && rowH !== undefined && rowH <= 0
+    const isCompactRow = !rowHasLogo && rowH !== undefined && rowH > 0 && rowH < 20
     const hStyle = isZeroRow
       ? 'height: 0px; max-height: 0px; line-height: 0; font-size: 0; overflow: hidden; display: none;'
       : rowH !== undefined
@@ -4293,12 +4461,17 @@ export function exportPdfOrPrintFromTemplate(
     return
   }
 
+  const originBase = typeof window !== 'undefined' && window.location?.origin
+    ? `<base href="${window.location.origin}/" />`
+    : ''
+
   printWin.document.open()
   printWin.document.write(`
     <!DOCTYPE html>
     <html lang="vi">
     <head>
       <meta charset="UTF-8" />
+      ${originBase}
       <title>${title}</title>
       <style>
         @page {
@@ -4394,10 +4567,43 @@ export async function exportHtmlFileFromTemplate(
   fileName = 'BaoGia_NTS'
 ): Promise<void> {
   let htmlBody = renderTemplateToHtml(tpl, ctx)
-  if (tpl.custom_js?.trim() && typeof document !== 'undefined') {
+  if (typeof document !== 'undefined') {
     const tmp = document.createElement('div')
     tmp.innerHTML = htmlBody
-    runTemplateCustomJs(tmp, tpl, ctx)
+    if (tpl.custom_js?.trim()) {
+      runTemplateCustomJs(tmp, tpl, ctx)
+    }
+
+    const pageCfg = tpl.cau_hinh_trang || ({} as any)
+    const showLogo = pageCfg.hien_thi_logo !== false
+    const logoUrl = pageCfg.logo_url || pageCfg.logo_trai || '/logo1.png'
+    const logoWidthPct = Math.max(5, Math.min(100, Number(pageCfg.logo_width_pct) || 35))
+    const logoHeight = Math.max(24, Math.min(500, Number(pageCfg.logo_height) || 68))
+
+    // Nếu mẫu in đang bật hiển thị Logo nhưng trong DOM chưa có thẻ <img> nào (do ô {{LOGO}} bị xóa/ghi đè), tự động chèn Header Logo vào đầu tờ báo giá
+    if (showLogo && logoUrl && tmp.querySelectorAll('img').length === 0) {
+      const sheetEl = (tmp.querySelector('.nts-print-sheet') || tmp) as HTMLElement
+      const headerDiv = document.createElement('div')
+      headerDiv.style.cssText = 'display: flex; justify-content: flex-start; align-items: flex-end; margin-bottom: 6px; width: 100%;'
+      headerDiv.innerHTML = `<img src="${logoUrl}" style="width: ${logoWidthPct}%; height: ${logoHeight}px; object-fit: fill; display: block;" />`
+      sheetEl.insertBefore(headerDiv, sheetEl.firstChild)
+    }
+
+    // Nhúng toàn bộ ảnh (đặc biệt là ảnh Header /logo1.png hoặc ảnh Cloudinary) thành Base64 Data URL để file .html tải về mở độc lập trên mọi máy đều có đầy đủ ảnh Header
+    const imgs = Array.from(tmp.querySelectorAll('img'))
+    for (const img of imgs) {
+      const src = img.getAttribute('src') || ''
+      if (src && !src.startsWith('data:')) {
+        const absUrl =
+          src.startsWith('/') && typeof window !== 'undefined'
+            ? `${window.location.origin}${src}`
+            : src
+        const dataUrl = await resolveImageUrlToDataUrl(absUrl)
+        img.setAttribute('src', dataUrl)
+        img.removeAttribute('onerror')
+      }
+    }
+
     htmlBody = tmp.innerHTML
   }
   const fullHtml = `<!DOCTYPE html>
@@ -4444,17 +4650,45 @@ async function resolveImageUrlToDataUrl(url: string): Promise<string> {
   if (!url || url.startsWith('data:')) return url
   try {
     const resp = await fetch(url)
-    if (!resp.ok) return url
-    const blob = await resp.blob()
-    return await new Promise<string>((resolve) => {
-      const reader = new FileReader()
-      reader.onloadend = () => resolve(typeof reader.result === 'string' ? reader.result : url)
-      reader.onerror = () => resolve(url)
-      reader.readAsDataURL(blob)
-    })
-  } catch {
-    return url
+    if (resp.ok) {
+      const blob = await resp.blob()
+      const dataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader()
+        reader.onloadend = () => resolve(typeof reader.result === 'string' ? reader.result : url)
+        reader.onerror = () => resolve(url)
+        reader.readAsDataURL(blob)
+      })
+      if (dataUrl.startsWith('data:')) return dataUrl
+    }
+  } catch {}
+
+  // Fallback qua HTMLImageElement + Canvas nếu fetch gặp lỗi CORS
+  if (typeof document !== 'undefined' && typeof Image !== 'undefined') {
+    try {
+      return await new Promise<string>((resolve) => {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas')
+            canvas.width = img.naturalWidth || img.width || 600
+            canvas.height = img.naturalHeight || img.height || 100
+            const ctx2d = canvas.getContext('2d')
+            if (ctx2d) {
+              ctx2d.drawImage(img, 0, 0)
+              resolve(canvas.toDataURL('image/png'))
+              return
+            }
+          } catch {}
+          resolve(url)
+        }
+        img.onerror = () => resolve(url)
+        img.src = url
+      })
+    } catch {}
   }
+
+  return url
 }
 
 export async function exportWordFromTemplate(

@@ -4934,6 +4934,7 @@ async function upsertCustomerFromModalItem(item: ImportItem) {
 
     if (Object.keys(khUpdates).length > 0 && existingCus.id) {
       try {
+        khUpdates.last_updated = new Date().toISOString()
         await update(dbRef(database, `khach_hang/${existingCus.id}`), khUpdates)
         if (khachHangMap.value[existingCus.id]) {
           Object.assign(khachHangMap.value[existingCus.id], khUpdates)
@@ -4978,7 +4979,8 @@ async function upsertCustomerFromModalItem(item: ImportItem) {
         doanh_so: 0,
         cong_no: 0,
         ghi_chu: 'Tạo tự động từ Sale Report / Báo giá',
-        createdAt: Date.now()
+        createdAt: Date.now(),
+        last_updated: new Date().toISOString()
       }
       await set(newKhRef, newKhPayload)
       if (newKey) {
