@@ -10,10 +10,10 @@
 
 
     <!-- Thống kê -->
-    <div class="stats-row">
+    <div class="stats-row" style="max-width: 680px; margin-left: auto; margin-right: auto;">
       <div class="stat-card card-total" 
-           :class="{ 'elite-active': !filters.trang_thai }"
-           @click="filters.trang_thai = ''">
+           :class="{ 'elite-active': !filters.debt && !filters.tagKH }"
+           @click="resetFilters">
         <div class="stat-icon total">
           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
         </div>
@@ -23,72 +23,111 @@
         </div>
       </div>
       <div class="stat-card card-renew" 
-           :class="{ 'elite-active': filters.trang_thai === '__renew__' }"
-           @click="filters.trang_thai = filters.trang_thai === '__renew__' ? '' : '__renew__'">
+           :class="{ 'elite-active': filters.debt === 'debt' }"
+           @click="filters.debt = filters.debt === 'debt' ? '' : 'debt'">
         <div class="stat-icon renew">
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
         </div>
         <div class="stat-info">
-          <span class="stat-label">Cần gia hạn</span>
-          <span class="stat-value">{{ renewCustomerCount }} <span class="unit-text">KH</span></span>
-        </div>
-      </div>
-      <div class="stat-card card-care" 
-           :class="{ 'elite-active': filters.trang_thai === 'Đang chăm sóc' }"
-           @click="filters.trang_thai = 'Đang chăm sóc'">
-        <div class="stat-icon care">
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-        </div>
-        <div class="stat-info">
-          <span class="stat-label">Đang chăm sóc</span>
-          <span class="stat-value">{{ careCount }} <span class="unit-text">KH</span></span>
-        </div>
-      </div>
-      <div class="stat-card card-deal" 
-           :class="{ 'elite-active': filters.trang_thai === 'Chốt deal' }"
-           @click="filters.trang_thai = 'Chốt deal'">
-        <div class="stat-icon deal">
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-        </div>
-        <div class="stat-info">
-          <span class="stat-label">Chốt deal</span>
-          <span class="stat-value">{{ dealCount }} <span class="unit-text">KH</span></span>
-        </div>
-      </div>
-      <div class="stat-card card-potential" 
-           :class="{ 'elite-active': filters.trang_thai === 'Tiềm năng' }"
-           @click="filters.trang_thai = 'Tiềm năng'">
-        <div class="stat-icon potential">
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-        </div>
-        <div class="stat-info">
-          <span class="stat-label">Tiềm năng</span>
-          <span class="stat-value">{{ potentialCount }} <span class="unit-text">KH</span></span>
+          <span class="stat-label">Khách nợ</span>
+          <span class="stat-value">{{ debtCustomerCount }} <span class="unit-text">KH</span></span>
         </div>
       </div>
     </div>
 
-    <!-- Thanh tìm kiếm mới (dưới card) -->
-    <div style="margin-bottom: 24px; margin-top: 24px;">
-      <div class="filter-search" style="max-width: 400px; margin: 0 auto; position: relative;">
+    <!-- Thanh tìm kiếm & Bộ lọc -->
+    <div style="margin-bottom: 24px; margin-top: 24px; display: flex; flex-direction: column; gap: 14px; align-items: center;">
+      <div class="filter-search" style="width: 100%; max-width: 460px; margin: 0 auto; position: relative;">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 18px; top: 50%; transform: translateY(-50%); color: #94a3b8;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-        <input type="text" v-model="filters.search" placeholder="Tìm tên, sđt, email, công ty..." style="width: 100%; border-radius: 9999px; padding: 16px 48px 16px 52px; border: 1px solid #10b981; background: rgba(15, 23, 42, 0.6); color: #f8fafc; font-size: 0.95rem; outline: none; box-sizing: border-box; transition: all 0.3s;" onfocus="this.style.borderColor='#34d399'; this.style.boxShadow='0 0 0 4px rgba(16,185,129,0.1)'; this.style.background='rgba(15, 23, 42, 0.9)'" onblur="this.style.borderColor='#10b981'; this.style.boxShadow='none'; this.style.background='rgba(15, 23, 42, 0.6)'" />
+        <input type="text" v-model="filters.search" placeholder="Tìm tên, sđt, email, công ty..." style="width: 100%; border-radius: 9999px; padding: 14px 48px 14px 52px; border: 1px solid #10b981; background: rgba(15, 23, 42, 0.6); color: #f8fafc; font-size: 0.95rem; outline: none; box-sizing: border-box; transition: all 0.3s;" onfocus="this.style.borderColor='#34d399'; this.style.boxShadow='0 0 0 4px rgba(16,185,129,0.1)'; this.style.background='rgba(15, 23, 42, 0.9)'" onblur="this.style.borderColor='#10b981'; this.style.boxShadow='none'; this.style.background='rgba(15, 23, 42, 0.6)'" />
         <button v-if="filters.search" class="clear-search" @click="filters.search = ''" style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #94a3b8; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; font-size: 16px;" onmouseover="this.style.color='#f1f5f9'" onmouseout="this.style.color='#94a3b8'">✕</button>
+      </div>
+
+      <!-- Các bộ lọc: Nhóm khách (tagKH), Mới-Cũ / Cũ-Mới (last_updated), Khách nợ -->
+      <div style="display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: center; width: 100%;">
+        <!-- Lọc theo Nhóm khách (tagKH) -->
+        <div style="position: relative; display: inline-flex; align-items: center;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 14px; pointer-events: none;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+          <select
+            v-model="filters.tagKH"
+            style="padding: 10px 36px 10px 38px; border-radius: 9999px; border: 1px solid rgba(16, 185, 129, 0.45); background: rgba(15, 23, 42, 0.75); color: #f8fafc; font-size: 0.88rem; font-weight: 600; outline: none; cursor: pointer; min-width: 210px;"
+          >
+            <option value="" style="background: #0f172a; color: #f8fafc;">Nhóm khách: Tất cả</option>
+            <option value="__untagged__" style="background: #0f172a; color: #94a3b8;">Chưa phân nhóm</option>
+            <option v-for="tag in availableTags" :key="'filter-tag-' + tag" :value="tag" style="background: #0f172a; color: #34d399;">
+              Nhóm: {{ tag }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Sắp xếp theo thời gian cập nhật (last_updated) -->
+        <div style="position: relative; display: inline-flex; align-items: center;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 14px; pointer-events: none;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          <select
+            v-model="filters.sortUpdated"
+            style="padding: 10px 36px 10px 38px; border-radius: 9999px; border: 1px solid rgba(56, 189, 248, 0.45); background: rgba(15, 23, 42, 0.75); color: #f8fafc; font-size: 0.88rem; font-weight: 600; outline: none; cursor: pointer; min-width: 230px;"
+          >
+            <option value="" style="background: #0f172a; color: #f8fafc;">Cập nhật: Mặc định</option>
+            <option value="desc" style="background: #0f172a; color: #38bdf8;">Khách Mới - Cũ (Cập nhật mới nhất)</option>
+            <option value="asc" style="background: #0f172a; color: #38bdf8;">Khách Cũ - Mới (Cập nhật cũ nhất)</option>
+          </select>
+        </div>
+
+        <!-- Lọc Khách nợ -->
+        <div style="position: relative; display: inline-flex; align-items: center;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 14px; pointer-events: none;"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+          <select
+            v-model="filters.debt"
+            style="padding: 10px 36px 10px 38px; border-radius: 9999px; border: 1px solid rgba(248, 113, 113, 0.45); background: rgba(15, 23, 42, 0.75); color: #f8fafc; font-size: 0.88rem; font-weight: 600; outline: none; cursor: pointer; min-width: 200px;"
+          >
+            <option value="" style="background: #0f172a; color: #f8fafc;">Công nợ: Tất cả</option>
+            <option value="debt" style="background: #0f172a; color: #f87171;">Khách nợ (Công nợ &gt; 0)</option>
+            <option value="no_debt" style="background: #0f172a; color: #34d399;">Không nợ (Công nợ = 0)</option>
+          </select>
+        </div>
+
+        <!-- Nút đặt lại bộ lọc -->
+        <button
+          v-if="filters.search || filters.tagKH || filters.sortUpdated || filters.debt"
+          type="button"
+          @click="resetFilters"
+          style="padding: 10px 16px; border-radius: 9999px; border: 1px solid rgba(148, 163, 184, 0.35); background: rgba(30, 41, 59, 0.75); color: #cbd5e1; font-size: 0.84rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s;"
+          onmouseover="this.style.borderColor='#94a3b8'; this.style.color='#ffffff'"
+          onmouseout="this.style.borderColor='rgba(148, 163, 184, 0.35)'; this.style.color='#cbd5e1'"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          Đặt lại bộ lọc
+        </button>
       </div>
     </div>
 
     <!-- Action Buttons -->
     <div class="action-bar">
-      <div class="action-bar-left" style="display: flex; gap: 8px;">
+      <div class="action-bar-left" style="display: flex; gap: 8px; flex-wrap: wrap;">
         <button class="btn-primary" @click="openAddModal" style="padding: 10px 16px; font-size: 14px; font-weight: 600;">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           <span>THÊM KHÁCH HÀNG</span>
         </button>
         <button class="mobile-action-btn btn-import" style="background: #2563eb; color: #ffffff; border: 1px solid #2563eb; font-weight: 800;" @click="triggerFileInput">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-          IMPORT KHÁCH HÀNG
+          IMPORT KHÁCH HÀNG (FILE DXMH)
         </button>
         <input type="file" ref="fileInput" accept=".xlsx, .xls" style="display: none;" @change="handleFileUpload" multiple />
+        <button class="mobile-action-btn btn-import-quote" style="background: #7c3aed; color: #ffffff; border: 1px solid #7c3aed; font-weight: 800;" @click="triggerQuoteFileInput">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><polyline points="9 15 12 12 15 15"></polyline></svg>
+          IMPORT KHÁCH HÀNG (FILE BÁO GIÁ)
+        </button>
+        <input type="file" ref="quoteFileInput" accept=".xlsx, .xls, .pdf" style="display: none;" @change="handleQuoteFileUpload" multiple />
+        <button class="mobile-action-btn btn-check-duplicate" style="position: relative; background: rgba(245, 158, 11, 0.16); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.45); font-weight: 800;" @click="openDuplicateCheckModal">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          <span>CHECK TRÙNG KHÁCH HÀNG</span>
+          <span
+            v-if="duplicateGroups.length > 0"
+            style="position: absolute; top: -9px; right: -9px; min-width: 24px; height: 24px; padding: 0 6px; border-radius: 9999px; background: #ef4444; color: #ffffff; font-size: 0.76rem; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; line-height: 1; border: 2px solid #0f172a; box-shadow: 0 2px 8px rgba(239, 68, 68, 0.55); box-sizing: border-box;"
+          >
+            {{ duplicateGroups.length }}
+          </span>
+        </button>
       </div>
     </div>
 
@@ -112,11 +151,11 @@
           </div>
         </div>
       </template>
-      <div v-else-if="customers.length === 0" class="empty-state" style="padding: 3rem;">
+      <div v-else-if="filteredCustomers.length === 0" class="empty-state" style="padding: 3rem; grid-column: 1 / -1;">
         <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 1rem; color: #94a3b8; display: block;"><circle cx="12" cy="12" r="10"></circle><line x1="8" y1="12" x2="16" y2="12"></line></svg>
         <p>Không có khách hàng nào.</p>
       </div>
-      <div v-else v-for="(kh, index) in filteredCustomers" :key="'card-' + kh.ma_khach_hang" 
+      <div v-else v-for="(kh, index) in visibleCustomers" :key="'card-' + (kh._firebaseKey || kh.ma_khach_hang)" 
            class="report-card" @click="openEditModal(kh)">
         <div class="card-row-header">
           <span class="card-id">#{{ index + 1 }}</span>
@@ -289,6 +328,28 @@
         </div>
 
       </div>
+
+      <!-- LAZY LOADING SENTINEL & NÚT TẢI THÊM (20 KHÁCH HÀNG / TRANG) -->
+      <div
+        v-if="!loading && totalFilteredCount > 0"
+        ref="lazyLoadSentinelRef"
+        style="grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 16px; padding: 12px 0;"
+      >
+        <div style="font-size: 12.5px; color: #94a3b8; font-weight: 600;">
+          Đang hiển thị <strong style="color: #10b981;">{{ displayedCustomersCount }}</strong> / <strong style="color: #f8fafc;">{{ totalFilteredCount }}</strong> khách hàng
+        </div>
+        <button
+          v-if="hasMoreCustomers"
+          type="button"
+          @click="loadMoreCustomers"
+          style="width: 100%; padding: 14px; background: rgba(16, 185, 129, 0.1); border: 1px dashed rgba(16, 185, 129, 0.4); color: #34d399; border-radius: 10px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px;"
+          onmouseover="this.style.background='rgba(16, 185, 129, 0.2)';"
+          onmouseout="this.style.background='rgba(16, 185, 129, 0.1)';"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          <span>Tự động tải khi cuộn xuống hoặc bấm để xem thêm (+{{ Math.min(CUSTOMER_PAGE_SIZE, totalFilteredCount - displayedCustomersCount) }} khách hàng — còn {{ totalFilteredCount - displayedCustomersCount }} khách hàng)</span>
+        </button>
+      </div>
     </div>
 
     <!-- Modal Form -->
@@ -340,7 +401,7 @@
               <div class="form-group row">
                 <div class="col">
                   <label>Tên Khách Hàng <span class="required">*</span></label>
-                  <input type="text" v-model="formData.ten_khach_hang" required class="form-input" />
+                  <input type="text" v-model="formData.ten_khach_hang" :required="!formData.ten_cong_ty" class="form-input" />
                 </div>
                 <div class="col">
                   <label>Tên KH Phụ</label>
@@ -555,6 +616,11 @@
                   <input type="text" v-model="formData.address" class="form-input" />
                 </div>
               </div>
+
+              <div class="form-group">
+                <label>Ngành Nghề Công Ty</label>
+                <input type="text" v-model="formData.nganh_nghe_cong_ty" class="form-input" placeholder="Ngành nghề kinh doanh chính" />
+              </div>
             </div>
 
 
@@ -572,6 +638,222 @@
             </button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Modal Kiểm Tra Khách Hàng Trùng Lặp -->
+    <div v-if="isDuplicateModalOpen" class="modal-overlay" @click.self="isDuplicateModalOpen = false" style="z-index: 99990;">
+      <div class="modal modal-lg" style="max-width: 1280px; max-height: 92vh;">
+        <div class="modal-header">
+          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <div style="width: 38px; height: 38px; border-radius: 10px; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.35); display: flex; align-items: center; justify-content: center; color: #fbbf24;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            </div>
+            <div>
+              <h2>Kiểm Tra Khách Hàng Trùng Lặp</h2>
+              <div style="font-size: 0.82rem; color: #94a3b8; margin-top: 2px;">
+                Quét theo Tên công ty, Tên khách hàng và Mã số thuế. Nhấp vào khách hàng bất kỳ để chỉnh sửa hoặc xoá.
+              </div>
+            </div>
+          </div>
+          <button class="btn-close" @click="isDuplicateModalOpen = false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+
+        <!-- Thanh lọc nhanh trong modal -->
+        <div style="padding: 14px 20px; background: rgba(15, 23, 42, 0.85); border-bottom: 1px solid rgba(255, 255, 255, 0.06); display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button
+              type="button"
+              v-for="tab in duplicateFilterTabs"
+              :key="tab.key"
+              @click="duplicateFilterType = tab.key"
+              style="padding: 7px 14px; border-radius: 999px; font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px;"
+              :style="{
+                background: duplicateFilterType === tab.key ? '#10b981' : 'rgba(30, 41, 59, 0.75)',
+                color: duplicateFilterType === tab.key ? '#ffffff' : '#cbd5e1',
+                border: duplicateFilterType === tab.key ? '1px solid #10b981' : '1px solid #334155'
+              }"
+            >
+              <span>{{ tab.label }}</span>
+              <span
+                style="padding: 1px 7px; border-radius: 999px; font-size: 0.72rem; font-weight: 800;"
+                :style="{
+                  background: duplicateFilterType === tab.key ? 'rgba(15, 23, 42, 0.35)' : 'rgba(15, 23, 42, 0.7)',
+                  color: duplicateFilterType === tab.key ? '#ffffff' : '#94a3b8'
+                }"
+              >
+                {{ tab.count }}
+              </span>
+            </button>
+          </div>
+
+          <div style="position: relative; min-width: 260px; flex: 1; max-width: 340px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #64748b;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input
+              type="text"
+              v-model="duplicateSearchQuery"
+              placeholder="Lọc trong danh sách trùng..."
+              class="form-input"
+              style="padding: 8px 30px 8px 36px; font-size: 0.85rem; border-radius: 999px;"
+            />
+            <button
+              v-if="duplicateSearchQuery"
+              type="button"
+              @click="duplicateSearchQuery = ''"
+              style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 13px;"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        <!-- Danh sách các nhóm trùng -->
+        <div class="form-scroll" style="flex: 1; display: flex; flex-direction: column; gap: 16px;">
+          <div
+            v-if="filteredDuplicateGroups.length === 0"
+            style="padding: 3.5rem 1.5rem; text-align: center; color: #94a3b8; background: rgba(30, 41, 59, 0.35); border: 1px dashed rgba(148, 163, 184, 0.25); border-radius: 16px;"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 12px; display: block;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            <div style="font-size: 1rem; font-weight: 700; color: #f8fafc; margin-bottom: 4px;">
+              Không phát hiện nhóm khách hàng trùng lặp nào
+            </div>
+            <div style="font-size: 0.85rem; color: #64748b;">
+              Tất cả khách hàng hiện tại đều có Tên công ty, Tên khách hàng và MST riêng biệt.
+            </div>
+          </div>
+
+          <div
+            v-for="(group, gIdx) in filteredDuplicateGroups"
+            :key="group.id"
+            class="form-section"
+            style="padding: 16px 18px;"
+          >
+            <!-- Tiêu đề nhóm trùng -->
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding-bottom: 12px; margin-bottom: 14px; border-bottom: 1px dashed rgba(255, 255, 255, 0.1);">
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <span class="card-id" style="background: rgba(16, 185, 129, 0.18); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);">
+                  NHÓM #{{ gIdx + 1 }} ({{ group.items.length }} KH)
+                </span>
+                <span style="font-weight: 800; color: #f8fafc; font-size: 0.98rem;">
+                  {{ group.primaryLabel }}
+                </span>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                <span
+                  v-for="reason in group.reasons"
+                  :key="reason.type"
+                  style="display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;"
+                  :style="getDuplicateReasonStyle(reason.type)"
+                >
+                  {{ reason.label }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Các khách hàng trong nhóm -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px;">
+              <div
+                v-for="kh in group.items"
+                :key="kh._firebaseKey || kh.ma_khach_hang"
+                @click="openEditModal(kh)"
+                style="background: rgba(15, 23, 42, 0.78); border: 1px solid rgba(16, 185, 129, 0.28); border-radius: 12px; padding: 14px 16px; cursor: pointer; display: flex; flex-direction: column; justify-content: space-between; gap: 12px; transition: all 0.2s;"
+                onmouseover="this.style.borderColor='rgba(16, 185, 129, 0.75)'; this.style.transform='translateY(-2px)'"
+                onmouseout="this.style.borderColor='rgba(16, 185, 129, 0.28)'; this.style.transform='none'"
+              >
+                <div>
+                  <!-- Header card: Mã KH + Trạng thái -->
+                  <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.06);">
+                    <div>
+                      <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 600;">
+                        Mã KH: <strong style="color: #38bdf8;">{{ kh.ma_khach_hang || 'Chưa có' }}</strong>
+                      </div>
+                      <div style="font-size: 1rem; font-weight: 800; color: #10b981; margin-top: 2px; line-height: 1.3;">
+                        {{ kh.ten_cong_ty || kh.company || 'Chưa có tên công ty' }}
+                      </div>
+                    </div>
+                    <span :class="['status-pill-mini', getStatusPillClass(kh.trang_thai)]">
+                      {{ kh.trang_thai || 'Mới' }}
+                    </span>
+                  </div>
+
+                  <!-- Chi tiết thông tin -->
+                  <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.85rem; color: #cbd5e1;">
+                    <div style="display: flex; justify-content: space-between; gap: 8px;">
+                      <span style="color: #94a3b8;">Người nhận / Tên KH:</span>
+                      <strong style="color: #f8fafc; text-align: right;">{{ kh.ten_khach_hang || 'Chưa có' }}</strong>
+                    </div>
+                    <div v-if="kh.ten_khach_hang_phu" style="display: flex; justify-content: space-between; gap: 8px;">
+                      <span style="color: #94a3b8;">Người nhận phụ:</span>
+                      <span style="color: #e2e8f0; text-align: right;">{{ kh.ten_khach_hang_phu }}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; gap: 8px;">
+                      <span style="color: #94a3b8;">Mã số thuế:</span>
+                      <strong style="color: #fbbf24; text-align: right;">{{ kh.mst || 'Chưa có' }}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; gap: 8px;">
+                      <span style="color: #94a3b8;">Số điện thoại:</span>
+                      <span style="color: #e2e8f0; text-align: right;">{{ kh.so_dien_thoai_ca_nhan || kh.so_dien_thoai_cong_ty || kh.tel || 'Chưa có' }}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; gap: 8px; align-items: flex-start;">
+                      <span style="color: #94a3b8; flex-shrink: 0;">Địa chỉ:</span>
+                      <span style="color: #cbd5e1; text-align: right; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                        {{ kh.dia_chi_cong_ty || kh.address || 'Chưa có' }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Footer: Chỉ số Hợp đồng, Công nợ, Thời gian & Nút thao tác -->
+                <div style="padding-top: 10px; border-top: 1px dashed rgba(255, 255, 255, 0.08); display: flex; flex-direction: column; gap: 8px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 0.78rem;">
+                    <span style="color: #94a3b8;">
+                      HĐ chốt: <strong style="color: #10b981;">{{ kh.hopDongChotCount || 0 }}</strong>
+                      <span style="margin: 0 4px; color: #475569;">|</span>
+                      Đang xử lý: <strong style="color: #fbbf24;">{{ kh.hopDongProcessingCount || 0 }}</strong>
+                    </span>
+                    <span style="color: #94a3b8;">
+                      Công nợ:
+                      <strong :style="{ color: (Number(kh.cong_no) || 0) > 0 ? '#f87171' : '#34d399' }">
+                        {{ formatCurrency(kh.cong_no || 0) || '0' }} đ
+                      </strong>
+                    </span>
+                  </div>
+
+                  <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.74rem; color: #64748b;">
+                    <span>Tạo: {{ formatLastUpdated(kh.created_time) }}</span>
+                    <span>Cập nhật: {{ formatLastUpdated(kh.last_updated) }}</span>
+                  </div>
+
+                  <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 2px;">
+                    <button
+                      type="button"
+                      @click.stop="openEditModal(kh)"
+                      style="background: rgba(16, 185, 129, 0.14); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.35); padding: 6px 12px; border-radius: 8px; font-size: 0.78rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                      Chỉnh sửa
+                    </button>
+                    <button
+                      type="button"
+                      @click.stop="confirmDelete(kh.ma_khach_hang)"
+                      style="background: rgba(239, 68, 68, 0.12); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.32); padding: 6px 12px; border-radius: 8px; font-size: 0.78rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                      Xoá
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" @click="isDuplicateModalOpen = false">Đóng</button>
+        </div>
       </div>
     </div>
 
@@ -1197,11 +1479,19 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import * as XLSX from 'xlsx-js-style'
+import * as pdfjsLib from 'pdfjs-dist/build/pdf.js'
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.js?url'
 import { initializeApp, getApps, getApp } from 'firebase/app'
 import { getDatabase, ref as dbRef, get, set, push, update, remove } from 'firebase/database'
+import { triggerZaloEventNotification } from '../utils/zaloBotService'
+
+const _pdfGlobalWorker = pdfjsLib?.GlobalWorkerOptions || pdfjsLib?.default?.GlobalWorkerOptions
+if (_pdfGlobalWorker && !_pdfGlobalWorker.workerSrc) {
+  _pdfGlobalWorker.workerSrc = pdfWorkerUrl
+}
 
 const firebaseConfig = {
   apiKey: "AIzaSyB3fHD_sOqyqVygCxP2gZtvaipr-35a1s8",
@@ -1240,7 +1530,8 @@ const KH_FIELDS = [
   'mst',
   'company',
   'address',
-  'tel'
+  'tel',
+  'nganh_nghe_cong_ty'
 ]
 
 const kh_genID = () => {
@@ -1256,7 +1547,7 @@ const sanitizeFirebaseKey = (key) => {
 const normalizeCustomerRecord = (raw, fbKey) => {
   if (!raw || typeof raw !== 'object') return null
   if (Array.isArray(raw)) {
-    const obj = { _firebaseKey: fbKey, cong_no: 0, tagKH: [] }
+    const obj = { _firebaseKey: fbKey, cong_no: 0, tagKH: [], created_time: '', last_updated: '' }
     KH_FIELDS.forEach((field, idx) => {
       obj[field] = raw[idx] !== undefined && raw[idx] !== null ? raw[idx] : ''
     })
@@ -1273,17 +1564,23 @@ const normalizeCustomerRecord = (raw, fbKey) => {
   if (!obj.so_dien_thoai_ca_nhan && raw.sdt) obj.so_dien_thoai_ca_nhan = raw.sdt
   if (!obj.email_ca_nhan && raw.email) obj.email_ca_nhan = raw.email
   if (!obj.dia_chi_cong_ty && raw.dia_chi) obj.dia_chi_cong_ty = raw.dia_chi
+  if (!obj.nganh_nghe_cong_ty && (raw.Nganh_nghe_cong_ty || raw.nganh_nghe_chinh)) {
+    obj.nganh_nghe_cong_ty = raw.Nganh_nghe_cong_ty || raw.nganh_nghe_chinh
+  }
   obj.cong_no = Number(raw.cong_no) || 0
   obj.tagKH = Array.isArray(raw.tagKH)
     ? [...raw.tagKH]
     : (typeof raw.tagKH === 'string' && raw.tagKH.trim() ? [raw.tagKH.trim()] : [])
+  obj.created_time =
+    raw.created_time ||
+    raw.createdAt ||
+    raw.CREATED_TIME ||
+    ''
   obj.last_updated =
     raw.last_updated ||
     raw.lastupdated ||
     raw.lastUpdated ||
     raw.lastupadted ||
-    raw.created_time ||
-    raw.createdAt ||
     ''
   return obj
 }
@@ -1291,10 +1588,291 @@ const normalizeCustomerRecord = (raw, fbKey) => {
 const router = useRouter()
 
 const fileInput = ref(null)
+const quoteFileInput = ref(null)
 
 const triggerFileInput = () => {
   if (fileInput.value) {
     fileInput.value.click()
+  }
+}
+
+const triggerQuoteFileInput = () => {
+  if (quoteFileInput.value) {
+    quoteFileInput.value.click()
+  }
+}
+
+const cleanExtractedQuoteCompany = (raw) => {
+  if (!raw) return ''
+  const s = String(raw)
+    .replace(/^[\s:–\-]+/, '')
+    .replace(/(?:^|\s)(?:ngày|date)\s*(?::|\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}).*$/i, '')
+    .replace(/(?:^|\s)(?:mst|mã\s*số\s*thuế|tax\s*code)\s*:?.*$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (!s || /^\{+.*\}+$/i.test(s) || /nam\s+trường\s+sơn|ntssi/i.test(s)) return ''
+  return s
+}
+
+const cleanExtractedQuoteRecipient = (raw) => {
+  if (!raw) return ''
+  const s = String(raw)
+    .replace(/^[\s:–\-]+/, '')
+    .replace(/(?:^|\s)(?:tel|mobile|sđt|số\s*điện\s*thoại|điện\s*thoại|đt|email|e-mail|fax|chức\s*vụ|bộ\s*phận|phòng|ngày|date)\s*:?.*$/i, '')
+    .replace(/(?:[\s\-–/|,(]+(?:\+?84|0)\d[\d\s.\-]{7,}\)?)$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (!s || /^\{+.*\}+$/i.test(s) || /^(?:mr|ms|mrs|miss|dr|anh|chị|chi|ông|ong|bà|ba)\.?$/i.test(s)) return ''
+  return s
+}
+
+const cleanExtractedQuoteAddress = (raw) => {
+  if (!raw) return ''
+  const s = String(raw)
+    .replace(/^[\s:–\-]+/, '')
+    .replace(/(?:^|\s)(?:ngày|date)\s*(?::|\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}).*$/i, '')
+    .replace(/(?:^|\s)(?:tel|fax|mobile|sđt|số\s*điện\s*thoại|điện\s*thoại|mst|mã\s*số\s*thuế)\s*:?.*$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (!s || /^\{+.*\}+$/i.test(s) || /tăng\s*bạt\s*hổ|tang\s*bat\s*ho/i.test(s)) return ''
+  return s
+}
+
+const extractQuoteCustomerFromRows = (rows) => {
+  let tenCT = ''
+  let tenKH = ''
+  let diaChi = ''
+  const maxRows = Math.min(rows.length, 30)
+  for (let r = 0; r < maxRows; r++) {
+    const row = rows[r]
+    if (!Array.isArray(row)) continue
+    const nonEmptyCells = row
+      .map(c => String(c ?? '').trim())
+      .filter(Boolean)
+    if (nonEmptyCells.length === 0) continue
+
+    const rowUpper = nonEmptyCells.join('|').toUpperCase()
+    if (
+      (rowUpper.includes('STT') || rowUpper.includes('NO.')) &&
+      (rowUpper.includes('TÊN HÀNG') || rowUpper.includes('MODEL') || rowUpper.includes('PART#') || rowUpper.includes('DIỄN GIẢI') || rowUpper.includes('SẢN PHẨM') || rowUpper.includes('HÀNG HÓA'))
+    ) {
+      break
+    }
+
+    for (let j = 0; j < nonEmptyCells.length; j++) {
+      const cellText = nonEmptyCells[j]
+      const subLines = cellText.split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+      for (const line of subLines) {
+        if (!tenCT && /(?:kính\s*g[ởiử]i|kinh\s*g[oiu]i)/i.test(line)) {
+          const m = line.match(/(?:kính\s*g[ởiử]i|kinh\s*g[oiu]i)\s*:?\s*(.*)/i)
+          let candidate = m && m[1] ? cleanExtractedQuoteCompany(m[1]) : ''
+          if (!candidate && j + 1 < nonEmptyCells.length) {
+            const nextCell = nonEmptyCells[j + 1]
+            if (!/^(?:ngày|date|địa\s*chỉ|người\s*nhận)(?:\s|:|$)/i.test(nextCell)) {
+              candidate = cleanExtractedQuoteCompany(nextCell)
+            }
+          }
+          if (candidate) tenCT = candidate
+        }
+        if (
+          !diaChi &&
+          /(?:địa\s*chỉ|dia\s*chi|address)/i.test(line) &&
+          !/giao\s*hàng|tăng\s*bạt\s*hổ|tang\s*bat\s*ho/i.test(line)
+        ) {
+          const m = line.match(/(?:địa\s*chỉ|dia\s*chi|address)\s*(?:\(\*\))?\s*:?\s*(.*)/i)
+          let candidate = m && m[1] ? cleanExtractedQuoteAddress(m[1]) : ''
+          if (!candidate && j + 1 < nonEmptyCells.length) {
+            const nextCell = nonEmptyCells[j + 1]
+            if (!/^(?:ngày|date|người\s*nhận|tel|mobile|sđt|email|fax|mst)(?:\s|:|$)/i.test(nextCell)) {
+              candidate = cleanExtractedQuoteAddress(nextCell)
+            }
+          }
+          if (candidate) diaChi = candidate
+        }
+        if (
+          !tenKH &&
+          /(?:người\s*nhận|nguoi\s*nhan|người\s*liên\s*hệ|attn|attention|contact)/i.test(line) &&
+          !/người\s*nhận\s*hàng/i.test(line)
+        ) {
+          const m = line.match(/(?:người\s*nhận|nguoi\s*nhan|người\s*liên\s*hệ|attn|attention|contact)\s*:?\s*(.*)/i)
+          let candidate = m && m[1] ? cleanExtractedQuoteRecipient(m[1]) : ''
+          if (!candidate && j + 1 < nonEmptyCells.length) {
+            const nextCell = nonEmptyCells[j + 1]
+            if (!/^(?:ngày|date|địa\s*chỉ|tel|mobile|sđt|email|fax|mst)(?:\s|:|$)/i.test(nextCell)) {
+              candidate = cleanExtractedQuoteRecipient(nextCell)
+            }
+          }
+          if (candidate) tenKH = candidate
+        }
+      }
+    }
+    if (tenCT && tenKH && diaChi) break
+  }
+  return { tenCT, tenKH, diaChi }
+}
+
+const extractQuoteCustomerFromPdfBuffer = async (arrayBuffer) => {
+  const doc = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise
+  const page = await doc.getPage(1)
+  const vp = page.getViewport({ scale: 1.0 })
+  const tc = await page.getTextContent()
+  const lines = []
+  for (const it of tc.items || []) {
+    const str = String(it?.str ?? '')
+    if (!str.trim()) continue
+    const tr = it.transform || [10, 0, 0, 10, 0, 0]
+    const x = Number(tr[4]) || 0
+    const width = Number(it.width) || str.length * 4.5
+    const topY = vp.height - (Number(tr[5]) || 0)
+    let line = lines.find(l => Math.abs(l.topY - topY) <= 3.5)
+    if (!line) {
+      line = { topY, tokens: [] }
+      lines.push(line)
+    }
+    line.tokens.push({ str, x, xRight: x + width })
+  }
+  lines.sort((a, b) => a.topY - b.topY)
+  const rows = lines.map(l => {
+    l.tokens.sort((a, b) => a.x - b.x)
+    let txt = ''
+    l.tokens.forEach((t, idx) => {
+      if (idx > 0) {
+        const prev = l.tokens[idx - 1]
+        if (t.x - prev.xRight > 1.5 && !prev.str.endsWith(' ') && !t.str.startsWith(' ')) {
+          txt += ' '
+        }
+      }
+      txt += t.str
+    })
+    return [txt.trim()]
+  })
+  return extractQuoteCustomerFromRows(rows)
+}
+
+const handleQuoteFileUpload = async (event) => {
+  const files = event.target.files
+  if (!files || files.length === 0) return
+
+  loading.value = true
+  importedList.value = []
+  const tempList = []
+  let errorCount = 0
+
+  try {
+    const normText = (s) => removeDiacritics(String(s || '')).toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim()
+    const normCode = (s) => removeDiacritics(String(s || '')).toUpperCase().replace(/[^A-Z0-9]/g, '')
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      try {
+        const data = await file.arrayBuffer()
+        const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf'
+
+        let tenCT = ''
+        let tenKH = ''
+        let diaChi = ''
+
+        if (isPdf) {
+          const res = await extractQuoteCustomerFromPdfBuffer(data)
+          tenCT = res.tenCT
+          tenKH = res.tenKH
+          diaChi = res.diaChi
+        } else {
+          const workbook = XLSX.read(data, { type: 'array' })
+          for (const sheetName of workbook.SheetNames) {
+            const ws = workbook.Sheets[sheetName]
+            if (!ws) continue
+            const rawData = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' })
+            const res = extractQuoteCustomerFromRows(rawData)
+            if (res.tenCT || res.tenKH || res.diaChi) {
+              tenCT = res.tenCT
+              tenKH = res.tenKH
+              diaChi = res.diaChi
+              break
+            }
+          }
+        }
+
+        const finalTenKH = (tenKH || '').trim().toUpperCase()
+        const finalTenCT = (tenCT || '').trim().toUpperCase()
+        const finalDiaChi = (diaChi || '').trim()
+
+        if (finalTenKH || finalTenCT) {
+          const expectedMaKH = genMaKH(finalTenKH, finalTenCT)
+          const expectedMaCT = genMaCT(finalTenCT)
+          const normExpectedMa = normCode(expectedMaKH)
+          const normCT = normText(finalTenCT)
+          const normKH = normText(finalTenKH)
+
+          const existingCustomer =
+            (normExpectedMa ? customers.value.find(c => normCode(c.ma_khach_hang) === normExpectedMa) : null) ||
+            (normCT && normKH
+              ? customers.value.find(c => normText(c.ten_cong_ty) === normCT && normText(c.ten_khach_hang) === normKH)
+              : null) ||
+            (normCT && !normKH
+              ? customers.value.find(c => normText(c.ten_cong_ty) === normCT && !String(c.ten_khach_hang || '').trim())
+              : null)
+
+          const importedData = {
+            ma_khach_hang: existingCustomer?.ma_khach_hang || expectedMaKH,
+            ten_khach_hang: finalTenKH,
+            ma_cong_ty: existingCustomer?.ma_cong_ty || expectedMaCT,
+            ten_cong_ty: finalTenCT,
+            dia_chi_cong_ty: finalDiaChi
+          }
+
+          let itemFormData = {}
+          let itemIsEditing = false
+
+          if (existingCustomer) {
+            itemFormData = {
+              ...initFormData(),
+              ...existingCustomer,
+              ...Object.fromEntries(Object.entries(importedData).filter(([_, v]) => v !== ''))
+            }
+            itemIsEditing = true
+          } else {
+            itemFormData = {
+              ...initFormData(),
+              ...importedData
+            }
+            itemIsEditing = false
+          }
+
+          tempList.push({
+            data: itemFormData,
+            isEditing: itemIsEditing,
+            fileName: file.name
+          })
+        } else {
+          errorCount++
+        }
+      } catch (fileErr) {
+        console.warn('Lỗi đọc file báo giá:', file.name, fileErr)
+        errorCount++
+      }
+    }
+
+    if (tempList.length > 0) {
+      importedList.value = tempList
+      isMultiImport.value = true
+      currentImportIndex.value = 0
+      formData.value = { ...importedList.value[0].data }
+      isEditing.value = importedList.value[0].isEditing
+      isModalOpen.value = true
+
+      if (errorCount > 0) {
+        alert(`Đã lấy thông tin từ ${tempList.length} file báo giá. Có ${errorCount} file không tìm thấy mục Kính gửi / Người nhận.`)
+      }
+    } else {
+      alert('Không tìm thấy thông tin Kính gửi (Tên công ty) hoặc Người nhận hợp lệ trong file báo giá đã chọn.')
+    }
+  } catch (e) {
+    console.error(e)
+    alert('Lỗi khi đọc file báo giá. Định dạng không hợp lệ.')
+  } finally {
+    loading.value = false
+    event.target.value = null
   }
 }
 
@@ -1483,8 +2061,33 @@ function navigateToContracts(kh, processingType) {
 
 const filters = ref({
   search: '',
-  trang_thai: ''
+  trang_thai: '',
+  tagKH: '',
+  sortUpdated: '',
+  debt: ''
 })
+
+const resetFilters = () => {
+  filters.value.search = ''
+  filters.value.trang_thai = ''
+  filters.value.tagKH = ''
+  filters.value.sortUpdated = ''
+  filters.value.debt = ''
+}
+
+const getLastUpdatedTimestamp = (val) => {
+  if (!val && val !== 0) return 0
+  const rawStr = String(val).trim()
+  if (!rawStr) return 0
+  let dt = null
+  if (/^\d+$/.test(rawStr)) {
+    dt = new Date(Number(rawStr))
+  } else {
+    dt = parseDateStr(rawStr) || new Date(rawStr)
+  }
+  if (!dt || isNaN(dt.getTime())) return 0
+  return dt.getTime()
+}
 
 const formatCurrency = (value) => {
   if (!value && value !== 0) return '';
@@ -1516,24 +2119,391 @@ const searchedCustomers = computed(() => {
 });
 
 const filteredCustomers = computed(() => {
-  let result = searchedCustomers.value;
-  if (filters.value.trang_thai === '__renew__') {
-    result = result.filter(c => c.renewalCount > 0);
-  } else if (filters.value.trang_thai) {
-    result = result.filter(c => c.trang_thai === filters.value.trang_thai);
+  let result = [...searchedCustomers.value];
+
+  // Lọc theo nhóm khách (tagKH)
+  if (filters.value.tagKH === '__untagged__') {
+    result = result.filter(c => !Array.isArray(c.tagKH) || c.tagKH.length === 0);
+  } else if (filters.value.tagKH) {
+    result = result.filter(c => Array.isArray(c.tagKH) && c.tagKH.includes(filters.value.tagKH));
   }
+
+  // Lọc theo công nợ
+  if (filters.value.debt === 'debt') {
+    result = result.filter(c => (Number(c.cong_no) || 0) > 0);
+  } else if (filters.value.debt === 'no_debt') {
+    result = result.filter(c => (Number(c.cong_no) || 0) <= 0);
+  }
+
+  // Sắp xếp theo thời gian cập nhật (last_updated)
+  if (filters.value.sortUpdated === 'desc') {
+    result.sort((a, b) => getLastUpdatedTimestamp(b.last_updated) - getLastUpdatedTimestamp(a.last_updated));
+  } else if (filters.value.sortUpdated === 'asc') {
+    result.sort((a, b) => {
+      const ta = getLastUpdatedTimestamp(a.last_updated);
+      const tb = getLastUpdatedTimestamp(b.last_updated);
+      if (ta === 0 && tb === 0) return 0;
+      if (ta === 0) return 1;
+      if (tb === 0) return -1;
+      return ta - tb;
+    });
+  }
+
   return result;
 });
 
 const totalCount = computed(() => searchedCustomers.value.length);
-const careCount = computed(() => searchedCustomers.value.filter(c => c.trang_thai === 'Đang chăm sóc').length);
-const dealCount = computed(() => searchedCustomers.value.filter(c => c.trang_thai === 'Chốt deal').length);
-const potentialCount = computed(() => searchedCustomers.value.filter(c => c.trang_thai === 'Tiềm năng').length);
-const renewCustomerCount = computed(() => searchedCustomers.value.filter(c => c.renewalCount > 0).length);
+const debtCustomerCount = computed(() => searchedCustomers.value.filter(c => (Number(c.cong_no) || 0) > 0).length);
+
+// ─── Lazy Loading (20 khách hàng / trang) ───
+const CUSTOMER_PAGE_SIZE = 20
+const displayLimit = ref(CUSTOMER_PAGE_SIZE)
+
+const totalFilteredCount = computed(() => filteredCustomers.value.length)
+
+const visibleCustomers = computed(() => {
+  return filteredCustomers.value.slice(0, displayLimit.value)
+})
+
+const displayedCustomersCount = computed(() => {
+  return Math.min(displayLimit.value, totalFilteredCount.value)
+})
+
+const hasMoreCustomers = computed(() => {
+  return displayLimit.value < totalFilteredCount.value
+})
+
+const loadMoreCustomers = () => {
+  if (displayLimit.value < totalFilteredCount.value) {
+    displayLimit.value = Math.min(totalFilteredCount.value, displayLimit.value + CUSTOMER_PAGE_SIZE)
+  }
+}
+
+const lazyLoadSentinelRef = ref(null)
+let lazyLoadObserver = null
+
+const setupLazyLoadObserver = (el) => {
+  if (lazyLoadObserver) {
+    lazyLoadObserver.disconnect()
+    lazyLoadObserver = null
+  }
+  if (!el || typeof IntersectionObserver === 'undefined') return
+  lazyLoadObserver = new IntersectionObserver(
+    (entries) => {
+      const entry = entries[0]
+      if (entry && entry.isIntersecting && hasMoreCustomers.value && !loading.value) {
+        loadMoreCustomers()
+      }
+    },
+    { root: null, rootMargin: '280px 0px', threshold: 0.05 }
+  )
+  lazyLoadObserver.observe(el)
+}
+
+watch(lazyLoadSentinelRef, (newEl) => {
+  setupLazyLoadObserver(newEl)
+})
+
+watch(
+  [
+    () => filters.value.search,
+    () => filters.value.tagKH,
+    () => filters.value.sortUpdated,
+    () => filters.value.debt
+  ],
+  () => {
+    displayLimit.value = CUSTOMER_PAGE_SIZE
+    nextTick(() => {
+      if (lazyLoadSentinelRef.value) {
+        setupLazyLoadObserver(lazyLoadSentinelRef.value)
+      }
+    })
+  }
+)
+
+onUnmounted(() => {
+  if (lazyLoadObserver) {
+    lazyLoadObserver.disconnect()
+    lazyLoadObserver = null
+  }
+})
 
 const isModalOpen = ref(false)
 const isEditing = ref(false)
 const formData = ref({})
+
+// ─── Kiểm tra khách hàng trùng lặp ───
+const isDuplicateModalOpen = ref(false)
+const duplicateFilterType = ref('all')
+const duplicateSearchQuery = ref('')
+
+const normalizeCompanyForDupCheck = (str) => {
+  if (!str) return ''
+  let s = removeDiacritics(String(str)).toLowerCase()
+  s = s.replace(/[^a-z0-9\s]/g, ' ')
+  const stopWords = [
+    'cong ty',
+    'cty',
+    'tnhh',
+    'trach nhiem huu han',
+    'co phan',
+    'cp',
+    'mtv',
+    'mot thanh vien',
+    'tm',
+    'dv',
+    'sx',
+    'xd',
+    'thuong mai',
+    'dich vu',
+    'san xuat',
+    'xay dung',
+    'dau tu',
+    'phat trien',
+    'cong nghe',
+    'giai phap',
+    'he thong',
+    'thong tin',
+    'vien thong',
+    'co ltd',
+    'ltd',
+    'limited',
+    'jsc',
+    'corp',
+    'corporation',
+    'company',
+    'inc',
+    'group',
+    'tap doan',
+    'chi nhanh',
+    'cn'
+  ]
+  // Loại bỏ các cụm từ loại hình doanh nghiệp ở đầu/cuối hoặc độc lập
+  let cleaned = ` ${s.replace(/\s+/g, ' ').trim()} `
+  for (const w of ['trach nhiem huu han', 'mot thanh vien', 'cong ty', 'co phan', 'co ltd', 'chi nhanh', 'cty', 'tnhh', 'mtv', 'cp', 'jsc', 'ltd', 'limited', 'company', 'corp', 'corporation', 'inc']) {
+    const reg = new RegExp(`\\b${w}\\b`, 'g')
+    cleaned = cleaned.replace(reg, ' ')
+  }
+  const compact = cleaned.replace(/\s+/g, '').trim()
+  if (compact.length >= 2) return compact
+  return s.replace(/\s+/g, '').trim()
+}
+
+const normalizePersonForDupCheck = (str) => {
+  if (!str) return { key: '', wordCount: 0 }
+  let s = removeDiacritics(String(str)).toLowerCase()
+  s = s.replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim()
+  s = s.replace(/^(?:anh|chi|ong|ba|mr|ms|mrs|miss|dr|a|c)\s+/i, '').trim()
+  const words = s.split(' ').filter(Boolean)
+  return {
+    key: words.join(''),
+    wordCount: words.length
+  }
+}
+
+const normalizeMstForDupCheck = (str) => {
+  if (!str) return ''
+  const s = String(str).replace(/[^0-9A-Za-z\-]/g, '').trim()
+  const digitsOnly = s.replace(/[^0-9]/g, '')
+  if (digitsOnly.length < 7) return ''
+  return s.toUpperCase()
+}
+
+const duplicateGroups = computed(() => {
+  const list = customers.value || []
+  const n = list.length
+  if (n < 2) return []
+
+  const prep = list.map((kh, idx) => {
+    const compRaw = kh.ten_cong_ty || kh.company || ''
+    const personInfo = normalizePersonForDupCheck(kh.ten_khach_hang)
+    return {
+      idx,
+      kh,
+      compKey: normalizeCompanyForDupCheck(compRaw),
+      personKey: personInfo.key,
+      personWords: personInfo.wordCount,
+      mstKey: normalizeMstForDupCheck(kh.mst)
+    }
+  })
+
+  const parent = Array.from({ length: n }, (_, i) => i)
+  const find = (x) => {
+    while (parent[x] !== x) {
+      parent[x] = parent[parent[x]]
+      x = parent[x]
+    }
+    return x
+  }
+  const union = (a, b) => {
+    const ra = find(a)
+    const rb = find(b)
+    if (ra !== rb) parent[rb] = ra
+  }
+
+  const pairReasons = new Map()
+  const addPairReason = (i, j, type) => {
+    const key = i < j ? `${i}_${j}` : `${j}_${i}`
+    if (!pairReasons.has(key)) pairReasons.set(key, new Set())
+    pairReasons.get(key).add(type)
+  }
+
+  for (let i = 0; i < n; i++) {
+    const a = prep[i]
+    for (let j = i + 1; j < n; j++) {
+      const b = prep[j]
+      const sameMst = Boolean(a.mstKey && b.mstKey && a.mstKey === b.mstKey)
+      const sameComp = Boolean(a.compKey && b.compKey && a.compKey === b.compKey)
+      const samePerson = Boolean(
+        a.personKey &&
+        b.personKey &&
+        a.personKey === b.personKey &&
+        (sameComp || !a.compKey || !b.compKey || a.personWords >= 2)
+      )
+
+      if (sameMst || sameComp || samePerson) {
+        union(i, j)
+        if (sameComp && samePerson) {
+          addPairReason(i, j, 'both')
+        }
+        if (sameComp) {
+          addPairReason(i, j, 'company')
+        }
+        if (samePerson) {
+          addPairReason(i, j, 'customer')
+        }
+        if (sameMst) {
+          addPairReason(i, j, 'mst')
+        }
+      }
+    }
+  }
+
+  const groupsMap = new Map()
+  for (let i = 0; i < n; i++) {
+    const root = find(i)
+    if (!groupsMap.has(root)) {
+      groupsMap.set(root, [])
+    }
+    groupsMap.get(root).push(i)
+  }
+
+  const result = []
+  groupsMap.forEach((indices) => {
+    if (indices.length < 2) return
+    const reasonSet = new Set()
+    for (let aIdx = 0; aIdx < indices.length; aIdx++) {
+      for (let bIdx = aIdx + 1; bIdx < indices.length; bIdx++) {
+        const i = indices[aIdx]
+        const j = indices[bIdx]
+        const key = i < j ? `${i}_${j}` : `${j}_${i}`
+        const rSet = pairReasons.get(key)
+        if (rSet) {
+          rSet.forEach(t => reasonSet.add(t))
+        }
+      }
+    }
+
+    const reasons = []
+    if (reasonSet.has('both')) {
+      reasons.push({ type: 'both', label: 'Trùng Công ty & Tên KH' })
+    }
+    if (reasonSet.has('company') && !reasonSet.has('both')) {
+      reasons.push({ type: 'company', label: 'Trùng Tên công ty' })
+    }
+    if (reasonSet.has('customer') && !reasonSet.has('both')) {
+      reasons.push({ type: 'customer', label: 'Trùng Tên khách hàng' })
+    }
+    if (reasonSet.has('mst')) {
+      reasons.push({ type: 'mst', label: 'Trùng MST' })
+    }
+
+    const items = indices.map(idx => list[idx])
+    const firstWithComp = items.find(it => it.ten_cong_ty || it.company)
+    const firstWithName = items.find(it => it.ten_khach_hang)
+    const primaryLabel =
+      (firstWithComp && (firstWithComp.ten_cong_ty || firstWithComp.company)) ||
+      (firstWithName && firstWithName.ten_khach_hang) ||
+      items[0]?.ma_khach_hang ||
+      'Nhóm khách hàng trùng'
+
+    result.push({
+      id: indices.map(idx => list[idx]._firebaseKey || list[idx].ma_khach_hang || idx).join('__'),
+      primaryLabel,
+      reasonTypes: Array.from(reasonSet),
+      reasons,
+      items
+    })
+  })
+
+  return result
+})
+
+const duplicateFilterTabs = computed(() => {
+  const groups = duplicateGroups.value
+  return [
+    { key: 'all', label: 'Tất cả nhóm trùng', count: groups.length },
+    { key: 'both', label: 'Trùng Công ty & Tên KH', count: groups.filter(g => g.reasonTypes.includes('both')).length },
+    { key: 'company', label: 'Trùng Tên công ty', count: groups.filter(g => g.reasonTypes.includes('company')).length },
+    { key: 'customer', label: 'Trùng Tên khách hàng', count: groups.filter(g => g.reasonTypes.includes('customer')).length },
+    { key: 'mst', label: 'Trùng MST', count: groups.filter(g => g.reasonTypes.includes('mst')).length }
+  ]
+})
+
+const filteredDuplicateGroups = computed(() => {
+  let groups = duplicateGroups.value
+  if (duplicateFilterType.value !== 'all') {
+    groups = groups.filter(g => g.reasonTypes.includes(duplicateFilterType.value))
+  }
+  const q = normalizeForSearch(duplicateSearchQuery.value)
+  if (q) {
+    groups = groups.filter(g =>
+      g.items.some(c =>
+        (c.ten_khach_hang && normalizeForSearch(c.ten_khach_hang).includes(q)) ||
+        (c.ten_cong_ty && normalizeForSearch(c.ten_cong_ty).includes(q)) ||
+        (c.ma_khach_hang && normalizeForSearch(c.ma_khach_hang).includes(q)) ||
+        (c.mst && normalizeForSearch(c.mst).includes(q)) ||
+        (c.so_dien_thoai_ca_nhan && normalizeForSearch(c.so_dien_thoai_ca_nhan).includes(q))
+      )
+    )
+  }
+  return groups
+})
+
+const getDuplicateReasonStyle = (type) => {
+  if (type === 'both') {
+    return {
+      background: 'rgba(239, 68, 68, 0.16)',
+      color: '#f87171',
+      border: '1px solid rgba(239, 68, 68, 0.4)'
+    }
+  }
+  if (type === 'mst') {
+    return {
+      background: 'rgba(245, 158, 11, 0.16)',
+      color: '#fbbf24',
+      border: '1px solid rgba(245, 158, 11, 0.4)'
+    }
+  }
+  if (type === 'company') {
+    return {
+      background: 'rgba(56, 189, 248, 0.16)',
+      color: '#38bdf8',
+      border: '1px solid rgba(56, 189, 248, 0.4)'
+    }
+  }
+  return {
+    background: 'rgba(168, 85, 247, 0.16)',
+    color: '#c084fc',
+    border: '1px solid rgba(168, 85, 247, 0.4)'
+  }
+}
+
+const openDuplicateCheckModal = () => {
+  duplicateFilterType.value = 'all'
+  duplicateSearchQuery.value = ''
+  isDuplicateModalOpen.value = true
+}
 
 const importedList = ref([])
 const currentImportIndex = ref(0)
@@ -1563,8 +2533,10 @@ const initFormData = () => ({
   company: '',
   address: '',
   tel: '',
+  nganh_nghe_cong_ty: '',
   cong_no: 0,
   tagKH: [],
+  created_time: '',
   last_updated: ''
 })
 
@@ -2432,6 +3404,16 @@ const submitPayment = async () => {
       _firebaseKey: histKey
     })
 
+    triggerZaloEventNotification('onPaymentRecorded', {
+      ten_khach_hang: m.customer?.ten_cong_ty || m.customer?.ten_khach_hang || maKH,
+      ma_khach_hang: maKH,
+      so_po: r.So_PO || srId,
+      so_tien_thanh_toan: payAmt.toLocaleString('vi-VN'),
+      cong_no_con_lai: newCongNo.toLocaleString('vi-VN'),
+      thoi_gian: payTime,
+      ghi_chu: (m.note || '').trim() || 'Không có'
+    })
+
     await refreshCustomerCalculatedDebt()
 
     const nextEval = evaluateInstallmentSchedule(totalSau, newPaid, m.scheduleMode, m.singleDueDate, m.scheduleItems)
@@ -2959,6 +3941,12 @@ const saveSingleCustomerToFirebase = async (data, isUpd) => {
   }
   const maCT = data.ma_cong_ty || genMaCT(data.ten_cong_ty)
 
+  const existing = customers.value.find(
+    c => (data._firebaseKey && c._firebaseKey === data._firebaseKey) || String(c.ma_khach_hang) === id
+  )
+  const fbKey = existing?._firebaseKey || data._firebaseKey || sanitizeFirebaseKey(id)
+  const nowIso = new Date().toISOString()
+
   const recordToSave = {}
   KH_FIELDS.forEach(field => {
     const val = data[field]
@@ -2968,17 +3956,24 @@ const saveSingleCustomerToFirebase = async (data, isUpd) => {
   recordToSave.ma_cong_ty = maCT
   recordToSave.cong_no = Number(data.cong_no) || 0
   recordToSave.tagKH = Array.isArray(data.tagKH) ? [...data.tagKH] : []
-  recordToSave.last_updated = new Date().toISOString()
-
-  const existing = customers.value.find(
-    c => (data._firebaseKey && c._firebaseKey === data._firebaseKey) || String(c.ma_khach_hang) === id
-  )
-  const fbKey = existing?._firebaseKey || data._firebaseKey || sanitizeFirebaseKey(id)
+  recordToSave.last_updated = nowIso
 
   if (isUpd || existing) {
+    const existingCreatedTime = existing?.created_time || data.created_time || ''
+    if (existingCreatedTime) {
+      recordToSave.created_time = existingCreatedTime
+    }
     await update(dbRef(database, `khach_hang/${fbKey}`), recordToSave)
   } else {
+    recordToSave.created_time = data.created_time || nowIso
     await set(dbRef(database, `khach_hang/${fbKey}`), recordToSave)
+    triggerZaloEventNotification('onCustomerCreated', {
+      ma_khach_hang: id,
+      ten_cong_ty: recordToSave.ten_cong_ty || 'Chưa có',
+      ten_khach_hang: recordToSave.ten_khach_hang || 'Chưa có',
+      mst: recordToSave.mst || 'Chưa có',
+      dia_chi: recordToSave.dia_chi_cong_ty || 'Chưa có'
+    })
   }
   return id
 }

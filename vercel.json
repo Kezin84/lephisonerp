@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/zalo-bot-api/(.*)", "destination": "https://bot-api.zaloplatforms.com/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

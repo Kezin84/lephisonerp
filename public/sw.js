@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sonai-pwa-v1';
+const CACHE_NAME = 'sonai-pwa-v2';
 const PRECACHE_URLS = [
   '/',
   '/index.html',
@@ -33,6 +33,15 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
+  if (
+    url.hostname === 'localhost' ||
+    url.hostname === '127.0.0.1' ||
+    url.pathname.startsWith('/src/') ||
+    url.pathname.startsWith('/@') ||
+    url.pathname.startsWith('/node_modules/')
+  ) {
+    return;
+  }
 
   event.respondWith(
     fetch(event.request)

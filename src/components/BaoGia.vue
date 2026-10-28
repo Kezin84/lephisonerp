@@ -13,7 +13,7 @@ import PipelinePreviewModal from './PipelinePreviewModal.vue'
 import html2canvas from 'html2canvas'
 import * as XLSX from 'xlsx-js-style'
 import Tesseract from 'tesseract.js'
-import { deliverExportedFile, isMobileOrIOSPWA } from '../utils/printTemplateEngine'
+import { deliverExportedFile, isMobileOrIOSPWA, buildQuoteFileName } from '../utils/printTemplateEngine'
 const route = useRoute()
 const router = useRouter()
 
@@ -215,6 +215,32 @@ const thueChenhLechPct = ref(0)
 const chietKhauTruocThuePct = ref(0)
 const ghiChuHopDong = ref('')
 const contentOfContractPO = ref('')
+function getQuoteDownloadBaseName(prefix?: string): string {
+  const k = khach.value || ({} as any)
+  const tenKH = String(
+    k.Ten_khach_hang ||
+    tenKHInput.value ||
+    k.CUS_CONTACT ||
+    k.contact ||
+    k.Ten_khach_hang_phu ||
+    ''
+  ).trim()
+  const tenCT = String(
+    k.Ten_cong_ty ||
+    k.COMPANY ||
+    k.company ||
+    k.INV_CONG_TY ||
+    ''
+  ).trim()
+  const contentPO = String(contentOfContractPO.value || '').trim()
+  return buildQuoteFileName({
+    tenKhachHang: tenKH,
+    tenCongTy: tenCT,
+    contentPO: contentPO,
+    prefix: prefix,
+    fallbackCode: soHopDong.value || maHopDong.value || 'NTS'
+  })
+}
 const loadedMaHopDong = ref<string | null>(null)
 const loadedMaHopDongGoc = ref<string | null>(null)
 /* ======================
@@ -708,7 +734,7 @@ const availableExcelFields = [
   { value: 'list_price', label: 'LIST PRICE' },
   { value: 'don_gia_nhap', label: 'GIÁ NHẬP' },
   { value: 'muc_off_hang', label: '% OFF HÃNG' },
-  { value: 'gia_tieu_chuan', label: 'GIÁ OFF HÃNG' },
+  { value: 'gia_tieu_chuan', label: 'GIÁ VỐN / GIÁ OFF HÃNG' },
   { value: 'so_luong', label: 'SỐ LƯỢNG' },
   { value: 'volume', label: 'VOLUME' },
   { value: 'muc_off', label: '% OFF' },
@@ -2374,7 +2400,7 @@ async function saveContractTemp(force = false) {
   }
 
   // Optimistic: show success immediately
-  const tenFileBaoGia = `BaoGia_${soHopDong.value || maHopDong.value}.xlsx`
+  const tenFileBaoGia = `${getQuoteDownloadBaseName()}.xlsx`
   const payload = {
     hd_tong_quat_row: buildHopDongTongQuatRow(
       'Tạm',
@@ -2441,7 +2467,7 @@ async function saveContractOfficialAndSaleReport(force = false) {
 
     // Upload file báo giá lên Cloudinary trước khi lưu
     let linkBaoGia = ''
-    const tenFileBaoGia = `BaoGia_${soHopDong.value || maHopDong.value}.xlsx`
+    const tenFileBaoGia = `${getQuoteDownloadBaseName()}.xlsx`
     try {
       const blob = await generateQuoteExcelBlob(undefined, undefined, previewEditor.value?.getToolbarFont())
       const formData = new FormData()
@@ -5740,7 +5766,7 @@ async function exportQuoteExcel(templateData?: string | null) {
   try {
     showAsyncLoading('Đang xuất file Excel...')
     const blob = await generateQuoteExcelBlob(khach.value, templateData || undefined, previewEditor.value?.getToolbarFont(), pendingExportMappingConfig.value || undefined);
-    const normalFileName = contentOfContractPO.value.trim() || `BaoGia_${soHopDong.value || maHopDong.value || 'NTS'}`;
+    const normalFileName = getQuoteDownloadBaseName();
     if (isMobileOrIOSPWA()) {
       asyncResultModal.value.show = false
       await deliverExportedFile(
@@ -5898,7 +5924,7 @@ async function exportAgencyExcel() {
     
     const outBuffer = await workbook.xlsx.writeBuffer()
     const blob = new Blob([outBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-    const dlFileName = contentOfContractPO.value.trim() ? contentOfContractPO.value.trim() : `BaoGia_DaiLy_${soHopDong.value || maHopDong.value || 'NTS'}`
+    const dlFileName = getQuoteDownloadBaseName()
 
     if (isMobileOrIOSPWA()) {
       asyncResultModal.value.show = false
@@ -6615,7 +6641,7 @@ async function confirmImport(saveToDb: boolean) {
                   <th class="col-dvt">ĐVT</th>
                   <th class="col-sl">SL</th>
                   <th v-if="quoteCurrency === 'USD'" class="col-dg" style="min-width: 70px;">TỈ GIÁ</th>
-                  <th class="col-dg">GIÁ OFF HÃNG</th>
+                  <th class="col-dg">GIÁ VỐN / GIÁ OFF HÃNG</th>
                   <th class="col-dg">LIST PRICE</th> 
                   <th class="col-dg">GIÁ NHẬP</th>
                   <th class="col-dg">MỨC OFF</th>
@@ -6687,7 +6713,7 @@ async function confirmImport(saveToDb: boolean) {
                       <div style="color: #fbbf24; font-weight: 800; font-size: 13px;">{{ formatVND(toNum(r.item.Ti_gia, 1)) }}</div>
                       <div style="font-size: 10px; color: #94a3b8; font-weight: 700;">USD</div>
                     </td>
-                    <td data-label="Giá off hãng" class="right" style="line-height: 1.3; font-weight: 700; color: #10b981;" @click.stop="openQuoteEdit(r.idx, 'Gia_tieu_chuan')">
+                    <td data-label="Giá vốn / Giá off hãng" class="right" style="line-height: 1.3; font-weight: 700; color: #10b981;" @click.stop="openQuoteEdit(r.idx, 'Gia_tieu_chuan')">
                       <div>{{ displayGiaTieuChuan(r.item) }}</div>
                       <div class="muted" style="font-size: 11px; margin-top: 2px; color: #10b981 !important;">({{ displayGiaTieuChuanPct(r.item) }}%)</div>
                     </td>
@@ -7845,7 +7871,7 @@ async function confirmImport(saveToDb: boolean) {
                 <th class="col-desc">Diễn giải</th>
                 <th class="col-dvt">ĐVT</th>
                 <th class="col-sl">SL</th>
-                <th class="col-dg">GIÁ OFF HÃNG</th>
+                <th class="col-dg">GIÁ VỐN / GIÁ OFF HÃNG</th>
                 <th class="col-dg">LIST PRICE</th>
                 <th class="col-dg">GIÁ NHẬP</th>
                 <th class="col-dg">MỨC OFF</th>
@@ -7875,7 +7901,7 @@ async function confirmImport(saveToDb: boolean) {
                   </td>
                   <td class="col-dvt-cell" :title="r.item.DVT" @click.stop="openQuoteEditRaw(r.idx, 'DVT')">{{ r.item.DVT }}</td>
                   <td class="center" style="font-weight: 700;" @click.stop="openQuoteEditRaw(r.idx, 'So_luong')">{{ r.item.So_luong }}</td>
-                  <td data-label="Giá off hãng" class="right" style="line-height: 1.3; font-weight: 700; color: #10b981;" @click.stop="openQuoteEditRaw(r.idx, 'Don_gia_goc')">
+                  <td data-label="Giá vốn / Giá off hãng" class="right" style="line-height: 1.3; font-weight: 700; color: #10b981;" @click.stop="openQuoteEditRaw(r.idx, 'Don_gia_goc')">
                     <div>{{ displayGiaTieuChuanRaw(r.item) }}</div>
                     <div class="muted" style="font-size: 11px; margin-top: 2px; color: #10b981 !important;">({{ displayGiaTieuChuanPctRaw(r.item) }}%)</div>
                   </td>
@@ -8115,7 +8141,7 @@ async function confirmImport(saveToDb: boolean) {
 
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="display: flex; justify-content: space-between; align-items: center;">
-                  <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Giá Vốn (VND)</span>
+                  <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Giá vốn / Giá off hãng (VND)</span>
                 </label>
                 <div style="display: flex; align-items: center; gap: 8px;">
                   <div style="position: relative; flex: 1;">

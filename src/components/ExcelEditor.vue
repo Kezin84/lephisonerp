@@ -172,6 +172,7 @@
       class="editor-content" 
       contenteditable="true" 
       @input="onInput"
+      @keydown="onKeydown"
       @blur="onBlur"
       @paste="onPaste"
       :placeholder="placeholder"
@@ -181,6 +182,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
+import { repairAndRenumberSttDom, sanitizeSttHtml, trimLeadingBrDeep, trimTrailingBrDeep } from '../utils/printTemplateEngine'
 
 const props = defineProps({
   modelValue: {
@@ -204,7 +206,7 @@ const availableFonts = ref([
   'Tahoma',
   'Verdana'
 ])
-const fontFamily = ref('Calibri')
+const fontFamily = ref('Arial')
 const fontSizeDisplay = ref('12')
 const textColor = ref('#000000')
 const bgColor = ref('#ffff00')
@@ -275,33 +277,42 @@ function restoreSelection() {
 }
 
 function syncToolbarToFirstElement() {
+  fontFamily.value = 'Arial'
   if (editor.value && editor.value.firstElementChild) {
-    const computedStyle = window.getComputedStyle(editor.value.firstElementChild);
-    let ff = computedStyle.fontFamily;
-    if (ff) {
-      ff = ff.split(',')[0].replace(/['"]/g, '').trim();
+    const firstEl = editor.value.firstElementChild as HTMLElement
+    const styledFontEl = (firstEl.style?.fontFamily || firstEl.getAttribute('face'))
+      ? firstEl
+      : (editor.value.querySelector('[style*="font-family"], font[face]') as HTMLElement | null)
+    if (styledFontEl) {
+      let ff = styledFontEl.style?.fontFamily || styledFontEl.getAttribute('face') || ''
       if (ff) {
-        const exactMatch = availableFonts.value.find(f => f.toLowerCase() === ff.toLowerCase());
-        if (exactMatch) {
-          fontFamily.value = exactMatch;
-        } else if (!availableFonts.value.includes(ff)) {
-          availableFonts.value.push(ff);
-          fontFamily.value = ff;
+        ff = ff.split(',')[0].replace(/['"]/g, '').trim()
+        if (ff) {
+          const exactMatch = availableFonts.value.find(f => f.toLowerCase() === ff.toLowerCase())
+          if (exactMatch) {
+            fontFamily.value = exactMatch
+          } else if (!availableFonts.value.includes(ff)) {
+            availableFonts.value.push(ff)
+            fontFamily.value = ff
+          }
         }
       }
     }
-    const fs = computedStyle.fontSize;
+    const computedStyle = window.getComputedStyle(firstEl)
+    const fs = computedStyle.fontSize
     if (fs && fs.endsWith('px')) {
-      const pt = Math.round(parseFloat(fs) * 0.75);
-      if (pt > 0) fontSizeDisplay.value = pt.toString();
+      const pt = Math.round(parseFloat(fs) * 0.75)
+      if (pt > 0) fontSizeDisplay.value = pt.toString()
     }
   }
 }
 
 watch(() => props.modelValue, (newVal) => {
   if (editor.value && !isTyping) {
-    if (editor.value.innerHTML !== newVal) {
-      editor.value.innerHTML = newVal || ''
+    const cleaned = sanitizeSttHtml(newVal || '')
+    if (editor.value.innerHTML !== cleaned) {
+      editor.value.innerHTML = cleaned
+      repairAndRenumberSttDom(editor.value)
       setTimeout(syncToolbarToFirstElement, 0)
     }
   }
@@ -309,7 +320,12 @@ watch(() => props.modelValue, (newVal) => {
 
 onMounted(() => {
   if (editor.value) {
-    editor.value.innerHTML = props.modelValue || ''
+    const cleaned = sanitizeSttHtml(props.modelValue || '')
+    editor.value.innerHTML = cleaned
+    repairAndRenumberSttDom(editor.value)
+    if (cleaned !== (props.modelValue || '')) {
+      emit('update:modelValue', editor.value.innerHTML)
+    }
     setTimeout(syncToolbarToFirstElement, 0)
   }
   document.addEventListener('selectionchange', handleSelectionChange)
@@ -375,12 +391,133 @@ function handleSelectionChange() {
 function onInput() {
   isTyping = true
   if (editor.value) {
+    // Luôn đảm bảo các khối .stt-block được đánh số tuần tự 1, 2, 3... và không bị lồng nhau
+    const allBlocks = editor.value.querySelectorAll('.stt-block')
+    if (allBlocks.length > 0) {
+      allBlocks.forEach((b, idx) => {
+        const numEl = b.querySelector('.stt-number') as HTMLElement | null
+        if (numEl) {
+          const expected = String(idx + 1)
+          if ((numEl.textContent || '').trim() !== expected) {
+            numEl.textContent = expected
+          }
+          if (numEl.getAttribute('contenteditable') !== 'false') {
+            numEl.setAttribute('contenteditable', 'false')
+          }
+        }
+      })
+    }
     emit('update:modelValue', editor.value.innerHTML)
   }
 }
 
 function onBlur() {
   isTyping = false
+  if (editor.value) {
+    if (repairAndRenumberSttDom(editor.value)) {
+      emit('update:modelValue', editor.value.innerHTML)
+    }
+  }
+}
+
+function placeCaretInNode(node: Node, atEnd: boolean = false) {
+  const sel = window.getSelection()
+  if (!sel) return
+  const range = document.createRange()
+  range.selectNodeContents(node)
+  range.collapse(!atEnd)
+  sel.removeAllRanges()
+  sel.addRange(range)
+  savedRange = range.cloneRange()
+}
+
+function createSttBlockElement(num: number, innerHtml: string = '<br>'): HTMLDivElement {
+  const block = document.createElement('div')
+  block.className = 'stt-block'
+  block.style.cssText = 'display: flex; gap: 8px; margin: 0; padding: 0; align-items: flex-start;'
+
+  const numDiv = document.createElement('div')
+  numDiv.className = 'stt-number'
+  numDiv.setAttribute('contenteditable', 'false')
+  numDiv.style.cssText = 'font-weight: bold; min-width: 18px; flex-shrink: 0; white-space: nowrap; user-select: none;'
+  numDiv.textContent = String(num)
+
+  const contentDiv = document.createElement('div')
+  contentDiv.className = 'stt-content'
+  contentDiv.style.cssText = 'flex-grow: 1; min-width: 0; margin: 0; padding: 0;'
+  contentDiv.innerHTML = innerHtml && innerHtml.trim() ? innerHtml : '<br>'
+
+  block.appendChild(numDiv)
+  block.appendChild(contentDiv)
+  return block
+}
+
+function onKeydown(e: KeyboardEvent) {
+  if (!editor.value) return
+  const sel = window.getSelection()
+  if (!sel || sel.rangeCount === 0) return
+  const range = sel.getRangeAt(0)
+  const startEl = (range.startContainer.nodeType === 1
+    ? range.startContainer
+    : range.startContainer.parentElement) as HTMLElement | null
+  const sttBlock = startEl?.closest('.stt-block') as HTMLElement | null
+  if (!sttBlock) return
+
+  const contentEl = sttBlock.querySelector('.stt-content') as HTMLElement | null
+
+  // Xử lý phím Backspace ở đầu dòng .stt-content -> gỡ đánh số STT của dòng đó và cập nhật lại số thứ tự
+  if (e.key === 'Backspace' && sel.isCollapsed && contentEl) {
+    const preRange = document.createRange()
+    preRange.selectNodeContents(contentEl)
+    preRange.setEnd(range.startContainer, range.startOffset)
+    const isAtVeryStart =
+      preRange.toString().length === 0 && !preRange.cloneContents().querySelector('br, img')
+    if (isAtVeryStart) {
+      e.preventDefault()
+      const plainDiv = document.createElement('div')
+      plainDiv.innerHTML = contentEl.innerHTML.trim() ? contentEl.innerHTML : '<br>'
+      sttBlock.parentNode?.replaceChild(plainDiv, sttBlock)
+      repairAndRenumberSttDom(editor.value)
+      placeCaretInNode(plainDiv, false)
+      onInput()
+      return
+    }
+  }
+
+  // Xử lý phím Enter bên trong .stt-block -> chèn <br> xuống dòng thay vì để trình duyệt tách đôi flex column
+  if (e.key === 'Enter' && contentEl) {
+    e.preventDefault()
+    range.deleteContents()
+    const br = document.createElement('br')
+    range.insertNode(br)
+
+    // Kiểm tra xem sau <br> còn nội dung hiển thị nào không; nếu ở cuối cùng thì cần thêm 1 <br> phụ để con trỏ xuống dòng
+    let hasVisibleAfter = false
+    let cur: Node | null = br.nextSibling
+    while (cur) {
+      if (cur.nodeType === 3 && (cur.nodeValue || '').length > 0) {
+        hasVisibleAfter = true
+        break
+      }
+      if (cur.nodeType === 1) {
+        hasVisibleAfter = true
+        break
+      }
+      cur = cur.nextSibling
+    }
+    if (!hasVisibleAfter) {
+      const trailingBr = document.createElement('br')
+      br.parentNode?.insertBefore(trailingBr, br.nextSibling)
+    }
+
+    const newRange = document.createRange()
+    newRange.setStartAfter(br)
+    newRange.collapse(true)
+    sel.removeAllRanges()
+    sel.addRange(newRange)
+    savedRange = newRange.cloneRange()
+    onInput()
+  }
 }
 
 function onPaste(e: ClipboardEvent) {
@@ -392,20 +529,72 @@ function onPaste(e: ClipboardEvent) {
     paste = (e.clipboardData || (window as any).clipboardData).getData('text/plain')
     paste = paste.replace(/\n/g, '<br>')
     document.execCommand('insertHTML', false, paste)
+    if (editor.value) {
+      repairAndRenumberSttDom(editor.value)
+      emit('update:modelValue', editor.value.innerHTML)
+    }
     return
   }
   
   const temp = document.createElement('div')
   temp.innerHTML = paste
+
+  // Nếu dữ liệu dán từ Excel có chứa bảng <table>, bóc tách từng dòng <tr> thành dòng văn bản để không bị kẹt khung bảng Excel
+  temp.querySelectorAll('table').forEach(tbl => {
+    const frag = document.createDocumentFragment()
+    const rows = Array.from(tbl.querySelectorAll('tr'))
+    let addedRow = false
+    rows.forEach(tr => {
+      const rowText = (tr.textContent || '').replace(/\u00A0/g, ' ').trim()
+      if (!rowText && !tr.querySelector('img')) return
+      if (addedRow) {
+        frag.appendChild(document.createElement('br'))
+      }
+      const cells = Array.from(tr.querySelectorAll('td, th'))
+      if (cells.length > 0) {
+        cells.forEach(cell => {
+          if ((cell.textContent || '').replace(/\u00A0/g, ' ').trim() || cell.querySelector('img')) {
+            while (cell.firstChild) {
+              frag.appendChild(cell.firstChild)
+            }
+          }
+        })
+      } else {
+        while (tr.firstChild) {
+          frag.appendChild(tr.firstChild)
+        }
+      }
+      addedRow = true
+    })
+    tbl.parentNode?.replaceChild(frag, tbl)
+  })
+
+  // Chuẩn hóa các ký tự xuống dòng mã nguồn (\r\n) trong text node do Excel tự ngắt dòng
+  const textWalker = document.createTreeWalker(temp, NodeFilter.SHOW_TEXT)
+  let tNode = textWalker.nextNode() as Text | null
+  while (tNode) {
+    if (tNode.nodeValue) {
+      tNode.nodeValue = tNode.nodeValue
+        .replace(/\u00A0/g, ' ')
+        .replace(/\s*\r?\n\s*/g, ' ')
+        .replace(/[ \t]{2,}/g, ' ')
+    }
+    tNode = textWalker.nextNode() as Text | null
+  }
   
   const elements = temp.querySelectorAll('*')
   elements.forEach(el => {
-    // Strip classes and IDs to prevent external CSS interference
-    el.removeAttribute('class')
+    const isSttEl =
+      el.classList.contains('stt-block') ||
+      el.classList.contains('stt-number') ||
+      el.classList.contains('stt-content')
+    if (!isSttEl) {
+      el.removeAttribute('class')
+    }
     el.removeAttribute('id')
     
     // Clean inline styles that restrict dimensions/layout
-    if (el.hasAttribute('style')) {
+    if (el.hasAttribute('style') && !isSttEl) {
       const htmlEl = el as HTMLElement
       htmlEl.style.width = ''
       htmlEl.style.maxWidth = ''
@@ -425,6 +614,10 @@ function onPaste(e: ClipboardEvent) {
   })
   
   document.execCommand('insertHTML', false, temp.innerHTML)
+  if (editor.value) {
+    repairAndRenumberSttDom(editor.value)
+    emit('update:modelValue', editor.value.innerHTML)
+  }
 }
 
 function execCmd(command: string, value: string = '') {
@@ -440,42 +633,178 @@ function execCmd(command: string, value: string = '') {
 }
 
 function insertSTTBlock() {
+  if (!editor.value) return
+  editor.value.focus()
   restoreSelection()
-  
+  repairAndRenumberSttDom(editor.value)
+
   const sel = window.getSelection()
-  let content = 'Nội dung...'
-  if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
-    const range = sel.getRangeAt(0)
-    const frag = range.cloneContents()
-    const div = document.createElement('div')
-    div.appendChild(frag)
-    content = div.innerHTML
-  }
-  
-  let nextNum = 1
-  if (editor.value) {
-    const sttElements = editor.value.querySelectorAll('.stt-number')
-    if (sttElements.length > 0) {
-      const lastText = sttElements[sttElements.length - 1].textContent || ''
-      const lastNum = parseInt(lastText.replace(/\D/g, ''))
-      if (!isNaN(lastNum)) {
-        nextNum = lastNum + 1
-      }
+  let range: Range | null = null
+  if (sel && sel.rangeCount > 0 && editor.value.contains(sel.getRangeAt(0).commonAncestorContainer)) {
+    range = sel.getRangeAt(0)
+  } else {
+    range = document.createRange()
+    range.selectNodeContents(editor.value)
+    range.collapse(false)
+    if (sel) {
+      sel.removeAllRanges()
+      sel.addRange(range)
     }
   }
-  
-  const html = `
-    <div class="stt-block" style="display: flex; gap: 8px; margin-bottom: 6px; align-items: flex-start;">
-      <div class="stt-number" style="font-weight: bold; min-width: 16px; flex-shrink: 0; white-space: nowrap;">${nextNum}</div>
-      <div class="stt-content" style="flex-grow: 1;">${content}</div>
-    </div>
-    <div><br></div>
-  `
-  
-  document.execCommand('insertHTML', false, html)
-  if (editor.value) {
+
+  // Trường hợp 1: Người dùng đang bôi đen một đoạn nội dung để đánh STT
+  if (!range.collapsed) {
+    let startEl = (range.startContainer.nodeType === 1
+      ? range.startContainer
+      : range.startContainer.parentElement) as HTMLElement | null
+    const parentStt = startEl?.closest('.stt-block') as HTMLElement | null
+
+    // Nếu người dùng bôi đen toàn bộ chữ bên trong thẻ định dạng inline (b, strong, i, u, span, font) thì mở rộng range bao cả thẻ đó để giữ nguyên định dạng và không để lại thẻ rỗng
+    const selectedText = (range.toString() || '').trim()
+    while (
+      startEl &&
+      startEl !== editor.value &&
+      !startEl.classList.contains('stt-block') &&
+      !startEl.classList.contains('stt-content') &&
+      ['B', 'STRONG', 'I', 'EM', 'U', 'SPAN', 'FONT'].includes(startEl.tagName) &&
+      (startEl.textContent || '').trim() === selectedText
+    ) {
+      range.selectNode(startEl)
+      startEl = startEl.parentElement
+    }
+
+    const frag = range.extractContents()
+    const tempDiv = document.createElement('div')
+    tempDiv.appendChild(frag)
+
+    // Bóc nội dung nếu phần bôi đen chứa sẵn .stt-block cũ để tránh lồng nhau
+    tempDiv.querySelectorAll('.stt-number').forEach(n => n.remove())
+    tempDiv.querySelectorAll('.stt-block, .stt-content').forEach(el => {
+      const parent = el.parentNode
+      if (parent) {
+        while (el.firstChild) parent.insertBefore(el.firstChild, el)
+        parent.removeChild(el)
+      }
+    })
+
+    // Dọn các thẻ <br> rỗng ở đầu/cuối đoạn được chọn (kể cả lồng trong b/span/div)
+    trimLeadingBrDeep(tempDiv)
+    trimTrailingBrDeep(tempDiv)
+
+    const newBlock = createSttBlockElement(1, tempDiv.innerHTML.trim() || '<br>')
+
+    if (parentStt && parentStt.parentNode) {
+      // Nếu bôi đen một dòng bên trong .stt-block hiện tại -> tách dòng đó thành .stt-block mới ngay bên dưới
+      const contentEl = parentStt.querySelector('.stt-content') as HTMLElement | null
+      let afterNodesFrag: DocumentFragment | null = null
+      if (contentEl && contentEl.contains(range.startContainer)) {
+        const tailRange = document.createRange()
+        tailRange.selectNodeContents(contentEl)
+        tailRange.setStart(range.startContainer, range.startOffset)
+        const extractedTail = tailRange.extractContents()
+        const tailCheck = document.createElement('div')
+        tailCheck.appendChild(extractedTail)
+        trimLeadingBrDeep(tailCheck)
+        trimTrailingBrDeep(tailCheck)
+        if ((tailCheck.textContent || '').trim() || tailCheck.querySelector('img')) {
+          afterNodesFrag = document.createDocumentFragment()
+          const tailWrapper = document.createElement('div')
+          tailWrapper.innerHTML = tailCheck.innerHTML
+          afterNodesFrag.appendChild(tailWrapper)
+        }
+      }
+      // Dọn <br> thừa cuối parentStt
+      if (contentEl) {
+        trimTrailingBrDeep(contentEl)
+      }
+      parentStt.parentNode.insertBefore(newBlock, parentStt.nextSibling)
+      if (afterNodesFrag) {
+        parentStt.parentNode.insertBefore(afterNodesFrag, newBlock.nextSibling)
+      }
+      if (contentEl && !(contentEl.textContent || '').trim() && !contentEl.querySelector('img')) {
+        parentStt.remove()
+      }
+    } else {
+      // Đang bôi đen văn bản thường ngoài .stt-block
+      range.insertNode(newBlock)
+    }
+
+    repairAndRenumberSttDom(editor.value)
+    const targetContent = newBlock.querySelector('.stt-content')
+    if (targetContent) placeCaretInNode(targetContent, true)
     emit('update:modelValue', editor.value.innerHTML)
+    return
   }
+
+  // Trường hợp 2: Con trỏ đang nhấp nháy tại 1 vị trí (không bôi đen)
+  const startEl = (range.startContainer.nodeType === 1
+    ? range.startContainer
+    : range.startContainer.parentElement) as HTMLElement | null
+  const currentStt = startEl?.closest('.stt-block') as HTMLElement | null
+
+  if (currentStt && currentStt.parentNode) {
+    const contentEl = currentStt.querySelector('.stt-content') as HTMLElement | null
+    let movedHtml = '<br>'
+
+    if (contentEl && contentEl.contains(range.startContainer)) {
+      // Nếu con trỏ đang đứng ở dòng mới (sau thẻ <br>) bên trong .stt-content -> tách phần từ con trỏ đến cuối sang STT mới
+      const preRange = document.createRange()
+      preRange.selectNodeContents(contentEl)
+      preRange.setEnd(range.startContainer, range.startOffset)
+      const hasContentBefore = (preRange.toString() || '').trim().length > 0
+
+      if (hasContentBefore) {
+        const postRange = document.createRange()
+        postRange.selectNodeContents(contentEl)
+        postRange.setStart(range.startContainer, range.startOffset)
+        const tailFrag = postRange.extractContents()
+        const tailDiv = document.createElement('div')
+        tailDiv.appendChild(tailFrag)
+        trimLeadingBrDeep(tailDiv)
+        trimTrailingBrDeep(tailDiv)
+        if ((tailDiv.textContent || '').trim()) {
+          movedHtml = tailDiv.innerHTML
+        }
+        trimTrailingBrDeep(contentEl)
+      }
+    }
+
+    const newBlock = createSttBlockElement(1, movedHtml)
+    currentStt.parentNode.insertBefore(newBlock, currentStt.nextSibling)
+    repairAndRenumberSttDom(editor.value)
+    const targetContent = newBlock.querySelector('.stt-content')
+    if (targetContent) {
+      placeCaretInNode(targetContent, movedHtml !== '<br>')
+    }
+    emit('update:modelValue', editor.value.innerHTML)
+    return
+  }
+
+  // Con trỏ đang đứng ở dòng thường (không nằm trong .stt-block)
+  let topBlock: HTMLElement | null = startEl
+  while (topBlock && topBlock.parentElement && topBlock.parentElement !== editor.value) {
+    topBlock = topBlock.parentElement
+  }
+
+  if (topBlock && topBlock !== editor.value && (topBlock.tagName === 'DIV' || topBlock.tagName === 'P')) {
+    const existingHtml = topBlock.innerHTML.trim()
+    const hasText = (topBlock.textContent || '').trim().length > 0
+    const newBlock = createSttBlockElement(1, hasText ? existingHtml : '<br>')
+    topBlock.parentNode?.replaceChild(newBlock, topBlock)
+    repairAndRenumberSttDom(editor.value)
+    const targetContent = newBlock.querySelector('.stt-content')
+    if (targetContent) placeCaretInNode(targetContent, hasText)
+    emit('update:modelValue', editor.value.innerHTML)
+    return
+  }
+
+  // Trường hợp editor đang trống hoặc là text node trực tiếp dưới editor
+  const newBlock = createSttBlockElement(1, '<br>')
+  range.insertNode(newBlock)
+  repairAndRenumberSttDom(editor.value)
+  const targetContent = newBlock.querySelector('.stt-content')
+  if (targetContent) placeCaretInNode(targetContent, false)
+  emit('update:modelValue', editor.value.innerHTML)
 }
 
 function applyHighlight(color: string) {
@@ -795,7 +1124,7 @@ defineExpose({
   color: #f1f5f9;
   background: #1e293b;
   outline: none;
-  font-family: Calibri, 'Plus Jakarta Sans', sans-serif;
+  font-family: Arial, sans-serif;
   font-size: 15px;
   line-height: 1.5;
   overflow-y: auto;
@@ -805,6 +1134,70 @@ defineExpose({
 
 .editor-content:focus {
   background: #1a2235;
+}
+
+/* Light Mode (Xanh Dương - Trắng) cho ExcelEditor */
+:global(.page.theme-light-blue) .excel-editor {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+:global(.page.theme-light-blue) .excel-toolbar {
+  background: #f1f5f9;
+  border-bottom-color: #cbd5e1;
+}
+
+:global(.page.theme-light-blue) .toolbar-divider {
+  background: #cbd5e1;
+}
+
+:global(.page.theme-light-blue) .toolbar-select {
+  background-color: #ffffff;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+:global(.page.theme-light-blue) .toolbar-btn,
+:global(.page.theme-light-blue) .color-btn {
+  color: #1e293b;
+}
+
+:global(.page.theme-light-blue) .toolbar-btn:hover,
+:global(.page.theme-light-blue) .color-btn:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+}
+
+:global(.page.theme-light-blue) .editor-content {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+:global(.page.theme-light-blue) .editor-content:focus {
+  background: #ffffff;
+}
+
+:global(.page.theme-light-blue) .editor-content :deep([style*="color: rgb(241, 245, 249)"]),
+:global(.page.theme-light-blue) .editor-content :deep([style*="color: rgb(248, 250, 252)"]),
+:global(.page.theme-light-blue) .editor-content :deep([style*="color: rgb(255, 255, 255)"]),
+:global(.page.theme-light-blue) .editor-content :deep([style*="color: rgb(226, 232, 240)"]),
+:global(.page.theme-light-blue) .editor-content :deep([style*="color: rgb(203, 213, 225)"]),
+:global(.page.theme-light-blue) .editor-content :deep([style*="color: #fff"]),
+:global(.page.theme-light-blue) .editor-content :deep([style*="color:#fff"]),
+:global(.page.theme-light-blue) .editor-content :deep([style*="color: #f1f5f9"]),
+:global(.page.theme-light-blue) .editor-content :deep([style*="color: #f8fafc"]),
+:global(.page.theme-light-blue) .editor-content :deep([style*="color: #e2e8f0"]),
+:global(.page.theme-light-blue) .editor-content :deep([style*="color: #cbd5e1"]),
+:global(.page.theme-light-blue) .editor-content :deep(font[color="#ffffff"]),
+:global(.page.theme-light-blue) .editor-content :deep(font[color="#fff"]),
+:global(.page.theme-light-blue) .editor-content :deep(font[color="#f1f5f9"]),
+:global(.page.theme-light-blue) .editor-content :deep(font[color="#f8fafc"]) {
+  color: #0f172a !important;
+}
+
+:global(.page.theme-light-blue) .editor-content :deep(td),
+:global(.page.theme-light-blue) .editor-content :deep(th) {
+  border-color: #cbd5e1;
 }
 
 .editor-content[placeholder]:empty:before {
@@ -839,5 +1232,17 @@ defineExpose({
 .editor-content td, .editor-content th {
   padding: 4px 8px;
   border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.editor-content :deep(.stt-block) {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.editor-content :deep(.stt-content),
+.editor-content :deep(.stt-content div),
+.editor-content :deep(.stt-content p),
+.editor-content div,
+.editor-content p {
+  margin: 0;
+  padding: 0;
 }
 </style>

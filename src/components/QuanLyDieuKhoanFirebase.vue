@@ -247,8 +247,9 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
 import ExcelEditor from './ExcelEditor.vue'
+import { sanitizeSttHtml } from '../utils/printTemplateEngine'
 import { initializeApp, getApps, getApp } from 'firebase/app'
-import { getDatabase, ref as dbRef, get, set, remove } from 'firebase/database'
+import { getDatabase, ref as dbRef, get, set, update, remove } from 'firebase/database'
 
 const firebaseConfig = {
   apiKey: "AIzaSyB3fHD_sOqyqVygCxP2gZtvaipr-35a1s8",
@@ -377,6 +378,8 @@ function mapFirebaseDieuKhoan(raw: any, fbKey: string): DieuKhoan | null {
   if (Array.isArray(raw)) {
     const id = String(raw[0] || fbKey || '')
     if (!id) return null
+    const rawNoiDung = String(raw[6] || '')
+    const cleanedNoiDung = sanitizeSttHtml(rawNoiDung)
     return {
       _firebaseKey: fbKey,
       id,
@@ -385,12 +388,21 @@ function mapFirebaseDieuKhoan(raw: any, fbKey: string): DieuKhoan | null {
       tenKH: String(raw[3] || ''),
       maCT: String(raw[4] || ''),
       tenCT: String(raw[5] || ''),
-      noiDung: String(raw[6] || '')
+      noiDung: cleanedNoiDung
     }
   }
   if (!raw || typeof raw !== 'object') return null
   const id = String(raw.ID ?? raw.id ?? fbKey ?? '')
   if (!id) return null
+  const rawNoiDung = String(raw.Noi_dung ?? raw.noi_dung ?? '')
+  const cleanedNoiDung = sanitizeSttHtml(rawNoiDung)
+  if (cleanedNoiDung !== rawNoiDung && fbKey) {
+    // Tự động sửa lại dữ liệu bị lỗi STT (như 1.0102100101199458e+21) trên Firebase
+    update(dbRef(database, `dieu_khoan/${fbKey}`), {
+      Noi_dung: cleanedNoiDung,
+      noi_dung: cleanedNoiDung
+    }).catch(() => {})
+  }
   return {
     _firebaseKey: fbKey,
     id,
@@ -399,7 +411,7 @@ function mapFirebaseDieuKhoan(raw: any, fbKey: string): DieuKhoan | null {
     tenKH: String(raw.Ten_khach_hang ?? raw.ten_khach_hang ?? ''),
     maCT: String(raw.Ma_cong_ty ?? raw.ma_cong_ty ?? ''),
     tenCT: String(raw.Ten_cong_ty ?? raw.ten_cong_ty ?? ''),
-    noiDung: String(raw.Noi_dung ?? raw.noi_dung ?? '')
+    noiDung: cleanedNoiDung
   }
 }
 
@@ -532,6 +544,9 @@ async function saveItem() {
       fbKey = recordId
     }
 
+    const cleanedNoiDung = sanitizeSttHtml(formData.noiDung || '')
+    formData.noiDung = cleanedNoiDung
+
     const payload = {
       ID: recordId,
       id: recordId,
@@ -545,8 +560,8 @@ async function saveItem() {
       ma_cong_ty: formData.maCT || '',
       Ten_cong_ty: formData.tenCT || '',
       ten_cong_ty: formData.tenCT || '',
-      Noi_dung: formData.noiDung || '',
-      noi_dung: formData.noiDung || ''
+      Noi_dung: cleanedNoiDung,
+      noi_dung: cleanedNoiDung
     }
 
     await set(dbRef(database, `dieu_khoan/${fbKey}`), payload)
@@ -766,6 +781,16 @@ onMounted(() => {
 
 .noi-dung-text * {
   max-width: 100%;
+}
+
+.noi-dung-text :deep(.stt-block),
+.noi-dung-text :deep(.stt-content),
+.noi-dung-text :deep(.stt-content div),
+.noi-dung-text :deep(.stt-content p),
+.noi-dung-text :deep(div),
+.noi-dung-text :deep(p) {
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 .noi-dung-text table {

@@ -15,6 +15,11 @@ export default defineConfig({
         target: 'https://ark.ap-southeast.bytepluses.com',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/byteplus-api/, '')
+      },
+      '/zalo-bot-api': {
+        target: 'https://bot-api.zaloplatforms.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/zalo-bot-api/, '')
       }
     }
   }

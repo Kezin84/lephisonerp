@@ -3,42 +3,150 @@
     <div class="page-header">
       <h1 class="page-title">Quản lý Hàng Hóa</h1>
       <div class="actions">
-        <a href="/template_excel/file_trung_gian_SOPHOS.xlsx" download="file_trung_gian_SOPHOS.xlsx" class="btn btn-outline" style="border-color: rgba(59,130,246,0.3); color: #94a3b8; font-size: 12px; padding: 4px 8px;" title="Tải file mẫu Sophos (file_trung_gian_SOPHOS.xlsx)">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-          Mẫu Sophos
-        </a>
-        <label class="btn btn-outline" style="cursor: pointer; border-color: #3b82f6; color: #3b82f6;" title="Import từ file_trung_gian_SOPHOS.xlsx hoặc sophos-pricelist-reseller_SKU_list.xlsb">
-          <input type="file" accept=".xlsx,.xlsb" style="display:none" @change="handleFileUpload" />
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-          Import Sophos
-        </label>
-        <button
-          type="button"
-          class="btn btn-outline"
-          style="border-color: rgba(245, 158, 11, 0.5); color: #fbbf24; background: rgba(245, 158, 11, 0.08);"
-          @click="openSophosStandardizedReimportModal('bom')"
-          title="Xóa dữ liệu Sophos cũ và nạp lại theo chuẩn Mã hàng = SKU, tách Volume (range users), License (months) và Trạng thái (New/Renewal) từ SKU_List"
-        >
-          🔄 Chuẩn hóa DB Sophos (SKU)
-        </button>
-        <a href="/template_excel/KASPERSKY_file_mau_import.xlsx" download class="btn btn-outline" style="border-color: rgba(16,185,129,0.3); color: #94a3b8; font-size: 12px; padding: 4px 8px;" title="Tải file mẫu Kaspersky">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-          Mẫu Kaspersky
-        </a>
-        <label class="btn btn-outline" style="border-color: rgba(56, 189, 248, 0.4); color: #38bdf8; cursor: pointer;">
-          <input type="file" accept=".xlsx" style="display:none" @change="handleKasperskyUpload" />
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-          Import Kaspersky
-        </label>
-        <label class="btn btn-outline" style="border-color: rgba(99, 102, 241, 0.5); color: #818cf8; cursor: pointer;">
-          <input type="file" accept=".xlsx" style="display:none" @change="handleAcronisUpload" />
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-          Import Acronis
-        </label>
-        <a href="/template_excel/ACRONIS_file_mau_import.xlsx" download="ACRONIS_file_mau_import.xlsx" class="btn btn-outline" style="border-color: rgba(99,102,241,0.3); color: #94a3b8; font-size: 12px; padding: 4px 8px;" title="Tải file mẫu Acronis">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-          Mẫu Acronis
-        </a>
+        <!-- CỤM IMPORT SOPHOS: NÚT IMPORT + NÚT MẪU + FILE ĐÃ UP -->
+        <div class="vendor-import-group vendor-import-group--sophos">
+          <label class="btn btn-outline" style="cursor: pointer; border-color: #3b82f6; color: #3b82f6;" title="Import từ file_trung_gian_SOPHOS.xlsx hoặc sophos-pricelist-reseller_SKU_list.xlsb">
+            <input type="file" accept=".xlsx,.xlsb" style="display:none" @change="handleFileUpload" />
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            Import Sophos
+          </label>
+          <a href="/template_excel/file_trung_gian_SOPHOS.xlsx" download="file_trung_gian_SOPHOS.xlsx" class="btn btn-outline vendor-template-btn" style="border-color: rgba(59,130,246,0.45); color: #93c5fd;" title="Tải file mẫu Sophos (file_trung_gian_SOPHOS.xlsx)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Mẫu Sophos
+          </a>
+          <div class="vendor-uploaded-file-box">
+            <template v-if="getVendorImportFileMeta('sophos')">
+              <div class="vendor-uploaded-file-box__row">
+                <span class="vendor-uploaded-file-box__line" :title="`Click mở ViewOffice: ${getVendorImportFileMeta('sophos').name}`">
+                  File đã up:
+                  <a
+                    :href="getVendorOfficeViewUrl(getVendorImportFileMeta('sophos'))"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="vendor-uploaded-file-box__link"
+                    style="color: #60a5fa;"
+                    @click="handleOpenVendorOfficeView($event, 'sophos', 'import', getVendorImportFileMeta('sophos'))"
+                  >
+                    {{ getVendorImportFileMeta('sophos').name }}
+                  </a>
+                </span>
+                <button
+                  type="button"
+                  class="vendor-file-download-btn"
+                  title="Tải file đã up về máy"
+                  @click.stop.prevent="handleDownloadVendorUploadedFile('sophos', 'import', getVendorImportFileMeta('sophos'))"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                  <span>Tải về</span>
+                </button>
+              </div>
+              <span class="vendor-uploaded-file-box__time">
+                Thời gian: {{ formatRefTimestamp(getVendorImportFileMeta('sophos').updatedAt) }}
+              </span>
+            </template>
+            <span v-else class="vendor-uploaded-file-box__empty">File đã up: Chưa có</span>
+          </div>
+          <button
+            type="button"
+            class="btn btn-outline"
+            style="border-color: rgba(245, 158, 11, 0.5); color: #fbbf24; background: rgba(245, 158, 11, 0.08); font-size: 12.5px; padding: 6px 10px;"
+            @click="openSophosStandardizedReimportModal('bom')"
+            title="Xóa dữ liệu Sophos cũ và nạp lại theo chuẩn Mã hàng = SKU, tách Volume (range users), License (months) và Trạng thái (New/Renewal) từ SKU_List"
+          >
+            🔄 Chuẩn hóa DB Sophos (SKU)
+          </button>
+        </div>
+
+        <!-- CỤM IMPORT KASPERSKY: NÚT IMPORT + NÚT MẪU + FILE ĐÃ UP -->
+        <div class="vendor-import-group vendor-import-group--kas">
+          <label class="btn btn-outline" style="border-color: rgba(56, 189, 248, 0.4); color: #38bdf8; cursor: pointer;">
+            <input type="file" accept=".xlsx,.xls" style="display:none" @change="handleKasperskyUpload" />
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            Import Kaspersky
+          </label>
+          <a href="/template_excel/KASPERSKY_file_mau_import.xlsx" download="KASPERSKY_file_mau_import.xlsx" class="btn btn-outline vendor-template-btn" style="border-color: rgba(16,185,129,0.45); color: #6ee7b7;" title="Tải file mẫu Kaspersky (KASPERSKY_file_mau_import.xlsx)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Mẫu Kaspersky
+          </a>
+          <div class="vendor-uploaded-file-box">
+            <template v-if="getVendorImportFileMeta('kaspersky')">
+              <div class="vendor-uploaded-file-box__row">
+                <span class="vendor-uploaded-file-box__line" :title="`Click mở ViewOffice: ${getVendorImportFileMeta('kaspersky').name}`">
+                  File đã up:
+                  <a
+                    :href="getVendorOfficeViewUrl(getVendorImportFileMeta('kaspersky'))"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="vendor-uploaded-file-box__link"
+                    style="color: #38bdf8;"
+                    @click="handleOpenVendorOfficeView($event, 'kaspersky', 'import', getVendorImportFileMeta('kaspersky'))"
+                  >
+                    {{ getVendorImportFileMeta('kaspersky').name }}
+                  </a>
+                </span>
+                <button
+                  type="button"
+                  class="vendor-file-download-btn"
+                  title="Tải file đã up về máy"
+                  @click.stop.prevent="handleDownloadVendorUploadedFile('kaspersky', 'import', getVendorImportFileMeta('kaspersky'))"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                  <span>Tải về</span>
+                </button>
+              </div>
+              <span class="vendor-uploaded-file-box__time">
+                Thời gian: {{ formatRefTimestamp(getVendorImportFileMeta('kaspersky').updatedAt) }}
+              </span>
+            </template>
+            <span v-else class="vendor-uploaded-file-box__empty">File đã up: Chưa có</span>
+          </div>
+        </div>
+
+        <!-- CỤM IMPORT ACRONIS: NÚT IMPORT + NÚT MẪU + FILE ĐÃ UP -->
+        <div class="vendor-import-group vendor-import-group--acronis">
+          <label class="btn btn-outline" style="border-color: rgba(99, 102, 241, 0.5); color: #818cf8; cursor: pointer;">
+            <input type="file" accept=".xlsx,.xls" style="display:none" @change="handleAcronisUpload" />
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            Import Acronis
+          </label>
+          <a href="/template_excel/ACRONIS_file_mau_import.xlsx" download="ACRONIS_file_mau_import.xlsx" class="btn btn-outline vendor-template-btn" style="border-color: rgba(99,102,241,0.45); color: #a5b4fc;" title="Tải file mẫu Acronis (ACRONIS_file_mau_import.xlsx)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Mẫu Acronis
+          </a>
+          <div class="vendor-uploaded-file-box">
+            <template v-if="getVendorImportFileMeta('acronis')">
+              <div class="vendor-uploaded-file-box__row">
+                <span class="vendor-uploaded-file-box__line" :title="`Click mở ViewOffice: ${getVendorImportFileMeta('acronis').name}`">
+                  File đã up:
+                  <a
+                    :href="getVendorOfficeViewUrl(getVendorImportFileMeta('acronis'))"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="vendor-uploaded-file-box__link"
+                    style="color: #a5b4fc;"
+                    @click="handleOpenVendorOfficeView($event, 'acronis', 'import', getVendorImportFileMeta('acronis'))"
+                  >
+                    {{ getVendorImportFileMeta('acronis').name }}
+                  </a>
+                </span>
+                <button
+                  type="button"
+                  class="vendor-file-download-btn"
+                  title="Tải file đã up về máy"
+                  @click.stop.prevent="handleDownloadVendorUploadedFile('acronis', 'import', getVendorImportFileMeta('acronis'))"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                  <span>Tải về</span>
+                </button>
+              </div>
+              <span class="vendor-uploaded-file-box__time">
+                Thời gian: {{ formatRefTimestamp(getVendorImportFileMeta('acronis').updatedAt) }}
+              </span>
+            </template>
+            <span v-else class="vendor-uploaded-file-box__empty">File đã up: Chưa có</span>
+          </div>
+        </div>
+
         <div style="display: flex; align-items: center; gap: 8px;">
           <label class="btn btn-outline" style="border-color: rgba(167, 139, 250, 0.4); color: #a78bfa; cursor: pointer;">
             <input type="file" accept="image/*,.pdf" style="display:none" @change="handleGiaOffUpload" />
@@ -52,18 +160,257 @@
             <span>Thời gian: {{ formatGiaOffDate(latestFileGiaOff.thoi_gian) }}</span>
           </div>
         </div>
-        <button class="btn btn-image-check" @click="openImageCheckModal" title="Quét ảnh chụp bảng giá Sophos để bóc tách và đối chiếu">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
-          Đối chiếu Sophos (Ảnh)
-        </button>
-        <button
+        <label
           class="btn btn-outline"
-          style="border-color: rgba(16, 185, 129, 0.55); color: #34d399; background: rgba(16, 185, 129, 0.1); font-weight: 700;"
-          @click="openKasImageCheckModal"
-          title="Quét ảnh bảng giá Kaspersky (anh_check_KAS) để bóc tách và đối chiếu với filegocKas.xlsx & Database"
+          style="border-color: rgba(192, 132, 252, 0.55); color: #e9d5ff; background: rgba(168, 85, 247, 0.14); font-weight: 700; cursor: pointer;"
+          title="Import file báo giá mua hàng (PDF / Excel) để lấy đơn giá sau thuế làm Giá vốn / Giá off hãng"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          Đối chiếu Kaspersky (Ảnh)
+          <input type="file" accept=".pdf,.xlsx,.xls" style="display:none" @change="handlePurchaseQuoteUpload" />
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+          Import Mua Hàng (Giá vốn)
+        </label>
+        <!-- CỤM ĐỐI CHIẾU SOPHOS + UPLOAD FILE GỐC & FILE TRUNG GIAN + FILE ĐÃ UP TƯƠNG ỨNG -->
+        <div class="vendor-compare-group vendor-compare-group--sophos">
+          <button class="btn btn-image-check" @click="openImageCheckModal" title="Quét ảnh chụp bảng giá Sophos để bóc tách và đối chiếu với File Gốc & File Trung Gian trên Cloudinary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+            Đối chiếu Sophos (Ảnh)
+          </button>
+          <div class="vendor-ref-slot">
+            <label
+              class="vendor-ref-upload-btn vendor-ref-upload-btn--sophos-goc"
+              :title="`Upload File Gốc Sophos mới lên Cloudinary (Đang dùng: ${vendorRefFilesMeta.sophos?.goc_file_name || 'Chưa có'})`"
+            >
+              <input type="file" accept=".xlsx,.xlsb,.xls" style="display: none" @change="handleCustomSophosExcelUpload($event, 'goc')" />
+              <span>☁️ File Gốc</span>
+            </label>
+            <div class="vendor-uploaded-file-box vendor-uploaded-file-box--compact">
+              <template v-if="getVendorCompareFileMeta('sophos', 'goc')">
+                <div class="vendor-uploaded-file-box__row">
+                  <span class="vendor-uploaded-file-box__line" :title="`Click mở ViewOffice: ${getVendorCompareFileMeta('sophos', 'goc').name}`">
+                    File đã up:
+                    <a
+                      :href="getVendorOfficeViewUrl(getVendorCompareFileMeta('sophos', 'goc'))"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="vendor-uploaded-file-box__link"
+                      style="color: #7dd3fc;"
+                      @click="handleOpenVendorOfficeView($event, 'sophos', 'goc', getVendorCompareFileMeta('sophos', 'goc'))"
+                    >
+                      {{ getVendorCompareFileMeta('sophos', 'goc').name }}
+                    </a>
+                  </span>
+                  <button
+                    type="button"
+                    class="vendor-file-download-btn"
+                    title="Tải File Gốc Sophos về máy"
+                    @click.stop.prevent="handleDownloadVendorUploadedFile('sophos', 'goc', getVendorCompareFileMeta('sophos', 'goc'))"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    <span>Tải về</span>
+                  </button>
+                </div>
+                <span class="vendor-uploaded-file-box__time">
+                  {{ formatRefTimestamp(getVendorCompareFileMeta('sophos', 'goc').updatedAt) }}
+                </span>
+              </template>
+              <span v-else class="vendor-uploaded-file-box__empty">File đã up: Chưa có</span>
+            </div>
+          </div>
+          <div class="vendor-ref-slot">
+            <label
+              class="vendor-ref-upload-btn vendor-ref-upload-btn--sophos-tg"
+              :title="`Upload File Trung Gian Sophos mới lên Cloudinary (Đang dùng: ${vendorRefFilesMeta.sophos?.tg_file_name || 'Chưa có'})`"
+            >
+              <input type="file" accept=".xlsx,.xlsb,.xls" style="display: none" @change="handleCustomSophosExcelUpload($event, 'tg')" />
+              <span>☁️ File Trung Gian</span>
+            </label>
+            <div class="vendor-uploaded-file-box vendor-uploaded-file-box--compact">
+              <template v-if="getVendorCompareFileMeta('sophos', 'tg')">
+                <div class="vendor-uploaded-file-box__row">
+                  <span class="vendor-uploaded-file-box__line" :title="`Click mở ViewOffice: ${getVendorCompareFileMeta('sophos', 'tg').name}`">
+                    File đã up:
+                    <a
+                      :href="getVendorOfficeViewUrl(getVendorCompareFileMeta('sophos', 'tg'))"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="vendor-uploaded-file-box__link"
+                      style="color: #d8b4fe;"
+                      @click="handleOpenVendorOfficeView($event, 'sophos', 'tg', getVendorCompareFileMeta('sophos', 'tg'))"
+                    >
+                      {{ getVendorCompareFileMeta('sophos', 'tg').name }}
+                    </a>
+                  </span>
+                  <button
+                    type="button"
+                    class="vendor-file-download-btn"
+                    title="Tải File Trung Gian Sophos về máy"
+                    @click.stop.prevent="handleDownloadVendorUploadedFile('sophos', 'tg', getVendorCompareFileMeta('sophos', 'tg'))"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    <span>Tải về</span>
+                  </button>
+                </div>
+                <span class="vendor-uploaded-file-box__time">
+                  {{ formatRefTimestamp(getVendorCompareFileMeta('sophos', 'tg').updatedAt) }}
+                </span>
+              </template>
+              <span v-else class="vendor-uploaded-file-box__empty">File đã up: Chưa có</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- CỤM ĐỐI CHIẾU KASPERSKY + UPLOAD FILE GỐC & FILE TRUNG GIAN + FILE ĐÃ UP TƯƠNG ỨNG -->
+        <div class="vendor-compare-group vendor-compare-group--kas">
+          <button
+            class="btn btn-outline"
+            style="border-color: rgba(16, 185, 129, 0.55); color: #34d399; background: rgba(16, 185, 129, 0.1); font-weight: 700;"
+            @click="openKasImageCheckModal"
+            title="Quét ảnh bảng giá Kaspersky để bóc tách và đối chiếu với File Gốc & File Trung Gian trên Cloudinary"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Đối chiếu Kaspersky (Ảnh)
+          </button>
+          <div class="vendor-ref-slot">
+            <label
+              class="vendor-ref-upload-btn vendor-ref-upload-btn--kas-goc"
+              :title="`Upload File Gốc Kaspersky mới lên Cloudinary (Đang dùng: ${vendorRefFilesMeta.kaspersky?.goc_file_name || 'Chưa có'})`"
+            >
+              <input type="file" accept=".xlsx,.xls" style="display: none" @change="handleCustomKasExcelUpload($event, 'goc')" />
+              <span>☁️ File Gốc</span>
+            </label>
+            <div class="vendor-uploaded-file-box vendor-uploaded-file-box--compact">
+              <template v-if="getVendorCompareFileMeta('kaspersky', 'goc')">
+                <div class="vendor-uploaded-file-box__row">
+                  <span class="vendor-uploaded-file-box__line" :title="`Click mở ViewOffice: ${getVendorCompareFileMeta('kaspersky', 'goc').name}`">
+                    File đã up:
+                    <a
+                      :href="getVendorOfficeViewUrl(getVendorCompareFileMeta('kaspersky', 'goc'))"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="vendor-uploaded-file-box__link"
+                      style="color: #6ee7b7;"
+                      @click="handleOpenVendorOfficeView($event, 'kaspersky', 'goc', getVendorCompareFileMeta('kaspersky', 'goc'))"
+                    >
+                      {{ getVendorCompareFileMeta('kaspersky', 'goc').name }}
+                    </a>
+                  </span>
+                  <button
+                    type="button"
+                    class="vendor-file-download-btn"
+                    title="Tải File Gốc Kaspersky về máy"
+                    @click.stop.prevent="handleDownloadVendorUploadedFile('kaspersky', 'goc', getVendorCompareFileMeta('kaspersky', 'goc'))"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    <span>Tải về</span>
+                  </button>
+                </div>
+                <span class="vendor-uploaded-file-box__time">
+                  {{ formatRefTimestamp(getVendorCompareFileMeta('kaspersky', 'goc').updatedAt) }}
+                </span>
+              </template>
+              <span v-else class="vendor-uploaded-file-box__empty">File đã up: Chưa có</span>
+            </div>
+          </div>
+          <div class="vendor-ref-slot">
+            <label
+              class="vendor-ref-upload-btn vendor-ref-upload-btn--kas-tg"
+              :title="`Upload File Trung Gian Kaspersky mới lên Cloudinary (Đang dùng: ${vendorRefFilesMeta.kaspersky?.mau_file_name || 'Chưa có'})`"
+            >
+              <input type="file" accept=".xlsx,.xls" style="display: none" @change="handleCustomKasExcelUpload($event, 'mau')" />
+              <span>☁️ File Trung Gian</span>
+            </label>
+            <div class="vendor-uploaded-file-box vendor-uploaded-file-box--compact">
+              <template v-if="getVendorCompareFileMeta('kaspersky', 'tg')">
+                <div class="vendor-uploaded-file-box__row">
+                  <span class="vendor-uploaded-file-box__line" :title="`Click mở ViewOffice: ${getVendorCompareFileMeta('kaspersky', 'tg').name}`">
+                    File đã up:
+                    <a
+                      :href="getVendorOfficeViewUrl(getVendorCompareFileMeta('kaspersky', 'tg'))"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="vendor-uploaded-file-box__link"
+                      style="color: #7dd3fc;"
+                      @click="handleOpenVendorOfficeView($event, 'kaspersky', 'mau', getVendorCompareFileMeta('kaspersky', 'tg'))"
+                    >
+                      {{ getVendorCompareFileMeta('kaspersky', 'tg').name }}
+                    </a>
+                  </span>
+                  <button
+                    type="button"
+                    class="vendor-file-download-btn"
+                    title="Tải File Trung Gian Kaspersky về máy"
+                    @click.stop.prevent="handleDownloadVendorUploadedFile('kaspersky', 'mau', getVendorCompareFileMeta('kaspersky', 'tg'))"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    <span>Tải về</span>
+                  </button>
+                </div>
+                <span class="vendor-uploaded-file-box__time">
+                  {{ formatRefTimestamp(getVendorCompareFileMeta('kaspersky', 'tg').updatedAt) }}
+                </span>
+              </template>
+              <span v-else class="vendor-uploaded-file-box__empty">File đã up: Chưa có</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- CỤM ĐỐI CHIẾU ACRONIS + UPLOAD FILE GỐC + FILE ĐÃ UP TƯƠNG ỨNG -->
+        <div class="vendor-compare-group vendor-compare-group--acronis">
+          <button
+            class="btn btn-outline"
+            style="border-color: rgba(129, 140, 248, 0.55); color: #a5b4fc; background: rgba(99, 102, 241, 0.14); font-weight: 700;"
+            @click="openAcronisCompareModal"
+            title="Đối chiếu bảng giá gốc Acronis trên Cloudinary với Database"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            Đối chiếu Acronis
+          </button>
+          <div class="vendor-ref-slot">
+            <label
+              class="vendor-ref-upload-btn vendor-ref-upload-btn--acronis-goc"
+              :title="`Upload File Gốc Acronis mới lên Cloudinary (Đang dùng: ${vendorRefFilesMeta.acronis?.goc_file_name || 'Chưa có'})`"
+            >
+              <input type="file" accept=".xlsx,.xls" style="display: none" @change="handleCustomAcronisExcelUpload($event, 'goc')" />
+              <span>☁️ File Gốc</span>
+            </label>
+            <div class="vendor-uploaded-file-box vendor-uploaded-file-box--compact">
+              <template v-if="getVendorCompareFileMeta('acronis', 'goc')">
+                <div class="vendor-uploaded-file-box__row">
+                  <span class="vendor-uploaded-file-box__line" :title="`Click mở ViewOffice: ${getVendorCompareFileMeta('acronis', 'goc').name}`">
+                    File đã up:
+                    <a
+                      :href="getVendorOfficeViewUrl(getVendorCompareFileMeta('acronis', 'goc'))"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="vendor-uploaded-file-box__link"
+                      style="color: #c7d2fe;"
+                      @click="handleOpenVendorOfficeView($event, 'acronis', 'goc', getVendorCompareFileMeta('acronis', 'goc'))"
+                    >
+                      {{ getVendorCompareFileMeta('acronis', 'goc').name }}
+                    </a>
+                  </span>
+                  <button
+                    type="button"
+                    class="vendor-file-download-btn"
+                    title="Tải File Gốc Acronis về máy"
+                    @click.stop.prevent="handleDownloadVendorUploadedFile('acronis', 'goc', getVendorCompareFileMeta('acronis', 'goc'))"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    <span>Tải về</span>
+                  </button>
+                </div>
+                <span class="vendor-uploaded-file-box__time">
+                  {{ formatRefTimestamp(getVendorCompareFileMeta('acronis', 'goc').updatedAt) }}
+                </span>
+              </template>
+              <span v-else class="vendor-uploaded-file-box__empty">File đã up: Chưa có</span>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-usd-rate" @click="openUsdRateModal" title="Thay đổi tỉ giá đồng loạt cho các sản phẩm USD">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+          Đổi Tỉ Giá (USD)
+          <span v-if="currentSystemUsdRate > 1" class="usd-rate-btn-badge">{{ formatNumberPlain(currentSystemUsdRate) }}₫</span>
         </button>
         <button class="btn btn-pricelist" @click="openCreatePriceListModal">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
@@ -82,17 +429,206 @@
     </div>
 
     <!-- Filters & Price List Selector -->
-    <div class="filters" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
-      <div style="flex: 1; min-width: 240px; max-width: 360px; position: relative;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-        <input type="text" v-model="searchQuery" placeholder="Tìm mã / tên hàng / NCC..." class="search-input" style="padding-left: 36px; max-width: 100%;" />
-      </div>
-      <div style="flex: 1; min-width: 200px; max-width: 240px; position: relative;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-        <input type="number" v-model="userVolumeFilter" placeholder="Số lượng user (Volume)..." class="search-input" style="padding-left: 36px; max-width: 100%;" />
+    <div class="filters" style="display: flex; flex-direction: column; gap: 12px;">
+      <!-- Dòng 1: Tìm kiếm, Volume, Sắp xếp, Hãng, Danh mục, Nhà cung cấp -->
+      <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+        <!-- Ô Tìm kiếm từ khóa -->
+        <div style="flex: 1; min-width: 220px; max-width: 320px; position: relative;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" v-model="searchQuery" placeholder="Tìm mã / tên hàng / NCC..." class="search-input" style="padding-left: 36px; max-width: 100%;" />
+        </div>
+
+        <!-- Ô lọc Volume -->
+        <div style="min-width: 175px; max-width: 210px; position: relative;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          <input type="number" v-model="userVolumeFilter" placeholder="Số user (Volume)..." class="search-input" style="padding-left: 36px; max-width: 100%;" />
+        </div>
+
+        <!-- Bộ lọc Sắp xếp: Cũ nhất ➔ Mới nhất và ngược lại -->
+        <div class="hh-filter-sort-group">
+          <select v-model="sortOrder" class="hh-filter-select" title="Sắp xếp thứ tự sản phẩm">
+            <option value="default">🕒 Sắp xếp: Mặc định</option>
+            <option value="newest">⬇️ Mới nhất ➔ Cũ nhất</option>
+            <option value="oldest">⬆️ Cũ nhất ➔ Mới nhất</option>
+          </select>
+        </div>
+
+        <!-- Bộ lọc theo Hãng (Lazy Loading + Tìm nhanh) -->
+        <div class="hh-lazy-dropdown" @click.stop>
+          <button
+            type="button"
+            class="hh-lazy-dropdown__trigger"
+            :class="{ active: Boolean(selectedBrandFilter) }"
+            @click="toggleFilterDropdown('brand')"
+          >
+            <span>🏷️ {{ selectedBrandFilter ? `Hãng: ${selectedBrandFilter}` : `Tất cả Hãng (${brandFilterOptions.length})` }}</span>
+            <span class="hh-lazy-dropdown__caret">▾</span>
+          </button>
+          <div v-if="openDropdownType === 'brand'" class="hh-lazy-dropdown__menu">
+            <div class="hh-lazy-dropdown__search-wrap">
+              <input
+                type="text"
+                v-model="brandDropdownSearch"
+                placeholder="Tìm nhanh hãng..."
+                class="hh-lazy-dropdown__search"
+              />
+            </div>
+            <div class="hh-lazy-dropdown__list" @scroll="onFilterDropdownScroll($event, 'brand')">
+              <div
+                class="hh-lazy-dropdown__item"
+                :class="{ selected: !selectedBrandFilter }"
+                @click="selectFilterOption('brand', '')"
+              >
+                <span>Tất cả Hãng</span>
+                <span class="hh-lazy-dropdown__count">{{ items.length }}</span>
+              </div>
+              <div
+                v-for="opt in displayedBrandOptions"
+                :key="opt.value"
+                class="hh-lazy-dropdown__item"
+                :class="{ selected: selectedBrandFilter === opt.value }"
+                @click="selectFilterOption('brand', opt.value)"
+              >
+                <span>{{ opt.label }}</span>
+                <span class="hh-lazy-dropdown__count">{{ opt.count }}</span>
+              </div>
+              <div v-if="!filteredBrandOptions.length" class="hh-lazy-dropdown__empty">
+                Không tìm thấy hãng phù hợp
+              </div>
+              <div
+                v-if="displayedBrandOptions.length < filteredBrandOptions.length"
+                class="hh-lazy-dropdown__more"
+                @click="brandDropdownLimit += FILTER_DROPDOWN_PAGE_SIZE"
+              >
+                Đang hiện {{ displayedBrandOptions.length }}/{{ filteredBrandOptions.length }} — Cuộn hoặc bấm để tải thêm...
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bộ lọc theo Danh mục (Lazy Loading + Tìm nhanh) -->
+        <div class="hh-lazy-dropdown" @click.stop>
+          <button
+            type="button"
+            class="hh-lazy-dropdown__trigger"
+            :class="{ active: Boolean(selectedCategoryFilter) }"
+            @click="toggleFilterDropdown('category')"
+          >
+            <span style="max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              📂 {{ selectedCategoryFilter ? `DM: ${selectedCategoryFilter}` : `Tất cả Danh mục (${categoryFilterOptions.length})` }}
+            </span>
+            <span class="hh-lazy-dropdown__caret">▾</span>
+          </button>
+          <div v-if="openDropdownType === 'category'" class="hh-lazy-dropdown__menu hh-lazy-dropdown__menu--wide">
+            <div class="hh-lazy-dropdown__search-wrap">
+              <input
+                type="text"
+                v-model="categoryDropdownSearch"
+                placeholder="Tìm nhanh danh mục..."
+                class="hh-lazy-dropdown__search"
+              />
+            </div>
+            <div class="hh-lazy-dropdown__list" @scroll="onFilterDropdownScroll($event, 'category')">
+              <div
+                class="hh-lazy-dropdown__item"
+                :class="{ selected: !selectedCategoryFilter }"
+                @click="selectFilterOption('category', '')"
+              >
+                <span>Tất cả Danh mục</span>
+                <span class="hh-lazy-dropdown__count">{{ categoryFilterTotalItems }}</span>
+              </div>
+              <div
+                v-for="opt in displayedCategoryOptions"
+                :key="opt.value"
+                class="hh-lazy-dropdown__item"
+                :class="{ selected: selectedCategoryFilter === opt.value }"
+                @click="selectFilterOption('category', opt.value)"
+              >
+                <span :title="opt.label">{{ opt.label }}</span>
+                <span class="hh-lazy-dropdown__count">{{ opt.count }}</span>
+              </div>
+              <div v-if="!filteredCategoryOptions.length" class="hh-lazy-dropdown__empty">
+                Không tìm thấy danh mục phù hợp
+              </div>
+              <div
+                v-if="displayedCategoryOptions.length < filteredCategoryOptions.length"
+                class="hh-lazy-dropdown__more"
+                @click="categoryDropdownLimit += FILTER_DROPDOWN_PAGE_SIZE"
+              >
+                Đang hiện {{ displayedCategoryOptions.length }}/{{ filteredCategoryOptions.length }} — Cuộn hoặc bấm để tải thêm...
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bộ lọc theo Nhà cung cấp (Lazy Loading + Tìm nhanh) -->
+        <div class="hh-lazy-dropdown" @click.stop>
+          <button
+            type="button"
+            class="hh-lazy-dropdown__trigger"
+            :class="{ active: Boolean(selectedSupplierFilter) }"
+            @click="toggleFilterDropdown('supplier')"
+          >
+            <span style="max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              🏢 {{ selectedSupplierFilter ? `NCC: ${selectedSupplierFilter}` : `Tất cả Nhà cung cấp (${supplierFilterOptions.length})` }}
+            </span>
+            <span class="hh-lazy-dropdown__caret">▾</span>
+          </button>
+          <div v-if="openDropdownType === 'supplier'" class="hh-lazy-dropdown__menu hh-lazy-dropdown__menu--wide">
+            <div class="hh-lazy-dropdown__search-wrap">
+              <input
+                type="text"
+                v-model="supplierDropdownSearch"
+                placeholder="Tìm nhanh nhà cung cấp..."
+                class="hh-lazy-dropdown__search"
+              />
+            </div>
+            <div class="hh-lazy-dropdown__list" @scroll="onFilterDropdownScroll($event, 'supplier')">
+              <div
+                class="hh-lazy-dropdown__item"
+                :class="{ selected: !selectedSupplierFilter }"
+                @click="selectFilterOption('supplier', '')"
+              >
+                <span>Tất cả Nhà cung cấp</span>
+                <span class="hh-lazy-dropdown__count">{{ items.length }}</span>
+              </div>
+              <div
+                v-for="opt in displayedSupplierOptions"
+                :key="opt.value"
+                class="hh-lazy-dropdown__item"
+                :class="{ selected: selectedSupplierFilter === opt.value }"
+                @click="selectFilterOption('supplier', opt.value)"
+              >
+                <span :title="opt.label">{{ opt.label }}</span>
+                <span class="hh-lazy-dropdown__count">{{ opt.count }}</span>
+              </div>
+              <div v-if="!filteredSupplierOptions.length" class="hh-lazy-dropdown__empty">
+                Không tìm thấy nhà cung cấp phù hợp
+              </div>
+              <div
+                v-if="displayedSupplierOptions.length < filteredSupplierOptions.length"
+                class="hh-lazy-dropdown__more"
+                @click="supplierDropdownLimit += FILTER_DROPDOWN_PAGE_SIZE"
+              >
+                Đang hiện {{ displayedSupplierOptions.length }}/{{ filteredSupplierOptions.length }} — Cuộn hoặc bấm để tải thêm...
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Nút xóa nhanh bộ lọc & Thống kê kết quả -->
+        <button
+          v-if="hasActiveSearchOrFilter"
+          type="button"
+          class="hh-clear-filter-btn"
+          @click="resetAllSearchAndFilters"
+          title="Đặt lại toàn bộ tìm kiếm, bộ lọc và sắp xếp"
+        >
+          ✕ Xóa lọc ({{ totalProductsCount }} SP)
+        </button>
       </div>
 
-      <!-- Khung chọn Bảng Giá -->
+      <!-- Dòng 2: Khung chọn Bảng Giá -->
       <div class="pricelist-bar">
         <div class="pricelist-select-wrap">
           <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
@@ -180,14 +716,19 @@
         <div class="folder-header">
           <div class="folder-tab">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-            <span>SỐ LƯỢNG: {{ groupItems.length }}</span>
+            <span>
+              SỐ LƯỢNG: {{ categoryTotalCounts[category] || groupItems.length }}
+              <template v-if="(categoryTotalCounts[category] || 0) > groupItems.length">
+                (đang hiện {{ groupItems.length }})
+              </template>
+            </span>
           </div>
           <div class="folder-body">
             <h3 class="folder-title" :title="category">{{ category }}</h3>
           </div>
         </div>
         
-        <div v-for="(item, index) in groupItems" :key="item.Ma_hang || index" class="product-card" @click="openEditModal(item)" style="cursor: pointer;">
+        <div v-for="(item, index) in groupItems" :key="item.Ma_hang || index" class="product-card" :class="{ 'in-quote-cart': isInQuoteCart(item) }" @click="openEditModal(item)" style="cursor: pointer;">
           <div class="card-body">
             <div class="card-top">
               <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
@@ -213,6 +754,23 @@
                 </span>
               </div>
               <div class="card-actions">
+                <button
+                  v-if="getCardVendorType(item)"
+                  class="btn-icon"
+                  :style="getCardVendorType(item) === 'sophos'
+                    ? 'color: #38bdf8; border-color: rgba(56, 189, 248, 0.45); background: rgba(56, 189, 248, 0.14);'
+                    : (getCardVendorType(item) === 'acronis'
+                        ? 'color: #a5b4fc; border-color: rgba(129, 140, 248, 0.45); background: rgba(99, 102, 241, 0.16);'
+                        : 'color: #34d399; border-color: rgba(16, 185, 129, 0.45); background: rgba(16, 185, 129, 0.14);')"
+                  :title="getCardVendorType(item) === 'sophos'
+                    ? 'Đối chiếu file gốc Sophos'
+                    : (getCardVendorType(item) === 'acronis'
+                        ? 'Đối chiếu file gốc Acronis (file_goc_acronis.xlsx)'
+                        : 'Đối chiếu file gốc Kaspersky')"
+                  @click.stop="openCardOriginalFileCompare(item)"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>
+                </button>
                 <button class="btn-icon text-primary" title="Sửa" @click.stop="openEditModal(item)">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                 </button>
@@ -221,13 +779,14 @@
                 </button>
               </div>
             </div>
-            <div v-if="item.Ma_hang" style="font-family: monospace; font-size: 11.5px; font-weight: 700; color: #38bdf8; margin-top: 6px;">
-              SKU / Mã: <span v-html="highlightText(item.Ma_hang, searchQuery)"></span>
+            <div v-if="item.sku_code" style="font-family: monospace; font-size: 11.5px; font-weight: 700; color: #a78bfa; margin-top: 6px;">
+              SKU Code: <span v-html="highlightText(item.sku_code, searchQuery)"></span>
+            </div>
+            <div v-if="item.Ma_hang" style="font-family: monospace; font-size: 11.5px; font-weight: 700; color: #38bdf8; margin-top: 4px;">
+              Mã hàng: <span v-html="highlightText(item.Ma_hang, searchQuery)"></span>
             </div>
             <h3 class="product-name" :title="item.Ten_hang" v-html="highlightText(item.Ten_hang, searchQuery)"></h3>
-            <p class="product-desc text-muted" v-if="item.Description" :title="item.Description" style="color: #cbd5e1; font-size: 12px; margin-bottom: 4px;">
-              {{ item.Description }}
-            </p>
+            <div class="product-desc text-muted" v-if="item.Description" style="color: #cbd5e1; font-size: 12px; margin-bottom: 4px;" v-html="item.Description"></div>
             <p class="product-desc text-muted" v-else-if="item.Mo_ta_chung" :title="item.Mo_ta_chung">{{ item.Mo_ta_chung }}</p>
             <div class="price-info-box">
               <p v-if="item.Type">Type: <span :style="{ color: String(item.Type).toLowerCase().includes('renewal') ? '#fbbf24' : '#34d399', fontWeight: 700 }">{{ item.Type }}</span></p>
@@ -235,10 +794,25 @@
               <p>Thời hạn bảo hành: <span>{{ item.thoi_han_bao_hanh || '-' }}</span></p>
               <p>Volume: <span>{{ item.volume || '-' }}</span></p>
               <p>Đơn vị tiền tệ: <span>{{ item.Don_vi_tien_te || '-' }}</span></p>
-              <p>Tỉ giá: <span>{{ item.Ti_gia ? formatCurrency(item.Ti_gia, 'VND') : '-' }}</span></p>
+              <p style="display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap;">
+                <span>Tỉ giá: <span style="font-weight: 700; color: #f8fafc;">{{ item.Ti_gia ? formatCurrency(item.Ti_gia, 'VND') : '-' }}</span></span>
+                <button
+                  v-if="String(item.Don_vi_tien_te || '').trim().toUpperCase() === 'USD'"
+                  type="button"
+                  class="card-usd-rate-quick-btn"
+                  title="Thay đổi tỉ giá USD"
+                  @click.stop="openUsdRateModal"
+                >
+                  💱 Đổi tỉ giá
+                </button>
+              </p>
               
               <div style="height: 1px; background: rgba(255,255,255,0.1); margin: 6px 0; width: 100%;"></div>
               
+              <p style="color: #c084fc; font-weight: 600;">
+                Giá vốn/off hãng:
+                <span style="color: #e9d5ff; font-weight: 700;">{{ formatCurrency(item.Gia_tieu_chuan || 0, item.Don_vi_tien_te) }}</span>
+              </p>
               <p style="color: #fbbf24;">Giá nhập: <span style="color: #fcd34d;">{{ formatCurrency(item.gia_nhap || 0, item.Don_vi_tien_te) }}</span></p>
               <p>Thuế VAT: <span style="color: #facc15;">{{ item.Thue_VAT ? item.Thue_VAT + '%' : '0%' }}</span></p>
               <template v-if="getPriceListEntry(item)">
@@ -262,30 +836,154 @@
                 </p>
               </template>
               <p v-else class="highlight" style="margin-top: 4px;">
-                Giá bán: 
+                <span style="display: inline-flex; align-items: center; gap: 6px;">
+                  Giá bán:
+                  <span
+                    v-if="toNum(item.Gia_tieu_chuan) > 0 && toNum(item.Don_gia) > 0 && toNum(item.Don_gia) !== toNum(item.Gia_tieu_chuan)"
+                    class="pl-card-diff-badge"
+                    :class="toNum(item.Don_gia) > toNum(item.Gia_tieu_chuan) ? 'up' : 'down'"
+                    title="Chênh lệch Giá bán so với Giá vốn/off hãng"
+                  >
+                    {{ formatCardMarkupBadge(item) }}
+                  </span>
+                </span>
                 <span>
                   {{ formatCurrency(item.Don_gia, item.Don_vi_tien_te) }}
                   <small v-if="item.DVT" style="font-size: 11px; color: #64748b; font-weight: 500;">/ {{ item.DVT }}</small>
                 </span>
               </p>
-              <p style="font-size: 11.5px; color: #64748b; margin-top: 4px; padding-top: 4px; border-top: 1px dashed rgba(255,255,255,0.07);">
-                Cập nhật gốc: <span style="color: #94a3b8; font-weight: 500;">{{ formatLastUpdated(item.last_updated) }}</span>
-              </p>
+              <div
+                style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 4px;"
+              >
+                <div
+                  v-if="getProductFileHistory(item).length"
+                  style="background: rgba(15, 23, 42, 0.72); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 7px; padding: 6px 8px; display: flex; flex-direction: column; gap: 3px;"
+                  @click.stop="openProductFilesModal(item)"
+                  title="Click để xem toàn bộ lịch sử File/Ảnh & biến động giá của sản phẩm này"
+                >
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+                    <span style="font-size: 11px; color: #38bdf8; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                      📎 {{ getProductFileHistory(item)[0].file_name }}
+                    </span>
+                    <span
+                      v-if="getProductFileHistory(item).length > 1"
+                      style="font-size: 10px; background: rgba(168, 85, 247, 0.2); color: #e9d5ff; border: 1px solid rgba(192, 132, 252, 0.4); padding: 1px 6px; border-radius: 99px; font-weight: 700; flex-shrink: 0;"
+                    >
+                      +{{ getProductFileHistory(item).length - 1 }} file
+                    </span>
+                  </div>
+                  <div style="font-size: 10.5px; color: #94a3b8; display: flex; align-items: center; justify-content: space-between; gap: 4px; flex-wrap: wrap;">
+                    <span>🕒 Up file: <strong style="color: #cbd5e1;">{{ formatLastUpdated(getProductFileHistory(item)[0].file_uploaded_at) }}</strong></span>
+                    <span style="color: #60a5fa; text-decoration: underline; font-weight: 600;">Lịch sử file ({{ getProductFileHistory(item).length }})</span>
+                  </div>
+                </div>
+                <div
+                  v-else
+                  style="display: flex; align-items: center; justify-content: space-between; gap: 6px;"
+                >
+                  <span style="font-size: 11px; color: #64748b;">📎 File: Chưa đính kèm</span>
+                  <button
+                    type="button"
+                    style="background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.35); color: #38bdf8; border-radius: 5px; padding: 1px 7px; font-size: 10.5px; font-weight: 600; cursor: pointer;"
+                    @click.stop="openProductFilesModal(item)"
+                  >+ Gắn file</button>
+                </div>
+                <p style="font-size: 11.5px; color: #64748b; margin: 0;">
+                  Cập nhật SP: <span style="color: #94a3b8; font-weight: 500;">{{ formatLastUpdated(item.last_updated) }}</span>
+                </p>
+              </div>
+              <div v-if="getCardVendorType(item)" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1);">
+                <button
+                  type="button"
+                  class="card-ref-compare-btn"
+                  :class="getCardVendorType(item) === 'sophos'
+                    ? 'card-ref-compare-btn--sophos'
+                    : (getCardVendorType(item) === 'acronis' ? 'card-ref-compare-btn--acronis' : 'card-ref-compare-btn--kas')"
+                  @click.stop="openCardOriginalFileCompare(item)"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                  <span>Đối chiếu file gốc</span>
+                </button>
+              </div>
+
+              <!-- NÚT THÊM VÀO GIỎ & CỤM SỐ LƯỢNG TRỰC TIẾP TRÊN CARD -->
+              <div class="card-cart-action-box" @click.stop>
+                <button
+                  v-if="!isInQuoteCart(item)"
+                  type="button"
+                  class="card-add-cart-btn"
+                  @click.stop="addToQuoteCart(item)"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path><line x1="12" y1="9" x2="12" y2="15"></line><line x1="9" y1="12" x2="15" y2="12"></line></svg>
+                  <span>Thêm vào giỏ</span>
+                </button>
+
+                <div v-else class="card-cart-qty-cluster" @click.stop>
+                  <span class="card-cart-selected-label">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <span>Đã thêm</span>
+                  </span>
+                  <div class="card-cart-stepper">
+                    <button
+                      type="button"
+                      class="card-cart-step-btn minus"
+                      title="Giảm số lượng (về 0 sẽ bỏ khỏi giỏ)"
+                      @click.stop="updateQuoteCartQty(item, -1, false)"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </button>
+                    <input
+                      type="number"
+                      min="1"
+                      class="card-cart-qty-input"
+                      :value="getCartItemQty(item)"
+                      @click.stop
+                      @change="onCardCartQtyInputChange(item, $event)"
+                    />
+                    <button
+                      type="button"
+                      class="card-cart-step-btn plus"
+                      title="Tăng số lượng"
+                      @click.stop="updateQuoteCartQty(item, 1, false)"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    class="card-cart-remove-btn"
+                    title="Xóa khỏi giỏ"
+                    @click.stop="removeFromQuoteCart(item)"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </template>
       
-      <!-- NÚT XEM THÊM -->
-      <button v-if="totalGroupsCount > displayLimit" 
-              @click="displayLimit += 15" 
-              style="width: 100%; margin-top: 20px; padding: 14px; background: rgba(56, 189, 248, 0.1); border: 1px dashed rgba(56, 189, 248, 0.4); color: #38bdf8; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s;"
-              onmouseover="this.style.background='rgba(56, 189, 248, 0.2)';" 
-              onmouseout="this.style.background='rgba(56, 189, 248, 0.1)';">
-        <i class="lucide-chevron-down" style="font-size: 14px; margin-right: 4px;"></i> 
-        Xem thêm (còn {{ totalGroupsCount - displayLimit }} nhóm sản phẩm)
-      </button>
-
+      <!-- LAZY LOADING SENTINEL & NÚT TẢI THÊM (20 SẢN PHẨM / TRANG) -->
+      <div
+        v-if="!loading && totalProductsCount > 0"
+        ref="lazyLoadSentinelRef"
+        style="grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 16px; padding: 12px 0;"
+      >
+        <div style="font-size: 12.5px; color: #94a3b8; font-weight: 600;">
+          Đang hiển thị <strong style="color: #38bdf8;">{{ displayedProductsCount }}</strong> / <strong style="color: #f8fafc;">{{ totalProductsCount }}</strong> sản phẩm
+        </div>
+        <button
+          v-if="hasMoreProducts"
+          type="button"
+          @click="loadMoreProducts"
+          style="width: 100%; padding: 14px; background: rgba(56, 189, 248, 0.1); border: 1px dashed rgba(56, 189, 248, 0.4); color: #38bdf8; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s;"
+          onmouseover="this.style.background='rgba(56, 189, 248, 0.2)';"
+          onmouseout="this.style.background='rgba(56, 189, 248, 0.1)';"
+        >
+          ⏳ Tự động tải khi cuộn xuống hoặc bấm để xem thêm (+{{ Math.min(PRODUCT_PAGE_SIZE, totalProductsCount - displayedProductsCount) }} sản phẩm — còn {{ totalProductsCount - displayedProductsCount }} sản phẩm)
+        </button>
+      </div>
     </div>
 
     <!-- Modal Form -->
@@ -300,6 +998,19 @@
             <span v-if="isEditing && activePriceList && formData._has_pl_entry" style="font-size: 12px; color: #fbbf24; background: rgba(245, 158, 11, 0.14); border: 1px solid rgba(245, 158, 11, 0.35); padding: 4px 12px; border-radius: 99px;">
               🏷️ Đang sửa theo bảng giá: <strong style="color: #fde68a;">{{ activePriceList.ten_bang_gia }}</strong>
             </span>
+            <button
+              v-if="isEditing && getCardVendorType(formData)"
+              type="button"
+              class="card-ref-compare-btn"
+              style="width: auto; padding: 5px 12px; font-size: 12px;"
+              :class="getCardVendorType(formData) === 'sophos'
+                ? 'card-ref-compare-btn--sophos'
+                : (getCardVendorType(formData) === 'acronis' ? 'card-ref-compare-btn--acronis' : 'card-ref-compare-btn--kas')"
+              @click="openCardOriginalFileCompare(originalItem || formData)"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+              <span>Đối chiếu file gốc</span>
+            </button>
           </div>
           <button class="close-btn" @click="closeModal">&times;</button>
         </div>
@@ -312,9 +1023,13 @@
                 Thông tin chung
               </h3>
               <div class="panel-content">
-                <div class="form-group col-span-2">
-                  <label>Mã hàng (SKU) <span class="required">*</span></label>
+                <div class="form-group">
+                  <label>Mã hàng <span class="required">*</span></label>
                   <input v-model="formData.Ma_hang" type="text" required :disabled="isEditing" />
+                </div>
+                <div class="form-group">
+                  <label>SKU Code (Mã SKU hãng)</label>
+                  <input v-model="formData.sku_code" type="text" placeholder="VD: XS230012ZZNCAA, KL4867RA*FQ, SSSAEBLOS..." />
                 </div>
                 <div class="form-group col-span-2">
                   <label>Tên hàng <span class="required">*</span></label>
@@ -322,7 +1037,7 @@
                 </div>
                 <div class="form-group col-span-2">
                   <label>Description (Theo file gốc)</label>
-                  <input v-model="formData.Description" type="text" placeholder="VD: Workspace Protection - 1-9 users - 12 MOS..." />
+                  <ExcelEditor v-model="formData.Description" placeholder="VD: Workspace Protection - 1-9 users - 12 MOS..." class="features-excel-editor" />
                 </div>
                 <div class="form-group">
                   <label>License duration</label>
@@ -400,16 +1115,84 @@
                   <label>Tỉ giá</label>
                   <NumberInput v-model="formData.Ti_gia" />
                 </div>
+
+                <!-- GIÁ VỐN / OFF HÃNG -->
+                <div class="form-group col-span-2">
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 4px; flex-wrap: wrap;">
+                    <label style="margin-bottom: 0; color: #e9d5ff; font-weight: 700;">
+                      Giá vốn/off hãng
+                    </label>
+                    <span style="font-size: 11px; color: #94a3b8;">
+                      Giá mua sau thuế từ NCC / Hãng
+                    </span>
+                  </div>
+                  <NumberInput v-model="formData.Gia_tieu_chuan" @update:modelValue="onModalGiaVonChange" />
+
+                  <!-- KHUNG ĐIỀU CHỈNH ĐƠN GIÁ BÁN TỪ GIÁ VỐN (% HOẶC SỐ TIỀN CỤ THỂ) -->
+                  <div
+                    style="margin-top: 8px; padding: 8px 10px; background: rgba(168, 85, 247, 0.08); border: 1px dashed rgba(192, 132, 252, 0.4); border-radius: 8px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;"
+                  >
+                    <span style="font-size: 12px; color: #e9d5ff; font-weight: 600;">
+                      ⚡ Tính Đơn giá bán từ Giá vốn:
+                    </span>
+                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                      <select
+                        v-model="modalCostMarkup.direction"
+                        @change="applyModalCostMarkupToDonGia"
+                        class="pl-row-select"
+                        :class="modalCostMarkup.direction === 'decrease' ? 'down' : 'up'"
+                        style="height: 32px; font-size: 12px;"
+                      >
+                        <option value="increase">+ Tăng (Lãi)</option>
+                        <option value="decrease">- Giảm (Off)</option>
+                      </select>
+                      <select
+                        v-model="modalCostMarkup.type"
+                        @change="applyModalCostMarkupToDonGia"
+                        class="pl-row-select"
+                        style="height: 32px; font-size: 12px;"
+                      >
+                        <option value="percent">% (Phần trăm)</option>
+                        <option value="amount">Số tiền cụ thể</option>
+                      </select>
+                      <div v-if="modalCostMarkup.type === 'percent'" style="position: relative; display: inline-flex; align-items: center;">
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          v-model.number="modalCostMarkup.value"
+                          @input="applyModalCostMarkupToDonGia"
+                          style="width: 86px; height: 32px; padding: 4px 24px 4px 8px; border-radius: 6px; border: 1px solid rgba(192, 132, 252, 0.45); background: #0f172a; color: #34d399; font-weight: 700; font-size: 13px; text-align: right;"
+                        />
+                        <span style="position: absolute; right: 7px; font-size: 12px; color: #94a3b8; font-weight: 700; pointer-events: none;">%</span>
+                      </div>
+                      <div v-else style="width: 140px;">
+                        <NumberInput
+                          v-model="modalCostMarkup.value"
+                          @update:modelValue="applyModalCostMarkupToDonGia"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div class="form-group col-span-2">
                   <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; margin-bottom: 4px;">
-                    <label style="margin-bottom: 0; display: inline-flex; align-items: center; gap: 6px;">
-                      <span>{{ isEditing && activePriceList && formData._has_pl_entry ? `Đơn giá (${activePriceList.ten_bang_gia})` : 'Đơn giá' }}</span>
+                    <label style="margin-bottom: 0; display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                      <span>{{ isEditing && activePriceList && formData._has_pl_entry ? `Đơn giá (${activePriceList.ten_bang_gia})` : 'Đơn giá (Giá bán)' }}</span>
                       <span
                         v-if="isEditing && activePriceList && formData._has_pl_entry"
                         class="pl-card-diff-badge"
                         :class="toNum(formData.Don_gia) > toNum(formData._gia_goc_he_thong) ? 'up' : (toNum(formData.Don_gia) < toNum(formData._gia_goc_he_thong) ? 'down' : 'neutral')"
                       >
                         {{ formatModalPriceListBadge() }}
+                      </span>
+                      <span
+                        v-else-if="toNum(formData.Gia_tieu_chuan) > 0 && toNum(formData.Don_gia) > 0"
+                        class="pl-card-diff-badge"
+                        :class="toNum(formData.Don_gia) > toNum(formData.Gia_tieu_chuan) ? 'up' : (toNum(formData.Don_gia) < toNum(formData.Gia_tieu_chuan) ? 'down' : 'neutral')"
+                      >
+                        {{ formatModalCostDiffBadge() }}
                       </span>
                     </label>
                     <span v-if="isEditing && activePriceList && formData._has_pl_entry" style="font-size: 11.5px; color: #94a3b8;">
@@ -456,6 +1239,125 @@
                 <div class="form-group col-span-2">
                   <label>Giá nhập</label>
                   <NumberInput v-model="formData.gia_nhap" />
+                </div>
+
+                <!-- LỊCH SỬ FILE ĐÍNH KÈM & MỐC THỜI GIAN UPLOAD FILE (ĐỘC LẬP VỚI LAST_UPDATED CỦA HÀNG HÓA) -->
+                <div class="form-group col-span-2" style="margin-top: 6px;">
+                  <div style="background: rgba(15, 23, 42, 0.78); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 10px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+                      <div style="display: flex; align-items: center; gap: 6px;">
+                        <span style="font-size: 13px; font-weight: 800; color: #38bdf8;">
+                          📎 Danh sách File / Ảnh báo giá ({{ getProductFileHistory(formData).length }})
+                        </span>
+                        <span style="font-size: 11px; color: #94a3b8;" title="Mốc thời gian này tính riêng theo thời điểm upload từng file, không bị đổi khi sửa thông tin hàng hóa">
+                          • Thời gian tính theo lúc up file
+                        </span>
+                      </div>
+                      <label
+                        style="background: rgba(56, 189, 248, 0.16); border: 1px solid rgba(56, 189, 248, 0.45); color: #38bdf8; border-radius: 6px; padding: 4px 10px; font-size: 11.5px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;"
+                        title="Upload bất kỳ định dạng file hoặc ảnh nào kèm bộ giá hiện tại vào lịch sử file của sản phẩm này"
+                      >
+                        <input
+                          type="file"
+                          multiple
+                          style="display: none;"
+                          @change="handleAttachFileToFormData($event)"
+                        />
+                        <span>☁️ + Up File / Ảnh kèm giá này</span>
+                      </label>
+                    </div>
+
+                    <div
+                      v-if="!getProductFileHistory(formData).length"
+                      style="font-size: 12px; color: #64748b; text-align: center; padding: 10px 6px; border: 1px dashed rgba(148, 163, 184, 0.2); border-radius: 8px;"
+                    >
+                      Chưa có file đính kèm. Khi bạn Import Excel / Mua hàng / Check giá qua ảnh hoặc bấm "+ Up File / Ảnh" ở trên, file kèm mốc thời gian upload sẽ được lưu tại đây.
+                    </div>
+
+                    <div
+                      v-else
+                      style="display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; padding-right: 2px;"
+                    >
+                      <div
+                        v-for="(fEntry, fIdx) in getProductFileHistory(formData)"
+                        :key="fEntry.id || fIdx"
+                        style="background: rgba(30, 41, 59, 0.72); border: 1px solid rgba(148, 163, 184, 0.22); border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 5px;"
+                      >
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+                          <div style="display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1;">
+                            <span
+                              style="font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 700; flex-shrink: 0;"
+                              :style="fIdx === 0 ? 'background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);' : 'background: rgba(100, 116, 139, 0.25); color: #cbd5e1;'"
+                            >
+                              {{ fIdx === 0 ? 'MỚI NHẤT' : `#${getProductFileHistory(formData).length - fIdx}` }}
+                            </span>
+                            <a
+                              v-if="fEntry.file_url"
+                              :href="getAttachedFileViewHref(fEntry)"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style="font-size: 12px; font-weight: 700; color: #38bdf8; text-decoration: underline; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
+                              :title="`Click để mở xem: ${fEntry.file_name}`"
+                            >{{ fEntry.file_name }}</a>
+                            <strong
+                              v-else
+                              style="font-size: 12px; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
+                            >{{ fEntry.file_name }}</strong>
+                          </div>
+                          <div style="display: flex; align-items: center; gap: 5px; flex-shrink: 0;">
+                            <a
+                              v-if="fEntry.file_url"
+                              :href="getAttachedFileViewHref(fEntry)"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              class="vendor-file-office-btn"
+                              style="text-decoration: none; padding: 2px 7px; font-size: 10.5px;"
+                            >
+                              {{ isExcelAttachedFile(fEntry) ? '👁️ ViewOffice' : '👁️ Xem file' }}
+                            </a>
+                            <a
+                              v-if="fEntry.file_url"
+                              :href="fEntry.file_url"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              download
+                              class="vendor-file-download-btn"
+                              style="text-decoration: none; padding: 2px 7px; font-size: 10.5px;"
+                            >⬇ Tải</a>
+                            <button
+                              type="button"
+                              style="background: rgba(168, 85, 247, 0.16); border: 1px solid rgba(192, 132, 252, 0.4); color: #e9d5ff; border-radius: 5px; padding: 2px 6px; font-size: 10.5px; font-weight: 600; cursor: pointer;"
+                              title="Áp dụng lại mức Giá vốn/off hãng, Giá bán, Giá nhập từ file này vào sản phẩm"
+                              @click="applyFileHistoryPriceToFormData(fEntry)"
+                            >⚡ Áp giá</button>
+                            <button
+                              type="button"
+                              style="background: rgba(239, 68, 68, 0.14); border: 1px solid rgba(239, 68, 68, 0.35); color: #fca5a5; border-radius: 5px; padding: 2px 6px; font-size: 10.5px; font-weight: 700; cursor: pointer;"
+                              title="Xóa file này khỏi lịch sử của sản phẩm"
+                              @click="removeFileEntryFromFormData(fIdx)"
+                            >✕</button>
+                          </div>
+                        </div>
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 11px; color: #94a3b8;">
+                          <span>
+                            🕒 Thời gian up file: <strong style="color: #f8fafc;">{{ formatLastUpdated(fEntry.file_uploaded_at) }}</strong>
+                            <span v-if="fEntry.ghi_chu_file" style="color: #64748b;"> · {{ fEntry.ghi_chu_file }}</span>
+                          </span>
+                          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            <span style="color: #c084fc;">
+                              Giá vốn/off hãng: <strong style="color: #e9d5ff;">{{ formatCurrency(fEntry.gia_von || 0, fEntry.don_vi_tien_te || formData.Don_vi_tien_te) }}</strong>
+                            </span>
+                            <span style="color: #34d399;">
+                              Giá bán: <strong>{{ formatCurrency(fEntry.don_gia || 0, fEntry.don_vi_tien_te || formData.Don_vi_tien_te) }}</strong>
+                            </span>
+                            <span v-if="toNum(fEntry.gia_nhap, 0) > 0" style="color: #fbbf24;">
+                              Giá nhập: <strong>{{ formatCurrency(fEntry.gia_nhap, fEntry.don_vi_tien_te || formData.Don_vi_tien_te) }}</strong>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 <!--
                 <div class="form-group col-span-2">
@@ -514,6 +1416,130 @@
       </div>
     </div>
 
+    <!-- MODAL LỊCH SỬ FILE & BIẾN ĐỘNG GIÁ CỦA SẢN PHẨM -->
+    <div v-if="productFilesModal.show && productFilesModal.item" class="modal-overlay" @click.self="closeProductFilesModal">
+      <div class="modal-content" style="max-width: 780px; width: 95%;">
+        <div class="modal-header">
+          <div style="display: flex; flex-direction: column; gap: 3px;">
+            <h2 style="font-size: 17px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <span>📎 Lịch sử File &amp; Biến động giá:</span>
+              <code style="color: #38bdf8; background: rgba(56, 189, 248, 0.14); padding: 2px 8px; border-radius: 6px;">{{ productFilesModal.item.Ma_hang }}</code>
+            </h2>
+            <span style="font-size: 12.5px; color: #94a3b8;">
+              {{ productFilesModal.item.Ten_hang }} · Mốc thời gian tính riêng theo từng thời điểm upload file
+            </span>
+          </div>
+          <button class="close-btn" @click="closeProductFilesModal">&times;</button>
+        </div>
+
+        <div class="modal-body" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 14px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 10px; padding: 10px 14px;">
+            <div style="font-size: 12.5px; color: #cbd5e1; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+              <span>Giá hiện tại trên DB:</span>
+              <span style="color: #c084fc;">Giá vốn/off hãng: <strong style="color: #e9d5ff;">{{ formatCurrency(productFilesModal.item.Gia_tieu_chuan || 0, productFilesModal.item.Don_vi_tien_te) }}</strong></span>
+              <span style="color: #34d399;">Giá bán: <strong>{{ formatCurrency(productFilesModal.item.Don_gia || 0, productFilesModal.item.Don_vi_tien_te) }}</strong></span>
+              <span v-if="toNum(productFilesModal.item.gia_nhap, 0) > 0" style="color: #fbbf24;">Giá nhập: <strong>{{ formatCurrency(productFilesModal.item.gia_nhap, productFilesModal.item.Don_vi_tien_te) }}</strong></span>
+            </div>
+            <label
+              style="background: rgba(56, 189, 248, 0.18); border: 1px solid rgba(56, 189, 248, 0.5); color: #38bdf8; border-radius: 7px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;"
+            >
+              <input
+                type="file"
+                multiple
+                style="display: none;"
+                @change="handleAttachFileDirectToProduct($event, productFilesModal.item)"
+              />
+              <span>☁️ + Upload thêm File / Ảnh cho SP này</span>
+            </label>
+          </div>
+
+          <div
+            v-if="!getProductFileHistory(productFilesModal.item).length"
+            style="padding: 32px 16px; text-align: center; color: #64748b; border: 1px dashed rgba(148, 163, 184, 0.25); border-radius: 10px;"
+          >
+            Sản phẩm này chưa có file đính kèm nào trong lịch sử. Bấm <strong>"+ Upload thêm File / Ảnh"</strong> hoặc thực hiện Import / Check giá để lưu lịch sử file.
+          </div>
+
+          <div v-else style="display: flex; flex-direction: column; gap: 10px; max-height: 420px; overflow-y: auto;">
+            <div
+              v-for="(fEntry, fIdx) in getProductFileHistory(productFilesModal.item)"
+              :key="fEntry.id || fIdx"
+              style="background: rgba(30, 41, 59, 0.78); border: 1px solid rgba(148, 163, 184, 0.25); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;"
+            >
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1;">
+                  <span
+                    style="font-size: 10.5px; padding: 2px 8px; border-radius: 99px; font-weight: 800; flex-shrink: 0;"
+                    :style="fIdx === 0 ? 'background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.45);' : 'background: rgba(100, 116, 139, 0.25); color: #cbd5e1;'"
+                  >
+                    {{ fIdx === 0 ? 'FILE MỚI NHẤT' : `Lần #${getProductFileHistory(productFilesModal.item).length - fIdx}` }}
+                  </span>
+                  <a
+                    v-if="fEntry.file_url"
+                    :href="getAttachedFileViewHref(fEntry)"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style="font-size: 13.5px; font-weight: 700; color: #38bdf8; text-decoration: underline; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+                  >{{ fEntry.file_name }}</a>
+                  <strong v-else style="font-size: 13.5px; color: #f8fafc;">{{ fEntry.file_name }}</strong>
+                </div>
+                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                  <a
+                    v-if="fEntry.file_url"
+                    :href="getAttachedFileViewHref(fEntry)"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="vendor-file-office-btn"
+                    style="text-decoration: none;"
+                  >
+                    {{ isExcelAttachedFile(fEntry) ? '👁️ Xem bằng ViewOffice' : '👁️ Mở xem File / Ảnh' }}
+                  </a>
+                  <a
+                    v-if="fEntry.file_url"
+                    :href="fEntry.file_url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    download
+                    class="vendor-file-download-btn"
+                    style="text-decoration: none;"
+                  >⬇ Tải về</a>
+                  <button
+                    type="button"
+                    style="background: rgba(239, 68, 68, 0.14); border: 1px solid rgba(239, 68, 68, 0.35); color: #fca5a5; border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 700; cursor: pointer;"
+                    title="Xóa bản ghi file này khỏi lịch sử sản phẩm"
+                    @click="removeFileDirectFromProduct(productFilesModal.item, fIdx)"
+                  >✕ Xóa</button>
+                </div>
+              </div>
+
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 12px; color: #94a3b8; border-top: 1px dashed rgba(255,255,255,0.08); padding-top: 6px;">
+                <div>
+                  🕒 Mốc thời gian upload file:
+                  <strong style="color: #f8fafc;">{{ formatLastUpdated(fEntry.file_uploaded_at) }}</strong>
+                  <span v-if="fEntry.ghi_chu_file" style="color: #64748b;"> · ({{ fEntry.ghi_chu_file }})</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                  <span style="color: #c084fc;">
+                    Giá vốn/off hãng: <strong style="color: #e9d5ff;">{{ formatCurrency(fEntry.gia_von || 0, fEntry.don_vi_tien_te || productFilesModal.item.Don_vi_tien_te) }}</strong>
+                  </span>
+                  <span style="color: #34d399;">
+                    Đơn giá bán: <strong>{{ formatCurrency(fEntry.don_gia || 0, fEntry.don_vi_tien_te || productFilesModal.item.Don_vi_tien_te) }}</strong>
+                  </span>
+                  <span v-if="toNum(fEntry.gia_nhap, 0) > 0" style="color: #fbbf24;">
+                    Giá nhập: <strong>{{ formatCurrency(fEntry.gia_nhap, fEntry.don_vi_tien_te || productFilesModal.item.Don_vi_tien_te) }}</strong>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer" style="display: flex; justify-content: flex-end;">
+          <button type="button" class="btn btn-secondary" @click="closeProductFilesModal">Đóng</button>
+        </div>
+      </div>
+    </div>
+
     <!-- IMPORT PREVIEW MODAL -->
     <div v-if="showImportModal" class="import-overlay" @click.self="showImportModal = false">
       <div class="import-modal">
@@ -551,6 +1577,84 @@
             <div class="import-stat-card__value">{{ importData[0]?.Ten_nha_cung_cap || '—' }}</div>
             <div class="import-stat-card__label">Nhà cung cấp</div>
           </div>
+        </div>
+
+        <!-- Thanh công cụ Điều chỉnh Giá bán từ Giá vốn & Phân tích lại bằng AI -->
+        <div
+          style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 10px 18px; background: rgba(168, 85, 247, 0.08); border-bottom: 1px solid rgba(192, 132, 252, 0.25);"
+        >
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <span style="font-size: 12.5px; color: #e9d5ff; font-weight: 700;">
+              ⚡ Tính Giá bán (Đơn giá) từ Giá vốn / Giá off hãng:
+            </span>
+            <select
+              v-model="importBulkCostMarkup.direction"
+              class="pl-row-select"
+              :class="importBulkCostMarkup.direction === 'decrease' ? 'down' : 'up'"
+              style="height: 32px; font-size: 12px;"
+            >
+              <option value="increase">+ Tăng (Lãi)</option>
+              <option value="decrease">- Giảm (Off)</option>
+            </select>
+            <select
+              v-model="importBulkCostMarkup.type"
+              class="pl-row-select"
+              style="height: 32px; font-size: 12px;"
+            >
+              <option value="percent">% (Phần trăm)</option>
+              <option value="amount">Số tiền cụ thể</option>
+            </select>
+            <div v-if="importBulkCostMarkup.type === 'percent'" style="position: relative; display: inline-flex; align-items: center;">
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                v-model.number="importBulkCostMarkup.value"
+                style="width: 86px; height: 32px; padding: 4px 24px 4px 8px; border-radius: 6px; border: 1px solid rgba(192, 132, 252, 0.45); background: #0f172a; color: #34d399; font-weight: 700; font-size: 13px; text-align: right;"
+              />
+              <span style="position: absolute; right: 7px; font-size: 12px; color: #94a3b8; font-weight: 700; pointer-events: none;">%</span>
+            </div>
+            <div v-else style="width: 145px;">
+              <NumberInput v-model="importBulkCostMarkup.value" />
+            </div>
+            <button
+              type="button"
+              class="pl-mini-btn"
+              style="background: rgba(16, 185, 129, 0.2); border-color: #10b981; color: #6ee7b7; font-weight: 700;"
+              @click="applyImportBulkMarkupToAll"
+            >
+              ✓ Áp dụng cho tất cả ({{ importData.length }} SP)
+            </button>
+          </div>
+
+          <div v-if="lastPurchaseUploadFile" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <span style="font-size: 12px; color: #cbd5e1;">Đọc chưa chuẩn hoặc sai định dạng?</span>
+            <button
+              type="button"
+              class="pl-mini-btn"
+              style="background: linear-gradient(135deg, rgba(168, 85, 247, 0.28), rgba(59, 130, 246, 0.28)); border-color: #c084fc; color: #f3e8ff; font-weight: 700;"
+              @click="runAiPurchaseFileAnalysis(lastPurchaseUploadFile)"
+            >
+              ✨ Dùng AI phân tích lại file này
+            </button>
+          </div>
+        </div>
+
+        <!-- Thanh tự động cập nhật File Gốc / Trung Gian lên Cloudinary khi Import -->
+        <div
+          v-if="pendingImportVendorRef"
+          style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 10px 18px; background: rgba(56, 189, 248, 0.1); border-bottom: 1px solid rgba(56, 189, 248, 0.3);"
+        >
+          <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; color: #bae6fd; font-weight: 700;">
+            <input
+              type="checkbox"
+              v-model="syncImportFileToCloudinaryRef"
+              style="width: 16px; height: 16px; accent-color: #38bdf8; cursor: pointer;"
+            />
+            <span>
+              ☁️ Đồng thời đẩy file <code>{{ pendingImportVendorRef.file?.name }}</code> lên <strong>Cloudinary</strong> làm File Gốc / Trung Gian chuẩn mới cho <strong>{{ pendingImportVendorRef.vendor?.toUpperCase() }}</strong> (Không còn bị dính giá file cũ khi đối chiếu)
+            </span>
+          </label>
         </div>
 
         <!-- Thanh cấu hình chuẩn hóa SOPHOS (hiển thị khi đang import dữ liệu SOPHOS) -->
@@ -615,13 +1719,15 @@
             <thead>
               <tr>
                 <th class="import-th--sticky-left import-th--idx">#</th>
-                <th style="min-width:155px">Mã hàng (SKU)</th>
+                <th style="min-width:155px">Mã hàng</th>
+                <th style="min-width:135px; color: #c4b5fd;">SKU Code</th>
                 <th style="min-width:250px">Tên hàng</th>
                 <th style="min-width:290px">Description (Theo file)</th>
                 <th style="min-width:520px">Features</th>
                 <th style="min-width:170px">Danh mục</th>
                 <th style="min-width:75px">Type</th>
-                <th style="min-width:105px">Giá tham khảo</th>
+                <th style="min-width:125px; color: #e9d5ff;">Giá vốn / Giá off hãng</th>
+                <th style="min-width:115px">Giá bán (Đơn giá)</th>
                 <th style="min-width:100px">Giá nhập</th>
                 <th style="min-width:70px">VAT%</th>
                 <th style="min-width:70px">Tiền tệ</th>
@@ -643,6 +1749,7 @@
               <tr v-for="(row, idx) in displayedImportData" :key="row.Ma_hang + '_' + idx" class="import-row">
                 <td class="import-th--sticky-left import-th--idx import-row__idx">{{ idx + 1 }}</td>
                 <td><input type="text" v-model="row.Ma_hang" class="imp-input imp-input--code" /></td>
+                <td><input type="text" v-model="row.sku_code" class="imp-input imp-input--code" style="color: #c4b5fd;" placeholder="SKU Code..." /></td>
                 <td><textarea v-model="row.Ten_hang" class="imp-input imp-input--textarea imp-input--autofit" rows="1"></textarea></td>
                 <td><textarea v-model="row.Description" class="imp-input imp-input--textarea imp-input--autofit" rows="1" placeholder="Description từ file..."></textarea></td>
                 <td>
@@ -672,6 +1779,7 @@
                     :style="{ color: String(row.Type || '').toLowerCase().includes('renewal') ? '#fbbf24' : '#34d399', fontWeight: 700 }"
                   />
                 </td>
+                <td><NumberInput v-model="row.Gia_tieu_chuan" class="imp-input imp-input--num" style="color: #e9d5ff; font-weight: 700;" /></td>
                 <td><NumberInput v-model="row.Don_gia" class="imp-input imp-input--num imp-input--green" /></td>
                 <td><NumberInput v-model="row.gia_nhap" class="imp-input imp-input--num imp-input--green" /></td>
                 <td><NumberInput v-model="row.Thue_VAT" class="imp-input imp-input--num imp-input--green" /></td>
@@ -720,7 +1828,7 @@
     </div>
 
     <!-- MODAL CHỈNH SỬA FORMAT FEATURES TRONG BẢNG IMPORT PREVIEW -->
-    <div v-if="importFeaturesEditRow" class="modal-overlay" @click.self="importFeaturesEditRow = null" style="z-index: 3000;">
+    <div v-if="importFeaturesEditRow" class="modal-overlay" @click.self="importFeaturesEditRow = null" style="z-index: 10400;">
       <div class="modal-content" style="max-width: 820px;">
         <div class="modal-header">
           <h2>Chỉnh sửa định dạng Features — {{ importFeaturesEditRow.Ma_hang }}</h2>
@@ -736,7 +1844,7 @@
     </div>
 
     <!-- CONFIRM DELETE MODAL -->
-    <div v-if="confirmDeleteModal.show" class="modal-overlay" @click.self="confirmDeleteModal.show = false" style="z-index: 10001;">
+    <div v-if="confirmDeleteModal.show" class="modal-overlay" @click.self="confirmDeleteModal.show = false" style="z-index: 100010;">
       <div class="custom-alert-modal">
         <div class="alert-icon question" style="color: #ef4444; background: rgba(239, 68, 68, 0.1);">
           <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
@@ -751,7 +1859,7 @@
     </div>
 
     <!-- CONFIRM DELETE PRICE LIST MODAL -->
-    <div v-if="confirmDeletePriceListModal.show" class="modal-overlay" @click.self="confirmDeletePriceListModal.show = false" style="z-index: 10002;">
+    <div v-if="confirmDeletePriceListModal.show" class="modal-overlay" @click.self="confirmDeletePriceListModal.show = false" style="z-index: 100010;">
       <div class="custom-alert-modal">
         <div class="alert-icon question" style="color: #ef4444; background: rgba(239, 68, 68, 0.1);">
           <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
@@ -764,6 +1872,162 @@
         <div class="alert-actions" style="display: flex; gap: 12px; justify-content: center;">
           <button class="btn btn-secondary" @click="confirmDeletePriceListModal.show = false">Hủy</button>
           <button class="btn btn-primary" style="background: #ef4444; border: none; box-shadow: 0 4px 12px rgba(239,68,68,0.3);" @click="executeDeletePriceList">Xóa bảng giá</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL THÔNG BÁO DÙNG AI PHÂN TÍCH KHI IMPORT FILE MUA HÀNG SAI ĐỊNH DẠNG / KHÔNG ĐỌC ĐƯỢC GIÁ VỐN -->
+    <div v-if="aiPurchaseFallbackModal.show" class="modal-overlay" @click.self="aiPurchaseFallbackModal.show = false" style="z-index: 100010;">
+      <div class="custom-alert-modal" style="max-width: 520px;">
+        <div class="alert-icon question" style="color: #c084fc; background: rgba(168, 85, 247, 0.14); border: 1px solid rgba(192, 132, 252, 0.35);">
+          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z"/><path d="M16 14H8a4 4 0 0 0-4 4v2h16v-2a4 4 0 0 0-4-4z"/></svg>
+        </div>
+        <h3 class="alert-title" style="color: #f8fafc; font-size: 18px; margin: 16px 0 8px; font-weight: 700;">
+          Không đọc được Giá vốn hoặc sai định dạng chuẩn
+        </h3>
+        <p class="alert-desc" style="color: #cbd5e1; font-size: 13.5px; margin-bottom: 22px; line-height: 1.55;">
+          File <strong style="color: #e9d5ff;">{{ aiPurchaseFallbackModal.fileName }}</strong> có bố cục khác định dạng chuẩn hoặc không nhận diện được cột Giá vốn sau thuế.<br><br>
+          Bạn có muốn dùng <strong style="color: #38bdf8;">AI (DeepSeek)</strong> để tự động phân tích cấu trúc file và đọc <strong>Giá vốn / Giá off hãng</strong> không?
+        </p>
+        <div class="alert-actions" style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+          <button class="btn btn-secondary" @click="aiPurchaseFallbackModal.show = false">Hủy bỏ</button>
+          <button
+            class="btn btn-primary"
+            style="background: linear-gradient(135deg, #8b5cf6, #3b82f6); border: none; box-shadow: 0 4px 14px rgba(139, 92, 246, 0.4); font-weight: 700;"
+            @click="confirmAiPurchaseFallback"
+          >
+            ✨ Dùng AI phân tích ngay
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL THAY ĐỔI TỈ GIÁ (DÀNH CHO USD) -->
+    <div v-if="showUsdRateModal" class="modal-overlay" @click.self="closeUsdRateModal" style="z-index: 10050;">
+      <div class="modal-content" style="max-width: 520px; border: 1px solid rgba(16, 185, 129, 0.45); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);">
+        <div class="modal-header" style="background: linear-gradient(135deg, rgba(6, 78, 59, 0.55), rgba(15, 23, 42, 0.95)); border-bottom: 1px solid rgba(16, 185, 129, 0.3);">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="width: 36px; height: 36px; border-radius: 10px; background: rgba(16, 185, 129, 0.2); border: 1px solid rgba(52, 211, 153, 0.4); display: flex; align-items: center; justify-content: center; color: #34d399; font-size: 18px; font-weight: 800;">
+              $
+            </div>
+            <div>
+              <h2 style="margin: 0; font-size: 17px; font-weight: 800; color: #ecfdf5;">Thay Đổi Tỉ Giá (Dành Cho USD)</h2>
+              <div style="font-size: 12px; color: #6ee7b7; margin-top: 2px;">
+                Cập nhật đồng loạt trường <strong>Tỉ giá (VNĐ)</strong> cho các mặt hàng USD
+              </div>
+            </div>
+          </div>
+          <button class="btn-close" @click="closeUsdRateModal">&times;</button>
+        </div>
+
+        <div class="modal-body" style="padding: 20px; display: flex; flex-direction: column; gap: 16px;">
+          <!-- Thông tin hiện tại -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div style="padding: 12px; border-radius: 10px; background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(148, 163, 184, 0.2);">
+              <div style="font-size: 11.5px; color: #94a3b8; font-weight: 600;">Tỉ giá USD hiện tại</div>
+              <div style="font-size: 18px; font-weight: 800; color: #38bdf8; margin-top: 4px;">
+                {{ formatCurrency(currentSystemUsdRate, 'VND') }}
+              </div>
+            </div>
+            <div style="padding: 12px; border-radius: 10px; background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(148, 163, 184, 0.2);">
+              <div style="font-size: 11.5px; color: #94a3b8; font-weight: 600;">Số sản phẩm USD</div>
+              <div style="font-size: 18px; font-weight: 800; color: #34d399; margin-top: 4px;">
+                {{ usdRateScope === 'filtered' ? filteredUsdItems.length : usdItems.length }} <span style="font-size: 12px; font-weight: 600; color: #94a3b8;">sản phẩm</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Phạm vi áp dụng -->
+          <div class="form-group" style="margin-bottom: 0;">
+            <label style="font-size: 12.5px; font-weight: 700; color: #cbd5e1; margin-bottom: 8px; display: block;">Phạm vi áp dụng:</label>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <label
+                style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 9px; cursor: pointer; transition: all 0.15s;"
+                :style="usdRateScope === 'all'
+                  ? 'background: rgba(16, 185, 129, 0.14); border: 1px solid rgba(52, 211, 153, 0.5); color: #ecfdf5;'
+                  : 'background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.2); color: #94a3b8;'"
+              >
+                <input type="radio" v-model="usdRateScope" value="all" style="accent-color: #10b981; width: 16px; height: 16px;" />
+                <div style="flex: 1; font-size: 13px; font-weight: 600;">
+                  Tất cả sản phẩm có đơn vị tiền tệ USD trên hệ thống
+                  <span style="color: #34d399; font-weight: 800;">({{ usdItems.length }} SP)</span>
+                </div>
+              </label>
+
+              <label
+                v-if="filteredUsdItems.length > 0 && filteredUsdItems.length !== usdItems.length"
+                style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 9px; cursor: pointer; transition: all 0.15s;"
+                :style="usdRateScope === 'filtered'
+                  ? 'background: rgba(56, 189, 248, 0.14); border: 1px solid rgba(56, 189, 248, 0.5); color: #f0f9ff;'
+                  : 'background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.2); color: #94a3b8;'"
+              >
+                <input type="radio" v-model="usdRateScope" value="filtered" style="accent-color: #38bdf8; width: 16px; height: 16px;" />
+                <div style="flex: 1; font-size: 13px; font-weight: 600;">
+                  Chỉ các sản phẩm USD trong danh sách đang lọc hiện tại
+                  <span style="color: #38bdf8; font-weight: 800;">({{ filteredUsdItems.length }} SP)</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Nhập tỉ giá mới -->
+          <div class="form-group" style="margin-bottom: 0;">
+            <label style="font-size: 13px; font-weight: 700; color: #f8fafc; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+              <span>Nhập tỉ giá mới (1 USD = ? VNĐ) <span class="required">*</span></span>
+              <span v-if="Number(newUsdExchangeRate) > 0 && Number(newUsdExchangeRate) !== currentSystemUsdRate" :style="{ color: Number(newUsdExchangeRate) > currentSystemUsdRate ? '#fbbf24' : '#38bdf8', fontSize: '12px', fontWeight: 700 }">
+                {{ Number(newUsdExchangeRate) > currentSystemUsdRate ? '▲ Tăng' : '▼ Giảm' }}
+                {{ formatNumberPlain(Math.abs(Number(newUsdExchangeRate) - currentSystemUsdRate)) }} ₫
+              </span>
+            </label>
+            <NumberInput
+              v-model="newUsdExchangeRate"
+              placeholder="Ví dụ: 26,200"
+              style="font-size: 18px; font-weight: 800; color: #34d399; border-color: rgba(16, 185, 129, 0.5); background: rgba(6, 78, 59, 0.2);"
+            />
+            <!-- Nút điều chỉnh nhanh -->
+            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 8px;">
+              <span style="font-size: 11.5px; color: #94a3b8; margin-right: 2px;">Chọn / cộng trừ nhanh:</span>
+              <button type="button" class="usd-quick-step-btn" @click="newUsdExchangeRate = Math.max(1, (Number(newUsdExchangeRate) || 0) - 500)">-500</button>
+              <button type="button" class="usd-quick-step-btn" @click="newUsdExchangeRate = Math.max(1, (Number(newUsdExchangeRate) || 0) - 100)">-100</button>
+              <button type="button" class="usd-quick-step-btn" @click="newUsdExchangeRate = (Number(newUsdExchangeRate) || 0) + 100">+100</button>
+              <button type="button" class="usd-quick-step-btn" @click="newUsdExchangeRate = (Number(newUsdExchangeRate) || 0) + 500">+500</button>
+              <button type="button" class="usd-quick-step-btn preset" @click="newUsdExchangeRate = 25500">25.500</button>
+              <button type="button" class="usd-quick-step-btn preset" @click="newUsdExchangeRate = 26000">26.000</button>
+              <button type="button" class="usd-quick-step-btn preset" @click="newUsdExchangeRate = 26200">26.200</button>
+              <button type="button" class="usd-quick-step-btn preset" @click="newUsdExchangeRate = 26500">26.500</button>
+            </div>
+          </div>
+
+          <!-- Bảng quy đổi minh họa -->
+          <div v-if="Number(newUsdExchangeRate) > 0" style="padding: 12px 14px; border-radius: 10px; background: rgba(16, 185, 129, 0.08); border: 1px dashed rgba(16, 185, 129, 0.35); font-size: 12.5px; color: #cbd5e1;">
+            <div style="font-weight: 700; color: #6ee7b7; margin-bottom: 6px;">💡 Quy đổi tham khảo theo tỉ giá mới:</div>
+            <div style="display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.06);">
+              <span>1 USD</span>
+              <strong style="color: #f8fafc;">= {{ formatCurrency(Number(newUsdExchangeRate), 'VND') }}</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.06);">
+              <span>100 USD</span>
+              <strong style="color: #f8fafc;">= {{ formatCurrency(Number(newUsdExchangeRate) * 100, 'VND') }}</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 3px 0;">
+              <span>1,000 USD</span>
+              <strong style="color: #34d399;">= {{ formatCurrency(Number(newUsdExchangeRate) * 1000, 'VND') }}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer" style="padding: 14px 20px; border-top: 1px solid rgba(255, 255, 255, 0.08); display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="btn btn-secondary" @click="closeUsdRateModal" :disabled="updatingUsdRate">Hủy</button>
+          <button
+            type="button"
+            class="btn btn-primary"
+            style="background: linear-gradient(135deg, #10b981, #059669); border: none; font-weight: 700; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);"
+            :disabled="updatingUsdRate || !(Number(newUsdExchangeRate) > 0)"
+            @click="applyUsdExchangeRateUpdate"
+          >
+            <span v-if="updatingUsdRate" class="spinner" style="margin-right: 6px;"></span>
+            💱 Lưu & Cập Nhật Tỉ Giá ({{ usdRateScope === 'filtered' ? filteredUsdItems.length : usdItems.length }} SP)
+          </button>
         </div>
       </div>
     </div>
@@ -1547,13 +2811,143 @@
               </div>
 
               <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span v-if="vendorRefFilesMeta.sophos" style="font-size: 11.5px; color: #94a3b8; background: rgba(15,23,42,0.8); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(56,189,248,0.25); display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                  <span>☁️ Cloudinary:</span>
+                  <strong style="color: #38bdf8; display: inline-flex; align-items: center; gap: 4px;">
+                    Gốc:
+                    <template v-if="getVendorCompareFileMeta('sophos', 'goc')">
+                      <a
+                        :href="getVendorOfficeViewUrl(getVendorCompareFileMeta('sophos', 'goc'))"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style="color: #38bdf8; text-decoration: underline;"
+                        title="Click để mở xem trên ViewOffice (Tab mới)"
+                        @click="handleOpenVendorOfficeView($event, 'sophos', 'goc', getVendorCompareFileMeta('sophos', 'goc'))"
+                      >{{ getVendorCompareFileMeta('sophos', 'goc').name }}</a>
+                      <button
+                        type="button"
+                        class="vendor-file-office-btn"
+                        title="Mở ViewOffice trong tab mới và nhảy tới dòng sản phẩm đầu tiên trong SKU_Tab (sophos-pricelist-reseller_SKU_list-asean-usd-2026-3.0)"
+                        @click.stop="openCompareOfficePreview({ vendor: 'sophos', role: 'goc', sheet: 'SKU_Tab', rowNum: comparisonRows.find(r => r.skuListRowNum || r.gocRowNum)?.skuListRowNum || comparisonRows.find(r => r.gocRowNum)?.gocRowNum || 8, colLetter: 'G', sku: comparisonRows.find(r => r.skuListRowNum || r.gocRowNum)?.sku || '' })"
+                      >👁️ Xem bằng ViewOffice</button>
+                      <button
+                        type="button"
+                        class="vendor-file-download-btn"
+                        title="Tải File Gốc Sophos về máy"
+                        @click.stop="handleDownloadVendorUploadedFile('sophos', 'goc', getVendorCompareFileMeta('sophos', 'goc'))"
+                      >⬇ Tải về</button>
+                    </template>
+                    <span v-else>Chưa có</span>
+                  </strong>
+                  <span>·</span>
+                  <strong style="color: #a78bfa; display: inline-flex; align-items: center; gap: 4px;">
+                    Trung gian:
+                    <template v-if="getVendorCompareFileMeta('sophos', 'tg')">
+                      <a
+                        :href="getVendorOfficeViewUrl(getVendorCompareFileMeta('sophos', 'tg'))"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style="color: #a78bfa; text-decoration: underline;"
+                        title="Click để mở xem trên ViewOffice (Tab mới)"
+                        @click="handleOpenVendorOfficeView($event, 'sophos', 'tg', getVendorCompareFileMeta('sophos', 'tg'))"
+                      >{{ getVendorCompareFileMeta('sophos', 'tg').name }}</a>
+                      <button
+                        type="button"
+                        class="vendor-file-office-btn"
+                        title="Mở ViewOffice trong tab mới và nhảy tới sheet XGS - 1U + 10%"
+                        @click.stop="openCompareOfficePreview({ vendor: 'sophos', role: 'tg', sheet: 'XGS - 1U + 10%', rowNum: 6, colLetter: 'B' })"
+                      >👁️ Xem bằng ViewOffice</button>
+                      <button
+                        type="button"
+                        class="vendor-file-download-btn"
+                        title="Tải File Trung Gian Sophos về máy"
+                        @click.stop="handleDownloadVendorUploadedFile('sophos', 'tg', getVendorCompareFileMeta('sophos', 'tg'))"
+                      >⬇ Tải về</button>
+                    </template>
+                    <span v-else>Chưa có</span>
+                  </strong>
+                  <span style="color: #64748b;">({{ formatRefTimestamp(vendorRefFilesMeta.sophos.updated_at) }})</span>
+                </span>
                 <button type="button" class="pl-mini-btn" @click="selectAllNeedSyncRows">
                   ☑️ Chọn các mục lệch/thiếu DB
                 </button>
-                <label class="pl-mini-btn" style="cursor: pointer; border-color: rgba(56, 189, 248, 0.4); color: #38bdf8;" title="Nạp file_goc_SOPHOS.xlsx, sophos-pricelist-reseller_SKU_list.xlsb hoặc file_trung_gian_SOPHOS.xlsx mới từ máy tính">
-                  <input type="file" accept=".xlsx,.xlsb" style="display: none" @change="handleCustomSophosExcelUpload" />
-                  📂 Đổi File Gốc / SKU_List / Trung Gian (.xlsx, .xlsb)
+                <label class="pl-mini-btn" style="cursor: pointer; border-color: rgba(56, 189, 248, 0.45); color: #38bdf8;" title="Upload File Gốc Sophos mới lên Cloudinary">
+                  <input type="file" accept=".xlsx,.xlsb,.xls" style="display: none" @change="handleCustomSophosExcelUpload($event, 'goc')" />
+                  ☁️ Up File Gốc Sophos
                 </label>
+                <label class="pl-mini-btn" style="cursor: pointer; border-color: rgba(168, 85, 247, 0.45); color: #c084fc;" title="Upload File Trung Gian Sophos mới lên Cloudinary">
+                  <input type="file" accept=".xlsx,.xlsb,.xls" style="display: none" @change="handleCustomSophosExcelUpload($event, 'tg')" />
+                  ☁️ Up File Trung Gian Sophos
+                </label>
+              </div>
+            </div>
+
+            <div v-if="vendorRefLoadError.sophos" style="margin-bottom: 10px; padding: 10px 14px; border-radius: 8px; background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.45); color: #fca5a5; font-size: 12.5px; font-weight: 700;">
+              ⚠️ {{ vendorRefLoadError.sophos }}
+            </div>
+
+            <!-- Khung ViewOffice nhúng trực tiếp ngay trong Bảng Đối Chiếu Sophos -->
+            <div v-if="compareOfficePreview.show && compareOfficePreview.vendor === 'sophos'" class="compare-office-embed-panel">
+              <div class="compare-office-embed-header">
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                  <span style="font-weight: 800; color: #38bdf8;">👁️ Microsoft ViewOffice (Đối chiếu trực tiếp):</span>
+                  <button
+                    v-if="getVendorCompareFileMeta('sophos', 'goc')"
+                    type="button"
+                    class="compare-office-role-btn"
+                    :class="{ active: compareOfficePreview.role === 'goc' }"
+                    @click="openCompareOfficePreview({ vendor: 'sophos', role: 'goc', sheet: compareOfficePreview.sheet || 'Firewall', rowNum: compareOfficePreview.rowNum || 27, colLetter: compareOfficePreview.colLetter || 'H', sku: compareOfficePreview.sku })"
+                  >📗 File Gốc ({{ getVendorCompareFileMeta('sophos', 'goc').name }})</button>
+                  <button
+                    v-if="getVendorCompareFileMeta('sophos', 'tg')"
+                    type="button"
+                    class="compare-office-role-btn"
+                    :class="{ active: compareOfficePreview.role === 'tg' }"
+                    @click="openCompareOfficePreview({ vendor: 'sophos', role: 'tg', sheet: compareOfficePreview.sheet || 'XGS - 1U + 10%', rowNum: compareOfficePreview.rowNum || 6, colLetter: compareOfficePreview.colLetter || 'B', sku: compareOfficePreview.sku })"
+                  >📘 File Trung Gian ({{ getVendorCompareFileMeta('sophos', 'tg').name }})</button>
+                  <span v-if="compareOfficePreview.sku" class="compare-office-target-badge">
+                    SKU: <strong>{{ compareOfficePreview.sku }}</strong>
+                  </span>
+                  <span v-if="compareOfficePreview.sheet && compareOfficePreview.rowNum" class="compare-office-target-badge">
+                    📍 Sheet <strong>{{ compareOfficePreview.sheet }}</strong> • Ô {{ compareOfficePreview.colLetter }}{{ compareOfficePreview.rowNum }} (Dòng {{ compareOfficePreview.rowNum }})
+                  </span>
+                  <span v-if="compareOfficePreview.copiedLabel" style="color: #34d399; font-weight: 700; font-size: 11.5px;">
+                    ✓ {{ compareOfficePreview.copiedLabel }} (Bấm Ctrl+F → Ctrl+V trong bảng để tìm nhanh)
+                  </span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                  <button
+                    v-if="compareOfficePreview.sku"
+                    type="button"
+                    class="vendor-file-office-btn"
+                    @click="copyCompareOfficeQuickText(compareOfficePreview.sku, `Đã copy SKU: ${compareOfficePreview.sku}`)"
+                  >📋 Copy SKU</button>
+                  <a
+                    v-if="compareOfficePreview.viewUrl"
+                    :href="compareOfficePreview.viewUrl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="vendor-file-office-btn"
+                    style="text-decoration: none;"
+                  >🌐 Mở Tab Mới</a>
+                  <button
+                    type="button"
+                    class="vendor-file-download-btn"
+                    @click="handleDownloadVendorUploadedFile('sophos', compareOfficePreview.role, getVendorCompareFileMeta('sophos', compareOfficePreview.role === 'tg' ? 'tg' : 'goc'))"
+                  >⬇ Tải về</button>
+                  <button type="button" class="compare-office-close-btn" @click="closeCompareOfficePreview">✕ Đóng ViewOffice</button>
+                </div>
+              </div>
+              <div class="compare-office-embed-body">
+                <div v-if="compareOfficePreview.loading" class="compare-office-loading">
+                  ⏳ Đang chuẩn bị file Excel trên Microsoft ViewOffice...
+                </div>
+                <iframe
+                  v-else-if="compareOfficePreview.embedUrl"
+                  :src="compareOfficePreview.embedUrl"
+                  class="compare-office-iframe"
+                  allowfullscreen
+                ></iframe>
               </div>
             </div>
 
@@ -1670,6 +3064,16 @@
                           >
                             📍 Sheet Firewall • H{{ item.gocFirewallRowNum }} (Dòng {{ item.gocFirewallRowNum }})
                           </button>
+                          <button
+                            v-if="item.skuListRowNum || item.gocRowNum || item.gocFirewallRowNum"
+                            type="button"
+                            class="vendor-file-office-btn"
+                            style="padding: 2px 7px; font-size: 10.5px;"
+                            @click="openCompareOfficePreview({ vendor: 'sophos', role: 'goc', sheet: 'SKU_Tab', rowNum: item.skuListRowNum || item.gocRowNum || item.gocFirewallRowNum, colLetter: 'G', sku: item.gocAltSku || item.sku, itemName: item.name })"
+                            :title="`Mở ViewOffice bằng file sophos-pricelist-reseller_SKU_list-asean-usd-2026-3.0 trong tab mới và nhảy trực tiếp tới ô chứa SKU ${item.gocAltSku || item.sku}`"
+                          >
+                            👁️ Xem bằng ViewOffice
+                          </button>
                         </div>
                         <div v-if="item.gocNote" style="font-size: 10.5px; color: #fbbf24; font-family: sans-serif; margin-top: 3px;">
                           {{ item.gocNote }}
@@ -1719,6 +3123,15 @@
                           >
                             📙 HW_Compliance • B{{ item.skuListHwRowNum }} (Dòng {{ item.skuListHwRowNum }})
                           </button>
+                          <button
+                            type="button"
+                            class="vendor-file-office-btn"
+                            style="padding: 2px 7px; font-size: 10.5px;"
+                            @click="openCompareOfficePreview({ vendor: 'sophos', role: 'goc', sheet: 'SKU_Tab', rowNum: item.skuListRowNum, colLetter: 'G', sku: item.gocAltSku || item.sku, itemName: item.name })"
+                            :title="`Mở ViewOffice trong tab mới và nhảy trực tiếp tới ô G${item.skuListRowNum} (Sheet SKU_Tab)`"
+                          >
+                            👁️ Xem bằng ViewOffice
+                          </button>
                         </div>
                       </template>
                       <template v-else>
@@ -1761,6 +3174,16 @@
                             :title="`Click để điều hướng tới Dòng ${item.lpRowNum} (${imageCheckSettings.model}) trong sheet 'LP Sophos' của file_trung_gian_SOPHOS.xlsx`"
                           >
                             📍 LP Sophos • A{{ item.lpRowNum }} ({{ item.lpOldUsd > 0 ? 'Cũ: ' + formatUsdPrice(item.lpOldUsd) : 'Dòng ' + item.lpRowNum }})
+                          </button>
+                          <button
+                            v-if="item.tgLocations?.length || item.lpRowNum"
+                            type="button"
+                            class="vendor-file-office-btn"
+                            style="padding: 2px 7px; font-size: 10.5px;"
+                            @click="openCompareOfficePreview({ vendor: 'sophos', role: 'tg', sheet: item.tgLocations?.[0]?.sheet || 'LP Sophos', rowNum: item.tgLocations?.[0]?.rowNum || item.lpRowNum, colLetter: item.tgLocations?.[0]?.colLetter || 'B', sku: item.sku, itemName: item.name })"
+                            :title="`Mở ViewOffice trong tab mới và nhảy trực tiếp tới ô ${item.tgLocations?.[0]?.cell || ('A' + item.lpRowNum)}`"
+                          >
+                            👁️ Xem bằng ViewOffice
                           </button>
                         </div>
                       </template>
@@ -2259,8 +3682,150 @@
               </div>
             </div>
 
+            <div v-if="vendorRefLoadError.kaspersky" style="margin-top: 10px; padding: 10px 14px; border-radius: 8px; background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.45); color: #fca5a5; font-size: 12.5px; font-weight: 700;">
+              ⚠️ {{ vendorRefLoadError.kaspersky }}
+            </div>
+
+            <!-- Thanh thông tin File Cloudinary Kaspersky đang đối chiếu -->
+            <div style="margin-top: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding: 8px 14px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 8px;">
+              <div style="font-size: 12px; color: #94a3b8; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span>☁️ Đang đối chiếu theo Cloudinary:</span>
+                <strong style="color: #34d399; display: inline-flex; align-items: center; gap: 5px;">
+                  Gốc:
+                  <template v-if="getVendorCompareFileMeta('kaspersky', 'goc')">
+                    <a
+                      :href="getVendorOfficeViewUrl(getVendorCompareFileMeta('kaspersky', 'goc'))"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style="color: #34d399; text-decoration: underline;"
+                      title="Click để mở xem trên ViewOffice (Tab mới)"
+                      @click="handleOpenVendorOfficeView($event, 'kaspersky', 'goc', getVendorCompareFileMeta('kaspersky', 'goc'))"
+                    >{{ getVendorCompareFileMeta('kaspersky', 'goc').name }}</a>
+                    <button
+                      type="button"
+                      class="vendor-file-office-btn"
+                      title="Mở ViewOffice trong tab mới và nhảy tới sheet SMB+Enterprise (License)"
+                      @click.stop="openCompareOfficePreview({ vendor: 'kaspersky', role: 'goc', sheet: 'SMB+Enterprise (License)', rowNum: 11, colLetter: 'I' })"
+                    >👁️ Xem bằng ViewOffice</button>
+                    <button
+                      type="button"
+                      class="vendor-file-download-btn"
+                      title="Tải File Gốc Kaspersky về máy"
+                      @click.stop="handleDownloadVendorUploadedFile('kaspersky', 'goc', getVendorCompareFileMeta('kaspersky', 'goc'))"
+                    >⬇ Tải về</button>
+                  </template>
+                  <span v-else>Chưa có File Gốc</span>
+                </strong>
+                <span>·</span>
+                <strong style="color: #38bdf8; display: inline-flex; align-items: center; gap: 5px;">
+                  Trung gian:
+                  <template v-if="getVendorCompareFileMeta('kaspersky', 'tg')">
+                    <a
+                      :href="getVendorOfficeViewUrl(getVendorCompareFileMeta('kaspersky', 'tg'))"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style="color: #38bdf8; text-decoration: underline;"
+                      title="Click để mở xem trên ViewOffice (Tab mới)"
+                      @click="handleOpenVendorOfficeView($event, 'kaspersky', 'mau', getVendorCompareFileMeta('kaspersky', 'tg'))"
+                    >{{ getVendorCompareFileMeta('kaspersky', 'tg').name }}</a>
+                    <button
+                      type="button"
+                      class="vendor-file-office-btn"
+                      title="Mở ViewOffice trong tab mới và nhảy tới sheet SMB+Enterprise (License)"
+                      @click.stop="openCompareOfficePreview({ vendor: 'kaspersky', role: 'mau', sheet: 'SMB+Enterprise (License)', rowNum: 11, colLetter: 'I' })"
+                    >👁️ Xem bằng ViewOffice</button>
+                    <button
+                      type="button"
+                      class="vendor-file-download-btn"
+                      title="Tải File Trung Gian Kaspersky về máy"
+                      @click.stop="handleDownloadVendorUploadedFile('kaspersky', 'mau', getVendorCompareFileMeta('kaspersky', 'tg'))"
+                    >⬇ Tải về</button>
+                  </template>
+                  <span v-else>Chưa có File Trung Gian</span>
+                </strong>
+                <span v-if="vendorRefFilesMeta.kaspersky?.updated_at" style="color: #64748b;">
+                  (Cập nhật: {{ formatRefTimestamp(vendorRefFilesMeta.kaspersky.updated_at) }})
+                </span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <label class="pl-mini-btn" style="cursor: pointer; border-color: rgba(16, 185, 129, 0.45); color: #34d399;" title="Upload File Gốc Kaspersky mới lên Cloudinary">
+                  <input type="file" accept=".xlsx,.xls" style="display: none;" @change="handleCustomKasExcelUpload($event, 'goc')" />
+                  ☁️ Up File Gốc Kaspersky
+                </label>
+                <label class="pl-mini-btn" style="cursor: pointer; border-color: rgba(56, 189, 248, 0.45); color: #38bdf8;" title="Upload File Trung Gian Kaspersky mới lên Cloudinary">
+                  <input type="file" accept=".xlsx,.xls" style="display: none;" @change="handleCustomKasExcelUpload($event, 'mau')" />
+                  ☁️ Up File Trung Gian Kaspersky
+                </label>
+              </div>
+            </div>
+
+            <!-- Khung ViewOffice nhúng trực tiếp ngay trong Bảng Đối Chiếu Kaspersky -->
+            <div v-if="compareOfficePreview.show && compareOfficePreview.vendor === 'kaspersky'" class="compare-office-embed-panel" style="margin-top: 10px;">
+              <div class="compare-office-embed-header">
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                  <span style="font-weight: 800; color: #34d399;">👁️ Microsoft ViewOffice (Đối chiếu Kaspersky):</span>
+                  <button
+                    v-if="getVendorCompareFileMeta('kaspersky', 'goc')"
+                    type="button"
+                    class="compare-office-role-btn"
+                    :class="{ active: compareOfficePreview.role === 'goc' }"
+                    @click="openCompareOfficePreview({ vendor: 'kaspersky', role: 'goc', sheet: compareOfficePreview.sheet || 'SMB+Enterprise (License)', rowNum: compareOfficePreview.rowNum || 11, colLetter: compareOfficePreview.colLetter || 'I', sku: compareOfficePreview.sku })"
+                  >📗 File Gốc ({{ getVendorCompareFileMeta('kaspersky', 'goc').name }})</button>
+                  <button
+                    v-if="getVendorCompareFileMeta('kaspersky', 'tg')"
+                    type="button"
+                    class="compare-office-role-btn"
+                    :class="{ active: compareOfficePreview.role === 'mau' || compareOfficePreview.role === 'tg' }"
+                    @click="openCompareOfficePreview({ vendor: 'kaspersky', role: 'mau', sheet: compareOfficePreview.sheet || 'SMB+Enterprise (License)', rowNum: compareOfficePreview.rowNum || 11, colLetter: compareOfficePreview.colLetter || 'I', sku: compareOfficePreview.sku })"
+                  >📘 File Trung Gian ({{ getVendorCompareFileMeta('kaspersky', 'tg').name }})</button>
+                  <span v-if="compareOfficePreview.sku" class="compare-office-target-badge">
+                    SKU: <strong>{{ compareOfficePreview.sku }}</strong>
+                  </span>
+                  <span v-if="compareOfficePreview.sheet && compareOfficePreview.rowNum" class="compare-office-target-badge">
+                    📍 Sheet <strong>{{ compareOfficePreview.sheet }}</strong> • Ô {{ compareOfficePreview.colLetter }}{{ compareOfficePreview.rowNum }} (Dòng {{ compareOfficePreview.rowNum }})
+                  </span>
+                  <span v-if="compareOfficePreview.copiedLabel" style="color: #34d399; font-weight: 700; font-size: 11.5px;">
+                    ✓ {{ compareOfficePreview.copiedLabel }} (Bấm Ctrl+F → Ctrl+V trong bảng để tìm nhanh)
+                  </span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                  <button
+                    v-if="compareOfficePreview.sku"
+                    type="button"
+                    class="vendor-file-office-btn"
+                    @click="copyCompareOfficeQuickText(compareOfficePreview.sku, `Đã copy SKU: ${compareOfficePreview.sku}`)"
+                  >📋 Copy SKU</button>
+                  <a
+                    v-if="compareOfficePreview.viewUrl"
+                    :href="compareOfficePreview.viewUrl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="vendor-file-office-btn"
+                    style="text-decoration: none;"
+                  >🌐 Mở Tab Mới</a>
+                  <button
+                    type="button"
+                    class="vendor-file-download-btn"
+                    @click="handleDownloadVendorUploadedFile('kaspersky', compareOfficePreview.role, getVendorCompareFileMeta('kaspersky', compareOfficePreview.role === 'goc' ? 'goc' : 'tg'))"
+                  >⬇ Tải về</button>
+                  <button type="button" class="compare-office-close-btn" @click="closeCompareOfficePreview">✕ Đóng ViewOffice</button>
+                </div>
+              </div>
+              <div class="compare-office-embed-body">
+                <div v-if="compareOfficePreview.loading" class="compare-office-loading">
+                  ⏳ Đang chuẩn bị file Excel trên Microsoft ViewOffice...
+                </div>
+                <iframe
+                  v-else-if="compareOfficePreview.embedUrl"
+                  :src="compareOfficePreview.embedUrl"
+                  class="compare-office-iframe"
+                  allowfullscreen
+                ></iframe>
+              </div>
+            </div>
+
             <!-- Thanh bộ lọc Band & Trạng thái -->
-            <div class="compare-toolbar" style="margin-top: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div class="compare-toolbar" style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
               <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                 <span style="font-size: 12px; color: #94a3b8; font-weight: 600;">Lọc trạng thái:</span>
                 <button type="button" class="cmp-filter-btn" :class="{ active: kasCompareFilterMode === 'all' }" @click="kasCompareFilterMode = 'all'">
@@ -2413,6 +3978,16 @@
                           >
                             📍 SaleList • Dòng {{ item.gocSaleRow }}
                           </button>
+                          <button
+                            v-if="item.gocPivotRow || item.gocSaleRow"
+                            type="button"
+                            class="vendor-file-office-btn"
+                            style="padding: 2px 7px; font-size: 10.5px;"
+                            @click="openCompareOfficePreview({ vendor: 'kaspersky', role: 'goc', sheet: item.gocPivotRow ? 'SMB+Enterprise (License)' : 'SaleListSMB+Enterprise', rowNum: item.gocPivotRow || item.gocSaleRow, colLetter: item.gocPivotRow ? (item.gocPivotColLetter || 'I') : 'M', sku: item.sku, itemName: `${item.product} (${item.band})` })"
+                            :title="`Mở ViewOffice trong tab mới và nhảy trực tiếp tới ô ${item.gocPivotRow ? (item.gocPivotColLetter || 'I') + item.gocPivotRow : 'M' + item.gocSaleRow}`"
+                          >
+                            👁️ Xem bằng ViewOffice
+                          </button>
                         </div>
                       </template>
                       <template v-else>
@@ -2446,6 +4021,16 @@
                             @click="openKasExcelNavigator({ fileType: 'kas_mau', sheet: 'SaleListSMB+Enterprise', rowNum: item.mauSaleRow, colLetter: 'M', sku: item.sku, band: item.band, itemName: `${item.product} (${item.band})` })"
                           >
                             📍 SaleList Mẫu • Dòng {{ item.mauSaleRow }}
+                          </button>
+                          <button
+                            v-if="item.mauPivotRow || item.mauSaleRow"
+                            type="button"
+                            class="vendor-file-office-btn"
+                            style="padding: 2px 7px; font-size: 10.5px;"
+                            @click="openCompareOfficePreview({ vendor: 'kaspersky', role: 'mau', sheet: item.mauPivotRow ? 'SMB+Enterprise (License)' : 'SaleListSMB+Enterprise', rowNum: item.mauPivotRow || item.mauSaleRow, colLetter: item.mauPivotRow ? 'I' : 'M', sku: item.sku, itemName: `${item.product} (${item.band})` })"
+                            :title="`Mở ViewOffice trong tab mới và nhảy trực tiếp tới ô ${item.mauPivotRow ? 'I' + item.mauPivotRow : 'M' + item.mauSaleRow}`"
+                          >
+                            👁️ Xem bằng ViewOffice
                           </button>
                         </div>
                       </template>
@@ -2607,7 +4192,7 @@
     </div>
 
     <!-- MODAL TRÌNH XEM & ĐỊNH VỊ DÒNG EXCEL (file_goc_SOPHOS & file_trung_gian_SOPHOS) -->
-    <div v-if="showExcelNavModal" class="import-overlay" style="z-index: 10200;" @click.self="showExcelNavModal = false">
+    <div v-if="showExcelNavModal" class="import-overlay" style="z-index: 10500;" @click.self="showExcelNavModal = false">
       <div class="import-modal excel-nav-modal">
         <!-- Header -->
         <div class="excel-nav-header">
@@ -2817,6 +4402,1316 @@
       </div>
     </div>
 
+    <!-- MODAL ĐỐI CHIẾU TRỰC TIẾP CARD HÀNG HÓA (SOPHOS / KASPERSKY / ACRONIS) VỚI FILE EXCEL GỐC -->
+    <div v-if="showCardRefCompareModal" class="import-overlay" style="z-index: 10300;" @click.self="showCardRefCompareModal = false">
+      <div class="import-modal" style="max-width: 1120px; width: 96vw; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden;">
+        <!-- Header -->
+        <div class="import-modal__header" style="padding: 16px 22px; border-bottom: 1px solid rgba(148,163,184,0.18);">
+          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <span
+              :style="{
+                padding: '4px 12px',
+                borderRadius: '999px',
+                fontSize: '12px',
+                fontWeight: '800',
+                letterSpacing: '0.5px',
+                background: cardRefCompareData?.vendor === 'sophos'
+                  ? 'rgba(56, 189, 248, 0.18)'
+                  : (cardRefCompareData?.vendor === 'acronis' ? 'rgba(99, 102, 241, 0.2)' : 'rgba(16, 185, 129, 0.18)'),
+                color: cardRefCompareData?.vendor === 'sophos'
+                  ? '#38bdf8'
+                  : (cardRefCompareData?.vendor === 'acronis' ? '#a5b4fc' : '#34d399'),
+                border: cardRefCompareData?.vendor === 'sophos'
+                  ? '1px solid rgba(56, 189, 248, 0.45)'
+                  : (cardRefCompareData?.vendor === 'acronis' ? '1px solid rgba(129, 140, 248, 0.5)' : '1px solid rgba(16, 185, 129, 0.45)')
+              }"
+            >
+              {{ cardRefCompareData?.vendor === 'sophos'
+                ? '🛡️ SOPHOS — ĐỐI CHIẾU FILE GỐC'
+                : (cardRefCompareData?.vendor === 'acronis'
+                    ? '🟣 ACRONIS — ĐỐI CHIẾU FILE GỐC'
+                    : '🟢 KASPERSKY — ĐỐI CHIẾU FILE GỐC') }}
+            </span>
+            <h2 class="import-modal__title" style="margin: 0; font-size: 16.5px;">
+              {{ cardRefCompareData?.item?.Ten_hang || 'Đang đối chiếu...' }}
+            </h2>
+            <span
+              v-if="cardRefCompareData && !cardRefCompareLoading"
+              :style="{
+                padding: '4px 12px',
+                borderRadius: '999px',
+                fontSize: '12px',
+                fontWeight: '800',
+                background: cardRefCompareData.status === 'match'
+                  ? 'rgba(16, 185, 129, 0.18)'
+                  : (cardRefCompareData.status === 'diff' ? 'rgba(245, 158, 11, 0.18)' : 'rgba(239, 68, 68, 0.18)'),
+                color: cardRefCompareData.status === 'match'
+                  ? '#34d399'
+                  : (cardRefCompareData.status === 'diff' ? '#fbbf24' : '#f87171'),
+                border: cardRefCompareData.status === 'match'
+                  ? '1px solid rgba(16, 185, 129, 0.45)'
+                  : (cardRefCompareData.status === 'diff' ? '1px solid rgba(245, 158, 11, 0.45)' : '1px solid rgba(239, 68, 68, 0.45)')
+              }"
+            >
+              <template v-if="cardRefCompareData.status === 'match'">✓ Khớp giá File Gốc</template>
+              <template v-else-if="cardRefCompareData.status === 'diff'">
+                ⚠️ Lệch giá so với File Gốc ({{ cardRefCompareData.priceDiff > 0 ? '+' : '' }}{{ cardRefCompareData.vendor === 'sophos' ? formatUsdPrice(cardRefCompareData.priceDiff) : formatVndPrice(cardRefCompareData.priceDiff) }})
+              </template>
+              <template v-else>ℹ️ Chưa tìm thấy mã SKU tương ứng trong File Gốc</template>
+            </span>
+          </div>
+          <button type="button" class="import-modal__close" @click="showCardRefCompareModal = false">✕</button>
+        </div>
+
+        <!-- Body -->
+        <div style="padding: 18px 22px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 16px;">
+          <!-- Thanh trạng thái File Tham Chiếu trên Cloudinary -->
+          <div
+            v-if="cardRefCompareData?.vendor"
+            style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding: 9px 14px; background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.28); border-radius: 10px;"
+          >
+            <div style="font-size: 12px; color: #94a3b8; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <span>☁️ Nguồn đối chiếu Cloudinary ({{ cardRefCompareData.vendor.toUpperCase() }}):</span>
+              <template v-if="vendorRefFilesMeta[cardRefCompareData.vendor]">
+                <strong style="color: #34d399; display: inline-flex; align-items: center; gap: 5px;">
+                  File Gốc:
+                  <template v-if="getVendorCompareFileMeta(cardRefCompareData.vendor, 'goc')">
+                    <a
+                      :href="getVendorOfficeViewUrl(getVendorCompareFileMeta(cardRefCompareData.vendor, 'goc'))"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style="color: #34d399; text-decoration: underline;"
+                      title="Click để mở xem trên ViewOffice (Tab mới)"
+                      @click="handleOpenVendorOfficeView($event, cardRefCompareData.vendor, 'goc', getVendorCompareFileMeta(cardRefCompareData.vendor, 'goc'))"
+                    >{{ getVendorCompareFileMeta(cardRefCompareData.vendor, 'goc').name }}</a>
+                    <button
+                      type="button"
+                      class="vendor-file-office-btn"
+                      title="Mở ViewOffice trong tab mới và nhảy trực tiếp tới ô chứa sản phẩm này"
+                      @click.stop="openCompareOfficePreview({ vendor: cardRefCompareData.vendor, role: 'goc', sheet: cardRefCompareData.vendor === 'sophos' ? 'SKU_Tab' : (cardRefCompareData.sheet || (cardRefCompareData.vendor === 'kaspersky' ? 'SMB+Enterprise (License)' : 'MSRPs&BuyCost')), rowNum: cardRefCompareData.vendor === 'sophos' ? (cardRefCompareData.skuListRowNum || cardRefCompareData.gocRowNum || 8) : (cardRefCompareData.gocRowNum || cardRefCompareData.gocPivotRow || 4), colLetter: cardRefCompareData.vendor === 'sophos' ? 'G' : (cardRefCompareData.gocPivotColLetter || (cardRefCompareData.vendor === 'acronis' ? 'D' : 'B')), sku: cardRefCompareData.sku || cardRefCompareData.skuFor, itemName: cardRefCompareData.item?.Ten_hang })"
+                    >👁️ Xem bằng ViewOffice</button>
+                    <button
+                      type="button"
+                      class="vendor-file-download-btn"
+                      title="Tải File Gốc về máy"
+                      @click.stop="handleDownloadVendorUploadedFile(cardRefCompareData.vendor, 'goc', getVendorCompareFileMeta(cardRefCompareData.vendor, 'goc'))"
+                    >⬇ Tải về</button>
+                  </template>
+                  <span v-else>Chưa có</span>
+                </strong>
+                <template v-if="cardRefCompareData.vendor !== 'acronis'">
+                  <span>·</span>
+                  <strong style="color: #a5b4fc; display: inline-flex; align-items: center; gap: 5px;">
+                    File Trung Gian:
+                    <template v-if="getVendorCompareFileMeta(cardRefCompareData.vendor, 'tg')">
+                      <a
+                        :href="getVendorOfficeViewUrl(getVendorCompareFileMeta(cardRefCompareData.vendor, 'tg'))"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style="color: #a5b4fc; text-decoration: underline;"
+                        title="Click để mở xem trên ViewOffice (Tab mới)"
+                        @click="handleOpenVendorOfficeView($event, cardRefCompareData.vendor, cardRefCompareData.vendor === 'sophos' ? 'tg' : 'mau', getVendorCompareFileMeta(cardRefCompareData.vendor, 'tg'))"
+                      >{{ getVendorCompareFileMeta(cardRefCompareData.vendor, 'tg').name }}</a>
+                      <button
+                        type="button"
+                        class="vendor-file-office-btn"
+                        title="Mở ViewOffice trong tab mới và nhảy trực tiếp tới ô chứa sản phẩm này"
+                        @click.stop="openCompareOfficePreview({ vendor: cardRefCompareData.vendor, role: cardRefCompareData.vendor === 'sophos' ? 'tg' : 'mau', sheet: cardRefCompareData.tgSheet || 'SMB+Enterprise (License)', rowNum: cardRefCompareData.tgRowNum || cardRefCompareData.mauPivotRow || 6, colLetter: cardRefCompareData.vendor === 'kaspersky' ? 'I' : 'B', sku: cardRefCompareData.sku, itemName: cardRefCompareData.item?.Ten_hang })"
+                      >👁️ Xem bằng ViewOffice</button>
+                      <button
+                        type="button"
+                        class="vendor-file-download-btn"
+                        title="Tải File Trung Gian về máy"
+                        @click.stop="handleDownloadVendorUploadedFile(cardRefCompareData.vendor, cardRefCompareData.vendor === 'sophos' ? 'tg' : 'mau', getVendorCompareFileMeta(cardRefCompareData.vendor, 'tg'))"
+                      >⬇ Tải về</button>
+                    </template>
+                    <span v-else>Chưa có</span>
+                  </strong>
+                </template>
+                <span style="color: #64748b;">
+                  (Cập nhật: {{ formatRefTimestamp(vendorRefFilesMeta[cardRefCompareData.vendor]?.updated_at) }})
+                </span>
+              </template>
+              <span v-else style="color: #f87171; font-weight: 700;">Chưa có file trên Cloudinary</span>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <template v-if="cardRefCompareData.vendor === 'sophos'">
+                <label
+                  class="pl-mini-btn"
+                  style="cursor: pointer; border-color: rgba(56, 189, 248, 0.45); color: #38bdf8;"
+                >
+                  <input type="file" accept=".xlsx,.xlsb,.xls" style="display: none;" @change="handleCustomSophosExcelUpload($event, 'goc')" />
+                  ☁️ Up File Gốc Sophos
+                </label>
+                <label
+                  class="pl-mini-btn"
+                  style="cursor: pointer; border-color: rgba(168, 85, 247, 0.45); color: #c084fc;"
+                >
+                  <input type="file" accept=".xlsx,.xlsb,.xls" style="display: none;" @change="handleCustomSophosExcelUpload($event, 'tg')" />
+                  ☁️ Up File Trung Gian Sophos
+                </label>
+              </template>
+              <template v-else-if="cardRefCompareData.vendor === 'kaspersky'">
+                <label
+                  class="pl-mini-btn"
+                  style="cursor: pointer; border-color: rgba(16, 185, 129, 0.45); color: #34d399;"
+                >
+                  <input type="file" accept=".xlsx,.xls" style="display: none;" @change="handleCustomKasExcelUpload($event, 'goc')" />
+                  ☁️ Up File Gốc Kaspersky
+                </label>
+                <label
+                  class="pl-mini-btn"
+                  style="cursor: pointer; border-color: rgba(56, 189, 248, 0.45); color: #38bdf8;"
+                >
+                  <input type="file" accept=".xlsx,.xls" style="display: none;" @change="handleCustomKasExcelUpload($event, 'mau')" />
+                  ☁️ Up File Trung Gian Kaspersky
+                </label>
+              </template>
+              <template v-else-if="cardRefCompareData.vendor === 'acronis'">
+                <label
+                  class="pl-mini-btn"
+                  style="cursor: pointer; border-color: rgba(129, 140, 248, 0.45); color: #a5b4fc;"
+                >
+                  <input type="file" accept=".xlsx,.xls" style="display: none;" @change="handleCustomAcronisExcelUpload($event, 'both')" />
+                  ☁️ Up File Gốc Acronis
+                </label>
+              </template>
+            </div>
+          </div>
+
+          <div
+            v-if="cardRefCompareData?.vendor && vendorRefLoadError[cardRefCompareData.vendor]"
+            style="padding: 10px 14px; border-radius: 8px; background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.45); color: #fca5a5; font-size: 12.5px; font-weight: 700;"
+          >
+            ⚠️ {{ vendorRefLoadError[cardRefCompareData.vendor] }}
+          </div>
+
+          <!-- Khung ViewOffice nhúng trực tiếp ngay trong Modal Đối Chiếu Card -->
+          <div v-if="compareOfficePreview.show && cardRefCompareData?.vendor && compareOfficePreview.vendor === cardRefCompareData.vendor" class="compare-office-embed-panel">
+            <div class="compare-office-embed-header">
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span style="font-weight: 800; color: #38bdf8;">👁️ Microsoft ViewOffice ({{ cardRefCompareData.vendor.toUpperCase() }}):</span>
+                <button
+                  v-if="getVendorCompareFileMeta(cardRefCompareData.vendor, 'goc')"
+                  type="button"
+                  class="compare-office-role-btn"
+                  :class="{ active: compareOfficePreview.role === 'goc' }"
+                  @click="openCompareOfficePreview({ vendor: cardRefCompareData.vendor, role: 'goc', sheet: cardRefCompareData.sheet || 'MSRPs&BuyCost', rowNum: cardRefCompareData.gocRowNum || cardRefCompareData.gocPivotRow || 4, colLetter: cardRefCompareData.gocPivotColLetter || 'B', sku: cardRefCompareData.sku || cardRefCompareData.skuFor })"
+                >📗 File Gốc ({{ getVendorCompareFileMeta(cardRefCompareData.vendor, 'goc').name }})</button>
+                <button
+                  v-if="cardRefCompareData.vendor !== 'acronis' && getVendorCompareFileMeta(cardRefCompareData.vendor, 'tg')"
+                  type="button"
+                  class="compare-office-role-btn"
+                  :class="{ active: compareOfficePreview.role === 'tg' || compareOfficePreview.role === 'mau' }"
+                  @click="openCompareOfficePreview({ vendor: cardRefCompareData.vendor, role: cardRefCompareData.vendor === 'sophos' ? 'tg' : 'mau', sheet: cardRefCompareData.tgSheet || 'SMB+Enterprise (License)', rowNum: cardRefCompareData.tgRowNum || cardRefCompareData.mauPivotRow || 6, colLetter: 'B', sku: cardRefCompareData.sku })"
+                >📘 File Trung Gian ({{ getVendorCompareFileMeta(cardRefCompareData.vendor, 'tg').name }})</button>
+                <span v-if="compareOfficePreview.sku" class="compare-office-target-badge">
+                  SKU: <strong>{{ compareOfficePreview.sku }}</strong>
+                </span>
+                <span v-if="compareOfficePreview.sheet && compareOfficePreview.rowNum" class="compare-office-target-badge">
+                  📍 Sheet <strong>{{ compareOfficePreview.sheet }}</strong> • Ô {{ compareOfficePreview.colLetter }}{{ compareOfficePreview.rowNum }} (Dòng {{ compareOfficePreview.rowNum }})
+                </span>
+                <span v-if="compareOfficePreview.copiedLabel" style="color: #34d399; font-weight: 700; font-size: 11.5px;">
+                  ✓ {{ compareOfficePreview.copiedLabel }} (Bấm Ctrl+F → Ctrl+V trong bảng để tìm nhanh)
+                </span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                <button
+                  v-if="compareOfficePreview.sku"
+                  type="button"
+                  class="vendor-file-office-btn"
+                  @click="copyCompareOfficeQuickText(compareOfficePreview.sku, `Đã copy SKU: ${compareOfficePreview.sku}`)"
+                >📋 Copy SKU</button>
+                <a
+                  v-if="compareOfficePreview.viewUrl"
+                  :href="compareOfficePreview.viewUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="vendor-file-office-btn"
+                  style="text-decoration: none;"
+                >🌐 Mở Tab Mới</a>
+                <button
+                  type="button"
+                  class="vendor-file-download-btn"
+                  @click="handleDownloadVendorUploadedFile(cardRefCompareData.vendor, compareOfficePreview.role, getVendorCompareFileMeta(cardRefCompareData.vendor, compareOfficePreview.role === 'goc' ? 'goc' : 'tg'))"
+                >⬇ Tải về</button>
+                <button type="button" class="compare-office-close-btn" @click="closeCompareOfficePreview">✕ Đóng ViewOffice</button>
+              </div>
+            </div>
+            <div class="compare-office-embed-body">
+              <div v-if="compareOfficePreview.loading" class="compare-office-loading">
+                ⏳ Đang chuẩn bị file Excel trên Microsoft ViewOffice...
+              </div>
+              <iframe
+                v-else-if="compareOfficePreview.embedUrl"
+                :src="compareOfficePreview.embedUrl"
+                class="compare-office-iframe"
+                allowfullscreen
+              ></iframe>
+            </div>
+          </div>
+
+          <div v-if="cardRefCompareLoading" style="padding: 40px; text-align: center; color: #94a3b8; font-size: 14px;">
+            ⏳ Đang tra cứu dữ liệu từ File Excel Gốc trên Cloudinary...
+          </div>
+
+          <!-- ==================== GIAO DIỆN ĐỐI CHIẾU SOPHOS ==================== -->
+          <template v-else-if="cardRefCompareData && cardRefCompareData.vendor === 'sophos'">
+            <!-- Banner mở nhanh File Gốc Excel -->
+            <div style="background: rgba(15, 23, 42, 0.78); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                <div style="font-size: 13px; color: #e2e8f0; font-weight: 700; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                  <span>🎯 Bấm mở xem trực tiếp trong File Excel Gốc (Tự động nhảy tới dòng &amp; tô sáng ô SKU):</span>
+                  <code v-if="cardRefCompareData.sku" style="background: rgba(56, 189, 248, 0.16); color: #38bdf8; padding: 2px 8px; border-radius: 6px; font-weight: 800;">
+                    SKU: {{ cardRefCompareData.sku }}
+                  </code>
+                </div>
+              </div>
+
+              <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                <button
+                  v-if="cardRefCompareData.gocRowNum"
+                  type="button"
+                  class="excel-jump-chip excel-jump-chip--goc"
+                  style="padding: 7px 12px; font-size: 12.5px;"
+                  @click="openExcelNavigator({ fileType: 'goc', sheet: 'MSRPs&BuyCost', rowNum: cardRefCompareData.gocRowNum, colLetter: 'B', sku: cardRefCompareData.sku, itemName: cardRefCompareData.item.Ten_hang })"
+                >
+                  📗 Mở <strong>file_goc_SOPHOS.xlsx</strong> (Sheet <code>MSRPs&amp;BuyCost</code> — Dòng #{{ cardRefCompareData.gocRowNum }}, Ô B{{ cardRefCompareData.gocRowNum }})
+                </button>
+                <button
+                  v-if="cardRefCompareData.skuListRowNum || cardRefCompareData.gocRowNum || cardRefCompareData.gocFirewallRowNum"
+                  type="button"
+                  class="vendor-file-office-btn"
+                  style="padding: 7px 12px; font-size: 12.5px;"
+                  @click="openCompareOfficePreview({ vendor: 'sophos', role: 'goc', sheet: 'SKU_Tab', rowNum: cardRefCompareData.skuListRowNum || cardRefCompareData.gocRowNum || cardRefCompareData.gocFirewallRowNum, colLetter: 'G', sku: cardRefCompareData.sku, itemName: cardRefCompareData.item.Ten_hang })"
+                >
+                  👁️ Xem bằng ViewOffice (SKU_list-2026-3.0 — Sheet SKU_Tab • SKU {{ cardRefCompareData.sku }})
+                </button>
+                <button
+                  v-if="cardRefCompareData.tgLocations?.length || cardRefCompareData.tgRowNum"
+                  type="button"
+                  class="vendor-file-office-btn"
+                  style="padding: 7px 12px; font-size: 12.5px;"
+                  @click="openCompareOfficePreview({ vendor: 'sophos', role: 'tg', sheet: cardRefCompareData.tgLocations?.[0]?.sheet || cardRefCompareData.tgSheet || 'XGS - 1U + 10%', rowNum: cardRefCompareData.tgLocations?.[0]?.rowNum || cardRefCompareData.tgRowNum, colLetter: cardRefCompareData.tgLocations?.[0]?.colLetter || 'B', sku: cardRefCompareData.sku, itemName: cardRefCompareData.item.Ten_hang })"
+                >
+                  👁️ Xem bằng ViewOffice (File TG — Ô {{ (cardRefCompareData.tgLocations?.[0]?.colLetter || 'B') + (cardRefCompareData.tgLocations?.[0]?.rowNum || cardRefCompareData.tgRowNum) }})
+                </button>
+                <button
+                  v-if="cardRefCompareData.skuListRowNum"
+                  type="button"
+                  class="excel-jump-chip excel-jump-chip--skulist"
+                  style="padding: 7px 12px; font-size: 12.5px;"
+                  @click="openExcelNavigator({ fileType: 'skulist', sheet: 'SKU_Tab', rowNum: cardRefCompareData.skuListRowNum, colLetter: 'G', sku: cardRefCompareData.sku, itemName: cardRefCompareData.item.Ten_hang })"
+                >
+                  📙 Mở <strong>SKU_list-2026-3.0.xlsb</strong> (Sheet <code>SKU_Tab</code> — Dòng #{{ cardRefCompareData.skuListRowNum }}, Ô G{{ cardRefCompareData.skuListRowNum }})
+                </button>
+                <button
+                  v-if="cardRefCompareData.skuListHwRowNum"
+                  type="button"
+                  class="excel-jump-chip excel-jump-chip--hw"
+                  style="padding: 7px 12px; font-size: 12.5px;"
+                  @click="openExcelNavigator({ fileType: 'skulist', sheet: 'HW_Compliance', rowNum: cardRefCompareData.skuListHwRowNum, colLetter: 'B', sku: cardRefCompareData.sku, itemName: cardRefCompareData.item.Ten_hang })"
+                >
+                  🔧 Mở <strong>HW_Compliance</strong> (Dòng #{{ cardRefCompareData.skuListHwRowNum }}, Ô B{{ cardRefCompareData.skuListHwRowNum }})
+                </button>
+                <button
+                  v-if="cardRefCompareData.gocFirewallRowNum"
+                  type="button"
+                  class="excel-jump-chip excel-jump-chip--fw"
+                  style="padding: 7px 12px; font-size: 12.5px;"
+                  @click="openExcelNavigator({ fileType: 'goc', sheet: 'Firewall', rowNum: cardRefCompareData.gocFirewallRowNum, colLetter: 'H', sku: cardRefCompareData.sku, itemName: cardRefCompareData.item.Ten_hang })"
+                >
+                  🔥 Mở <strong>file_goc_SOPHOS.xlsx</strong> (Sheet <code>Firewall</code> — Dòng #{{ cardRefCompareData.gocFirewallRowNum }}, Ô H{{ cardRefCompareData.gocFirewallRowNum }})
+                </button>
+                <button
+                  v-for="(loc, lIdx) in cardRefCompareData.tgLocations"
+                  :key="'tg-loc-' + lIdx"
+                  type="button"
+                  class="excel-jump-chip excel-jump-chip--tg"
+                  style="padding: 7px 12px; font-size: 12.5px;"
+                  @click="openExcelNavigator({ fileType: 'tg', sheet: loc.sheet, rowNum: loc.rowNum, colLetter: loc.colLetter || 'B', sku: cardRefCompareData.sku, itemName: cardRefCompareData.item.Ten_hang })"
+                >
+                  📘 Mở <strong>file_trung_gian_SOPHOS.xlsx</strong> (Sheet <code>{{ loc.sheet }}</code> — Dòng #{{ loc.rowNum }}, Ô {{ loc.colLetter || 'B' }}{{ loc.rowNum }})
+                </button>
+                <button
+                  v-if="cardRefCompareData.lpRowNum"
+                  type="button"
+                  class="excel-jump-chip excel-jump-chip--lp"
+                  style="padding: 7px 12px; font-size: 12.5px;"
+                  @click="openExcelNavigator({ fileType: 'tg', sheet: 'LP Sophos', rowNum: cardRefCompareData.lpRowNum, colLetter: 'A', sku: cardRefCompareData.sku, itemName: cardRefCompareData.item.Ten_hang })"
+                >
+                  📒 Mở <strong>LP Sophos</strong> (Bảng giá cũ trước +10% — Dòng #{{ cardRefCompareData.lpRowNum }})
+                </button>
+                <button
+                  v-if="!cardRefCompareData.gocRowNum && !cardRefCompareData.tgLocations?.length"
+                  type="button"
+                  class="excel-jump-chip excel-jump-chip--goc"
+                  style="padding: 7px 12px; font-size: 12.5px;"
+                  @click="openExcelNavigatorForSku(cardRefCompareData.sku || cardRefCompareData.item.Ma_hang, 'goc', cardRefCompareData.item.Ten_hang)"
+                >
+                  📗 Mở trình xem <strong>file_goc_SOPHOS.xlsx</strong>
+                </button>
+              </div>
+            </div>
+
+            <!-- 3 Cột So Sánh Chi Tiết: Card Hiện Tại (DB) <-> File Gốc Hãng <-> File Trung Gian -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 14px;">
+              <!-- Cột 1: Dữ liệu Card trên Database -->
+              <div style="background: rgba(15, 23, 42, 0.72); border: 1px solid rgba(148, 163, 184, 0.25); border-radius: 12px; padding: 14px 16px;">
+                <div style="font-size: 12.5px; font-weight: 800; color: #38bdf8; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 6px;">
+                  1. Dữ Liệu Card Hiện Tại (Database)
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 7px; font-size: 13px;">
+                  <div><span style="color: #94a3b8;">Mã hàng (DB):</span> <code style="color: #f8fafc; font-weight: 700;">{{ cardRefCompareData.item.Ma_hang }}</code></div>
+                  <div><span style="color: #94a3b8;">SKU Code (DB):</span> <code style="color: #c4b5fd; font-weight: 700;">{{ cardRefCompareData.item.sku_code || '-' }}</code></div>
+                  <div><span style="color: #94a3b8;">Tên hàng:</span> <strong style="color: #f8fafc;">{{ cardRefCompareData.item.Ten_hang }}</strong></div>
+                  <div><span style="color: #94a3b8;">Danh mục:</span> <span style="color: #cbd5e1;">{{ cardRefCompareData.item.Danh_muc || '-' }}</span></div>
+                  <div><span style="color: #94a3b8;">Description:</span> <span style="color: #cbd5e1;">{{ cardRefCompareData.item.Description || '-' }}</span></div>
+                  <div><span style="color: #94a3b8;">Type / Thời hạn:</span> <span style="color: #cbd5e1;">{{ cardRefCompareData.item.Type || '-' }} / {{ cardRefCompareData.item.License_duration || '-' }}</span></div>
+                  <div><span style="color: #94a3b8;">Volume:</span> <span style="color: #cbd5e1;">{{ cardRefCompareData.item.volume || '-' }}</span></div>
+                  <div style="margin-top: 6px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #94a3b8; font-weight: 600;">Giá bán DB (USD):</span>
+                    <strong style="font-size: 16px; color: #38bdf8;">{{ formatUsdPrice(cardRefCompareData.dbPrice) }}</strong>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #94a3b8;">Giá nhập / Phí NK DB:</span>
+                    <strong style="color: #fbbf24;">{{ formatUsdPrice(cardRefCompareData.dbGiaNhap) }}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Cột 2: Dữ liệu File Gốc SOPHOS -->
+              <div style="background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.32); border-radius: 12px; padding: 14px 16px;">
+                <div style="font-size: 12.5px; font-weight: 800; color: #34d399; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid rgba(16,185,129,0.18); padding-bottom: 6px;">
+                  2. File Gốc Hãng (file_goc_SOPHOS &amp; SKU_List)
+                </div>
+                <div v-if="cardRefCompareData.gocFound" style="display: flex; flex-direction: column; gap: 7px; font-size: 13px;">
+                  <div><span style="color: #94a3b8;">Mã SKU Gốc:</span> <code style="color: #34d399; font-weight: 800;">{{ cardRefCompareData.sku }}</code></div>
+                  <div><span style="color: #94a3b8;">Product Code:</span> <strong style="color: #f8fafc;">{{ cardRefCompareData.gocEntry?.pc || '-' }}</strong></div>
+                  <div><span style="color: #94a3b8;">Description Gốc:</span> <span style="color: #e2e8f0;">{{ cardRefCompareData.gocEntry?.desc || '-' }}</span></div>
+                  <div><span style="color: #94a3b8;">Product Group:</span> <span style="color: #cbd5e1;">{{ cardRefCompareData.gocEntry?.prodGroup || '-' }}</span></div>
+                  <div><span style="color: #94a3b8;">Term / TransType:</span> <span style="color: #cbd5e1;">{{ cardRefCompareData.gocEntry?.term ? cardRefCompareData.gocEntry.term + ' MOS' : '-' }} / {{ cardRefCompareData.gocEntry?.transType || '-' }}</span></div>
+                  <div>
+                    <span style="color: #94a3b8;">Tọa độ dòng:</span>
+                    <span style="color: #a7f3d0; font-weight: 600;">
+                      MSRPs&amp;BuyCost #{{ cardRefCompareData.gocRowNum || '-' }}
+                      <template v-if="cardRefCompareData.skuListRowNum"> · SKU_Tab #{{ cardRefCompareData.skuListRowNum }}</template>
+                    </span>
+                  </div>
+                  <div style="margin-top: 6px; padding-top: 8px; border-top: 1px dashed rgba(16,185,129,0.25); display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #a7f3d0; font-weight: 700;">Giá MSRP File Gốc:</span>
+                    <strong style="font-size: 16px; color: #34d399;">{{ formatUsdPrice(cardRefCompareData.gocMsrp) }}</strong>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+                    <span style="color: #94a3b8;">Buy Cost (Std / Reg / Inc Auth):</span>
+                    <span style="color: #cbd5e1; font-weight: 600;">
+                      {{ formatUsdPrice(cardRefCompareData.gocEntry?.stdAuth || 0) }} /
+                      {{ formatUsdPrice(cardRefCompareData.gocEntry?.regAuth || 0) }} /
+                      {{ formatUsdPrice(cardRefCompareData.gocEntry?.incAuth || 0) }}
+                    </span>
+                  </div>
+                  <div v-if="cardRefCompareData.gocEntry?.prevPrice" style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+                    <span style="color: #fbbf24;">Giá cũ trước +10% (Previous Price):</span>
+                    <strong style="color: #fcd34d;">{{ formatUsdPrice(cardRefCompareData.gocEntry.prevPrice) }} ({{ cardRefCompareData.gocEntry.changeKey || 'Price Increase' }})</strong>
+                  </div>
+                </div>
+                <div v-else style="color: #94a3b8; font-size: 13px; padding: 12px 0;">
+                  Không tìm thấy mã SKU này trong bảng <code>MSRPs&amp;BuyCost</code>.
+                </div>
+              </div>
+
+              <!-- Cột 3: Dữ liệu File Trung Gian SOPHOS -->
+              <div style="background: rgba(56, 189, 248, 0.06); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; padding: 14px 16px;">
+                <div style="font-size: 12.5px; font-weight: 800; color: #38bdf8; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid rgba(56,189,248,0.18); padding-bottom: 6px;">
+                  3. File Trung Gian (file_trung_gian_SOPHOS)
+                </div>
+                <div v-if="cardRefCompareData.tgFound" style="display: flex; flex-direction: column; gap: 7px; font-size: 13px;">
+                  <div><span style="color: #94a3b8;">Sheet Trung Gian:</span> <strong style="color: #38bdf8;">{{ cardRefCompareData.tgSheet }}</strong></div>
+                  <div><span style="color: #94a3b8;">Dòng / Ô SKU:</span> <code style="color: #f8fafc; font-weight: 700;">Dòng #{{ cardRefCompareData.tgRowNum }} (Ô B{{ cardRefCompareData.tgRowNum }})</code></div>
+                  <div><span style="color: #94a3b8;">Nhóm sản phẩm:</span> <span style="color: #e2e8f0;">{{ cardRefCompareData.tgGroup || '-' }}</span></div>
+                  <div v-if="cardRefCompareData.lpOldUsd > 0"><span style="color: #94a3b8;">Giá LP Sophos cũ:</span> <span style="color: #fbbf24; font-weight: 700;">{{ formatUsdPrice(cardRefCompareData.lpOldUsd) }}</span></div>
+                  <div style="margin-top: 6px; padding-top: 8px; border-top: 1px dashed rgba(56,189,248,0.25); display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #bae6fd; font-weight: 700;">Giá MSRP Trung Gian:</span>
+                    <strong style="font-size: 16px; color: #38bdf8;">{{ formatUsdPrice(cardRefCompareData.tgMsrp) }}</strong>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #94a3b8;">Phí Nhập Khẩu (Cột G):</span>
+                    <strong style="color: #fbbf24;">{{ formatUsdPrice(cardRefCompareData.tgNhapKhau) }}</strong>
+                  </div>
+                </div>
+                <div v-else style="color: #94a3b8; font-size: 13px; padding: 12px 0;">
+                  Mã này không nằm trong các sheet BOM rút gọn của <code>file_trung_gian_SOPHOS.xlsx</code>.
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <!-- ==================== GIAO DIỆN ĐỐI CHIẾU KASPERSKY ==================== -->
+          <template v-else-if="cardRefCompareData && cardRefCompareData.vendor === 'kaspersky'">
+            <!-- Banner mở nhanh File Gốc Excel Kaspersky -->
+            <div style="background: rgba(15, 23, 42, 0.78); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                <div style="font-size: 13px; color: #e2e8f0; font-weight: 700; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                  <span>🎯 Bấm mở xem trực tiếp trong File Excel Gốc Kaspersky (Tự động nhảy tới dòng &amp; tô sáng ô giá theo Band):</span>
+                  <code v-if="cardRefCompareData.sku" style="background: rgba(16, 185, 129, 0.16); color: #34d399; padding: 2px 8px; border-radius: 6px; font-weight: 800;">
+                    SKU: {{ cardRefCompareData.sku }}
+                  </code>
+                  <code v-if="cardRefCompareData.posCode" style="background: rgba(56, 189, 248, 0.16); color: #38bdf8; padding: 2px 8px; border-radius: 6px; font-weight: 800;">
+                    PositionCode: {{ cardRefCompareData.posCode }}
+                  </code>
+                  <span v-if="cardRefCompareData.band" style="background: rgba(245, 158, 11, 0.16); color: #fbbf24; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700;">
+                    {{ cardRefCompareData.band }}
+                  </span>
+                </div>
+              </div>
+
+              <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                <button
+                  v-if="cardRefCompareData.gocPivotRow"
+                  type="button"
+                  class="excel-jump-chip excel-jump-chip--goc"
+                  style="padding: 7px 12px; font-size: 12.5px;"
+                  @click="openKasExcelNavigator({ fileType: 'kas_goc', sheet: 'SMB+Enterprise (License)', rowNum: cardRefCompareData.gocPivotRow, colLetter: cardRefCompareData.gocPivotColLetter, sku: cardRefCompareData.sku, band: cardRefCompareData.band, itemName: cardRefCompareData.item.Ten_hang })"
+                >
+                  📗 Mở <strong>filegocKas.xlsx</strong> — Sheet <code>SMB+Enterprise (License)</code> (Dòng #{{ cardRefCompareData.gocPivotRow }}, Ô {{ cardRefCompareData.gocPivotColLetter }}{{ cardRefCompareData.gocPivotRow }})
+                </button>
+                <button
+                  v-if="cardRefCompareData.gocPivotRow || cardRefCompareData.gocSaleRow"
+                  type="button"
+                  class="vendor-file-office-btn"
+                  style="padding: 7px 12px; font-size: 12.5px;"
+                  @click="openCompareOfficePreview({ vendor: 'kaspersky', role: 'goc', sheet: cardRefCompareData.gocPivotRow ? 'SMB+Enterprise (License)' : 'SaleListSMB+Enterprise', rowNum: cardRefCompareData.gocPivotRow || cardRefCompareData.gocSaleRow, colLetter: cardRefCompareData.gocPivotRow ? (cardRefCompareData.gocPivotColLetter || 'I') : 'E', sku: cardRefCompareData.sku, itemName: cardRefCompareData.item.Ten_hang })"
+                >
+                  👁️ Xem bằng ViewOffice (File Gốc — Ô {{ cardRefCompareData.gocPivotRow ? (cardRefCompareData.gocPivotColLetter || 'I') + cardRefCompareData.gocPivotRow : 'E' + cardRefCompareData.gocSaleRow }})
+                </button>
+                <button
+                  v-if="cardRefCompareData.mauPivotRow || cardRefCompareData.mauSaleRow"
+                  type="button"
+                  class="vendor-file-office-btn"
+                  style="padding: 7px 12px; font-size: 12.5px;"
+                  @click="openCompareOfficePreview({ vendor: 'kaspersky', role: 'mau', sheet: cardRefCompareData.mauPivotRow ? 'SMB+Enterprise (License)' : 'SaleListSMB+Enterprise', rowNum: cardRefCompareData.mauPivotRow || cardRefCompareData.mauSaleRow, colLetter: cardRefCompareData.mauPivotRow ? (cardRefCompareData.mauPivotColLetter || 'I') : 'E', sku: cardRefCompareData.sku, itemName: cardRefCompareData.item.Ten_hang })"
+                >
+                  👁️ Xem bằng ViewOffice (File TG — Dòng #{{ cardRefCompareData.mauPivotRow || cardRefCompareData.mauSaleRow }})
+                </button>
+                <button
+                  v-if="cardRefCompareData.gocSaleRow"
+                  type="button"
+                  class="excel-jump-chip excel-jump-chip--skulist"
+                  style="padding: 7px 12px; font-size: 12.5px;"
+                  @click="openKasExcelNavigator({ fileType: 'kas_goc', sheet: 'SaleListSMB+Enterprise', rowNum: cardRefCompareData.gocSaleRow, colLetter: 'E', sku: cardRefCompareData.posCode || cardRefCompareData.sku, band: cardRefCompareData.band, itemName: cardRefCompareData.item.Ten_hang })"
+                >
+                  📙 Mở <strong>filegocKas.xlsx</strong> — Sheet <code>SaleListSMB+Enterprise</code> (Dòng #{{ cardRefCompareData.gocSaleRow }}, Ô E{{ cardRefCompareData.gocSaleRow }})
+                </button>
+                <button
+                  v-if="cardRefCompareData.mauPivotRow"
+                  type="button"
+                  class="excel-jump-chip excel-jump-chip--tg"
+                  style="padding: 7px 12px; font-size: 12.5px;"
+                  @click="openKasExcelNavigator({ fileType: 'kas_mau', sheet: 'SMB+Enterprise (License)', rowNum: cardRefCompareData.mauPivotRow, colLetter: cardRefCompareData.mauPivotColLetter, sku: cardRefCompareData.sku, band: cardRefCompareData.band, itemName: cardRefCompareData.item.Ten_hang })"
+                >
+                  📘 Mở <strong>KASPERSKY_file_mau_import.xlsx</strong> — Sheet <code>SMB+Enterprise (License)</code> (Dòng #{{ cardRefCompareData.mauPivotRow }})
+                </button>
+                <button
+                  v-if="cardRefCompareData.mauSaleRow"
+                  type="button"
+                  class="excel-jump-chip excel-jump-chip--lp"
+                  style="padding: 7px 12px; font-size: 12.5px;"
+                  @click="openKasExcelNavigator({ fileType: 'kas_mau', sheet: 'SaleListSMB+Enterprise', rowNum: cardRefCompareData.mauSaleRow, colLetter: 'E', sku: cardRefCompareData.posCode || cardRefCompareData.sku, band: cardRefCompareData.band, itemName: cardRefCompareData.item.Ten_hang })"
+                >
+                  📒 Mở <strong>KASPERSKY_file_mau_import.xlsx</strong> — Sheet <code>SaleListSMB+Enterprise</code> (Dòng #{{ cardRefCompareData.mauSaleRow }})
+                </button>
+                <button
+                  v-if="!cardRefCompareData.gocPivotRow && !cardRefCompareData.gocSaleRow"
+                  type="button"
+                  class="excel-jump-chip excel-jump-chip--goc"
+                  style="padding: 7px 12px; font-size: 12.5px;"
+                  @click="openKasExcelNavigator({ fileType: 'kas_goc', sheet: 'SMB+Enterprise (License)', rowNum: 11, colLetter: 'I', sku: cardRefCompareData.sku, band: cardRefCompareData.band, itemName: cardRefCompareData.item.Ten_hang })"
+                >
+                  📗 Mở trình xem <strong>filegocKas.xlsx</strong>
+                </button>
+              </div>
+            </div>
+
+            <!-- 3 Cột So Sánh Chi Tiết Kaspersky -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 14px;">
+              <!-- Cột 1: Card Hiện Tại (DB) -->
+              <div style="background: rgba(15, 23, 42, 0.72); border: 1px solid rgba(148, 163, 184, 0.25); border-radius: 12px; padding: 14px 16px;">
+                <div style="font-size: 12.5px; font-weight: 800; color: #38bdf8; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 6px;">
+                  1. Dữ Liệu Card Hiện Tại (Database)
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 7px; font-size: 13px;">
+                  <div><span style="color: #94a3b8;">Mã hàng (DB):</span> <code style="color: #f8fafc; font-weight: 700; word-break: break-all;">{{ cardRefCompareData.item.Ma_hang }}</code></div>
+                  <div><span style="color: #94a3b8;">SKU Code (DB):</span> <code style="color: #c4b5fd; font-weight: 700;">{{ cardRefCompareData.item.sku_code || '-' }}</code></div>
+                  <div><span style="color: #94a3b8;">Tên hàng:</span> <strong style="color: #f8fafc;">{{ cardRefCompareData.item.Ten_hang }}</strong></div>
+                  <div><span style="color: #94a3b8;">Danh mục:</span> <span style="color: #cbd5e1;">{{ cardRefCompareData.item.Danh_muc || '-' }}</span></div>
+                  <div><span style="color: #94a3b8;">Type / Thời hạn:</span> <span style="color: #cbd5e1;">{{ cardRefCompareData.item.Type || '-' }} / {{ cardRefCompareData.item.License_duration || '-' }}</span></div>
+                  <div><span style="color: #94a3b8;">Volume (Band):</span> <strong style="color: #fbbf24;">{{ cardRefCompareData.item.volume || '-' }}</strong></div>
+                  <div style="margin-top: 6px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #94a3b8; font-weight: 600;">Giá bán DB (VNĐ):</span>
+                    <strong style="font-size: 16px; color: #38bdf8;">{{ formatVndPrice(cardRefCompareData.dbPrice) }}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Cột 2: File Gốc Kaspersky (filegocKas.xlsx) -->
+              <div style="background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.32); border-radius: 12px; padding: 14px 16px;">
+                <div style="font-size: 12.5px; font-weight: 800; color: #34d399; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid rgba(16,185,129,0.18); padding-bottom: 6px;">
+                  2. File Gốc Hãng (filegocKas.xlsx)
+                </div>
+                <div v-if="cardRefCompareData.gocFound" style="display: flex; flex-direction: column; gap: 7px; font-size: 13px;">
+                  <div><span style="color: #94a3b8;">PartNumber (SKU):</span> <code style="color: #34d399; font-weight: 800;">{{ cardRefCompareData.sku }}</code></div>
+                  <div><span style="color: #94a3b8;">Position Code:</span> <code style="color: #38bdf8; font-weight: 800;">{{ cardRefCompareData.posCode || '-' }}</code></div>
+                  <div><span style="color: #94a3b8;">Product:</span> <strong style="color: #f8fafc;">{{ cardRefCompareData.gocPivotEntry?.product || cardRefCompareData.item.Danh_muc }}</strong></div>
+                  <div><span style="color: #94a3b8;">Type / Term:</span> <span style="color: #cbd5e1;">{{ cardRefCompareData.gocPivotEntry?.type || cardRefCompareData.item.Type }} / {{ cardRefCompareData.gocPivotEntry?.term || cardRefCompareData.item.License_duration }}</span></div>
+                  <div>
+                    <span style="color: #94a3b8;">Tọa độ dòng:</span>
+                    <span style="color: #a7f3d0; font-weight: 600;">
+                      Pivot #{{ cardRefCompareData.gocPivotRow || '-' }} (Ô {{ cardRefCompareData.gocPivotColLetter }}{{ cardRefCompareData.gocPivotRow }})
+                      <template v-if="cardRefCompareData.gocSaleRow"> · SaleList #{{ cardRefCompareData.gocSaleRow }}</template>
+                    </span>
+                  </div>
+                  <div style="margin-top: 6px; padding-top: 8px; border-top: 1px dashed rgba(16,185,129,0.25); display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #a7f3d0; font-weight: 700;">Giá File Gốc ({{ cardRefCompareData.band }}):</span>
+                    <strong style="font-size: 16px; color: #34d399;">{{ formatVndPrice(cardRefCompareData.gocPrice) }}</strong>
+                  </div>
+                </div>
+                <div v-else style="color: #94a3b8; font-size: 13px; padding: 12px 0;">
+                  Không tìm thấy mã SKU này trong <code>filegocKas.xlsx</code>.
+                </div>
+              </div>
+
+              <!-- Cột 3: File Mẫu Import Kaspersky -->
+              <div style="background: rgba(56, 189, 248, 0.06); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; padding: 14px 16px;">
+                <div style="font-size: 12.5px; font-weight: 800; color: #38bdf8; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid rgba(56,189,248,0.18); padding-bottom: 6px;">
+                  3. File Mẫu Import (KASPERSKY_file_mau_import)
+                </div>
+                <div v-if="cardRefCompareData.mauFound" style="display: flex; flex-direction: column; gap: 7px; font-size: 13px;">
+                  <div><span style="color: #94a3b8;">Dòng trên Sheet Pivot:</span> <strong style="color: #e2e8f0;">{{ cardRefCompareData.mauPivotRow ? `Dòng #${cardRefCompareData.mauPivotRow}` : 'Chưa có trên Pivot' }}</strong></div>
+                  <div><span style="color: #94a3b8;">Dòng trên Sheet SaleList:</span> <strong style="color: #e2e8f0;">{{ cardRefCompareData.mauSaleRow ? `Dòng #${cardRefCompareData.mauSaleRow}` : 'Chưa có' }}</strong></div>
+                  <div style="margin-top: 6px; padding-top: 8px; border-top: 1px dashed rgba(56,189,248,0.25); display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #bae6fd; font-weight: 700;">Giá File Mẫu ({{ cardRefCompareData.band }}):</span>
+                    <strong style="font-size: 16px; color: #38bdf8;">{{ formatVndPrice(cardRefCompareData.mauPrice) }}</strong>
+                  </div>
+                  <div v-if="cardRefCompareData.mauIsOldPre10" style="font-size: 12px; color: #fbbf24; margin-top: 4px;">
+                    ⚠️ Giá trong File Mẫu đang là giá cũ trước đợt tăng +10% (Effective July 1, 2026).
+                  </div>
+                </div>
+                <div v-else style="color: #94a3b8; font-size: 13px; padding: 12px 0;">
+                  Chưa có mã này trong <code>KASPERSKY_file_mau_import.xlsx</code>.
+                </div>
+              </div>
+            </div>
+
+            <!-- Bảng toàn bộ các mức Band của cùng SKU Kaspersky trong File Gốc -->
+            <div v-if="cardRefCompareData.gocPivotEntry && cardRefCompareData.gocPivotEntry.prices" style="background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 12px; padding: 12px 16px;">
+              <div style="font-size: 12.5px; font-weight: 700; color: #cbd5e1; margin-bottom: 8px;">
+                📊 Toàn bộ dải Band giá của mã <code>{{ cardRefCompareData.sku }}</code> trên Dòng #{{ cardRefCompareData.gocPivotRow }} (Sheet <code>SMB+Enterprise (License)</code>):
+              </div>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                <div
+                  v-for="(bPrice, bName) in cardRefCompareData.gocPivotEntry.prices"
+                  :key="bName"
+                  :style="{
+                    padding: '6px 10px',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    background: bName === cardRefCompareData.band ? 'rgba(16, 185, 129, 0.22)' : 'rgba(30, 41, 59, 0.8)',
+                    border: bName === cardRefCompareData.band ? '1.5px solid #10b981' : '1px solid rgba(148, 163, 184, 0.2)',
+                    color: bName === cardRefCompareData.band ? '#ecfdf5' : '#cbd5e1'
+                  }"
+                  @click="openKasExcelNavigator({ fileType: 'kas_goc', sheet: 'SMB+Enterprise (License)', rowNum: cardRefCompareData.gocPivotRow, colLetter: colIndexToLetter(cardRefCompareData.gocPivotEntry.bandCols?.[bName] ?? 9), sku: cardRefCompareData.sku, band: bName, itemName: cardRefCompareData.item.Ten_hang })"
+                  title="Bấm để mở File Gốc tại ô Band này"
+                >
+                  <div style="font-weight: 700; color: #94a3b8; font-size: 11px;">{{ bName }}</div>
+                  <div style="font-weight: 800; color: #34d399; margin-top: 2px;">{{ formatVndPrice(bPrice) }}</div>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <!-- ==================== GIAO DIỆN ĐỐI CHIẾU ACRONIS ==================== -->
+          <template v-else-if="cardRefCompareData && cardRefCompareData.vendor === 'acronis'">
+            <!-- Banner mở nhanh File Gốc Excel Acronis -->
+            <div style="background: rgba(15, 23, 42, 0.78); border: 1px solid rgba(129, 140, 248, 0.4); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                <div style="font-size: 13px; color: #e2e8f0; font-weight: 700; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                  <span>🎯 Bấm mở xem trực tiếp trong File Excel Gốc Acronis (Tự động nhảy tới dòng &amp; tô sáng ô SKU / Đơn giá):</span>
+                  <code v-if="cardRefCompareData.skuFor" style="background: rgba(99, 102, 241, 0.22); color: #a5b4fc; padding: 2px 8px; border-radius: 6px; font-weight: 800;">
+                    SKU For: {{ cardRefCompareData.skuFor }}
+                  </code>
+                  <code v-if="cardRefCompareData.sku" style="background: rgba(16, 185, 129, 0.16); color: #34d399; padding: 2px 8px; border-radius: 6px; font-weight: 800;">
+                    SKU: {{ cardRefCompareData.sku }}
+                  </code>
+                  <span v-if="cardRefCompareData.sheet" style="background: rgba(56, 189, 248, 0.16); color: #38bdf8; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700;">
+                    Sheet: {{ cardRefCompareData.sheet }}
+                  </span>
+                </div>
+              </div>
+
+              <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                <button
+                  v-if="cardRefCompareData.gocRowNum"
+                  type="button"
+                  class="excel-jump-chip excel-jump-chip--goc"
+                  style="padding: 7px 12px; font-size: 12.5px;"
+                  @click="openAcronisExcelNavigator({ fileType: 'acronis_goc', sheet: cardRefCompareData.sheet, rowNum: cardRefCompareData.gocRowNum, colLetter: 'D', sku: cardRefCompareData.sku || cardRefCompareData.skuFor, itemName: cardRefCompareData.item.Ten_hang })"
+                >
+                  📗 Mở <strong>file_goc_acronis.xlsx</strong> — Sheet <code>{{ cardRefCompareData.sheet }}</code> (Dòng #{{ cardRefCompareData.gocRowNum }}, Ô D{{ cardRefCompareData.gocRowNum }})
+                </button>
+                <button
+                  v-if="cardRefCompareData.gocRowNum"
+                  type="button"
+                  class="vendor-file-office-btn"
+                  style="padding: 7px 12px; font-size: 12.5px;"
+                  @click="openCompareOfficePreview({ vendor: 'acronis', role: 'goc', sheet: cardRefCompareData.sheet, rowNum: cardRefCompareData.gocRowNum, colLetter: 'D', sku: cardRefCompareData.sku || cardRefCompareData.skuFor, itemName: cardRefCompareData.item.Ten_hang })"
+                >
+                  👁️ Xem bằng ViewOffice (File Gốc — Ô D{{ cardRefCompareData.gocRowNum }})
+                </button>
+                <button
+                  v-if="cardRefCompareData.mauRowNum"
+                  type="button"
+                  class="excel-jump-chip excel-jump-chip--tg"
+                  style="padding: 7px 12px; font-size: 12.5px;"
+                  @click="openAcronisExcelNavigator({ fileType: 'acronis_mau', sheet: cardRefCompareData.mauSheet || cardRefCompareData.sheet, rowNum: cardRefCompareData.mauRowNum, colLetter: 'D', sku: cardRefCompareData.sku || cardRefCompareData.skuFor, itemName: cardRefCompareData.item.Ten_hang })"
+                >
+                  📘 Mở <strong>ACRONIS_file_mau_import.xlsx</strong> — Sheet <code>{{ cardRefCompareData.mauSheet || cardRefCompareData.sheet }}</code> (Dòng #{{ cardRefCompareData.mauRowNum }}, Ô D{{ cardRefCompareData.mauRowNum }})
+                </button>
+                <button
+                  v-if="cardRefCompareData.mauRowNum"
+                  type="button"
+                  class="vendor-file-office-btn"
+                  style="padding: 7px 12px; font-size: 12.5px;"
+                  @click="openCompareOfficePreview({ vendor: 'acronis', role: 'mau', sheet: cardRefCompareData.mauSheet || cardRefCompareData.sheet, rowNum: cardRefCompareData.mauRowNum, colLetter: 'D', sku: cardRefCompareData.sku || cardRefCompareData.skuFor, itemName: cardRefCompareData.item.Ten_hang })"
+                >
+                  👁️ Xem bằng ViewOffice (File Mẫu — Ô D{{ cardRefCompareData.mauRowNum }})
+                </button>
+                <button
+                  v-if="!cardRefCompareData.gocRowNum"
+                  type="button"
+                  class="excel-jump-chip excel-jump-chip--goc"
+                  style="padding: 7px 12px; font-size: 12.5px;"
+                  @click="openAcronisExcelNavigator({ fileType: 'acronis_goc', sheet: 'Protect Standard', rowNum: 4, colLetter: 'B', sku: cardRefCompareData.sku || cardRefCompareData.skuFor, itemName: cardRefCompareData.item.Ten_hang })"
+                >
+                  📗 Mở trình xem <strong>file_goc_acronis.xlsx</strong>
+                </button>
+                <button
+                  type="button"
+                  class="excel-jump-chip excel-jump-chip--skulist"
+                  style="padding: 7px 12px; font-size: 12.5px;"
+                  @click="showCardRefCompareModal = false; openAcronisCompareModal(cardRefCompareData.sheet, cardRefCompareData.sku || cardRefCompareData.skuFor)"
+                >
+                  🟣 Mở Bảng Đối Chiếu Toàn Bộ Acronis (221 mã)
+                </button>
+              </div>
+            </div>
+
+            <!-- 3 Cột So Sánh Chi Tiết Acronis -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 14px;">
+              <!-- Cột 1: Card Hiện Tại (DB) -->
+              <div style="background: rgba(15, 23, 42, 0.72); border: 1px solid rgba(148, 163, 184, 0.25); border-radius: 12px; padding: 14px 16px;">
+                <div style="font-size: 12.5px; font-weight: 800; color: #38bdf8; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 6px;">
+                  1. Dữ Liệu Card Hiện Tại (Database)
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 7px; font-size: 13px;">
+                  <div><span style="color: #94a3b8;">Mã hàng (DB):</span> <code style="color: #f8fafc; font-weight: 700; word-break: break-all;">{{ cardRefCompareData.item.Ma_hang }}</code></div>
+                  <div><span style="color: #94a3b8;">SKU Code (DB):</span> <code style="color: #c4b5fd; font-weight: 700;">{{ cardRefCompareData.item.sku_code || '-' }}</code></div>
+                  <div><span style="color: #94a3b8;">Tên hàng:</span> <strong style="color: #f8fafc;">{{ cardRefCompareData.item.Ten_hang }}</strong></div>
+                  <div><span style="color: #94a3b8;">Danh mục:</span> <span style="color: #cbd5e1;">{{ cardRefCompareData.item.Danh_muc || '-' }}</span></div>
+                  <div><span style="color: #94a3b8;">Type / Thời hạn:</span> <span style="color: #cbd5e1;">{{ cardRefCompareData.item.Type || '-' }} / {{ cardRefCompareData.item.License_duration || '-' }}</span></div>
+                  <div><span style="color: #94a3b8;">Volume:</span> <strong style="color: #fbbf24;">{{ cardRefCompareData.item.volume || '-' }}</strong></div>
+                  <div style="margin-top: 6px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #94a3b8; font-weight: 600;">Giá bán DB (VNĐ):</span>
+                    <strong style="font-size: 16px; color: #38bdf8;">{{ formatVndPrice(cardRefCompareData.dbPrice) }}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Cột 2: File Gốc Acronis (file_goc_acronis.xlsx) -->
+              <div style="background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.32); border-radius: 12px; padding: 14px 16px;">
+                <div style="font-size: 12.5px; font-weight: 800; color: #34d399; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid rgba(16,185,129,0.18); padding-bottom: 6px;">
+                  2. File Gốc Hãng (file_goc_acronis.xlsx)
+                </div>
+                <div v-if="cardRefCompareData.gocFound" style="display: flex; flex-direction: column; gap: 7px; font-size: 13px;">
+                  <div><span style="color: #94a3b8;">SKU For (Cột A):</span> <code style="color: #a5b4fc; font-weight: 800;">{{ cardRefCompareData.skuFor || '-' }}</code></div>
+                  <div><span style="color: #94a3b8;">SKU (Cột B):</span> <code style="color: #34d399; font-weight: 800;">{{ cardRefCompareData.sku || '-' }}</code></div>
+                  <div><span style="color: #94a3b8;">Mô tả sản phẩm (Cột C):</span> <strong style="color: #f8fafc;">{{ cardRefCompareData.gocEntry?.moTa || '-' }}</strong></div>
+                  <div><span style="color: #94a3b8;">Sheet / Danh mục:</span> <span style="color: #cbd5e1;">{{ cardRefCompareData.sheet }} · {{ cardRefCompareData.gocEntry?.category || '-' }}</span></div>
+                  <div>
+                    <span style="color: #94a3b8;">Tọa độ dòng:</span>
+                    <span style="color: #a7f3d0; font-weight: 600;">
+                      Sheet <code>{{ cardRefCompareData.sheet }}</code> — Dòng #{{ cardRefCompareData.gocRowNum }} (Ô B{{ cardRefCompareData.gocRowNum }} / Giá: Ô D{{ cardRefCompareData.gocRowNum }})
+                    </span>
+                  </div>
+                  <div style="margin-top: 6px; padding-top: 8px; border-top: 1px dashed rgba(16,185,129,0.25); display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #a7f3d0; font-weight: 700;">Unit Price File Gốc (VNĐ):</span>
+                    <strong style="font-size: 16px; color: #34d399;">{{ formatVndPrice(cardRefCompareData.gocPrice) }}</strong>
+                  </div>
+                </div>
+                <div v-else style="color: #94a3b8; font-size: 13px; padding: 12px 0;">
+                  Không tìm thấy mã SKU này trong <code>file_goc_acronis.xlsx</code>.
+                </div>
+              </div>
+
+              <!-- Cột 3: File Mẫu Import Acronis (ACRONIS_file_mau_import.xlsx) -->
+              <div style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(129, 140, 248, 0.32); border-radius: 12px; padding: 14px 16px;">
+                <div style="font-size: 12.5px; font-weight: 800; color: #a5b4fc; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid rgba(129,140,248,0.2); padding-bottom: 6px;">
+                  3. File Mẫu Import (ACRONIS_file_mau_import)
+                </div>
+                <div v-if="cardRefCompareData.mauFound" style="display: flex; flex-direction: column; gap: 7px; font-size: 13px;">
+                  <div><span style="color: #94a3b8;">Sheet Mẫu:</span> <strong style="color: #e2e8f0;">{{ cardRefCompareData.mauSheet }}</strong></div>
+                  <div><span style="color: #94a3b8;">Tọa độ dòng:</span> <strong style="color: #e2e8f0;">Dòng #{{ cardRefCompareData.mauRowNum }} (Ô D{{ cardRefCompareData.mauRowNum }})</strong></div>
+                  <div><span style="color: #94a3b8;">Mô tả trong File Mẫu:</span> <span style="color: #cbd5e1;">{{ cardRefCompareData.mauEntry?.moTa || '-' }}</span></div>
+                  <div style="margin-top: 6px; padding-top: 8px; border-top: 1px dashed rgba(129,140,248,0.28); display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #c7d2fe; font-weight: 700;">Unit Price File Mẫu (VNĐ):</span>
+                    <strong style="font-size: 16px; color: #a5b4fc;">{{ formatVndPrice(cardRefCompareData.mauPrice) }}</strong>
+                  </div>
+                </div>
+                <div v-else style="color: #94a3b8; font-size: 13px; padding: 12px 0;">
+                  Chưa có mã này trong <code>ACRONIS_file_mau_import.xlsx</code>.
+                </div>
+              </div>
+            </div>
+
+            <!-- Danh sách các mã cùng Danh mục trong file_goc_acronis.xlsx -->
+            <div v-if="cardRefCompareData.relatedItems && cardRefCompareData.relatedItems.length > 0" style="background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 12px; padding: 12px 16px;">
+              <div style="font-size: 12.5px; font-weight: 700; color: #cbd5e1; margin-bottom: 8px;">
+                📊 Các gói cùng mục <code>{{ cardRefCompareData.gocEntry?.category || cardRefCompareData.item.Danh_muc }}</code> trên Sheet <code>{{ cardRefCompareData.sheet }}</code> (<code>file_goc_acronis.xlsx</code>):
+              </div>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                <div
+                  v-for="rel in cardRefCompareData.relatedItems"
+                  :key="rel.maHang"
+                  :style="{
+                    padding: '6px 10px',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    background: rel.sku === cardRefCompareData.sku ? 'rgba(99, 102, 241, 0.24)' : 'rgba(30, 41, 59, 0.8)',
+                    border: rel.sku === cardRefCompareData.sku ? '1.5px solid #818cf8' : '1px solid rgba(148, 163, 184, 0.2)',
+                    color: rel.sku === cardRefCompareData.sku ? '#e0e7ff' : '#cbd5e1'
+                  }"
+                  @click="openAcronisExcelNavigator({ fileType: 'acronis_goc', sheet: rel.sheet, rowNum: rel.rowNum, colLetter: 'D', sku: rel.sku || rel.skuFor, itemName: rel.moTa })"
+                  :title="`${rel.moTa} — Bấm để mở file_goc_acronis.xlsx tại Dòng #${rel.rowNum}`"
+                >
+                  <div style="font-weight: 700; color: #a5b4fc; font-size: 11px;">
+                    {{ rel.skuFor ? `${rel.skuFor} - ${rel.sku}` : rel.sku }} (Dòng #{{ rel.rowNum }})
+                  </div>
+                  <div style="font-size: 11px; color: #94a3b8; max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px;">
+                    {{ rel.moTa }}
+                  </div>
+                  <div style="font-weight: 800; color: #34d399; margin-top: 2px;">{{ formatVndPrice(rel.price) }}</div>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- Footer -->
+        <div class="import-modal__footer" style="padding: 14px 22px; border-top: 1px solid rgba(148,163,184,0.18); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <div style="font-size: 12.5px; color: #94a3b8;">
+            <template v-if="cardRefCompareData?.status === 'diff'">
+              💡 Giá trên Card hiện tại đang lệch <strong>{{ cardRefCompareData.priceDiff > 0 ? '+' : '' }}{{ cardRefCompareData.vendor === 'sophos' ? formatUsdPrice(cardRefCompareData.priceDiff) : formatVndPrice(cardRefCompareData.priceDiff) }}</strong> ({{ cardRefCompareData.priceDiffPct.toFixed(1) }}%) so với File Gốc.
+            </template>
+            <template v-else-if="cardRefCompareData?.status === 'match'">
+              ✅ Giá bán trên Card hiện tại khớp hoàn toàn với File Excel Gốc của hãng.
+            </template>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <button
+              v-if="cardRefCompareData && cardRefCompareData.refPrice > 0 && cardRefCompareData.status === 'diff'"
+              type="button"
+              class="btn btn-primary"
+              :disabled="syncingCardRefToDb"
+              style="background: linear-gradient(135deg, #10b981, #059669); border: none; font-weight: 700;"
+              @click="syncCardItemWithOriginalFile"
+            >
+              {{ syncingCardRefToDb ? '⏳ Đang cập nhật...' : `🔄 Cập nhật Card theo Giá File Gốc (${cardRefCompareData.vendor === 'sophos' ? formatUsdPrice(cardRefCompareData.refPrice) : formatVndPrice(cardRefCompareData.refPrice)})` }}
+            </button>
+            <button type="button" class="btn btn-secondary" @click="showCardRefCompareModal = false">
+              Đóng
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL ĐỐI CHIẾU TOÀN BỘ BẢNG GIÁ GỐC ACRONIS (file_goc_acronis.xlsx ⇄ ACRONIS_file_mau_import.xlsx ⇄ DATABASE) -->
+    <div v-if="showAcronisCompareModal" class="import-overlay" style="z-index: 10250;" @click.self="showAcronisCompareModal = false">
+      <div class="import-modal" style="max-width: 1380px; width: 97vw; max-height: 93vh; display: flex; flex-direction: column; overflow: hidden;">
+        <!-- Header -->
+        <div class="import-modal__header" style="padding: 15px 22px; border-bottom: 1px solid rgba(148,163,184,0.18);">
+          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <span style="padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 800; background: rgba(99, 102, 241, 0.22); color: #a5b4fc; border: 1px solid rgba(129, 140, 248, 0.5);">
+              🟣 ĐỐI CHIẾU ACRONIS
+            </span>
+            <h2 class="import-modal__title" style="margin: 0; font-size: 16.5px;">
+              Đối Chiếu Bảng Giá Gốc Acronis (☁️ File Gốc: <code>{{ vendorRefFilesMeta.acronis?.goc_file_name || 'file_goc_acronis.xlsx' }}</code> ⇄ <code>Database</code>)
+            </h2>
+            <span v-if="vendorRefFilesMeta.acronis?.updated_at" style="font-size: 11.5px; color: #94a3b8;">
+              Cập nhật Cloudinary: {{ formatRefTimestamp(vendorRefFilesMeta.acronis.updated_at) }}
+            </span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <button
+              type="button"
+              class="excel-jump-chip excel-jump-chip--goc"
+              style="padding: 6px 11px; font-size: 12px;"
+              @click="openAcronisExcelNavigator({ fileType: 'acronis_goc', sheet: acronisCompareSheetFilter !== 'ALL' ? acronisCompareSheetFilter : 'Protect Standard', rowNum: 4, colLetter: 'B' })"
+            >
+              📗 Xem <strong>{{ vendorRefFilesMeta.acronis?.goc_file_name || 'file_goc_acronis.xlsx' }}</strong>
+            </button>
+            <div
+              v-if="getVendorCompareFileMeta('acronis', 'goc')"
+              style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 8px; background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(129, 140, 248, 0.4); font-size: 12px;"
+            >
+              <a
+                :href="getVendorOfficeViewUrl(getVendorCompareFileMeta('acronis', 'goc'))"
+                target="_blank"
+                rel="noopener noreferrer"
+                style="color: #c7d2fe; font-weight: 700; text-decoration: underline;"
+                title="Click để mở xem File Gốc Acronis trên ViewOffice (Tab mới)"
+                @click="handleOpenVendorOfficeView($event, 'acronis', 'goc', getVendorCompareFileMeta('acronis', 'goc'))"
+              >
+                👁️ File đã up: {{ getVendorCompareFileMeta('acronis', 'goc').name }}
+              </a>
+              <button
+                type="button"
+                class="vendor-file-office-btn"
+                title="Mở ViewOffice trong tab mới và nhảy tới sheet hiện tại"
+                @click.stop="openCompareOfficePreview({ vendor: 'acronis', role: 'goc', sheet: acronisCompareSheetFilter !== 'ALL' ? acronisCompareSheetFilter : 'Protect Standard', rowNum: 4, colLetter: 'D' })"
+              >
+                👁️ Xem bằng ViewOffice
+              </button>
+              <button
+                type="button"
+                class="vendor-file-download-btn"
+                title="Tải File Gốc Acronis về máy"
+                @click.stop="handleDownloadVendorUploadedFile('acronis', 'goc', getVendorCompareFileMeta('acronis', 'goc'))"
+              >
+                ⬇ Tải về
+              </button>
+            </div>
+            <label
+              class="btn btn-outline"
+              style="padding: 5px 10px; font-size: 12px; border-color: rgba(56,189,248,0.45); color: #38bdf8; cursor: pointer; margin: 0;"
+              title="Upload File Gốc Acronis mới lên Cloudinary để cập nhật đối chiếu"
+            >
+              <input type="file" accept=".xlsx,.xls" style="display: none;" @change="handleCustomAcronisExcelUpload($event, 'goc')" />
+              ☁️ Up File Gốc Acronis mới
+            </label>
+            <button
+              type="button"
+              class="btn btn-outline"
+              style="padding: 5px 10px; font-size: 12px; border-color: rgba(16,185,129,0.45); color: #34d399;"
+              @click="exportAcronisComparisonToExcel"
+            >
+              📊 Xuất Báo Cáo Excel
+            </button>
+            <button type="button" class="import-modal__close" @click="showAcronisCompareModal = false">✕</button>
+          </div>
+        </div>
+
+        <!-- Body -->
+        <div style="padding: 16px 22px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 14px;">
+          <div v-if="vendorRefLoadError.acronis" style="padding: 10px 14px; border-radius: 8px; background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.45); color: #fca5a5; font-size: 12.5px; font-weight: 700;">
+            ⚠️ {{ vendorRefLoadError.acronis }}
+          </div>
+
+          <!-- Khung ViewOffice nhúng trực tiếp ngay trong Bảng Đối Chiếu Acronis -->
+          <div v-if="compareOfficePreview.show && compareOfficePreview.vendor === 'acronis'" class="compare-office-embed-panel">
+            <div class="compare-office-embed-header">
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span style="font-weight: 800; color: #a5b4fc;">👁️ Microsoft ViewOffice (Đối chiếu Acronis):</span>
+                <button
+                  v-if="getVendorCompareFileMeta('acronis', 'goc')"
+                  type="button"
+                  class="compare-office-role-btn"
+                  :class="{ active: compareOfficePreview.role === 'goc' }"
+                  @click="openCompareOfficePreview({ vendor: 'acronis', role: 'goc', sheet: compareOfficePreview.sheet || 'Protect Standard', rowNum: compareOfficePreview.rowNum || 4, colLetter: 'D', sku: compareOfficePreview.sku })"
+                >📗 File Gốc ({{ getVendorCompareFileMeta('acronis', 'goc').name }})</button>
+                <span v-if="compareOfficePreview.sku" class="compare-office-target-badge">
+                  SKU: <strong>{{ compareOfficePreview.sku }}</strong>
+                </span>
+                <span v-if="compareOfficePreview.sheet && compareOfficePreview.rowNum" class="compare-office-target-badge">
+                  📍 Sheet <strong>{{ compareOfficePreview.sheet }}</strong> • Ô {{ compareOfficePreview.colLetter }}{{ compareOfficePreview.rowNum }} (Dòng {{ compareOfficePreview.rowNum }})
+                </span>
+                <span v-if="compareOfficePreview.copiedLabel" style="color: #34d399; font-weight: 700; font-size: 11.5px;">
+                  ✓ {{ compareOfficePreview.copiedLabel }} (Bấm Ctrl+F → Ctrl+V trong bảng để tìm nhanh)
+                </span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                <button
+                  v-if="compareOfficePreview.sku"
+                  type="button"
+                  class="vendor-file-office-btn"
+                  @click="copyCompareOfficeQuickText(compareOfficePreview.sku, `Đã copy SKU: ${compareOfficePreview.sku}`)"
+                >📋 Copy SKU</button>
+                <a
+                  v-if="compareOfficePreview.viewUrl"
+                  :href="compareOfficePreview.viewUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="vendor-file-office-btn"
+                  style="text-decoration: none;"
+                >🌐 Mở Tab Mới</a>
+                <button
+                  type="button"
+                  class="vendor-file-download-btn"
+                  @click="handleDownloadVendorUploadedFile('acronis', 'goc', getVendorCompareFileMeta('acronis', 'goc'))"
+                >⬇ Tải về</button>
+                <button type="button" class="compare-office-close-btn" @click="closeCompareOfficePreview">✕ Đóng ViewOffice</button>
+              </div>
+            </div>
+            <div class="compare-office-embed-body">
+              <div v-if="compareOfficePreview.loading" class="compare-office-loading">
+                ⏳ Đang chuẩn bị file Excel trên Microsoft ViewOffice...
+              </div>
+              <iframe
+                v-else-if="compareOfficePreview.embedUrl"
+                :src="compareOfficePreview.embedUrl"
+                class="compare-office-iframe"
+                allowfullscreen
+              ></iframe>
+            </div>
+          </div>
+          <!-- Thống kê tổng quan 3 chiều -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px;">
+            <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 12px 14px;">
+              <div style="font-size: 11.5px; font-weight: 800; color: #34d399; text-transform: uppercase;">
+                1. File Gốc Hãng (file_goc_acronis.xlsx)
+              </div>
+              <div style="font-size: 20px; font-weight: 800; color: #ecfdf5; margin-top: 4px;">
+                {{ acronisComparisonRows.length }} mã SKU
+              </div>
+              <div style="font-size: 12px; color: #a7f3d0; margin-top: 2px;">
+                Trên {{ acronisSheetNames.length }} sheets ({{ acronisSheetNames.join(', ') }})
+              </div>
+            </div>
+
+            <div style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(129, 140, 248, 0.3); border-radius: 10px; padding: 12px 14px;">
+              <div style="font-size: 11.5px; font-weight: 800; color: #a5b4fc; text-transform: uppercase;">
+                2. Đối Chiếu ACRONIS_file_mau_import.xlsx
+              </div>
+              <div style="display: flex; gap: 14px; align-items: baseline; margin-top: 4px; flex-wrap: wrap;">
+                <span style="font-size: 14px; font-weight: 800; color: #34d399;">✓ Khớp: {{ acronisComparisonSummary.mauMatch }}</span>
+                <span style="font-size: 14px; font-weight: 800; color: #fbbf24;">⚠️ Lệch: {{ acronisComparisonSummary.mauDiff }}</span>
+                <span style="font-size: 14px; font-weight: 800; color: #f87171;">✕ Thiếu: {{ acronisComparisonSummary.mauMissing }}</span>
+              </div>
+              <div style="font-size: 12px; color: #c7d2fe; margin-top: 2px;">
+                So sánh Unit Price giữa file gốc và file mẫu import
+              </div>
+            </div>
+
+            <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 10px; padding: 12px 14px;">
+              <div style="font-size: 11.5px; font-weight: 800; color: #38bdf8; text-transform: uppercase;">
+                3. Đối Chiếu Database Hệ Thống (hang_hoa)
+              </div>
+              <div style="display: flex; gap: 14px; align-items: baseline; margin-top: 4px; flex-wrap: wrap;">
+                <span style="font-size: 14px; font-weight: 800; color: #34d399;">✓ Khớp DB: {{ acronisComparisonSummary.dbMatch }}</span>
+                <span style="font-size: 14px; font-weight: 800; color: #fbbf24;">⚠️ Lệch giá DB: {{ acronisComparisonSummary.dbDiff }}</span>
+                <span style="font-size: 14px; font-weight: 800; color: #f87171;">➕ Chưa có DB: {{ acronisComparisonSummary.dbMissing }}</span>
+              </div>
+              <div style="font-size: 12px; color: #bae6fd; margin-top: 2px;">
+                Đồng bộ 1-click từ <code>file_goc_acronis.xlsx</code> vào Firebase
+              </div>
+            </div>
+          </div>
+
+          <!-- Bộ lọc Sheet, Trạng thái & Tìm kiếm -->
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; background: rgba(15, 23, 42, 0.72); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 10px; padding: 10px 14px;">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <!-- Lọc theo Sheet -->
+              <select
+                v-model="acronisCompareSheetFilter"
+                style="height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(129, 140, 248, 0.4); background: rgba(30, 41, 59, 0.9); color: #e0e7ff; font-size: 12.5px; font-weight: 700;"
+              >
+                <option value="ALL">📑 Tất cả Sheets ({{ acronisComparisonRows.length }})</option>
+                <option v-for="sh in acronisSheetNames" :key="sh" :value="sh">
+                  📄 {{ sh }} ({{ acronisComparisonRows.filter(r => r.sheet === sh).length }})
+                </option>
+              </select>
+
+              <!-- Lọc theo trạng thái DB -->
+              <div style="display: inline-flex; gap: 4px; background: rgba(30, 41, 59, 0.8); padding: 3px; border-radius: 8px; border: 1px solid rgba(148, 163, 184, 0.2);">
+                <button
+                  type="button"
+                  :style="{
+                    padding: '5px 10px',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    fontWeight: '700',
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: acronisCompareFilterMode === 'all' ? 'rgba(99, 102, 241, 0.3)' : 'transparent',
+                    color: acronisCompareFilterMode === 'all' ? '#e0e7ff' : '#94a3b8'
+                  }"
+                  @click="acronisCompareFilterMode = 'all'"
+                >
+                  Tất cả ({{ acronisComparisonRows.length }})
+                </button>
+                <button
+                  type="button"
+                  :style="{
+                    padding: '5px 10px',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    fontWeight: '700',
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: acronisCompareFilterMode === 'db_issue' ? 'rgba(245, 158, 11, 0.25)' : 'transparent',
+                    color: acronisCompareFilterMode === 'db_issue' ? '#fde68a' : '#94a3b8'
+                  }"
+                  @click="acronisCompareFilterMode = 'db_issue'"
+                >
+                  Cần xử lý ({{ acronisComparisonSummary.dbDiff + acronisComparisonSummary.dbMissing }})
+                </button>
+                <button
+                  type="button"
+                  :style="{
+                    padding: '5px 10px',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    fontWeight: '700',
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: acronisCompareFilterMode === 'db_diff' ? 'rgba(245, 158, 11, 0.25)' : 'transparent',
+                    color: acronisCompareFilterMode === 'db_diff' ? '#fbbf24' : '#94a3b8'
+                  }"
+                  @click="acronisCompareFilterMode = 'db_diff'"
+                >
+                  Lệch giá DB ({{ acronisComparisonSummary.dbDiff }})
+                </button>
+                <button
+                  type="button"
+                  :style="{
+                    padding: '5px 10px',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    fontWeight: '700',
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: acronisCompareFilterMode === 'db_missing' ? 'rgba(239, 68, 68, 0.25)' : 'transparent',
+                    color: acronisCompareFilterMode === 'db_missing' ? '#fca5a5' : '#94a3b8'
+                  }"
+                  @click="acronisCompareFilterMode = 'db_missing'"
+                >
+                  Thiếu trong DB ({{ acronisComparisonSummary.dbMissing }})
+                </button>
+              </div>
+
+              <!-- Ô tìm kiếm SKU / Mô tả -->
+              <input
+                type="text"
+                v-model="acronisCompareSearch"
+                placeholder="Tìm SKU, SKU For, mô tả, danh mục..."
+                style="height: 36px; min-width: 240px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(148, 163, 184, 0.3); background: rgba(15, 23, 42, 0.9); color: #f8fafc; font-size: 12.5px;"
+              />
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <button
+                type="button"
+                class="btn btn-outline"
+                style="padding: 6px 12px; font-size: 12px; border-color: rgba(245, 158, 11, 0.45); color: #fbbf24;"
+                @click="selectAllNeedSyncAcronisRows"
+              >
+                ☑️ Chọn tất cả dòng Lệch / Thiếu ({{ acronisComparisonSummary.dbDiff + acronisComparisonSummary.dbMissing }})
+              </button>
+              <button
+                type="button"
+                class="btn btn-primary"
+                style="padding: 6px 14px; font-size: 12.5px; font-weight: 700; background: linear-gradient(135deg, #6366f1, #4f46e5); border: none;"
+                :disabled="syncingAcronisCompareToDb || selectedAcronisComparisonRowsCount === 0"
+                @click="syncSelectedAcronisCompareRowsToDb"
+              >
+                {{ syncingAcronisCompareToDb ? '⏳ Đang đồng bộ...' : `🔄 Đồng bộ ${selectedAcronisComparisonRowsCount} mã đã chọn vào DB` }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Bảng đối chiếu chi tiết -->
+          <div style="border: 1px solid rgba(148, 163, 184, 0.22); border-radius: 10px; overflow: auto; max-height: 56vh;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 12.5px;">
+              <thead style="position: sticky; top: 0; z-index: 5; background: #0f172a; border-bottom: 1px solid rgba(148, 163, 184, 0.25);">
+                <tr>
+                  <th style="padding: 10px 8px; text-align: center; width: 36px;">
+                    <input
+                      type="checkbox"
+                      :checked="allFilteredAcronisCompareSelected"
+                      @change="toggleSelectAllFilteredAcronisCompare($event.target.checked)"
+                    />
+                  </th>
+                  <th style="padding: 10px 10px; text-align: left; color: #94a3b8;">Sheet / Danh mục</th>
+                  <th style="padding: 10px 10px; text-align: left; color: #94a3b8;">SKU For / SKU</th>
+                  <th style="padding: 10px 10px; text-align: left; color: #94a3b8;">Mô tả sản phẩm (Tên hàng)</th>
+                  <th style="padding: 10px 10px; text-align: right; color: #34d399;">Giá file_goc_acronis.xlsx</th>
+                  <th style="padding: 10px 10px; text-align: right; color: #a5b4fc;">Giá ACRONIS_file_mau</th>
+                  <th style="padding: 10px 10px; text-align: right; color: #38bdf8;">Giá Database (hang_hoa)</th>
+                  <th style="padding: 10px 10px; text-align: center; color: #94a3b8;">Trạng thái DB</th>
+                  <th style="padding: 10px 10px; text-align: center; color: #94a3b8;">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="!filteredAcronisComparisonRows.length">
+                  <td colspan="9" style="padding: 28px; text-align: center; color: #94a3b8;">
+                    Không có dòng dữ liệu nào khớp bộ lọc hiện tại.
+                  </td>
+                </tr>
+                <tr
+                  v-for="row in filteredAcronisComparisonRows"
+                  :key="row.id"
+                  style="border-bottom: 1px solid rgba(148, 163, 184, 0.12);"
+                  :style="{
+                    background: row.dbStatus === 'diff'
+                      ? 'rgba(245, 158, 11, 0.06)'
+                      : (row.dbStatus === 'missing' ? 'rgba(239, 68, 68, 0.05)' : 'transparent')
+                  }"
+                >
+                  <td style="padding: 8px; text-align: center;">
+                    <input type="checkbox" v-model="row.selected" />
+                  </td>
+                  <td style="padding: 8px 10px;">
+                    <div style="font-weight: 700; color: #a5b4fc; font-size: 11.5px;">{{ row.sheet }}</div>
+                    <div style="color: #94a3b8; font-size: 11px; max-width: 210px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" :title="row.category">
+                      {{ row.category }}
+                    </div>
+                  </td>
+                  <td style="padding: 8px 10px; font-family: monospace;">
+                    <div v-if="row.skuFor" style="color: #cbd5e1; font-size: 11px;">For: <strong>{{ row.skuFor }}</strong></div>
+                    <div style="color: #34d399; font-weight: 800; font-size: 12px;">{{ row.sku || row.skuFor }}</div>
+                  </td>
+                  <td style="padding: 8px 10px;">
+                    <div style="font-weight: 600; color: #f8fafc;">{{ row.moTa }}</div>
+                    <div style="display: flex; gap: 6px; margin-top: 3px; flex-wrap: wrap;">
+                      <span v-if="row.licenseDuration" style="font-size: 10.5px; padding: 1px 6px; border-radius: 4px; background: rgba(168, 85, 247, 0.16); color: #c084fc;">
+                        {{ row.licenseDuration }}
+                      </span>
+                      <span v-if="row.type" style="font-size: 10.5px; padding: 1px 6px; border-radius: 4px; background: rgba(56, 189, 248, 0.15); color: #38bdf8;">
+                        {{ row.type }}
+                      </span>
+                      <span v-if="row.volume" style="font-size: 10.5px; padding: 1px 6px; border-radius: 4px; background: rgba(245, 158, 11, 0.15); color: #fbbf24;">
+                        {{ row.volume }}
+                      </span>
+                    </div>
+                  </td>
+                  <td style="padding: 8px 10px; text-align: right;">
+                    <div style="font-weight: 800; color: #34d399; font-size: 13px;">
+                      {{ formatVndPrice(row.gocPrice) }}
+                    </div>
+                    <div style="margin-top: 4px; display: flex; gap: 4px; justify-content: flex-end; flex-wrap: wrap;">
+                      <button
+                        type="button"
+                        class="excel-jump-chip excel-jump-chip--goc"
+                        style="padding: 2px 7px; font-size: 11px;"
+                        @click="openAcronisExcelNavigator({ fileType: 'acronis_goc', sheet: row.sheet, rowNum: row.gocRowNum, colLetter: 'D', sku: row.sku || row.skuFor, itemName: row.moTa })"
+                        title="Mở định vị dòng nhanh trong file_goc_acronis.xlsx"
+                      >
+                        📗 Gốc #{{ row.gocRowNum }} (D{{ row.gocRowNum }})
+                      </button>
+                      <button
+                        type="button"
+                        class="vendor-file-office-btn"
+                        style="padding: 2px 6px; font-size: 10.5px;"
+                        @click="openCompareOfficePreview({ vendor: 'acronis', role: 'goc', sheet: row.sheet, rowNum: row.gocRowNum, colLetter: 'D', sku: row.sku || row.skuFor, itemName: row.moTa })"
+                        :title="`Mở ViewOffice trong tab mới và nhảy trực tiếp tới ô D${row.gocRowNum} (Sheet ${row.sheet})`"
+                      >
+                        👁️ Xem bằng ViewOffice
+                      </button>
+                    </div>
+                  </td>
+                  <td style="padding: 8px 10px; text-align: right;">
+                    <template v-if="row.mauFound">
+                      <div style="font-weight: 700; color: #c7d2fe;">{{ formatVndPrice(row.mauPrice) }}</div>
+                      <div style="margin-top: 4px; display: flex; gap: 4px; justify-content: flex-end; flex-wrap: wrap;">
+                        <button
+                          type="button"
+                          class="excel-jump-chip excel-jump-chip--tg"
+                          style="padding: 2px 7px; font-size: 11px;"
+                          @click="openAcronisExcelNavigator({ fileType: 'acronis_mau', sheet: row.mauSheet || row.sheet, rowNum: row.mauRowNum, colLetter: 'D', sku: row.sku || row.skuFor, itemName: row.moTa })"
+                          title="Mở ACRONIS_file_mau_import.xlsx tại dòng này"
+                        >
+                          📘 Mẫu #{{ row.mauRowNum }}
+                        </button>
+                        <button
+                          type="button"
+                          class="vendor-file-office-btn"
+                          style="padding: 2px 6px; font-size: 10.5px;"
+                          @click="openCompareOfficePreview({ vendor: 'acronis', role: 'mau', sheet: row.mauSheet || row.sheet, rowNum: row.mauRowNum, colLetter: 'D', sku: row.sku || row.skuFor, itemName: row.moTa })"
+                          :title="`Mở ViewOffice trong tab mới và nhảy trực tiếp tới ô D${row.mauRowNum} (Sheet ${row.mauSheet || row.sheet})`"
+                        >
+                          👁️ Xem bằng ViewOffice
+                        </button>
+                      </div>
+                    </template>
+                    <span v-else style="color: #64748b; font-size: 11.5px;">Chưa có</span>
+                  </td>
+                  <td style="padding: 8px 10px; text-align: right;">
+                    <template v-if="row.dbItem">
+                      <div style="font-weight: 800; color: #38bdf8; font-size: 13px;">
+                        {{ formatVndPrice(row.dbPrice) }}
+                      </div>
+                      <div style="font-size: 10.5px; color: #94a3b8; font-family: monospace;">
+                        {{ row.dbItem.Ma_hang }}
+                      </div>
+                    </template>
+                    <span v-else style="color: #f87171; font-size: 11.5px; font-weight: 600;">Chưa có trong DB</span>
+                  </td>
+                  <td style="padding: 8px 10px; text-align: center;">
+                    <span
+                      v-if="row.dbStatus === 'match'"
+                      style="display: inline-block; padding: 3px 8px; border-radius: 99px; font-size: 11px; font-weight: 700; background: rgba(16, 185, 129, 0.16); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.35);"
+                    >
+                      ✓ Khớp giá
+                    </span>
+                    <span
+                      v-else-if="row.dbStatus === 'diff'"
+                      style="display: inline-block; padding: 3px 8px; border-radius: 99px; font-size: 11px; font-weight: 700; background: rgba(245, 158, 11, 0.16); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4);"
+                    >
+                      ⚠️ Lệch {{ row.dbDiff > 0 ? '+' : '' }}{{ formatVndPrice(row.dbDiff) }}
+                    </span>
+                    <span
+                      v-else
+                      style="display: inline-block; padding: 3px 8px; border-radius: 99px; font-size: 11px; font-weight: 700; background: rgba(239, 68, 68, 0.16); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.35);"
+                    >
+                      ➕ Thiếu DB
+                    </span>
+                  </td>
+                  <td style="padding: 8px 10px; text-align: center;">
+                    <button
+                      type="button"
+                      class="btn btn-outline"
+                      style="padding: 4px 10px; font-size: 11.5px; font-weight: 700;"
+                      :style="row.dbStatus === 'match'
+                        ? 'border-color: rgba(148,163,184,0.3); color: #94a3b8;'
+                        : 'border-color: rgba(16,185,129,0.5); color: #34d399; background: rgba(16,185,129,0.1);'"
+                      :disabled="syncingAcronisCompareToDb"
+                      @click="syncSingleAcronisCompareRowToDb(row)"
+                    >
+                      {{ row.dbItem ? '🔄 Cập nhật DB' : '➕ Thêm vào DB' }}
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="import-modal__footer" style="padding: 12px 22px; border-top: 1px solid rgba(148,163,184,0.18); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <div style="font-size: 12.5px; color: #94a3b8;">
+            Đang hiển thị <strong style="color: #e0e7ff;">{{ filteredAcronisComparisonRows.length }}</strong> / <strong>{{ acronisComparisonRows.length }}</strong> sản phẩm từ <code>file_goc_acronis.xlsx</code>.
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <button type="button" class="btn btn-secondary" @click="showAcronisCompareModal = false">
+              Đóng
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ASYNC RESULT MODAL -->
     <Transition name="async-modal">
       <div v-if="asyncResultModal.show" class="async-overlay" @click.self="asyncResultModal.type !== 'loading' && (asyncResultModal.show = false)">
@@ -2864,16 +5759,172 @@
         </div>
       </div>
     </Transition>
+
+    <!-- ================== SIDEBAR GIỎ HÀNG BÁO GIÁ (SLIDE BÊN PHẢI) ================== -->
+    <template v-if="quoteCart.length > 0">
+      <!-- Nút neo bên mép phải khi thu gọn sidebar -->
+      <button
+        v-show="!showQuoteCartDrawer"
+        type="button"
+        class="quote-cart-right-Launcher"
+        title="Mở giỏ hàng báo giá"
+        @click.stop="showQuoteCartDrawer = true"
+      >
+        <div class="quote-cart-launcher__icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+          <span class="quote-cart-count-pill">{{ quoteCart.length }}</span>
+        </div>
+        <div class="quote-cart-launcher__meta">
+          <span class="quote-cart-launcher__label">Giỏ báo giá ({{ quoteCartTotalQty }} SP)</span>
+          <span class="quote-cart-launcher__total">{{ formatCurrency(quoteCartTotalBeforeTaxVnd, 'VND') }}</span>
+        </div>
+      </button>
+
+      <!-- Sidebar trượt mượt từ bên phải -->
+      <aside
+        class="quote-cart-right-sidebar"
+        :class="{ open: showQuoteCartDrawer }"
+        @click.stop
+      >
+        <div class="quote-cart-sidebar__header">
+          <div class="quote-cart-sidebar__title-group">
+            <div class="quote-cart-icon-badge">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+              <span class="quote-cart-count-pill">{{ quoteCart.length }}</span>
+            </div>
+            <div>
+              <h3 class="quote-cart-sidebar__heading">Giỏ hàng báo giá</h3>
+              <p class="quote-cart-sidebar__sub">
+                {{ quoteCart.length }} mặt hàng • Tổng SL: <strong>{{ quoteCartTotalQty }}</strong>
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="quote-cart-sidebar__collapse-btn"
+            title="Thu gọn sang bên phải"
+            @click="showQuoteCartDrawer = false"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
+        </div>
+
+        <div class="quote-cart-sidebar__body">
+          <div
+            v-for="(entry, idx) in quoteCartEnrichedList"
+            :key="entry.key"
+            class="quote-cart-sidebar__item"
+            title="Click để xem chi tiết / chỉnh sửa hàng hóa"
+            @click="openEditModal(entry.item)"
+          >
+            <div class="quote-cart-sidebar__item-top">
+              <div class="quote-cart-drawer__codes">
+                <span class="quote-cart-item-index">#{{ idx + 1 }}</span>
+                <span v-if="entry.item.sku_code" class="quote-cart-code-sku">{{ entry.item.sku_code }}</span>
+                <span v-if="entry.item.Ma_hang && entry.item.Ma_hang !== entry.item.sku_code" class="quote-cart-code-ma">{{ entry.item.Ma_hang }}</span>
+              </div>
+              <button
+                type="button"
+                class="card-cart-remove-btn"
+                title="Xóa khỏi giỏ"
+                @click.stop="removeFromQuoteCart(entry.item)"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+            </div>
+
+            <div class="quote-cart-drawer__name" :title="entry.item.Ten_hang">{{ entry.item.Ten_hang }}</div>
+
+            <div class="quote-cart-drawer__price">
+              Đơn giá: <strong>{{ formatCurrency(entry.effectiveUnitPrice, entry.item.Don_vi_tien_te) }}</strong>
+              <span v-if="String(entry.item.Don_vi_tien_te || '').toUpperCase() === 'USD'" class="quote-cart-drawer__vnd">
+                ({{ formatCurrency(entry.unitPriceVnd, 'VND') }})
+              </span>
+            </div>
+
+            <div class="quote-cart-sidebar__item-bottom">
+              <div class="card-cart-stepper" @click.stop>
+                <button type="button" class="card-cart-step-btn minus" @click.stop="updateQuoteCartQty(entry.item, -1, false)">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                </button>
+                <input
+                  type="number"
+                  min="1"
+                  class="card-cart-qty-input"
+                  :value="entry.qty"
+                  @click.stop
+                  @change="onCardCartQtyInputChange(entry.item, $event)"
+                />
+                <button type="button" class="card-cart-step-btn plus" @click.stop="updateQuoteCartQty(entry.item, 1, false)">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                </button>
+              </div>
+              <div class="quote-cart-drawer__subtotal">
+                {{ formatCurrency(entry.lineTotalVnd, 'VND') }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="quote-cart-sidebar__footer">
+          <div class="quote-cart-sidebar__totals">
+            <div class="quote-cart-total-row">
+              <span>Tạm tính (trước thuế):</span>
+              <strong>{{ formatCurrency(quoteCartTotalBeforeTaxVnd, 'VND') }}</strong>
+            </div>
+            <div class="quote-cart-total-row after-tax">
+              <span>Tổng cộng (gồm VAT):</span>
+              <strong class="quote-cart-total-highlight">{{ formatCurrency(quoteCartTotalAfterTaxVnd, 'VND') }}</strong>
+            </div>
+          </div>
+
+          <div class="quote-cart-sidebar__actions">
+            <button
+              type="button"
+              class="quote-cart-btn-clear"
+              title="Làm trống giỏ hàng"
+              @click="clearQuoteCart"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              <span>Xóa giỏ</span>
+            </button>
+            <button
+              type="button"
+              class="quote-cart-btn-calculate"
+              @click="proceedToCalculateQuote"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="16" y1="14" x2="16" y2="18"></line><path d="M16 10h.01"></path><path d="M12 10h.01"></path><path d="M8 10h.01"></path><path d="M12 14h.01"></path><path d="M8 14h.01"></path><path d="M12 18h.01"></path><path d="M8 18h.01"></path></svg>
+              <span>Tính toán</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+            </button>
+          </div>
+        </div>
+      </aside>
+    </template>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import * as XLSX from 'xlsx-js-style'
 import NumberInput from './NumberInput.vue'
 import ExcelEditor from './ExcelEditor.vue'
 import Tesseract from 'tesseract.js'
 import { callDeepSeek } from '../services/deepseek'
+import { parsePurchaseFileStandard, analyzePurchaseFileWithAI } from '../utils/purchaseQuoteParser'
+import {
+  uploadBlobToCloudinary,
+  uploadExcelFileToCloudinarySafe,
+  uploadJsonToCloudinary,
+  formatRefTimestamp,
+  hydrateAcronisRefData,
+  hydrateKasRefData,
+  parseAcronisWorkbookToRefPart,
+  parseKasperskyWorkbookToRefPart,
+  parseSophosWorkbookToRefUpdate
+} from '../utils/vendorRefCloudinary'
 import { initializeApp, getApps, getApp } from 'firebase/app'
 import { getDatabase, ref as dbRef, get, set, push, update, remove } from 'firebase/database'
 
@@ -3080,6 +6131,723 @@ const importDisplayLimit = ref(150)
 const clearOldSophosBeforeImport = ref(false)
 const sophosReimportMode = ref('bom')
 
+// Quản lý link File Gốc / File Trung Gian / File Import của từng hãng trên Cloudinary (Không fallback về file tĩnh cũ)
+const vendorRefFilesMeta = ref({
+  sophos: null,
+  kaspersky: null,
+  acronis: null
+})
+const vendorRefLoadError = ref({
+  sophos: '',
+  kaspersky: '',
+  acronis: ''
+})
+const pendingImportVendorRef = ref(null) // { vendor: 'sophos' | 'kaspersky' | 'acronis', file: File, workbook: XLSX.WorkBook }
+const syncImportFileToCloudinaryRef = ref(true)
+let pendingImportUploadPromise = null
+
+const fetchVendorRefFilesMeta = async (force = false) => {
+  if (!force && (vendorRefFilesMeta.value.sophos || vendorRefFilesMeta.value.kaspersky || vendorRefFilesMeta.value.acronis)) {
+    return vendorRefFilesMeta.value
+  }
+  try {
+    const snap = await get(dbRef(database, 'vendor_ref_files'))
+    const val = snap.val() || {}
+    vendorRefFilesMeta.value = {
+      sophos: val.sophos || null,
+      kaspersky: val.kaspersky || null,
+      acronis: val.acronis || null
+    }
+  } catch (err) {
+    console.error('Lỗi đọc vendor_ref_files từ Firebase:', err)
+  }
+  return vendorRefFilesMeta.value
+}
+
+/**
+ * Lấy thông tin File đã up ở phần IMPORT các hãng (Sophos / Kaspersky / Acronis)
+ */
+const getVendorImportFileMeta = (vendor) => {
+  const m = vendorRefFilesMeta.value?.[vendor]
+  if (!m) return null
+  if (m.import_file_name) {
+    return {
+      name: m.import_file_name,
+      url: m.import_file_url || m.index_url || '',
+      updatedAt: m.import_updated_at || m.updated_at || 0
+    }
+  }
+  if (vendor === 'sophos' && m.tg_file_name) {
+    return {
+      name: m.tg_file_name,
+      url: m.tg_file_url || m.index_url || '',
+      updatedAt: m.tg_updated_at || m.updated_at || 0
+    }
+  }
+  if ((vendor === 'kaspersky' || vendor === 'acronis') && m.mau_file_name) {
+    return {
+      name: m.mau_file_name,
+      url: m.mau_file_url || m.index_url || '',
+      updatedAt: m.mau_updated_at || m.updated_at || 0
+    }
+  }
+  if (m.goc_file_name) {
+    return {
+      name: m.goc_file_name,
+      url: m.goc_file_url || m.index_url || '',
+      updatedAt: m.goc_updated_at || m.updated_at || 0
+    }
+  }
+  return null
+}
+
+/**
+ * Lấy thông tin File đã up tương ứng cho phần GỐC ('goc') hoặc TRUNG GIAN ('tg') ở cụm ĐỐI CHIẾU
+ */
+const getVendorCompareFileMeta = (vendor, part = 'goc') => {
+  const m = vendorRefFilesMeta.value?.[vendor]
+  if (!m) return null
+  if (part === 'goc') {
+    if (vendor === 'sophos') {
+      const sName = m.skulist_file_name || m.goc_file_name
+      const sUrl = m.skulist_file_url || m.goc_file_url || m.index_url || ''
+      if (!sName) return null
+      return {
+        name: sName,
+        url: sUrl,
+        updatedAt: m.goc_updated_at || m.updated_at || 0
+      }
+    }
+    if (!m.goc_file_name) return null
+    return {
+      name: m.goc_file_name,
+      url: m.goc_file_url || m.index_url || '',
+      updatedAt: m.goc_updated_at || m.updated_at || 0
+    }
+  }
+  // part === 'tg' (Trung gian)
+  if (vendor === 'sophos') {
+    if (!m.tg_file_name) return null
+    return {
+      name: m.tg_file_name,
+      url: m.tg_file_url || m.index_url || '',
+      updatedAt: m.tg_updated_at || m.updated_at || 0
+    }
+  }
+  if (vendor === 'kaspersky' || vendor === 'acronis') {
+    if (!m.mau_file_name) return null
+    return {
+      name: m.mau_file_name,
+      url: m.mau_file_url || m.index_url || '',
+      updatedAt: m.mau_updated_at || m.updated_at || 0
+    }
+  }
+  return null
+}
+
+/**
+ * Tạo link Microsoft Office Online Viewer (ViewOffice) cho file Excel đã up
+ */
+const getVendorOfficeViewUrl = (meta) => {
+  const url = typeof meta === 'string' ? meta.trim() : String(meta?.url || '').trim()
+  if (!url || url.toLowerCase().endsWith('.json')) return '#'
+  return `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(url)}`
+}
+
+/**
+ * Tái tạo Workbook Excel (.xlsx) từ dữ liệu JSON Index trên Cloudinary (dùng khi file gốc > 9.5MB hoặc .xlsb cũ)
+ */
+const buildVendorRefWorkbookFromCloudinary = async (vendor, role, fileName) => {
+  const wb = XLSX.utils.book_new()
+  if (vendor === 'acronis') {
+    const refData = await loadAcronisRefData()
+    const sheetsMap = (role === 'mau' || role === 'import')
+      ? (refData?.mauSheetsRaw || refData?.gocSheetsRaw || {})
+      : (refData?.gocSheetsRaw || refData?.mauSheetsRaw || {})
+    Object.entries(sheetsMap).forEach(([sName, rows]) => {
+      if (Array.isArray(rows)) {
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), sName.slice(0, 31))
+      }
+    })
+  } else if (vendor === 'kaspersky') {
+    const refData = await loadKasRefData()
+    const isMau = role === 'mau' || role === 'import'
+    const pivotRows = isMau ? (refData?.mauPivotRaw || refData?.gocPivotRaw || []) : (refData?.gocPivotRaw || [])
+    const saleList = isMau ? (refData?.mauSaleRows || refData?.gocSaleRows || []) : (refData?.gocSaleRows || [])
+    if (Array.isArray(pivotRows) && pivotRows.length) {
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(pivotRows), 'SMB+Enterprise (License)')
+    }
+    if (Array.isArray(saleList) && saleList.length) {
+      const aoa = [
+        ['Row', 'PositionCode', 'SKU', 'Product', 'Term', 'Package', 'Type', 'Band', 'Price (VND)'],
+        ...saleList.map(r => [r.rowNum, r.posCode, r.sku, r.product, r.term, r.pkg, r.type, r.band, r.price])
+      ]
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), 'SaleListSMB+Enterprise')
+    }
+  } else if (vendor === 'sophos') {
+    const refData = await loadSophosRefData()
+    if ((role === 'tg' || role === 'import') && refData?.tgSheetsRaw && Object.keys(refData.tgSheetsRaw).length) {
+      Object.entries(refData.tgSheetsRaw).forEach(([sName, rows]) => {
+        if (Array.isArray(rows)) {
+          XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), sName.slice(0, 31))
+        }
+      })
+    } else if (refData?.gocSkus && Object.keys(refData.gocSkus).length) {
+      const entries = Object.entries(refData.gocSkus).map(([sku, v]) => ({ sku, ...(v || {}) }))
+      const sortedSkuTab = entries.filter(x => x.skuTabRow).sort((a, b) => a.skuTabRow - b.skuTabRow)
+
+      const setCell = (ws, r1, c0, val) => {
+        if (val === undefined || val === null || val === '') return
+        const addr = XLSX.utils.encode_cell({ r: r1 - 1, c: c0 })
+        ws[addr] = typeof val === 'number' ? { t: 'n', v: val } : { t: 's', v: String(val) }
+      }
+
+      // 1. Sheet SKU_Tab (sophos-pricelist-reseller_SKU_list-asean-usd-2026-3.0: dòng liên tục từ dòng 8, cột G là SKU)
+      if (sortedSkuTab.length) {
+        const wsSku = {}
+        setCell(wsSku, 1, 0, 'SOPHOS RESELLER SKU LIST (ASEAN - USD - 2026 3.0)')
+        setCell(wsSku, 6, 9, 'giá tham khảo')
+        const skuHeaders = [
+          'Changes made in Pricelist version', 'Change Key', 'Previous Description', 'Previous Price',
+          'SKU Availability Status', 'Product Code', 'SKU', 'Old SKU', 'Description', 'MSRP/RRP',
+          'Min Qty', 'Max Qty', 'Term', 'Sector', 'Transaction Type', 'Product Family', 'Product Type',
+          'HS Code', 'Country of Origin',
+          'Standard Authorized Reseller Cost', 'Registered Authorized Reseller Cost', 'Incumbent Authorized Reseller Cost',
+          'Standard Silver Reseller Cost', 'Registered Silver Reseller Cost',
+          'Standard Gold Reseller Cost', 'Registered Gold Reseller Cost',
+          'Standard Platinum Reseller Cost', 'Registered Platinum Reseller Cost'
+        ]
+        skuHeaders.forEach((h, i) => setCell(wsSku, 7, i, h))
+        sortedSkuTab.forEach((it, idx) => {
+          const r = 8 + idx
+          ;[
+            it.changeVer, it.changeKey, '', it.prevPrice,
+            it.status || 'Available', it.pc, it.sku, it.oldSku, it.desc, it.msrp,
+            1, 9999999, it.term, it.sector || 'CORP', it.transType || 'New', it.family || 'UTM/Network Security', it.prodType,
+            it.hsCode, it.coo,
+            it.stdAuth, it.regAuth, it.incAuth,
+            it.stdSilv, it.regSilv,
+            it.stdGold, it.regGold,
+            it.stdPlat, it.regPlat
+          ].forEach((v, cIdx) => setCell(wsSku, r, cIdx, v))
+        })
+        wsSku['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: 7 + sortedSkuTab.length - 1, c: 27 } })
+        XLSX.utils.book_append_sheet(wb, wsSku, 'SKU_Tab')
+      }
+
+      // 2. Sheet HW_Compliance (đặt đúng dòng gốc rObj.rowNum)
+      if (Array.isArray(refData.hwComplianceRaw) && refData.hwComplianceRaw.length) {
+        const wsHw = {}
+        let maxHwR = 10
+        for (const rObj of refData.hwComplianceRaw) {
+          if (rObj && rObj.rowNum >= 1) {
+            if (rObj.rowNum > maxHwR) maxHwR = rObj.rowNum
+            ;(rObj.cells || []).forEach((v, idx) => setCell(wsHw, rObj.rowNum, idx, v))
+          }
+        }
+        wsHw['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: maxHwR - 1, c: 15 } })
+        XLSX.utils.book_append_sheet(wb, wsHw, 'HW_Compliance')
+      }
+
+      // 3. Sheet Firewall (giữ nguyên đúng số dòng 1..62)
+      if (Array.isArray(refData.gocFirewallRaw) && refData.gocFirewallRaw.length) {
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(refData.gocFirewallRaw), 'Firewall')
+      }
+    }
+  }
+
+  if (!wb.SheetNames.length) {
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['File', fileName]]), 'Sheet1')
+  }
+  return wb
+}
+
+/**
+ * Đảm bảo có URL file .xlsx trực tiếp trên Cloudinary (nếu URL cũ là .json thì tự tạo .xlsx và lưu lại)
+ */
+const ensureVendorExcelUrlOnCloudinary = async (vendor, role, meta) => {
+  const fileName = meta?.name || `${vendor}_${role}.xlsx`
+  const url = String(meta?.url || '').trim()
+  if (url && !url.toLowerCase().endsWith('.json')) {
+    return url
+  }
+
+  const wb = await buildVendorRefWorkbookFromCloudinary(vendor, role, fileName)
+  const outBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array', compression: true })
+  const xlsxBlob = new Blob([outBuffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  })
+  const safeName = fileName.replace(/\.(xlsb|xls|xlsx|json)$/i, '') + '_slim_viewoffice.xlsx'
+  const newExcelUrl = await uploadBlobToCloudinary(xlsxBlob, safeName)
+
+  // Lưu lại URL .xlsx mới vào Firebase để những lần click sau mở tức thì
+  const prevMeta = vendorRefFilesMeta.value?.[vendor] || {}
+  const nextMeta = { ...prevMeta }
+  if (role === 'goc' && nextMeta.goc_file_url?.endsWith('.json')) nextMeta.goc_file_url = newExcelUrl
+  if (role === 'skulist' && nextMeta.skulist_file_url?.endsWith('.json')) nextMeta.skulist_file_url = newExcelUrl
+  if ((role === 'tg' || role === 'import') && nextMeta.tg_file_url?.endsWith('.json')) nextMeta.tg_file_url = newExcelUrl
+  if ((role === 'mau' || role === 'import') && nextMeta.mau_file_url?.endsWith('.json')) nextMeta.mau_file_url = newExcelUrl
+  if (role === 'import' && nextMeta.import_file_url?.endsWith('.json')) nextMeta.import_file_url = newExcelUrl
+  vendorRefFilesMeta.value[vendor] = nextMeta
+  set(dbRef(database, `vendor_ref_files/${vendor}`), nextMeta).catch(() => {})
+  return newExcelUrl
+}
+
+/**
+ * Tính toán tham số `activeCell` ('Sheet'!ColRow) để ViewOffice tự động nhảy thẳng tới ô chứa sản phẩm
+ */
+const getVendorOfficeActiveCellParam = ({
+  vendor = '',
+  role = 'goc',
+  sheet = '',
+  rowNum = 1,
+  colLetter = 'B',
+  sku = ''
+}) => {
+  let targetSheet = String(sheet || '').trim()
+  let targetR = Number(rowNum) || 1
+  let cleanCol = String(colLetter || 'B').trim().toUpperCase()
+  const cleanSku = String(sku || '').trim().toUpperCase()
+
+  // Đối với Sophos File Gốc (file nguyên bản sophos-pricelist-reseller_SKU_list-asean-usd-2026-3.0.xlsb trên Cloudinary):
+  // Nhảy thẳng tới đúng số dòng gốc (skuTabRow) tại cột G của sheet SKU_Tab
+  if (vendor === 'sophos' && role !== 'tg') {
+    if (targetSheet === 'HW_Compliance') {
+      cleanCol = cleanCol || 'B'
+    } else {
+      targetSheet = 'SKU_Tab'
+      if (cleanCol === 'B' || cleanCol === 'H' || !cleanCol) {
+        cleanCol = 'G'
+      }
+      if (sophosRefData.value?.gocSkus) {
+        const directEntry = cleanSku ? sophosRefData.value.gocSkus[cleanSku] : null
+        if (directEntry?.skuTabRow) {
+          targetR = directEntry.skuTabRow
+        } else {
+          const matched = Object.values(sophosRefData.value.gocSkus).find(
+            x =>
+              (cleanSku && String(x?.oldSku || '').trim().toUpperCase() === cleanSku) ||
+              x?.skuTabRow === targetR ||
+              x?.rowNum === targetR
+          )
+          if (matched?.skuTabRow) {
+            targetR = matched.skuTabRow
+          }
+        }
+      }
+    }
+  }
+
+  const cellRef = `${cleanCol}${targetR}`
+  if (!targetSheet) return encodeURIComponent(cellRef)
+  const escapedSheet = targetSheet.replace(/'/g, "''")
+  return encodeURIComponent(`'${escapedSheet}'!${cellRef}`).replace(/'/g, '%27')
+}
+
+/**
+ * Mở File đã up bằng Microsoft Office Online Viewer (ViewOffice) ở tab mới
+ */
+const handleOpenVendorOfficeView = async (event, vendor, role, meta) => {
+  if (!meta || !meta.name) {
+    event?.preventDefault?.()
+    return
+  }
+  const fileName = meta.name
+  const url = String(meta.url || '').trim()
+
+  // Nếu đã có URL file Excel trực tiếp (.xlsx / .xls) -> cho phép thẻ <a> mở trực tiếp ViewOffice ở tab mới
+  if (url && !url.toLowerCase().endsWith('.json')) {
+    return
+  }
+
+  // Trường hợp URL cũ đang là .json (file > 9.5MB được up từ phiên bản trước) -> tạo .xlsx lên Cloudinary rồi chuyển hướng sang ViewOffice
+  event?.preventDefault?.()
+  const win = window.open('about:blank', '_blank')
+  if (win && win.document) {
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Đang mở ViewOffice - ${fileName}</title></head><body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#0f172a;color:#e2e8f0;font-family:system-ui,sans-serif;"><div style="text-align:center;"><div style="font-size:18px;font-weight:700;color:#38bdf8;margin-bottom:8px;">⏳ Đang chuẩn bị file Excel trên ViewOffice...</div><div style="font-size:13px;color:#94a3b8;">${fileName}</div></div></body></html>`)
+    win.document.close()
+  }
+
+  try {
+    const newExcelUrl = await ensureVendorExcelUrlOnCloudinary(vendor, role, meta)
+    const officeUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(newExcelUrl)}`
+    if (win) {
+      win.location.href = officeUrl
+    } else {
+      window.open(officeUrl, '_blank', 'noopener,noreferrer')
+    }
+  } catch (err) {
+    console.error('Lỗi mở ViewOffice:', err)
+    if (win) win.close()
+    await handleDownloadVendorUploadedFile(vendor, role, meta)
+  }
+}
+
+/**
+ * Mở Microsoft ViewOffice ở TAB MỚI và nhảy trực tiếp (`activeCell`) tới đúng Sheet & Ô chứa sản phẩm đó
+ */
+const compareOfficePreview = ref({
+  show: false,
+  loading: false,
+  vendor: 'sophos',
+  role: 'goc',
+  fileName: '',
+  rawExcelUrl: '',
+  embedUrl: '',
+  viewUrl: '',
+  sheet: '',
+  rowNum: null,
+  colLetter: 'B',
+  sku: '',
+  itemName: '',
+  copiedLabel: ''
+})
+
+const copyCompareOfficeQuickText = async (text, label = 'Đã copy!') => {
+  if (!text) return
+  try {
+    await navigator.clipboard.writeText(String(text))
+    compareOfficePreview.value.copiedLabel = label
+    setTimeout(() => {
+      if (compareOfficePreview.value.copiedLabel === label) {
+        compareOfficePreview.value.copiedLabel = ''
+      }
+    }, 2200)
+  } catch (_) {}
+}
+
+const openCompareOfficePreview = async ({
+  vendor = 'sophos',
+  role = 'goc',
+  sheet = '',
+  rowNum = null,
+  colLetter = 'B',
+  sku = '',
+  itemName = ''
+} = {}) => {
+  const comparePart = (role === 'tg' || role === 'mau') ? 'tg' : 'goc'
+  const meta = getVendorCompareFileMeta(vendor, comparePart) || getVendorImportFileMeta(vendor)
+  if (!meta || !meta.name) {
+    alert(`Chưa có file ${comparePart === 'goc' ? 'Gốc' : 'Trung Gian'} của ${vendor.toUpperCase()} trên Cloudinary để mở ViewOffice!`)
+    return
+  }
+
+  const cleanSku = String(sku || '').trim().toUpperCase()
+  const cleanCol = String(colLetter || 'B').trim().toUpperCase()
+  const targetRow = Number(rowNum) || 1
+  if (cleanSku) {
+    copyCompareOfficeQuickText(cleanSku, `Đã copy SKU: ${cleanSku}`)
+  } else if (sheet && targetRow) {
+    copyCompareOfficeQuickText(`'${sheet}'!${cleanCol}${targetRow}`, `Đã copy ô '${sheet}'!${cleanCol}${targetRow}`)
+  }
+
+  const rawUrl = String(meta.url || '').trim()
+  // Trường hợp đã có sẵn URL file Excel (.xlsx / .xls) trên Cloudinary -> Mở ngay Tab mới ViewOffice và nhảy thẳng tới ô sản phẩm!
+  if (rawUrl && !rawUrl.toLowerCase().endsWith('.json')) {
+    if (vendor === 'sophos' && comparePart === 'goc' && !sophosRefData.value) {
+      const winWait = window.open('about:blank', '_blank')
+      await loadSophosRefData().catch(() => {})
+      const activeCellParam = getVendorOfficeActiveCellParam({
+        vendor,
+        role: comparePart,
+        sheet,
+        rowNum: targetRow,
+        colLetter: cleanCol,
+        sku: cleanSku
+      })
+      const viewUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(rawUrl)}&activeCell=${activeCellParam}`
+      if (winWait) {
+        winWait.location.href = viewUrl
+      } else {
+        window.open(viewUrl, '_blank', 'noopener,noreferrer')
+      }
+      return
+    }
+    const activeCellParam = getVendorOfficeActiveCellParam({
+      vendor,
+      role: comparePart,
+      sheet,
+      rowNum: targetRow,
+      colLetter: cleanCol,
+      sku: cleanSku
+    })
+    const viewUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(rawUrl)}&activeCell=${activeCellParam}`
+    window.open(viewUrl, '_blank', 'noopener,noreferrer')
+    return
+  }
+
+  // Trường hợp URL đang là .json (file > 9.5MB) -> Mở tab chờ rồi tạo .xlsx và chuyển hướng tới đúng ô trên ViewOffice
+  const win = window.open('about:blank', '_blank')
+  if (win && win.document) {
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Đang mở ViewOffice - ${meta.name}</title></head><body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#0f172a;color:#e2e8f0;font-family:system-ui,sans-serif;"><div style="text-align:center;"><div style="font-size:18px;font-weight:700;color:#38bdf8;margin-bottom:8px;">⏳ Đang mở ViewOffice và nhảy tới ô ${cleanCol}${targetRow}${cleanSku ? ' (' + cleanSku + ')' : ''}...</div><div style="font-size:13px;color:#94a3b8;">${meta.name}${sheet ? ' • Sheet: ' + sheet : ''}</div></div></body></html>`)
+    win.document.close()
+  }
+
+  try {
+    const excelUrl = await ensureVendorExcelUrlOnCloudinary(vendor, role, meta)
+    const activeCellParam = getVendorOfficeActiveCellParam({
+      vendor,
+      role: comparePart,
+      sheet,
+      rowNum: targetRow,
+      colLetter: cleanCol,
+      sku: cleanSku
+    })
+    const viewUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(excelUrl)}&activeCell=${activeCellParam}`
+    if (win) {
+      win.location.href = viewUrl
+    } else {
+      window.open(viewUrl, '_blank', 'noopener,noreferrer')
+    }
+  } catch (err) {
+    console.error('Lỗi mở ViewOffice tại ô sản phẩm:', err)
+    if (win) win.close()
+    await handleDownloadVendorUploadedFile(vendor, role, meta)
+  }
+}
+
+const closeCompareOfficePreview = () => {
+  compareOfficePreview.value.show = false
+}
+
+/**
+ * Tải File Excel đã up trên Cloudinary về máy với đúng tên file gốc
+ */
+const handleDownloadVendorUploadedFile = async (vendor, role, meta) => {
+  if (!meta || !meta.name) return
+  const fileName = meta.name
+  const url = String(meta.url || '').trim()
+
+  // Trường hợp link trỏ tới file Excel thật trên Cloudinary (không phải JSON index)
+  if (url && !url.toLowerCase().endsWith('.json')) {
+    try {
+      const res = await fetch(url)
+      if (res.ok) {
+        const blob = await res.blob()
+        const blobUrl = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = blobUrl
+        a.download = fileName
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 5000)
+        return
+      }
+    } catch (_) {
+      // Fallback mở trực tiếp link
+    }
+    window.open(url, '_blank', 'noopener,noreferrer')
+    return
+  }
+
+  // Trường hợp file nặng (> 9.5MB) được lưu dưới dạng JSON Index trên Cloudinary -> tái tạo file .xlsx để tải về
+  showAsyncLoading('Đang chuẩn bị file Excel từ Cloudinary...', `File: ${fileName}`)
+  try {
+    const wb = await buildVendorRefWorkbookFromCloudinary(vendor, role, fileName)
+    const outName = fileName.replace(/\.(xlsb|xls)$/i, '.xlsx')
+    XLSX.writeFile(wb, outName)
+    asyncResultModal.value.show = false
+  } catch (err) {
+    console.error('Lỗi tải file từ Cloudinary:', err)
+    asyncResultModal.value.show = false
+    if (url) window.open(url, '_blank', 'noopener,noreferrer')
+  }
+}
+
+/**
+ * Đẩy File Excel + Index JSON mới lên Cloudinary và cập nhật vào Firebase `vendor_ref_files/{vendor}`
+ * (Không dùng dữ liệu tĩnh cũ)
+ */
+const uploadAndPersistVendorRefWorkbook = async (vendor, file, workbook, role = 'both') => {
+  const now = Date.now()
+  await fetchVendorRefFilesMeta()
+  const excelUrl = await uploadExcelFileToCloudinarySafe(file, workbook)
+  const isImportAction = role === 'import'
+
+  if (vendor === 'acronis') {
+    if (!acronisRefData.value) {
+      await loadAcronisRefData().catch(() => {})
+    }
+    const prev = acronisRefData.value || {}
+    const prevMeta = vendorRefFilesMeta.value.acronis || {}
+    const parsed = parseAcronisWorkbookToRefPart(workbook)
+    const updateGocData = role === 'goc' || role === 'both' || !prev.gocItems?.length
+    const updateMauData = role === 'mau' || role === 'import' || role === 'both' || !prev.mauItems?.length
+
+    const updateGocMeta = role === 'goc' || role === 'both' || (!prevMeta.goc_file_name && !isImportAction)
+    const updateMauMeta = role === 'mau' || role === 'import' || role === 'both'
+
+    const slimObj = {
+      version: updateGocData ? file.name : (prev.version || file.name),
+      mauVersion: updateMauData ? file.name : (prev.mauVersion || file.name),
+      updatedAt: now,
+      sheetNames: parsed.sheetNames.length ? parsed.sheetNames : (prev.sheetNames || []),
+      gocItems: updateGocData ? parsed.items : (prev.gocItems || []),
+      gocSheetsRaw: updateGocData ? parsed.sheetsRaw : (prev.gocSheetsRaw || {}),
+      gocSheetsStyled: updateGocData ? parsed.sheetsStyled : (prev.gocSheetsStyled || {}),
+      mauItems: updateMauData ? parsed.items : (prev.mauItems || []),
+      mauSheetsRaw: updateMauData ? parsed.sheetsRaw : (prev.mauSheetsRaw || {}),
+      mauSheetsStyled: updateMauData ? parsed.sheetsStyled : (prev.mauSheetsStyled || {})
+    }
+
+    const indexUrl = await uploadJsonToCloudinary(slimObj, 'acronis_ref_index')
+    const fileUrl = excelUrl || indexUrl
+    const nextMeta = {
+      ...prevMeta,
+      index_url: indexUrl,
+      updated_at: now
+    }
+    if (updateGocMeta) {
+      nextMeta.goc_file_url = fileUrl
+      nextMeta.goc_file_name = file.name
+      nextMeta.goc_updated_at = now
+    }
+    if (updateMauMeta) {
+      nextMeta.mau_file_url = fileUrl
+      nextMeta.mau_file_name = file.name
+      nextMeta.mau_updated_at = now
+    }
+    if (isImportAction) {
+      nextMeta.import_file_url = fileUrl
+      nextMeta.import_file_name = file.name
+      nextMeta.import_updated_at = now
+    }
+
+    await set(dbRef(database, 'vendor_ref_files/acronis'), nextMeta)
+    vendorRefFilesMeta.value.acronis = nextMeta
+    vendorRefLoadError.value.acronis = ''
+    acronisRefData.value = hydrateAcronisRefData(slimObj)
+    return {
+      meta: nextMeta,
+      summaryText: `Đã đẩy "${file.name}" (${parsed.items.length} mã Acronis) lên Cloudinary`
+    }
+  }
+
+  if (vendor === 'kaspersky') {
+    if (!kasRefData.value) {
+      await loadKasRefData().catch(() => {})
+    }
+    const prev = kasRefData.value || {}
+    const prevMeta = vendorRefFilesMeta.value.kaspersky || {}
+    const parsed = parseKasperskyWorkbookToRefPart(workbook)
+    const updateGocData = role === 'goc' || role === 'both' || !prev.gocSaleRows?.length
+    const updateMauData = role === 'mau' || role === 'import' || role === 'both' || !prev.mauSaleRows?.length
+
+    const updateGocMeta = role === 'goc' || role === 'both'
+    const updateMauMeta = role === 'mau' || role === 'import' || role === 'both'
+
+    const slimObj = {
+      version: updateGocData ? file.name : (prev.version || file.name),
+      mauVersion: updateMauData ? file.name : (prev.mauVersion || file.name),
+      generatedAt: new Date(now).toISOString(),
+      updatedAt: now,
+      gocPivotRaw: updateGocData ? parsed.pivotRaw : (prev.gocPivotRaw || []),
+      mauPivotRaw: updateMauData ? parsed.pivotRaw : (prev.mauPivotRaw || []),
+      gocPivotBySku: updateGocData ? parsed.pivotBySku : (prev.gocPivotBySku || {}),
+      mauPivotBySku: updateMauData ? parsed.pivotBySku : (prev.mauPivotBySku || {}),
+      gocSaleRows: updateGocData ? parsed.saleRows : (prev.gocSaleRows || []),
+      mauSaleRows: updateMauData ? parsed.saleRows : (prev.mauSaleRows || [])
+    }
+
+    const indexUrl = await uploadJsonToCloudinary(slimObj, 'kas_ref_index')
+    const fileUrl = excelUrl || indexUrl
+    const nextMeta = {
+      ...prevMeta,
+      index_url: indexUrl,
+      updated_at: now
+    }
+    if (updateGocMeta) {
+      nextMeta.goc_file_url = fileUrl
+      nextMeta.goc_file_name = file.name
+      nextMeta.goc_updated_at = now
+    }
+    if (updateMauMeta) {
+      nextMeta.mau_file_url = fileUrl
+      nextMeta.mau_file_name = file.name
+      nextMeta.mau_updated_at = now
+    }
+    if (isImportAction) {
+      nextMeta.import_file_url = fileUrl
+      nextMeta.import_file_name = file.name
+      nextMeta.import_updated_at = now
+    }
+
+    await set(dbRef(database, 'vendor_ref_files/kaspersky'), nextMeta)
+    vendorRefFilesMeta.value.kaspersky = nextMeta
+    vendorRefLoadError.value.kaspersky = ''
+    kasRefData.value = hydrateKasRefData(slimObj)
+    return {
+      meta: nextMeta,
+      summaryText: `Đã đẩy "${file.name}" (${parsed.saleRows.length.toLocaleString()} dòng Kaspersky) lên Cloudinary`
+    }
+  }
+
+  // SOPHOS
+  if (!sophosRefData.value) {
+    await loadSophosRefData().catch(() => {})
+  }
+  const effectiveSophosRole = isImportAction ? 'both' : role
+  const { updatedRef, role: detectedRole, summaryText } = parseSophosWorkbookToRefUpdate(
+    workbook,
+    file.name,
+    sophosRefData.value,
+    effectiveSophosRole
+  )
+  const indexUrl = await uploadJsonToCloudinary(updatedRef, 'sophos_ref_index')
+  const fileUrl = excelUrl || indexUrl
+  const prevMeta = vendorRefFilesMeta.value.sophos || {}
+  const nextMeta = {
+    ...prevMeta,
+    index_url: indexUrl,
+    updated_at: now
+  }
+
+  if (isImportAction) {
+    nextMeta.import_file_url = fileUrl
+    nextMeta.import_file_name = file.name
+    nextMeta.import_updated_at = now
+    if (detectedRole === 'tg') {
+      nextMeta.tg_file_url = fileUrl
+      nextMeta.tg_file_name = file.name
+      nextMeta.tg_updated_at = now
+    } else if (detectedRole === 'goc' || detectedRole === 'skulist') {
+      nextMeta.goc_file_url = fileUrl
+      nextMeta.goc_file_name = file.name
+      nextMeta.goc_updated_at = now
+    }
+  } else if (role === 'goc' || detectedRole === 'goc') {
+    nextMeta.goc_file_url = fileUrl
+    nextMeta.goc_file_name = file.name
+    nextMeta.goc_updated_at = now
+    if (workbook.SheetNames.includes('SKU_Tab')) {
+      nextMeta.skulist_file_url = fileUrl
+      nextMeta.skulist_file_name = file.name
+      nextMeta.skulist_updated_at = now
+    }
+  } else if (role === 'tg' || detectedRole === 'tg') {
+    nextMeta.tg_file_url = fileUrl
+    nextMeta.tg_file_name = file.name
+    nextMeta.tg_updated_at = now
+  } else if (detectedRole === 'skulist') {
+    nextMeta.skulist_file_url = fileUrl
+    nextMeta.skulist_file_name = file.name
+    nextMeta.skulist_updated_at = now
+    nextMeta.goc_file_url = fileUrl
+    nextMeta.goc_file_name = file.name
+    nextMeta.goc_updated_at = now
+  }
+
+  await set(dbRef(database, 'vendor_ref_files/sophos'), nextMeta)
+  vendorRefFilesMeta.value.sophos = nextMeta
+  vendorRefLoadError.value.sophos = ''
+  sophosRefData.value = updatedRef
+  return {
+    meta: nextMeta,
+    summaryText
+  }
+}
+
 const importSheetNames = computed(() => {
   return [...new Set(importData.value.map(p => p.Sheet_name).filter(Boolean))]
 })
@@ -3235,6 +7003,7 @@ const openSophosStandardizedReimportModal = async (mode = 'bom') => {
       products.push({
         Sheet_name: tg.sheet || 'BOM Trung Gian',
         Ma_hang: sku,
+        sku_code: sku,
         Ten_hang: tenHang || meta.description || sku,
         Description: meta.description,
         Main_img: '',
@@ -3280,6 +7049,7 @@ const openSophosStandardizedReimportModal = async (mode = 'bom') => {
         products.push({
           Sheet_name: sheetGroup,
           Ma_hang: sku,
+          sku_code: sku,
           Ten_hang: meta.description || sku,
           Description: meta.description,
           Main_img: '',
@@ -3315,6 +7085,7 @@ const openSophosStandardizedReimportModal = async (mode = 'bom') => {
     importData.value = products
     importDisplayLimit.value = 150
     clearOldSophosBeforeImport.value = true
+    pendingImportVendorRef.value = null
     activeImportSheet.value = [...new Set(products.map(p => p.Sheet_name).filter(Boolean))][0] || ''
     asyncResultModal.value.show = false
     showImportModal.value = true
@@ -3374,6 +7145,7 @@ const handleFileUpload = async (e) => {
             products.push({
               Sheet_name: familyVal ? `SKU_Tab • ${familyVal}` : (sectorVal ? `SKU_Tab (${sectorVal})` : 'SKU_Tab'),
               Ma_hang: sku,
+              sku_code: sku,
               Ten_hang: meta.description || sku,
               Description: meta.description,
               Main_img: '',
@@ -3568,6 +7340,7 @@ const handleFileUpload = async (e) => {
                   products.push({
                     Sheet_name: sheetName,
                     Ma_hang: id,
+                    sku_code: rawSku,
                     Ten_hang: tenHang,
                     Description: meta.description,
                     Main_img: '',
@@ -3613,6 +7386,13 @@ const handleFileUpload = async (e) => {
 
         asyncResultModal.value.show = false
         if (products.length > 0) {
+          lastPurchaseUploadMeta.value = null
+          pendingImportVendorRef.value = { vendor: 'sophos', file, workbook, uploadedAt: new Date().toISOString() }
+          syncImportFileToCloudinaryRef.value = true
+          pendingImportUploadPromise = uploadAndPersistVendorRefWorkbook('sophos', file, workbook, 'import').catch(err => {
+            console.warn('Upload file import Sophos ngầm lên Cloudinary:', err)
+            return null
+          })
           importData.value = products
           importDisplayLimit.value = 150
           clearOldSophosBeforeImport.value = true
@@ -3777,6 +7557,7 @@ const handleKasperskyUpload = (e) => {
                   _sortBand: band,
                   Sheet_name: sheetLabel,
                   Ma_hang: id,
+                  sku_code: sku || posCode,
                   Ten_hang: tenHang,
                   Description: parts ? `${product} - ${parts}` : product,
                   Main_img: '',
@@ -3911,6 +7692,7 @@ const handleKasperskyUpload = (e) => {
               products.push({
                 Sheet_name: pivotSheetName,
                 Ma_hang: id,
+                sku_code: (sku && sku !== '-') ? sku : derivedPosCode,
                 Ten_hang: tenHang,
                 Description: parts ? `${product} - ${parts}` : product,
                 Main_img: '',
@@ -3960,6 +7742,13 @@ const handleKasperskyUpload = (e) => {
             }
           })
 
+          lastPurchaseUploadMeta.value = null
+          pendingImportVendorRef.value = { vendor: 'kaspersky', file, workbook: wb, uploadedAt: new Date().toISOString() }
+          syncImportFileToCloudinaryRef.value = true
+          pendingImportUploadPromise = uploadAndPersistVendorRefWorkbook('kaspersky', file, wb, 'import').catch(err => {
+            console.warn('Upload file import Kaspersky ngầm lên Cloudinary:', err)
+            return null
+          })
           importData.value = products
           importDisplayLimit.value = 150
           activeImportSheet.value = [...new Set(products.map(p => p.Sheet_name).filter(Boolean))][0] || displaySheetName
@@ -4079,6 +7868,7 @@ const handleAcronisUpload = (e) => {
               products.push({
                 Sheet_name: sheetName,
                 Ma_hang: maHang,
+                sku_code: sku || skuFor,
                 Ten_hang: tenHang,
                 Main_img: '',
                 Ma_nha_cung_cap: 'ACRONIS',
@@ -4137,6 +7927,13 @@ const handleAcronisUpload = (e) => {
             }
           })
 
+          lastPurchaseUploadMeta.value = null
+          pendingImportVendorRef.value = { vendor: 'acronis', file, workbook: wb, uploadedAt: new Date().toISOString() }
+          syncImportFileToCloudinaryRef.value = true
+          pendingImportUploadPromise = uploadAndPersistVendorRefWorkbook('acronis', file, wb, 'import').catch(err => {
+            console.warn('Upload file import Acronis ngầm lên Cloudinary:', err)
+            return null
+          })
           importData.value = products
           activeImportSheet.value = [...new Set(products.map(p => p.Sheet_name).filter(Boolean))][0] || ''
           asyncResultModal.value.show = false
@@ -4237,11 +8034,352 @@ const toNum = (val, def = 0) => {
   return isNaN(n) ? def : n
 }
 
+const inferDefaultSkuCode = (row) => {
+  if (!row || typeof row !== 'object') return ''
+  const explicit = String(row.sku_code ?? '').trim()
+  if (explicit) return explicit
+
+  const ncc = String(row.Ten_nha_cung_cap || row.Ma_nha_cung_cap || '').trim().toUpperCase()
+  const dm = String(row.Danh_muc || '').trim().toUpperCase()
+  const th = String(row.Ten_hang || '').trim().toUpperCase()
+  const mh = String(row.Ma_hang || '').trim()
+  const mhUpper = mh.toUpperCase()
+  const gc = String(row.Ghi_chu || '').trim()
+
+  // 1. ACRONIS: Ma_hang = "${skuFor} - ${sku}"
+  if (ncc.includes('ACRONIS') || dm.includes('ACRONIS') || th.includes('ACRONIS')) {
+    const parts = mh.split('-').map(s => s.trim()).filter(Boolean)
+    if (parts.length >= 2) return parts[1]
+    if (parts.length === 1) return parts[0]
+    return ''
+  }
+
+  // 2. KASPERSKY: Ma_hang = "${posCode} - ${sku} - ${band}..."
+  if (ncc.includes('KASPERSKY') || dm.includes('KASPERSKY') || th.startsWith('KASPERSKY') || /^KL\d{4}/i.test(mhUpper)) {
+    const tokens = [
+      ...(mh.match(/KL\d{4}[A-Z0-9*]+/gi) || []),
+      ...(gc.match(/KL\d{4}[A-Z0-9*]+/gi) || [])
+    ].map(s => s.toUpperCase())
+    const starSku = tokens.find(t => t.includes('*'))
+    return starSku || tokens[0] || ''
+  }
+
+  // 3. SOPHOS
+  if (ncc.includes('SOPHOS') || dm.includes('SOPHOS') || th.startsWith('SOPHOS')) {
+    const noteSku = ((gc.match(/SKU:\s*([A-Z0-9]+)/i) || [])[1] || '').toUpperCase()
+    if (noteSku) return noteSku
+    if (/^[A-Z0-9]{8,16}$/.test(mhUpper) && /\d/.test(mhUpper)) {
+      return mhUpper
+    }
+  }
+
+  return ''
+}
+
+/**
+ * Chuẩn hóa danh sách file lịch sử (`danh_sach_file`) của 1 sản phẩm trong `hang_hoa`:
+ * - Mốc thời gian `file_uploaded_at` là thời gian lúc upload file đó (độc lập với `last_updated` của hàng hóa)
+ * - Lưu kèm `gia_von` (Giá vốn/off hãng), `don_gia` (Đơn giá bán), `gia_nhap` (Giá nhập), `don_vi_tien_te` (bỏ `muc_phan_tram_off`)
+ */
+const normalizeProductFileHistory = (rawList) => {
+  if (!rawList) return []
+  const arr = Array.isArray(rawList)
+    ? rawList
+    : (typeof rawList === 'object' ? Object.values(rawList) : [])
+  return arr
+    .filter(f => f && typeof f === 'object' && f.file_name)
+    .map((f, idx) => ({
+      id: String(f.id || `file_${Date.now()}_${idx}`),
+      file_name: String(f.file_name || '').trim(),
+      file_url: String(f.file_url || '').trim(),
+      file_type: String(f.file_type || 'excel_import').trim(),
+      file_uploaded_at: String(f.file_uploaded_at || '').trim() || new Date().toISOString(),
+      gia_von: toNum(f.gia_von ?? f.Gia_tieu_chuan, 0),
+      don_gia: toNum(f.don_gia ?? f.Don_gia, 0),
+      gia_nhap: toNum(f.gia_nhap, 0),
+      don_vi_tien_te: String(f.don_vi_tien_te || 'VND').trim(),
+      ghi_chu_file: String(f.ghi_chu_file || '').trim()
+    }))
+}
+
+const getProductFileHistory = (item) => {
+  if (!item || typeof item !== 'object') return []
+  return normalizeProductFileHistory(item.danh_sach_file)
+}
+
+const appendFileEntryToProductHistory = (existingList, fileMeta, priceSnapshot = {}) => {
+  const history = normalizeProductFileHistory(existingList)
+  if (!fileMeta || !fileMeta.file_name) return history
+
+  const cleanName = String(fileMeta.file_name || '').trim()
+  const cleanUrl = String(fileMeta.file_url || '').trim()
+  const cleanType = String(fileMeta.file_type || 'excel_import').trim()
+  const uploadedAt = String(fileMeta.file_uploaded_at || '').trim() || new Date().toISOString()
+  const note = String(fileMeta.ghi_chu_file || '').trim()
+
+  const newEntry = {
+    id: String(fileMeta.id || `file_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`),
+    file_name: cleanName,
+    file_url: cleanUrl,
+    file_type: cleanType,
+    file_uploaded_at: uploadedAt,
+    gia_von: toNum(priceSnapshot.gia_von ?? priceSnapshot.Gia_tieu_chuan, 0),
+    don_gia: toNum(priceSnapshot.don_gia ?? priceSnapshot.Don_gia, 0),
+    gia_nhap: toNum(priceSnapshot.gia_nhap, 0),
+    don_vi_tien_te: String(priceSnapshot.don_vi_tien_te || priceSnapshot.Don_vi_tien_te || 'VND').trim(),
+    ghi_chu_file: note
+  }
+
+  // Nếu cùng 1 đợt upload file (trùng file_name + file_uploaded_at) đã có trong lịch sử -> cập nhật lại dòng đó
+  const sameUploadIdx = history.findIndex(
+    item => item.file_name === cleanName && item.file_uploaded_at === uploadedAt
+  )
+  if (sameUploadIdx !== -1) {
+    const updated = [...history]
+    updated[sameUploadIdx] = {
+      ...updated[sameUploadIdx],
+      ...newEntry,
+      file_url: cleanUrl || updated[sameUploadIdx].file_url
+    }
+    return updated
+  }
+
+  return [newEntry, ...history]
+}
+
+const isExcelAttachedFile = (fEntry) => {
+  if (!fEntry) return false
+  const nameOrUrl = `${fEntry.file_name || ''} ${fEntry.file_url || ''}`.toLowerCase()
+  return /\.(xlsx|xlsb|xlsm|xls|doc|docx|ppt|pptx)(\?|$|\s)/i.test(nameOrUrl)
+}
+
+const getAttachedFileViewHref = (fEntry) => {
+  if (!fEntry || !fEntry.file_url) return '#'
+  const url = String(fEntry.file_url).trim()
+  if (isExcelAttachedFile(fEntry) && !url.toLowerCase().endsWith('.json')) {
+    return `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(url)}`
+  }
+  return url
+}
+
+const productFilesModal = ref({
+  show: false,
+  item: null
+})
+const sessionUploadedFileIds = ref([])
+
+const openProductFilesModal = (item) => {
+  if (!item) return
+  productFilesModal.value = {
+    show: true,
+    item
+  }
+}
+
+const closeProductFilesModal = () => {
+  productFilesModal.value.show = false
+}
+
+const handleAttachFileToFormData = async (e) => {
+  const files = Array.from((e.target && e.target.files) || [])
+  if (!files.length) return
+  e.target.value = ''
+
+  let currentHistory = getProductFileHistory(formData.value)
+  const uploadedNames = []
+
+  for (const file of files) {
+    const fileUploadedAt = new Date().toISOString()
+    const entryId = `file_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
+    showAsyncLoading('☁️ Đang đẩy File lên Cloudinary...', `File: ${file.name}`)
+    let fileUrl = ''
+    try {
+      fileUrl = await uploadExcelFileToCloudinarySafe(file)
+    } catch (uploadErr) {
+      console.warn('Không lấy được link Cloudinary cho file, vẫn lưu tên file & mốc thời gian:', uploadErr)
+    }
+
+    currentHistory = appendFileEntryToProductHistory(
+      currentHistory,
+      {
+        id: entryId,
+        file_name: file.name,
+        file_url: fileUrl,
+        file_type: 'manual_upload',
+        file_uploaded_at: fileUploadedAt,
+        ghi_chu_file: 'Đính kèm trực tiếp trong sản phẩm'
+      },
+      {
+        gia_von: toNum(formData.value.Gia_tieu_chuan, 0),
+        don_gia: toNum(formData.value.Don_gia, 0),
+        gia_nhap: toNum(formData.value.gia_nhap, 0),
+        don_vi_tien_te: formData.value.Don_vi_tien_te || 'VND'
+      }
+    )
+    sessionUploadedFileIds.value.push(entryId)
+    uploadedNames.push(file.name)
+  }
+
+  formData.value.danh_sach_file = currentHistory
+
+  // Nếu đang sửa sản phẩm đã có trên Firebase -> lưu ngay danh_sach_file vào Firebase để không bao giờ bị mất
+  if (isEditing.value) {
+    try {
+      const fbKey = await findFirebaseKeyByMaHang(formData.value)
+      if (fbKey) {
+        await update(dbRef(database, `hang_hoa/${fbKey}`), {
+          danh_sach_file: currentHistory
+        })
+        const localItem = items.value.find(x => x._firebaseKey === fbKey || x.Ma_hang === formData.value.Ma_hang)
+        if (localItem) {
+          localItem.danh_sach_file = currentHistory.map(f => ({ ...f }))
+        }
+      }
+    } catch (persistErr) {
+      console.warn('Lưu nhanh danh_sach_file vào Firebase:', persistErr)
+    }
+  }
+
+  showAsyncSuccess(
+    'Đã lưu file vào sản phẩm!',
+    `${uploadedNames.join(', ')}${isEditing.value ? ' (Đã đồng bộ lên Firebase)' : ' (Bấm "Lưu lại" để hoàn tất tạo SP)'}`
+  )
+}
+
+const applyFileHistoryPriceToFormData = (fEntry) => {
+  if (!fEntry) return
+  formData.value.Gia_tieu_chuan = toNum(fEntry.gia_von, 0)
+  formData.value.Don_gia = toNum(fEntry.don_gia, 0)
+  if (toNum(fEntry.gia_nhap, 0) > 0) {
+    formData.value.gia_nhap = toNum(fEntry.gia_nhap, 0)
+  }
+  if (fEntry.don_vi_tien_te) {
+    formData.value.Don_vi_tien_te = fEntry.don_vi_tien_te
+  }
+  syncModalCostMarkupFromPrices(formData.value.Gia_tieu_chuan, formData.value.Don_gia)
+}
+
+const removeFileEntryFromFormData = async (idx) => {
+  const list = getProductFileHistory(formData.value)
+  if (idx < 0 || idx >= list.length) return
+  const removed = list.splice(idx, 1)[0]
+  if (removed?.id) {
+    sessionUploadedFileIds.value = sessionUploadedFileIds.value.filter(id => id !== removed.id)
+  }
+  formData.value.danh_sach_file = [...list]
+
+  if (isEditing.value) {
+    try {
+      const fbKey = await findFirebaseKeyByMaHang(formData.value)
+      if (fbKey) {
+        await update(dbRef(database, `hang_hoa/${fbKey}`), {
+          danh_sach_file: list
+        })
+        const localItem = items.value.find(x => x._firebaseKey === fbKey || x.Ma_hang === formData.value.Ma_hang)
+        if (localItem) {
+          localItem.danh_sach_file = list.map(f => ({ ...f }))
+        }
+      }
+    } catch (err) {
+      console.warn('Lỗi cập nhật xóa file trên Firebase:', err)
+    }
+  }
+  showAsyncSuccess('Đã xóa file thành công!', removed?.file_name || '')
+}
+
+const handleAttachFileDirectToProduct = async (e, item) => {
+  const files = Array.from((e.target && e.target.files) || [])
+  if (!files.length || !item) return
+  e.target.value = ''
+
+  try {
+    const fbKey = await findFirebaseKeyByMaHang(item)
+    if (!fbKey) {
+      throw new Error('Không tìm thấy sản phẩm trên Firebase')
+    }
+
+    let newHistory = getProductFileHistory(item)
+    const uploadedNames = []
+
+    for (const file of files) {
+      const fileUploadedAt = new Date().toISOString()
+      showAsyncLoading('☁️ Đang tải File lên Cloudinary & lưu vào sản phẩm...', `File: ${file.name}`)
+      let fileUrl = ''
+      try {
+        fileUrl = await uploadExcelFileToCloudinarySafe(file)
+      } catch (uploadErr) {
+        console.warn('Không lấy được link Cloudinary cho file, vẫn lưu tên file & mốc thời gian:', uploadErr)
+      }
+
+      newHistory = appendFileEntryToProductHistory(
+        newHistory,
+        {
+          file_name: file.name,
+          file_url: fileUrl,
+          file_type: 'manual_upload',
+          file_uploaded_at: fileUploadedAt,
+          ghi_chu_file: 'Đính kèm trực tiếp từ Lịch sử File'
+        },
+        {
+          gia_von: toNum(item.Gia_tieu_chuan, 0),
+          don_gia: toNum(item.Don_gia, 0),
+          gia_nhap: toNum(item.gia_nhap, 0),
+          don_vi_tien_te: item.Don_vi_tien_te || 'VND'
+        }
+      )
+      uploadedNames.push(file.name)
+    }
+
+    // Chỉ cập nhật danh_sach_file, giữ nguyên last_updated của hàng hóa!
+    await update(dbRef(database, `hang_hoa/${fbKey}`), {
+      danh_sach_file: newHistory
+    })
+    item.danh_sach_file = newHistory
+    await fetchData()
+    const refreshed = items.value.find(x => x._firebaseKey === fbKey || x.Ma_hang === item.Ma_hang)
+    if (refreshed) productFilesModal.value.item = refreshed
+    showAsyncSuccess('Đã lưu file vào lịch sử sản phẩm!', `${uploadedNames.join(', ')}`)
+  } catch (err) {
+    console.error('Lỗi lưu file trực tiếp vào sản phẩm:', err)
+    showAsyncError('Lỗi lưu file', err.message || String(err))
+  }
+}
+
+const removeFileDirectFromProduct = async (item, idx) => {
+  if (!item) return
+  const list = getProductFileHistory(item)
+  if (idx < 0 || idx >= list.length) return
+  if (!confirm(`Xóa file "${list[idx].file_name}" khỏi lịch sử của sản phẩm ${item.Ma_hang}?`)) return
+
+  try {
+    const fbKey = await findFirebaseKeyByMaHang(item)
+    if (!fbKey) return
+    const removedFile = list.splice(idx, 1)[0]
+    await update(dbRef(database, `hang_hoa/${fbKey}`), {
+      danh_sach_file: list
+    })
+    item.danh_sach_file = list
+    await fetchData()
+    const refreshed = items.value.find(x => x._firebaseKey === fbKey || x.Ma_hang === item.Ma_hang)
+    if (refreshed) productFilesModal.value.item = refreshed
+    showAsyncSuccess('Đã xóa file thành công!', removedFile?.file_name || '')
+  } catch (err) {
+    console.error('Lỗi xóa file khỏi sản phẩm:', err)
+    showAsyncError('Lỗi xóa file', err.message || String(err))
+  }
+}
+
+const lastPurchaseUploadMeta = ref(null)
+const imageCheckCurrentFileMeta = ref(null)
+const kasCheckCurrentFileMeta = ref(null)
+
 const buildFirebaseHangHoaPayload = (p) => {
   const typeVal = String(p.Type ?? p.TYPE ?? '').trim()
   const offVal = toNum(p.muc_phan_tram_off !== undefined && p.muc_phan_tram_off !== '' ? p.muc_phan_tram_off : p['muc_%_off'], 0)
+  const resolvedSkuCode = String(p.sku_code ?? p.SKU ?? p.sku ?? p.ma_sku ?? '').trim()
   return {
     Ma_hang: String(p.Ma_hang || '').trim(),
+    sku_code: resolvedSkuCode,
     Ten_hang: String(p.Ten_hang || '').trim(),
     Description: String(p.Description ?? p.description ?? '').trim(),
     Main_img: String(p.Main_img || ''),
@@ -4270,6 +8408,7 @@ const buildFirebaseHangHoaPayload = (p) => {
     Type: typeVal,
     thoi_han_bao_hanh: String(p.thoi_han_bao_hanh || ''),
     volume: String(p.volume || ''),
+    danh_sach_file: normalizeProductFileHistory(p.danh_sach_file),
     last_updated: new Date().toISOString()
   }
 }
@@ -4290,7 +8429,63 @@ const confirmImport = async () => {
     `Sẽ lưu ${importData.value.length} sản phẩm`
   )
   try {
-    // Đọc danh sách hiện có trên Firebase để map Ma_hang -> firebaseKey (giống createHangHoaBatch_ trong backendOfficial)
+    // 1. Chuẩn bị thông tin File Đã Up (tên file, link Cloudinary, và mốc thời gian upload của riêng file đó)
+    let cloudRefMsg = ''
+    let importSessionFileMeta = null
+
+    if (syncImportFileToCloudinaryRef.value && pendingImportVendorRef.value) {
+      const { vendor, file, workbook, uploadedAt } = pendingImportVendorRef.value
+      showAsyncLoading(
+        '☁️ Đang cập nhật File Đã Up lên Cloudinary...',
+        `File: ${file.name} (${vendor.toUpperCase()})`
+      )
+      try {
+        const refRes = pendingImportUploadPromise
+          ? (await pendingImportUploadPromise) || (await uploadAndPersistVendorRefWorkbook(vendor, file, workbook, 'import'))
+          : await uploadAndPersistVendorRefWorkbook(vendor, file, workbook, 'import')
+        if (refRes?.summaryText) {
+          cloudRefMsg = ` · ☁️ ${refRes.summaryText}`
+        }
+        const m = refRes?.meta || {}
+        importSessionFileMeta = {
+          file_name: file.name,
+          file_url: m.import_file_url || m.goc_file_url || m.mau_file_url || m.tg_file_url || '',
+          file_type: 'excel_import',
+          file_uploaded_at: uploadedAt || new Date().toISOString(),
+          ghi_chu_file: `Import Excel ${vendor.toUpperCase()}`
+        }
+      } catch (cloudErr) {
+        console.error('Lỗi cập nhật file tham chiếu lên Cloudinary khi import:', cloudErr)
+        cloudRefMsg = ` (⚠️ Lưu ý: Chưa đẩy được file tham chiếu lên Cloudinary: ${cloudErr.message})`
+        importSessionFileMeta = {
+          file_name: file.name,
+          file_url: '',
+          file_type: 'excel_import',
+          file_uploaded_at: uploadedAt || new Date().toISOString(),
+          ghi_chu_file: `Import Excel ${vendor.toUpperCase()}`
+        }
+      }
+      pendingImportVendorRef.value = null
+      pendingImportUploadPromise = null
+    } else if (lastPurchaseUploadMeta.value) {
+      const pMeta = lastPurchaseUploadMeta.value
+      let pUrl = ''
+      if (pMeta.uploadPromise) {
+        try {
+          pUrl = (await pMeta.uploadPromise) || ''
+        } catch (_) {}
+      }
+      importSessionFileMeta = {
+        file_name: pMeta.file_name,
+        file_url: pUrl,
+        file_type: 'purchase_quote',
+        file_uploaded_at: pMeta.file_uploaded_at || new Date().toISOString(),
+        ghi_chu_file: 'Import Mua Hàng (Giá vốn/off hãng)'
+      }
+      lastPurchaseUploadMeta.value = null
+    }
+
+    // 2. Đọc danh sách hiện có trên Firebase để map Ma_hang -> firebaseKey & giữ lại lịch sử danh_sach_file cũ
     const snap = await get(dbRef(database, 'hang_hoa'))
     const existingData = snap.val() || {}
     const existingMap = {}
@@ -4334,9 +8529,21 @@ const confirmImport = async () => {
     importData.value.forEach(p => {
       const payloadObj = buildFirebaseHangHoaPayload(p)
       const maHang = payloadObj.Ma_hang
-      if (maHang && existingMap[maHang]) {
-        const fbKey = existingMap[maHang]
-        allEntries.push([fbKey, payloadObj])
+      const existingFbKey = maHang ? existingMap[maHang] : null
+      const existingRow = existingFbKey ? existingData[existingFbKey] : null
+      const prevFileHistory = existingRow?.danh_sach_file || p.danh_sach_file || []
+
+      payloadObj.danh_sach_file = importSessionFileMeta
+        ? appendFileEntryToProductHistory(prevFileHistory, importSessionFileMeta, {
+            gia_von: payloadObj.Gia_tieu_chuan,
+            don_gia: payloadObj.Don_gia,
+            gia_nhap: payloadObj.gia_nhap,
+            don_vi_tien_te: payloadObj.Don_vi_tien_te
+          })
+        : normalizeProductFileHistory(prevFileHistory)
+
+      if (existingFbKey) {
+        allEntries.push([existingFbKey, payloadObj])
         updatedCount++
       } else {
         const newKey = push(dbRef(database, 'hang_hoa')).key
@@ -4358,9 +8565,9 @@ const confirmImport = async () => {
     }
 
     showImportModal.value = false
-    const summaryText = deletedOldCount > 0
-      ? `Đã xóa ${deletedOldCount} mã cũ, thêm mới ${addedCount}, cập nhật ${updatedCount} sản phẩm SOPHOS (Ma_hang = SKU).`
-      : `Thêm mới: ${addedCount}, Cập nhật: ${updatedCount} sản phẩm.`
+    const summaryText = (deletedOldCount > 0
+      ? `Đã xóa ${deletedOldCount} mã cũ, thêm mới ${addedCount}, cập nhật ${updatedCount} sản phẩm SOPHOS (Ma_hang = SKU)`
+      : `Thêm mới: ${addedCount}, Cập nhật: ${updatedCount} sản phẩm`) + cloudRefMsg
     showAsyncSuccess('Đã lưu thành công!', summaryText)
     await fetchData()
     await syncAutoUpdatePriceListsInFirebase()
@@ -4374,6 +8581,7 @@ const confirmImport = async () => {
 
 const defaultForm = {
   Ma_hang: '',
+  sku_code: '',
   Ten_hang: '',
   Description: '',
   Main_img: '',
@@ -4400,6 +8608,7 @@ const defaultForm = {
   Type: '',
   thoi_han_bao_hanh: '',
   volume: '',
+  danh_sach_file: [],
   last_updated: ''
 }
 
@@ -4442,6 +8651,8 @@ watch(() => formData.value.Ten_nha_cung_cap, (newVal) => {
 watch(() => formData.value.Don_vi_tien_te, (newVal) => {
   if (!isEditing.value && newVal === 'VND') {
     formData.value.Ti_gia = 1
+  } else if (String(newVal || '').trim().toUpperCase() === 'USD' && (!formData.value.Ti_gia || Number(formData.value.Ti_gia) <= 1)) {
+    formData.value.Ti_gia = currentSystemUsdRate.value || 26200
   }
 })
 
@@ -4481,50 +8692,349 @@ function checkVolumeMatch(volumeStr, userCount) {
   return false;
 }
 
+const PRODUCT_PAGE_SIZE = 20
+const FILTER_DROPDOWN_PAGE_SIZE = 20
+const displayLimit = ref(PRODUCT_PAGE_SIZE)
+
+const sortOrder = ref('default') // 'default' | 'newest' | 'oldest'
+const selectedBrandFilter = ref('')
+const selectedCategoryFilter = ref('')
+const selectedSupplierFilter = ref('')
+
+const openDropdownType = ref('') // '' | 'brand' | 'category' | 'supplier'
+const brandDropdownSearch = ref('')
+const categoryDropdownSearch = ref('')
+const supplierDropdownSearch = ref('')
+const brandDropdownLimit = ref(FILTER_DROPDOWN_PAGE_SIZE)
+const categoryDropdownLimit = ref(FILTER_DROPDOWN_PAGE_SIZE)
+const supplierDropdownLimit = ref(FILTER_DROPDOWN_PAGE_SIZE)
+
+const getItemBrand = (item) => {
+  if (!item) return 'KHÁC'
+  const explicitBrand = String(item.Hang || item.hang || '').trim().toUpperCase()
+  if (explicitBrand) return explicitBrand
+
+  const ncc = String(item.Ten_nha_cung_cap || '').trim().toUpperCase()
+  const maNcc = String(item.Ma_nha_cung_cap || '').trim().toUpperCase()
+  const dm = String(item.Danh_muc || '').trim().toUpperCase()
+  const th = String(item.Ten_hang || '').trim().toUpperCase()
+  const mh = String(item.Ma_hang || '').trim().toUpperCase()
+  const combined = `${ncc} ${maNcc} ${dm} ${th} ${mh}`
+
+  if (combined.includes('SOPHOS') || /\bXGS\s*\d/i.test(combined)) return 'SOPHOS'
+  if (combined.includes('KASPERSKY') || /^KL\d{4}/i.test(mh)) return 'KASPERSKY'
+  if (combined.includes('ACRONIS')) return 'ACRONIS'
+  if (combined.includes('MICROSOFT') || /\b(M365|OFFICE\s*365|WINDOWS\s*SERVER|SQL\s*SERVER|AZURE|EXCHANGE\s*ONLINE|SHAREPOINT)\b/i.test(combined)) return 'MICROSOFT'
+  if (combined.includes('FORTINET') || combined.includes('FORTIGATE') || combined.includes('FORTICARE')) return 'FORTINET'
+  if (combined.includes('CISCO')) return 'CISCO'
+  if (combined.includes('DELL')) return 'DELL'
+  if (/\b(HPE|HEWLETT|ARUBA)\b/i.test(combined)) return 'HPE / ARUBA'
+  if (/\bHP\b/i.test(combined)) return 'HP'
+  if (combined.includes('VMWARE') || combined.includes('VSPHERE')) return 'VMWARE'
+  if (combined.includes('VEEAM')) return 'VEEAM'
+  if (combined.includes('PALO ALTO')) return 'PALO ALTO'
+  if (combined.includes('BITDEFENDER')) return 'BITDEFENDER'
+  if (combined.includes('TREND MICRO')) return 'TREND MICRO'
+  if (combined.includes('SYNOLOGY')) return 'SYNOLOGY'
+  if (combined.includes('CHECK POINT') || combined.includes('CHECKPOINT')) return 'CHECK POINT'
+  if (combined.includes('SYMANTEC')) return 'SYMANTEC'
+
+  if (maNcc && !/^(CONG\s*TY|CÔNG\s*TY|CTY|CHI\s*NHANH|CHI\s*NHÁNH)/i.test(maNcc) && maNcc.length <= 28) {
+    return maNcc
+  }
+  if (ncc && !/^(CONG\s*TY|CÔNG\s*TY|CTY|CHI\s*NHANH|CHI\s*NHÁNH)/i.test(ncc) && ncc.length <= 28) {
+    return ncc
+  }
+  return 'KHÁC'
+}
+
+const getItemSupplier = (item) => {
+  if (!item) return 'CHƯA CÓ NCC'
+  const ncc = String(item.Ten_nha_cung_cap || item.Ma_nha_cung_cap || '').trim().toUpperCase()
+  return ncc || 'CHƯA CÓ NCC'
+}
+
+const getItemCategory = (item) => {
+  if (!item) return 'CHƯA PHÂN LOẠI'
+  return String(item.Danh_muc || 'CHƯA PHÂN LOẠI').trim().toUpperCase() || 'CHƯA PHÂN LOẠI'
+}
+
+const getItemSortTimestamp = (item) => {
+  if (!item) return 0
+  const rawDate = item.last_updated || item.created_at
+  if (rawDate) {
+    const t = typeof rawDate === 'number' ? rawDate : new Date(rawDate).getTime()
+    if (!isNaN(t) && t > 0) return t
+  }
+  return 0
+}
+
+const compareItemsBySortOrder = (a, b, order) => {
+  const timeA = getItemSortTimestamp(a)
+  const timeB = getItemSortTimestamp(b)
+  if (timeA !== timeB) {
+    return order === 'newest' ? timeB - timeA : timeA - timeB
+  }
+  const idxA = Number(a?._initIndex) || 0
+  const idxB = Number(b?._initIndex) || 0
+  return order === 'newest' ? idxB - idxA : idxA - idxB
+}
+
+const brandFilterOptions = computed(() => {
+  const counts = new Map()
+  items.value.forEach(item => {
+    const b = getItemBrand(item)
+    counts.set(b, (counts.get(b) || 0) + 1)
+  })
+  return Array.from(counts.entries())
+    .map(([value, count]) => ({ value, label: value, count }))
+    .sort((a, b) => {
+      if (a.value === 'KHÁC') return 1
+      if (b.value === 'KHÁC') return -1
+      return b.count - a.count || a.label.localeCompare(b.label)
+    })
+})
+
+const filteredBrandOptions = computed(() => {
+  const kw = normalizeString(brandDropdownSearch.value)
+  if (!kw) return brandFilterOptions.value
+  return brandFilterOptions.value.filter(opt =>
+    opt.label.toLowerCase().includes(brandDropdownSearch.value.trim().toLowerCase()) ||
+    normalizeString(opt.label).includes(kw)
+  )
+})
+
+const displayedBrandOptions = computed(() => {
+  return filteredBrandOptions.value.slice(0, brandDropdownLimit.value)
+})
+
+const categoryFilterOptions = computed(() => {
+  const counts = new Map()
+  items.value.forEach(item => {
+    if (selectedBrandFilter.value && getItemBrand(item) !== selectedBrandFilter.value) return
+    if (selectedSupplierFilter.value && getItemSupplier(item) !== selectedSupplierFilter.value) return
+    const c = getItemCategory(item)
+    counts.set(c, (counts.get(c) || 0) + 1)
+  })
+  return Array.from(counts.entries())
+    .map(([value, count]) => ({ value, label: value, count }))
+    .sort((a, b) => {
+      if (a.value === 'CHƯA PHÂN LOẠI') return 1
+      if (b.value === 'CHƯA PHÂN LOẠI') return -1
+      return a.label.localeCompare(b.label)
+    })
+})
+
+const categoryFilterTotalItems = computed(() => {
+  return categoryFilterOptions.value.reduce((sum, opt) => sum + opt.count, 0)
+})
+
+const filteredCategoryOptions = computed(() => {
+  const kw = normalizeString(categoryDropdownSearch.value)
+  if (!kw) return categoryFilterOptions.value
+  return categoryFilterOptions.value.filter(opt =>
+    opt.label.toLowerCase().includes(categoryDropdownSearch.value.trim().toLowerCase()) ||
+    normalizeString(opt.label).includes(kw)
+  )
+})
+
+const displayedCategoryOptions = computed(() => {
+  return filteredCategoryOptions.value.slice(0, categoryDropdownLimit.value)
+})
+
+const supplierFilterOptions = computed(() => {
+  const counts = new Map()
+  items.value.forEach(item => {
+    const s = getItemSupplier(item)
+    counts.set(s, (counts.get(s) || 0) + 1)
+  })
+  return Array.from(counts.entries())
+    .map(([value, count]) => ({ value, label: value, count }))
+    .sort((a, b) => {
+      if (a.value === 'CHƯA CÓ NCC') return 1
+      if (b.value === 'CHƯA CÓ NCC') return -1
+      return b.count - a.count || a.label.localeCompare(b.label)
+    })
+})
+
+const filteredSupplierOptions = computed(() => {
+  const kw = normalizeString(supplierDropdownSearch.value)
+  if (!kw) return supplierFilterOptions.value
+  return supplierFilterOptions.value.filter(opt =>
+    opt.label.toLowerCase().includes(supplierDropdownSearch.value.trim().toLowerCase()) ||
+    normalizeString(opt.label).includes(kw)
+  )
+})
+
+const displayedSupplierOptions = computed(() => {
+  return filteredSupplierOptions.value.slice(0, supplierDropdownLimit.value)
+})
+
+watch(brandDropdownSearch, () => {
+  brandDropdownLimit.value = FILTER_DROPDOWN_PAGE_SIZE
+})
+watch(categoryDropdownSearch, () => {
+  categoryDropdownLimit.value = FILTER_DROPDOWN_PAGE_SIZE
+})
+watch(supplierDropdownSearch, () => {
+  supplierDropdownLimit.value = FILTER_DROPDOWN_PAGE_SIZE
+})
+
+const toggleFilterDropdown = (type) => {
+  if (openDropdownType.value === type) {
+    openDropdownType.value = ''
+    return
+  }
+  openDropdownType.value = type
+  if (type === 'brand') {
+    brandDropdownSearch.value = ''
+    brandDropdownLimit.value = FILTER_DROPDOWN_PAGE_SIZE
+  } else if (type === 'category') {
+    categoryDropdownSearch.value = ''
+    categoryDropdownLimit.value = FILTER_DROPDOWN_PAGE_SIZE
+  } else if (type === 'supplier') {
+    supplierDropdownSearch.value = ''
+    supplierDropdownLimit.value = FILTER_DROPDOWN_PAGE_SIZE
+  }
+}
+
+const selectFilterOption = (type, value) => {
+  if (type === 'brand') {
+    selectedBrandFilter.value = value
+  } else if (type === 'category') {
+    selectedCategoryFilter.value = value
+  } else if (type === 'supplier') {
+    selectedSupplierFilter.value = value
+  }
+  openDropdownType.value = ''
+}
+
+const onFilterDropdownScroll = (e, type) => {
+  const el = e.target
+  if (!el) return
+  if (el.scrollTop + el.clientHeight >= el.scrollHeight - 40) {
+    if (type === 'brand' && brandDropdownLimit.value < filteredBrandOptions.value.length) {
+      brandDropdownLimit.value += FILTER_DROPDOWN_PAGE_SIZE
+    } else if (type === 'category' && categoryDropdownLimit.value < filteredCategoryOptions.value.length) {
+      categoryDropdownLimit.value += FILTER_DROPDOWN_PAGE_SIZE
+    } else if (type === 'supplier' && supplierDropdownLimit.value < filteredSupplierOptions.value.length) {
+      supplierDropdownLimit.value += FILTER_DROPDOWN_PAGE_SIZE
+    }
+  }
+}
+
+const closeFilterDropdownOnOutsideClick = () => {
+  if (openDropdownType.value) {
+    openDropdownType.value = ''
+  }
+}
+
+const toggleSortOrderDirection = () => {
+  if (sortOrder.value === 'newest') {
+    sortOrder.value = 'oldest'
+  } else {
+    sortOrder.value = 'newest'
+  }
+}
+
+const hasActiveSearchOrFilter = computed(() => {
+  return Boolean(
+    searchQuery.value.trim() ||
+    userVolumeFilter.value !== '' ||
+    sortOrder.value !== 'default' ||
+    selectedBrandFilter.value ||
+    selectedCategoryFilter.value ||
+    selectedSupplierFilter.value
+  )
+})
+
+const resetAllSearchAndFilters = () => {
+  searchQuery.value = ''
+  userVolumeFilter.value = ''
+  sortOrder.value = 'default'
+  selectedBrandFilter.value = ''
+  selectedCategoryFilter.value = ''
+  selectedSupplierFilter.value = ''
+  openDropdownType.value = ''
+  displayLimit.value = PRODUCT_PAGE_SIZE
+}
+
+watch([selectedBrandFilter, selectedSupplierFilter], () => {
+  if (selectedCategoryFilter.value) {
+    const stillExists = categoryFilterOptions.value.some(opt => opt.value === selectedCategoryFilter.value)
+    if (!stillExists) {
+      selectedCategoryFilter.value = ''
+    }
+  }
+})
+
 const filteredItems = computed(() => {
   const uCount = parseInt(userVolumeFilter.value, 10)
   const hasVolumeFilter = userVolumeFilter.value !== '' && !isNaN(uCount)
   const hasPriceListFilter = Boolean(selectedPriceListId.value && activePriceList.value)
+  const hasBrand = Boolean(selectedBrandFilter.value)
+  const hasCategory = Boolean(selectedCategoryFilter.value)
+  const hasSupplier = Boolean(selectedSupplierFilter.value)
   const words = searchQuery.value ? searchQuery.value.toLowerCase().split(/\s+/).filter(Boolean) : []
 
-  if (!words.length && !hasVolumeFilter && !hasPriceListFilter) return items.value
-  
-  return items.value.filter(item => {
-    if (hasPriceListFilter && !getPriceListEntry(item)) {
-      return false
-    }
+  let result = items.value
+  if (words.length || hasVolumeFilter || hasPriceListFilter || hasBrand || hasCategory || hasSupplier) {
+    result = items.value.filter(item => {
+      if (hasPriceListFilter && !getPriceListEntry(item)) {
+        return false
+      }
+      if (hasBrand && getItemBrand(item) !== selectedBrandFilter.value) {
+        return false
+      }
+      if (hasCategory && getItemCategory(item) !== selectedCategoryFilter.value) {
+        return false
+      }
+      if (hasSupplier && getItemSupplier(item) !== selectedSupplierFilter.value) {
+        return false
+      }
 
-    let okKw = true;
-    if (words.length > 0) {
-      const ma = (item.Ma_hang || '').toLowerCase()
-      const ten = (item.Ten_hang || '').toLowerCase()
-      const desc = (item.Description || '').toLowerCase()
-      const dm = (item.Danh_muc || '').toLowerCase()
-      const ncc = (item.Ten_nha_cung_cap || '').toLowerCase()
-      
-      const maN = normalizeString(ma)
-      const tenN = normalizeString(ten)
-      const descN = normalizeString(desc)
-      const dmN = normalizeString(dm)
-      const nccN = normalizeString(ncc)
-      
-      okKw = words.every(w => {
-        const wN = normalizeString(w)
-        return ma.includes(w) || maN.includes(wN) ||
-               ten.includes(w) || tenN.includes(wN) ||
-               desc.includes(w) || descN.includes(wN) ||
-               dm.includes(w) || dmN.includes(wN) ||
-               ncc.includes(w) || nccN.includes(wN)
-      })
-    }
+      let okKw = true
+      if (words.length > 0) {
+        const ma = (item.Ma_hang || '').toLowerCase()
+        const sku = (item.sku_code || '').toLowerCase()
+        const ten = (item.Ten_hang || '').toLowerCase()
+        const desc = (item.Description || '').toLowerCase()
+        const dm = (item.Danh_muc || '').toLowerCase()
+        const ncc = (item.Ten_nha_cung_cap || '').toLowerCase()
 
-    let okVolume = true;
-    if (hasVolumeFilter) {
-      okVolume = checkVolumeMatch(item.volume || '', uCount);
-    }
+        const maN = normalizeString(ma)
+        const skuN = normalizeString(sku)
+        const tenN = normalizeString(ten)
+        const descN = normalizeString(desc)
+        const dmN = normalizeString(dm)
+        const nccN = normalizeString(ncc)
 
-    return okKw && okVolume;
-  })
+        okKw = words.every(w => {
+          const wN = normalizeString(w)
+          return ma.includes(w) || maN.includes(wN) ||
+                 sku.includes(w) || skuN.includes(wN) ||
+                 ten.includes(w) || tenN.includes(wN) ||
+                 desc.includes(w) || descN.includes(wN) ||
+                 dm.includes(w) || dmN.includes(wN) ||
+                 ncc.includes(w) || nccN.includes(wN)
+        })
+      }
+
+      let okVolume = true
+      if (hasVolumeFilter) {
+        okVolume = checkVolumeMatch(item.volume || '', uCount)
+      }
+
+      return okKw && okVolume
+    })
+  }
+
+  if (sortOrder.value === 'newest' || sortOrder.value === 'oldest') {
+    const order = sortOrder.value
+    result = [...result].sort((a, b) => compareItemsBySortOrder(a, b, order))
+  }
+
+  return result
 })
 
 function highlightText(text, query) {
@@ -4537,11 +9047,24 @@ function highlightText(text, query) {
   return text.replace(regex, '<span style="background-color: #eab308; color: #0f172a; font-weight: bold; padding: 0 2px; border-radius: 2px;">$1</span>')
 }
 
-const displayLimit = ref(15)
-
-watch(searchQuery, () => {
-  displayLimit.value = 15
-})
+watch(
+  [
+    searchQuery,
+    userVolumeFilter,
+    sortOrder,
+    selectedBrandFilter,
+    selectedCategoryFilter,
+    selectedSupplierFilter
+  ],
+  () => {
+    displayLimit.value = PRODUCT_PAGE_SIZE
+    nextTick(() => {
+      if (lazyLoadSentinelRef.value) {
+        setupLazyLoadObserver(lazyLoadSentinelRef.value)
+      }
+    })
+  }
+)
 
 /* ═══════════════════════════════════════════════════════════════════════════
    QUẢN LÝ BẢNG GIÁ (PRICE LIST) — FIREBASE NODE: bang_gia
@@ -4725,7 +9248,7 @@ const getPriceListEntry = (item) => {
 }
 
 watch(selectedPriceListId, () => {
-  displayLimit.value = 15
+  displayLimit.value = PRODUCT_PAGE_SIZE
 })
 
 const recalcRowPrice = (row, markManual = false) => {
@@ -5360,12 +9883,7 @@ const exportDraftPriceListToExcel = () => {
   buildAndDownloadPriceListExcel(title, priceListForm.value.ghi_chu, selected, priceListForm.value.ngay_bat_dau, priceListForm.value.ngay_ket_thuc)
 }
 
-const totalGroupsCount = computed(() => {
-  const categories = new Set(filteredItems.value.map(item => item.Danh_muc || 'CHƯA PHÂN LOẠI'))
-  return categories.size
-})
-
-const groupedItems = computed(() => {
+const allGroupedItems = computed(() => {
   const groups = {}
   filteredItems.value.forEach(item => {
     const cat = item.Danh_muc || 'CHƯA PHÂN LOẠI'
@@ -5374,21 +9892,87 @@ const groupedItems = computed(() => {
     }
     groups[cat].push(item)
   })
-  
-  // Preserve original spreadsheet order, but move "CHƯA PHÂN LOẠI" to the end
+
   const sortedKeys = Object.keys(groups)
-  const idx = sortedKeys.indexOf('CHƯA PHÂN LOẠI')
-  if (idx > -1) {
-    sortedKeys.splice(idx, 1)
-    sortedKeys.push('CHƯA PHÂN LOẠI')
+  if (sortOrder.value === 'default') {
+    // Preserve original spreadsheet order, but move "CHƯA PHÂN LOẠI" to the end
+    const idx = sortedKeys.indexOf('CHƯA PHÂN LOẠI')
+    if (idx > -1) {
+      sortedKeys.splice(idx, 1)
+      sortedKeys.push('CHƯA PHÂN LOẠI')
+    }
   }
-  const limitedKeys = sortedKeys.slice(0, displayLimit.value)
-  
+
   const sortedGroups = {}
-  limitedKeys.forEach(k => {
+  sortedKeys.forEach(k => {
     sortedGroups[k] = groups[k]
   })
   return sortedGroups
+})
+
+const categoryTotalCounts = computed(() => {
+  const counts = {}
+  for (const [cat, list] of Object.entries(allGroupedItems.value)) {
+    counts[cat] = list.length
+  }
+  return counts
+})
+
+const totalProductsCount = computed(() => filteredItems.value.length)
+
+const totalGroupsCount = computed(() => Object.keys(allGroupedItems.value).length)
+
+const groupedItems = computed(() => {
+  const sortedGroups = {}
+  let remaining = displayLimit.value
+  for (const [cat, list] of Object.entries(allGroupedItems.value)) {
+    if (remaining <= 0) break
+    const slice = list.slice(0, remaining)
+    if (slice.length > 0) {
+      sortedGroups[cat] = slice
+      remaining -= slice.length
+    }
+  }
+  return sortedGroups
+})
+
+const displayedProductsCount = computed(() => {
+  return Math.min(displayLimit.value, totalProductsCount.value)
+})
+
+const hasMoreProducts = computed(() => {
+  return displayLimit.value < totalProductsCount.value
+})
+
+const loadMoreProducts = () => {
+  if (displayLimit.value < totalProductsCount.value) {
+    displayLimit.value = Math.min(totalProductsCount.value, displayLimit.value + PRODUCT_PAGE_SIZE)
+  }
+}
+
+const lazyLoadSentinelRef = ref(null)
+let lazyLoadObserver = null
+
+const setupLazyLoadObserver = (el) => {
+  if (lazyLoadObserver) {
+    lazyLoadObserver.disconnect()
+    lazyLoadObserver = null
+  }
+  if (!el || typeof IntersectionObserver === 'undefined') return
+  lazyLoadObserver = new IntersectionObserver(
+    (entries) => {
+      const entry = entries[0]
+      if (entry && entry.isIntersecting && hasMoreProducts.value && !loading.value) {
+        loadMoreProducts()
+      }
+    },
+    { root: null, rootMargin: '280px 0px', threshold: 0.05 }
+  )
+  lazyLoadObserver.observe(el)
+}
+
+watch(lazyLoadSentinelRef, (newEl) => {
+  setupLazyLoadObserver(newEl)
 })
 
 const formatCurrency = (val, currency) => {
@@ -5402,11 +9986,13 @@ const fetchData = async () => {
     const snap = await get(dbRef(database, 'hang_hoa'))
     const data = snap.val() || {}
     const mapped = []
-    Object.entries(data).forEach(([firebaseKey, row]) => {
+    Object.entries(data).forEach(([firebaseKey, row], idx) => {
       if (!row || typeof row !== 'object') return
       mapped.push({
         _firebaseKey: firebaseKey,
+        _initIndex: idx,
         Ma_hang: String(row.Ma_hang ?? '').trim(),
+        sku_code: String(row.sku_code ?? row.SKU ?? row.sku ?? row.ma_sku ?? '').trim(),
         Ten_hang: String(row.Ten_hang ?? ''),
         Description: String(row.Description ?? row.description ?? ''),
         Main_img: String(row.Main_img ?? ''),
@@ -5435,7 +10021,9 @@ const fetchData = async () => {
         Type: String(row.Type ?? row.TYPE ?? '').trim(),
         thoi_han_bao_hanh: String(row.thoi_han_bao_hanh ?? ''),
         volume: String(row.volume ?? ''),
-        last_updated: String(row.last_updated ?? '')
+        danh_sach_file: normalizeProductFileHistory(row.danh_sach_file),
+        last_updated: String(row.last_updated ?? ''),
+        created_at: row.created_at ?? ''
       })
     })
     items.value = mapped
@@ -5499,17 +10087,199 @@ const formatGiaOffDate = (d) => {
   return d
 }
 
+const modalCostMarkup = ref({
+  direction: 'increase',
+  type: 'percent',
+  value: 0
+})
+
+const importBulkCostMarkup = ref({
+  direction: 'increase',
+  type: 'percent',
+  value: 0
+})
+
+const lastPurchaseUploadFile = ref(null)
+const aiPurchaseFallbackModal = ref({
+  show: false,
+  file: null,
+  fileName: ''
+})
+
+const formatCardMarkupBadge = (item) => {
+  const giaVon = toNum(item?.Gia_tieu_chuan, 0)
+  const giaBan = toNum(item?.Don_gia, 0)
+  if (giaVon <= 0 || giaBan <= 0 || giaBan === giaVon) return ''
+  const diff = giaBan - giaVon
+  const sign = diff > 0 ? '+' : '-'
+  const pct = Math.round((Math.abs(diff) / giaVon) * 1000) / 10
+  return `${sign}${pct}% vs Giá vốn`
+}
+
+const syncModalCostMarkupFromPrices = (giaVonVal, donGiaVal) => {
+  const giaVon = toNum(giaVonVal, 0)
+  const donGia = toNum(donGiaVal, 0)
+  if (giaVon <= 0 || donGia <= 0 || donGia === giaVon) {
+    modalCostMarkup.value = { direction: 'increase', type: 'percent', value: 0 }
+    return
+  }
+  const diff = donGia - giaVon
+  const dir = diff < 0 ? 'decrease' : 'increase'
+  const pct = Math.round((Math.abs(diff) / giaVon) * 1000) / 10
+  modalCostMarkup.value = {
+    direction: dir,
+    type: 'percent',
+    value: pct
+  }
+}
+
+const applyModalCostMarkupToDonGia = () => {
+  const giaVon = toNum(formData.value.Gia_tieu_chuan, 0)
+  if (giaVon <= 0) return
+  const dir = modalCostMarkup.value.direction || 'increase'
+  const type = modalCostMarkup.value.type || 'percent'
+  const val = Math.max(0, toNum(modalCostMarkup.value.value, 0))
+  const delta = type === 'percent' ? (giaVon * val) / 100 : val
+  const rawNew = dir === 'decrease' ? giaVon - delta : giaVon + delta
+  formData.value.Don_gia = roundByCurrency(Math.max(0, rawNew), formData.value.Don_vi_tien_te)
+}
+
+const onModalGiaVonChange = () => {
+  const giaVon = toNum(formData.value.Gia_tieu_chuan, 0)
+  if (giaVon <= 0) return
+  const hasRuleVal = toNum(modalCostMarkup.value.value, 0) > 0
+  if (hasRuleVal) {
+    applyModalCostMarkupToDonGia()
+  } else if (!isEditing.value && toNum(formData.value.Don_gia, 0) === 0) {
+    formData.value.Don_gia = giaVon
+  }
+}
+
+const formatModalCostDiffBadge = () => {
+  const giaVon = toNum(formData.value.Gia_tieu_chuan, 0)
+  const giaBan = toNum(formData.value.Don_gia, 0)
+  if (giaVon <= 0 || giaBan <= 0) return ''
+  const diff = giaBan - giaVon
+  if (diff === 0) return 'Bằng Giá vốn (0%)'
+  const sign = diff > 0 ? '+' : '-'
+  const pct = Math.round((Math.abs(diff) / giaVon) * 1000) / 10
+  return `${sign}${formatNumberPlain(Math.abs(diff))} (${sign}${pct}% vs Giá vốn)`
+}
+
+const applyImportBulkMarkupToAll = () => {
+  if (!importData.value.length) return
+  const dir = importBulkCostMarkup.value.direction || 'increase'
+  const type = importBulkCostMarkup.value.type || 'percent'
+  const val = Math.max(0, toNum(importBulkCostMarkup.value.value, 0))
+
+  importData.value.forEach(row => {
+    const baseCost = toNum(row.Gia_tieu_chuan, 0) || toNum(row.Don_gia, 0)
+    if (baseCost <= 0) return
+    if (!toNum(row.Gia_tieu_chuan, 0)) {
+      row.Gia_tieu_chuan = baseCost
+    }
+    const delta = type === 'percent' ? (baseCost * val) / 100 : val
+    const rawNew = dir === 'decrease' ? baseCost - delta : baseCost + delta
+    row.Don_gia = roundByCurrency(Math.max(0, rawNew), row.Don_vi_tien_te || 'VND')
+  })
+}
+
+const handlePurchaseQuoteUpload = async (e) => {
+  const file = e.target.files && e.target.files[0]
+  if (!file) return
+  e.target.value = ''
+
+  lastPurchaseUploadFile.value = file
+  pendingImportVendorRef.value = null
+  const purchaseUploadedAt = new Date().toISOString()
+  lastPurchaseUploadMeta.value = {
+    file,
+    file_name: file.name,
+    file_uploaded_at: purchaseUploadedAt,
+    uploadPromise: (/\.(xlsx|xlsb|xls)$/i.test(file.name)
+      ? uploadExcelFileToCloudinarySafe(file)
+      : uploadBlobToCloudinary(file, file.name)
+    ).catch(err => {
+      console.warn('Upload file mua hàng ngầm lên Cloudinary:', err)
+      return ''
+    })
+  }
+  showAsyncLoading('Đang đọc file Mua Hàng (Giá vốn)...', `File: ${file.name}`)
+
+  try {
+    const { items: parsedItems } = await parsePurchaseFileStandard(file, 'VND')
+    if (parsedItems && parsedItems.length > 0 && parsedItems.some(it => toNum(it.Gia_tieu_chuan, 0) > 0)) {
+      importData.value = parsedItems
+      activeImportSheet.value = parsedItems[0]?.Sheet_name || 'File Mua Hàng'
+      importBulkCostMarkup.value = { direction: 'increase', type: 'percent', value: 0 }
+      asyncResultModal.value.show = false
+      showImportModal.value = true
+    } else {
+      asyncResultModal.value.show = false
+      aiPurchaseFallbackModal.value = {
+        show: true,
+        file,
+        fileName: file.name
+      }
+    }
+  } catch (err) {
+    console.warn('Standard purchase parser failed, offering AI fallback:', err)
+    asyncResultModal.value.show = false
+    aiPurchaseFallbackModal.value = {
+      show: true,
+      file,
+      fileName: file.name
+    }
+  }
+}
+
+const runAiPurchaseFileAnalysis = async (file) => {
+  if (!file) return
+  aiPurchaseFallbackModal.value.show = false
+  showAsyncLoading('🤖 AI đang phân tích file Mua Hàng...', `Đang đọc dữ liệu và tính Giá vốn sau thuế từ "${file.name}"`)
+  try {
+    const { items: aiItems } = await analyzePurchaseFileWithAI(file, 'VND', (stepMsg) => {
+      showAsyncLoading(stepMsg, `File: ${file.name}`)
+    })
+    if (aiItems && aiItems.length > 0) {
+      importData.value = aiItems
+      activeImportSheet.value = aiItems[0]?.Sheet_name || 'File Mua Hàng (AI)'
+      importBulkCostMarkup.value = { direction: 'increase', type: 'percent', value: 0 }
+      asyncResultModal.value.show = false
+      showImportModal.value = true
+    } else {
+      showAsyncError('AI không tìm thấy mặt hàng', 'Không trích xuất được danh sách hàng hóa và giá vốn từ file này.')
+    }
+  } catch (err) {
+    console.error('AI purchase analysis error:', err)
+    showAsyncError('Lỗi phân tích AI', err.message || String(err))
+  }
+}
+
+const confirmAiPurchaseFallback = () => {
+  const file = aiPurchaseFallbackModal.value.file
+  aiPurchaseFallbackModal.value.show = false
+  if (file) {
+    runAiPurchaseFileAnalysis(file)
+  }
+}
+
 const openAddModal = () => {
-  formData.value = { ...defaultForm }
+  sessionUploadedFileIds.value = []
+  formData.value = { ...defaultForm, danh_sach_file: [] }
+  modalCostMarkup.value = { direction: 'increase', type: 'percent', value: 0 }
   originalItem.value = null
   isEditing.value = false
   showModal.value = true
 }
 
 const openEditModal = (item) => {
+  sessionUploadedFileIds.value = []
   const normalizedFeatures = formatFeaturesHtml(item.Features)
+  const normalizedFiles = normalizeProductFileHistory(item.danh_sach_file)
   const plEntry = activePriceList.value ? getPriceListEntry(item) : null
   const giaGocHeThong = toNum(item.Don_gia, 0)
+  syncModalCostMarkupFromPrices(item.Gia_tieu_chuan, item.Don_gia)
 
   if (activePriceList.value && plEntry) {
     const autoSync = activePriceList.value.auto_sync_base_price !== false
@@ -5532,8 +10302,8 @@ const openEditModal = (item) => {
       _pl_value: toNum(plEntry.value, pct),
       _pl_pct: pct
     }
-    formData.value = { ...baseObj }
-    originalItem.value = { ...baseObj }
+    formData.value = { ...baseObj, danh_sach_file: normalizedFiles.map(f => ({ ...f })) }
+    originalItem.value = { ...baseObj, danh_sach_file: normalizedFiles.map(f => ({ ...f })) }
   } else {
     const baseObj = {
       ...item,
@@ -5542,8 +10312,8 @@ const openEditModal = (item) => {
       _gia_goc_he_thong: giaGocHeThong,
       _real_hang_hoa_don_gia: giaGocHeThong
     }
-    formData.value = { ...baseObj }
-    originalItem.value = { ...baseObj }
+    formData.value = { ...baseObj, danh_sach_file: normalizedFiles.map(f => ({ ...f })) }
+    originalItem.value = { ...baseObj, danh_sach_file: normalizedFiles.map(f => ({ ...f })) }
   }
   isEditing.value = true
   showModal.value = true
@@ -5562,6 +10332,7 @@ const formatModalPriceListBadge = () => {
 }
 
 const onModalDonGiaChange = () => {
+  syncModalCostMarkupFromPrices(formData.value.Gia_tieu_chuan, formData.value.Don_gia)
   if (!isEditing.value || !activePriceList.value || !formData.value._has_pl_entry) return
   const giaGoc = toNum(formData.value._gia_goc_he_thong, 0)
   const giaMoi = Math.max(0, toNum(formData.value.Don_gia, 0))
@@ -5683,11 +10454,41 @@ const executeDelete = async () => {
 const hasSystemFieldsChanged = (cur, orig) => {
   if (!cur || !orig) return false
   const sysKeys = [
-    'Ten_hang', 'Description', 'Trang_thai', 'License_duration', 'thoi_han_bao_hanh', 'volume',
+    'sku_code', 'Ten_hang', 'Description', 'Trang_thai', 'License_duration', 'thoi_han_bao_hanh', 'volume',
     'Danh_muc', 'Type', 'Ten_nha_cung_cap', 'DVT', 'Features',
-    'Ghi_chu', 'Don_vi_tien_te', 'Ti_gia', 'Thue_VAT', 'gia_nhap'
+    'Ghi_chu', 'Don_vi_tien_te', 'Ti_gia', 'Thue_VAT', 'gia_nhap', 'Gia_tieu_chuan'
   ]
-  return sysKeys.some(k => String(cur[k] ?? '') !== String(orig[k] ?? ''))
+  if (sysKeys.some(k => String(cur[k] ?? '') !== String(orig[k] ?? ''))) return true
+  return JSON.stringify(cur.danh_sach_file || []) !== JSON.stringify(orig.danh_sach_file || [])
+}
+
+const hasProductCoreFieldsChanged = (cur, orig) => {
+  if (!cur || !orig) return true
+  const coreKeys = [
+    'sku_code', 'Ten_hang', 'Description', 'Trang_thai', 'License_duration', 'thoi_han_bao_hanh', 'volume',
+    'Danh_muc', 'Type', 'Ten_nha_cung_cap', 'DVT', 'Features',
+    'Ghi_chu', 'Don_vi_tien_te', 'Ti_gia', 'Thue_VAT', 'gia_nhap', 'Gia_tieu_chuan', 'Don_gia'
+  ]
+  return coreKeys.some(k => String(cur[k] ?? '') !== String(orig[k] ?? ''))
+}
+
+const syncSessionUploadedFilesPrices = () => {
+  if (!sessionUploadedFileIds.value.length) return
+  const idSet = new Set(sessionUploadedFileIds.value)
+  const curFiles = getProductFileHistory(formData.value)
+  if (!curFiles.length) return
+  formData.value.danh_sach_file = curFiles.map(f => {
+    if (idSet.has(f.id)) {
+      return {
+        ...f,
+        gia_von: toNum(formData.value.Gia_tieu_chuan, 0),
+        don_gia: toNum(formData.value.Don_gia, 0),
+        gia_nhap: toNum(formData.value.gia_nhap, 0),
+        don_vi_tien_te: String(formData.value.Don_vi_tien_te || 'VND').trim()
+      }
+    }
+    return f
+  })
 }
 
 const saveItem = async () => {
@@ -5698,7 +10499,9 @@ const saveItem = async () => {
   
   saving.value = true
   try {
+    syncSessionUploadedFilesPrices()
     if (isEditing.value) {
+      const coreChanged = hasProductCoreFieldsChanged(formData.value, originalItem.value)
       // Nếu đang chọn Bảng giá: cập nhật giá mới vào bảng giá đó
       if (activePriceList.value && formData.value._has_pl_entry) {
         const plKey = activePriceList.value._firebaseKey
@@ -5736,7 +10539,7 @@ const saveItem = async () => {
           updated_at: Date.now()
         })
 
-        // Nếu người dùng cũng có sửa thông tin chung của SP (Tên hàng, Features, Giá nhập, VAT...) thì cập nhật vào hang_hoa nhưng GIỮ NGUYÊN Don_gia gốc
+        // Nếu người dùng cũng có sửa thông tin chung của SP hoặc danh_sach_file thì cập nhật vào hang_hoa nhưng GIỮ NGUYÊN Don_gia gốc
         const sysChanged = hasSystemFieldsChanged(formData.value, originalItem.value)
         if (sysChanged) {
           const fbKey = await findFirebaseKeyByMaHang(formData.value)
@@ -5745,6 +10548,9 @@ const saveItem = async () => {
               ...formData.value,
               Don_gia: realHangHoaDonGia
             })
+            if (!coreChanged && originalItem.value?.last_updated) {
+              sysPayload.last_updated = originalItem.value.last_updated
+            }
             await update(dbRef(database, `hang_hoa/${fbKey}`), sysPayload)
           }
         }
@@ -5763,6 +10569,9 @@ const saveItem = async () => {
 
       // Chế độ mặc định (Giá gốc hệ thống): cập nhật trực tiếp vào hang_hoa
       const payloadObj = buildFirebaseHangHoaPayload(formData.value)
+      if (!coreChanged && originalItem.value?.last_updated) {
+        payloadObj.last_updated = originalItem.value.last_updated
+      }
       const fbKey = await findFirebaseKeyByMaHang(formData.value)
       if (!fbKey) {
         showAsyncError('Lỗi lưu dữ liệu', 'Không tìm thấy mã hàng cần cập nhật trên Firebase (NOT_FOUND)')
@@ -5859,6 +10668,7 @@ const resetImageCheckModal = () => {
   imageCheckActiveStep.value = 1
   imageCheckPreviewUrl.value = ''
   imageCheckFileName.value = ''
+  imageCheckCurrentFileMeta.value = null
   imageCheckRawOcr.value = ''
   imageCheckError.value = ''
   imageCheckScanning.value = false
@@ -6157,7 +10967,17 @@ const reparseRawOcrText = () => {
 
 const processCheckImageFile = async (file) => {
   imageCheckError.value = ''
-  imageCheckFileName.value = file.name || 'clipboard-image.png'
+  const imgFileName = file.name || `sophos-check-${Date.now()}.png`
+  const imgUploadedAt = new Date().toISOString()
+  imageCheckFileName.value = imgFileName
+  imageCheckCurrentFileMeta.value = {
+    file_name: imgFileName,
+    file_uploaded_at: imgUploadedAt,
+    uploadPromise: uploadBlobToCloudinary(file, imgFileName).catch(err => {
+      console.warn('Upload ảnh check giá Sophos ngầm lên Cloudinary:', err)
+      return ''
+    })
+  }
   if (imageCheckPreviewUrl.value) {
     URL.revokeObjectURL(imageCheckPreviewUrl.value)
   }
@@ -6316,16 +11136,27 @@ const formatUsdPrice = (val) => {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '$'
 }
 
-const loadSophosRefData = async () => {
-  if (sophosRefData.value || loadingSophosRef.value) return sophosRefData.value
+const loadSophosRefData = async (forceReload = false) => {
+  if (!forceReload && (sophosRefData.value || loadingSophosRef.value)) return sophosRefData.value
   loadingSophosRef.value = true
+  vendorRefLoadError.value.sophos = ''
   try {
-    const res = await fetch('/template_excel/sophos_ref_index.json')
-    if (res.ok) {
-      sophosRefData.value = await res.json()
+    const allMeta = await fetchVendorRefFilesMeta(forceReload)
+    const meta = allMeta?.sophos
+    if (!meta || !meta.index_url) {
+      sophosRefData.value = null
+      vendorRefLoadError.value.sophos = 'Chưa có File Gốc / Trung Gian Sophos trên Cloudinary. Vui lòng bấm Upload File Mới lên Cloudinary để đối chiếu!'
+      return null
     }
+    const res = await fetch(meta.index_url)
+    if (!res.ok) {
+      throw new Error(`Không tải được dữ liệu Sophos từ Cloudinary (HTTP ${res.status})`)
+    }
+    sophosRefData.value = await res.json()
   } catch (err) {
-    console.error('Lỗi tải sophos_ref_index.json:', err)
+    console.error('Lỗi tải dữ liệu tham chiếu Sophos từ Cloudinary:', err)
+    sophosRefData.value = null
+    vendorRefLoadError.value.sophos = err.message || 'Không thể tải dữ liệu tham chiếu Sophos từ Cloudinary.'
   } finally {
     loadingSophosRef.value = false
   }
@@ -6333,173 +11164,29 @@ const loadSophosRefData = async () => {
 }
 
 /**
- * Cho phép người dùng nạp file_goc_SOPHOS.xlsx hoặc file_trung_gian_SOPHOS.xlsx mới từ máy tính
- * để cập nhật dữ liệu tham chiếu trực tiếp trên trình duyệt.
+ * Cho phép người dùng nạp file_goc_SOPHOS.xlsx, SKU_list.xlsb hoặc file_trung_gian_SOPHOS.xlsx mới từ máy tính,
+ * đẩy thẳng lên Cloudinary và cập nhật vào Firebase `vendor_ref_files/sophos` (Không dùng file tĩnh cũ).
  */
-const handleCustomSophosExcelUpload = (e) => {
+const handleCustomSophosExcelUpload = (e, role = 'both') => {
   const file = e.target.files && e.target.files[0]
   if (!file) return
-  showAsyncLoading('Đang đọc file Excel tham chiếu...', `File: ${file.name}`)
+  const roleLabel = role === 'goc' ? 'File Gốc Sophos' : (role === 'tg' ? 'File Trung Gian Sophos' : 'File Sophos')
+  showAsyncLoading(`☁️ Đang đọc & đẩy ${roleLabel} lên Cloudinary...`, `File: ${file.name}`)
   const reader = new FileReader()
   reader.onload = (evt) => {
-    setTimeout(() => {
+    setTimeout(async () => {
       try {
         const data = new Uint8Array(evt.target.result)
         const wb = XLSX.read(data, { type: 'array' })
-        if (!sophosRefData.value) {
-          sophosRefData.value = {
-            version: file.name,
-            tiGiaTrungGian: 26200,
-            tiGiaLPSophos: 26600,
-            trungGianItems: [],
-            lpSophos: [],
-            gocSkus: {}
-          }
+        const res = await uploadAndPersistVendorRefWorkbook('sophos', file, wb, role)
+        await runImagePriceComparison()
+        if (showCardRefCompareModal.value && cardRefCompareData.value?.vendor === 'sophos' && cardRefCompareData.value?.item) {
+          cardRefCompareData.value = await resolveSophosCardCompare(cardRefCompareData.value.item)
         }
-
-        let updatedType = ''
-        // Kiểm tra nếu là file sophos-pricelist-reseller_SKU_list (.xlsb / .xlsx có sheet SKU_Tab)
-        if (wb.SheetNames.includes('SKU_Tab')) {
-          const rowsSKU = XLSX.utils.sheet_to_json(wb.Sheets['SKU_Tab'], { header: 1, defval: null })
-          const newGocSkus = { ...(sophosRefData.value.gocSkus || {}) }
-          let count = 0
-          for (let i = 7; i < rowsSKU.length; i++) {
-            const r = rowsSKU[i]
-            if (!r || !r[6]) continue
-            const sku = String(r[6]).trim().toUpperCase()
-            const prev = newGocSkus[sku] || {}
-            newGocSkus[sku] = {
-              ...prev,
-              skuTabRow: i + 1,
-              skuTabCell: `G${i + 1}`,
-              changeVer: r[0] ? String(r[0]).trim() : '',
-              changeKey: r[1] ? String(r[1]).trim() : '',
-              prevPrice: typeof r[3] === 'number' ? Number(r[3].toFixed(2)) : (prev.prevPrice || null),
-              status: r[4] ? String(r[4]).trim() : '',
-              pc: r[5] ? String(r[5]).trim() : (prev.pc || ''),
-              oldSku: r[7] ? String(r[7]).trim() : '',
-              desc: r[8] ? String(r[8]).trim() : (prev.desc || ''),
-              msrp: typeof r[9] === 'number' ? Number(r[9].toFixed(2)) : (prev.msrp || 0),
-              stdAuth: typeof r[10] === 'number' ? Number(r[10].toFixed(2)) : (prev.stdAuth ?? null),
-              regAuth: typeof r[11] === 'number' ? Number(r[11].toFixed(2)) : (prev.regAuth ?? null),
-              incAuth: typeof r[12] === 'number' ? Number(r[12].toFixed(2)) : (prev.incAuth ?? null)
-            }
-            count++
-          }
-          if (wb.SheetNames.includes('HW_Compliance')) {
-            const rowsHW = XLSX.utils.sheet_to_json(wb.Sheets['HW_Compliance'], { header: 1, defval: null })
-            sophosRefData.value.hwComplianceRaw = rowsHW
-            for (let i = 7; i < rowsHW.length; i++) {
-              const r = rowsHW[i]
-              if (r && r[1]) {
-                const hwSku = String(r[1]).trim().toUpperCase()
-                if (newGocSkus[hwSku]) {
-                  newGocSkus[hwSku].hwRow = i + 1
-                  newGocSkus[hwSku].hwCell = `B${i + 1}`
-                }
-              }
-            }
-          }
-          sophosRefData.value.gocSkus = newGocSkus
-          sophosRefData.value.skuListFileName = file.name
-          updatedType = `Đã nạp ${count.toLocaleString()} mã SKU từ sheet SKU_Tab của "${file.name}"`
-        } else if (wb.SheetNames.includes('MSRPs&BuyCost')) {
-          const rowsMSRP = XLSX.utils.sheet_to_json(wb.Sheets['MSRPs&BuyCost'], { header: 1, defval: null })
-          const newGocSkus = { ...(sophosRefData.value.gocSkus || {}) }
-          let count = 0
-          for (let i = 2; i < rowsMSRP.length; i++) {
-            const r = rowsMSRP[i]
-            if (!r || !r[1]) continue
-            const sku = String(r[1]).trim().toUpperCase()
-            const prev = newGocSkus[sku] || {}
-            newGocSkus[sku] = {
-              ...prev,
-              rowNum: i + 1,
-              cell: `B${i + 1}`,
-              pc: String(r[0] || '').trim(),
-              desc: prev.desc || '',
-              msrp: Number(r[2]) || 0,
-              stdAuth: r[3] !== '' && r[3] !== null ? Number(r[3]) : null,
-              regAuth: r[4] !== '' && r[4] !== null ? Number(r[4]) : null,
-              incAuth: r[5] !== '' && r[5] !== null ? Number(r[5]) : null
-            }
-            count++
-          }
-          sophosRefData.value.gocSkus = newGocSkus
-          sophosRefData.value.version = file.name
-          updatedType = `Đã nạp ${count.toLocaleString()} mã SKU từ file gốc "${file.name}"`
-        } else {
-          // Ngược lại là file_trung_gian_SOPHOS
-          const newTgSheetsRaw = { ...(sophosRefData.value.tgSheetsRaw || {}) }
-          const newTgSkuLocs = {}
-          for (const s of wb.SheetNames) {
-            const rows = XLSX.utils.sheet_to_json(wb.Sheets[s], { header: 1, defval: null })
-            newTgSheetsRaw[s] = rows
-            for (let rIdx = 0; rIdx < rows.length; rIdx++) {
-              const rowArr = rows[rIdx] || []
-              for (let cIdx = 0; cIdx < rowArr.length; cIdx++) {
-                const v = rowArr[cIdx]
-                if (typeof v === 'string') {
-                  const clean = v.trim().toUpperCase()
-                  if (/^[A-Z0-9]{8,16}$/.test(clean) && /\d/.test(clean)) {
-                    const colLet = colIndexToLetter(cIdx)
-                    if (!newTgSkuLocs[clean]) newTgSkuLocs[clean] = []
-                    newTgSkuLocs[clean].push({
-                      sheet: s,
-                      rowNum: rIdx + 1,
-                      colIndex: cIdx,
-                      colLetter: colLet,
-                      cell: `${colLet}${rIdx + 1}`
-                    })
-                  }
-                }
-              }
-            }
-          }
-          sophosRefData.value.tgSheetsRaw = newTgSheetsRaw
-          sophosRefData.value.tgSkuLocations = newTgSkuLocs
-
-          const tgSheets = wb.SheetNames.filter(s => /XGS|Virtual|ZTNA|NDR/i.test(s))
-          const newTgItems = []
-          for (const s of tgSheets) {
-            const rows = newTgSheetsRaw[s] || []
-            let currentGroup = ''
-            let currentSite = ''
-            for (let i = 4; i < rows.length; i++) {
-              const r = rows[i]
-              if (!r || !r.some(x => x !== null)) continue
-              if (r[0] && !r[1] && r[5] === null) {
-                currentGroup = String(r[0]).trim()
-                currentSite = r[7] ? String(r[7]).trim() : ''
-              } else if (r[1] && r[5] !== null) {
-                newTgItems.push({
-                  sheet: s,
-                  rowNum: i + 1,
-                  cell: `B${i + 1}`,
-                  group: currentGroup,
-                  site: currentSite,
-                  stt: r[0],
-                  sku: String(r[1]).trim().toUpperCase(),
-                  model: String(r[2] || '').trim(),
-                  description: String(r[3] || '').trim(),
-                  moTa: String(r[4] || '').trim(),
-                  msrp: Number(r[5]) || 0,
-                  nhapKhau: r[6] !== null && r[6] !== '' ? Number(r[6]) : 0
-                })
-              }
-            }
-          }
-          if (newTgItems.length > 0) {
-            sophosRefData.value.trungGianItems = newTgItems
-            updatedType = `Đã nạp ${newTgItems.length} dòng BOM từ file trung gian "${file.name}"`
-          }
-        }
-
-        runImagePriceComparison()
-        showAsyncSuccess('Cập nhật file tham chiếu thành công!', updatedType || `Đã đọc file ${file.name}`)
+        showAsyncSuccess('☁️ Đã cập nhật lên Cloudinary!', res.summaryText)
       } catch (err) {
-        console.error('Lỗi đọc file Excel tham chiếu:', err)
-        showAsyncError('Lỗi đọc file Excel', err.message)
+        console.error('Lỗi upload file Excel Sophos lên Cloudinary:', err)
+        showAsyncError('Lỗi cập nhật Cloudinary', err.message)
       }
     }, 50)
   }
@@ -7391,11 +12078,43 @@ const selectAllNeedSyncRows = () => {
   })
 }
 
+const resolveSophosCompareFileMeta = async () => {
+  if (imageCheckCurrentFileMeta.value) {
+    let url = ''
+    if (imageCheckCurrentFileMeta.value.uploadPromise) {
+      try {
+        url = (await imageCheckCurrentFileMeta.value.uploadPromise) || ''
+      } catch (_) {}
+    }
+    return {
+      file_name: imageCheckCurrentFileMeta.value.file_name,
+      file_url: url,
+      file_type: 'image_check',
+      file_uploaded_at: imageCheckCurrentFileMeta.value.file_uploaded_at || new Date().toISOString(),
+      ghi_chu_file: 'Ảnh Check Giá Sophos'
+    }
+  }
+  const sMeta = vendorRefFilesMeta.value?.sophos
+  if (sMeta && (sMeta.goc_file_name || sMeta.import_file_name)) {
+    const fName = sMeta.goc_file_name || sMeta.import_file_name
+    const fUrl = sMeta.goc_file_url || sMeta.import_file_url || ''
+    const ts = sMeta.goc_updated_at || sMeta.import_updated_at || sMeta.updated_at
+    return {
+      file_name: fName,
+      file_url: fUrl,
+      file_type: 'excel_import',
+      file_uploaded_at: ts ? new Date(ts).toISOString() : new Date().toISOString(),
+      ghi_chu_file: 'Đồng bộ Đối chiếu Sophos'
+    }
+  }
+  return null
+}
+
 /**
  * Xây dựng dữ liệu sản phẩm chuẩn Sophos để thêm mới hoặc cập nhật vào Firebase node `hang_hoa`
  * Chuẩn hóa: Ma_hang = SKU, có cột Description, volume (tách từ range users), License_duration (months), Trang_thai (New/Renewal)
  */
-const buildHangHoaPayloadFromCompareRow = (cmpRow) => {
+const buildHangHoaPayloadFromCompareRow = (cmpRow, resolvedFileMeta = null) => {
   const modelStr = String(imageCheckSettings.value.model || 'XGS').trim().toUpperCase()
   const danhMuc = modelStr.startsWith('SOPHOS') ? modelStr : `SOPHOS ${modelStr}`
   const isHw = cmpRow.category === 'Hardware Bundles' || cmpRow.sku.startsWith('XG')
@@ -7413,6 +12132,7 @@ const buildHangHoaPayloadFromCompareRow = (cmpRow) => {
     isHw
   )
 
+  let payload
   // Nếu đã có trong Database -> giữ nguyên Ma_hang (hoặc chuẩn hóa nếu cần), cập nhật giá + Description + volume + License_duration + Trang_thai
   if (cmpRow.dbItem) {
     const existing = cmpRow.dbItem
@@ -7420,8 +12140,9 @@ const buildHangHoaPayloadFromCompareRow = (cmpRow) => {
     const oldNote = String(existing.Ghi_chu || '').trim()
     const newNote = oldNote.includes(cmpRow.sku) ? oldNote : [oldNote, noteSku].filter(Boolean).join(' | ')
 
-    return buildFirebaseHangHoaPayload({
+    payload = buildFirebaseHangHoaPayload({
       ...existing,
+      sku_code: cmpRow.sku || existing.sku_code || '',
       Description: parsedMeta.description || existing.Description || '',
       License_duration: parsedMeta.licenseDuration || existing.License_duration || '',
       volume: parsedMeta.volume || existing.volume || '',
@@ -7432,59 +12153,75 @@ const buildHangHoaPayloadFromCompareRow = (cmpRow) => {
       gia_nhap: cmpRow.tgNhapKhau > 0 ? cmpRow.tgNhapKhau : (existing.gia_nhap || 0),
       Ghi_chu: newNote
     })
-  }
-
-  // Nếu chưa có trong Database -> Tạo mới với Ma_hang = SKU theo chuẩn mới
-  let tenHang = ''
-  let featuresText = ''
-
-  if (cmpRow.tgMoTa) {
-    const lines = String(cmpRow.tgMoTa).trim().split('\n')
-    tenHang = lines[0].trim().replace(/:$/, '')
-    featuresText = formatFeaturesHtml(cmpRow.tgMoTa)
-  } else if (rawDescFromSkuList) {
-    tenHang = rawDescFromSkuList
-    featuresText = formatFeaturesHtml(`${rawDescFromSkuList}\nSKU: ${cmpRow.sku}`)
-  } else if (isHw) {
-    tenHang = `Sophos ${modelStr} Hardware Appliance`
-    const desc = imageCheckSettings.value.description || `${modelStr} Security Appliance`
-    featuresText = formatFeaturesHtml(`${tenHang}:\n${desc}`)
   } else {
-    const termStr = imageCheckSettings.value.termSubscription || '12 MOS'
-    const years = termStr.includes('12') ? '1-Year' : (termStr.includes('24') ? '2-Year' : (termStr.includes('36') ? '3-Year' : termStr))
-    tenHang = `${years} ${cmpRow.name} Subscription for ${modelStr}`
-    featuresText = formatFeaturesHtml(`${tenHang}\nSKU: ${cmpRow.sku}`)
+    // Nếu chưa có trong Database -> Tạo mới với Ma_hang = SKU theo chuẩn mới
+    let tenHang = ''
+    let featuresText = ''
+
+    if (cmpRow.tgMoTa) {
+      const lines = String(cmpRow.tgMoTa).trim().split('\n')
+      tenHang = lines[0].trim().replace(/:$/, '')
+      featuresText = formatFeaturesHtml(cmpRow.tgMoTa)
+    } else if (rawDescFromSkuList) {
+      tenHang = rawDescFromSkuList
+      featuresText = formatFeaturesHtml(`${rawDescFromSkuList}\nSKU: ${cmpRow.sku}`)
+    } else if (isHw) {
+      tenHang = `Sophos ${modelStr} Hardware Appliance`
+      const desc = imageCheckSettings.value.description || `${modelStr} Security Appliance`
+      featuresText = formatFeaturesHtml(`${tenHang}:\n${desc}`)
+    } else {
+      const termStr = imageCheckSettings.value.termSubscription || '12 MOS'
+      const years = termStr.includes('12') ? '1-Year' : (termStr.includes('24') ? '2-Year' : (termStr.includes('36') ? '3-Year' : termStr))
+      tenHang = `${years} ${cmpRow.name} Subscription for ${modelStr}`
+      featuresText = formatFeaturesHtml(`${tenHang}\nSKU: ${cmpRow.sku}`)
+    }
+
+    payload = buildFirebaseHangHoaPayload({
+      Ma_hang: cmpRow.sku,
+      sku_code: cmpRow.sku,
+      Ten_hang: tenHang,
+      Description: parsedMeta.description || tenHang,
+      Main_img: '',
+      Ma_nha_cung_cap: 'SOPHOS',
+      Ten_nha_cung_cap: 'SOPHOS',
+      Mo_ta_chung: '',
+      Mo_ta_chi_tiet: '',
+      Features: featuresText,
+      Danh_muc: danhMuc,
+      License_duration: parsedMeta.licenseDuration || (isHw ? '' : '12 months'),
+      DVT: isHw ? 'Thiết bị' : 'Gói',
+      Gia_tieu_chuan: cmpRow.targetPrice,
+      Don_gia: cmpRow.targetPrice,
+      Trang_thai: 'Còn hàng',
+      Don_vi_tien_te: 'USD',
+      Ti_gia: currentSystemUsdRate.value || sophosRefData.value?.tiGiaTrungGian || 26200,
+      Thue_VAT: 10,
+      Ma_hang_lien_ket: '',
+      Ten_hang_lien_ket: '',
+      Ghi_chu: `SKU: ${cmpRow.sku}`,
+      gia_hardware: 0,
+      gia_nhap: cmpRow.tgNhapKhau || 0,
+      muc_phan_tram_off: cmpRow.imgDisc || 0,
+      Type: parsedMeta.trangThai || 'New',
+      thoi_han_bao_hanh: isHw ? '12 months' : '',
+      volume: parsedMeta.volume || ''
+    })
   }
 
-  return buildFirebaseHangHoaPayload({
-    Ma_hang: cmpRow.sku,
-    Ten_hang: tenHang,
-    Description: parsedMeta.description || tenHang,
-    Main_img: '',
-    Ma_nha_cung_cap: 'SOPHOS',
-    Ten_nha_cung_cap: 'SOPHOS',
-    Mo_ta_chung: '',
-    Mo_ta_chi_tiet: '',
-    Features: featuresText,
-    Danh_muc: danhMuc,
-    License_duration: parsedMeta.licenseDuration || (isHw ? '' : '12 months'),
-    DVT: isHw ? 'Thiết bị' : 'Gói',
-    Gia_tieu_chuan: cmpRow.targetPrice,
-    Don_gia: cmpRow.targetPrice,
-    Trang_thai: 'Còn hàng',
-    Don_vi_tien_te: 'USD',
-    Ti_gia: sophosRefData.value?.tiGiaTrungGian || 26200,
-    Thue_VAT: 10,
-    Ma_hang_lien_ket: '',
-    Ten_hang_lien_ket: '',
-    Ghi_chu: `SKU: ${cmpRow.sku}`,
-    gia_hardware: 0,
-    gia_nhap: cmpRow.tgNhapKhau || 0,
-    muc_phan_tram_off: cmpRow.imgDisc || 0,
-    Type: parsedMeta.trangThai || 'New',
-    thoi_han_bao_hanh: isHw ? '12 months' : '',
-    volume: parsedMeta.volume || ''
-  })
+  if (resolvedFileMeta && resolvedFileMeta.file_name) {
+    payload.danh_sach_file = appendFileEntryToProductHistory(
+      cmpRow.dbItem?.danh_sach_file || [],
+      resolvedFileMeta,
+      {
+        gia_von: payload.Gia_tieu_chuan,
+        don_gia: payload.Don_gia,
+        gia_nhap: payload.gia_nhap,
+        don_vi_tien_te: payload.Don_vi_tien_te
+      }
+    )
+  }
+
+  return payload
 }
 
 /**
@@ -7494,7 +12231,8 @@ const syncSingleCompareRowToDb = async (cmpRow) => {
   if (!cmpRow) return
   syncingCompareToDb.value = true
   try {
-    const payload = buildHangHoaPayloadFromCompareRow(cmpRow)
+    const resolvedFileMeta = await resolveSophosCompareFileMeta()
+    const payload = buildHangHoaPayloadFromCompareRow(cmpRow, resolvedFileMeta)
     if (cmpRow.dbItem && cmpRow.dbItem._firebaseKey) {
       await update(dbRef(database, `hang_hoa/${cmpRow.dbItem._firebaseKey}`), payload)
       showAsyncSuccess('Đã cập nhật giá Database!', `${payload.Ten_hang} → ${formatUsdPrice(payload.Don_gia)}`)
@@ -7527,13 +12265,14 @@ const syncSelectedCompareRowsToDb = async () => {
   syncingCompareToDb.value = true
   showAsyncLoading('Đang đồng bộ vào Database...', `Đang xử lý ${selectedList.length} sản phẩm...`)
   try {
+    const resolvedFileMeta = await resolveSophosCompareFileMeta()
     const batchUpdates = {}
     const touchedCategories = new Set()
     let updatedCount = 0
     let addedCount = 0
 
     for (const cmpRow of selectedList) {
-      const payload = buildHangHoaPayloadFromCompareRow(cmpRow)
+      const payload = buildHangHoaPayloadFromCompareRow(cmpRow, resolvedFileMeta)
       if (payload.Danh_muc) touchedCategories.add(payload.Danh_muc)
 
       if (cmpRow.dbItem && cmpRow.dbItem._firebaseKey) {
@@ -7675,17 +12414,55 @@ const formatVndPrice = (val) => {
   return new Intl.NumberFormat('vi-VN').format(Math.round(n)) + ' ₫'
 }
 
-const loadKasRefData = async () => {
-  if (kasRefData.value) return kasRefData.value
+const loadKasRefData = async (forceReload = false) => {
+  if (!forceReload && kasRefData.value) return kasRefData.value
+  vendorRefLoadError.value.kaspersky = ''
   try {
-    const res = await fetch('/template_excel/kas_ref_index.json')
-    if (res.ok) {
-      kasRefData.value = await res.json()
+    const allMeta = await fetchVendorRefFilesMeta(forceReload)
+    const meta = allMeta?.kaspersky
+    if (!meta || !meta.index_url) {
+      kasRefData.value = null
+      vendorRefLoadError.value.kaspersky = 'Chưa có File Gốc Kaspersky trên Cloudinary. Vui lòng bấm Upload File Mới lên Cloudinary để đối chiếu!'
+      return null
     }
+    const res = await fetch(meta.index_url)
+    if (!res.ok) {
+      throw new Error(`Không tải được dữ liệu Kaspersky từ Cloudinary (HTTP ${res.status})`)
+    }
+    const raw = await res.json()
+    kasRefData.value = hydrateKasRefData(raw)
   } catch (err) {
-    console.warn('Không thể tải kas_ref_index.json:', err)
+    console.warn('Không thể tải dữ liệu tham chiếu Kaspersky từ Cloudinary:', err)
+    kasRefData.value = null
+    vendorRefLoadError.value.kaspersky = err.message || 'Không thể tải dữ liệu tham chiếu Kaspersky từ Cloudinary.'
   }
   return kasRefData.value
+}
+
+const handleCustomKasExcelUpload = (e, role = 'both') => {
+  const file = e.target.files && e.target.files[0]
+  if (!file) return
+  showAsyncLoading('☁️ Đang đọc & đẩy file Kaspersky lên Cloudinary...', `File: ${file.name}`)
+  const reader = new FileReader()
+  reader.onload = (evt) => {
+    setTimeout(async () => {
+      try {
+        const data = new Uint8Array(evt.target.result)
+        const wb = XLSX.read(data, { type: 'array' })
+        const res = await uploadAndPersistVendorRefWorkbook('kaspersky', file, wb, role)
+        await runKasPriceComparison()
+        if (showCardRefCompareModal.value && cardRefCompareData.value?.vendor === 'kaspersky' && cardRefCompareData.value?.item) {
+          cardRefCompareData.value = await resolveKasperskyCardCompare(cardRefCompareData.value.item)
+        }
+        showAsyncSuccess('☁️ Đã cập nhật Kaspersky lên Cloudinary!', res.summaryText)
+      } catch (err) {
+        console.error('Lỗi upload file Kaspersky lên Cloudinary:', err)
+        showAsyncError('Lỗi cập nhật Cloudinary', err.message)
+      }
+    }, 50)
+  }
+  reader.readAsArrayBuffer(file)
+  e.target.value = ''
 }
 
 const getSampleKasCheckRows = () => [
@@ -7853,7 +12630,17 @@ const addKasCheckRow = () => {
 }
 
 const processKasCheckFile = async (file) => {
-  kasCheckFileName.value = file.name || 'anh_check_KAS.jpg'
+  const kasFileName = file.name || `kaspersky-check-${Date.now()}.jpg`
+  const kasUploadedAt = new Date().toISOString()
+  kasCheckFileName.value = kasFileName
+  kasCheckCurrentFileMeta.value = {
+    file_name: kasFileName,
+    file_uploaded_at: kasUploadedAt,
+    uploadPromise: uploadBlobToCloudinary(file, kasFileName).catch(err => {
+      console.warn('Upload ảnh check giá Kaspersky ngầm lên Cloudinary:', err)
+      return ''
+    })
+  }
   kasCheckPreviewUrl.value = URL.createObjectURL(file)
   kasCheckScanning.value = true
   kasCheckProgress.value = 0.15
@@ -8150,66 +12937,117 @@ const selectAllNeedSyncKasRows = () => {
   })
 }
 
-const buildHangHoaPayloadFromKasCompareRow = (cmpRow) => {
+const resolveKasCompareFileMeta = async () => {
+  if (kasCheckCurrentFileMeta.value) {
+    let url = ''
+    if (kasCheckCurrentFileMeta.value.uploadPromise) {
+      try {
+        url = (await kasCheckCurrentFileMeta.value.uploadPromise) || ''
+      } catch (_) {}
+    }
+    return {
+      file_name: kasCheckCurrentFileMeta.value.file_name,
+      file_url: url,
+      file_type: 'image_check',
+      file_uploaded_at: kasCheckCurrentFileMeta.value.file_uploaded_at || new Date().toISOString(),
+      ghi_chu_file: 'Ảnh Check Giá Kaspersky'
+    }
+  }
+  const kMeta = vendorRefFilesMeta.value?.kaspersky
+  if (kMeta && (kMeta.goc_file_name || kMeta.import_file_name)) {
+    const fName = kMeta.goc_file_name || kMeta.import_file_name
+    const fUrl = kMeta.goc_file_url || kMeta.import_file_url || ''
+    const ts = kMeta.goc_updated_at || kMeta.import_updated_at || kMeta.updated_at
+    return {
+      file_name: fName,
+      file_url: fUrl,
+      file_type: 'excel_import',
+      file_uploaded_at: ts ? new Date(ts).toISOString() : new Date().toISOString(),
+      ghi_chu_file: 'Đồng bộ Đối chiếu Kaspersky'
+    }
+  }
+  return null
+}
+
+const buildHangHoaPayloadFromKasCompareRow = (cmpRow, resolvedFileMeta = null) => {
   const maHang = cmpRow.posCode
     ? `${cmpRow.posCode} - ${cmpRow.sku} - ${cmpRow.band} - ${cmpRow.type} - ${cmpRow.term} - ${cmpRow.pkg}`.replace(/\s+/g, ' ').trim()
     : `${cmpRow.sku} - ${cmpRow.band} - ${cmpRow.type} - ${cmpRow.term} - ${cmpRow.pkg}`.replace(/\s+/g, ' ').trim()
   const tenHang = `${cmpRow.product} (${cmpRow.type} - ${cmpRow.term} - ${cmpRow.band})`
   const danhMuc = String(cmpRow.product || 'KASPERSKY').trim().toUpperCase()
 
+  let payload
   if (cmpRow.dbItem) {
-    return buildFirebaseHangHoaPayload({
+    payload = buildFirebaseHangHoaPayload({
       ...cmpRow.dbItem,
       Ma_hang: maHang,
+      sku_code: cmpRow.sku || cmpRow.posCode || cmpRow.dbItem.sku_code || '',
       Don_gia: cmpRow.targetPrice,
       Gia_tieu_chuan: cmpRow.targetPrice,
       Type: cmpRow.type || cmpRow.dbItem.Type || '',
       Trang_thai: 'Còn hàng',
       Ghi_chu: cmpRow.posCode ? `PositionCode: ${cmpRow.posCode} | SKU: ${cmpRow.sku}` : (cmpRow.dbItem.Ghi_chu || '')
     })
+  } else {
+    // Tìm Features mẫu từ sản phẩm cùng Danh_muc trong DB nếu có
+    const sampleSameCat = items.value.find(
+      it => String(it.Danh_muc || '').toUpperCase() === danhMuc && it.Features
+    )
+
+    payload = buildFirebaseHangHoaPayload({
+      Ma_hang: maHang,
+      sku_code: cmpRow.sku || cmpRow.posCode || '',
+      Ten_hang: tenHang,
+      Description: `${cmpRow.product} - ${cmpRow.type} - ${cmpRow.term} - ${cmpRow.band}`,
+      Main_img: '',
+      Ma_nha_cung_cap: 'KASPERSKY',
+      Ten_nha_cung_cap: 'KASPERSKY',
+      Mo_ta_chung: '',
+      Mo_ta_chi_tiet: '',
+      Features: sampleSameCat?.Features || '',
+      Danh_muc: danhMuc,
+      License_duration: cmpRow.term,
+      DVT: cmpRow.pkg || 'License',
+      Gia_tieu_chuan: cmpRow.targetPrice,
+      Don_gia: cmpRow.targetPrice,
+      Trang_thai: 'Còn hàng',
+      Don_vi_tien_te: 'VND',
+      Ti_gia: 1,
+      Thue_VAT: 0,
+      Ma_hang_lien_ket: '',
+      Ten_hang_lien_ket: '',
+      Ghi_chu: cmpRow.posCode ? `PositionCode: ${cmpRow.posCode} | SKU: ${cmpRow.sku}` : `SKU: ${cmpRow.sku}`,
+      gia_hardware: 0,
+      gia_nhap: 0,
+      muc_phan_tram_off: 0,
+      Type: cmpRow.type,
+      thoi_han_bao_hanh: '',
+      volume: cmpRow.band
+    })
   }
 
-  // Tìm Features mẫu từ sản phẩm cùng Danh_muc trong DB nếu có
-  const sampleSameCat = items.value.find(
-    it => String(it.Danh_muc || '').toUpperCase() === danhMuc && it.Features
-  )
+  if (resolvedFileMeta && resolvedFileMeta.file_name) {
+    payload.danh_sach_file = appendFileEntryToProductHistory(
+      cmpRow.dbItem?.danh_sach_file || [],
+      resolvedFileMeta,
+      {
+        gia_von: payload.Gia_tieu_chuan,
+        don_gia: payload.Don_gia,
+        gia_nhap: payload.gia_nhap,
+        don_vi_tien_te: payload.Don_vi_tien_te
+      }
+    )
+  }
 
-  return buildFirebaseHangHoaPayload({
-    Ma_hang: maHang,
-    Ten_hang: tenHang,
-    Description: `${cmpRow.product} - ${cmpRow.type} - ${cmpRow.term} - ${cmpRow.band}`,
-    Main_img: '',
-    Ma_nha_cung_cap: 'KASPERSKY',
-    Ten_nha_cung_cap: 'KASPERSKY',
-    Mo_ta_chung: '',
-    Mo_ta_chi_tiet: '',
-    Features: sampleSameCat?.Features || '',
-    Danh_muc: danhMuc,
-    License_duration: cmpRow.term,
-    DVT: cmpRow.pkg || 'License',
-    Gia_tieu_chuan: cmpRow.targetPrice,
-    Don_gia: cmpRow.targetPrice,
-    Trang_thai: 'Còn hàng',
-    Don_vi_tien_te: 'VND',
-    Ti_gia: 1,
-    Thue_VAT: 0,
-    Ma_hang_lien_ket: '',
-    Ten_hang_lien_ket: '',
-    Ghi_chu: cmpRow.posCode ? `PositionCode: ${cmpRow.posCode} | SKU: ${cmpRow.sku}` : `SKU: ${cmpRow.sku}`,
-    gia_hardware: 0,
-    gia_nhap: 0,
-    muc_phan_tram_off: 0,
-    Type: cmpRow.type,
-    thoi_han_bao_hanh: '',
-    volume: cmpRow.band
-  })
+  return payload
 }
 
 const syncSingleKasCompareRowToDb = async (cmpRow) => {
   if (!cmpRow) return
   syncingKasCompareToDb.value = true
   try {
-    const payload = buildHangHoaPayloadFromKasCompareRow(cmpRow)
+    const resolvedFileMeta = await resolveKasCompareFileMeta()
+    const payload = buildHangHoaPayloadFromKasCompareRow(cmpRow, resolvedFileMeta)
     if (cmpRow.dbItem && cmpRow.dbItem._firebaseKey) {
       await update(dbRef(database, `hang_hoa/${cmpRow.dbItem._firebaseKey}`), payload)
       showAsyncSuccess('Đã cập nhật giá Kaspersky!', `${payload.Ten_hang} → ${formatVndPrice(payload.Don_gia)}`)
@@ -8239,13 +13077,14 @@ const syncSelectedKasCompareRowsToDb = async () => {
   syncingKasCompareToDb.value = true
   showAsyncLoading('Đang đồng bộ Kaspersky vào Database...', `Đang xử lý ${selectedList.length} mức giá...`)
   try {
+    const resolvedFileMeta = await resolveKasCompareFileMeta()
     const batchUpdates = {}
     const touchedCategories = new Set()
     let updatedCount = 0
     let addedCount = 0
 
     for (const cmpRow of selectedList) {
-      const payload = buildHangHoaPayloadFromKasCompareRow(cmpRow)
+      const payload = buildHangHoaPayloadFromKasCompareRow(cmpRow, resolvedFileMeta)
       if (payload.Danh_muc) touchedCategories.add(payload.Danh_muc)
 
       if (cmpRow.dbItem && cmpRow.dbItem._firebaseKey) {
@@ -8345,15 +13184,1318 @@ const exportKasComparisonToExcel = () => {
   XLSX.writeFile(wb, `Doi_Chieu_Gia_Kaspersky_${prodName.replace(/\s+/g, '_')}.xlsx`)
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ĐỐI CHIẾU TOÀN BỘ BẢNG GIÁ GỐC ACRONIS (file_goc_acronis.xlsx ⇄ ACRONIS_file_mau_import.xlsx ⇄ DATABASE)
+// ═══════════════════════════════════════════════════════════════════════════
+const showAcronisCompareModal = ref(false)
+const acronisRefData = ref(null)
+const loadingAcronisRef = ref(false)
+const acronisComparisonRows = ref([])
+const acronisCompareSheetFilter = ref('ALL')
+const acronisCompareFilterMode = ref('all') // 'all' | 'db_issue' | 'db_diff' | 'db_missing'
+const acronisCompareSearch = ref('')
+const syncingAcronisCompareToDb = ref(false)
+
+const loadAcronisRefData = async (forceReload = false) => {
+  if (!forceReload && (acronisRefData.value || loadingAcronisRef.value)) return acronisRefData.value
+  loadingAcronisRef.value = true
+  vendorRefLoadError.value.acronis = ''
+  try {
+    const allMeta = await fetchVendorRefFilesMeta(forceReload)
+    const meta = allMeta?.acronis
+    if (!meta || !meta.index_url) {
+      acronisRefData.value = null
+      vendorRefLoadError.value.acronis = 'Chưa có File Gốc Acronis trên Cloudinary. Vui lòng bấm Upload File Mới lên Cloudinary để đối chiếu!'
+      return null
+    }
+    const res = await fetch(meta.index_url)
+    if (!res.ok) {
+      throw new Error(`Không tải được dữ liệu Acronis từ Cloudinary (HTTP ${res.status})`)
+    }
+    const raw = await res.json()
+    acronisRefData.value = hydrateAcronisRefData(raw)
+  } catch (err) {
+    console.error('Lỗi tải dữ liệu tham chiếu Acronis từ Cloudinary:', err)
+    acronisRefData.value = null
+    vendorRefLoadError.value.acronis = err.message || 'Không thể tải dữ liệu tham chiếu Acronis từ Cloudinary.'
+  } finally {
+    loadingAcronisRef.value = false
+  }
+  return acronisRefData.value
+}
+
+const acronisSheetNames = computed(() => {
+  const refObj = acronisRefData.value
+  if (refObj && Array.isArray(refObj.sheetNames) && refObj.sheetNames.length) {
+    return refObj.sheetNames
+  }
+  return [...new Set(acronisComparisonRows.value.map(r => r.sheet).filter(Boolean))]
+})
+
+const openAcronisExcelNavigator = ({ fileType = 'acronis_goc', sheet = 'Protect Standard', rowNum = 4, colLetter = 'D', sku = '', itemName = '' }) => {
+  const qs = new URLSearchParams({
+    file: fileType,
+    sheet: sheet || 'Protect Standard',
+    row: String(rowNum || 4),
+    col: colLetter || 'D',
+    sku: String(sku || '').trim().toUpperCase(),
+    name: itemName || ''
+  }).toString()
+  window.open(`/template_excel/sophos_excel_viewer.html?${qs}`, '_blank')
+}
+
+const matchDatabaseItemForAcronisRow = (entry) => {
+  if (!entry) return null
+  const maHangUpper = String(entry.maHang || '').trim().toUpperCase()
+  const skuUpper = String(entry.sku || '').trim().toUpperCase()
+  const skuForUpper = String(entry.skuFor || '').trim().toUpperCase()
+  const moTaLower = String(entry.moTa || '').trim().toLowerCase()
+
+  // 1. Khớp chính xác theo Ma_hang = "${skuFor} - ${sku}" hoặc "${sku}"
+  if (maHangUpper) {
+    const exactMa = items.value.find(it => String(it.Ma_hang || '').trim().toUpperCase() === maHangUpper)
+    if (exactMa) return exactMa
+  }
+
+  // 2. Khớp theo cả skuFor + sku nằm trong Ma_hang
+  if (skuUpper && skuForUpper) {
+    const bothMatch = items.value.find(it => {
+      const mh = String(it.Ma_hang || '').trim().toUpperCase()
+      return mh.includes(skuForUpper) && mh.includes(skuUpper)
+    })
+    if (bothMatch) return bothMatch
+  }
+
+  // 3. Khớp theo SKU đơn lẻ trong Ma_hang hoặc Ghi_chu của các sản phẩm Acronis
+  if (skuUpper) {
+    const skuMatch = items.value.find(it => {
+      const ncc = String(it.Ten_nha_cung_cap || it.Ma_nha_cung_cap || '').toUpperCase()
+      const mh = String(it.Ma_hang || '').trim().toUpperCase()
+      const gc = String(it.Ghi_chu || '').toUpperCase()
+      const tokens = mh.split(/[\s\-|]+/).map(s => s.trim())
+      return tokens.includes(skuUpper) || (ncc.includes('ACRONIS') && gc.includes(skuUpper))
+    })
+    if (skuMatch) return skuMatch
+  }
+
+  // 4. Khớp chính xác theo Tên hàng (Mô tả sản phẩm) thuộc NCC Acronis
+  if (moTaLower) {
+    const nameMatch = items.value.find(it => {
+      const ncc = String(it.Ten_nha_cung_cap || it.Ma_nha_cung_cap || '').toUpperCase()
+      return ncc.includes('ACRONIS') && String(it.Ten_hang || '').trim().toLowerCase() === moTaLower
+    })
+    if (nameMatch) return nameMatch
+  }
+
+  return null
+}
+
+const runAcronisPriceComparison = async () => {
+  await loadAcronisRefData()
+  if (!items.value.length) {
+    await fetchData()
+  }
+
+  const refObj = acronisRefData.value || {}
+  const gocItems = refObj.gocItems || []
+  const mauByMaHang = refObj.mauByMaHang || {}
+  const mauBySku = refObj.mauBySku || {}
+  const results = []
+
+  for (const g of gocItems) {
+    const maKey = String(g.maHang || '').trim().toUpperCase()
+    const skuKey = String(g.sku || '').trim().toUpperCase()
+    const mauEntry = (maKey && mauByMaHang[maKey]) || (skuKey && mauBySku[skuKey]) || null
+    const mauFound = Boolean(mauEntry)
+    const mauPrice = mauEntry ? (Number(mauEntry.price) || 0) : 0
+    const mauRowNum = mauEntry?.rowNum || null
+    const mauSheet = mauEntry?.sheet || g.sheet
+    const gocPrice = Number(g.price) || 0
+
+    const mauStatus = !mauFound
+      ? 'missing'
+      : (Math.abs(gocPrice - mauPrice) < 1 ? 'match' : 'diff')
+
+    const dbItem = matchDatabaseItemForAcronisRow(g)
+    let dbStatus = 'missing'
+    let dbPrice = 0
+    let dbDiff = 0
+    let dbDiffPct = 0
+
+    if (dbItem) {
+      dbPrice = Number(dbItem.Don_gia) || 0
+      dbDiff = dbPrice - gocPrice
+      dbDiffPct = gocPrice > 0 ? (dbDiff / gocPrice) * 100 : 0
+      dbStatus = Math.abs(dbDiff) < 1 ? 'match' : 'diff'
+    }
+
+    results.push({
+      id: `${g.sheet}-${g.rowNum}-${g.maHang}`,
+      sheet: g.sheet,
+      gocRowNum: g.rowNum,
+      category: g.category || g.sheet,
+      subType: g.subType || '',
+      skuFor: g.skuFor || '',
+      sku: g.sku || '',
+      maHang: g.maHang || '',
+      moTa: g.moTa || '',
+      features: g.features || '',
+      licenseDuration: g.licenseDuration || '',
+      type: g.type || '',
+      volume: g.volume || '',
+      gocPrice,
+      mauFound,
+      mauEntry,
+      mauPrice,
+      mauRowNum,
+      mauSheet,
+      mauStatus,
+      dbItem,
+      dbPrice,
+      dbStatus,
+      dbDiff,
+      dbDiffPct,
+      targetPrice: gocPrice,
+      selected: dbStatus !== 'match'
+    })
+  }
+
+  acronisComparisonRows.value = results
+}
+
+const openAcronisCompareModal = async (initialSheet = 'ALL', initialSearch = '') => {
+  showAcronisCompareModal.value = true
+  acronisCompareSheetFilter.value = initialSheet && typeof initialSheet === 'string' ? initialSheet : 'ALL'
+  acronisCompareSearch.value = typeof initialSearch === 'string' ? initialSearch : ''
+  acronisCompareFilterMode.value = 'all'
+  await runAcronisPriceComparison()
+}
+
+const handleCustomAcronisExcelUpload = (e, role = 'goc') => {
+  const file = e.target.files && e.target.files[0]
+  if (!file) return
+  showAsyncLoading('☁️ Đang đọc & đẩy file Acronis lên Cloudinary...', `File: ${file.name}`)
+  const reader = new FileReader()
+  reader.onload = (evt) => {
+    setTimeout(async () => {
+      try {
+        const data = new Uint8Array(evt.target.result)
+        const wb = XLSX.read(data, { type: 'array', cellStyles: true })
+        const res = await uploadAndPersistVendorRefWorkbook('acronis', file, wb, role)
+        await runAcronisPriceComparison()
+        if (showCardRefCompareModal.value && cardRefCompareData.value?.vendor === 'acronis' && cardRefCompareData.value?.item) {
+          cardRefCompareData.value = await resolveAcronisCardCompare(cardRefCompareData.value.item)
+        }
+        showAsyncSuccess('☁️ Đã cập nhật Acronis lên Cloudinary!', res.summaryText)
+      } catch (err) {
+        console.error('Lỗi upload file Acronis lên Cloudinary:', err)
+        showAsyncError('Lỗi cập nhật Cloudinary', err.message)
+      }
+    }, 50)
+  }
+  reader.readAsArrayBuffer(file)
+  e.target.value = ''
+}
+
+const acronisComparisonSummary = computed(() => {
+  const rows = acronisComparisonRows.value
+  return {
+    mauMatch: rows.filter(r => r.mauStatus === 'match').length,
+    mauDiff: rows.filter(r => r.mauStatus === 'diff').length,
+    mauMissing: rows.filter(r => r.mauStatus === 'missing').length,
+    dbMatch: rows.filter(r => r.dbStatus === 'match').length,
+    dbDiff: rows.filter(r => r.dbStatus === 'diff').length,
+    dbMissing: rows.filter(r => r.dbStatus === 'missing').length
+  }
+})
+
+const filteredAcronisComparisonRows = computed(() => {
+  let list = acronisComparisonRows.value
+  if (acronisCompareSheetFilter.value !== 'ALL') {
+    list = list.filter(r => r.sheet === acronisCompareSheetFilter.value)
+  }
+  const mode = acronisCompareFilterMode.value
+  if (mode === 'db_issue') list = list.filter(r => r.dbStatus === 'diff' || r.dbStatus === 'missing')
+  else if (mode === 'db_diff') list = list.filter(r => r.dbStatus === 'diff')
+  else if (mode === 'db_missing') list = list.filter(r => r.dbStatus === 'missing')
+
+  const kw = acronisCompareSearch.value.trim().toLowerCase()
+  if (kw) {
+    list = list.filter(r =>
+      String(r.sku || '').toLowerCase().includes(kw) ||
+      String(r.skuFor || '').toLowerCase().includes(kw) ||
+      String(r.maHang || '').toLowerCase().includes(kw) ||
+      String(r.moTa || '').toLowerCase().includes(kw) ||
+      String(r.category || '').toLowerCase().includes(kw)
+    )
+  }
+  return list
+})
+
+const selectedAcronisComparisonRowsCount = computed(() => {
+  return acronisComparisonRows.value.filter(r => r.selected).length
+})
+
+const allFilteredAcronisCompareSelected = computed(() => {
+  const list = filteredAcronisComparisonRows.value
+  return list.length > 0 && list.every(r => r.selected)
+})
+
+const toggleSelectAllFilteredAcronisCompare = (checked) => {
+  filteredAcronisComparisonRows.value.forEach(r => {
+    r.selected = checked
+  })
+}
+
+const selectAllNeedSyncAcronisRows = () => {
+  acronisComparisonRows.value.forEach(r => {
+    r.selected = r.dbStatus !== 'match'
+  })
+}
+
+const resolveAcronisCompareFileMeta = () => {
+  const aMeta = vendorRefFilesMeta.value?.acronis
+  if (aMeta && (aMeta.goc_file_name || aMeta.import_file_name || aMeta.mau_file_name)) {
+    const fName = aMeta.goc_file_name || aMeta.import_file_name || aMeta.mau_file_name
+    const fUrl = aMeta.goc_file_url || aMeta.import_file_url || aMeta.mau_file_url || ''
+    const ts = aMeta.goc_updated_at || aMeta.import_updated_at || aMeta.mau_updated_at || aMeta.updated_at
+    return {
+      file_name: fName,
+      file_url: fUrl,
+      file_type: 'excel_import',
+      file_uploaded_at: ts ? new Date(ts).toISOString() : new Date().toISOString(),
+      ghi_chu_file: 'Đồng bộ Đối chiếu Acronis'
+    }
+  }
+  return null
+}
+
+const buildHangHoaPayloadFromAcronisCompareRow = (cmpRow, resolvedFileMeta = null) => {
+  const maHang = String(cmpRow.maHang || `${cmpRow.skuFor} - ${cmpRow.sku}`).trim()
+  const danhMuc = String(cmpRow.category || cmpRow.sheet || 'ACRONIS').trim().toUpperCase()
+  const noteParts = []
+  if (cmpRow.skuFor && cmpRow.sku && cmpRow.skuFor !== cmpRow.sku) {
+    noteParts.push(`SKU For: ${cmpRow.skuFor} | SKU: ${cmpRow.sku}`)
+  }
+  if (cmpRow.subType) noteParts.push(cmpRow.subType)
+
+  let payload
+  if (cmpRow.dbItem) {
+    payload = buildFirebaseHangHoaPayload({
+      ...cmpRow.dbItem,
+      Ma_hang: cmpRow.dbItem.Ma_hang || maHang,
+      sku_code: cmpRow.sku || cmpRow.skuFor || cmpRow.dbItem.sku_code || '',
+      Ten_hang: cmpRow.moTa || cmpRow.dbItem.Ten_hang,
+      Don_gia: cmpRow.targetPrice,
+      Gia_tieu_chuan: cmpRow.targetPrice,
+      Trang_thai: 'Còn hàng',
+      Type: cmpRow.type || cmpRow.dbItem.Type || '',
+      License_duration: cmpRow.licenseDuration || cmpRow.dbItem.License_duration || '',
+      volume: cmpRow.volume || cmpRow.dbItem.volume || ''
+    })
+  } else {
+    payload = buildFirebaseHangHoaPayload({
+      Ma_hang: maHang,
+      sku_code: cmpRow.sku || cmpRow.skuFor || '',
+      Ten_hang: cmpRow.moTa,
+      Description: cmpRow.moTa,
+      Main_img: '',
+      Ma_nha_cung_cap: 'ACRONIS',
+      Ten_nha_cung_cap: 'ACRONIS',
+      Mo_ta_chung: '',
+      Mo_ta_chi_tiet: '',
+      Features: cmpRow.features ? formatFeaturesHtml(cmpRow.features) : '',
+      Danh_muc: danhMuc,
+      License_duration: cmpRow.licenseDuration || '',
+      DVT: 'License',
+      Gia_tieu_chuan: cmpRow.targetPrice,
+      Don_gia: cmpRow.targetPrice,
+      Trang_thai: 'Còn hàng',
+      Don_vi_tien_te: 'VND',
+      Ti_gia: 1,
+      Thue_VAT: 0,
+      Ma_hang_lien_ket: '',
+      Ten_hang_lien_ket: '',
+      Ghi_chu: noteParts.join(' | '),
+      gia_hardware: 0,
+      gia_nhap: 0,
+      muc_phan_tram_off: 0,
+      Type: cmpRow.type || '',
+      thoi_han_bao_hanh: '',
+      volume: cmpRow.volume || ''
+    })
+  }
+
+  if (resolvedFileMeta && resolvedFileMeta.file_name) {
+    payload.danh_sach_file = appendFileEntryToProductHistory(
+      cmpRow.dbItem?.danh_sach_file || [],
+      resolvedFileMeta,
+      {
+        gia_von: payload.Gia_tieu_chuan,
+        don_gia: payload.Don_gia,
+        gia_nhap: payload.gia_nhap,
+        don_vi_tien_te: payload.Don_vi_tien_te
+      }
+    )
+  }
+
+  return payload
+}
+
+const syncSingleAcronisCompareRowToDb = async (cmpRow) => {
+  if (!cmpRow) return
+  syncingAcronisCompareToDb.value = true
+  try {
+    const resolvedFileMeta = resolveAcronisCompareFileMeta()
+    const payload = buildHangHoaPayloadFromAcronisCompareRow(cmpRow, resolvedFileMeta)
+    if (cmpRow.dbItem && cmpRow.dbItem._firebaseKey) {
+      await update(dbRef(database, `hang_hoa/${cmpRow.dbItem._firebaseKey}`), payload)
+      showAsyncSuccess('Đã cập nhật giá Acronis!', `${payload.Ten_hang} → ${formatVndPrice(payload.Don_gia)}`)
+    } else {
+      const newRef = push(dbRef(database, 'hang_hoa'))
+      await set(newRef, payload)
+      if (payload.Danh_muc) {
+        await rebuildCategoryLinksFirebase(payload.Danh_muc)
+      }
+      showAsyncSuccess('Đã thêm mã Acronis vào DB!', `${payload.Ten_hang} → ${formatVndPrice(payload.Don_gia)}`)
+    }
+    await fetchData()
+    await syncAutoUpdatePriceListsInFirebase()
+    await runAcronisPriceComparison()
+  } catch (err) {
+    console.error('Lỗi đồng bộ Acronis vào Database:', err)
+    showAsyncError('Lỗi đồng bộ Firebase', err.message)
+  } finally {
+    syncingAcronisCompareToDb.value = false
+  }
+}
+
+const syncSelectedAcronisCompareRowsToDb = async () => {
+  const selectedList = acronisComparisonRows.value.filter(r => r.selected)
+  if (!selectedList.length) return
+
+  syncingAcronisCompareToDb.value = true
+  showAsyncLoading('Đang đồng bộ Acronis vào Database...', `Đang xử lý ${selectedList.length} sản phẩm...`)
+  try {
+    const resolvedFileMeta = resolveAcronisCompareFileMeta()
+    const batchUpdates = {}
+    const touchedCategories = new Set()
+    let updatedCount = 0
+    let addedCount = 0
+
+    for (const cmpRow of selectedList) {
+      const payload = buildHangHoaPayloadFromAcronisCompareRow(cmpRow, resolvedFileMeta)
+      if (payload.Danh_muc) touchedCategories.add(payload.Danh_muc)
+
+      if (cmpRow.dbItem && cmpRow.dbItem._firebaseKey) {
+        batchUpdates[cmpRow.dbItem._firebaseKey] = payload
+        updatedCount++
+      } else {
+        const newKey = push(dbRef(database, 'hang_hoa')).key
+        batchUpdates[newKey] = payload
+        addedCount++
+      }
+    }
+
+    await update(dbRef(database, 'hang_hoa'), batchUpdates)
+
+    for (const cat of touchedCategories) {
+      await rebuildCategoryLinksFirebase(cat)
+    }
+
+    await fetchData()
+    await syncAutoUpdatePriceListsInFirebase()
+    await runAcronisPriceComparison()
+
+    showAsyncSuccess(
+      'Đồng bộ Acronis thành công!',
+      `Đã cập nhật: ${updatedCount} mã · Thêm mới: ${addedCount} mã.`
+    )
+  } catch (err) {
+    console.error('Lỗi đồng bộ hàng loạt Acronis:', err)
+    showAsyncError('Lỗi đồng bộ Database', err.message)
+  } finally {
+    syncingAcronisCompareToDb.value = false
+  }
+}
+
+const exportAcronisComparisonToExcel = () => {
+  if (!acronisComparisonRows.value.length) return
+  const header = [
+    'STT',
+    'Sheet',
+    'Danh mục',
+    'SKU For',
+    'SKU',
+    'Mô tả sản phẩm',
+    'Thời hạn',
+    'Type',
+    'Volume',
+    'Giá file_goc_acronis.xlsx (VNĐ)',
+    'Dòng file_goc_acronis',
+    'Giá ACRONIS_file_mau_import.xlsx (VNĐ)',
+    'Dòng ACRONIS_file_mau',
+    'Mã Hàng Trong Database',
+    'Giá Database (VNĐ)',
+    'Chênh Lệch DB (VNĐ)',
+    'Trạng Thái Đối Chiếu DB'
+  ]
+
+  const rowsData = filteredAcronisComparisonRows.value.map((r, idx) => [
+    idx + 1,
+    r.sheet,
+    r.category,
+    r.skuFor,
+    r.sku,
+    r.moTa,
+    r.licenseDuration,
+    r.type,
+    r.volume,
+    r.gocPrice,
+    r.gocRowNum,
+    r.mauFound ? r.mauPrice : 'Chưa có',
+    r.mauRowNum || '',
+    r.dbItem ? r.dbItem.Ma_hang : 'Chưa có trong DB',
+    r.dbItem ? r.dbPrice : '',
+    r.dbItem ? Math.round(r.dbDiff) : '',
+    r.dbStatus === 'match'
+      ? 'Khớp giá DB'
+      : (r.dbStatus === 'diff'
+          ? `Lệch ${r.dbDiff > 0 ? '+' : ''}${Math.round(r.dbDiff).toLocaleString('vi-VN')} ₫ (${r.dbDiffPct.toFixed(1)}%)`
+          : 'Thiếu trong DB')
+  ])
+
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['BÁO CÁO ĐỐI CHIẾU BẢNG GIÁ GỐC ACRONIS (file_goc_acronis.xlsx ⇄ ACRONIS_file_mau_import.xlsx ⇄ Database)'],
+    [],
+    header,
+    ...rowsData
+  ])
+  ws['!cols'] = [
+    { wch: 6 }, { wch: 22 }, { wch: 32 }, { wch: 16 },
+    { wch: 16 }, { wch: 52 }, { wch: 14 }, { wch: 14 },
+    { wch: 16 }, { wch: 22 }, { wch: 16 }, { wch: 24 },
+    { wch: 16 }, { wch: 28 }, { wch: 18 }, { wch: 18 }, { wch: 28 }
+  ]
+
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Doi_Chieu_Acronis')
+  XLSX.writeFile(wb, 'Doi_Chieu_Gia_Acronis_file_goc_acronis.xlsx')
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ĐỐI CHIẾU TRỰC TIẾP TRÊN CARD HÀNG HÓA (SOPHOS / KASPERSKY / ACRONIS) VỚI FILE GỐC
+// ═══════════════════════════════════════════════════════════════════════════
+const showCardRefCompareModal = ref(false)
+const cardRefCompareLoading = ref(false)
+const cardRefCompareData = ref(null)
+const syncingCardRefToDb = ref(false)
+
+/**
+ * Xác định một Card hàng hóa có thuộc SOPHOS, KASPERSKY hoặc ACRONIS không
+ * @returns {'sophos' | 'kaspersky' | 'acronis' | null}
+ */
+const getCardVendorType = (item) => {
+  if (!item) return null
+  const ncc = String(item.Ten_nha_cung_cap || item.Ma_nha_cung_cap || '').trim().toUpperCase()
+  const dm = String(item.Danh_muc || '').trim().toUpperCase()
+  const th = String(item.Ten_hang || '').trim().toUpperCase()
+  const mh = String(item.Ma_hang || '').trim().toUpperCase()
+
+  if (ncc.includes('SOPHOS') || dm.includes('SOPHOS') || th.startsWith('SOPHOS')) {
+    return 'sophos'
+  }
+  if (ncc.includes('KASPERSKY') || dm.includes('KASPERSKY') || th.startsWith('KASPERSKY') || /^KL\d{4}/i.test(mh)) {
+    return 'kaspersky'
+  }
+  if (ncc.includes('ACRONIS') || dm.includes('ACRONIS') || th.includes('ACRONIS')) {
+    return 'acronis'
+  }
+  return null
+}
+
+const resolveSophosCardCompare = async (item) => {
+  await loadSophosRefData()
+  const sRef = sophosRefData.value || { gocSkus: {}, trungGianItems: [], lpSophos: [], tgSkuLocations: {} }
+  const gocMap = sRef.gocSkus || {}
+  const tgList = sRef.trungGianItems || []
+  const lpList = sRef.lpSophos || []
+  const tgLocMap = sRef.tgSkuLocations || {}
+
+  const mh = String(item.Ma_hang || '').trim().toUpperCase()
+  const itemSkuCode = String(item.sku_code || '').trim().toUpperCase()
+  const gc = String(item.Ghi_chu || '')
+  const skuFromNote = ((gc.match(/SKU:\s*([A-Z0-9]+)/i) || [])[1] || '').toUpperCase()
+
+  let sku = ''
+  if (itemSkuCode && gocMap[itemSkuCode]) sku = itemSkuCode
+  else if (gocMap[mh]) sku = mh
+  else if (skuFromNote && gocMap[skuFromNote]) sku = skuFromNote
+  else if (itemSkuCode) sku = itemSkuCode
+
+  // Tìm trong file_trung_gian_SOPHOS
+  let tgEntry = tgList.find(t => (sku && t.sku === sku) || t.sku === mh || (skuFromNote && t.sku === skuFromNote)) || null
+  if (!tgEntry) {
+    const dmLower = String(item.Danh_muc || '').trim().toLowerCase()
+    const thLower = String(item.Ten_hang || '').trim().replace(/:$/, '').toLowerCase()
+    // 1. Khớp chính xác group + dòng đầu moTa
+    tgEntry = tgList.find(t => {
+      const grp = String(t.group || '').trim().toLowerCase()
+      const firstLine = String(t.moTa || '').split('\n')[0].trim().replace(/:$/, '').toLowerCase()
+      return grp === dmLower && firstLine === thLower
+    }) || null
+    // 2. Khớp group + moTa chứa Ten_hang
+    if (!tgEntry && dmLower && thLower) {
+      tgEntry = tgList.find(t => {
+        const grp = String(t.group || '').trim().toLowerCase()
+        return grp === dmLower && String(t.moTa || '').toLowerCase().includes(thLower)
+      }) || null
+    }
+    // 3. Khớp dòng đầu moTa trên toàn bộ danh sách
+    if (!tgEntry && thLower) {
+      tgEntry = tgList.find(t => {
+        const firstLine = String(t.moTa || '').split('\n')[0].trim().replace(/:$/, '').toLowerCase()
+        return firstLine === thLower
+      }) || null
+    }
+  }
+
+  if (tgEntry && !sku) {
+    sku = String(tgEntry.sku || '').trim().toUpperCase()
+  }
+  if (!sku && /^[A-Z0-9]{8,16}$/.test(mh) && /\d/.test(mh)) {
+    sku = mh
+  }
+
+  const gocEntry = (sku && gocMap[sku])
+    ? gocMap[sku]
+    : (sku === 'CFRAAB12ZZCAA' ? gocMap['CFRAAB12BANCAA'] : null)
+  const gocFound = Boolean(gocEntry)
+  const gocMsrp = gocEntry ? (Number(gocEntry.msrp) || 0) : 0
+  const gocRowNum = gocEntry?.rowNum || null
+  const skuListRowNum = gocEntry?.skuTabRow || null
+  const skuListHwRowNum = gocEntry?.hwRow || null
+
+  const tgLocations = (sku && tgLocMap[sku])
+    ? [...tgLocMap[sku]]
+    : (tgEntry && tgEntry.rowNum
+        ? [{ sheet: tgEntry.sheet, rowNum: tgEntry.rowNum, colIndex: 1, colLetter: 'B', cell: tgEntry.cell || `B${tgEntry.rowNum}` }]
+        : [])
+  const tgFound = Boolean(tgEntry || tgLocations.length > 0)
+  const tgMsrp = tgEntry ? (Number(tgEntry.msrp) || 0) : 0
+  const tgSheet = tgEntry?.sheet || tgLocations[0]?.sheet || ''
+  const tgRowNum = tgEntry?.rowNum || tgLocations[0]?.rowNum || null
+  const tgGroup = tgEntry?.group || ''
+
+  // Suy luận model XGS để lấy LP Sophos & Firewall Row
+  const combinedModelText = `${item.Danh_muc || ''} ${tgGroup || ''} ${item.Ten_hang || ''}`
+  const modelMatch = combinedModelText.match(/\b(XGS?\s*\d{2,4}w?)\b/i)
+  const modelStr = modelMatch ? modelMatch[1].toUpperCase().replace(/\bXGS(\d)/i, 'XGS $1').replace(/\s+/g, ' ') : ''
+  const lpRow = modelStr ? lpList.find(x => String(x.model || '').toUpperCase() === modelStr) : null
+  const lpRowNum = lpRow?.rowNum || null
+  let lpOldUsd = 0
+  const thLower = String(item.Ten_hang || '').toLowerCase()
+  if (lpRow) {
+    if (sku.startsWith('XG') || thLower.includes('hardware appliance')) lpOldUsd = Number(lpRow.oldHwUsd) || 0
+    else if (sku.startsWith('XS') || thLower.includes('xstream protection')) lpOldUsd = Number(lpRow.oldXstream1YUsd) || 0
+    else if (sku.startsWith('SP') || thLower.includes('standard protection')) lpOldUsd = Number(lpRow.oldStd1YUsd) || 0
+  }
+  if (!lpOldUsd && gocEntry?.prevPrice) {
+    lpOldUsd = Number(gocEntry.prevPrice) || 0
+  }
+
+  const tgNhapKhau = tgEntry
+    ? (Number(tgEntry.nhapKhau) || 0)
+    : (lpRow && sku.startsWith('XG') ? (Number(lpRow.nhapKhauUsd) || 0) : 0)
+
+  const gocFirewallRowNum = getFirewallSheetRowNumForItem(item.Ten_hang, sku)
+
+  const dbPrice = Number(item.Don_gia) || 0
+  const dbGiaNhap = Number(item.gia_nhap) || 0
+  const refPrice = gocFound && gocMsrp > 0 ? gocMsrp : (tgFound && tgMsrp > 0 ? tgMsrp : 0)
+  const priceDiff = refPrice > 0 ? (dbPrice - refPrice) : 0
+  const priceDiffPct = refPrice > 0 ? (priceDiff / refPrice) * 100 : 0
+
+  let status = 'not_found'
+  if (gocFound || tgFound) {
+    status = Math.abs(priceDiff) < 0.05 ? 'match' : 'diff'
+  }
+
+  return {
+    vendor: 'sophos',
+    item,
+    sku,
+    gocFound,
+    gocEntry,
+    gocMsrp,
+    gocRowNum,
+    skuListRowNum,
+    skuListHwRowNum,
+    gocFirewallRowNum,
+    tgFound,
+    tgEntry,
+    tgMsrp,
+    tgNhapKhau,
+    tgSheet,
+    tgRowNum,
+    tgGroup,
+    tgLocations,
+    lpRowNum,
+    lpOldUsd,
+    dbPrice,
+    dbGiaNhap,
+    refPrice,
+    priceDiff,
+    priceDiffPct,
+    status
+  }
+}
+
+const resolveKasperskyCardCompare = async (item) => {
+  await loadKasRefData()
+  const kRef = kasRefData.value || {}
+  const gocPivotMap = kRef.gocPivotBySku || {}
+  const mauPivotMap = kRef.mauPivotBySku || {}
+  const gocSaleMap = kRef.gocSaleBySkuBand || {}
+  const mauSaleMap = kRef.mauSaleBySkuBand || {}
+
+  const mh = String(item.Ma_hang || '').trim()
+  const itemSkuCode = String(item.sku_code || '').trim().toUpperCase()
+  const gc = String(item.Ghi_chu || '').trim()
+  const klTokens = [
+    ...(itemSkuCode ? [itemSkuCode] : []),
+    ...(mh.match(/KL\d{4}[A-Z0-9*]+/gi) || []),
+    ...(gc.match(/KL\d{4}[A-Z0-9*]+/gi) || [])
+  ].map(s => s.toUpperCase())
+
+  let sku = klTokens.find(t => t.includes('*') && gocPivotMap[t])
+    || klTokens.find(t => gocPivotMap[t])
+    || klTokens.find(t => t.includes('*'))
+    || klTokens[0]
+    || ''
+
+  let band = String(item.volume || '').trim()
+  if (!band) {
+    const bandMatch = mh.match(/(Band\s+[A-Z0-9]+:\s*\d+(?:-\d+|\+)?)/i)
+      || String(item.Ten_hang || '').match(/(Band\s+[A-Z0-9]+:\s*\d+(?:-\d+|\+)?)/i)
+    if (bandMatch) band = bandMatch[1].trim()
+  }
+
+  const gocPivotEntry = (sku && gocPivotMap[sku]) || null
+  const mauPivotEntry = (sku && mauPivotMap[sku]) || null
+  const skuBandKey = `${sku}||${band}`
+  const gocSaleEntry = gocSaleMap[skuBandKey] || null
+  const mauSaleEntry = mauSaleMap[skuBandKey] || null
+
+  const posCode = gocSaleEntry?.posCode
+    || mauSaleEntry?.posCode
+    || klTokens.find(t => !t.includes('*') && t !== sku)
+    || ''
+
+  const gocPivotRow = gocPivotEntry?.rowNum || null
+  const gocPivotColIdx = (gocPivotEntry?.bandCols && gocPivotEntry.bandCols[band] !== undefined)
+    ? gocPivotEntry.bandCols[band]
+    : 9
+  const gocPivotColLetter = colIndexToLetter(gocPivotColIdx)
+  const gocSaleRow = gocSaleEntry?.rowNum || null
+  const gocPrice = Number(gocPivotEntry?.prices?.[band] ?? gocSaleEntry?.price ?? 0)
+  const gocFound = Boolean(gocPivotEntry || gocSaleEntry)
+
+  const mauPivotRow = mauPivotEntry?.rowNum || null
+  const mauPivotColIdx = (mauPivotEntry?.bandCols && mauPivotEntry.bandCols[band] !== undefined)
+    ? mauPivotEntry.bandCols[band]
+    : gocPivotColIdx
+  const mauPivotColLetter = colIndexToLetter(mauPivotColIdx)
+  const mauSaleRow = mauSaleEntry?.rowNum || null
+  const mauPrice = Number(mauPivotEntry?.prices?.[band] ?? mauSaleEntry?.price ?? 0)
+  const mauFound = Boolean(mauPivotEntry || mauSaleEntry)
+
+  const dbPrice = Number(item.Don_gia) || 0
+  const refPrice = gocFound && gocPrice > 0 ? gocPrice : (mauFound && mauPrice > 0 ? mauPrice : 0)
+  const priceDiff = refPrice > 0 ? (dbPrice - refPrice) : 0
+  const priceDiffPct = refPrice > 0 ? (priceDiff / refPrice) * 100 : 0
+  const mauIsOldPre10 = mauPrice > 0 && refPrice > 0 && Math.abs(mauPrice * 1.1 - refPrice) / refPrice < 0.015
+
+  let status = 'not_found'
+  if (gocFound || mauFound) {
+    status = Math.abs(priceDiff) < 1 ? 'match' : 'diff'
+  }
+
+  return {
+    vendor: 'kaspersky',
+    item,
+    sku,
+    posCode,
+    band,
+    gocFound,
+    gocPivotEntry,
+    gocSaleEntry,
+    gocPivotRow,
+    gocPivotColLetter,
+    gocSaleRow,
+    gocPrice,
+    mauFound,
+    mauPivotRow,
+    mauPivotColLetter,
+    mauSaleRow,
+    mauPrice,
+    mauIsOldPre10,
+    dbPrice,
+    refPrice,
+    priceDiff,
+    priceDiffPct,
+    status
+  }
+}
+
+const resolveAcronisCardCompare = async (item) => {
+  await loadAcronisRefData()
+  const aRef = acronisRefData.value || {}
+  const gocByMaHang = aRef.gocByMaHang || {}
+  const gocBySku = aRef.gocBySku || {}
+  const gocBySkuFor = aRef.gocBySkuFor || {}
+  const gocItems = aRef.gocItems || []
+  const mauByMaHang = aRef.mauByMaHang || {}
+  const mauBySku = aRef.mauBySku || {}
+  const mauBySkuFor = aRef.mauBySkuFor || {}
+
+  const mh = String(item.Ma_hang || '').trim().toUpperCase()
+  const itemSkuCode = String(item.sku_code || '').trim().toUpperCase()
+  const thLower = String(item.Ten_hang || '').trim().toLowerCase()
+  const parts = mh.split('-').map(s => s.trim()).filter(Boolean)
+
+  let gocEntry = gocByMaHang[mh] || null
+  if (!gocEntry && itemSkuCode) {
+    gocEntry = gocBySku[itemSkuCode] || gocBySkuFor[itemSkuCode] || null
+  }
+  if (!gocEntry && parts.length >= 2) {
+    gocEntry = gocBySku[parts[1]] || gocBySkuFor[parts[0]] || null
+  }
+  if (!gocEntry && parts.length === 1) {
+    gocEntry = gocBySku[parts[0]] || gocBySkuFor[parts[0]] || null
+  }
+  if (!gocEntry && thLower) {
+    gocEntry = gocItems.find(x => String(x.moTa || '').trim().toLowerCase() === thLower) || null
+  }
+
+  const sku = gocEntry?.sku || (parts.length >= 2 ? parts[1] : (parts[0] || ''))
+  const skuFor = gocEntry?.skuFor || (parts.length >= 2 ? parts[0] : '')
+  const maKey = gocEntry?.maHang ? String(gocEntry.maHang).toUpperCase() : mh
+
+  const mauEntry = mauByMaHang[maKey]
+    || (sku && mauBySku[sku.toUpperCase()])
+    || (skuFor && mauBySkuFor[skuFor.toUpperCase()])
+    || null
+
+  const gocFound = Boolean(gocEntry)
+  const gocPrice = gocEntry ? (Number(gocEntry.price) || 0) : 0
+  const gocRowNum = gocEntry?.rowNum || null
+  const sheet = gocEntry?.sheet || mauEntry?.sheet || 'Protect Standard'
+
+  const mauFound = Boolean(mauEntry)
+  const mauPrice = mauEntry ? (Number(mauEntry.price) || 0) : 0
+  const mauRowNum = mauEntry?.rowNum || null
+  const mauSheet = mauEntry?.sheet || sheet
+
+  const dbPrice = Number(item.Don_gia) || 0
+  const refPrice = gocFound && gocPrice > 0 ? gocPrice : (mauFound && mauPrice > 0 ? mauPrice : 0)
+  const priceDiff = refPrice > 0 ? (dbPrice - refPrice) : 0
+  const priceDiffPct = refPrice > 0 ? (priceDiff / refPrice) * 100 : 0
+
+  let status = 'not_found'
+  if (gocFound || mauFound) {
+    status = Math.abs(priceDiff) < 1 ? 'match' : 'diff'
+  }
+
+  const catLower = String(gocEntry?.category || item.Danh_muc || '').trim().toLowerCase()
+  const relatedItems = catLower
+    ? gocItems.filter(x => String(x.category || '').trim().toLowerCase() === catLower)
+    : []
+
+  return {
+    vendor: 'acronis',
+    item,
+    sku,
+    skuFor,
+    sheet,
+    gocFound,
+    gocEntry,
+    gocRowNum,
+    gocPrice,
+    mauFound,
+    mauEntry,
+    mauRowNum,
+    mauSheet,
+    mauPrice,
+    relatedItems,
+    dbPrice,
+    refPrice,
+    priceDiff,
+    priceDiffPct,
+    status
+  }
+}
+
+/**
+ * Mở Modal Đối Chiếu File Gốc cho Card hàng hóa Sophos, Kaspersky hoặc Acronis
+ */
+const openCardOriginalFileCompare = async (item) => {
+  const vendor = getCardVendorType(item)
+  if (!vendor) return
+  showCardRefCompareModal.value = true
+  cardRefCompareLoading.value = true
+  cardRefCompareData.value = { vendor, item, status: 'loading' }
+  try {
+    if (vendor === 'sophos') {
+      cardRefCompareData.value = await resolveSophosCardCompare(item)
+    } else if (vendor === 'acronis') {
+      cardRefCompareData.value = await resolveAcronisCardCompare(item)
+    } else {
+      cardRefCompareData.value = await resolveKasperskyCardCompare(item)
+    }
+  } catch (err) {
+    console.error('Lỗi đối chiếu file gốc trên card:', err)
+  } finally {
+    cardRefCompareLoading.value = false
+  }
+}
+
+/**
+ * Đồng bộ trực tiếp Card đang đối chiếu theo Giá chuẩn File Gốc vào Firebase `hang_hoa`
+ */
+const syncCardItemWithOriginalFile = async () => {
+  const data = cardRefCompareData.value
+  if (!data || !data.item || !data.item._firebaseKey || !(data.refPrice > 0)) return
+  syncingCardRefToDb.value = true
+  try {
+    const existing = data.item
+    const updatedFields = {
+      ...existing,
+      sku_code: data.sku || existing.sku_code || '',
+      Don_gia: data.refPrice,
+      Gia_tieu_chuan: data.refPrice
+    }
+    if (data.vendor === 'sophos') {
+      if (data.tgNhapKhau > 0) {
+        updatedFields.gia_nhap = data.tgNhapKhau
+      }
+      if (data.gocEntry?.desc && !existing.Description) {
+        updatedFields.Description = data.gocEntry.desc
+      }
+      if (data.sku && !String(existing.Ghi_chu || '').includes(data.sku)) {
+        updatedFields.Ghi_chu = [existing.Ghi_chu, `SKU: ${data.sku}`].filter(Boolean).join(' | ')
+      }
+    }
+    const payload = buildFirebaseHangHoaPayload(updatedFields)
+    await update(dbRef(database, `hang_hoa/${existing._firebaseKey}`), payload)
+    await fetchData()
+    await syncAutoUpdatePriceListsInFirebase()
+
+    const refreshedItem = items.value.find(x => x._firebaseKey === existing._firebaseKey) || { ...existing, ...payload }
+    if (data.vendor === 'sophos') {
+      cardRefCompareData.value = await resolveSophosCardCompare(refreshedItem)
+    } else if (data.vendor === 'acronis') {
+      cardRefCompareData.value = await resolveAcronisCardCompare(refreshedItem)
+    } else {
+      cardRefCompareData.value = await resolveKasperskyCardCompare(refreshedItem)
+    }
+    showAsyncSuccess(
+      'Đã cập nhật Card theo File Gốc!',
+      `${refreshedItem.Ten_hang} → ${data.vendor === 'sophos' ? formatUsdPrice(data.refPrice) : formatVndPrice(data.refPrice)}`
+    )
+  } catch (err) {
+    console.error('Lỗi cập nhật Card theo File Gốc:', err)
+    showAsyncError('Lỗi cập nhật Database', err.message)
+  } finally {
+    syncingCardRefToDb.value = false
+  }
+}
+
+// ═══ THAY ĐỔI TỈ GIÁ (DÀNH CHO USD) ═══
+const showUsdRateModal = ref(false)
+const newUsdExchangeRate = ref(26200)
+const usdRateScope = ref('all') // 'all' | 'filtered'
+const updatingUsdRate = ref(false)
+const customDefaultUsdRate = ref(
+  typeof localStorage !== 'undefined' && Number(localStorage.getItem('custom_usd_exchange_rate')) > 1
+    ? Number(localStorage.getItem('custom_usd_exchange_rate'))
+    : 0
+)
+
+const isUsdCurrencyItem = (item) => {
+  return String(item?.Don_vi_tien_te || '').trim().toUpperCase() === 'USD'
+}
+
+const usdItems = computed(() => {
+  return items.value.filter(isUsdCurrencyItem)
+})
+
+const filteredUsdItems = computed(() => {
+  return filteredItems.value.filter(isUsdCurrencyItem)
+})
+
+const currentSystemUsdRate = computed(() => {
+  if (customDefaultUsdRate.value > 1) return customDefaultUsdRate.value
+  // Tìm tỉ giá phổ biến nhất trong các sản phẩm USD hiện có
+  const freq = new Map()
+  let bestRate = 0
+  let bestCount = 0
+  for (const it of usdItems.value) {
+    const r = Number(it.Ti_gia) || 0
+    if (r > 1) {
+      const c = (freq.get(r) || 0) + 1
+      freq.set(r, c)
+      if (c > bestCount) {
+        bestCount = c
+        bestRate = r
+      }
+    }
+  }
+  if (bestRate > 1) return bestRate
+  return Number(sophosRefData.value?.tiGiaTrungGian) || 26200
+})
+
+const openUsdRateModal = () => {
+  newUsdExchangeRate.value = currentSystemUsdRate.value || 26200
+  usdRateScope.value = 'all'
+  showUsdRateModal.value = true
+}
+
+const closeUsdRateModal = () => {
+  if (updatingUsdRate.value) return
+  showUsdRateModal.value = false
+}
+
+const applyUsdExchangeRateUpdate = async () => {
+  const rate = Math.round(Number(newUsdExchangeRate.value) || 0)
+  if (!(rate > 0)) {
+    showAsyncError('Tỉ giá không hợp lệ', 'Vui lòng nhập tỉ giá USD lớn hơn 0.')
+    return
+  }
+
+  const targetList = usdRateScope.value === 'filtered' ? filteredUsdItems.value : usdItems.value
+  updatingUsdRate.value = true
+  showAsyncLoading('Đang cập nhật tỉ giá USD...', `Áp dụng mức ${formatCurrency(rate, 'VND')} cho ${targetList.length} sản phẩm USD`)
+
+  try {
+    customDefaultUsdRate.value = rate
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('custom_usd_exchange_rate', String(rate))
+    }
+    if (sophosRefData.value && typeof sophosRefData.value === 'object') {
+      sophosRefData.value.tiGiaTrungGian = rate
+    }
+
+    const validTargets = targetList.filter(item => item && item._firebaseKey)
+    const nowIso = new Date().toISOString()
+    const CHUNK_SIZE = 400
+    for (let i = 0; i < validTargets.length; i += CHUNK_SIZE) {
+      const chunk = validTargets.slice(i, i + CHUNK_SIZE)
+      const updatesObj = {}
+      chunk.forEach(item => {
+        updatesObj[`hang_hoa/${item._firebaseKey}/Ti_gia`] = rate
+        updatesObj[`hang_hoa/${item._firebaseKey}/last_updated`] = nowIso
+      })
+      await update(dbRef(database), updatesObj)
+    }
+
+    // Cập nhật ngay trên state local để UI phản hồi tức thì
+    const updatedKeys = new Set(validTargets.map(x => x._firebaseKey))
+    items.value.forEach(item => {
+      if (updatedKeys.has(item._firebaseKey)) {
+        item.Ti_gia = rate
+        item.last_updated = nowIso
+      }
+    })
+
+    // Nếu người dùng đang mở sẵn dữ liệu import preview có dòng USD, cập nhật luôn tỉ giá USD trong bảng preview
+    if (Array.isArray(importData.value) && importData.value.length > 0) {
+      importData.value.forEach(row => {
+        if (String(row.Don_vi_tien_te || '').trim().toUpperCase() === 'USD') {
+          row.Ti_gia = rate
+        }
+      })
+    }
+
+    showUsdRateModal.value = false
+    showAsyncSuccess(
+      'Đã cập nhật tỉ giá USD thành công!',
+      `Tỉ giá mới: ${formatCurrency(rate, 'VND')} • Đã áp dụng cho ${validTargets.length} sản phẩm USD.`
+    )
+  } catch (err) {
+    console.error('Lỗi cập nhật tỉ giá USD:', err)
+    showAsyncError('Lỗi cập nhật tỉ giá USD', err.message || 'Không thể lưu tỉ giá mới lên Firebase.')
+  } finally {
+    updatingUsdRate.value = false
+  }
+}
+
+// =========================================================================
+// GIỎ HÀNG BÁO GIÁ & CHUYỂN TÍNH TOÁN SANG TRANG BÁO GIÁ (ĐA TAB)
+// =========================================================================
+const router = useRouter()
+const QUOTE_CART_STORAGE_KEY = 'nts_hanghoa_quote_cart_v1'
+const quoteCart = ref([])
+const showQuoteCartDrawer = ref(false)
+
+const getCartItemKey = (item) => {
+  if (!item || typeof item !== 'object') return ''
+  return String(item._firebaseKey || item.Ma_hang || item.sku_code || item.Ten_hang || '').trim()
+}
+
+const saveQuoteCartToStorage = () => {
+  try {
+    if (!quoteCart.value.length) {
+      localStorage.removeItem(QUOTE_CART_STORAGE_KEY)
+    } else {
+      localStorage.setItem(QUOTE_CART_STORAGE_KEY, JSON.stringify(quoteCart.value))
+    }
+  } catch (err) {
+    console.warn('Không thể lưu giỏ hàng báo giá vào localStorage:', err)
+  }
+}
+
+const restoreQuoteCartFromStorage = () => {
+  try {
+    const raw = localStorage.getItem(QUOTE_CART_STORAGE_KEY)
+    if (!raw) return
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed)) {
+      quoteCart.value = parsed.filter(x => x && x.key && Number(x.qty) > 0)
+      if (quoteCart.value.length > 0) {
+        showQuoteCartDrawer.value = true
+      }
+    }
+  } catch (err) {
+    console.warn('Không thể khôi phục giỏ hàng báo giá:', err)
+  }
+}
+
+const getCartEntryByItem = (item) => {
+  const key = getCartItemKey(item)
+  if (!key) return null
+  return quoteCart.value.find(e => e.key === key) || null
+}
+
+const isInQuoteCart = (item) => {
+  const entry = getCartEntryByItem(item)
+  return Boolean(entry && Number(entry.qty) > 0)
+}
+
+const getCartItemQty = (item) => {
+  const entry = getCartEntryByItem(item)
+  return entry ? Math.max(1, Number(entry.qty) || 1) : 0
+}
+
+const addToQuoteCart = (item) => {
+  if (!item) return
+  const key = getCartItemKey(item)
+  if (!key) return
+  const existing = quoteCart.value.find(e => e.key === key)
+  if (existing) {
+    existing.qty = Math.max(1, Number(existing.qty) || 1) + 1
+    existing.itemSnapshot = JSON.parse(JSON.stringify(item))
+  } else {
+    quoteCart.value.push({
+      key,
+      qty: 1,
+      itemSnapshot: JSON.parse(JSON.stringify(item))
+    })
+  }
+  showQuoteCartDrawer.value = true
+  saveQuoteCartToStorage()
+}
+
+const removeFromQuoteCart = (item) => {
+  const key = getCartItemKey(item)
+  if (!key) return
+  const idx = quoteCart.value.findIndex(e => e.key === key)
+  if (idx !== -1) {
+    quoteCart.value.splice(idx, 1)
+    if (!quoteCart.value.length) {
+      showQuoteCartDrawer.value = false
+    }
+    saveQuoteCartToStorage()
+  }
+}
+
+const updateQuoteCartQty = (item, deltaOrVal, isAbsolute = false) => {
+  const key = getCartItemKey(item)
+  if (!key) return
+  const entry = quoteCart.value.find(e => e.key === key)
+  if (!entry) return
+
+  const nextQty = isAbsolute
+    ? Math.floor(Number(deltaOrVal) || 0)
+    : Math.floor((Number(entry.qty) || 1) + Number(deltaOrVal))
+
+  if (nextQty <= 0) {
+    removeFromQuoteCart(item)
+    return
+  }
+
+  entry.qty = nextQty
+  entry.itemSnapshot = JSON.parse(JSON.stringify(item))
+  saveQuoteCartToStorage()
+}
+
+const onCardCartQtyInputChange = (item, event) => {
+  const rawVal = Number(event?.target?.value)
+  if (!Number.isFinite(rawVal) || rawVal <= 0) {
+    removeFromQuoteCart(item)
+    return
+  }
+  updateQuoteCartQty(item, Math.max(1, Math.floor(rawVal)), true)
+}
+
+const clearQuoteCart = () => {
+  quoteCart.value = []
+  showQuoteCartDrawer.value = false
+  saveQuoteCartToStorage()
+}
+
+const resolveLatestCartItem = (entry) => {
+  if (!entry) return null
+  const found = items.value.find(it => getCartItemKey(it) === entry.key)
+  return found || entry.itemSnapshot || null
+}
+
+const getEffectiveItemUnitPrice = (item) => {
+  if (!item) return 0
+  const plEntry = activePriceList.value ? getPriceListEntry(item) : null
+  if (plEntry && plEntry.gia_ban_moi !== undefined && plEntry.gia_ban_moi !== null) {
+    return toNum(plEntry.gia_ban_moi, toNum(item.Don_gia, 0))
+  }
+  return toNum(item.Don_gia, 0)
+}
+
+const quoteCartEnrichedList = computed(() => {
+  return quoteCart.value
+    .map(entry => {
+      const item = resolveLatestCartItem(entry)
+      if (!item) return null
+      const qty = Math.max(1, Number(entry.qty) || 1)
+      const effectiveUnitPrice = getEffectiveItemUnitPrice(item)
+      const tiGia = String(item.Don_vi_tien_te || '').trim().toUpperCase() === 'USD'
+        ? Math.max(1, toNum(item.Ti_gia, 1))
+        : 1
+      const unitPriceVnd = Math.round(effectiveUnitPrice * tiGia)
+      const lineTotalVnd = unitPriceVnd * qty
+      const vatPct = Math.max(0, toNum(item.Thue_VAT, 0))
+      const lineAfterTaxVnd = Math.round(lineTotalVnd * (1 + vatPct / 100))
+      return {
+        key: entry.key,
+        qty,
+        item,
+        effectiveUnitPrice,
+        unitPriceVnd,
+        lineTotalVnd,
+        lineAfterTaxVnd
+      }
+    })
+    .filter(Boolean)
+})
+
+const quoteCartTotalQty = computed(() => {
+  return quoteCartEnrichedList.value.reduce((sum, e) => sum + e.qty, 0)
+})
+
+const quoteCartTotalBeforeTaxVnd = computed(() => {
+  return quoteCartEnrichedList.value.reduce((sum, e) => sum + e.lineTotalVnd, 0)
+})
+
+const quoteCartTotalAfterTaxVnd = computed(() => {
+  return quoteCartEnrichedList.value.reduce((sum, e) => sum + e.lineAfterTaxVnd, 0)
+})
+
+const proceedToCalculateQuote = () => {
+  if (!quoteCartEnrichedList.value.length) return
+
+  const payloadItems = quoteCartEnrichedList.value.map(entry => {
+    const p = entry.item
+    const effectiveDonGia = entry.effectiveUnitPrice
+    const giaTC = toNum(p.Gia_tieu_chuan, 0)
+    const tiGia = toNum(p.Ti_gia, 1) || 1
+    const vat = toNum(p.Thue_VAT, 0)
+    const giaHw = toNum(p.gia_hardware, 0)
+    const giaNhap = toNum(p.gia_nhap, 0)
+    const mucOff = toNum(p.muc_phan_tram_off, 0)
+
+    return {
+      Ma_hang: String(p.Ma_hang ?? '').trim(),
+      sku_code: String(p.sku_code ?? '').trim(),
+      Ten_hang: String(p.Ten_hang ?? ''),
+      Description: String(p.Description ?? ''),
+      Main_img: String(p.Main_img ?? ''),
+      Ma_nha_cung_cap: String(p.Ma_nha_cung_cap ?? ''),
+      Ten_nha_cung_cap: String(p.Ten_nha_cung_cap ?? ''),
+      Mo_ta_chung: String(p.Mo_ta_chung ?? ''),
+      Mo_ta_chi_tiet: String(p.Mo_ta_chi_tiet ?? ''),
+      Features: String(p.Features ?? ''),
+      Danh_muc: String(p.Danh_muc ?? '').toUpperCase(),
+      License_duration: String(p.License_duration ?? ''),
+      DVT: String(p.DVT ?? ''),
+      Gia_tieu_chuan: giaTC,
+      Don_gia: effectiveDonGia,
+      Trang_thai: String(p.Trang_thai ?? ''),
+      Don_vi_tien_te: String(p.Don_vi_tien_te || 'VND'),
+      Ti_gia: tiGia,
+      Thue_VAT: vat,
+      Ma_hang_lien_ket: String(p.Ma_hang_lien_ket ?? ''),
+      Ten_hang_lien_ket: String(p.Ten_hang_lien_ket ?? ''),
+      Ghi_chu: String(p.Ghi_chu ?? ''),
+      gia_hardware: giaHw,
+      gia_nhap: giaNhap,
+      muc_phan_tram_off: mucOff,
+      Type: String(p.Type ?? '').trim(),
+      thoi_han_bao_hanh: String(p.thoi_han_bao_hanh ?? ''),
+      volume: String(p.volume ?? ''),
+      So_luong: entry.qty,
+      _Don_gia_goc: effectiveDonGia,
+      _Gia_tieu_chuan_goc: giaTC,
+      _Ti_gia_goc: tiGia,
+      _Thue_VAT_goc: vat,
+      _gia_hardware_goc: giaHw,
+      _gia_nhap_goc: giaNhap,
+      _muc_phan_tram_off_goc: mucOff
+    }
+  })
+
+  try {
+    localStorage.setItem('cloneQuoteProducts', JSON.stringify(payloadItems))
+    if (selectedPriceListId.value) {
+      localStorage.setItem('cloneQuotePriceListId', String(selectedPriceListId.value))
+    } else {
+      localStorage.removeItem('cloneQuotePriceListId')
+    }
+  } catch (err) {
+    console.error('Lỗi lưu danh sách sản phẩm chuyển sang báo giá:', err)
+  }
+
+  // Làm trống giỏ hàng ngay sau khi đẩy sang tab báo giá
+  clearQuoteCart()
+
+  // Điều hướng sang trang Báo giá Firebase
+  router.push('/baogiafirebase')
+}
+
 onMounted(async () => {
+  restoreQuoteCartFromStorage()
   window.addEventListener('paste', handleGlobalPasteForImageCheck)
+  window.addEventListener('click', closeFilterDropdownOnOutsideClick)
   fetchLatestGiaOff()
+  fetchVendorRefFilesMeta()
   await Promise.all([fetchData(), fetchPriceLists()])
   await syncAutoUpdatePriceListsInFirebase()
 })
 
 onUnmounted(() => {
   window.removeEventListener('paste', handleGlobalPasteForImageCheck)
+  window.removeEventListener('click', closeFilterDropdownOnOutsideClick)
+  if (lazyLoadObserver) {
+    lazyLoadObserver.disconnect()
+    lazyLoadObserver = null
+  }
   if (imageCheckPreviewUrl.value) {
     URL.revokeObjectURL(imageCheckPreviewUrl.value)
   }
@@ -8384,7 +14526,340 @@ onUnmounted(() => {
 
 .actions {
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.vendor-import-group {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+
+.vendor-import-group--sophos {
+  border-color: rgba(59, 130, 246, 0.4);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.88), rgba(30, 58, 138, 0.35));
+}
+
+.vendor-import-group--kas {
+  border-color: rgba(56, 189, 248, 0.38);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.88), rgba(6, 78, 59, 0.35));
+}
+
+.vendor-import-group--acronis {
+  border-color: rgba(99, 102, 241, 0.42);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.88), rgba(49, 46, 129, 0.38));
+}
+
+.vendor-template-btn {
+  font-size: 12px !important;
+  padding: 5px 10px !important;
+  font-weight: 600 !important;
+  text-decoration: none;
+  background: rgba(15, 23, 42, 0.65);
+}
+
+.vendor-uploaded-file-box {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  font-size: 11px;
+  color: #94a3b8;
+  max-width: 280px;
+  line-height: 1.25;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.68);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.vendor-uploaded-file-box--compact {
+  max-width: 255px;
+  padding: 2px 7px;
+}
+
+.vendor-uploaded-file-box__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.vendor-uploaded-file-box__line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1;
+}
+
+.vendor-uploaded-file-box__link {
+  text-decoration: underline;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.vendor-uploaded-file-box__link:hover {
+  filter: brightness(1.2);
+}
+
+.vendor-file-download-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex-shrink: 0;
+  padding: 2px 6px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.38);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.vendor-file-download-btn:hover {
+  background: rgba(16, 185, 129, 0.28);
+  border-color: rgba(52, 211, 153, 0.7);
+  color: #ecfdf5;
+  transform: translateY(-1px);
+}
+
+.vendor-file-office-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex-shrink: 0;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.42);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.vendor-file-office-btn:hover {
+  background: rgba(56, 189, 248, 0.28);
+  border-color: rgba(125, 211, 252, 0.8);
+  color: #f0f9ff;
+  transform: translateY(-1px);
+}
+
+.compare-office-embed-panel {
+  display: flex;
+  flex-direction: column;
+  border-radius: 10px;
+  border: 1.5px solid rgba(56, 189, 248, 0.45);
+  background: rgba(15, 23, 42, 0.96);
+  overflow: hidden;
+  margin-bottom: 12px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}
+
+.compare-office-embed-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 14px;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(30, 58, 138, 0.45));
+  border-bottom: 1px solid rgba(56, 189, 248, 0.28);
+  font-size: 12px;
+}
+
+.compare-office-role-btn {
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  color: #cbd5e1;
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  transition: all 0.15s ease;
+}
+
+.compare-office-role-btn:hover {
+  border-color: rgba(56, 189, 248, 0.55);
+  color: #ffffff;
+}
+
+.compare-office-role-btn.active {
+  background: rgba(56, 189, 248, 0.24);
+  border-color: #38bdf8;
+  color: #f0f9ff;
+}
+
+.compare-office-target-badge {
+  padding: 2px 8px;
+  border-radius: 5px;
+  font-size: 11.5px;
+  background: rgba(245, 158, 11, 0.16);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fde68a;
+}
+
+.compare-office-close-btn {
+  padding: 3px 9px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.16);
+  border: 1px solid rgba(239, 68, 68, 0.42);
+}
+
+.compare-office-close-btn:hover {
+  background: rgba(239, 68, 68, 0.3);
+  color: #ffffff;
+}
+
+.compare-office-embed-body {
+  height: 440px;
+  min-height: 280px;
+  resize: vertical;
+  overflow: hidden;
+  background: #0f172a;
+  position: relative;
+}
+
+.compare-office-loading {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #38bdf8;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.compare-office-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #ffffff;
+}
+
+.vendor-uploaded-file-box__time {
+  font-size: 10.5px;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.vendor-uploaded-file-box__empty {
+  font-size: 11px;
+  color: #64748b;
+  font-style: italic;
+  white-space: nowrap;
+}
+
+.vendor-ref-slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 4px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.vendor-compare-group {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+}
+
+.vendor-compare-group--sophos {
+  border-color: rgba(56, 189, 248, 0.42);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.88), rgba(8, 47, 73, 0.45));
+}
+
+.vendor-compare-group--kas {
+  border-color: rgba(16, 185, 129, 0.42);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.88), rgba(6, 78, 59, 0.45));
+}
+
+.vendor-compare-group--acronis {
+  border-color: rgba(129, 140, 248, 0.45);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.88), rgba(49, 46, 129, 0.48));
+}
+
+.vendor-ref-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  user-select: none;
+  border: 1px dashed rgba(148, 163, 184, 0.4);
+  background: rgba(30, 41, 59, 0.85);
+  color: #e2e8f0;
+}
+
+.vendor-ref-upload-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.15);
+}
+
+.vendor-ref-upload-btn--sophos-goc {
+  border-color: rgba(56, 189, 248, 0.55);
+  color: #7dd3fc;
+  background: rgba(14, 116, 144, 0.28);
+}
+
+.vendor-ref-upload-btn--sophos-tg {
+  border-color: rgba(192, 132, 252, 0.55);
+  color: #d8b4fe;
+  background: rgba(107, 33, 168, 0.28);
+}
+
+.vendor-ref-upload-btn--kas-goc {
+  border-color: rgba(52, 211, 153, 0.55);
+  color: #6ee7b7;
+  background: rgba(6, 95, 70, 0.32);
+}
+
+.vendor-ref-upload-btn--kas-tg {
+  border-color: rgba(56, 189, 248, 0.55);
+  color: #7dd3fc;
+  background: rgba(3, 105, 161, 0.28);
+}
+
+.vendor-ref-upload-btn--acronis-goc {
+  border-color: rgba(165, 180, 252, 0.6);
+  color: #c7d2fe;
+  background: rgba(67, 56, 202, 0.32);
 }
 
 .btn {
@@ -9334,7 +15809,7 @@ onUnmounted(() => {
 .async-overlay {
   position: fixed;
   inset: 0;
-  z-index: 10000;
+  z-index: 100100 !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -9743,6 +16218,71 @@ onUnmounted(() => {
     width: 96vw;
     padding-bottom: 0;
   }
+}
+
+/* ═══ USD EXCHANGE RATE (THAY ĐỔI TỈ GIÁ USD) STYLES ═══ */
+.btn-usd-rate {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+.btn-usd-rate:hover {
+  background: linear-gradient(135deg, #34d399, #10b981);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.42);
+  transform: translateY(-1px);
+}
+.usd-rate-btn-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 99px;
+  font-size: 11.5px;
+  font-weight: 800;
+  background: rgba(6, 78, 59, 0.65);
+  color: #a7f3d0;
+  border: 1px solid rgba(167, 243, 208, 0.35);
+}
+.card-usd-rate-quick-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.38);
+  transition: all 0.15s ease;
+}
+.card-usd-rate-quick-btn:hover {
+  background: rgba(16, 185, 129, 0.28);
+  border-color: rgba(52, 211, 153, 0.7);
+  color: #ecfdf5;
+  transform: translateY(-1px);
+}
+.usd-quick-step-btn {
+  padding: 4px 9px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  color: #cbd5e1;
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  transition: all 0.15s ease;
+}
+.usd-quick-step-btn:hover {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: rgba(52, 211, 153, 0.6);
+  color: #ecfdf5;
+}
+.usd-quick-step-btn.preset {
+  color: #6ee7b7;
+  background: rgba(6, 78, 59, 0.35);
+  border-color: rgba(16, 185, 129, 0.35);
 }
 
 /* ═══ PRICE LIST (BẢNG GIÁ) STYLES ═══ */
@@ -10237,7 +16777,7 @@ onUnmounted(() => {
 @media (max-width: 900px) {
   .import-overlay,
   .modal-overlay {
-    z-index: 10050 !important;
+    z-index: 10050;
     padding: 6px;
     box-sizing: border-box;
   }
@@ -11415,6 +17955,244 @@ onUnmounted(() => {
   color: #94a3b8;
 }
 
+.card-ref-compare-btn {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.card-ref-compare-btn--sophos {
+  background: rgba(56, 189, 248, 0.13);
+  border: 1px solid rgba(56, 189, 248, 0.42);
+  color: #38bdf8;
+}
+.card-ref-compare-btn--sophos:hover {
+  background: rgba(56, 189, 248, 0.25);
+  border-color: #38bdf8;
+  color: #e0f2fe;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.22);
+}
+.card-ref-compare-btn--kas {
+  background: rgba(16, 185, 129, 0.13);
+  border: 1px solid rgba(16, 185, 129, 0.42);
+  color: #34d399;
+}
+.card-ref-compare-btn--kas:hover {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: #10b981;
+  color: #ecfdf5;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.22);
+}
+.card-ref-compare-btn--acronis {
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(129, 140, 248, 0.45);
+  color: #a5b4fc;
+}
+.card-ref-compare-btn--acronis:hover {
+  background: rgba(99, 102, 241, 0.28);
+  border-color: #818cf8;
+  color: #e0e7ff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+}
+
+/* Bộ lọc Sắp xếp & Dropdown Hãng / Danh mục / Nhà cung cấp (Lazy Loading) */
+.hh-filter-sort-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hh-filter-select {
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 99px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(15, 23, 42, 0.72);
+  color: #f8fafc;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+}
+.hh-filter-select:hover,
+.hh-filter-select:focus {
+  border-color: rgba(56, 189, 248, 0.5);
+  background: rgba(15, 23, 42, 0.92);
+}
+
+.hh-lazy-dropdown {
+  position: relative;
+}
+
+.hh-lazy-dropdown__trigger {
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 99px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(15, 23, 42, 0.72);
+  color: #e2e8f0;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.hh-lazy-dropdown__trigger:hover {
+  border-color: rgba(20, 184, 166, 0.5);
+  background: rgba(15, 23, 42, 0.92);
+}
+.hh-lazy-dropdown__trigger.active {
+  border-color: rgba(20, 184, 166, 0.65);
+  background: rgba(20, 184, 166, 0.16);
+  color: #5eead4;
+}
+.hh-lazy-dropdown__caret {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.hh-lazy-dropdown__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 250px;
+  max-width: 340px;
+  background: #0f172a;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 12px;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.65);
+  z-index: 120;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.hh-lazy-dropdown__menu--wide {
+  min-width: 310px;
+  max-width: 420px;
+}
+
+.hh-lazy-dropdown__search-wrap {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.95);
+}
+
+.hh-lazy-dropdown__search {
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(30, 41, 59, 0.8);
+  color: #f8fafc;
+  font-size: 12.5px;
+  outline: none;
+  box-sizing: border-box;
+}
+.hh-lazy-dropdown__search:focus {
+  border-color: #38bdf8;
+}
+
+.hh-lazy-dropdown__list {
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+.hh-lazy-dropdown__list::-webkit-scrollbar {
+  width: 6px;
+}
+.hh-lazy-dropdown__list::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 3px;
+}
+
+.hh-lazy-dropdown__item {
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12.5px;
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.hh-lazy-dropdown__item span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hh-lazy-dropdown__item:hover {
+  background: rgba(56, 189, 248, 0.12);
+  color: #f8fafc;
+}
+.hh-lazy-dropdown__item.selected {
+  background: rgba(20, 184, 166, 0.2);
+  color: #5eead4;
+  font-weight: 700;
+}
+
+.hh-lazy-dropdown__count {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.hh-lazy-dropdown__empty {
+  padding: 14px 12px;
+  text-align: center;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.hh-lazy-dropdown__more {
+  padding: 8px 12px;
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.08);
+  cursor: pointer;
+  border-top: 1px dashed rgba(56, 189, 248, 0.25);
+}
+.hh-lazy-dropdown__more:hover {
+  background: rgba(56, 189, 248, 0.16);
+}
+
+.hh-clear-filter-btn {
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 99px;
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  background: rgba(239, 68, 68, 0.14);
+  color: #fca5a5;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+.hh-clear-filter-btn:hover {
+  background: rgba(239, 68, 68, 0.26);
+  color: #fee2e2;
+}
+
 @media (max-width: 1024px) {
   .imgcheck-result-grid {
     grid-template-columns: 1fr;
@@ -11425,5 +18203,514 @@ onUnmounted(() => {
   .imgcheck-compare-stats {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+
+/* =========================================================
+   GIỎ HÀNG BÁO GIÁ TRÊN CARD & THANH TÍNH TOÁN NỔI
+   ========================================================= */
+.product-card.in-quote-cart {
+  border-color: rgba(16, 185, 129, 0.7) !important;
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.35), 0 10px 25px -5px rgba(16, 185, 129, 0.18) !important;
+}
+
+.card-cart-action-box {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.card-add-cart-btn {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.18) 0%, rgba(5, 150, 105, 0.24) 100%);
+  color: #34d399;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.card-add-cart-btn:hover {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  border-color: #10b981;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+  transform: translateY(-1px);
+}
+
+.card-cart-qty-cluster {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.45);
+}
+
+.card-cart-selected-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #34d399;
+  white-space: nowrap;
+}
+
+.card-cart-stepper {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(51, 65, 85, 0.85);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.card-cart-step-btn {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.card-cart-step-btn:hover {
+  background: rgba(16, 185, 129, 0.25);
+  color: #34d399;
+}
+
+.card-cart-qty-input {
+  width: 42px;
+  height: 26px;
+  border: none;
+  border-left: 1px solid rgba(51, 65, 85, 0.7);
+  border-right: 1px solid rgba(51, 65, 85, 0.7);
+  background: transparent;
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 800;
+  text-align: center;
+  outline: none;
+  padding: 0 2px;
+  -moz-appearance: textfield;
+}
+
+.card-cart-qty-input::-webkit-outer-spin-button,
+.card-cart-qty-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.card-cart-remove-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.14);
+  color: #f87171;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.card-cart-remove-btn:hover {
+  background: rgba(239, 68, 68, 0.3);
+  color: #fee2e2;
+}
+
+.quote-cart-right-Launcher {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 9500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px 10px 12px;
+  border-radius: 14px 0 0 14px;
+  border: 1px solid rgba(16, 185, 129, 0.55);
+  border-right: none;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%);
+  color: #f8fafc;
+  cursor: pointer;
+  box-shadow: -8px 10px 30px rgba(0, 0, 0, 0.55);
+  transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.quote-cart-right-Launcher:hover {
+  padding-right: 18px;
+  border-color: #10b981;
+  box-shadow: -10px 12px 34px rgba(16, 185, 129, 0.28);
+}
+
+.quote-cart-launcher__icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: #34d399;
+}
+
+.quote-cart-launcher__meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.quote-cart-launcher__label {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #e2e8f0;
+  white-space: nowrap;
+}
+
+.quote-cart-launcher__total {
+  font-size: 12px;
+  font-weight: 800;
+  color: #fbbf24;
+  white-space: nowrap;
+}
+
+.quote-cart-right-sidebar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: min(410px, 92vw);
+  height: 100vh;
+  z-index: 9550;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.99) 0%, rgba(9, 13, 24, 0.99) 100%);
+  border-left: 1px solid rgba(16, 185, 129, 0.45);
+  box-shadow: -18px 0 45px rgba(0, 0, 0, 0.68);
+  backdrop-filter: blur(14px);
+  transform: translateX(102%);
+  transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+.quote-cart-right-sidebar.open {
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+.quote-cart-sidebar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  background: rgba(30, 41, 59, 0.85);
+  border-bottom: 1px solid rgba(51, 65, 85, 0.85);
+  flex-shrink: 0;
+}
+
+.quote-cart-sidebar__title-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.quote-cart-sidebar__heading {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: #f8fafc;
+  letter-spacing: 0.2px;
+}
+
+.quote-cart-sidebar__sub {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.quote-cart-sidebar__sub strong {
+  color: #34d399;
+}
+
+.quote-cart-sidebar__collapse-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.18s ease;
+}
+
+.quote-cart-sidebar__collapse-btn:hover {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: rgba(16, 185, 129, 0.5);
+  color: #34d399;
+}
+
+.quote-cart-sidebar__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.quote-cart-sidebar__body::-webkit-scrollbar {
+  width: 5px;
+}
+
+.quote-cart-sidebar__body::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.45);
+  border-radius: 99px;
+}
+
+.quote-cart-sidebar__item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 11px 12px;
+  border-radius: 10px;
+  background: rgba(30, 41, 59, 0.65);
+  border: 1px solid rgba(51, 65, 85, 0.75);
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+
+.quote-cart-sidebar__item:hover {
+  background: rgba(30, 41, 59, 0.92);
+  border-color: rgba(16, 185, 129, 0.55);
+}
+
+.quote-cart-sidebar__item-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.quote-cart-item-index {
+  font-size: 11px;
+  font-weight: 800;
+  color: #64748b;
+}
+
+.quote-cart-drawer__codes {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.quote-cart-code-sku {
+  font-family: monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: #c4b5fd;
+  background: rgba(139, 92, 246, 0.16);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.quote-cart-code-ma {
+  font-family: monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.14);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.quote-cart-drawer__name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f8fafc;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.quote-cart-drawer__price {
+  font-size: 11.5px;
+  color: #94a3b8;
+}
+
+.quote-cart-drawer__price strong {
+  color: #34d399;
+}
+
+.quote-cart-drawer__vnd {
+  color: #64748b;
+  margin-left: 4px;
+}
+
+.quote-cart-sidebar__item-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 2px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
+.quote-cart-drawer__subtotal {
+  text-align: right;
+  font-size: 13px;
+  font-weight: 800;
+  color: #f8fafc;
+}
+
+.quote-cart-sidebar__footer {
+  padding: 14px 16px 18px;
+  background: rgba(15, 23, 42, 0.98);
+  border-top: 1px solid rgba(51, 65, 85, 0.9);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.quote-cart-sidebar__totals {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(51, 65, 85, 0.7);
+}
+
+.quote-cart-total-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12.5px;
+  color: #cbd5e1;
+}
+
+.quote-cart-total-row.after-tax {
+  padding-top: 5px;
+  border-top: 1px dashed rgba(148, 163, 184, 0.2);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.quote-cart-icon-badge {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(16, 185, 129, 0.18);
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  color: #34d399;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.quote-cart-count-pill {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #10b981;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.quote-cart-total-highlight {
+  color: #fbbf24;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.quote-cart-sidebar__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.quote-cart-btn-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 13px;
+  border-radius: 10px;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.14);
+  color: #fca5a5;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.quote-cart-btn-clear:hover {
+  background: rgba(239, 68, 68, 0.28);
+  color: #fee2e2;
+}
+
+.quote-cart-btn-calculate {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 18px;
+  border-radius: 10px;
+  border: 1px solid rgba(52, 211, 153, 0.5);
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  font-size: 13.5px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+  transition: all 0.2s ease;
+}
+
+.quote-cart-btn-calculate:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.55);
+  transform: translateY(-1px);
 }
 </style>

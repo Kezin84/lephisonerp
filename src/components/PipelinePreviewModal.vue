@@ -1,74 +1,72 @@
 <template>
   <div class="modal pipeline-modal-overlay" @click.self="$emit('close')">
-    <!-- SIDE ARROWS on screen edges -->
-    <button v-if="pipelineStep > 0" class="side-arrow side-arrow-left" @click.stop="goToStep(pipelineStep - 1)">
-      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-    </button>
-    <button v-if="pipelineStep < 2" class="side-arrow side-arrow-right" @click.stop="goToStep(pipelineStep + 1)">
-      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-    </button>
-
     <div class="modal-card pipeline-modal-content">
-      <div class="modal-head">
-        <h3><i class="lucide-git-branch"></i> Preview Pipeline PO / DealReg</h3>
-        <button class="pipeline-close-btn" @click="$emit('close')">✕</button>
-      </div>
+      <!-- UNIFIED HEADER + COMPACT STEPPER -->
+      <div class="pipeline-unified-header">
+        <div class="pipeline-header-left">
+          <div class="pipeline-header-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+          </div>
+          <div class="pipeline-header-titles">
+            <h3>Preview Pipeline PO / DealReg</h3>
+            <span class="po-number-badge">
+              PO #{{ nextPoNumber !== 'Đang lấy số...' ? nextPoNumber : '...' }}
+            </span>
+          </div>
+        </div>
 
-      <!-- STEP INDICATOR -->
-      <div class="pipeline-steps">
-        <div class="pipeline-step" :class="{ active: pipelineStep === 0, done: pipelineStep > 0 }" @click="goToStep(0)">
-          <div class="step-circle">1</div>
-          <div class="step-text">
-            <span class="step-label">PO</span>
-            <span class="step-sub">Thông tin đơn hàng</span>
+        <!-- COMPACT PILL STEPPER -->
+        <div class="pipeline-steps">
+          <div class="pipeline-step" :class="{ active: pipelineStep === 0, done: pipelineStep > 0 }" @click="goToStep(0)">
+            <div class="step-circle">1</div>
+            <div class="step-text">
+              <span class="step-label">Thông tin PO</span>
+            </div>
+          </div>
+          <div class="step-connector" :class="{ done: pipelineStep > 0 }"><div class="step-connector-fill"></div></div>
+          <div class="pipeline-step" :class="{ active: pipelineStep === 1, done: pipelineStep > 1 }" @click="goToStep(1)">
+            <div class="step-circle">2</div>
+            <div class="step-text">
+              <span class="step-label">Chi tiết mua hàng</span>
+            </div>
+            <span v-if="rec.products && rec.products.length" class="step-count-pill">{{ rec.products.length }}</span>
+          </div>
+          <div class="step-connector" :class="{ done: pipelineStep > 1 }"><div class="step-connector-fill"></div></div>
+          <div class="pipeline-step" :class="{ active: pipelineStep === 2 }" @click="goToStep(2)">
+            <div class="step-circle">3</div>
+            <div class="step-text">
+              <span class="step-label">Deal Reg</span>
+            </div>
+            <span v-if="dealRegs.length" class="step-count-pill">{{ dealRegs.length }}</span>
           </div>
         </div>
-        <div class="step-connector" :class="{ done: pipelineStep > 0 }"><div class="step-connector-fill"></div></div>
-        <div class="pipeline-step" :class="{ active: pipelineStep === 1, done: pipelineStep > 1 }" @click="goToStep(1)">
-          <div class="step-circle">2</div>
-          <div class="step-text">
-            <span class="step-label">Chi tiết mua hàng</span>
-            <span class="step-sub">Sản phẩm & giá</span>
-          </div>
-        </div>
-        <div class="step-connector" :class="{ done: pipelineStep > 1 }"><div class="step-connector-fill"></div></div>
-        <div class="pipeline-step" :class="{ active: pipelineStep === 2 }" @click="goToStep(2)">
-          <div class="step-circle">3</div>
-          <div class="step-text">
-            <span class="step-label">Deal Reg</span>
-            <span class="step-sub">Đăng ký deal</span>
-          </div>
+
+        <div class="pipeline-header-right">
+          <button class="pipeline-close-btn" @click="$emit('close')" title="Đóng">✕</button>
         </div>
       </div>
 
       <div class="modal-body-scroll">
         <div class="po-preview-container" style="padding: 0; min-height: auto;">
           <div class="record-wrapper">
-            <!-- File Header -->
-            <div class="file-header-bar">
-              <span class="file-name">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                Preview: PO {{ nextPoNumber !== 'Đang lấy số...' ? nextPoNumber : '...' }}
-              </span>
-              <span class="nav-info" style="font-size: 13px;">Bước {{ pipelineStep + 1 }} / 3</span>
-            </div>
-
             <!-- ═══ SLIDE 1: PO ═══ -->
             <Transition :name="slideDirection" mode="out-in">
             <div v-if="pipelineStep === 0" key="slide-0" class="slide-panel">
-              <!-- Sections Grid 2 columns -->
               <div class="sections-grid">
                 <div v-for="(sec, sIndex) in tableSections" :key="'sec'+sIndex" class="section-card" :class="{'section-vertical': sec.vertical}" :style="sec.span ? { gridColumn: 'span ' + sec.span } : {}">
-                  <div class="section-card-title">{{ sec.name }}</div>
+                  <div class="section-card-title">
+                    <span class="section-card-accent"></span>
+                    <span>{{ sec.name }}</span>
+                  </div>
                   <div class="section-card-body">
                     <div v-for="col in sec.columns" :key="col.key" class="data-item">
-                      <span class="data-label">{{ col.label }}:</span>
+                      <span class="data-label">{{ col.label }}</span>
                       <span class="data-value">
                         <span 
                           contenteditable="true" 
                           @blur="setEditable(col.key, ($event.target as HTMLElement).innerText)" 
                           class="pipeline-editable" 
-                          :data-placeholder="String(rec[col.key] || '')"
+                          :data-placeholder="String(rec[col.key] || 'Nhấn để nhập...')"
                         >{{ getEditable(col.key) }}</span>
                       </span>
                     </div>
@@ -81,8 +79,7 @@
             <!-- ═══ SLIDE 2: CHI TIẾT MUA HÀNG ═══ -->
             <Transition :name="slideDirection" mode="out-in">
             <div v-if="pipelineStep === 1" key="slide-1" class="slide-panel">
-              <button class="slide-back-btn" @click="goToStep(0)">← Quay lại PO</button>
-              <div class="product-card">
+              <div class="product-card" style="margin-top: 0;">
                 <div class="product-card-header">
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
                   <span>8. CHI TIẾT MUA HÀNG</span>
@@ -145,104 +142,132 @@
             <!-- ═══ SLIDE 3: DEAL REG ═══ -->
             <Transition :name="slideDirection" mode="out-in">
             <div v-if="pipelineStep === 2" key="slide-2" class="slide-panel">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                <button class="slide-back-btn" style="margin-bottom: 0;" @click="goToStep(1)">← Quay lại Chi tiết mua hàng</button>
-                <button @click="downloadWord" style="background: #2563eb; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+              <!-- Brand Filter Tabs when multiple brands exist -->
+              <div v-if="dealRegs.length > 0" class="dealreg-toolbar">
+                <div class="dealreg-brand-tabs">
+                  <button
+                    v-if="dealRegs.length > 1"
+                    type="button"
+                    class="dealreg-brand-tab"
+                    :class="{ active: selectedDealRegBrand === 'ALL' }"
+                    @click="selectedDealRegBrand = 'ALL'"
+                  >
+                    Tất cả hãng ({{ dealRegs.length }})
+                  </button>
+                  <button
+                    v-for="dr in dealRegs"
+                    :key="'tab-' + dr.brand"
+                    type="button"
+                    class="dealreg-brand-tab"
+                    :class="{ active: dealRegs.length === 1 || selectedDealRegBrand === dr.brand }"
+                    @click="selectedDealRegBrand = dr.brand"
+                  >
+                    Hãng {{ dr.brand }} ({{ dr.items.length }} SP)
+                  </button>
+                </div>
+                <button type="button" class="dealreg-word-btn" @click="downloadWord">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                  Tải Word
+                  <span>Tải file Word (.doc)</span>
                 </button>
               </div>
+
               <div class="dealreg-grid" v-if="dealRegs.length">
-                <div v-for="(dr, di) in dealRegs" :key="'dr-'+di" class="dealreg-card">
-                  <table class="dr-table">
-                    <tbody>
-                    <tr class="dr-title-row"><td colspan="4"><strong>Deal Registration Form</strong></td></tr>
-                    <tr>
-                      <td class="dr-label-cyan">End user Company Name*:</td>
-                      <td class="dr-value"><span contenteditable="true" @blur="setEditable('CUS_COMPANY', ($event.target as HTMLElement).innerText)" class="pipeline-editable">{{ getEditable('CUS_COMPANY') }}</span></td>
-                      <td class="dr-label-blue-italic">End User Name*<br><small>(First, Last Name)</small>:</td>
-                      <td class="dr-value"><span contenteditable="true" @blur="setEditable('CUS_CONTACT', ($event.target as HTMLElement).innerText)" class="pipeline-editable">{{ getEditable('CUS_CONTACT') }}</span></td>
-                    </tr>
-                    <tr>
-                      <td class="dr-label">End user Company Name <span style="color:#FF0000">Vietnamese: *</span></td>
-                      <td class="dr-value"><span contenteditable="true" @blur="setEditable('INV_CONG_TY', ($event.target as HTMLElement).innerText)" class="pipeline-editable">{{ getEditable('INV_CONG_TY') }}</span></td>
-                      <td class="dr-label">End User Email:</td>
-                      <td class="dr-value"><span contenteditable="true" @blur="setEditable('CUS_EMAIL', ($event.target as HTMLElement).innerText)" class="pipeline-editable">{{ getEditable('CUS_EMAIL') }}</span></td>
-                    </tr>
-                    <tr>
-                      <td class="dr-label" rowspan="2">Company Address*:</td>
-                      <td class="dr-value" rowspan="2"><span contenteditable="true" @blur="setEditable('CUS_ADDRESS', ($event.target as HTMLElement).innerText)" class="pipeline-editable">{{ getEditable('CUS_ADDRESS') }}</span></td>
-                      <td class="dr-label-navy">End User Phone*:</td>
-                      <td class="dr-value"><span contenteditable="true" @blur="setEditable('CUS_MOBILE', ($event.target as HTMLElement).innerText)" class="pipeline-editable">{{ getEditable('CUS_MOBILE') }}</span></td>
-                    </tr>
-                    <tr>
-                      <td class="dr-label-navy">End User Website*:</td>
-                      <td class="dr-value"><span contenteditable="true" @blur="setEditable('CUS_WEBSITE', ($event.target as HTMLElement).innerText)" class="pipeline-editable">{{ getEditable('CUS_WEBSITE') }}</span></td>
-                    </tr>
-                    <tr>
-                      <td class="dr-label">Country*:</td>
-                      <td class="dr-value"><span contenteditable="true" @blur="setEditable('DR_COUNTRY', ($event.target as HTMLElement).innerText)" class="pipeline-editable">{{ getEditable('DR_COUNTRY') || 'VIET NAM' }}</span></td>
-                      <td class="dr-label-black">Existing Sophos Customer?</td>
-                      <td class="dr-value"><span contenteditable="true" @blur="setEditable('DR_EXISTING_CUST', ($event.target as HTMLElement).innerText)" class="pipeline-editable">{{ getEditable('DR_EXISTING_CUST') }}</span></td>
-                    </tr>
-                    <tr>
-                      <td class="dr-label-italic">Company Size*<br><small>(no. of employees)</small>:</td>
-                      <td class="dr-value"><span contenteditable="true" @blur="setEditable('DR_SIZE', ($event.target as HTMLElement).innerText)" class="pipeline-editable">{{ getEditable('DR_SIZE') }}</span></td>
-                      <td class="dr-label-black">Estimated Customer Budget<br><small>(in USD)</small>:</td>
-                      <td class="dr-value"><span contenteditable="true" @blur="setEditable('DR_BUDGET', ($event.target as HTMLElement).innerText)" class="pipeline-editable">{{ getEditable('DR_BUDGET') }}</span></td>
-                    </tr>
-                    <tr>
-                      <td class="dr-label-italic">Estimated Closure Date<br><small>(DD/MM/YYYY)</small>:*</td>
-                      <td class="dr-value"><span contenteditable="true" @blur="setEditable('DR_CLOSE_DATE', ($event.target as HTMLElement).innerText)" class="pipeline-editable">{{ getEditable('DR_CLOSE_DATE') }}</span></td>
-                      <td class="dr-label-black">Competition:*</td>
-                      <td class="dr-value"><span contenteditable="true" @blur="setEditable('DR_COMP', ($event.target as HTMLElement).innerText)" class="pipeline-editable">{{ getEditable('DR_COMP') }}</span></td>
-                    </tr>
-                    <tr>
-                      <td class="dr-label-black">Proposed POC Schedule:</td>
-                      <td class="dr-value"><span contenteditable="true" @blur="setEditable('DR_POC', ($event.target as HTMLElement).innerText)" class="pipeline-editable">{{ getEditable('DR_POC') }}</span></td>
-                      <td class="dr-label"></td>
-                      <td class="dr-value"></td>
-                    </tr>
-                    <tr class="dr-title-row"><td colspan="4"><strong>Partner Information</strong></td></tr>
-                    <tr>
-                      <td class="dr-label">Partner Company Name*:</td>
-                      <td class="dr-value"><span contenteditable="true" @blur="setEditable('DR_PARTNER_NAME', ($event.target as HTMLElement).innerText)" class="pipeline-editable">{{ getEditable('DR_PARTNER_NAME') || 'Nam Truong Son System Integration Corp' }}</span></td>
-                      <td class="dr-label">Account Manager Email*:</td>
-                      <td class="dr-value"><span contenteditable="true" @blur="setEditable('DR_AM_EMAIL', ($event.target as HTMLElement).innerText)" class="pipeline-editable">{{ getEditable('DR_AM_EMAIL') || 'sonlp@nts.com.vn' }}</span></td>
-                    </tr>
-                    <tr>
-                      <td class="dr-label">Partner Address:*</td>
-                      <td class="dr-value"><span contenteditable="true" @blur="setEditable('DR_PARTNER_ADDRESS', ($event.target as HTMLElement).innerText)" class="pipeline-editable">{{ getEditable('DR_PARTNER_ADDRESS') || '55/10 Trần Đình Xu, Phường Cầu Kho, Quận 1, Thành phố Hồ Chí Minh, Việt Nam' }}</span></td>
-                      <td class="dr-label"></td>
-                      <td class="dr-value"></td>
-                    </tr>
-                    <tr>
-                      <td class="dr-label-blue-italic">Account Manager Name*<br><small>(First, Last Name)</small>:</td>
-                      <td class="dr-value"><span contenteditable="true" @blur="setEditable('DR_AM_NAME', ($event.target as HTMLElement).innerText)" class="pipeline-editable">{{ getEditable('DR_AM_NAME') || 'LÊ PHI SƠN' }}</span></td>
-                      <td class="dr-label">Account Manager <span style="color:#FF0000">Phone*</span></td>
-                      <td class="dr-value"><span contenteditable="true" @blur="setEditable('DR_AM_PHONE', ($event.target as HTMLElement).innerText)" class="pipeline-editable">{{ getEditable('DR_AM_PHONE') || '090 8137488' }}</span></td>
-                    </tr>
-                    <tr class="dr-title-row"><td colspan="4"><strong><em>Remarks</em></strong><br><em style="font-weight:400;font-size:9pt;color:#000">(Any comments/ details/ requirements/ project name / tender specifications and etc.)</em></td></tr>
-                    <tr><td colspan="4" class="dr-remarks" style="padding: 0;"><textarea :value="getEditable('DR_REMARKS')" @input="setEditable('DR_REMARKS', ($event.target as HTMLTextAreaElement).value)" class="pipeline-input" style="min-height: 60px; resize: vertical; padding: 8px; width: 100%; box-sizing: border-box;" placeholder="Nhập ghi chú..."></textarea></td></tr>
-                    <tr class="dr-title-row"><td colspan="4"><strong>Bill of Materials</strong></td></tr>
-                    <tr class="bom-header-row">
-                      <td colspan="2"><strong>SKU / Product / Description*</strong></td>
-                      <td><strong>Qty*</strong></td>
-                      <td><strong>Estimated Value (USD)</strong></td>
-                    </tr>
-                    <tr v-for="(item, ii) in dr.items" :key="'bom-'+ii" class="bom-item-row">
-                      <td colspan="2">{{ item.name }}</td>
-                      <td class="bom-qty">{{ item.qty }}</td>
-                      <td class="bom-val">{{ formatNum(item.value) }}</td>
-                    </tr>
-                    <tr class="bom-total-row">
-                      <td colspan="2"><strong>TOTAL</strong></td>
-                      <td></td>
-                      <td class="bom-val"><strong>{{ formatNum(dr.total) }}</strong></td>
-                    </tr>
-                    </tbody>
-                  </table>
-                </div>
+                <template v-for="(dr, di) in dealRegs" :key="'dr-'+di">
+                  <div v-if="selectedDealRegBrand === 'ALL' || selectedDealRegBrand === dr.brand || dealRegs.length === 1" class="dealreg-card">
+                    <div class="dealreg-card-banner">
+                      <span>Biểu mẫu Deal Registration — Hãng: <strong>{{ dr.brand }}</strong></span>
+                      <span>Tổng giá trị dự kiến: <strong>{{ formatNum(dr.total) }} USD</strong></span>
+                    </div>
+                    <table class="dr-table">
+                      <tbody>
+                      <tr class="dr-title-row"><td colspan="4"><strong>Deal Registration Form</strong></td></tr>
+                      <tr>
+                        <td class="dr-label-cyan">End user Company Name*:</td>
+                        <td class="dr-value"><span contenteditable="true" @blur="setEditable('CUS_COMPANY', ($event.target as HTMLElement).innerText)" class="pipeline-editable" data-placeholder="Nhấn để nhập...">{{ getEditable('CUS_COMPANY') }}</span></td>
+                        <td class="dr-label-blue-italic">End User Name*<br><small>(First, Last Name)</small>:</td>
+                        <td class="dr-value"><span contenteditable="true" @blur="setEditable('CUS_CONTACT', ($event.target as HTMLElement).innerText)" class="pipeline-editable" data-placeholder="Nhấn để nhập...">{{ getEditable('CUS_CONTACT') }}</span></td>
+                      </tr>
+                      <tr>
+                        <td class="dr-label">End user Company Name <span style="color:#FF0000">Vietnamese: *</span></td>
+                        <td class="dr-value"><span contenteditable="true" @blur="setEditable('INV_CONG_TY', ($event.target as HTMLElement).innerText)" class="pipeline-editable" data-placeholder="Nhấn để nhập...">{{ getEditable('INV_CONG_TY') }}</span></td>
+                        <td class="dr-label">End User Email:</td>
+                        <td class="dr-value"><span contenteditable="true" @blur="setEditable('CUS_EMAIL', ($event.target as HTMLElement).innerText)" class="pipeline-editable" data-placeholder="Nhấn để nhập...">{{ getEditable('CUS_EMAIL') }}</span></td>
+                      </tr>
+                      <tr>
+                        <td class="dr-label" rowspan="2">Company Address*:</td>
+                        <td class="dr-value" rowspan="2"><span contenteditable="true" @blur="setEditable('CUS_ADDRESS', ($event.target as HTMLElement).innerText)" class="pipeline-editable" data-placeholder="Nhấn để nhập...">{{ getEditable('CUS_ADDRESS') }}</span></td>
+                        <td class="dr-label-navy">End User Phone*:</td>
+                        <td class="dr-value"><span contenteditable="true" @blur="setEditable('CUS_MOBILE', ($event.target as HTMLElement).innerText)" class="pipeline-editable" data-placeholder="Nhấn để nhập...">{{ getEditable('CUS_MOBILE') }}</span></td>
+                      </tr>
+                      <tr>
+                        <td class="dr-label-navy">End User Website*:</td>
+                        <td class="dr-value"><span contenteditable="true" @blur="setEditable('CUS_WEBSITE', ($event.target as HTMLElement).innerText)" class="pipeline-editable" data-placeholder="Nhấn để nhập...">{{ getEditable('CUS_WEBSITE') }}</span></td>
+                      </tr>
+                      <tr>
+                        <td class="dr-label">Country*:</td>
+                        <td class="dr-value"><span contenteditable="true" @blur="setEditable('DR_COUNTRY', ($event.target as HTMLElement).innerText)" class="pipeline-editable" data-placeholder="Nhấn để nhập...">{{ getEditable('DR_COUNTRY') || 'VIET NAM' }}</span></td>
+                        <td class="dr-label-black">Existing Sophos Customer?</td>
+                        <td class="dr-value"><span contenteditable="true" @blur="setEditable('DR_EXISTING_CUST', ($event.target as HTMLElement).innerText)" class="pipeline-editable" data-placeholder="Yes / No">{{ getEditable('DR_EXISTING_CUST') }}</span></td>
+                      </tr>
+                      <tr>
+                        <td class="dr-label-italic">Company Size*<br><small>(no. of employees)</small>:</td>
+                        <td class="dr-value"><span contenteditable="true" @blur="setEditable('DR_SIZE', ($event.target as HTMLElement).innerText)" class="pipeline-editable" data-placeholder="Nhấn để nhập...">{{ getEditable('DR_SIZE') }}</span></td>
+                        <td class="dr-label-black">Estimated Customer Budget<br><small>(in USD)</small>:</td>
+                        <td class="dr-value"><span contenteditable="true" @blur="setEditable('DR_BUDGET', ($event.target as HTMLElement).innerText)" class="pipeline-editable" data-placeholder="Nhấn để nhập...">{{ getEditable('DR_BUDGET') }}</span></td>
+                      </tr>
+                      <tr>
+                        <td class="dr-label-italic">Estimated Closure Date<br><small>(DD/MM/YYYY)</small>:*</td>
+                        <td class="dr-value"><span contenteditable="true" @blur="setEditable('DR_CLOSE_DATE', ($event.target as HTMLElement).innerText)" class="pipeline-editable" data-placeholder="DD/MM/YYYY">{{ getEditable('DR_CLOSE_DATE') }}</span></td>
+                        <td class="dr-label-black">Competition:*</td>
+                        <td class="dr-value"><span contenteditable="true" @blur="setEditable('DR_COMP', ($event.target as HTMLElement).innerText)" class="pipeline-editable" data-placeholder="Nhấn để nhập...">{{ getEditable('DR_COMP') }}</span></td>
+                      </tr>
+                      <tr>
+                        <td class="dr-label-black">Proposed POC Schedule:</td>
+                        <td class="dr-value"><span contenteditable="true" @blur="setEditable('DR_POC', ($event.target as HTMLElement).innerText)" class="pipeline-editable" data-placeholder="Nhấn để nhập...">{{ getEditable('DR_POC') }}</span></td>
+                        <td class="dr-label"></td>
+                        <td class="dr-value"></td>
+                      </tr>
+                      <tr class="dr-title-row"><td colspan="4"><strong>Partner Information</strong></td></tr>
+                      <tr>
+                        <td class="dr-label">Partner Company Name*:</td>
+                        <td class="dr-value"><span contenteditable="true" @blur="setEditable('DR_PARTNER_NAME', ($event.target as HTMLElement).innerText)" class="pipeline-editable">{{ getEditable('DR_PARTNER_NAME') || 'Nam Truong Son System Integration Corp' }}</span></td>
+                        <td class="dr-label">Account Manager Email*:</td>
+                        <td class="dr-value"><span contenteditable="true" @blur="setEditable('DR_AM_EMAIL', ($event.target as HTMLElement).innerText)" class="pipeline-editable">{{ getEditable('DR_AM_EMAIL') || 'sonlp@nts.com.vn' }}</span></td>
+                      </tr>
+                      <tr>
+                        <td class="dr-label">Partner Address:*</td>
+                        <td class="dr-value"><span contenteditable="true" @blur="setEditable('DR_PARTNER_ADDRESS', ($event.target as HTMLElement).innerText)" class="pipeline-editable">{{ getEditable('DR_PARTNER_ADDRESS') || '55/10 Trần Đình Xu, Phường Cầu Kho, Quận 1, Thành phố Hồ Chí Minh, Việt Nam' }}</span></td>
+                        <td class="dr-label"></td>
+                        <td class="dr-value"></td>
+                      </tr>
+                      <tr>
+                        <td class="dr-label-blue-italic">Account Manager Name*<br><small>(First, Last Name)</small>:</td>
+                        <td class="dr-value"><span contenteditable="true" @blur="setEditable('DR_AM_NAME', ($event.target as HTMLElement).innerText)" class="pipeline-editable">{{ getEditable('DR_AM_NAME') || 'LÊ PHI SƠN' }}</span></td>
+                        <td class="dr-label">Account Manager <span style="color:#FF0000">Phone*</span></td>
+                        <td class="dr-value"><span contenteditable="true" @blur="setEditable('DR_AM_PHONE', ($event.target as HTMLElement).innerText)" class="pipeline-editable">{{ getEditable('DR_AM_PHONE') || '090 8137488' }}</span></td>
+                      </tr>
+                      <tr class="dr-title-row"><td colspan="4"><strong><em>Remarks</em></strong><br><em style="font-weight:400;font-size:9pt;color:#000">(Any comments/ details/ requirements/ project name / tender specifications and etc.)</em></td></tr>
+                      <tr><td colspan="4" class="dr-remarks" style="padding: 0;"><textarea :value="getEditable('DR_REMARKS')" @input="setEditable('DR_REMARKS', ($event.target as HTMLTextAreaElement).value)" class="pipeline-input" style="min-height: 60px; resize: vertical; padding: 8px; width: 100%; box-sizing: border-box;" placeholder="Nhập ghi chú..."></textarea></td></tr>
+                      <tr class="dr-title-row"><td colspan="4"><strong>Bill of Materials</strong></td></tr>
+                      <tr class="bom-header-row">
+                        <td colspan="2"><strong>SKU / Product / Description*</strong></td>
+                        <td><strong>Qty*</strong></td>
+                        <td><strong>Estimated Value (USD)</strong></td>
+                      </tr>
+                      <tr v-for="(item, ii) in dr.items" :key="'bom-'+ii" class="bom-item-row">
+                        <td colspan="2">{{ item.name }}</td>
+                        <td class="bom-qty">{{ item.qty }}</td>
+                        <td class="bom-val">{{ formatNum(item.value) }}</td>
+                      </tr>
+                      <tr class="bom-total-row">
+                        <td colspan="2"><strong>TOTAL</strong></td>
+                        <td></td>
+                        <td class="bom-val"><strong>{{ formatNum(dr.total) }}</strong></td>
+                      </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </template>
               </div>
               <div v-else style="padding: 40px; text-align: center; color: #94a3b8; font-size: 14px;">
                 Không có Deal Registration nào.
@@ -254,14 +279,46 @@
         </div>
       </div>
 
-      <!-- BOTTOM SAVE BAR -->
+      <!-- BOTTOM NAVIGATION & SAVE BAR -->
       <div class="pipeline-nav">
-        <span class="nav-info">Bước {{ pipelineStep + 1 }} / 3</span>
-        <button class="nav-btn nav-save" @click="saveRecord" :disabled="saved || saving || nextPoNumber === 'Đang lấy số...' || nextPoNumber === '...'">
-          <svg v-if="saving" class="spin" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>
-          <svg v-else xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-          {{ saved ? '✅ Đã lưu thành công' : '💾 Lưu Pipeline' }}
-        </button>
+        <div class="pipeline-nav-left">
+          <button
+            type="button"
+            class="nav-btn nav-step-btn"
+            :disabled="pipelineStep === 0"
+            @click="goToStep(Math.max(0, pipelineStep - 1))"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            <span>Bước trước</span>
+          </button>
+          <span class="nav-info">Bước {{ pipelineStep + 1 }} / 3</span>
+          <button
+            type="button"
+            class="nav-btn nav-step-btn nav-step-next"
+            :disabled="pipelineStep === 2"
+            @click="goToStep(Math.min(2, pipelineStep + 1))"
+          >
+            <span>Bước tiếp theo</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
+        </div>
+
+        <div class="pipeline-nav-right">
+          <button
+            v-if="pipelineStep === 2 && dealRegs.length > 0"
+            type="button"
+            class="nav-btn nav-word-btn"
+            @click="downloadWord"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+            <span>Tải Word DealReg</span>
+          </button>
+          <button class="nav-btn nav-save" @click="saveRecord" :disabled="saved || saving || nextPoNumber === 'Đang lấy số...' || nextPoNumber === '...'">
+            <svg v-if="saving" class="spin" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>
+            <svg v-else xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+            <span>{{ saved ? 'Đã lưu thành công' : 'Lưu Pipeline' }}</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -294,7 +351,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from 'vue'
 import FormattedInput from './FormattedInput.vue'
-import { deliverExportedFile } from '../utils/printTemplateEngine'
+import { deliverExportedFile, buildQuoteFileName } from '../utils/printTemplateEngine'
 import { initializeApp, getApps, getApp } from 'firebase/app'
 import { getDatabase, ref as dbRef, get, set, update, push } from 'firebase/database'
 
@@ -316,6 +373,7 @@ const emit = defineEmits(['close', 'saved'])
 const BASE_URL = 'https://script.google.com/macros/s/AKfycbx1yDOQLxYgJb5w30KmxQHF8AYUZln_5q58HCKP4zlUmtJye6aJBiSt3oyT0j_3QaigdQ/exec'
 const pipelineStep = ref(0)
 const slideDirection = ref('slide-right')
+const selectedDealRegBrand = ref('ALL')
 
 function goToStep(step: number) {
   slideDirection.value = step > pipelineStep.value ? 'slide-right' : 'slide-left'
@@ -329,6 +387,9 @@ const downloadWord = () => {
   
   const clonedGrid = dealregGrid.cloneNode(true) as HTMLElement;
   
+  const banners = clonedGrid.querySelectorAll('.dealreg-card-banner');
+  banners.forEach(el => el.parentNode?.removeChild(el));
+
   const editables = clonedGrid.querySelectorAll('.pipeline-editable');
   editables.forEach(el => {
     const text = (el as HTMLElement).innerText || '';
@@ -627,8 +688,12 @@ const saveRecord = async () => {
           last_updated: new Date().toISOString()
         }
         if (existingKhData) {
+          if (existingKhData.created_time) {
+            ;(fbKhObj as any).created_time = existingKhData.created_time
+          }
           await update(dbRef(database, `khach_hang/${targetKhKey}`), fbKhObj)
         } else {
+          ;(fbKhObj as any).created_time = new Date().toISOString()
           await set(dbRef(database, `khach_hang/${targetKhKey}`), fbKhObj)
         }
       }
@@ -676,7 +741,12 @@ const saveRecord = async () => {
 
       // Upload Excel lên Cloudinary trước để gắn vào cả hop_dong_tong_quat và sale_report
       let linkBaoGia = ''
-      const tenFileBaoGia = `BaoGia_${soHD || maHD}.xlsx`
+      const tenFileBaoGia = `${buildQuoteFileName({
+        tenKhachHang: tenKhachHangSave,
+        tenCongTy: getEditable('INV_CONG_TY') || props.khach?.Ten_cong_ty || congTy,
+        contentPO: contentPoVal,
+        fallbackCode: soHD || maHD
+      })}.xlsx`
       if (props.excelBlob) {
         try {
           const formData = new FormData()
@@ -1199,11 +1269,17 @@ const saveRecord = async () => {
     // 3. POST sale_report
     {
       let linkBaoGia = ''
+      const legacyFileName = `${buildQuoteFileName({
+        tenKhachHang: tenKhachHangSave,
+        tenCongTy: getEditable('INV_CONG_TY') || props.khach?.Ten_cong_ty || congTy,
+        contentPO: props.contentOfContractPO || '',
+        fallbackCode: soHD || maHD
+      })}.xlsx`
       if (props.excelBlob) {
         try {
           const formData = new FormData()
           formData.append('upload_preset', 'upload_file')
-          formData.append('file', props.excelBlob, `BaoGia_${soHD || maHD}.xlsx`)
+          formData.append('file', props.excelBlob, legacyFileName)
           const uploadRes = await fetch('https://api.cloudinary.com/v1_1/db6fzs3rh/auto/upload', {
             method: 'POST',
             body: formData
@@ -1310,14 +1386,18 @@ const formatNum = (v: any) => {
 const tableSections = [
   {
     name: '1. THÔNG TIN PO/HĐ',
+    vertical: true,
+    span: 3,
     columns: [
-      { key: 'STT_B2', label: 'STT' },
-      { key: 'TEN_C2', label: 'TÊN' },
+      { key: 'STT_B2', label: 'Số PO (STT)' },
+      { key: 'TEN_C2', label: 'Tên đơn hàng / HĐ' },
       { key: 'DO_UU_TIEN', label: 'Độ ưu tiên' },
     ]
   },
   {
     name: '2. TRẠNG THÁI ĐƠN HÀNG',
+    vertical: true,
+    span: 3,
     columns: [
       { key: 'TRANG_THAI', label: 'Trạng thái đơn hàng' }
     ]
@@ -1600,107 +1680,180 @@ const dealRegs = computed(() => {
 .pipeline-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(4px);
   z-index: 999999;
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .pipeline-modal-content {
   position: relative;
   width: 98vw;
-  max-width: 1800px;
-  max-height: 96vh;
+  max-width: 1760px;
+  height: 95vh;
+  max-height: 95vh;
   display: flex;
   flex-direction: column;
+  padding: 0 !important;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
 }
 .modal-body-scroll {
   overflow-y: auto;
-  padding: 20px;
+  padding: 18px 22px;
   flex: 1;
-  background-color: var(--surface-light, #f8fafc);
+  min-height: 0;
+  background-color: #f1f5f9;
 }
 
-/* ═══ PIPELINE STEP INDICATOR ═══ */
+/* ═══ UNIFIED HEADER + COMPACT STEPPER ═══ */
+.pipeline-unified-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 22px;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+.pipeline-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.pipeline-header-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(16, 185, 129, 0.16);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #34d399;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.pipeline-header-titles {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.pipeline-header-titles h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: #f8fafc;
+  letter-spacing: 0.2px;
+}
+.po-number-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  background: rgba(56, 189, 248, 0.16);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  letter-spacing: 0.3px;
+}
+.pipeline-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ═══ COMPACT PILL STEPPER ═══ */
 .pipeline-steps {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0;
-  padding: 24px 40px;
-  background: linear-gradient(135deg, #0f172a, #1e293b);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  gap: 4px;
+  padding: 4px 8px;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
 }
 .pipeline-step {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   cursor: pointer;
-  padding: 10px 20px;
-  border-radius: 24px;
-  transition: all 0.3s ease;
+  padding: 6px 14px;
+  border-radius: 999px;
+  transition: all 0.22s ease;
 }
 .pipeline-step:hover {
-  background: rgba(255,255,255,0.06);
+  background: rgba(255, 255, 255, 0.06);
+}
+.pipeline-step.active {
+  background: rgba(16, 185, 129, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.4);
 }
 .step-circle {
-  width: 44px;
-  height: 44px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 800;
-  font-size: 18px;
-  border: 2.5px solid #475569;
+  font-size: 12px;
+  border: 1.5px solid #475569;
   color: #94a3b8;
   background: transparent;
-  transition: all 0.3s ease;
+  transition: all 0.22s ease;
   flex-shrink: 0;
 }
 .pipeline-step.active .step-circle {
   border-color: #10b981;
   background: linear-gradient(135deg, #10b981, #059669);
   color: #fff;
-  box-shadow: 0 0 20px rgba(16,185,129,0.4), 0 0 40px rgba(16,185,129,0.15);
-  transform: scale(1.1);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.35);
 }
 .pipeline-step.done .step-circle {
   border-color: #10b981;
-  background: rgba(16,185,129,0.15);
+  background: rgba(16, 185, 129, 0.2);
   color: #34d399;
 }
 .step-text {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
 }
 .step-label {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
-  color: #64748b;
+  color: #94a3b8;
   white-space: nowrap;
-  transition: color 0.3s;
-}
-.step-sub {
-  font-size: 11px;
-  color: #475569;
-  white-space: nowrap;
-  transition: color 0.3s;
+  transition: color 0.22s;
 }
 .pipeline-step.active .step-label {
-  color: #f0fdf4;
-}
-.pipeline-step.active .step-sub {
-  color: #86efac;
+  color: #ffffff;
 }
 .pipeline-step.done .step-label {
   color: #34d399;
 }
-.pipeline-step.done .step-sub {
-  color: #065f46;
+.step-count-pill {
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+}
+.pipeline-step.active .step-count-pill {
+  background: #10b981;
+  color: #ffffff;
 }
 .step-connector {
-  width: 80px;
-  height: 3px;
+  width: 28px;
+  height: 2px;
   background: #334155;
   flex-shrink: 0;
   border-radius: 2px;
@@ -1713,7 +1866,7 @@ const dealRegs = computed(() => {
   width: 0;
   background: linear-gradient(90deg, #10b981, #34d399);
   border-radius: 2px;
-  transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+  transition: width 0.4s ease;
 }
 .step-connector.done .step-connector-fill {
   width: 100%;
@@ -1723,239 +1876,209 @@ const dealRegs = computed(() => {
 .slide-panel {
   min-height: 200px;
 }
-
-/* Slide right (going forward) */
 .slide-right-enter-active,
 .slide-right-leave-active {
-  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .slide-right-enter-from {
   opacity: 0;
-  transform: translateX(60px);
+  transform: translateX(30px);
 }
 .slide-right-leave-to {
   opacity: 0;
-  transform: translateX(-60px);
+  transform: translateX(-30px);
 }
-
-/* Slide left (going backward) */
 .slide-left-enter-active,
 .slide-left-leave-active {
-  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .slide-left-enter-from {
   opacity: 0;
-  transform: translateX(-60px);
+  transform: translateX(-30px);
 }
 .slide-left-leave-to {
   opacity: 0;
-  transform: translateX(60px);
+  transform: translateX(30px);
 }
 
-/* ═══ SLIDE BACK BUTTON ═══ */
-.slide-back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  margin-bottom: 16px;
-  border: 1px solid rgba(148,163,184,0.25);
-  border-radius: 10px;
-  background: rgba(255,255,255,0.04);
-  color: #94a3b8;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  letter-spacing: 0.2px;
-}
-.slide-back-btn:hover {
-  background: rgba(16,185,129,0.08);
-  color: #34d399;
-  border-color: rgba(16,185,129,0.3);
-  transform: translateX(-3px);
-}
-
-/* ═══ SIDE ARROW BUTTONS ═══ */
-.side-arrow {
-  position: fixed;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 1001;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  background: linear-gradient(135deg, #ef4444, #dc2626);
-  color: #fff;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 4px 20px rgba(239,68,68,0.4), 0 0 0 1px rgba(255,255,255,0.1);
-}
-.side-arrow-left {
-  left: 28px;
-}
-.side-arrow-right {
-  right: 28px;
-}
-.side-arrow:hover {
-  background: linear-gradient(135deg, #f87171, #ef4444);
-  color: #fff;
-  box-shadow: 0 4px 28px rgba(239,68,68,0.6), 0 0 0 1px rgba(255,255,255,0.15);
-  transform: translateY(-50%) scale(1.15);
-}
-
-/* ═══ PIPELINE BOTTOM SAVE BAR ═══ */
+/* ═══ PIPELINE BOTTOM NAVIGATION & SAVE BAR ═══ */
 .pipeline-nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 28px;
-  background: linear-gradient(135deg, #0f172a, #1e293b);
-  border-top: 1px solid rgba(255,255,255,0.06);
+  gap: 16px;
+  padding: 12px 22px;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
 }
-.nav-btn {
+.pipeline-nav-left,
+.pipeline-nav-right {
   display: flex;
   align-items: center;
+  gap: 10px;
+}
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
   gap: 8px;
-  padding: 12px 28px;
-  border-radius: 12px;
+  padding: 9px 18px;
+  border-radius: 9px;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
-  border: none;
-  transition: all 0.25s ease;
-  letter-spacing: 0.3px;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+  letter-spacing: 0.2px;
+  width: fit-content;
+  margin: 0;
 }
 .nav-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
   transform: none !important;
+}
+.nav-step-btn {
+  background: rgba(255, 255, 255, 0.06);
+  color: #e2e8f0;
+  border-color: rgba(255, 255, 255, 0.14);
+}
+.nav-step-btn:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+}
+.nav-step-next:not(:disabled) {
+  background: rgba(56, 189, 248, 0.14);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.35);
+}
+.nav-step-next:not(:disabled):hover {
+  background: rgba(56, 189, 248, 0.24);
+  border-color: #38bdf8;
+  color: #e0f2fe;
+}
+.nav-word-btn {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(37, 99, 235, 0.3);
+}
+.nav-word-btn:hover {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  transform: translateY(-1px);
 }
 .nav-save {
   background: linear-gradient(135deg, #10b981, #059669);
   color: #fff;
-  box-shadow: 0 2px 12px rgba(16,185,129,0.3);
-  padding: 14px 36px;
-  font-size: 15px;
+  box-shadow: 0 2px 12px rgba(16, 185, 129, 0.3);
+  padding: 10px 24px;
+  font-size: 14px;
 }
 .nav-save:not(:disabled):hover {
-  box-shadow: 0 4px 24px rgba(16,185,129,0.5);
-  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.45);
+  transform: translateY(-1px);
 }
 .nav-info {
-  font-size: 14px;
-  font-weight: 700;
-  color: #64748b;
-  letter-spacing: 2px;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #94a3b8;
+  padding: 0 6px;
+  letter-spacing: 0.5px;
 }
 
-.file-header-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 20px;
-  background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
-  border-radius: 12px 12px 0 0;
-  color: white;
-}
-
-.file-name {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 1.05rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-.btn-save {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background-color: #3b82f6;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.btn-save:hover:not(:disabled) { background-color: #2563eb; }
-.btn-save:disabled { background-color: #10b981; cursor: not-allowed; }
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { 100% { transform: rotate(360deg); } }
 
+/* ═══ STEP 1: PO SECTIONS GRID & FORM CARDS ═══ */
 .sections-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  gap: 0;
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-top: none;
-  border-radius: 0 0 12px 12px;
-  overflow: hidden;
+  gap: 14px;
 }
 
 .section-card {
   grid-column: span 3;
-  border-right: 1px solid #e2e8f0;
-  border-bottom: 1px solid #e2e8f0;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  display: flex;
+  flex-direction: column;
 }
 
 .section-card-title {
-  padding: 8px 14px;
-  font-weight: 700;
-  color: #334155;
-  background: #f1f5f9;
+  padding: 10px 16px;
+  font-weight: 800;
+  color: #0f172a;
+  background: linear-gradient(90deg, #f1f5f9 0%, #f8fafc 100%);
   border-bottom: 1px solid #e2e8f0;
-  font-size: 0.82rem;
+  font-size: 12.5px;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.section-card-body {
-  padding: 10px 14px;
+  letter-spacing: 0.4px;
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px 20px;
+  align-items: center;
+  gap: 8px;
 }
-
-.section-vertical .section-card-body {
-  flex-direction: column;
-  gap: 6px;
-}
-
-.data-item {
-  display: flex;
-  flex-direction: row;
-  align-items: baseline;
-  gap: 6px;
-  min-width: 120px;
-}
-
-.data-label {
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  color: #64748b;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
+.section-card-accent {
+  width: 4px;
+  height: 14px;
+  border-radius: 99px;
+  background: #10b981;
   flex-shrink: 0;
 }
 
+.section-card-body {
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.data-item {
+  display: grid;
+  grid-template-columns: minmax(135px, 38%) 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+.data-label {
+  font-size: 12px;
+  color: #475569;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
 .data-value {
-  font-size: 0.88rem;
+  font-size: 13px;
   color: #0f172a;
-  font-weight: 500;
-  white-space: pre-wrap;
-  word-break: break-word;
+  font-weight: 600;
+  min-width: 0;
+}
+
+.section-card .pipeline-editable {
+  display: block;
+  width: 100%;
+  min-height: 32px;
+  padding: 5px 10px;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  box-sizing: border-box;
+  transition: all 0.18s ease;
+}
+.section-card .pipeline-editable:hover {
+  border-color: #94a3b8;
+  background: #ffffff;
+}
+.section-card .pipeline-editable:focus {
+  border-color: #2563eb;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
 /* ===== Product Detail Card ===== */
@@ -2202,17 +2325,94 @@ const dealRegs = computed(() => {
 }
 
 /* ===== Deal Registration Cards ===== */
+.dealreg-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
+}
+.dealreg-brand-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.dealreg-brand-tab {
+  padding: 6px 14px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  font-weight: 700;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  width: fit-content;
+  margin: 0;
+}
+.dealreg-brand-tab:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+.dealreg-brand-tab.active {
+  background: #1e293b;
+  color: #ffffff;
+  border-color: #0f172a;
+}
+.dealreg-word-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  width: fit-content;
+  margin: 0;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+}
+.dealreg-word-btn:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
 .dealreg-grid {
   display: flex;
-  gap: 16px;
-  margin-top: 16px;
-  align-items: start;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .dealreg-card {
-  flex: 1;
-  min-width: 0;
+  width: 100%;
+  background: #ffffff;
+  border-radius: 10px;
   overflow: hidden;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
+}
+.dealreg-card-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+  color: #f8fafc;
+  font-size: 13px;
+  font-weight: 600;
+}
+.dealreg-card-banner strong {
+  color: #34d399;
 }
 
 .dr-table {
@@ -2405,29 +2605,26 @@ const dealRegs = computed(() => {
 @keyframes async-modal-out { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(0.85) translateY(10px); } }
 
 .pipeline-close-btn {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 36px;
-  height: 36px;
-  background-color: #ef4444;
-  color: #ffffff;
-  border: none;
+  width: 34px;
+  height: 34px;
+  background: rgba(239, 68, 68, 0.16);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.35);
   border-radius: 8px;
-  font-size: 18px;
-  font-weight: bold;
+  font-size: 16px;
+  font-weight: 800;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
-  z-index: 1000;
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  margin: 0;
+  flex-shrink: 0;
 }
 
 .pipeline-close-btn:hover {
-  background-color: #dc2626;
-  transform: scale(1.05);
-  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #ef4444;
 }
 </style>

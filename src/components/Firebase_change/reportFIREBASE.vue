@@ -1709,8 +1709,8 @@
         <div class="elite-modal-header">
           <div class="elite-modal-title" style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
             <h2>{{ customerFormData.id ? 'Sửa Khách Hàng' : 'Tạo Khách Hàng Mới' }}</h2>
-            <span v-if="customerFormData.id && (customerFormData.last_updated || customerFormData.created_time || customerFormData.createdAt)" style="font-size: 12px; color: #475569; background: #f1f5f9; border: 1px solid #cbd5e1; padding: 3px 10px; border-radius: 99px; font-weight: 500;">
-              🕒 Cập nhật cuối: <strong style="color: #0284c7;">{{ formatCustomerLastUpdated(customerFormData.last_updated || customerFormData.created_time || customerFormData.createdAt) }}</strong>
+            <span v-if="customerFormData.id && customerFormData.last_updated" style="font-size: 12px; color: #475569; background: #f1f5f9; border: 1px solid #cbd5e1; padding: 3px 10px; border-radius: 99px; font-weight: 500;">
+              🕒 Cập nhật cuối: <strong style="color: #0284c7;">{{ formatCustomerLastUpdated(customerFormData.last_updated) }}</strong>
             </span>
           </div>
           <button class="elite-btn-close" @click="isCustomerModalOpen = false">

@@ -853,6 +853,7 @@ const saveRecord = async (rec, index) => {
           ADDRESS: rec.CUS_ADDRESS || '',
           tel: rec.CUS_TEL || '',
           TEL: rec.CUS_TEL || '',
+          created_time: new Date().toISOString(),
           last_updated: new Date().toISOString()
         }
         await set(dbRef(db, `khach_hang/${maKH}`), khPayload)

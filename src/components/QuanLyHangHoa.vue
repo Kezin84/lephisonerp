@@ -117,6 +117,15 @@
                 </span>
               </div>
               <div class="card-actions">
+                <button
+                  v-if="getCardVendorType(item)"
+                  class="btn-icon"
+                  :style="getCardVendorType(item) === 'sophos' ? 'color: #38bdf8; border-color: rgba(56, 189, 248, 0.45); background: rgba(56, 189, 248, 0.14);' : 'color: #34d399; border-color: rgba(16, 185, 129, 0.45); background: rgba(16, 185, 129, 0.14);'"
+                  :title="getCardVendorType(item) === 'sophos' ? 'Đối chiếu file gốc Sophos' : 'Đối chiếu file gốc Kaspersky'"
+                  @click.stop="openCardOriginalFileCompare(item)"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>
+                </button>
                 <button class="btn-icon text-primary" title="Sửa" @click.stop="openEditModal(item)">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                 </button>
@@ -136,6 +145,10 @@
               
               <div style="height: 1px; background: rgba(255,255,255,0.1); margin: 6px 0; width: 100%;"></div>
               
+              <p style="color: #c084fc; font-weight: 600;">
+                Giá vốn / Giá off hãng:
+                <span style="color: #e9d5ff; font-weight: 700;">{{ formatCurrency(item.Gia_tieu_chuan || 0, item.Don_vi_tien_te) }}</span>
+              </p>
               <p style="color: #fbbf24;">Giá nhập: <span style="color: #fcd34d;">{{ formatCurrency(item.gia_nhap || 0, item.Don_vi_tien_te) }}</span></p>
               <p>Thuế VAT: <span style="color: #facc15;">{{ item.Thue_VAT ? item.Thue_VAT + '%' : '0%' }}</span></p>
               <p class="highlight" style="margin-top: 4px;">
@@ -145,6 +158,17 @@
                   <small v-if="item.DVT" style="font-size: 11px; color: #64748b; font-weight: 500;">/ {{ item.DVT }}</small>
                 </span>
               </p>
+              <div v-if="getCardVendorType(item)" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1);">
+                <button
+                  type="button"
+                  class="card-ref-compare-btn"
+                  :class="getCardVendorType(item) === 'sophos' ? 'card-ref-compare-btn--sophos' : 'card-ref-compare-btn--kas'"
+                  @click.stop="openCardOriginalFileCompare(item)"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                  <span>Đối chiếu file gốc</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -259,7 +283,11 @@
                   <NumberInput v-model="formData.Ti_gia" />
                 </div>
                 <div class="form-group col-span-2">
-                  <label>Đơn giá</label>
+                  <label style="color: #e9d5ff; font-weight: 700;">Giá vốn / Giá off hãng</label>
+                  <NumberInput v-model="formData.Gia_tieu_chuan" />
+                </div>
+                <div class="form-group col-span-2">
+                  <label>Đơn giá (Giá bán)</label>
                   <NumberInput v-model="formData.Don_gia" />
                 </div>
                 <div class="form-group col-span-2">
@@ -387,7 +415,8 @@
                 <th style="min-width:600px">Features</th>
                 <th style="min-width:180px">Danh mục</th>
                 <th style="min-width:80px">Type</th>
-                <th style="min-width:100px">Giá tham khảo</th>
+                <th style="min-width:125px; color: #e9d5ff;">Giá vốn / Giá off hãng</th>
+                <th style="min-width:110px">Giá bán (Đơn giá)</th>
                 <th style="min-width:100px">Giá nhập</th>
                 <th style="min-width:70px">VAT%</th>
                 <th style="min-width:70px">Tiền tệ</th>
@@ -417,6 +446,7 @@
                 <td><textarea v-model="row.Features" class="imp-input imp-input--textarea imp-input--autofit" rows="1"></textarea></td>
                 <td><textarea v-model="row.Danh_muc" class="imp-input imp-input--textarea imp-input--autofit" rows="1"></textarea></td>
                 <td><input type="text" v-model="row.Type" class="imp-input imp-input--sm" /></td>
+                <td><NumberInput v-model="row.Gia_tieu_chuan" class="imp-input imp-input--num" style="color: #e9d5ff; font-weight: 700;" /></td>
                 <td><NumberInput v-model="row.Don_gia" class="imp-input imp-input--num imp-input--green" /></td>
                 <td><NumberInput v-model="row.gia_nhap" class="imp-input imp-input--num imp-input--green" /></td>
                 <td><NumberInput v-model="row.Thue_VAT" class="imp-input imp-input--num imp-input--green" /></td>
@@ -1433,6 +1463,73 @@ const saveItem = async () => {
     closeModal()
   } finally {
     saving.value = false
+  }
+}
+
+const getCardVendorType = (item) => {
+  if (!item) return null
+  const ncc = String(item.Ten_nha_cung_cap || item.Ma_nha_cung_cap || '').trim().toUpperCase()
+  const dm = String(item.Danh_muc || '').trim().toUpperCase()
+  const th = String(item.Ten_hang || '').trim().toUpperCase()
+  const mh = String(item.Ma_hang || '').trim().toUpperCase()
+  if (ncc.includes('SOPHOS') || dm.includes('SOPHOS') || th.startsWith('SOPHOS')) return 'sophos'
+  if (ncc.includes('KASPERSKY') || dm.includes('KASPERSKY') || th.startsWith('KASPERSKY') || /^KL\d{4}/i.test(mh)) return 'kaspersky'
+  return null
+}
+
+const openCardOriginalFileCompare = async (item) => {
+  const vendor = getCardVendorType(item)
+  if (!vendor) return
+  if (vendor === 'sophos') {
+    let sku = String(item.Ma_hang || '').trim().toUpperCase()
+    let sheet = 'MSRPs&BuyCost'
+    let row = 3
+    let col = 'B'
+    let fileType = 'goc'
+    try {
+      const res = await fetch('/template_excel/sophos_ref_index.json')
+      if (res.ok) {
+        const sRef = await res.json()
+        const dmLower = String(item.Danh_muc || '').trim().toLowerCase()
+        const thLower = String(item.Ten_hang || '').trim().replace(/:$/, '').toLowerCase()
+        const tg = (sRef.trungGianItems || []).find(t => t.sku === sku)
+          || (sRef.trungGianItems || []).find(t => String(t.group || '').trim().toLowerCase() === dmLower && String(t.moTa || '').split('\n')[0].trim().replace(/:$/, '').toLowerCase() === thLower)
+        if (tg && tg.sku) sku = tg.sku
+        const gocEntry = sRef.gocSkus?.[sku]
+        if (gocEntry?.rowNum) {
+          fileType = 'goc'
+          sheet = 'MSRPs&BuyCost'
+          row = gocEntry.rowNum
+          col = 'B'
+        } else if (tg?.rowNum) {
+          fileType = 'tg'
+          sheet = tg.sheet
+          row = tg.rowNum
+          col = 'B'
+        }
+      }
+    } catch (_) {}
+    const qs = new URLSearchParams({ file: fileType, sheet, row: String(row), col, sku, name: item.Ten_hang || '' }).toString()
+    window.open(`/template_excel/sophos_excel_viewer.html?${qs}`, '_blank')
+  } else {
+    const mh = String(item.Ma_hang || '')
+    const skuMatch = mh.match(/KL\d{4}[A-Z0-9*]+/i)
+    const sku = skuMatch ? skuMatch[0].toUpperCase() : ''
+    const band = String(item.volume || '').trim()
+    let row = 11
+    let col = 'I'
+    try {
+      const res = await fetch('/template_excel/kas_ref_index.json')
+      if (res.ok) {
+        const kRef = await res.json()
+        const pEntry = kRef.gocPivotBySku?.[sku]
+        if (pEntry?.rowNum) {
+          row = pEntry.rowNum
+        }
+      }
+    } catch (_) {}
+    const qs = new URLSearchParams({ file: 'kas_goc', sheet: 'SMB+Enterprise (License)', row: String(row), col, sku, band, name: item.Ten_hang || '' }).toString()
+    window.open(`/template_excel/sophos_excel_viewer.html?${qs}`, '_blank')
   }
 }
 
@@ -2752,6 +2849,40 @@ onMounted(() => {
 .skeleton-price {
   height: 20px;
   width: 60%;
+}
+
+.card-ref-compare-btn {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.card-ref-compare-btn--sophos {
+  background: rgba(56, 189, 248, 0.13);
+  border: 1px solid rgba(56, 189, 248, 0.42);
+  color: #38bdf8;
+}
+.card-ref-compare-btn--sophos:hover {
+  background: rgba(56, 189, 248, 0.25);
+  border-color: #38bdf8;
+  color: #e0f2fe;
+}
+.card-ref-compare-btn--kas {
+  background: rgba(16, 185, 129, 0.13);
+  border: 1px solid rgba(16, 185, 129, 0.42);
+  color: #34d399;
+}
+.card-ref-compare-btn--kas:hover {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: #10b981;
+  color: #ecfdf5;
 }
 
 @media (max-width: 768px) {

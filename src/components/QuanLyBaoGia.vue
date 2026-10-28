@@ -1006,7 +1006,7 @@
                       <th class="col-dvt">ĐVT</th>
                       <th class="col-sl">SL</th>
                       <th v-if="quoteCurrency === 'USD'" class="col-tigia" style="width: 65px; min-width: 65px; max-width: 65px; padding: 4px; font-size: 11px;">Tỉ giá</th>
-                      <th class="col-dg">GIÁ TIÊU CHUẨN</th>
+                      <th class="col-dg">GIÁ VỐN / GIÁ OFF HÃNG</th>
                       <th class="col-dg">ĐƠN GIÁ (LP)</th>
                       <th class="col-dg">GIÁ NHẬP</th>
                       <th class="col-dg">MỨC OFF</th>
@@ -1040,7 +1040,7 @@
                         <td class="center" data-label="ĐVT" style="color:#fff; font-weight:700;">{{ d.dvt }}</td>
                         <td class="center" data-label="SL" style="color:#fff; font-weight:700;">{{ d.so_luong }}</td>
                         <td v-if="quoteCurrency === 'USD'" class="center" data-label="Tỉ giá" style="font-weight: 700; color: #fb923c; width: 65px; padding: 4px 2px; white-space: nowrap;">{{ (Number(d.ti_gia_usd || d.ti_gia) || 1).toLocaleString('vi-VN') }}<br><span style="font-size: 9px; opacity: 0.7;">{{ d.don_vi_tien_te_usd || d.don_vi_tien_te || 'USD' }}</span></td>
-                        <td class="right tc-col" data-label="GIÁ TIÊU CHUẨN"><div>{{ formatCurrencyDisplay(quoteCurrency === 'USD' ? d.gia_tieu_chuan_usd : d.gia_tieu_chuan) }}</div><div class="sub-pct">({{ giaTCPct(d) }}%)</div></td>
+                        <td class="right tc-col" data-label="GIÁ VỐN / GIÁ OFF HÃNG"><div>{{ formatCurrencyDisplay(quoteCurrency === 'USD' ? d.gia_tieu_chuan_usd : d.gia_tieu_chuan) }}</div><div class="sub-pct">({{ giaTCPct(d) }}%)</div></td>
                         <td class="right" data-label="ĐƠN GIÁ (LP)" style="color:#fff; font-weight:700;">{{ formatCurrencyDisplay(quoteCurrency === 'USD' ? d.don_gia_usd : d.don_gia) }}</td>
                         <td class="right" data-label="GIÁ NHẬP" style="color:#fb923c; font-weight:700;">{{ formatCurrencyDisplay(quoteCurrency === 'USD' ? d.gia_nhap_usd : d.gia_nhap) }}</td>
                         <td class="right" data-label="MỨC OFF" style="color:#f87171; font-weight:700;"><div>{{ formatCurrencyDisplay(mucOffAmountDisplay(d)) }}</div><div class="sub-pct" style="color:#f87171 !important;">(-{{ d.muc_off }}%)</div></td>

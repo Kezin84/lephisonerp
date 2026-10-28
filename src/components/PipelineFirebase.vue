@@ -2362,6 +2362,7 @@ const submitNewCustomer = async () => {
       ten_khach_hang: newCustomerForm.value.ten_khach_hang.toUpperCase(),
       ma_cong_ty: ma_ct,
       ten_cong_ty: newCustomerForm.value.ten_cong_ty.toUpperCase(),
+      created_time: new Date().toISOString(),
       last_updated: new Date().toISOString()
     }
 

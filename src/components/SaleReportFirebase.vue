@@ -4979,7 +4979,7 @@ async function upsertCustomerFromModalItem(item: ImportItem) {
         doanh_so: 0,
         cong_no: 0,
         ghi_chu: 'Tạo tự động từ Sale Report / Báo giá',
-        createdAt: Date.now(),
+        created_time: new Date().toISOString(), createdAt: Date.now(),
         last_updated: new Date().toISOString()
       }
       await set(newKhRef, newKhPayload)

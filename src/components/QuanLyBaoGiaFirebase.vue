@@ -1000,13 +1000,15 @@
                     <tr>
                       <th class="col-stt">STT</th>
                       <th v-show="false" class="col-pn">P/N</th>
+                      <th class="col-pn">SKU CODE</th>
                       <th class="col-name">TÊN HÀNG</th>
+                      <th class="col-desc">DESCRIPTION</th>
                       <th class="col-desc">DIỄN GIẢI</th>
                       <th class="col-hang">HÃNG</th>
                       <th class="col-dvt">ĐVT</th>
                       <th class="col-sl">SL</th>
                       <th v-if="quoteCurrency === 'USD'" class="col-tigia" style="width: 65px; min-width: 65px; max-width: 65px; padding: 4px; font-size: 11px;">Tỉ giá</th>
-                      <th class="col-dg">GIÁ TIÊU CHUẨN</th>
+                      <th class="col-dg">GIÁ VỐN / GIÁ OFF HÃNG</th>
                       <th class="col-dg">ĐƠN GIÁ (LP)</th>
                       <th class="col-dg">GIÁ NHẬP</th>
                       <th class="col-dg">MỨC OFF</th>
@@ -1022,12 +1024,13 @@
                       <!-- Group header row -->
                       <tr v-if="group.title" class="dm-group-row">
                         <td class="group-stt">{{ toRoman(gi + 1) }}</td>
-                        <td :colspan="quoteCurrency === 'USD' ? 15 : 14" class="group-title">{{ group.title }}</td>
+                        <td :colspan="quoteCurrency === 'USD' ? 17 : 16" class="group-title">{{ group.title }}</td>
                       </tr>
                       <!-- Item rows -->
                       <tr v-for="(d, di) in group.items" :key="di" class="dm-table-row">
                         <td class="center" data-label="STT" style="color:#fff; font-weight:700;">{{ di + 1 }}</td>
                         <td v-show="false" class="col-pn-cell" data-label="P/N">{{ d.ma_hang }}</td>
+                        <td class="col-pn-cell" data-label="SKU CODE" style="color: #38bdf8; font-weight: 700;">{{ d.sku_code }}</td>
                         <td class="col-name-cell" data-label="TÊN HÀNG">
                           <div style="font-weight: 700;">{{ d.ten_hang }}</div>
                           <div v-if="d.start_date && d.end_date" :style="{ fontSize: '11.5px', color: '#ffffff', marginTop: '4px', fontWeight: 600, background: calculateDaysDiff(d.start_date, d.end_date) < 90 ? '#dc2626' : '#059669', padding: '2px 6px', borderRadius: '4px', display: 'inline-block' }">
@@ -1035,12 +1038,13 @@
                             <span v-if="calculateDaysDiff(d.start_date, d.end_date) < 90" style="margin-left: 4px; font-style: italic; color: #fca5a5;">(sắp hết)</span>
                           </div>
                         </td>
-                        <td class="col-desc-cell" data-label="DIỄN GIẢI"><div class="desc-lines"><div v-if="d.mo_ta_chung">{{ d.mo_ta_chung }}</div><div v-if="d.mo_ta_chi_tiet">{{ d.mo_ta_chi_tiet }}</div><div v-if="d.features">{{ d.features }}</div></div></td>
+                        <td class="col-desc-cell" data-label="DESCRIPTION"><div class="desc-lines" v-if="d.description" v-html="d.description"></div></td>
+                        <td class="col-desc-cell" data-label="DIỄN GIẢI"><div class="desc-lines"><div v-if="d.mo_ta_chung">{{ d.mo_ta_chung }}</div><div v-if="d.mo_ta_chi_tiet">{{ d.mo_ta_chi_tiet }}</div><div v-if="d.features" v-html="d.features"></div></div></td>
                         <td class="col-hang-cell" data-label="HÃNG">{{ d.ten_ncc }}</td>
                         <td class="center" data-label="ĐVT" style="color:#fff; font-weight:700;">{{ d.dvt }}</td>
                         <td class="center" data-label="SL" style="color:#fff; font-weight:700;">{{ d.so_luong }}</td>
                         <td v-if="quoteCurrency === 'USD'" class="center" data-label="Tỉ giá" style="font-weight: 700; color: #fb923c; width: 65px; padding: 4px 2px; white-space: nowrap;">{{ (Number(d.ti_gia_usd || d.ti_gia) || 1).toLocaleString('vi-VN') }}<br><span style="font-size: 9px; opacity: 0.7;">{{ d.don_vi_tien_te_usd || d.don_vi_tien_te || 'USD' }}</span></td>
-                        <td class="right tc-col" data-label="GIÁ TIÊU CHUẨN"><div>{{ formatCurrencyDisplay(quoteCurrency === 'USD' ? d.gia_tieu_chuan_usd : d.gia_tieu_chuan) }}</div><div class="sub-pct">({{ giaTCPct(d) }}%)</div></td>
+                        <td class="right tc-col" data-label="GIÁ VỐN / GIÁ OFF HÃNG"><div>{{ formatCurrencyDisplay(quoteCurrency === 'USD' ? d.gia_tieu_chuan_usd : d.gia_tieu_chuan) }}</div><div class="sub-pct">({{ giaTCPct(d) }}%)</div></td>
                         <td class="right" data-label="ĐƠN GIÁ (LP)" style="color:#fff; font-weight:700;">{{ formatCurrencyDisplay(quoteCurrency === 'USD' ? d.don_gia_usd : d.don_gia) }}</td>
                         <td class="right" data-label="GIÁ NHẬP" style="color:#fb923c; font-weight:700;">{{ formatCurrencyDisplay(quoteCurrency === 'USD' ? d.gia_nhap_usd : d.gia_nhap) }}</td>
                         <td class="right" data-label="MỨC OFF" style="color:#f87171; font-weight:700;"><div>{{ formatCurrencyDisplay(mucOffAmountDisplay(d)) }}</div><div class="sub-pct" style="color:#f87171 !important;">(-{{ d.muc_off }}%)</div></td>
@@ -1059,7 +1063,7 @@
                   </tbody>
                   <tfoot>
                     <tr class="dm-table-footer">
-                      <td :colspan="quoteCurrency === 'USD' ? 10 : 9" class="center footer-label">TỔNG CỘNG + THUẾ</td>
+                      <td :colspan="quoteCurrency === 'USD' ? 12 : 11" class="center footer-label">TỔNG CỘNG + THUẾ</td>
                       <td class="right"><span class="footer-pill pill-red">-{{ formatCurrencyDisplay(detailTotals.off) }}</span></td>
                       <td></td>
                       <td class="right"><span class="footer-pill pill-blue">{{ formatCurrencyDisplay(detailTotals.truocThue) }}</span></td>
@@ -1588,6 +1592,7 @@ import { getDatabase, ref as dbRef, get, set, update, push } from "firebase/data
 
 const quoteCurrency = ref('VND');
 import ExcelJS from 'exceljs'
+import { buildQuoteFileName } from '../utils/printTemplateEngine'
 
 const firebaseConfig = {
   apiKey: "AIzaSyB3fHD_sOqyqVygCxP2gZtvaipr-35a1s8",
@@ -1732,11 +1737,11 @@ function rowToFbHopDongTongQuat(r: any[]) {
 
 function fbHopDongChiTietToRow(item: any): any[] {
   if (Array.isArray(item)) {
-    const r = item.slice(0, 33)
-    while (r.length < 33) r.push('')
+    const r = item.slice(0, 35)
+    while (r.length < 35) r.push('')
     return r
   }
-  if (!item || typeof item !== 'object') return new Array(33).fill('')
+  if (!item || typeof item !== 'object') return new Array(35).fill('')
   return [
     String(item.ma_hop_dong ?? item.Ma_hop_dong ?? ''),
     String(item.so_hop_dong ?? item.So_hop_dong ?? ''),
@@ -1770,13 +1775,15 @@ function fbHopDongChiTietToRow(item: any): any[] {
     String(item.end_date ?? ''),
     String(item.is_giahan ?? ''),
     String(item.thoi_gian_bao_hanh ?? item.thoi_han_bao_hanh ?? ''),
-    String(item.volume ?? '')
+    String(item.volume ?? ''),
+    String(item.Description ?? item.description ?? ''),
+    String(item.sku_code ?? item.SKU ?? item.sku ?? item.ma_sku ?? '')
   ]
 }
 
 function rowToFbHopDongChiTiet(r: any[], trangThaiHopDong: string) {
-  const row = Array.isArray(r) ? r.slice(0, 33) : []
-  while (row.length < 33) row.push('')
+  const row = Array.isArray(r) ? r.slice(0, 35) : []
+  while (row.length < 35) row.push('')
   const maHang = String(row[2] ?? '')
   const tenHang = String(row[3] ?? '')
   const mainImg = String(row[4] ?? '')
@@ -1796,11 +1803,15 @@ function rowToFbHopDongChiTiet(r: any[], trangThaiHopDong: string) {
   const soLuong = Math.max(1, toNum(row[18], 1))
   const statusHD = trangThaiHopDong || String(row[19] || '')
   const mucOff = toNum(row[22], 0)
+  const desc = String(row[33] ?? '')
+  const skuCode = String(row[34] ?? '')
   return {
     ma_hop_dong: String(row[0] ?? ''),
     so_hop_dong: String(row[1] ?? ''),
     Ma_hang: maHang,
     ma_hang: maHang,
+    sku_code: skuCode,
+    SKU: skuCode,
     Ten_hang: tenHang,
     ten_hang: tenHang,
     Main_img: mainImg,
@@ -1852,6 +1863,8 @@ function rowToFbHopDongChiTiet(r: any[], trangThaiHopDong: string) {
     thoi_gian_bao_hanh: String(row[31] ?? ''),
     thoi_han_bao_hanh: String(row[31] ?? ''),
     volume: String(row[32] ?? ''),
+    Description: desc,
+    description: desc,
     ghi_chu: ''
   }
 }
@@ -2108,7 +2121,7 @@ interface Contract {
   structure?: string
 }
 interface ContractDetail {
-  ma_hang: string; ten_hang: string; dvt: string; so_luong: number
+  ma_hang: string; sku_code: string; ten_hang: string; description: string; dvt: string; so_luong: number
   don_gia: number; gia_tieu_chuan: number; ten_ncc: string; features: string
   danh_muc: string; mo_ta_chung: string; mo_ta_chi_tiet: string
   thue_vat: number; gia_nhap: number; muc_off: number; license_duration: string
@@ -2128,6 +2141,51 @@ const contracts = ref<Contract[]>([])
 const allDetailsRaw = ref<any[][]>([])
 const allHdRaw = ref<any[][]>([])
 const customersRaw = ref<any[][]>([])
+const hangHoaDescMap = ref<Record<string, string>>({})
+const hangHoaSkuMap = ref<Record<string, string>>({})
+
+async function fetchHangHoaDescMapFromFirebase(): Promise<Record<string, string>> {
+  try {
+    const snap = await get(dbRef(database, 'hang_hoa'))
+    const data = snap.val()
+    if (!data || typeof data !== 'object') return {}
+    const map: Record<string, string> = {}
+    const skuMap: Record<string, string> = {}
+    Object.values(data).forEach((item: any) => {
+      if (!item || typeof item !== 'object') return
+      const ma = String(item.Ma_hang ?? item.ma_hang ?? '').trim()
+      const desc = String(item.Description ?? item.description ?? '').trim()
+      const sku = String(item.sku_code ?? item.SKU ?? item.sku ?? item.ma_sku ?? '').trim()
+      if (ma && desc) {
+        map[ma] = desc
+      }
+      if (ma && sku) {
+        skuMap[ma] = sku
+      }
+    })
+    hangHoaSkuMap.value = skuMap
+    return map
+  } catch (e) {
+    console.error('Lỗi đọc hang_hoa từ Firebase:', e)
+    return {}
+  }
+}
+
+function getHangHoaDescription(maHang: string): string {
+  const ma = String(maHang || '').trim()
+  if (!ma) return ''
+  if (hangHoaDescMap.value[ma]) return hangHoaDescMap.value[ma]
+  const baseMa = ma.replace(/-V\d+$/, '')
+  return hangHoaDescMap.value[baseMa] || ''
+}
+
+function getHangHoaSkuCode(maHang: string): string {
+  const ma = String(maHang || '').trim()
+  if (!ma) return ''
+  if (hangHoaSkuMap.value[ma]) return hangHoaSkuMap.value[ma]
+  const baseMa = ma.replace(/-V\d+$/, '')
+  return hangHoaSkuMap.value[baseMa] || ''
+}
 const chotDealLoading = ref(false)
 const pageTab = ref('baogia')
 const showCustomerInfoModal = ref(false)
@@ -2775,13 +2833,15 @@ function getAvatarColor(name: string) {
 async function fetchData() {
   loading.value = true
   try {
-    const [hdRes, detailRes, khRes] = await Promise.all([
+    const [hdRes, detailRes, khRes, hhDescRes] = await Promise.all([
       fetchHopDongTongQuatFromFirebase(),
       fetchHopDongChiTietFromFirebase(),
-      fetchKhachHangRowsFromFirebase()
+      fetchKhachHangRowsFromFirebase(),
+      fetchHangHoaDescMapFromFirebase()
     ])
     allDetailsRaw.value = Array.isArray(detailRes) ? detailRes : []
     customersRaw.value = Array.isArray(khRes) ? khRes : []
+    hangHoaDescMap.value = hhDescRes || {}
     const hdArr = Array.isArray(hdRes) ? hdRes : []
     allHdRaw.value = hdArr
     contracts.value = hdArr.map((r: any[]) => ({
@@ -2846,19 +2906,26 @@ function openCustomerInfoModal(maKH: string) {
 function viewDetails(contract: Contract) {
   selectedContract.value = contract; showDetailModal.value = true; loadingDetails.value = true; activeDetailTab.value = 'baogia';
   setTimeout(() => {
-    selectedContractDetails.value = allDetailsRaw.value.filter(r => String(r[0]||'') === contract.ma_hop_dong).map(r => ({
-      ma_hang: String(r[2]||''), ten_hang: String(r[3]||''), dvt: String(r[12]||''),
-      so_luong: Number(r[18]||1), don_gia: Number(r[14]||0), gia_tieu_chuan: Number(r[13]||0),
-      ten_ncc: String(r[6]||''), features: String(r[9]||''), danh_muc: String(r[10]||''),
-      mo_ta_chung: String(r[7]||''), mo_ta_chi_tiet: String(r[8]||''),
-      thue_vat: Number(r[17]||0), gia_nhap: Number(r[21]||0), muc_off: Number(r[22]||0),
-      license_duration: String(r[11]||''),
-      don_vi_tien_te: String(r[15]||''), ti_gia: Number(r[16]||1),
-      don_vi_tien_te_usd: String(r[23]||''), ti_gia_usd: Number(r[24]||1),
-      gia_tieu_chuan_usd: Number(r[25]||0), don_gia_usd: Number(r[26]||0), gia_nhap_usd: Number(r[27]||0),
-      start_date: parseDateDDMMYYYY(r[28]), end_date: parseDateDDMMYYYY(r[29]),
-      is_giahan: String(r[30] ?? '').trim().toUpperCase()
-    })); loadingDetails.value = false
+    selectedContractDetails.value = allDetailsRaw.value.filter(r => String(r[0]||'') === contract.ma_hop_dong).map(r => {
+      const maHang = String(r[2]||'')
+      return {
+        ma_hang: maHang,
+        sku_code: String(r[34] || getHangHoaSkuCode(maHang) || ''),
+        ten_hang: String(r[3]||''),
+        description: String(r[33] || getHangHoaDescription(maHang) || ''),
+        dvt: String(r[12]||''),
+        so_luong: Number(r[18]||1), don_gia: Number(r[14]||0), gia_tieu_chuan: Number(r[13]||0),
+        ten_ncc: String(r[6]||''), features: String(r[9]||''), danh_muc: String(r[10]||''),
+        mo_ta_chung: String(r[7]||''), mo_ta_chi_tiet: String(r[8]||''),
+        thue_vat: Number(r[17]||0), gia_nhap: Number(r[21]||0), muc_off: Number(r[22]||0),
+        license_duration: String(r[11]||''),
+        don_vi_tien_te: String(r[15]||''), ti_gia: Number(r[16]||1),
+        don_vi_tien_te_usd: String(r[23]||''), ti_gia_usd: Number(r[24]||1),
+        gia_tieu_chuan_usd: Number(r[25]||0), don_gia_usd: Number(r[26]||0), gia_nhap_usd: Number(r[27]||0),
+        start_date: parseDateDDMMYYYY(r[28]), end_date: parseDateDDMMYYYY(r[29]),
+        is_giahan: String(r[30] ?? '').trim().toUpperCase()
+      }
+    }); loadingDetails.value = false
   }, 100)
 }
 
@@ -2870,6 +2937,7 @@ const navMode = ref('edit')
 function editContract(c: Contract | null) {
   if (!c) return
   navMode.value = 'edit'
+  localStorage.setItem('pendingEditQuoteMaHopDong', String(c.ma_hop_dong || '').trim())
   navigating.value = true
   navigatingContract.value = c
   navStep.value = 0
@@ -2879,7 +2947,7 @@ function editContract(c: Contract | null) {
   setTimeout(() => { navStep.value = 2 }, 800)
   setTimeout(() => { navStep.value = 3 }, 1300)
   setTimeout(() => {
-    router.push(`/baogiafirebase?ma=${c.ma_hop_dong}`)
+    router.push('/baogiafirebase')
   }, 1600)
 }
 
@@ -2912,7 +2980,7 @@ async function duplicateContract(c: Contract | null) {
   setTimeout(() => { navStep.value = 2 }, 800)
   setTimeout(() => { navStep.value = 3 }, 1300)
   setTimeout(() => {
-    router.push('/baogiafirebase?clone=true')
+    router.push('/baogiafirebase')
   }, 1600)
 }
 function formatVND(n: number) { return new Intl.NumberFormat('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(n)) }
@@ -3746,6 +3814,8 @@ async function proceedChotDealAndSaleReport() {
         const slNum = Number(r[18] || 1)
         const dgNum = Number(r[14] || 0)
         const ttNum = slNum * dgNum
+        const maHang = String(r[2] || '')
+        const skuVal = String(r[34] || getHangHoaSkuCode(maHang) || '')
         return {
           ma_hop_dong: maHopDongMoi,
           Ma_hop_dong: maHopDongMoi,
@@ -3754,8 +3824,10 @@ async function proceedChotDealAndSaleReport() {
           So_PO: nextPO,
           ten_po: contentPO,
           Ten_PO: contentPO,
-          ma_hang_hoa: String(r[2] || ''),
-          Ma_hang_hoa: String(r[2] || ''),
+          ma_hang_hoa: maHang,
+          Ma_hang_hoa: maHang,
+          sku_code: skuVal,
+          SKU: skuVal,
           ten_hang_hoa: String(r[3] || ''),
           Ten_hang_hoa: String(r[3] || ''),
           ma_nha_cung_cap: String(r[5] || ''),
@@ -3993,9 +4065,16 @@ async function downloadDetailExcel() {
 
     const outBuffer = await workbook.xlsx.writeBuffer()
     const blob = new Blob([outBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const dlBaseName = buildQuoteFileName({
+      tenKhachHang: c.ten_khach_hang || custInfo.tenKH,
+      tenCongTy: custInfo.tenCongTy,
+      contentPO: c.content_of_contract_po,
+      fallbackCode: c.so_hop_dong || c.ma_hop_dong,
+      date: c.ngay_tao
+    })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
-    link.download = `BaoGia_${c.so_hop_dong || c.ma_hop_dong}.xlsx`
+    link.download = `${dlBaseName}.xlsx`
     link.click()
     URL.revokeObjectURL(link.href)
   } catch (e) {

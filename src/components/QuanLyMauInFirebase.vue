@@ -148,6 +148,7 @@
                 min="8"
                 max="36"
                 v-model.number="currentCellStyle.fontSize"
+                @input="applyStyleToSelection('fontSize', currentCellStyle.fontSize)"
                 @change="applyStyleToSelection('fontSize', currentCellStyle.fontSize)"
                 class="ribbon-num"
                 title="Cỡ chữ (pt)"
@@ -174,16 +175,117 @@
 
             <div class="ribbon-divider"></div>
 
-            <!-- Alignment -->
+            <!-- Alignment (Horizontal + Vertical) & Wrap Text like Excel -->
             <div class="ribbon-group">
-              <button class="ribbon-icon-btn" :class="{ active: currentCellStyle.align === 'left' }" @click="applyStyleToSelection('align', 'left')">
-                Trái
+              <button
+                type="button"
+                class="ribbon-icon-btn ribbon-align-btn"
+                :class="{ active: currentCellStyle.align === 'left' }"
+                title="Căn lề trái (Align Left)"
+                @click="applyStyleToSelection('align', 'left')"
+              >
+                <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                  <line x1="2" y1="3.5" x2="14" y2="3.5" />
+                  <line x1="2" y1="7" x2="10" y2="7" />
+                  <line x1="2" y1="10.5" x2="13" y2="10.5" />
+                  <line x1="2" y1="14" x2="8.5" y2="14" />
+                </svg>
+                <span>Trái</span>
               </button>
-              <button class="ribbon-icon-btn" :class="{ active: currentCellStyle.align === 'center' }" @click="applyStyleToSelection('align', 'center')">
-                Giữa
+              <button
+                type="button"
+                class="ribbon-icon-btn ribbon-align-btn"
+                :class="{ active: currentCellStyle.align === 'center' }"
+                title="Căn giữa ngang (Align Center)"
+                @click="applyStyleToSelection('align', 'center')"
+              >
+                <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                  <line x1="2" y1="3.5" x2="14" y2="3.5" />
+                  <line x1="4" y1="7" x2="12" y2="7" />
+                  <line x1="2.5" y1="10.5" x2="13.5" y2="10.5" />
+                  <line x1="5" y1="14" x2="11" y2="14" />
+                </svg>
+                <span>Giữa</span>
               </button>
-              <button class="ribbon-icon-btn" :class="{ active: currentCellStyle.align === 'right' }" @click="applyStyleToSelection('align', 'right')">
-                Phải
+              <button
+                type="button"
+                class="ribbon-icon-btn ribbon-align-btn"
+                :class="{ active: currentCellStyle.align === 'right' }"
+                title="Căn lề phải (Align Right)"
+                @click="applyStyleToSelection('align', 'right')"
+              >
+                <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                  <line x1="2" y1="3.5" x2="14" y2="3.5" />
+                  <line x1="6" y1="7" x2="14" y2="7" />
+                  <line x1="3" y1="10.5" x2="14" y2="10.5" />
+                  <line x1="7.5" y1="14" x2="14" y2="14" />
+                </svg>
+                <span>Phải</span>
+              </button>
+            </div>
+
+            <div class="ribbon-divider"></div>
+
+            <!-- Vertical Alignment & Wrap Text -->
+            <div class="ribbon-group">
+              <button
+                type="button"
+                class="ribbon-icon-btn ribbon-align-btn"
+                :class="{ active: currentCellStyle.valign === 'top' }"
+                title="Căn trên (Top Align)"
+                @click="applyStyleToSelection('valign', 'top')"
+              >
+                <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                  <line x1="2" y1="2.5" x2="14" y2="2.5" />
+                  <line x1="4" y1="5.5" x2="12" y2="5.5" />
+                  <line x1="8" y1="14" x2="8" y2="8" />
+                  <polyline points="5.5,10.5 8,8 10.5,10.5" />
+                </svg>
+                <span>Trên</span>
+              </button>
+              <button
+                type="button"
+                class="ribbon-icon-btn ribbon-align-btn"
+                :class="{ active: (currentCellStyle.valign || 'middle') === 'middle' }"
+                title="Căn giữa dọc (Middle Align)"
+                @click="applyStyleToSelection('valign', 'middle')"
+              >
+                <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                  <line x1="2" y1="8" x2="14" y2="8" />
+                  <line x1="4.5" y1="5" x2="11.5" y2="5" />
+                  <line x1="4.5" y1="11" x2="11.5" y2="11" />
+                </svg>
+                <span>Giữa dọc</span>
+              </button>
+              <button
+                type="button"
+                class="ribbon-icon-btn ribbon-align-btn"
+                :class="{ active: currentCellStyle.valign === 'bottom' }"
+                title="Căn dưới (Bottom Align)"
+                @click="applyStyleToSelection('valign', 'bottom')"
+              >
+                <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                  <line x1="8" y1="2" x2="8" y2="8" />
+                  <polyline points="5.5,5.5 8,8 10.5,5.5" />
+                  <line x1="4" y1="10.5" x2="12" y2="10.5" />
+                  <line x1="2" y1="13.5" x2="14" y2="13.5" />
+                </svg>
+                <span>Dưới</span>
+              </button>
+              <button
+                type="button"
+                class="ribbon-icon-btn ribbon-wrap-btn"
+                :class="{ active: currentCellStyle.wrapText !== false }"
+                title="Ngắt dòng tự động trong ô như Excel (Wrap Text)"
+                @click="toggleWrapText"
+              >
+                <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="2" y1="3.5" x2="13" y2="3.5" />
+                  <path d="M2 8h9a2.5 2.5 0 0 1 0 5H8" />
+                  <polyline points="9.8,11.2 7.8,13 9.8,14.8" />
+                  <line x1="2" y1="13" x2="5" y2="13" />
+                </svg>
+                <span>Wrap Text</span>
               </button>
             </div>
 
@@ -465,7 +567,7 @@
                       <template v-else>
                         <div
                           class="cell-content-render"
-                          :style="getCellContentBoxStyle(r)"
+                          :style="getCellContentBoxStyle(r, c)"
                           v-html="formatCellDisplayHtml(r, c)"
                         ></div>
 
@@ -711,6 +813,9 @@
             </button>
             <button class="btn btn-indigo" @click="handleCreateDealRegTemplate">
               + Tạo mẫu DealReg
+            </button>
+            <button class="btn btn-emerald" @click="handleCreateAgencyTemplate">
+              + Tạo mẫu Đại Lý
             </button>
             <button class="btn btn-blue" @click="handleCreateBlankTemplate">
               + Tạo mẫu tự thiết kế
@@ -1159,6 +1264,12 @@
         <button :class="{ active: currentCellStyle.align === 'center' }" @click="applyStyleToSelection('align', 'center')">Giữa</button>
         <button :class="{ active: currentCellStyle.align === 'right' }" @click="applyStyleToSelection('align', 'right')">Phải</button>
       </div>
+      <div class="ctx-quick-styles">
+        <button :class="{ active: currentCellStyle.valign === 'top' }" @click="applyStyleToSelection('valign', 'top')" title="Căn trên (Top Align)">Trên</button>
+        <button :class="{ active: (currentCellStyle.valign || 'middle') === 'middle' }" @click="applyStyleToSelection('valign', 'middle')" title="Căn giữa dọc (Middle Align)">Giữa dọc</button>
+        <button :class="{ active: currentCellStyle.valign === 'bottom' }" @click="applyStyleToSelection('valign', 'bottom')" title="Căn dưới (Bottom Align)">Dưới</button>
+        <button :class="{ active: currentCellStyle.wrapText !== false }" @click="toggleWrapText" title="Ngắt dòng tự động (Wrap Text)">Wrap Text</button>
+      </div>
 
       <!-- Quick Color Swatches -->
       <div class="ctx-color-row">
@@ -1280,6 +1391,7 @@ import {
   createStarterTemplateConfig,
   createBlankTemplateConfig,
   createDealRegTemplateConfig,
+  createAgencyTemplateConfig,
   ensureGridHeaderPopulated,
   parseExcelBufferToTemplateConfig,
   fetchAndSyncPrintTemplates,
@@ -1298,6 +1410,7 @@ import {
   exportHtmlFileFromTemplate,
   exportWordFromTemplate,
   deliverExportedFile,
+  buildQuoteFileName,
   type PrintTemplateConfig,
   type GridCellStyle,
   type GridCellData,
@@ -1524,6 +1637,7 @@ const currentCellStyle = reactive<GridCellStyle>({
   border: false,
   align: 'left',
   valign: 'middle',
+  wrapText: true,
   color: '#0f172a',
   bgColor: undefined
 })
@@ -1540,6 +1654,7 @@ function syncRibbonWithSelectedCell() {
   currentCellStyle.border = !!st.border
   currentCellStyle.align = st.align || 'left'
   currentCellStyle.valign = st.valign || 'middle'
+  currentCellStyle.wrapText = st.wrapText !== false
   currentCellStyle.color = st.color || '#0f172a'
   currentCellStyle.bgColor = st.bgColor
 }
@@ -1783,8 +1898,16 @@ function pickInlineToken(tk: TokenDef) {
   }
   if (activeTpl.value) {
     if (tk.group === 'group_row') activeTpl.value.mapping_vung.dong_mau_nhom = selRow.value
-    else if (tk.group === 'item_row' || tk.token === '{{TT_TRUOC_THUE_USD}}') activeTpl.value.mapping_vung.dong_mau_san_pham = selRow.value
-    else if (tk.token === '{{DIEU_KHOAN}}') activeTpl.value.mapping_vung.dong_dieu_khoan = selRow.value
+    else if (tk.group === 'item_row' || tk.token === '{{TT_TRUOC_THUE_USD}}' || (tk.group === 'agency' && !tk.token.startsWith('{{DL_TONG_'))) {
+      activeTpl.value.mapping_vung.dong_mau_san_pham = selRow.value
+    } else if (tk.token.startsWith('{{DL_TONG_')) {
+      if (!Array.isArray(activeTpl.value.mapping_vung.danh_sach_dong_tong)) {
+        activeTpl.value.mapping_vung.danh_sach_dong_tong = []
+      }
+      if (!activeTpl.value.mapping_vung.danh_sach_dong_tong.includes(selRow.value)) {
+        activeTpl.value.mapping_vung.danh_sach_dong_tong.push(selRow.value)
+      }
+    } else if (tk.token === '{{DIEU_KHOAN}}') activeTpl.value.mapping_vung.dong_dieu_khoan = selRow.value
   }
 
   inlineTokenSuggest.visible = false
@@ -1913,6 +2036,11 @@ function handleGridKeydown(e: KeyboardEvent) {
       pasteToSelectedCells()
       return
     }
+    if (k === 's') {
+      e.preventDefault()
+      handleSaveCurrentTemplate()
+      return
+    }
     return
   }
 
@@ -1988,9 +2116,19 @@ function applyStyleToSelection(prop: keyof GridCellStyle, val: any) {
   }
 }
 
-function toggleStyleBool(prop: 'bold' | 'italic' | 'underline' | 'border') {
+function toggleStyleBool(prop: 'bold' | 'italic' | 'underline' | 'border' | 'wrapText') {
   const nextVal = !currentCellStyle[prop]
   applyStyleToSelection(prop, nextVal)
+}
+
+function toggleWrapText() {
+  const nextVal = !(currentCellStyle.wrapText !== false)
+  applyStyleToSelection('wrapText', nextVal)
+  showToast(
+    nextVal
+      ? `Đã bật Wrap Text (Tự động xuống dòng) cho ${selectionRangeLabel.value}`
+      : `Đã tắt Wrap Text (1 dòng) cho ${selectionRangeLabel.value}`
+  )
 }
 
 function clearSelectedRangeContent() {
@@ -2482,8 +2620,10 @@ function isRightHalfCol(r: number, c: number): boolean {
   return c + span - 1 > Math.ceil(totalCols / 2)
 }
 
-function getCellContentBoxStyle(r: number) {
+function getCellContentBoxStyle(r: number, c?: number) {
   const h = activeTpl.value?.row_heights?.[r] ?? 26
+  const st = c ? activeTpl.value?.grid_cells?.[`${r}_${c}`]?.style : undefined
+  const isNoWrap = st?.wrapText === false
   if (h <= 0) {
     return {
       maxHeight: '0px',
@@ -2493,7 +2633,10 @@ function getCellContentBoxStyle(r: number) {
   }
   return {
     maxHeight: `${Math.max(1, h > 16 ? h - 8 : h)}px`,
-    overflow: 'hidden'
+    overflow: 'hidden',
+    whiteSpace: isNoWrap ? ('nowrap' as const) : ('normal' as const),
+    wordBreak: isNoWrap ? ('normal' as const) : ('break-word' as const),
+    textOverflow: isNoWrap ? ('clip' as const) : undefined
   }
 }
 
@@ -2502,6 +2645,7 @@ function getComputedCellStyle(r: number, c: number) {
   const st = cell?.style || {}
   const h = activeTpl.value?.row_heights?.[r] ?? 26
   const isLogo = isLogoCell(r, c)
+  const isNoWrap = st.wrapText === false
   const span = getCellColspan(r, c)
   let spanWidthPx = 0
   for (let cc = c; cc < c + span; cc++) {
@@ -2525,6 +2669,8 @@ function getComputedCellStyle(r: number, c: number) {
     textDecoration: st.underline ? 'underline' : 'none',
     textAlign: st.align || 'left',
     verticalAlign: st.valign || 'middle',
+    whiteSpace: isNoWrap ? ('nowrap' as const) : ('normal' as const),
+    wordBreak: isNoWrap ? ('normal' as const) : ('break-word' as const),
     color: st.color || '#0f172a',
     backgroundColor: st.bgColor || '#ffffff',
     border: st.border ? `1px solid ${st.borderColor || '#1e293b'}` : '1px dashed #cbd5e1',
@@ -2533,14 +2679,16 @@ function getComputedCellStyle(r: number, c: number) {
 }
 
 function formatCellDisplayHtml(r: number, c: number): string {
-  const raw = activeTpl.value?.grid_cells?.[`${r}_${c}`]?.value || ''
+  const cell = activeTpl.value?.grid_cells?.[`${r}_${c}`]
+  const raw = cell?.value || ''
   if (!raw) return ''
+  const isNoWrap = cell?.style?.wrapText === false
 
   const escaped = raw
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/\n/g, '<br/>')
+    .replace(/\n/g, isNoWrap ? ' ' : '<br/>')
 
   return escaped.replace(/(\{\{[A-Z0-9_]+\}\})/g, (match) => {
     return `<span class="cell-token-pill">${match}</span>`
@@ -2716,8 +2864,15 @@ function insertTokenIntoSelectedCell(tk: TokenDef) {
 
   if (tk.group === 'group_row') {
     activeTpl.value.mapping_vung.dong_mau_nhom = selRow.value
-  } else if (tk.group === 'item_row' || tk.token === '{{TT_TRUOC_THUE_USD}}') {
+  } else if (tk.group === 'item_row' || tk.token === '{{TT_TRUOC_THUE_USD}}' || (tk.group === 'agency' && !tk.token.startsWith('{{DL_TONG_'))) {
     activeTpl.value.mapping_vung.dong_mau_san_pham = selRow.value
+  } else if (tk.token.startsWith('{{DL_TONG_')) {
+    if (!Array.isArray(activeTpl.value.mapping_vung.danh_sach_dong_tong)) {
+      activeTpl.value.mapping_vung.danh_sach_dong_tong = []
+    }
+    if (!activeTpl.value.mapping_vung.danh_sach_dong_tong.includes(selRow.value)) {
+      activeTpl.value.mapping_vung.danh_sach_dong_tong.push(selRow.value)
+    }
   } else if (tk.token === '{{DIEU_KHOAN}}') {
     activeTpl.value.mapping_vung.dong_dieu_khoan = selRow.value
   }
@@ -2835,7 +2990,12 @@ async function handleTestExport(format: 'excel' | 'word' | 'pdf' | 'png' | 'html
   if (!activeTpl.value) return
   const mockCtx = createMockQuoteContext(activeTpl.value)
   mockCtx.currency = previewCurrency.value
-  const safeName = activeTpl.value.ten_mau.replace(/[^a-zA-Z0-9_-]/g, '_') || 'Mau_Bao_Gia'
+  const testFileName = buildQuoteFileName({
+    tenKhachHang: mockCtx.khach?.Ten_khach_hang,
+    tenCongTy: mockCtx.khach?.Ten_cong_ty,
+    contentPO: mockCtx.noiDungPO,
+    fallbackCode: activeTpl.value.ten_mau || 'Mau_Bao_Gia'
+  })
 
   try {
     if (format === 'excel') {
@@ -2843,22 +3003,22 @@ async function handleTestExport(format: 'excel' | 'word' | 'pdf' | 'png' | 'html
       const blob = await generateExcelBlobFromTemplate(activeTpl.value, mockCtx)
       await deliverExportedFile(
         blob,
-        `Test_${safeName}.xlsx`,
+        `${testFileName}.xlsx`,
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       )
       showToast('Đã tải file Excel!')
     } else if (format === 'word') {
       showToast('Đang xuất file Word (.doc)...')
-      await exportWordFromTemplate(activeTpl.value, mockCtx, `Test_${safeName}`)
+      await exportWordFromTemplate(activeTpl.value, mockCtx, testFileName)
       showToast('Đã tải file Word (.doc)!')
     } else if (format === 'pdf') {
-      exportPdfOrPrintFromTemplate(activeTpl.value, mockCtx, `Test_${safeName}`)
+      exportPdfOrPrintFromTemplate(activeTpl.value, mockCtx, testFileName)
     } else if (format === 'png') {
       showToast('Đang kết xuất ảnh PNG...')
-      await exportPngFromTemplate(activeTpl.value, mockCtx, `Test_${safeName}`)
+      await exportPngFromTemplate(activeTpl.value, mockCtx, testFileName)
       showToast('Đã tải ảnh PNG!')
     } else if (format === 'html') {
-      await exportHtmlFileFromTemplate(activeTpl.value, mockCtx, `Test_${safeName}`)
+      await exportHtmlFileFromTemplate(activeTpl.value, mockCtx, testFileName)
       showToast('Đã tải file HTML!')
     }
   } catch (e: any) {
@@ -2907,14 +3067,21 @@ async function handleUploadLogoToCloudinary(e: Event) {
   }
 }
 
+const LAST_ACTIVE_TPL_STORAGE_KEY = 'nts_active_print_template_id'
+
 // CRUD & Sync Actions
 async function loadTemplates(notify = false) {
   loading.value = true
   try {
     const list = await fetchAndSyncPrintTemplates()
     templates.value = list
+    let savedActiveId = ''
+    try {
+      savedActiveId = localStorage.getItem(LAST_ACTIVE_TPL_STORAGE_KEY) || ''
+    } catch {}
     if (!activeTpl.value && list.length > 0) {
-      selectTemplate(list[0])
+      const target = (savedActiveId && list.find(t => t.id === savedActiveId)) || list[0]
+      selectTemplate(target)
     } else if (activeTpl.value) {
       const updated = list.find(t => t.id === activeTpl.value!.id)
       if (updated) selectTemplate(updated)
@@ -2991,6 +3158,9 @@ function handleSelectCardInModal(tpl: PrintTemplateConfig) {
 function selectTemplate(tpl: PrintTemplateConfig) {
   const copy = ensureGridHeaderPopulated(JSON.parse(JSON.stringify(tpl)))
   activeTpl.value = copy
+  try {
+    if (copy.id) localStorage.setItem(LAST_ACTIVE_TPL_STORAGE_KEY, copy.id)
+  } catch {}
   editorMode.value = copy.che_do_soan_thao || 'manual'
   syncCodeBuffersFromTemplate()
   selectCell(1, 1, false)
@@ -2998,11 +3168,17 @@ function selectTemplate(tpl: PrintTemplateConfig) {
 
 async function handleSaveCurrentTemplate() {
   if (!activeTpl.value) return
+  if (isEditingCell.value) {
+    finishInlineEdit()
+  }
   activeTpl.value.ten_mau = (activeTpl.value.ten_mau || '').trim() || 'Mẫu in'
   activeTpl.value.ghi_chu = (activeTpl.value.ghi_chu ?? '').trim()
   saving.value = true
   try {
     await savePrintTemplateToFirebase(activeTpl.value)
+    try {
+      if (activeTpl.value.id) localStorage.setItem(LAST_ACTIVE_TPL_STORAGE_KEY, activeTpl.value.id)
+    } catch {}
     const idx = templates.value.findIndex(t => t.id === activeTpl.value!.id)
     if (idx >= 0) {
       templates.value[idx] = JSON.parse(JSON.stringify(activeTpl.value))
@@ -3036,6 +3212,18 @@ async function handleCreateDealRegTemplate() {
   selectTemplate(newTpl)
   showTemplateModal.value = false
   showToast('Đã tạo Mẫu Deal Registration chuẩn 4 cột!')
+}
+
+async function handleCreateAgencyTemplate() {
+  const existing = templates.value.find(t => t.id === 'MINTL_DAI_LY')
+  const newId = existing ? `MINTL_DAI_LY_${Date.now()}` : 'MINTL_DAI_LY'
+  const newName = existing ? `Mẫu Báo Giá Đại Lý (${templates.value.length + 1})` : 'Mẫu Báo Giá Đại Lý'
+  const newTpl = createAgencyTemplateConfig(newId, newName)
+  await savePrintTemplateToFirebase(newTpl)
+  templates.value.unshift(newTpl)
+  selectTemplate(newTpl)
+  showTemplateModal.value = false
+  showToast('Đã tạo Mẫu Báo Giá Đại Lý chuẩn 13 cột!')
 }
 
 async function handleCreateBlankTemplate() {
@@ -3452,11 +3640,26 @@ onMounted(() => {
   color: #e2e8f0;
   cursor: pointer;
   font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.ribbon-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
 }
 
 .ribbon-icon-btn.active {
   background: #3b82f6;
   border-color: #60a5fa;
+  color: #ffffff;
+}
+
+.ribbon-wrap-btn.active {
+  background: #10b981;
+  border-color: #34d399;
   color: #ffffff;
 }
 

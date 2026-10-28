@@ -423,6 +423,74 @@
       color: #605e5c;
       white-space: nowrap;
     }
+
+    /* View Mode Switcher (Fast Grid vs Embedded ViewOffice) */
+    .mode-switcher {
+      display: inline-flex;
+      background: rgba(0, 0, 0, 0.28);
+      padding: 3px;
+      border-radius: 6px;
+      gap: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+    }
+    .mode-btn {
+      padding: 5px 11px;
+      border-radius: 4px;
+      border: none;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.88);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .mode-btn:hover {
+      background: rgba(255, 255, 255, 0.14);
+      color: #ffffff;
+    }
+    .mode-btn.active {
+      background: #ffc000;
+      color: #1f1f1f;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+    }
+
+    .office-container {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+      background: #0f172a;
+      overflow: hidden;
+    }
+    .office-helper-bar {
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      color: #e2e8f0;
+      padding: 7px 16px;
+      font-size: 12.5px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .office-chip-btn {
+      padding: 4px 10px;
+      border-radius: 5px;
+      border: 1px solid rgba(56, 189, 248, 0.45);
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .office-chip-btn:hover {
+      background: rgba(56, 189, 248, 0.28);
+      color: #ffffff;
+    }
   </style>
 </head>
 <body>
@@ -441,6 +509,17 @@
           📘 file_trung_gian_SOPHOS.xlsx
         </button>
       </div>
+
+      <!-- Nút mở Xem bằng ViewOffice (mở tab mới & nhảy thẳng tới ô sản phẩm) -->
+      <div class="mode-switcher" title="Mở file trên Microsoft ViewOffice ở tab mới và nhảy thẳng tới ô chứa sản phẩm này">
+        <button id="btnModeGrid" type="button" class="mode-btn active" onclick="scrollToTargetRow()">
+          ⚡ Định vị dòng nhanh
+        </button>
+        <button id="btnModeOffice" type="button" class="mode-btn" onclick="openOfficeInNewTab()">
+          👁️ Xem bằng ViewOffice (Nhảy tới ô)
+        </button>
+      </div>
+
       <div class="target-badges">
         <span class="badge-sku">SKU: <strong id="lblSku">—</strong></span>
         <span id="lblItemName" style="font-size: 13px; font-weight: 600;"></span>
@@ -449,18 +528,21 @@
     </div>
 
     <div class="top-actions">
+      <button id="btnCopySku" type="button" class="top-btn" onclick="copySkuText()" title="Copy mã SKU để bấm Ctrl+F tìm nhanh trong ViewOffice">
+        🔍 Copy SKU
+      </button>
       <button id="btnCopyRow" type="button" class="top-btn top-btn--primary" onclick="copyRowCoord()">
         📋 Copy tọa độ dòng (Ctrl+G)
       </button>
-      <button type="button" class="top-btn" onclick="scrollToTargetRow()">
+      <button id="btnScrollTarget" type="button" class="top-btn" onclick="scrollToTargetRow()">
         🎯 Cuộn tới Dòng mục tiêu
       </button>
-      <button type="button" class="top-btn" onclick="openDesktopExcel()">
-        📗 Mở bằng App Excel Desktop
+      <button type="button" class="top-btn" style="background: rgba(56, 189, 248, 0.24); border-color: rgba(125, 211, 252, 0.6);" onclick="openOfficeInNewTab()" title="Mở file này trên tab Microsoft Office Online (ViewOffice) mới và nhảy thẳng tới ô chứa sản phẩm">
+        👁️ Xem bằng ViewOffice
       </button>
-      <a id="lnkDownload" href="/template_excel/file_trung_gian_SOPHOS.xlsx" download class="top-btn">
-        ⬇️ Tải file gốc
-      </a>
+      <button type="button" class="top-btn" style="background: rgba(16, 185, 129, 0.28); border-color: rgba(110, 231, 183, 0.65);" onclick="downloadActiveFile()" title="Tải file Excel đã up trên Cloudinary về máy">
+        ⬇ Tải về
+      </button>
     </div>
   </div>
 
@@ -468,7 +550,7 @@
   <div id="locationsBar" class="locations-bar" style="display: none;"></div>
 
   <!-- Formula Bar -->
-  <div class="formula-bar">
+  <div id="formulaBarWrap" class="formula-bar">
     <div id="nameBox" class="name-box">B1</div>
     <div class="fx-label">fx</div>
     <div id="formulaVal" class="formula-input"></div>
@@ -490,15 +572,40 @@
     <button type="button" class="window-btn" onclick="expandMsrpWindow()">+ Mở rộng thêm ±80 dòng lân cận</button>
   </div>
 
-  <!-- Spreadsheet Grid -->
+  <!-- Spreadsheet Grid (Fast Row/Cell Locator) -->
   <div id="gridContainer" class="grid-container">
     <div style="padding: 40px; text-align: center; color: #605e5c; font-size: 14px;">
       Đang tải dữ liệu và định dạng gốc từ file Excel...
     </div>
   </div>
 
+  <!-- Embedded Microsoft ViewOffice Container -->
+  <div id="officeContainer" class="office-container">
+    <div class="office-helper-bar">
+      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <span>👁️ <strong>Microsoft ViewOffice</strong> — Đang mở file: <strong id="officeFileName" style="color: #38bdf8;">—</strong></span>
+        <span style="color: #94a3b8;">|</span>
+        <span>Vị trí cần đối chiếu: <strong id="officeTargetInfo" style="color: #fbbf24;">—</strong></span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+        <span style="font-size: 11.5px; color: #94a3b8;">Mẹo: Bấm vào bảng ViewOffice bên dưới rồi nhấn <strong>Ctrl+F</strong> → <strong>Ctrl+V</strong> để nhảy tới mã SKU</span>
+        <button type="button" class="office-chip-btn" onclick="copySkuText()">📋 Copy SKU</button>
+        <button type="button" class="office-chip-btn" onclick="copyCellCoord()">📋 Copy Ô</button>
+        <button type="button" class="office-chip-btn" style="border-color: rgba(16, 185, 129, 0.5); color: #34d399; background: rgba(16, 185, 129, 0.15);" onclick="downloadActiveFile()">⬇ Tải về</button>
+      </div>
+    </div>
+    <div id="officeFrameWrap" style="flex: 1; position: relative; background: #0f172a;">
+      <iframe
+        id="officeIframe"
+        src="about:blank"
+        style="width: 100%; height: 100%; border: none; background: #ffffff;"
+        allowfullscreen
+      ></iframe>
+    </div>
+  </div>
+
   <!-- Bottom Sheet Tabs -->
-  <div class="sheet-bar">
+  <div id="sheetBarWrap" class="sheet-bar">
     <div id="sheetTabs" class="sheet-tabs"></div>
     <div id="statusInfo" class="status-info"></div>
   </div>
@@ -509,6 +616,7 @@
     let sortedSkuTabCache = [];
     let msrpWindowRadius = 50;
     let viewerContext = { settings: {}, rows: [] };
+    let currentLoadedOfficeUrl = '';
 
     const state = {
       fileType: 'tg', // 'goc' | 'skulist' | 'tg'
@@ -517,7 +625,8 @@
       colLetter: 'B',
       colIndex: 1,
       sku: '',
-      itemName: ''
+      itemName: '',
+      viewMode: 'grid' // 'grid' | 'office'
     };
 
     function letterToColIndex(letter) {
@@ -582,6 +691,36 @@
       if (!refData || !state.sku) return [];
       const sku = state.sku.toUpperCase();
       const locs = [];
+
+      if (state.fileType === 'acronis_goc' || state.fileType === 'acronis_mau') {
+        const gEntry = (refData.gocBySku && refData.gocBySku[sku]) ||
+                       (refData.gocBySkuFor && refData.gocBySkuFor[sku]) ||
+                       (refData.gocByMaHang && refData.gocByMaHang[sku]) || null;
+        if (gEntry && gEntry.rowNum) {
+          locs.push({
+            fileType: 'acronis_goc',
+            sheet: gEntry.sheet,
+            rowNum: gEntry.rowNum,
+            colLetter: 'B',
+            sku: gEntry.sku || gEntry.skuFor || sku,
+            itemName: state.itemName || gEntry.tenHang
+          });
+        }
+        const mEntry = (refData.mauBySku && refData.mauBySku[sku]) ||
+                       (refData.mauBySkuFor && refData.mauBySkuFor[sku]) ||
+                       (refData.mauByMaHang && refData.mauByMaHang[sku]) || null;
+        if (mEntry && mEntry.rowNum) {
+          locs.push({
+            fileType: 'acronis_mau',
+            sheet: mEntry.sheet,
+            rowNum: mEntry.rowNum,
+            colLetter: 'B',
+            sku: mEntry.sku || mEntry.skuFor || sku,
+            itemName: state.itemName || mEntry.tenHang
+          });
+        }
+        return locs;
+      }
 
       if (state.fileType === 'kas_goc' || state.fileType === 'kas_mau') {
         const band = state.band || '';
@@ -715,29 +854,72 @@
       return css;
     }
 
+    let vendorMeta = null;
+
+    function getActiveFileInfo() {
+      const m = vendorMeta || {};
+      const map = {
+        goc: {
+          name: m.goc_file_name || 'file_goc_SOPHOS.xlsx',
+          url: m.goc_file_url || m.index_url || ''
+        },
+        skulist: {
+          name: m.skulist_file_name || 'sophos-pricelist-reseller_SKU_list-asean-usd-2026-3.0.xlsb',
+          url: m.skulist_file_url || m.index_url || ''
+        },
+        tg: {
+          name: m.tg_file_name || 'file_trung_gian_SOPHOS.xlsx',
+          url: m.tg_file_url || m.index_url || ''
+        },
+        kas_goc: {
+          name: m.goc_file_name || 'filegocKas.xlsx',
+          url: m.goc_file_url || m.index_url || ''
+        },
+        kas_mau: {
+          name: m.mau_file_name || 'KASPERSKY_file_mau_import.xlsx',
+          url: m.mau_file_url || m.index_url || ''
+        },
+        acronis_goc: {
+          name: m.goc_file_name || 'file_goc_acronis.xlsx',
+          url: m.goc_file_url || m.index_url || ''
+        },
+        acronis_mau: {
+          name: m.mau_file_name || 'ACRONIS_file_mau_import.xlsx',
+          url: m.mau_file_url || m.index_url || ''
+        }
+      };
+      return map[state.fileType] || map.tg;
+    }
+
     function renderAll() {
       if (!refData) return;
 
-      const fileMap = {
-        goc: { name: 'file_goc_SOPHOS.xlsx', path: '/template_excel/file_goc_SOPHOS.xlsx' },
-        skulist: { name: 'sophos-pricelist-reseller_SKU_list-asean-usd-2026-3.0.xlsb', path: '/template_excel/sophos-pricelist-reseller_SKU_list-asean-usd-2026-3.0.xlsb' },
-        tg: { name: 'file_trung_gian_SOPHOS.xlsx', path: '/template_excel/file_trung_gian_SOPHOS.xlsx' },
-        kas_goc: { name: 'filegocKas.xlsx', path: '/template_excel/filegocKas.xlsx' },
-        kas_mau: { name: 'KASPERSKY_file_mau_import.xlsx', path: '/template_excel/KASPERSKY_file_mau_import.xlsx' }
-      };
-      const fInfo = fileMap[state.fileType] || fileMap.tg;
+      const fInfo = getActiveFileInfo();
+      const m = vendorMeta || {};
       const isKasMode = state.fileType === 'kas_goc' || state.fileType === 'kas_mau';
+      const isAcronisMode = state.fileType === 'acronis_goc' || state.fileType === 'acronis_mau';
 
-      document.title = `[Dòng ${state.targetRow}] ${state.sku || state.sheet} — ${fInfo.name}`;
-      if (isKasMode) {
-        document.getElementById('btnFileGoc').textContent = '📗 filegocKas.xlsx (01/07/2026)';
+      document.title = `[Dòng ${state.targetRow}] ${state.sku || state.sheet} — ☁️ ${fInfo.name}`;
+      if (isAcronisMode) {
+        document.getElementById('btnFileGoc').textContent = '📗 ' + (m.goc_file_name || 'file_goc_acronis.xlsx');
+        document.getElementById('btnFileGoc').onclick = () => switchFile('acronis_goc');
+        document.getElementById('btnFileGoc').className = 'file-btn' + (state.fileType === 'acronis_goc' ? ' active' : '');
+        document.getElementById('btnFileSkulist').style.display = 'none';
+        document.getElementById('btnFileTg').textContent = '📘 ' + (m.mau_file_name || 'ACRONIS_file_mau_import.xlsx');
+        document.getElementById('btnFileTg').onclick = () => switchFile('acronis_mau');
+        document.getElementById('btnFileTg').className = 'file-btn' + (state.fileType === 'acronis_mau' ? ' active' : '');
+      } else if (isKasMode) {
+        document.getElementById('btnFileGoc').textContent = '📗 ' + (m.goc_file_name || 'filegocKas.xlsx');
         document.getElementById('btnFileGoc').onclick = () => switchFile('kas_goc');
         document.getElementById('btnFileGoc').className = 'file-btn' + (state.fileType === 'kas_goc' ? ' active' : '');
         document.getElementById('btnFileSkulist').style.display = 'none';
-        document.getElementById('btnFileTg').textContent = '📘 KASPERSKY_file_mau_import.xlsx';
+        document.getElementById('btnFileTg').textContent = '📘 ' + (m.mau_file_name || 'KASPERSKY_file_mau_import.xlsx');
         document.getElementById('btnFileTg').onclick = () => switchFile('kas_mau');
         document.getElementById('btnFileTg').className = 'file-btn' + (state.fileType === 'kas_mau' ? ' active' : '');
       } else {
+        document.getElementById('btnFileGoc').textContent = '📗 ' + (m.goc_file_name || 'file_goc_SOPHOS.xlsx');
+        document.getElementById('btnFileSkulist').textContent = '📙 ' + (m.skulist_file_name || 'SKU_list-2026-3.0.xlsb');
+        document.getElementById('btnFileTg').textContent = '📘 ' + (m.tg_file_name || 'file_trung_gian_SOPHOS.xlsx');
         document.getElementById('btnFileGoc').className = 'file-btn' + (state.fileType === 'goc' ? ' active' : '');
         document.getElementById('btnFileSkulist').className = 'file-btn' + (state.fileType === 'skulist' ? ' active' : '');
         document.getElementById('btnFileTg').className = 'file-btn' + (state.fileType === 'tg' ? ' active' : '');
@@ -749,11 +931,15 @@
       const fullRowRef = `'${state.sheet}'!${state.targetRow}:${state.targetRow}`;
       document.getElementById('lblCoord').textContent = `📍 '${state.sheet}'!${cellRef} • Dòng ${state.targetRow}`;
       document.getElementById('nameBox').textContent = cellRef;
-      document.getElementById('statusInfo').innerHTML = `Đang tô sáng toàn bộ <strong>Dòng ${state.targetRow}</strong> (Tọa độ Excel Ctrl+G: <code>${escapeHtml(fullRowRef)}</code>)`;
+      document.getElementById('statusInfo').innerHTML = `☁️ Nguồn Cloudinary: <strong>${escapeHtml(fInfo.name)}</strong> · Đang tô sáng <strong>Dòng ${state.targetRow}</strong> (<code>${escapeHtml(fullRowRef)}</code>)`;
 
-      const dlLink = document.getElementById('lnkDownload');
-      dlLink.href = fInfo.path;
-      dlLink.download = fInfo.name;
+      // Cập nhật thông tin trên thanh trợ giúp ViewOffice
+      const officeFileEl = document.getElementById('officeFileName');
+      const officeTargetEl = document.getElementById('officeTargetInfo');
+      if (officeFileEl) officeFileEl.textContent = fInfo.name || '—';
+      if (officeTargetEl) {
+        officeTargetEl.textContent = `Sheet "${state.sheet}" • Ô ${cellRef} (Dòng ${state.targetRow})${state.sku ? ' • SKU: ' + state.sku : ''}`;
+      }
 
       // Render Quick Locations Bar
       const locs = getAllLocationsForCurrentSku();
@@ -763,7 +949,7 @@
         locBar.innerHTML = `<span style="font-weight:700;color:#323130;">⚡ Nhảy nhanh giữa các vị trí của mã ${escapeHtml(state.sku)}:</span>` +
           locs.map((l, idx) => {
             const isAct = l.fileType === state.fileType && l.sheet === state.sheet && l.rowNum === state.targetRow;
-            const badgeIcon = l.fileType === 'goc' || l.fileType === 'kas_goc'
+            const badgeIcon = l.fileType === 'goc' || l.fileType === 'kas_goc' || l.fileType === 'acronis_goc'
               ? '📗 File Gốc'
               : (l.fileType === 'skulist' ? '📙 SKU_List' : '📘 File Mẫu/TG');
             return `<button type="button" class="loc-pill ${isAct ? 'active' : ''}" onclick="jumpToLocationIndex(${idx})">
@@ -777,13 +963,15 @@
       }
 
       // Render Sheet Tabs
-      const sheetNames = (state.fileType === 'kas_goc' || state.fileType === 'kas_mau')
-        ? ['SMB+Enterprise (License)', 'SaleListSMB+Enterprise']
-        : (state.fileType === 'goc'
-          ? ['MSRPs&BuyCost', 'Firewall']
-          : (state.fileType === 'skulist'
-            ? ['SKU_Tab', 'HW_Compliance']
-            : Object.keys(refData.tgSheetsRaw || {})));
+      const sheetNames = isAcronisMode
+        ? (refData.sheetNames || Object.keys(refData.gocSheetsRaw || {}))
+        : ((state.fileType === 'kas_goc' || state.fileType === 'kas_mau')
+          ? ['SMB+Enterprise (License)', 'SaleListSMB+Enterprise']
+          : (state.fileType === 'goc'
+            ? ['MSRPs&BuyCost', 'Firewall']
+            : (state.fileType === 'skulist'
+              ? ['SKU_Tab', 'HW_Compliance']
+              : Object.keys(refData.tgSheetsRaw || {}))));
       const tabsEl = document.getElementById('sheetTabs');
       tabsEl.innerHTML = sheetNames.map(sh => {
         const isAct = sh === state.sheet;
@@ -794,7 +982,12 @@
         </button>`;
       }).join('');
 
-      renderSheetGrid();
+      updateViewModeUI();
+      if (state.viewMode === 'office') {
+        renderOfficeIframe();
+      } else {
+        renderSheetGrid();
+      }
     }
 
     function renderSheetGrid() {
@@ -1139,11 +1332,17 @@
 
       banner.style.display = 'none';
 
-      // CASE 2: file_trung_gian_SOPHOS (any of the 14 sheets) or file_goc_SOPHOS -> Firewall
+      // CASE 2: file_trung_gian_SOPHOS, file_goc_SOPHOS -> Firewall, or file_goc_acronis / ACRONIS_file_mau_import
       let rawRows = [];
       let styledMeta = null;
 
-      if (state.fileType === 'tg') {
+      if (state.fileType === 'acronis_goc') {
+        rawRows = (refData.gocSheetsRaw && refData.gocSheetsRaw[state.sheet]) || [];
+        styledMeta = (refData.gocSheetsStyled && refData.gocSheetsStyled[state.sheet]) || null;
+      } else if (state.fileType === 'acronis_mau') {
+        rawRows = (refData.mauSheetsRaw && refData.mauSheetsRaw[state.sheet]) || [];
+        styledMeta = (refData.mauSheetsStyled && refData.mauSheetsStyled[state.sheet]) || null;
+      } else if (state.fileType === 'tg') {
         rawRows = (refData.tgSheetsRaw && refData.tgSheetsRaw[state.sheet]) || [];
         styledMeta = (refData.tgSheetsStyled && refData.tgSheetsStyled[state.sheet]) || null;
       } else {
@@ -1170,7 +1369,8 @@
         styledMeta = refData.gocFirewallStyled || null;
       }
 
-      let maxCols = 8;
+      const isAcronisSheet = state.fileType === 'acronis_goc' || state.fileType === 'acronis_mau';
+      let maxCols = isAcronisSheet ? 4 : 8;
       for (const r of rawRows) {
         if (r && r.length > maxCols) maxCols = r.length;
       }
@@ -1201,7 +1401,7 @@
       let html = '<table class="excel-grid"><thead><tr><th class="col-corner">#</th>';
       for (let c = 0; c < maxCols; c++) {
         const letStr = colIndexToLetter(c);
-        const w = Math.max(70, Math.min(480, colWidths[c] || 115));
+        const w = Math.max(70, Math.min(540, colWidths[c] || 115));
         html += `<th style="width:${w}px" class="${letStr === state.colLetter ? 'col-active' : ''}">${letStr}</th>`;
       }
       html += '</tr></thead><tbody>';
@@ -1280,7 +1480,11 @@
         state.colIndex = letterToColIndex(match.colLetter);
       } else {
         state.fileType = newFileType;
-        if (newFileType === 'kas_goc' || newFileType === 'kas_mau') {
+        if (newFileType === 'acronis_goc' || newFileType === 'acronis_mau') {
+          state.sheet = (refData.sheetNames && refData.sheetNames[0]) || 'Protect Standard';
+          state.targetRow = 8;
+          state.colLetter = 'B';
+        } else if (newFileType === 'kas_goc' || newFileType === 'kas_mau') {
           state.sheet = 'SMB+Enterprise (License)';
           state.targetRow = 11;
           state.colLetter = 'I';
@@ -1303,6 +1507,10 @@
         state.targetRow = match.rowNum;
         state.colLetter = match.colLetter;
         state.colIndex = letterToColIndex(match.colLetter);
+      } else if (state.fileType === 'acronis_goc' || state.fileType === 'acronis_mau') {
+        state.targetRow = 8;
+        state.colLetter = 'B';
+        state.colIndex = letterToColIndex(state.colLetter);
       } else if (state.fileType === 'kas_goc' || state.fileType === 'kas_mau') {
         state.targetRow = sheetName === 'SMB+Enterprise (License)' ? 11 : 191;
         state.colLetter = sheetName === 'SMB+Enterprise (License)' ? 'I' : 'B';
@@ -1343,6 +1551,27 @@
         state.targetRow = parseInt(q, 10);
         renderAll();
         scrollToTargetRow();
+        return;
+      }
+
+      if (state.fileType === 'acronis_goc' || state.fileType === 'acronis_mau') {
+        const itemsList = state.fileType === 'acronis_goc' ? (refData.gocItems || []) : (refData.mauItems || []);
+        const foundInCurrentSheet = itemsList.find(x =>
+          x.sheet === state.sheet &&
+          (x.sku.includes(q) || x.skuFor.includes(q) || x.tenHang.toUpperCase().includes(q))
+        );
+        const found = foundInCurrentSheet || itemsList.find(x =>
+          x.sku.includes(q) || x.skuFor.includes(q) || x.tenHang.toUpperCase().includes(q)
+        );
+        if (found) {
+          state.sheet = found.sheet;
+          state.sku = found.sku || found.skuFor;
+          state.targetRow = found.rowNum;
+          state.colLetter = 'B';
+          state.colIndex = 1;
+          renderAll();
+          scrollToTargetRow();
+        }
         return;
       }
 
@@ -1423,18 +1652,383 @@
       } catch (_) {}
     }
 
-    function openDesktopExcel() {
-      copyRowCoord(true);
-      const rel = state.fileType === 'kas_goc'
-        ? '/template_excel/filegocKas.xlsx'
-        : (state.fileType === 'kas_mau'
-          ? '/template_excel/KASPERSKY_file_mau_import.xlsx'
-          : (state.fileType === 'goc'
-            ? '/template_excel/file_goc_SOPHOS.xlsx'
-            : (state.fileType === 'skulist'
-              ? '/template_excel/sophos-pricelist-reseller_SKU_list-asean-usd-2026-3.0.xlsb'
-              : '/template_excel/file_trung_gian_SOPHOS.xlsx')));
-      window.location.href = `ms-excel:ofe|u|${window.location.origin}${rel}`;
+    async function copySkuText() {
+      const text = state.sku || `${state.colLetter}${state.targetRow}`;
+      try {
+        await navigator.clipboard.writeText(text);
+        const btn = document.getElementById('btnCopySku');
+        if (btn) {
+          const old = btn.textContent;
+          btn.textContent = `✓ Đã copy SKU: ${text}`;
+          setTimeout(() => {
+            btn.textContent = old;
+          }, 2000);
+        }
+      } catch (_) {}
+    }
+
+    async function copyCellCoord() {
+      const cellCoord = `'${state.sheet}'!${state.colLetter}${state.targetRow}`;
+      try {
+        await navigator.clipboard.writeText(cellCoord);
+      } catch (_) {}
+    }
+
+    function updateViewModeUI() {
+      const isOffice = state.viewMode === 'office';
+      const btnGrid = document.getElementById('btnModeGrid');
+      const btnOffice = document.getElementById('btnModeOffice');
+      const gridContainer = document.getElementById('gridContainer');
+      const officeContainer = document.getElementById('officeContainer');
+      const formulaBarWrap = document.getElementById('formulaBarWrap');
+      const windowBanner = document.getElementById('windowBanner');
+      const btnScrollTarget = document.getElementById('btnScrollTarget');
+
+      if (btnGrid) btnGrid.className = 'mode-btn' + (!isOffice ? ' active' : '');
+      if (btnOffice) btnOffice.className = 'mode-btn' + (isOffice ? ' active' : '');
+      if (gridContainer) gridContainer.style.display = isOffice ? 'none' : 'block';
+      if (officeContainer) officeContainer.style.display = isOffice ? 'flex' : 'none';
+      if (formulaBarWrap) formulaBarWrap.style.display = isOffice ? 'none' : 'flex';
+      if (isOffice && windowBanner) windowBanner.style.display = 'none';
+      if (btnScrollTarget) btnScrollTarget.style.display = isOffice ? 'none' : 'inline-flex';
+    }
+
+    function setViewMode(mode) {
+      state.viewMode = mode === 'office' ? 'office' : 'grid';
+      if (state.sku) {
+        copySkuText();
+      } else {
+        copyRowCoord(true);
+      }
+      renderAll();
+      if (state.viewMode === 'grid') {
+        scrollToTargetRow();
+      }
+    }
+
+    function loadSheetJsIfNeeded() {
+      if (window.XLSX) return Promise.resolve(window.XLSX);
+      return new Promise((resolve, reject) => {
+        const sc = document.createElement('script');
+        sc.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+        sc.onload = () => resolve(window.XLSX);
+        sc.onerror = () => reject(new Error('Không thể nạp thư viện XLSX'));
+        document.head.appendChild(sc);
+      });
+    }
+
+    async function buildWorkbookFromCurrentRefData() {
+      const XLSX = await loadSheetJsIfNeeded();
+      const wb = XLSX.utils.book_new();
+      const fInfo = getActiveFileInfo();
+
+      if (state.fileType === 'acronis_goc' || state.fileType === 'acronis_mau') {
+        const sheetsMap = state.fileType === 'acronis_mau'
+          ? (refData?.mauSheetsRaw || refData?.gocSheetsRaw || {})
+          : (refData?.gocSheetsRaw || refData?.mauSheetsRaw || {});
+        Object.entries(sheetsMap).forEach(([sName, rows]) => {
+          if (Array.isArray(rows)) {
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), sName.slice(0, 31));
+          }
+        });
+      } else if (state.fileType === 'kas_goc' || state.fileType === 'kas_mau') {
+        const isMau = state.fileType === 'kas_mau';
+        const pivotRows = isMau ? (refData?.mauPivotRaw || refData?.gocPivotRaw || []) : (refData?.gocPivotRaw || []);
+        const saleList = isMau ? (refData?.mauSaleRows || refData?.gocSaleRows || []) : (refData?.gocSaleRows || []);
+        if (Array.isArray(pivotRows) && pivotRows.length) {
+          XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(pivotRows), 'SMB+Enterprise (License)');
+        }
+        if (Array.isArray(saleList) && saleList.length) {
+          const aoa = [
+            ['Row', 'PositionCode', 'SKU', 'Product', 'Term', 'Package', 'Type', 'Band', 'Price (VND)'],
+            ...saleList.map(r => [r.rowNum, r.posCode, r.sku, r.product, r.term, r.pkg, r.type, r.band, r.price])
+          ];
+          XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), 'SaleListSMB+Enterprise');
+        }
+      } else if (state.fileType === 'tg' && refData?.tgSheetsRaw) {
+        Object.entries(refData.tgSheetsRaw).forEach(([sName, rows]) => {
+          if (Array.isArray(rows)) {
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), sName.slice(0, 31));
+          }
+        });
+      } else if (refData?.gocSkus) {
+        const setCell = (ws, r1, c0, val) => {
+          if (val === undefined || val === null || val === '') return;
+          const addr = XLSX.utils.encode_cell({ r: r1 - 1, c: c0 });
+          ws[addr] = typeof val === 'number' ? { t: 'n', v: val } : { t: 's', v: String(val) };
+        };
+
+        // 1. Sheet SKU_Tab (sophos-pricelist-reseller_SKU_list-asean-usd-2026-3.0: dòng liên tục từ dòng 8, cột G là SKU)
+        if (sortedSkuTabCache.length) {
+          const wsSku = {};
+          setCell(wsSku, 1, 0, 'SOPHOS RESELLER SKU LIST (ASEAN - USD - 2026 3.0)');
+          setCell(wsSku, 6, 9, 'giá tham khảo');
+          const skuHeaders = [
+            'Changes made in Pricelist version', 'Change Key', 'Previous Description', 'Previous Price',
+            'SKU Availability Status', 'Product Code', 'SKU', 'Old SKU', 'Description', 'MSRP/RRP',
+            'Min Qty', 'Max Qty', 'Term', 'Sector', 'Transaction Type', 'Product Family', 'Product Type',
+            'HS Code', 'Country of Origin',
+            'Standard Authorized Reseller Cost', 'Registered Authorized Reseller Cost', 'Incumbent Authorized Reseller Cost',
+            'Standard Silver Reseller Cost', 'Registered Silver Reseller Cost',
+            'Standard Gold Reseller Cost', 'Registered Gold Reseller Cost',
+            'Standard Platinum Reseller Cost', 'Registered Platinum Reseller Cost'
+          ];
+          skuHeaders.forEach((h, i) => setCell(wsSku, 7, i, h));
+          sortedSkuTabCache.forEach((it, idx) => {
+            const r = 8 + idx;
+            [
+              it.changeVer, it.changeKey, '', it.prevPrice,
+              it.status || 'Available', it.pc, it.sku, it.oldSku, it.desc, it.msrp,
+              1, 9999999, it.term, it.sector || 'CORP', it.transType || 'New', it.family || 'UTM/Network Security', it.prodType,
+              it.hsCode, it.coo,
+              it.stdAuth, it.regAuth, it.incAuth,
+              it.stdSilv, it.regSilv,
+              it.stdGold, it.regGold,
+              it.stdPlat, it.regPlat
+            ].forEach((v, cIdx) => setCell(wsSku, r, cIdx, v));
+          });
+          wsSku['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: 7 + sortedSkuTabCache.length - 1, c: 27 } });
+          XLSX.utils.book_append_sheet(wb, wsSku, 'SKU_Tab');
+        }
+
+        // 2. Sheet HW_Compliance (đặt đúng dòng gốc rObj.rowNum)
+        if (Array.isArray(refData.hwComplianceRaw) && refData.hwComplianceRaw.length) {
+          const wsHw = {};
+          let maxHwR = 10;
+          for (const rObj of refData.hwComplianceRaw) {
+            if (rObj && rObj.rowNum >= 1) {
+              if (rObj.rowNum > maxHwR) maxHwR = rObj.rowNum;
+              (rObj.cells || []).forEach((v, idx) => setCell(wsHw, rObj.rowNum, idx, v));
+            }
+          }
+          wsHw['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: maxHwR - 1, c: 15 } });
+          XLSX.utils.book_append_sheet(wb, wsHw, 'HW_Compliance');
+        }
+
+        // 3. Sheet Firewall (giữ nguyên đúng số dòng 1..62)
+        if (Array.isArray(refData.gocFirewallRaw) && refData.gocFirewallRaw.length) {
+          XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(refData.gocFirewallRaw), 'Firewall');
+        }
+      }
+
+      if (!wb.SheetNames.length) {
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['File', fInfo.name || 'Excel']]), 'Sheet1');
+      }
+      return { XLSX, wb };
+    }
+
+    function getOfficeActiveCellParam() {
+      let targetSheet = String(state.sheet || '').trim();
+      let targetR = Number(state.targetRow) || 1;
+      let cleanCol = String(state.colLetter || 'B').trim().toUpperCase();
+      const cleanSku = String(state.sku || '').trim().toUpperCase();
+
+      if (state.fileType === 'goc' || state.fileType === 'skulist') {
+        if (targetSheet === 'HW_Compliance') {
+          cleanCol = cleanCol || 'B';
+        } else {
+          targetSheet = 'SKU_Tab';
+          if (cleanCol === 'B' || cleanCol === 'H' || !cleanCol) {
+            cleanCol = 'G';
+          }
+          const matched = sortedSkuTabCache.find(x =>
+            (cleanSku && x.sku === cleanSku) ||
+            (cleanSku && String(x.oldSku || '').trim().toUpperCase() === cleanSku) ||
+            x.skuTabRow === targetR ||
+            x.rowNum === targetR
+          );
+          if (matched && matched.skuTabRow) {
+            targetR = matched.skuTabRow;
+          }
+        }
+      }
+
+      const cellRef = `${cleanCol}${targetR}`;
+      if (!targetSheet) return encodeURIComponent(cellRef);
+      const escapedSheet = targetSheet.replace(/'/g, "''");
+      return encodeURIComponent(`'${escapedSheet}'!${cellRef}`).replace(/'/g, '%27');
+    }
+
+    async function ensureExcelUrlForOfficeView() {
+      const fInfo = getActiveFileInfo();
+      const rawUrl = String(fInfo.url || '').trim();
+      if (rawUrl && !rawUrl.toLowerCase().endsWith('.json')) {
+        return rawUrl;
+      }
+
+      // Nếu file cũ đang lưu dưới dạng .json -> Tạo file .xlsx đẩy lên Cloudinary để ViewOffice đọc được
+      const { XLSX, wb } = await buildWorkbookFromCurrentRefData();
+      const outBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array', compression: true });
+      const blob = new Blob([outBuffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      const safeName = String(fInfo.name || 'vendor_ref').replace(/\.(xlsb|xls|xlsx|json)$/i, '') + '_slim_viewoffice.xlsx';
+      const formData = new FormData();
+      formData.append('file', blob, safeName);
+      formData.append('upload_preset', 'ml_default');
+      const res = await fetch('https://api.cloudinary.com/v1_1/dfcerf99e/raw/upload', {
+        method: 'POST',
+        body: formData
+      });
+      if (!res.ok) {
+        throw new Error('Không thể tạo file .xlsx trên Cloudinary cho ViewOffice');
+      }
+      const data = await res.json();
+      const newUrl = data.secure_url;
+      if (vendorMeta && newUrl) {
+        if (state.fileType.includes('goc')) vendorMeta.goc_file_url = newUrl;
+        else if (state.fileType === 'tg') vendorMeta.tg_file_url = newUrl;
+        else if (state.fileType === 'skulist') vendorMeta.skulist_file_url = newUrl;
+        else vendorMeta.mau_file_url = newUrl;
+      }
+      return newUrl;
+    }
+
+    async function renderOfficeIframe() {
+      const iframe = document.getElementById('officeIframe');
+      if (!iframe) return;
+      try {
+        const excelUrl = await ensureExcelUrlForOfficeView();
+        const activeCellParam = getOfficeActiveCellParam(excelUrl);
+        const embedUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(excelUrl)}&activeCell=${activeCellParam}&wdAllowInteractivity=True&wdHideGridlines=False&wdDownloadButton=True`;
+        if (currentLoadedOfficeUrl !== embedUrl) {
+          currentLoadedOfficeUrl = embedUrl;
+          iframe.src = embedUrl;
+        }
+      } catch (err) {
+        console.error('Lỗi tải ViewOffice:', err);
+      }
+    }
+
+    async function openOfficeInNewTab() {
+      if (state.sku) copySkuText();
+      else copyRowCoord(true);
+
+      const fInfo = getActiveFileInfo();
+      const rawUrl = String(fInfo.url || '').trim();
+      if (rawUrl && !rawUrl.toLowerCase().endsWith('.json')) {
+        const activeCellParam = getOfficeActiveCellParam(rawUrl);
+        const viewUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(rawUrl)}&activeCell=${activeCellParam}`;
+        window.open(viewUrl, '_blank', 'noopener,noreferrer');
+        return;
+      }
+
+      const win = window.open('about:blank', '_blank');
+      if (win && win.document) {
+        win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Đang mở ViewOffice...</title></head><body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#0f172a;color:#e2e8f0;font-family:system-ui,sans-serif;"><div style="text-align:center;"><div style="font-size:18px;font-weight:700;color:#38bdf8;margin-bottom:8px;">⏳ Đang mở Microsoft ViewOffice và nhảy tới ô ${escapeHtml(state.colLetter + state.targetRow)}...</div><div style="font-size:13px;color:#94a3b8;">${escapeHtml(fInfo.name || '')} • Sheet: ${escapeHtml(state.sheet || '')}</div></div></body></html>`);
+        win.document.close();
+      }
+      try {
+        const excelUrl = await ensureExcelUrlForOfficeView();
+        const activeCellParam = getOfficeActiveCellParam(excelUrl);
+        const viewUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(excelUrl)}&activeCell=${activeCellParam}`;
+        if (win) win.location.href = viewUrl;
+        else window.open(viewUrl, '_blank', 'noopener,noreferrer');
+      } catch (err) {
+        if (win) win.close();
+        alert('Không thể mở ViewOffice: ' + (err.message || err));
+      }
+    }
+
+    async function downloadActiveFile() {
+      const fInfo = getActiveFileInfo();
+      const fileName = fInfo.name || 'bang_gia.xlsx';
+      const rawUrl = String(fInfo.url || '').trim();
+
+      if (rawUrl && !rawUrl.toLowerCase().endsWith('.json')) {
+        try {
+          const res = await fetch(rawUrl);
+          if (res.ok) {
+            const blob = await res.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+            return;
+          }
+        } catch (_) {}
+        window.open(rawUrl, '_blank', 'noopener,noreferrer');
+        return;
+      }
+
+      try {
+        const { XLSX, wb } = await buildWorkbookFromCurrentRefData();
+        const outName = fileName.replace(/\.(xlsb|xls)$/i, '.xlsx');
+        XLSX.writeFile(wb, outName);
+      } catch (err) {
+        alert('Lỗi tải file: ' + (err.message || err));
+      }
+    }
+
+    function hydrateViewerRefData(raw, isAcronisMode, isKasMode) {
+      if (!raw || typeof raw !== 'object') return raw;
+      if (isAcronisMode) {
+        const gocItems = Array.isArray(raw.gocItems) ? raw.gocItems : [];
+        const mauItems = Array.isArray(raw.mauItems) ? raw.mauItems : [];
+        const gocBySku = { ...(raw.gocBySku || {}) };
+        const gocBySkuFor = { ...(raw.gocBySkuFor || {}) };
+        const gocByMaHang = { ...(raw.gocByMaHang || {}) };
+        for (const item of gocItems) {
+          if (!item) continue;
+          const s = String(item.sku || '').trim().toUpperCase();
+          const sf = String(item.skuFor || '').trim().toUpperCase();
+          const m = String(item.maHang || '').trim().toUpperCase();
+          if (s && !gocBySku[s]) gocBySku[s] = item;
+          if (sf && !gocBySkuFor[sf]) gocBySkuFor[sf] = item;
+          if (m) gocByMaHang[m] = item;
+        }
+        const mauBySku = { ...(raw.mauBySku || {}) };
+        const mauBySkuFor = { ...(raw.mauBySkuFor || {}) };
+        const mauByMaHang = { ...(raw.mauByMaHang || {}) };
+        for (const item of mauItems) {
+          if (!item) continue;
+          const s = String(item.sku || '').trim().toUpperCase();
+          const sf = String(item.skuFor || '').trim().toUpperCase();
+          const m = String(item.maHang || '').trim().toUpperCase();
+          if (s && !mauBySku[s]) mauBySku[s] = item;
+          if (sf && !mauBySkuFor[sf]) mauBySkuFor[sf] = item;
+          if (m) mauByMaHang[m] = item;
+        }
+        return {
+          ...raw,
+          gocItems,
+          mauItems,
+          gocBySku,
+          gocBySkuFor,
+          gocByMaHang,
+          mauBySku,
+          mauBySkuFor,
+          mauByMaHang
+        };
+      }
+      if (isKasMode) {
+        const gocSaleRows = Array.isArray(raw.gocSaleRows) ? raw.gocSaleRows : [];
+        const mauSaleRows = Array.isArray(raw.mauSaleRows) ? raw.mauSaleRows : [];
+        const gocSaleBySkuBand = { ...(raw.gocSaleBySkuBand || {}) };
+        for (const r of gocSaleRows) {
+          if (!r || !r.sku || !r.band) continue;
+          const key = `${String(r.sku).trim().toUpperCase()}||${String(r.band).trim()}`;
+          if (!gocSaleBySkuBand[key]) gocSaleBySkuBand[key] = r;
+        }
+        const mauSaleBySkuBand = { ...(raw.mauSaleBySkuBand || {}) };
+        for (const r of mauSaleRows) {
+          if (!r || !r.sku || !r.band) continue;
+          const key = `${String(r.sku).trim().toUpperCase()}||${String(r.band).trim()}`;
+          if (!mauSaleBySkuBand[key]) mauSaleBySkuBand[key] = r;
+        }
+        return {
+          ...raw,
+          gocSaleRows,
+          mauSaleRows,
+          gocSaleBySkuBand,
+          mauSaleBySkuBand
+        };
+      }
+      return raw;
     }
 
     async function init() {
@@ -1448,9 +2042,11 @@
       const params = new URLSearchParams(window.location.search);
       state.fileType = params.get('file') || 'tg';
       state.sheet = params.get('sheet') || (
-        (state.fileType === 'kas_goc' || state.fileType === 'kas_mau')
-          ? 'SMB+Enterprise (License)'
-          : (state.fileType === 'goc' ? 'MSRPs&BuyCost' : (state.fileType === 'skulist' ? 'SKU_Tab' : 'XGS - 1U + 10%'))
+        (state.fileType === 'acronis_goc' || state.fileType === 'acronis_mau')
+          ? 'Protect Standard'
+          : ((state.fileType === 'kas_goc' || state.fileType === 'kas_mau')
+            ? 'SMB+Enterprise (License)'
+            : (state.fileType === 'goc' ? 'MSRPs&BuyCost' : (state.fileType === 'skulist' ? 'SKU_Tab' : 'XGS - 1U + 10%')))
       );
       state.targetRow = parseInt(params.get('row') || '1', 10) || 1;
       state.colLetter = (params.get('col') || (state.fileType === 'skulist' && state.sheet === 'SKU_Tab' ? 'G' : 'B')).toUpperCase();
@@ -1458,10 +2054,33 @@
       state.sku = (params.get('sku') || '').toUpperCase();
       state.itemName = params.get('name') || '';
       state.band = params.get('band') || '';
+      state.viewMode = params.get('mode') === 'office' ? 'office' : 'grid';
 
+      const isAcronisMode = state.fileType === 'acronis_goc' || state.fileType === 'acronis_mau';
       const isKasMode = state.fileType === 'kas_goc' || state.fileType === 'kas_mau';
-      const res = await fetch(isKasMode ? '/template_excel/kas_ref_index.json' : '/template_excel/sophos_ref_index.json');
-      refData = await res.json();
+      const vendorKey = isAcronisMode ? 'acronis' : (isKasMode ? 'kaspersky' : 'sophos');
+
+      try {
+        const metaRes = await fetch(`https://chusonproject-default-rtdb.asia-southeast1.firebasedatabase.app/vendor_ref_files/${vendorKey}.json`);
+        vendorMeta = metaRes.ok ? await metaRes.json() : null;
+        if (!vendorMeta || !vendorMeta.index_url) {
+          throw new Error(`Chưa có File Gốc / Trung Gian của ${vendorKey.toUpperCase()} trên Cloudinary. Vui lòng upload file mới lên Cloudinary tại màn hình Quản lý Hàng Hóa!`);
+        }
+        const res = await fetch(vendorMeta.index_url);
+        if (!res.ok) {
+          throw new Error(`Không tải được dữ liệu từ Cloudinary (HTTP ${res.status}).`);
+        }
+        const rawJson = await res.json();
+        refData = hydrateViewerRefData(rawJson, isAcronisMode, isKasMode);
+      } catch (err) {
+        const container = document.getElementById('gridContainer');
+        container.innerHTML = `<div style="margin: 40px auto; max-width: 680px; padding: 24px 28px; border-radius: 10px; background: #fef2f2; border: 2px solid #ef4444; color: #991b1b; font-size: 14px; line-height: 1.6;">
+          <div style="font-size: 17px; font-weight: 800; margin-bottom: 8px;">⚠️ Không tải được File Tham Chiếu từ Cloudinary</div>
+          <div>${escapeHtml(err.message || String(err))}</div>
+          <div style="margin-top: 10px; font-size: 12.5px; color: #7f1d1d;">Hệ thống đã tắt chế độ đọc file tĩnh cũ để tránh nhầm lẫn giá. Vui lòng quay lại trang Quản lý Hàng Hóa và bấm <strong>☁️ Upload File mới lên Cloudinary</strong>.</div>
+        </div>`;
+        return;
+      }
 
       // Build sorted MSRPs&BuyCost cache & SKU_Tab cache
       const gocMap = refData.gocSkus || {};

@@ -29,6 +29,7 @@ import KhoLuuTruFirebase from '../components/KhoLuuTruFirebase.vue'
 import QuanLyFile from '../components/QuanLyFile.vue'
 import DatabaseViewer from '../components/DatabaseViewer.vue'
 import QuanLyMauInFirebase from '../components/QuanLyMauInFirebase.vue'
+import ZaloBotConfigFirebase from '../components/ZaloBotConfigFirebase.vue'
 
 const routes = [
   {
@@ -223,6 +224,13 @@ const routes = [
     name: 'DatabaseViewer',
     component: DatabaseViewer,
     meta: { title: 'Xem Database' }
+  },
+  {
+    path: '/zalo-bot-config',
+    alias: ['/cau-hinh-zalo-bot', '/zalobotfirebase'],
+    name: 'ZaloBotConfigFirebase',
+    component: ZaloBotConfigFirebase,
+    meta: { title: 'Cấu hình Zalo Bot' }
   }
 ]
 

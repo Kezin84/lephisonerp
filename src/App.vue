@@ -95,95 +95,174 @@
         </div>
         </template>
 
-        <div class="nav-section-title clickable hide-on-mobile" v-if="false" :style="{ marginTop: showAppscript ? '10px' : '4px' }" @click="isFirebaseOpen = !isFirebaseOpen">
-          <span>Firebase</span>
-          <svg :style="{ transform: isFirebaseOpen ? 'rotate(180deg)' : 'rotate(0)' }" class="nav-chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-        </div>
-        <div class="nav-section-divider hide-on-mobile" v-else-if="showAppscript && !isSidebarOpen" style="margin-top: 10px;"></div>
-        
-        <div v-show="isFirebaseOpen || !isSidebarOpen" class="nav-group-items">
-        <router-link to="/dashboardfirebase" class="nav-item" title="Báo cáo tổng quát">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-          <span class="nav-text">Báo cáo tổng quát</span>
-        </router-link>
-        <router-link to="/report-firebase" class="nav-item" title="Báo cáo">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-          <span class="nav-text">Báo cáo</span>
-        </router-link>
-        <router-link to="/license-old-data-firebase" class="nav-item hide-on-mobile" title="License">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-          <span class="nav-text">License</span>
-        </router-link>
-        <router-link to="/sale-report-firebase" class="nav-item hide-on-mobile" title="Sale Report">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-          <span class="nav-text">Sale Report</span>
-        </router-link>
-        <router-link to="/quanlyhanghoafirebase" class="nav-item hide-on-mobile" title="Quản lý hàng hóa">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
-          <span class="nav-text">Quản lý hàng hóa</span>
-        </router-link>
-        <router-link to="/customerfirebase" class="nav-item hide-on-mobile" title="Khách hàng">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-          <span class="nav-text">Khách hàng</span>
-        </router-link>
-        <router-link to="/baogiafirebase" class="nav-item hide-on-mobile" title="Tạo Báo giá">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-          <span class="nav-text">Tạo Báo giá</span>
-        </router-link>
-        <router-link to="/quanlybaogiafirebase" class="nav-item hide-on-mobile" title="Quản lý báo giá">
-          <div style="position: relative; display: inline-flex;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
-            <div class="task-badge" style="font-size: 12px; font-weight: 900;">!</div>
-          </div>
-          <div class="nav-text-container" style="flex: 1; display: flex; align-items: center; justify-content: space-between;">
-            <span style="white-space: nowrap;">Quản lý báo giá</span>
-            <div class="task-badge-inline" style="font-size: 14px; font-weight: 900; background: #ef4444;">!</div>
-          </div>
-        </router-link>
-        <router-link to="/quanlydieukhoanfirebase" class="nav-item hide-on-mobile" title="Quản lý Điều khoản">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><path d="M14 3v5h5M16 13H8M16 17H8M10 9H8"/></svg>
-          <span class="nav-text">Quản lý Điều khoản</span>
-        </router-link>
-        <router-link to="/mau-in-firebase" class="nav-item hide-on-mobile" title="Thiết lập Mẫu In">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-          <span class="nav-text">Thiết lập Mẫu In</span>
-        </router-link>
-        <router-link to="/po-preview-firebase" class="nav-item hide-on-mobile" title="Xem PO">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-          <span class="nav-text">Xem PO</span>
-        </router-link>
-        <router-link to="/pipeline-firebase" class="nav-item hide-on-mobile" title="Pipeline">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
-          <span class="nav-text">Pipeline</span>
-        </router-link>
-        <router-link to="/kho-luu-tru-firebase" class="nav-item hide-on-mobile" title="Kho lưu trữ">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-          <span class="nav-text">Kho lưu trữ</span>
-        </router-link>
-        <router-link to="/quan-ly-file" class="nav-item hide-on-mobile" title="Quản lý File">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
-          <span class="nav-text">Quản lý File</span>
-        </router-link>
-          <router-link to="/database-viewer" class="nav-item hide-on-mobile" title="Xem Database">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
-          <span class="nav-text">Xem Database</span>
-        </router-link>
+        <div class="nav-section-divider hide-on-mobile" v-if="showAppscript && !isSidebarOpen" style="margin-top: 10px;"></div>
 
-        
+        <!-- NHÓM 1: TỔNG QUAN & BÁO CÁO -->
+        <div class="nav-group-block">
+          <div
+            class="nav-section-title clickable hide-on-mobile"
+            :class="{ 'has-active-child': isGroupActive('overview') && !openGroups.overview }"
+            v-if="isSidebarOpen"
+            @click="toggleGroup('overview')"
+          >
+            <span>Tổng quan & Báo cáo</span>
+            <svg :style="{ transform: openGroups.overview ? 'rotate(180deg)' : 'rotate(0)' }" class="nav-chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </div>
+          <div class="nav-group-items" :class="{ 'group-collapsed': !openGroups.overview && isSidebarOpen }">
+            <router-link to="/dashboardfirebase" class="nav-item hide-on-mobile" title="Báo cáo tổng quát">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+              <span class="nav-text">Báo cáo tổng quát</span>
+            </router-link>
+            <router-link to="/report-firebase" class="nav-item" title="Báo cáo công việc">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+              <span class="nav-text">Báo cáo công việc</span>
+            </router-link>
+            <router-link to="/sale-report-firebase" class="nav-item hide-on-mobile" title="Sale Report">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+              <span class="nav-text">Sale Report</span>
+            </router-link>
+          </div>
         </div>
-<a href="#" class="nav-item mobile-only" title="Menu" @click.prevent="isMobileDrawerOpen = true">
+
+        <!-- NHÓM 2: BÁO GIÁ & ĐƠN HÀNG -->
+        <div class="nav-group-block">
+          <div
+            class="nav-section-title clickable hide-on-mobile"
+            :class="{ 'has-active-child': isGroupActive('sales') && !openGroups.sales }"
+            v-if="isSidebarOpen"
+            @click="toggleGroup('sales')"
+          >
+            <span>Báo giá & Đơn hàng</span>
+            <svg :style="{ transform: openGroups.sales ? 'rotate(180deg)' : 'rotate(0)' }" class="nav-chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </div>
+          <div class="nav-section-divider hide-on-mobile" v-else></div>
+          <div class="nav-group-items" :class="{ 'group-collapsed': !openGroups.sales && isSidebarOpen }">
+            <router-link to="/baogiafirebase" class="nav-item" title="Tạo báo giá">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+              <span class="nav-text">Tạo báo giá</span>
+            </router-link>
+            <router-link to="/quanlybaogiafirebase" class="nav-item hide-on-mobile" title="Quản lý báo giá">
+              <div style="position: relative; display: inline-flex;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                <div class="task-badge" style="font-size: 11px; font-weight: 900;">!</div>
+              </div>
+              <div class="nav-text-container" style="flex: 1; display: flex; align-items: center; justify-content: space-between;">
+                <span style="white-space: nowrap;">Quản lý báo giá</span>
+                <div class="task-badge-inline" style="font-size: 12px; font-weight: 900; background: #ef4444;">!</div>
+              </div>
+            </router-link>
+            <router-link to="/pipeline-firebase" class="nav-item hide-on-mobile" title="Pipeline">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
+              <span class="nav-text">Pipeline</span>
+            </router-link>
+            <router-link to="/po-preview-firebase" class="nav-item hide-on-mobile" title="Xem PO">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+              <span class="nav-text">Xem PO</span>
+            </router-link>
+          </div>
+        </div>
+
+        <!-- NHÓM 3: KHÁCH HÀNG & SẢN PHẨM -->
+        <div class="nav-group-block hide-on-mobile">
+          <div
+            class="nav-section-title clickable hide-on-mobile"
+            :class="{ 'has-active-child': isGroupActive('catalog') && !openGroups.catalog }"
+            v-if="isSidebarOpen"
+            @click="toggleGroup('catalog')"
+          >
+            <span>Khách hàng & Sản phẩm</span>
+            <svg :style="{ transform: openGroups.catalog ? 'rotate(180deg)' : 'rotate(0)' }" class="nav-chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </div>
+          <div class="nav-section-divider hide-on-mobile" v-else></div>
+          <div class="nav-group-items" :class="{ 'group-collapsed': !openGroups.catalog && isSidebarOpen }">
+            <router-link to="/customerfirebase" class="nav-item hide-on-mobile" title="Khách hàng">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              <span class="nav-text">Khách hàng</span>
+            </router-link>
+            <router-link to="/quanlyhanghoafirebase" class="nav-item hide-on-mobile" title="Quản lý hàng hóa">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+              <span class="nav-text">Quản lý hàng hóa</span>
+            </router-link>
+            <router-link to="/license-old-data-firebase" class="nav-item hide-on-mobile" title="License">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+              <span class="nav-text">License</span>
+            </router-link>
+          </div>
+        </div>
+
+        <!-- NHÓM 4: TÀI LIỆU & BIỂU MẪU -->
+        <div class="nav-group-block hide-on-mobile">
+          <div
+            class="nav-section-title clickable hide-on-mobile"
+            :class="{ 'has-active-child': isGroupActive('documents') && !openGroups.documents }"
+            v-if="isSidebarOpen"
+            @click="toggleGroup('documents')"
+          >
+            <span>Tài liệu & Biểu mẫu</span>
+            <svg :style="{ transform: openGroups.documents ? 'rotate(180deg)' : 'rotate(0)' }" class="nav-chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </div>
+          <div class="nav-section-divider hide-on-mobile" v-else></div>
+          <div class="nav-group-items" :class="{ 'group-collapsed': !openGroups.documents && isSidebarOpen }">
+            <router-link to="/quanlydieukhoanfirebase" class="nav-item hide-on-mobile" title="Quản lý Điều khoản">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><path d="M14 3v5h5M16 13H8M16 17H8M10 9H8"/></svg>
+              <span class="nav-text">Quản lý Điều khoản</span>
+            </router-link>
+            <router-link to="/mau-in-firebase" class="nav-item hide-on-mobile" title="Thiết lập Mẫu In">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+              <span class="nav-text">Thiết lập Mẫu In</span>
+            </router-link>
+            <router-link to="/kho-luu-tru-firebase" class="nav-item hide-on-mobile" title="Kho lưu trữ">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+              <span class="nav-text">Kho lưu trữ</span>
+            </router-link>
+            <router-link to="/quan-ly-file" class="nav-item hide-on-mobile" title="Quản lý File">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+              <span class="nav-text">Quản lý File</span>
+            </router-link>
+          </div>
+        </div>
+
+        <!-- NHÓM 5: HỆ THỐNG & CẤU HÌNH -->
+        <div class="nav-group-block hide-on-mobile">
+          <div
+            class="nav-section-title clickable hide-on-mobile"
+            :class="{ 'has-active-child': isGroupActive('system') && !openGroups.system }"
+            v-if="isSidebarOpen"
+            @click="toggleGroup('system')"
+          >
+            <span>Hệ thống & Cấu hình</span>
+            <svg :style="{ transform: openGroups.system ? 'rotate(180deg)' : 'rotate(0)' }" class="nav-chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </div>
+          <div class="nav-section-divider hide-on-mobile" v-else></div>
+          <div class="nav-group-items" :class="{ 'group-collapsed': !openGroups.system && isSidebarOpen }">
+            <router-link to="/database-viewer" class="nav-item hide-on-mobile" title="Xem Database">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+              <span class="nav-text">Xem Database</span>
+            </router-link>
+            <router-link to="/zalo-bot-config" class="nav-item hide-on-mobile" title="Cấu hình Zalo Bot">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+              <span class="nav-text">Cấu hình Zalo Bot</span>
+            </router-link>
+          </div>
+        </div>
+
+        <a href="#" class="nav-item mobile-only" title="Menu" @click.prevent="isMobileDrawerOpen = true">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
           <span class="nav-text">Menu</span>
         </a>
-        <router-link to="/change-password" class="nav-item hide-on-mobile" title="Đổi mật khẩu">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-          <span class="nav-text">Đổi mật khẩu</span>
-        </router-link>
-        <a href="#" class="nav-item logout-btn hide-on-mobile" title="Đăng xuất" @click.prevent="handleLogout">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-          <span class="nav-text">Đăng xuất</span>
-        </a>
       </nav>
+
+      <!-- FOOTER CỐ ĐỊNH Ở ĐÁY SIDEBAR -->
+      <div class="sidebar-footer hide-on-mobile">
+        <router-link to="/change-password" class="footer-action-btn" title="Đổi mật khẩu">
+          <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          <span v-if="isSidebarOpen">Đổi mật khẩu</span>
+        </router-link>
+        <a href="#" class="footer-action-btn logout-btn" title="Đăng xuất" @click.prevent="handleLogout">
+          <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+          <span v-if="isSidebarOpen">Đăng xuất</span>
+        </a>
+      </div>
     </aside>
     <main class="main-content" ref="mainContentRef" @scroll="handleScroll">
       <router-view v-slot="{ Component, route }">
@@ -269,73 +348,103 @@
         </div>
         </template>
 
-        <div class="drawer-section-title clickable" v-if="false" :style="{ marginTop: showAppscript ? '16px' : '4px' }" @click="isFirebaseOpen = !isFirebaseOpen">
-          <span>Firebase</span>
-          <svg :style="{ transform: isFirebaseOpen ? 'rotate(180deg)' : 'rotate(0)' }" class="nav-chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        <!-- NHÓM 1: TỔNG QUAN & BÁO CÁO (MOBILE DRAWER) -->
+        <div class="drawer-section-title clickable" @click="toggleGroup('overview')">
+          <span>Tổng quan & Báo cáo</span>
+          <svg :style="{ transform: openGroups.overview ? 'rotate(180deg)' : 'rotate(0)' }" class="nav-chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
         </div>
-        <div v-show="isFirebaseOpen" class="drawer-group-items">
-        <router-link to="/dashboardfirebase" class="drawer-item" @click="isMobileDrawerOpen = false">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-          <span>Báo cáo tổng quát</span>
-        </router-link>
-        <router-link to="/report-firebase" class="drawer-item" @click="isMobileDrawerOpen = false">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-          <span>Báo cáo</span>
-        </router-link>
-        <router-link to="/license-old-data-firebase" class="drawer-item" @click="isMobileDrawerOpen = false">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-          <span>License</span>
-        </router-link>
-        <router-link to="/sale-report-firebase" class="drawer-item" @click="isMobileDrawerOpen = false">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-          <span>Sale Report</span>
-        </router-link>
-        <router-link to="/quanlyhanghoafirebase" class="drawer-item" @click="isMobileDrawerOpen = false">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
-          <span>Quản lý hàng hóa</span>
-        </router-link>
-        <router-link to="/customerfirebase" class="drawer-item" @click="isMobileDrawerOpen = false">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-          <span>Khách hàng</span>
-        </router-link>
-        <router-link to="/baogiafirebase" class="drawer-item" @click="isMobileDrawerOpen = false">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-          <span>Tạo Báo giá</span>
-        </router-link>
-        <router-link to="/quanlybaogiafirebase" class="drawer-item" @click="isMobileDrawerOpen = false">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
-          <span>Quản lý báo giá</span>
-        </router-link>
-        <router-link to="/quanlydieukhoanfirebase" class="drawer-item" @click="isMobileDrawerOpen = false">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><path d="M14 3v5h5M16 13H8M16 17H8M10 9H8"/></svg>
-          <span>Quản lý Điều khoản</span>
-        </router-link>
-        <router-link to="/mau-in-firebase" class="drawer-item" @click="isMobileDrawerOpen = false">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-          <span>Thiết lập Mẫu In</span>
-        </router-link>
-        <router-link to="/po-preview-firebase" class="drawer-item" @click="isMobileDrawerOpen = false">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-          <span>Xem PO</span>
-        </router-link>
-        <router-link to="/pipeline-firebase" class="drawer-item" @click="isMobileDrawerOpen = false">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
-          <span>Pipeline</span>
-        </router-link>
-        <router-link to="/kho-luu-tru-firebase" class="drawer-item" @click="isMobileDrawerOpen = false">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-          <span>Kho lưu trữ</span>
-        </router-link>
-        <router-link to="/quan-ly-file" class="drawer-item" @click="isMobileDrawerOpen = false">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
-          <span>Quản lý File</span>
-        </router-link>
-          <router-link to="/database-viewer" class="drawer-item" @click="isMobileDrawerOpen = false">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
-          <span>Xem Database</span>
-        </router-link>
+        <div v-show="openGroups.overview" class="drawer-group-items">
+          <router-link to="/dashboardfirebase" class="drawer-item" @click="isMobileDrawerOpen = false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            <span>Báo cáo tổng quát</span>
+          </router-link>
+          <router-link to="/sale-report-firebase" class="drawer-item" @click="isMobileDrawerOpen = false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+            <span>Sale Report</span>
+          </router-link>
+        </div>
 
+        <!-- NHÓM 2: BÁO GIÁ & ĐƠN HÀNG (MOBILE DRAWER) -->
+        <div class="drawer-section-title clickable" @click="toggleGroup('sales')">
+          <span>Báo giá & Đơn hàng</span>
+          <svg :style="{ transform: openGroups.sales ? 'rotate(180deg)' : 'rotate(0)' }" class="nav-chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
         </div>
+        <div v-show="openGroups.sales" class="drawer-group-items">
+          <router-link to="/quanlybaogiafirebase" class="drawer-item" @click="isMobileDrawerOpen = false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+            <span>Quản lý báo giá</span>
+          </router-link>
+          <router-link to="/pipeline-firebase" class="drawer-item" @click="isMobileDrawerOpen = false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
+            <span>Pipeline</span>
+          </router-link>
+          <router-link to="/po-preview-firebase" class="drawer-item" @click="isMobileDrawerOpen = false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            <span>Xem PO</span>
+          </router-link>
+        </div>
+
+        <!-- NHÓM 3: KHÁCH HÀNG & SẢN PHẨM (MOBILE DRAWER) -->
+        <div class="drawer-section-title clickable" @click="toggleGroup('catalog')">
+          <span>Khách hàng & Sản phẩm</span>
+          <svg :style="{ transform: openGroups.catalog ? 'rotate(180deg)' : 'rotate(0)' }" class="nav-chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div v-show="openGroups.catalog" class="drawer-group-items">
+          <router-link to="/customerfirebase" class="drawer-item" @click="isMobileDrawerOpen = false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            <span>Khách hàng</span>
+          </router-link>
+          <router-link to="/quanlyhanghoafirebase" class="drawer-item" @click="isMobileDrawerOpen = false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+            <span>Quản lý hàng hóa</span>
+          </router-link>
+          <router-link to="/license-old-data-firebase" class="drawer-item" @click="isMobileDrawerOpen = false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            <span>License</span>
+          </router-link>
+        </div>
+
+        <!-- NHÓM 4: TÀI LIỆU & BIỂU MẪU (MOBILE DRAWER) -->
+        <div class="drawer-section-title clickable" @click="toggleGroup('documents')">
+          <span>Tài liệu & Biểu mẫu</span>
+          <svg :style="{ transform: openGroups.documents ? 'rotate(180deg)' : 'rotate(0)' }" class="nav-chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div v-show="openGroups.documents" class="drawer-group-items">
+          <router-link to="/quanlydieukhoanfirebase" class="drawer-item" @click="isMobileDrawerOpen = false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><path d="M14 3v5h5M16 13H8M16 17H8M10 9H8"/></svg>
+            <span>Quản lý Điều khoản</span>
+          </router-link>
+          <router-link to="/mau-in-firebase" class="drawer-item" @click="isMobileDrawerOpen = false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+            <span>Thiết lập Mẫu In</span>
+          </router-link>
+          <router-link to="/kho-luu-tru-firebase" class="drawer-item" @click="isMobileDrawerOpen = false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+            <span>Kho lưu trữ</span>
+          </router-link>
+          <router-link to="/quan-ly-file" class="drawer-item" @click="isMobileDrawerOpen = false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+            <span>Quản lý File</span>
+          </router-link>
+        </div>
+
+        <!-- NHÓM 5: HỆ THỐNG & CẤU HÌNH (MOBILE DRAWER) -->
+        <div class="drawer-section-title clickable" @click="toggleGroup('system')">
+          <span>Hệ thống & Cấu hình</span>
+          <svg :style="{ transform: openGroups.system ? 'rotate(180deg)' : 'rotate(0)' }" class="nav-chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div v-show="openGroups.system" class="drawer-group-items">
+          <router-link to="/database-viewer" class="drawer-item" @click="isMobileDrawerOpen = false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+            <span>Xem Database</span>
+          </router-link>
+          <router-link to="/zalo-bot-config" class="drawer-item" @click="isMobileDrawerOpen = false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+            <span>Cấu hình Zalo Bot</span>
+          </router-link>
+        </div>
+
+        <div class="drawer-divider"></div>
         <router-link to="/change-password" class="drawer-item" @click="isMobileDrawerOpen = false">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
           <span>Đổi mật khẩu</span>
@@ -344,7 +453,6 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
           <span>Cài App SONAI ra màn hình chính</span>
         </a>
-        <div class="drawer-divider"></div>
         <a href="#" class="drawer-item logout-drawer-btn" @click.prevent="handleLogout">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
           <span>Đăng xuất</span>
@@ -373,8 +481,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, reactive, watch, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { initZaloBotBackgroundService } from './utils/zaloBotService'
 
 const route = useRoute()
 const router = useRouter()
@@ -396,6 +505,71 @@ const showScrollTop = ref(false)
 const isMobileDrawerOpen = ref(false)
 const showIosInstallPrompt = ref(false)
 const isStandaloneMode = ref(false)
+
+const GROUP_ROUTES = {
+  overview: ['/dashboardfirebase', '/report-firebase', '/sale-report-firebase'],
+  sales: ['/baogiafirebase', '/quanlybaogiafirebase', '/pipeline-firebase', '/po-preview-firebase'],
+  catalog: ['/customerfirebase', '/quanlyhanghoafirebase', '/license-old-data-firebase'],
+  documents: ['/quanlydieukhoanfirebase', '/mau-in-firebase', '/kho-luu-tru-firebase', '/quan-ly-file'],
+  system: ['/database-viewer', '/zalo-bot-config']
+}
+
+const loadSavedSidebarGroups = () => {
+  try {
+    const saved = localStorage.getItem('sonai_sidebar_groups_v1')
+    if (saved) {
+      return {
+        overview: true,
+        sales: true,
+        catalog: false,
+        documents: false,
+        system: false,
+        ...JSON.parse(saved)
+      }
+    }
+  } catch (e) {}
+  return {
+    overview: true,
+    sales: true,
+    catalog: false,
+    documents: false,
+    system: false
+  }
+}
+
+const openGroups = reactive(loadSavedSidebarGroups())
+
+const saveSidebarGroups = () => {
+  try {
+    localStorage.setItem('sonai_sidebar_groups_v1', JSON.stringify(openGroups))
+  } catch (e) {}
+}
+
+const toggleGroup = (key) => {
+  openGroups[key] = !openGroups[key]
+  saveSidebarGroups()
+}
+
+const isGroupActive = (key) => {
+  const paths = GROUP_ROUTES[key] || []
+  return paths.some(p => route.path === p || route.path.startsWith(p + '/'))
+}
+
+watch(
+  () => route.path,
+  (newPath) => {
+    for (const [key, paths] of Object.entries(GROUP_ROUTES)) {
+      if (paths.some(p => newPath === p || newPath.startsWith(p + '/'))) {
+        if (!openGroups[key]) {
+          openGroups[key] = true
+          saveSidebarGroups()
+        }
+        break
+      }
+    }
+  },
+  { immediate: true }
+)
 
 const checkIosInstallPrompt = () => {
   if (typeof window === 'undefined') return
@@ -463,10 +637,11 @@ const scrollToTop = () => {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-onMounted(() => {
+  onMounted(() => {
   window.addEventListener('scroll', handleWindowScroll)
   fetchIncompleteTasks()
   checkIosInstallPrompt()
+  initZaloBotBackgroundService()
 })
 
 onUnmounted(() => {
@@ -533,6 +708,7 @@ onUnmounted(() => {
   height: 1px;
   background: rgba(255, 255, 255, 0.1);
   margin: 10px 20px;
+  flex-shrink: 0;
 }
 
 .logout-drawer-btn {
@@ -695,6 +871,7 @@ onUnmounted(() => {
   flex-direction: row !important;
   justify-content: flex-start !important;
   text-align: left !important;
+  flex-shrink: 0;
 }
 .drawer-item:hover {
   background: rgba(255, 255, 255, 0.05);
@@ -768,27 +945,48 @@ onUnmounted(() => {
   }
 }
 
-.nav-section-title {
-  color: #64748b;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  padding: 8px 16px 4px;
-  margin-top: 8px;
+.nav-group-block {
+  display: flex;
+  flex-direction: column;
 }
+
+.nav-section-title {
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 9px 12px 7px;
+  margin-top: 6px;
+  border-radius: 6px;
+  user-select: none;
+}
+
+.nav-group-block:first-of-type .nav-section-title {
+  margin-top: 0;
+}
+
+.nav-section-title.has-active-child {
+  color: #2dd4bf;
+  background: rgba(20, 184, 166, 0.12);
+}
+
 .nav-section-divider {
   height: 1px;
   background: rgba(255, 255, 255, 0.06);
-  margin: 12px 16px;
+  margin: 8px 12px;
 }
+
 .drawer-section-title {
-  color: #64748b;
+  color: #ffffff;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 1px;
-  padding: 8px 16px 4px;
+  letter-spacing: 0.8px;
+  padding: 9px 14px 5px;
+  margin-top: 4px;
+  user-select: none;
+  flex-shrink: 0;
 }
 
 .nav-section-title.clickable {
@@ -799,7 +997,8 @@ onUnmounted(() => {
   transition: all 0.2s;
 }
 .nav-section-title.clickable:hover {
-  color: #94a3b8;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.06);
 }
 .drawer-section-title.clickable {
   cursor: pointer;
@@ -809,39 +1008,118 @@ onUnmounted(() => {
   transition: all 0.2s;
 }
 .drawer-section-title.clickable:hover {
-  color: #94a3b8;
+  color: #ffffff;
 }
 .nav-chevron {
-  transition: transform 0.3s ease;
-  opacity: 0.7;
+  transition: transform 0.25s ease;
+  opacity: 0.9;
+  flex-shrink: 0;
 }
-.nav-group-items, .drawer-group-items {
+.nav-group-items {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 3px;
   overflow: hidden;
 }
+.nav-group-items.group-collapsed {
+  display: none;
+}
 .drawer-group-items {
-  gap: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 4px;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+/* Footer cố định ở đáy Sidebar */
+.sidebar-footer {
+  padding: 10px 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  background: rgba(10, 21, 32, 0.45);
+}
+
+.app-layout.sidebar-collapsed .sidebar-footer {
+  flex-direction: column;
+  padding: 10px 8px;
+  gap: 6px;
+}
+
+.footer-action-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 8px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.app-layout.sidebar-collapsed .footer-action-btn {
+  width: 100%;
+  padding: 10px 0;
+}
+
+.footer-action-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+}
+
+.footer-action-btn.router-link-active {
+  background: linear-gradient(90deg, #185a59, #113f3e);
+  color: #ffffff;
+  border-color: rgba(20, 184, 166, 0.3);
+}
+
+.footer-action-btn.logout-btn {
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.06);
+  border-color: rgba(239, 68, 68, 0.15);
+}
+
+.footer-action-btn.logout-btn:hover {
+  background: rgba(239, 68, 68, 0.16);
+  color: #fca5a5;
 }
 
 @media (max-width: 768px) {
   .nav-section-title,
-  .nav-section-divider {
+  .nav-section-divider,
+  .sidebar-footer {
     display: none !important;
   }
-  .nav-group-items {
+  .nav-group-block:not(.hide-on-mobile),
+  .nav-group-block:not(.hide-on-mobile) .nav-group-items,
+  .nav-group-block:not(.hide-on-mobile) .nav-group-items.group-collapsed {
     display: flex !important;
     flex-direction: row !important;
-    flex: 2 1 0 !important;
+    flex: 1 1 0 !important;
     gap: 0 !important;
     height: 100% !important;
     overflow: visible !important;
   }
   @supports (display: contents) {
-    .nav-group-items {
+    .nav-group-block:not(.hide-on-mobile),
+    .nav-group-block:not(.hide-on-mobile) .nav-group-items,
+    .nav-group-block:not(.hide-on-mobile) .nav-group-items.group-collapsed {
       display: contents !important;
     }
+  }
+  .hide-on-mobile {
+    display: none !important;
   }
 }
 </style>
