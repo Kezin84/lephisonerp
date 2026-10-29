@@ -325,25 +325,44 @@ code {
     flex-direction: column;
   }
   .sidebar {
-    width: 100% !important;
-    border-right: none;
-    border-top: 1px solid rgba(255,255,255,0.08);
-    border-bottom: none;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    top: auto;
-    height: calc(56px + env(safe-area-inset-bottom, 0px)) !important;
-    max-height: calc(56px + env(safe-area-inset-bottom, 0px)) !important;
-    z-index: 9999;
-    background: #0d1b2a;
-    box-shadow: 0 -4px 24px rgba(0,0,0,0.5);
+    width: max-content !important;
+    min-width: 216px !important;
+    max-width: calc(100vw - 24px) !important;
+    position: fixed !important;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+    left: 50% !important;
+    right: auto !important;
+    top: auto !important;
+    transform: translateX(-50%) translateY(0) scale(1);
+    height: 56px !important;
+    max-height: 56px !important;
+    z-index: 960;
+    background: rgba(15, 23, 42, 0.72) !important;
+    backdrop-filter: blur(24px) saturate(185%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(185%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.24) !important;
+    border-radius: 999px !important;
+    box-shadow:
+      0 14px 36px rgba(0, 0, 0, 0.55),
+      0 4px 12px rgba(0, 0, 0, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.05) !important;
     display: flex !important;
     flex-direction: row !important;
-    align-items: stretch !important;
-    padding: 0 0 env(safe-area-inset-bottom, 0px) 0 !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 5px 6px !important;
     box-sizing: border-box !important;
+    transition:
+      transform 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.28s ease,
+      box-shadow 0.3s ease !important;
+  }
+  .app-layout.mobile-nav-hidden .sidebar {
+    transform: translateX(-50%) translateY(calc(100% + 26px + env(safe-area-inset-bottom, 0px))) scale(0.92) !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
   }
   .logo {
     display: none !important;
@@ -358,20 +377,21 @@ code {
   .nav-menu {
     display: flex !important;
     flex-direction: row !important;
-    align-items: stretch !important;
-    width: 100% !important;
-    height: 56px !important;
-    overflow-x: hidden !important;
-    overflow-y: hidden !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: auto !important;
+    height: 100% !important;
+    overflow: visible !important;
     padding: 0 !important;
     margin: 0 !important;
-    gap: 0 !important;
+    gap: 4px !important;
   }
   .nav-group-items {
     display: flex !important;
     flex-direction: row !important;
-    flex: 1 1 0 !important;
-    gap: 0 !important;
+    align-items: center !important;
+    flex: 0 0 auto !important;
+    gap: 4px !important;
     height: 100% !important;
     overflow: visible !important;
     margin: 0 !important;
@@ -383,67 +403,113 @@ code {
     }
   }
   .nav-item:not(.hide-on-mobile) {
-    flex: 1 1 0 !important;
-    width: 0 !important;
-    min-width: 0 !important;
-    height: 100% !important;
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 3px !important;
-    padding: 6px 4px !important;
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: 52px !important;
+    height: 44px !important;
+    display: inline-flex !important;
+    flex-direction: row !important;
+    gap: 0 !important;
+    padding: 0 16px !important;
     justify-content: center !important;
     align-items: center !important;
     text-align: center !important;
-    border-radius: 0 !important;
-    font-size: 11px !important;
-    color: #94a3b8;
+    border-radius: 999px !important;
+    font-size: 12.5px !important;
+    color: rgba(226, 232, 240, 0.78) !important;
+    background: transparent !important;
     box-sizing: border-box !important;
-    border-top: 2px solid transparent !important;
+    border: 1px solid transparent !important;
+    margin: 0 !important;
     text-decoration: none !important;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      background 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+      color 0.25s ease,
+      padding 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 0.34s ease !important;
   }
-  .nav-item span,
-  .nav-item .nav-text,
-  .app-layout.sidebar-collapsed .nav-text,
-  .app-layout.sidebar-collapsed .nav-text-container {
-    display: block !important;
-    font-size: 11px !important;
-    font-weight: 600;
+  .nav-item:not(.hide-on-mobile):active {
+    transform: scale(0.91) !important;
+  }
+  .nav-item > .nav-text,
+  .nav-item > .nav-text-container,
+  .nav-item > span,
+  .app-layout.sidebar-collapsed .nav-item > .nav-text,
+  .app-layout.sidebar-collapsed .nav-item > .nav-text-container {
+    display: inline-flex !important;
+    align-items: center !important;
+    flex: 0 1 auto !important;
+    font-size: 12.5px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.1px !important;
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
-    max-width: 100% !important;
+    max-width: 0 !important;
+    opacity: 0 !important;
+    margin-left: 0 !important;
     line-height: 1.2 !important;
+    transition:
+      max-width 0.36s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.24s ease,
+      margin-left 0.32s cubic-bezier(0.22, 1, 0.36, 1) !important;
   }
-  .app-layout.sidebar-collapsed .nav-text-container {
-    display: flex !important;
+  .nav-item .nav-text-container span {
+    display: inline !important;
+    max-width: none !important;
+    opacity: 1 !important;
+    margin-left: 0 !important;
+    font-size: 12.5px !important;
+    font-weight: 700 !important;
   }
   .nav-item svg {
-    width: 20px !important;
-    height: 20px !important;
+    width: 21px !important;
+    height: 21px !important;
     flex-shrink: 0 !important;
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), color 0.25s ease !important;
   }
   .nav-item:hover {
-    background: rgba(255, 255, 255, 0.05);
-    color: #ffffff;
+    background: rgba(255, 255, 255, 0.07);
+    color: #ffffff !important;
   }
   .nav-item.router-link-active {
-    background: rgba(24, 90, 89, 0.2) !important;
-    color: #14b8a6 !important;
-    border-top: 2px solid #14b8a6 !important;
+    background: rgba(255, 255, 255, 0.13) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.16) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.28) !important;
+    padding: 0 16px !important;
     margin-top: 0 !important;
-    box-shadow: none !important;
+    box-shadow:
+      0 4px 14px rgba(0, 0, 0, 0.28),
+      inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
+  }
+  .nav-item.router-link-active svg {
+    color: #2dd4bf !important;
+    transform: scale(1.05);
+  }
+  .nav-item.router-link-active > .nav-text,
+  .nav-item.router-link-active > .nav-text-container,
+  .nav-item.router-link-active > span,
+  .app-layout.sidebar-collapsed .nav-item.router-link-active > .nav-text,
+  .app-layout.sidebar-collapsed .nav-item.router-link-active > .nav-text-container {
+    max-width: 150px !important;
+    opacity: 1 !important;
+    margin-left: 8px !important;
   }
   .main-content {
     max-width: 100% !important;
     padding-top: env(safe-area-inset-top, 0px);
-    padding-bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
     -webkit-overflow-scrolling: touch;
   }
   .hide-on-mobile {
     display: none !important;
   }
   .mobile-only {
-    display: flex !important;
+    display: inline-flex !important;
   }
   input:not([type="checkbox"]):not([type="radio"]),
   select,
@@ -666,6 +732,13 @@ tbody tr:nth-child(6), .card-list > div:nth-child(n+6) { animation-delay: 0.30s;
   backdrop-filter: blur(8px);
   background: rgba(15, 23, 42, 0.5);
   z-index: 99999;
+}
+
+@media (max-width: 768px) {
+  .modal-overlay {
+    padding-top: max(env(safe-area-inset-top, 0px), 16px);
+    box-sizing: border-box;
+  }
 }
 
 .report-table tbody tr, .report-card {

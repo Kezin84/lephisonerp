@@ -2,7 +2,7 @@
   <div v-if="isLoginRoute">
     <router-view />
   </div>
-  <div v-else class="app-layout" :class="{ 'sidebar-collapsed': !isSidebarOpen }">
+  <div v-else class="app-layout" :class="{ 'sidebar-collapsed': !isSidebarOpen, 'mobile-nav-hidden': isMobileNavHidden && !isMobileDrawerOpen }">
     <aside class="sidebar">
       <div class="logo">
         <div v-if="isSidebarOpen" style="display: flex; align-items: center; gap: 12px; overflow: hidden;">
@@ -246,7 +246,7 @@
           </div>
         </div>
 
-        <a href="#" class="nav-item mobile-only" title="Menu" @click.prevent="isMobileDrawerOpen = true">
+        <a href="#" class="nav-item mobile-only" :class="{ 'router-link-active': isMobileDrawerOpen || isMobileMenuRouteActive }" title="Menu" @click.prevent="isMobileDrawerOpen = true">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
           <span class="nav-text">Menu</span>
         </a>
@@ -358,6 +358,10 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
             <span>Báo cáo tổng quát</span>
           </router-link>
+          <router-link to="/report-firebase" class="drawer-item" @click="isMobileDrawerOpen = false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            <span>Báo cáo công việc</span>
+          </router-link>
           <router-link to="/sale-report-firebase" class="drawer-item" @click="isMobileDrawerOpen = false">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
             <span>Sale Report</span>
@@ -370,6 +374,10 @@
           <svg :style="{ transform: openGroups.sales ? 'rotate(180deg)' : 'rotate(0)' }" class="nav-chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
         </div>
         <div v-show="openGroups.sales" class="drawer-group-items">
+          <router-link to="/baogiafirebase" class="drawer-item" @click="isMobileDrawerOpen = false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+            <span>Tạo báo giá</span>
+          </router-link>
           <router-link to="/quanlybaogiafirebase" class="drawer-item" @click="isMobileDrawerOpen = false">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
             <span>Quản lý báo giá</span>
@@ -503,8 +511,14 @@ const showAppscript = ref(false)
 const mainContentRef = ref(null)
 const showScrollTop = ref(false)
 const isMobileDrawerOpen = ref(false)
+const isMobileNavHidden = ref(false)
 const showIosInstallPrompt = ref(false)
 const isStandaloneMode = ref(false)
+
+const isMobileMenuRouteActive = computed(() => {
+  const directMobileRoutes = ['/report-firebase', '/baogiafirebase', '/dashboard', '/report']
+  return !directMobileRoutes.includes(route.path)
+})
 
 const GROUP_ROUTES = {
   overview: ['/dashboardfirebase', '/report-firebase', '/sale-report-firebase'],
@@ -558,6 +572,7 @@ const isGroupActive = (key) => {
 watch(
   () => route.path,
   (newPath) => {
+    isMobileNavHidden.value = false
     for (const [key, paths] of Object.entries(GROUP_ROUTES)) {
       if (paths.some(p => newPath === p || newPath.startsWith(p + '/'))) {
         if (!openGroups[key]) {
@@ -616,36 +631,81 @@ const fetchIncompleteTasks = async () => {
   }
 }
 
+let lastScrollMap = new WeakMap()
+let lastWindowScrollY = 0
+
+const updateMobileNavByScroll = (currentScrollTop, prevScrollTop) => {
+  if (typeof window === 'undefined' || window.innerWidth > 768) {
+    if (isMobileNavHidden.value) isMobileNavHidden.value = false
+    return
+  }
+  const delta = currentScrollTop - prevScrollTop
+  if (currentScrollTop <= 36) {
+    isMobileNavHidden.value = false
+  } else if (delta > 10 && currentScrollTop > 64) {
+    isMobileNavHidden.value = true
+  } else if (delta < -8) {
+    isMobileNavHidden.value = false
+  }
+}
+
 const handleScroll = (e) => {
   if (e.target) {
     showScrollTop.value = e.target.scrollTop > 300
   }
 }
 
-const handleWindowScroll = () => {
-  if (window.scrollY > 300) {
-    showScrollTop.value = true
-  } else if (!mainContentRef.value || mainContentRef.value.scrollTop <= 300) {
-    showScrollTop.value = false
+const handleGlobalScrollCapture = (e) => {
+  const target = e.target
+  if (
+    target === window ||
+    target === document ||
+    target === document.documentElement ||
+    target === document.body
+  ) {
+    const curY = window.scrollY || document.documentElement.scrollTop || 0
+    showScrollTop.value = curY > 300 || (mainContentRef.value && mainContentRef.value.scrollTop > 300)
+    updateMobileNavByScroll(curY, lastWindowScrollY)
+    lastWindowScrollY = curY
+    return
+  }
+
+  if (target instanceof HTMLElement) {
+    if (
+      target.closest(
+        '.modal, .vip-modal-overlay, .load-invoice-modal-overlay, .modal-overlay, .mobile-drawer, .sidebar'
+      )
+    ) {
+      return
+    }
+    if (target.clientHeight < 160) return
+    const curY = target.scrollTop || 0
+    const prevY = lastScrollMap.get(target) ?? curY
+    if (target === mainContentRef.value || curY > 300) {
+      showScrollTop.value = curY > 300
+    }
+    updateMobileNavByScroll(curY, prevY)
+    lastScrollMap.set(target, curY)
   }
 }
 
 const scrollToTop = () => {
+  isMobileNavHidden.value = false
   if (mainContentRef.value) {
     mainContentRef.value.scrollTo({ top: 0, behavior: 'smooth' })
   }
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-  onMounted(() => {
-  window.addEventListener('scroll', handleWindowScroll)
+onMounted(() => {
+  window.addEventListener('scroll', handleGlobalScrollCapture, { passive: true, capture: true })
   fetchIncompleteTasks()
   checkIosInstallPrompt()
   initZaloBotBackgroundService()
 })
 
 onUnmounted(() => {
-  window.removeEventListener('scroll', handleWindowScroll)
+  window.removeEventListener('scroll', handleGlobalScrollCapture, { capture: true })
 })
 </script>
 
@@ -834,7 +894,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   box-shadow: -4px 0 24px rgba(0,0,0,0.5);
-  padding-top: env(safe-area-inset-top, 0px);
+  padding-top: 0;
   padding-bottom: env(safe-area-inset-bottom, 0px);
   box-sizing: border-box;
 }
@@ -845,8 +905,23 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px;
+  padding: max(calc(env(safe-area-inset-top, 0px) - 2px), 36px) 16px 14px 16px;
+  background:
+    radial-gradient(125% 135% at 12% 0%, rgba(16, 185, 129, 0.2) 0%, rgba(56, 189, 248, 0.12) 50%, rgba(13, 27, 42, 0) 85%),
+    linear-gradient(180deg, #091322 0%, #0d1b2a 100%);
   border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.drawer-header .toggle-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #f8fafc;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
 }
 .drawer-content {
   flex: 1;

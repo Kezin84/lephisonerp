@@ -2385,8 +2385,22 @@ const showMobileCustomerInline = ref(false)
 const showMobileDiscountPanel = ref(true)
 const showMobileCustSubSection = ref(false)
 const showMobileCustDebtSection = ref(false)
+const isMobileProductHeaderHidden = ref(false)
+const quoteTableContainerRef = ref<HTMLElement | null>(null)
+let lastProductSidebarScrollTop = 0
+
 const setMobileStep = (step: number) => {
-  mobileStep.value = Math.min(3, Math.max(1, step))
+  const targetStep = Math.min(3, Math.max(1, step))
+  mobileStep.value = targetStep
+  if (targetStep === 1) {
+    isMobileProductHeaderHidden.value = false
+    return
+  }
+  nextTick(() => {
+    if (quoteTableContainerRef.value) {
+      quoteTableContainerRef.value.scrollTop = 0
+    }
+  })
 }
 function getSelectedQtyForProduct(p: HangHoa): number {
   if (!p) return 0
@@ -5169,6 +5183,21 @@ function onProductGridScroll(e: Event) {
   if (!el) return
   if (el.scrollTop + el.clientHeight >= el.scrollHeight - 220) {
     loadMoreProducts()
+  }
+  if (typeof window !== 'undefined' && window.innerWidth <= 1100 && el.classList.contains('sidebar-left')) {
+    const curY = Math.max(0, el.scrollTop || 0)
+    const delta = curY - lastProductSidebarScrollTop
+    if (curY <= 36 || showRecentSearches.value) {
+      isMobileProductHeaderHidden.value = false
+    } else if (delta > 10 && curY > 72) {
+      isMobileProductHeaderHidden.value = true
+      if (!isPriceListCollapsed.value) {
+        isPriceListCollapsed.value = true
+      }
+    } else if (delta < -8) {
+      isMobileProductHeaderHidden.value = false
+    }
+    lastProductSidebarScrollTop = curY
   }
 }
 
@@ -15007,6 +15036,7 @@ const visibleLeadingFooterColSpan = computed(() => {
 
       <!-- ================== LEFT SIDEBAR ================== -->
       <aside class="product-sidebar sidebar-left" :class="{ closed: !showProductSidebar }" @scroll.passive="onProductGridScroll">
+        <div class="product-catalog-sticky-head" :class="{ 'is-header-hidden': isMobileProductHeaderHidden }">
         <div class="sidebar-head sidebar-head-product" style="display: flex; flex-direction: column; align-items: stretch; gap: 8px;">
           <div style="display: flex; align-items: center; gap: 6px; width: 100%;">
             <select
@@ -15176,6 +15206,7 @@ const visibleLeadingFooterColSpan = computed(() => {
             </div>
           </div>
         </div>
+        </div>
 
         <div class="product-grid" @scroll.passive="onProductGridScroll">
           <!-- LOADING SKELETON -->
@@ -15246,40 +15277,71 @@ const visibleLeadingFooterColSpan = computed(() => {
           </template>
         </div>
 
-        <!-- ================== DOCKED CART BAR TRÊN MOBILE (SCREEN 1 -> SCREEN 2) ================== -->
+        <!-- ================== DOCK QUY TRÌNH BÁO GIÁ TRÊN MOBILE (SCREEN 1) ================== -->
         <div class="mobile-screen1-cart-bar">
-          <div class="m-cart-summary" @click="setMobileStep(2)">
-            <div class="m-cart-icon-wrap" :class="{ 'has-items': selectedItems.length > 0 }">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-                <line x1="16" y1="13" x2="8" y2="13"></line>
-                <line x1="16" y1="17" x2="8" y2="17"></line>
+          <div class="m-dock-left">
+            <button
+              type="button"
+              class="m-dock-back-btn is-disabled"
+              disabled
+              title="Đang ở bước đầu tiên (Chọn hàng)"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 18 9 12 15 6"></polyline>
               </svg>
-              <span v-if="selectedItems.length > 0" class="m-cart-count-badge">{{ selectedItems.length }}</span>
-            </div>
-            <div class="m-cart-text-col">
+            </button>
+            <div class="m-cart-text-col" @click="setMobileStep(2)">
               <template v-if="selectedItems.length > 0">
-                <span class="m-cart-sub">{{ selectedItems.length }} mặt hàng • Tạm tính</span>
+                <span class="m-cart-sub">{{ selectedItems.length }} SP • Tạm tính</span>
                 <span class="m-cart-total">{{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.sau) : formatVND(totals.sau) }}</span>
               </template>
               <template v-else>
-                <span class="m-cart-sub">Chưa chọn sản phẩm</span>
+                <span class="m-cart-sub">Chưa chọn SP</span>
                 <span class="m-cart-empty-hint">0 đ</span>
               </template>
             </div>
           </div>
-          <div class="m-cart-btn-group">
+
+          <div class="m-dock-steps">
             <button
               type="button"
-              class="m-cart-cta-btn"
+              class="m-step-pill"
+              :class="{ 'is-done': true }"
+              @click.stop="setMobileStep(1)"
+            >
+              <span class="m-step-num">1</span>
+              <span class="m-step-label">. Chọn hàng</span>
+            </button>
+            <span class="m-step-arrow">→</span>
+            <button
+              type="button"
+              class="m-step-pill"
+              :class="{ 'is-active': mobileStep === 1 && !showSaveModal && !showExportInfoModal, 'is-done': mobileStep >= 2 || showSaveModal || showExportInfoModal }"
               @click.stop="setMobileStep(2)"
             >
-              <span>Xem Báo Giá</span>
-              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-                <polyline points="12 5 19 12 12 19"></polyline>
-              </svg>
+              <span class="m-step-num">2</span>
+              <span class="m-step-label">. Báo giá</span>
+              <span v-if="selectedItems.length > 0" class="m-step-mini-badge">{{ selectedItems.length }}</span>
+            </button>
+            <span class="m-step-arrow">→</span>
+            <button
+              type="button"
+              class="m-step-pill"
+              :class="{ 'is-active': mobileStep === 2 && !showSaveModal && !showExportInfoModal, 'is-done': mobileStep >= 3 || showSaveModal || showExportInfoModal }"
+              @click.stop="setMobileStep(3)"
+            >
+              <span class="m-step-num">3</span>
+              <span class="m-step-label">. Tổng kết</span>
+            </button>
+            <span class="m-step-arrow">→</span>
+            <button
+              type="button"
+              class="m-step-pill m-step-save"
+              :class="{ 'is-active': mobileStep === 3 || showSaveModal || showExportInfoModal }"
+              @click.stop="showSaveModal = true"
+            >
+              <span class="m-step-num">4</span>
+              <span class="m-step-label">. Lưu/Xuất</span>
             </button>
           </div>
         </div>
@@ -15502,7 +15564,7 @@ const visibleLeadingFooterColSpan = computed(() => {
 
       <!-- ================== CENTER: BẢNG BÁO GIÁ VÀ TỔNG TIỀN ================== -->
       <section class="box center quote-center">
-        <div class="quote-table-container">
+        <div class="quote-table-container" ref="quoteTableContainerRef">
           <!-- THANH ĐA TAB BÁO GIÁ & NÚT THÊM TAB MỚI ICON + (HÌNH TRÒN XANH LÁ) -->
           <div class="quote-workspace-topbar">
             <button
@@ -16211,50 +16273,65 @@ const visibleLeadingFooterColSpan = computed(() => {
             </div>
           </div>
 
-          <!-- ================== DOCKED BOTTOM ACTION BAR TRÊN MOBILE (SCREEN 2 -> SCREEN 3 -> MODAL KHÁCH HÀNG & LƯU/XUẤT) ================== -->
+          <!-- ================== DOCK QUY TRÌNH BÁO GIÁ TRÊN MOBILE (SCREEN 2 & SCREEN 3) ================== -->
           <div class="mobile-screen2-action-bar">
-            <div class="m-cart-summary" @click="mobileStep === 2 ? setMobileStep(3) : (showSaveModal = true)">
-              <div class="m-cart-icon-wrap" :class="{ 'has-items': selectedItems.length > 0 }">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                  <polyline points="14 2 14 8 20 8"></polyline>
-                  <line x1="16" y1="13" x2="8" y2="13"></line>
-                  <line x1="16" y1="17" x2="8" y2="17"></line>
+            <div class="m-dock-left">
+              <button
+                type="button"
+                class="m-dock-back-btn"
+                @click.stop="setMobileStep(mobileStep === 3 ? 2 : 1)"
+                :title="mobileStep === 3 ? 'Quay lại Bước 2: Báo giá' : 'Quay lại Bước 1: Chọn hàng'"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="15 18 9 12 15 6"></polyline>
                 </svg>
-                <span v-if="selectedItems.length > 0" class="m-cart-count-badge">{{ selectedItems.length }}</span>
-              </div>
-              <div class="m-cart-text-col">
-                <span class="m-cart-sub">{{ selectedItems.length }} mặt hàng • {{ mobileStep === 2 ? 'Sau thuế' : 'Tổng thanh toán' }}</span>
+              </button>
+              <div class="m-cart-text-col" @click="mobileStep === 2 ? setMobileStep(3) : (showSaveModal = true)">
+                <span class="m-cart-sub">{{ mobileStep === 2 ? `${selectedItems.length} SP • Sau thuế` : (tongChietKhau !== 0 ? 'Đã CK • Thanh toán' : 'VAT & CK • Tổng') }}</span>
                 <span class="m-cart-total">{{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.sau) : formatVND(totals.sau) }}</span>
               </div>
             </div>
 
-            <div class="m-cart-btn-group">
+            <div class="m-dock-steps">
               <button
-                v-if="mobileStep === 2"
                 type="button"
-                class="m-cart-cta-btn"
+                class="m-step-pill"
+                :class="{ 'is-done': true }"
+                @click.stop="setMobileStep(1)"
+              >
+                <span class="m-step-num">1</span>
+                <span class="m-step-label">. Chọn hàng</span>
+              </button>
+              <span class="m-step-arrow">→</span>
+              <button
+                type="button"
+                class="m-step-pill"
+                :class="{ 'is-active': mobileStep === 1 && !showSaveModal && !showExportInfoModal, 'is-done': mobileStep >= 2 || showSaveModal || showExportInfoModal }"
+                @click.stop="setMobileStep(2)"
+              >
+                <span class="m-step-num">2</span>
+                <span class="m-step-label">. Báo giá</span>
+                <span v-if="selectedItems.length > 0 && mobileStep !== 1" class="m-step-mini-badge">{{ selectedItems.length }}</span>
+              </button>
+              <span class="m-step-arrow">→</span>
+              <button
+                type="button"
+                class="m-step-pill"
+                :class="{ 'is-active': mobileStep === 2 && !showSaveModal && !showExportInfoModal, 'is-done': mobileStep >= 3 || showSaveModal || showExportInfoModal }"
                 @click.stop="setMobileStep(3)"
               >
-                <span>Tổng Kết</span>
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                  <polyline points="12 5 19 12 12 19"></polyline>
-                </svg>
+                <span class="m-step-num">3</span>
+                <span class="m-step-label">. Tổng kết</span>
               </button>
-
+              <span class="m-step-arrow">→</span>
               <button
-                v-else
                 type="button"
-                class="m-cart-cta-btn m-cart-save-export-btn"
+                class="m-step-pill m-step-save"
+                :class="{ 'is-active': mobileStep === 3 || showSaveModal || showExportInfoModal }"
                 @click.stop="showSaveModal = true"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                  <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                  <polyline points="7 3 7 8 15 8"></polyline>
-                </svg>
-                <span>Lưu / Xuất</span>
+                <span class="m-step-num">4</span>
+                <span class="m-step-label">. Lưu/Xuất</span>
               </button>
             </div>
           </div>
@@ -16264,15 +16341,19 @@ const visibleLeadingFooterColSpan = computed(() => {
 
     <!-- ================== MODAL: THAO TÁC MỞ RỘNG (BỐ CỤC 2 CỘT) ================== -->
     <div v-if="showMoreActionsModal" class="modal vip-modal-overlay" style="z-index: 10024;" @click.self="showMoreActionsModal = false">
-      <div class="modal-card vip-modal-card more-actions-modal" style="width: 880px !important; max-width: 95vw !important;">
+      <div class="modal-card vip-modal-card more-actions-modal" style="width: 880px; max-width: 95vw;">
         <div class="modal-head more-actions-head">
-          <h3 style="display: flex; align-items: center; gap: 8px; margin: 0;">
+          <h3 class="dt-only-head" style="display: flex; align-items: center; gap: 8px; margin: 0;">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
               <circle cx="12" cy="12" r="3"></circle>
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
             </svg>
             <span>THAO TÁC &amp; TIỆN ÍCH BÁO GIÁ</span>
           </h3>
+          <div class="m-grab-head-stack">
+            <span class="m-grab-eyebrow">Công cụ mở rộng • {{ maHopDong || 'Báo giá' }}</span>
+            <span class="m-grab-title">Tiện ích &amp; Ghi chú PO</span>
+          </div>
           <button class="x" @click="showMoreActionsModal = false">✕</button>
         </div>
 
@@ -16396,7 +16477,11 @@ const visibleLeadingFooterColSpan = computed(() => {
     <div v-if="showUploadTaxModal" class="modal vip-modal-overlay" @click.self="showUploadTaxModal = false" style="z-index: 10030;" @dragover="onTaxDragOver" @drop="onTaxDrop">
       <div class="modal-content vip-modal" style="max-width: 640px; padding: 0; background: #ffffff; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
         <div class="modal-header" style="background: #f8fafc; padding: 16px 24px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; border-top-left-radius: 8px; border-top-right-radius: 8px;">
-          <div style="color: #1e293b; font-weight: 700; font-size: 16px;">Quét Dữ Liệu Từ Ảnh Thuế (OCR)</div>
+          <div class="dt-only-head" style="color: #1e293b; font-weight: 700; font-size: 16px;">Quét Dữ Liệu Từ Ảnh Thuế (OCR)</div>
+          <div class="m-grab-head-stack">
+            <span class="m-grab-eyebrow">Nhận diện thông tin tự động</span>
+            <span class="m-grab-title">Quét dữ liệu ảnh thuế</span>
+          </div>
           <button class="x" @click="showUploadTaxModal = false" style="color: #64748b; background: transparent; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; font-size: 18px;">✕</button>
         </div>
         <div class="modal-body" style="padding: 20px 24px; max-height: calc(92vh - 130px); overflow-y: auto;">
@@ -16427,7 +16512,11 @@ const visibleLeadingFooterColSpan = computed(() => {
     <div v-if="showTaxModal" class="modal vip-modal-overlay" @click.self="closeTaxModal" style="z-index: 10031;">
       <div class="modal-content vip-modal" style="max-width: 1100px; padding: 0; background: #0b1118; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid #1e293b;">
         <div class="modal-header" style="background: linear-gradient(135deg, #1e293b, #0f172a); padding: 16px 24px; border-bottom: 1px solid #334155; display: flex; align-items: center; justify-content: space-between; border-top-left-radius: 12px; border-top-right-radius: 12px;">
-          <div style="color: #fff; text-transform: uppercase; font-weight: 900; font-size: 16px; letter-spacing: 0.5px;"><i class="lucide-scan" style="margin-right: 8px;"></i>XÁC NHẬN THÔNG TIN THUẾ</div>
+          <div class="dt-only-head" style="color: #fff; text-transform: uppercase; font-weight: 900; font-size: 16px; letter-spacing: 0.5px;"><i class="lucide-scan" style="margin-right: 8px;"></i>XÁC NHẬN THÔNG TIN THUẾ</div>
+          <div class="m-grab-head-stack">
+            <span class="m-grab-eyebrow">Kiểm tra kết quả OCR</span>
+            <span class="m-grab-title">Xác nhận thông tin thuế</span>
+          </div>
           <button class="x" @click="closeTaxModal" style="color: #fff; background: rgba(0,0,0,0.15); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;">✕</button>
         </div>
         <div class="modal-body" style="padding: 24px; max-height: calc(100vh - 120px); overflow-y: auto; display: flex; gap: 24px;">
@@ -16468,9 +16557,9 @@ const visibleLeadingFooterColSpan = computed(() => {
     </div>
 
     <!-- ================== MODAL: XEM ẢNH THUẾ TO ================== -->
-    <div v-if="showTaxImageFullScreen" class="modal vip-modal-overlay" @click.self="showTaxImageFullScreen = false" style="z-index: 10032; background: rgba(0,0,0,0.85);">
+    <div v-if="showTaxImageFullScreen" class="modal vip-modal-overlay tax-fullscreen-lightbox" @click.self="showTaxImageFullScreen = false" style="z-index: 10032; background: rgba(0,0,0,0.85);">
       <div style="position: relative; max-width: 90vw; max-height: 90vh; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-        <button @click="showTaxImageFullScreen = false" style="position: absolute; top: -40px; right: 0; background: transparent; color: #fff; font-size: 24px; border: none; cursor: pointer; width: auto !important; padding: 4px 8px;">✕</button>
+        <button class="tax-fullscreen-close" @click="showTaxImageFullScreen = false" style="position: absolute; top: -40px; right: 0; background: transparent; color: #fff; font-size: 24px; border: none; cursor: pointer; width: auto !important; padding: 4px 8px;">✕</button>
         <img v-if="taxFullScreenSrc || taxPreviewUrl" :src="taxFullScreenSrc || taxPreviewUrl" style="max-width: 100%; max-height: 90vh; object-fit: contain; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.8);" />
       </div>
     </div>
@@ -16481,7 +16570,11 @@ const visibleLeadingFooterColSpan = computed(() => {
     <div v-if="showCustomerDetailModal" class="modal vip-modal-overlay modal-fullscreen-overlay" style="z-index: 10025;" @click.self="showCustomerDetailModal = false">
       <div class="modal-card modal-wide vip-modal-card modal-fullscreen-card save-export-cust-modal">
         <div class="modal-head modal-head-themed" style="justify-content: center; position: relative; padding: 14px 24px; border-bottom: none; border-radius: 0; flex-shrink: 0;">
-          <div class="save-modal-head-title" style="color: #fff; text-transform: uppercase; font-weight: 900; font-size: 16px; letter-spacing: 0.5px;">CHI TIẾT KHÁCH HÀNG</div>
+          <div class="save-modal-head-title dt-only-head" style="color: #fff; text-transform: uppercase; font-weight: 900; font-size: 16px; letter-spacing: 0.5px;">CHI TIẾT KHÁCH HÀNG</div>
+          <div class="m-grab-head-stack">
+            <span class="m-grab-eyebrow">{{ khach.Ma_khach_hang ? 'Hồ sơ đối tác • ' + khach.Ma_khach_hang : 'Hồ sơ đối tác' }}</span>
+            <span class="m-grab-title">Chi tiết khách hàng</span>
+          </div>
           <button class="x" @click="showCustomerDetailModal = false" style="color: #fff; position: absolute; right: 18px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.15); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;">✕</button>
         </div>
 
@@ -16759,9 +16852,13 @@ const visibleLeadingFooterColSpan = computed(() => {
       <div class="modal-card modal-wide vip-modal-card modal-fullscreen-card">
         <!-- HEADER -->
         <div class="modal-head modal-head-themed" style="justify-content: center; position: relative; margin-bottom: 0; padding: 14px 24px; border-bottom: none; border-radius: 0; flex-shrink: 0;">
-          <div style="color: #ffffff; text-transform: uppercase; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
+          <div class="dt-only-head" style="color: #ffffff; text-transform: uppercase; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
             <span>TIẾN ĐỘ TRẢ NỢ &amp; LỊCH SỬ THANH TOÁN<template v-if="paymentModal.row"> — PO #{{ paymentModal.row.So_PO || 'N/A' }}</template></span>
+          </div>
+          <div class="m-grab-head-stack">
+            <span class="m-grab-eyebrow">{{ paymentModal.row?.So_PO ? 'Quản lý công nợ • PO #' + paymentModal.row.So_PO : 'Quản lý công nợ' }}</span>
+            <span class="m-grab-title">Tiến độ &amp; Lịch sử thanh toán</span>
           </div>
           <button class="x" @click="paymentModal.show = false" style="color: #fff; position: absolute; right: 18px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.15); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;">✕</button>
         </div>
@@ -17292,9 +17389,13 @@ const visibleLeadingFooterColSpan = computed(() => {
       <div class="modal-card export-vip-modal modal-fullscreen-card export-data-modal">
         <div class="export-vip-head">
           <div class="export-vip-head-glow"></div>
-          <div class="export-vip-title">
+          <div class="export-vip-title dt-only-head">
             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m8 17 4 4 4-4"/></svg>
             Xuất dữ liệu Báo giá
+          </div>
+          <div class="m-grab-head-stack">
+            <span class="m-grab-eyebrow">Excel • PDF • Bản in</span>
+            <span class="m-grab-title">Xuất dữ liệu báo giá</span>
           </div>
           <button class="export-vip-close" @click="showExportInfoModal = false">&times;</button>
         </div>
@@ -17548,7 +17649,11 @@ const visibleLeadingFooterColSpan = computed(() => {
     <div v-if="showLoadInfoModal" class="modal modal-fullscreen-overlay" @click.self="showLoadInfoModal = false">
       <div class="modal-card modal-fullscreen-card">
         <div class="modal-head modal-head-themed" style="margin-bottom: 0; padding: 14px 24px; border-radius: 0; flex-shrink: 0;">
-          <h3 style="display: flex; align-items: center; gap: 8px; margin: 0; color: #ffffff !important;"><i class="lucide-download"></i> Chọn loại load dữ liệu</h3>
+          <h3 class="dt-only-head" style="display: flex; align-items: center; gap: 8px; margin: 0; color: #ffffff !important;"><i class="lucide-download"></i> Chọn loại load dữ liệu</h3>
+          <div class="m-grab-head-stack">
+            <span class="m-grab-eyebrow">Kho lưu trữ hệ thống</span>
+            <span class="m-grab-title">Chọn nguồn nạp dữ liệu</span>
+          </div>
           <button class="x" @click="showLoadInfoModal = false">✕</button>
         </div>
         <div class="modal-body" style="flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: 32px; overflow-y: auto;">
@@ -17571,7 +17676,11 @@ const visibleLeadingFooterColSpan = computed(() => {
     <div v-if="showManualModal" class="modal vip-modal-overlay modal-fullscreen-overlay" @click.self="showManualModal = false">
       <div class="modal-card modal-wide vip-modal-card modal-fullscreen-card">
         <div class="modal-head modal-head-themed" style="justify-content: center; position: relative; padding: 14px 24px; border-bottom: none; border-radius: 0; flex-shrink: 0;">
-          <div style="color: #ffffff; text-transform: uppercase; font-weight: 900; font-size: 16px; margin: 0; display: flex; align-items: center; gap: 8px; letter-spacing: 0.5px;">⊕ THÊM MỚI NHANH</div>
+          <div class="dt-only-head" style="color: #ffffff; text-transform: uppercase; font-weight: 900; font-size: 16px; margin: 0; display: flex; align-items: center; gap: 8px; letter-spacing: 0.5px;">⊕ THÊM MỚI NHANH</div>
+          <div class="m-grab-head-stack">
+            <span class="m-grab-eyebrow">Kho sản phẩm • Nhập thủ công</span>
+            <span class="m-grab-title">Thêm mới hàng hóa</span>
+          </div>
           <button class="x" @click="showManualModal = false" style="color: #fff; transition: all 0.2s; position: absolute; right: 20px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.15); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;" onmouseover="this.style.background='rgba(0,0,0,0.3)'" onmouseout="this.style.background='rgba(0,0,0,0.15)'">✕</button>
         </div>
 
@@ -17809,7 +17918,7 @@ const visibleLeadingFooterColSpan = computed(() => {
 
     <!-- ================== MODAL: XÁC NHẬN THÊM VÀO DATABASE ================== -->
     <div v-if="showConfirmAddDbModal" class="modal" style="z-index: 10005;" @click.self="cancelAddToDb">
-      <div class="modal-card" style="max-width: 450px; text-align: center; padding: 32px 24px;">
+      <div class="modal-card confirm-empty-cust-card" style="max-width: 450px; text-align: center; padding: 32px 24px;">
         <div style="margin-bottom: 24px; color: #fbbf24;">
           <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"></circle>
@@ -17836,13 +17945,17 @@ const visibleLeadingFooterColSpan = computed(() => {
     <div v-if="showCardModal && cardEdit" class="modal vip-modal-overlay modal-fullscreen-overlay" @click.self="showCardModal = false">
       <div class="modal-card modal-wide vip-modal-card modal-fullscreen-card">
         <div class="modal-head modal-head-themed" style="justify-content: space-between; position: relative; padding: 12px 24px; border-bottom: none; border-radius: 0; flex-shrink: 0;">
-          <div style="display: flex; align-items: center; gap: 12px;">
+          <div class="dt-only-head" style="display: flex; align-items: center; gap: 12px;">
             <div class="modal-head-title-text" style="color: #ffffff; text-transform: uppercase; font-weight: 900; font-size: 17px; margin: 0; display: flex; align-items: center; gap: 10px; letter-spacing: 0.5px;">
               <i class="lucide-clipboard-list" style="color: #fff; width: 22px; height: 22px;"></i> CHI TIẾT HÀNG
             </div>
             <span v-if="cardEdit.Ma_hang" class="modal-head-badge" style="background: rgba(0,0,0,0.2); color: #fff; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700;">
               {{ cardEdit.Ma_hang }}
             </span>
+          </div>
+          <div class="m-grab-head-stack">
+            <span class="m-grab-eyebrow">{{ cardEdit.Ma_hang ? 'Kho sản phẩm • ' + cardEdit.Ma_hang : 'Kho sản phẩm' }}</span>
+            <span class="m-grab-title">Chi tiết hàng hóa</span>
           </div>
           <button class="x" @click="showCardModal = false" style="color: #fff; transition: all 0.2s; position: absolute; right: 20px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.15); border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;" onmouseover="this.style.background='rgba(0,0,0,0.3)'" onmouseout="this.style.background='rgba(0,0,0,0.15)'">✕</button>
         </div>
@@ -18128,8 +18241,12 @@ const visibleLeadingFooterColSpan = computed(() => {
     <!-- ================== MODAL: XEM BÁO GIÁ GỐC (GROUP THEO NCC + DANH MỤC) ================== -->
     <div v-if="showPreviewRawModal" class="modal modal-fullscreen-overlay" @click.self="showPreviewRawModal = false">
       <div class="modal-card modal-wide modal-quote vip-modal-card modal-fullscreen-card">
-        <div class="modal-head modal-head-themed" style="margin-bottom: 0; padding: 14px 24px !important; border-radius: 0; flex-shrink: 0;">
-          <h3 style="color: #ffffff !important; -webkit-text-fill-color: #ffffff !important;"><i class="lucide-file-text"></i> Báo giá gốc</h3>
+        <div class="modal-head modal-head-themed" style="margin-bottom: 0; padding: 14px 24px; border-radius: 0; flex-shrink: 0;">
+          <h3 class="dt-only-head" style="color: #ffffff !important; -webkit-text-fill-color: #ffffff !important;"><i class="lucide-file-text"></i> Báo giá gốc</h3>
+          <div class="m-grab-head-stack">
+            <span class="m-grab-eyebrow">{{ maHopDong ? 'Đối chiếu gốc • ' + maHopDong : 'Đối chiếu dữ liệu gốc' }}</span>
+            <span class="m-grab-title">Báo giá gốc</span>
+          </div>
           <button class="x" @click="showPreviewRawModal = false">✕</button>
         </div>
 
@@ -18284,7 +18401,7 @@ const visibleLeadingFooterColSpan = computed(() => {
     <div v-if="showQuoteEditModal && quoteEdit" class="modal vip-modal-overlay modal-fullscreen-overlay" @click.self="closeQuoteEdit()">
       <div class="modal-card modal-wide vip-modal-card modal-fullscreen-card">
         <div class="modal-head modal-head-themed" style="justify-content: space-between; position: relative; padding: 12px 24px; border-bottom: none; border-radius: 0; flex-shrink: 0;">
-          <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+          <div class="dt-only-head" style="display: flex; align-items: center; gap: 12px; min-width: 0;">
             <div class="modal-head-title-text" style="color: #ffffff; text-transform: uppercase; font-weight: 900; font-size: 17px; margin: 0; display: flex; align-items: center; gap: 10px; letter-spacing: 0.5px; white-space: nowrap;">
               <i class="lucide-pencil" style="color: #fff; width: 22px; height: 22px;"></i> CHỈNH SỬA HÀNG TRONG BÁO GIÁ
             </div>
@@ -18294,6 +18411,10 @@ const visibleLeadingFooterColSpan = computed(() => {
             <span v-if="quoteEdit.Ten_hang" class="modal-head-subtitle" style="color: rgba(255,255,255,0.92); font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 420px;">
               — {{ quoteEdit.Ten_hang }}
             </span>
+          </div>
+          <div class="m-grab-head-stack">
+            <span class="m-grab-eyebrow">{{ quoteEdit.Ma_hang ? 'Báo giá • ' + quoteEdit.Ma_hang : (quoteEdit.Ten_hang || 'Mặt hàng trong báo giá') }}</span>
+            <span class="m-grab-title">Chỉnh sửa hàng hóa</span>
           </div>
 
           <button class="x" @click="closeQuoteEdit()" style="color: #fff; transition: all 0.2s; position: absolute; right: 20px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.15); border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;" onmouseover="this.style.background='rgba(0,0,0,0.3)'" onmouseout="this.style.background='rgba(0,0,0,0.15)'">✕</button>
@@ -19078,7 +19199,11 @@ const visibleLeadingFooterColSpan = computed(() => {
 <div v-if="showLoadPipelineModal" class="modal load-invoice-modal-overlay modal-fullscreen-overlay" @click.self="showLoadPipelineModal = false">
   <div class="modal-card load-invoice-modal modal-fullscreen-card" @scroll.passive="onLoadPipelineGridScroll">
     <div class="modal-head">
-      <h3><i class="lucide-folder-input"></i> Load PO-DXMH-DR-Báo giá</h3>
+      <h3 class="dt-only-head"><i class="lucide-folder-input"></i> Load PO-DXMH-DR-Báo giá</h3>
+      <div class="m-grab-head-stack">
+        <span class="m-grab-eyebrow">Đồng bộ PO • DXMH • Deal Reg</span>
+        <span class="m-grab-title">Nạp dữ liệu Pipeline</span>
+      </div>
       <button class="x" @click="showLoadPipelineModal = false">×</button>
     </div>
     
@@ -19168,7 +19293,11 @@ const visibleLeadingFooterColSpan = computed(() => {
 <div v-if="showLoadInvoiceModal" class="modal load-invoice-modal-overlay modal-fullscreen-overlay" @click.self="showLoadInvoiceModal = false">
   <div class="modal-card load-invoice-modal modal-fullscreen-card" @scroll.passive="onLoadInvoiceGridScroll">
     <div class="modal-head">
-      <h3><i class="lucide-download"></i> Load hóa đơn / hợp đồng</h3>
+      <h3 class="dt-only-head"><i class="lucide-download"></i> Load hóa đơn / hợp đồng</h3>
+      <div class="m-grab-head-stack">
+        <span class="m-grab-eyebrow">Danh sách hợp đồng đã lưu</span>
+        <span class="m-grab-title">Nạp hóa đơn &amp; Hợp đồng</span>
+      </div>
       <button class="x" @click="showLoadInvoiceModal = false">✕</button>
     </div>
 
@@ -19421,8 +19550,12 @@ const visibleLeadingFooterColSpan = computed(() => {
     <div v-if="showSaveModal || showExportSaveConfirmModal" class="modal vip-modal-overlay modal-fullscreen-overlay" style="z-index: 10005;" @click.self="showSaveModal = false; showExportSaveConfirmModal = false; pendingExportFormat = null">
       <div class="modal-card modal-wide vip-modal-card modal-fullscreen-card save-export-cust-modal">
         <div class="modal-head modal-head-themed" style="justify-content: center; position: relative; padding: 14px 24px; border-bottom: none; border-radius: 0; flex-shrink: 0;">
-          <div class="save-modal-head-title" style="color: #fff; text-transform: uppercase; font-weight: 900; font-size: 16px; letter-spacing: 0.5px;">
+          <div class="save-modal-head-title dt-only-head" style="color: #fff; text-transform: uppercase; font-weight: 900; font-size: 16px; letter-spacing: 0.5px;">
             {{ showExportSaveConfirmModal ? 'BẠN CÓ MUỐN LƯU BÁO GIÁ KHÔNG ? — THÔNG TIN KHÁCH HÀNG & LƯU BÁO GIÁ' : 'CHỌN KHÁCH HÀNG • LƯU & XUẤT BÁO GIÁ' }}
+          </div>
+          <div class="m-grab-head-stack">
+            <span class="m-grab-eyebrow">{{ showExportSaveConfirmModal ? 'Xác nhận trước khi xuất file' : ('Bước 4 • ' + (maHopDong || 'Hoàn tất báo giá')) }}</span>
+            <span class="m-grab-title">{{ showExportSaveConfirmModal ? 'Lưu thông tin & Báo giá' : 'Khách hàng & Lưu báo giá' }}</span>
           </div>
           <button class="x" @click="showSaveModal = false; showExportSaveConfirmModal = false; pendingExportFormat = null" style="color: #fff; position: absolute; right: 18px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.15); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;">✕</button>
         </div>
@@ -19739,10 +19872,14 @@ const visibleLeadingFooterColSpan = computed(() => {
     <div v-if="showExportExcelModal" class="modal vip-modal-overlay modal-fullscreen-overlay" @click.self="showExportExcelModal = false">
       <div class="modal-card modal-wide vip-modal-card modal-fullscreen-card export-multi-format-modal">
         <div class="modal-head modal-head-themed export-multi-head" style="justify-content: center; position: relative; margin-bottom: 0; padding: 14px 24px; border-bottom: none; border-radius: 0; flex-shrink: 0;">
-          <div class="export-multi-head-title" style="color: #ffffff; text-transform: uppercase; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
+          <div class="export-multi-head-title dt-only-head" style="color: #ffffff; text-transform: uppercase; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
             <i class="lucide-file-spreadsheet"></i>
             <span class="dt-lbl">CHỌN MẪU IN, KHÁCH HÀNG &amp; XUẤT BÁO GIÁ</span>
             <span class="mb-lbl">CHỌN MẪU IN &amp; XUẤT BÁO GIÁ</span>
+          </div>
+          <div class="m-grab-head-stack">
+            <span class="m-grab-eyebrow">{{ activePrintTemplate?.ten_mau ? 'Mẫu in • ' + activePrintTemplate.ten_mau : 'Xuất bản tài liệu' }}</span>
+            <span class="m-grab-title">Chọn mẫu in &amp; Xuất báo giá</span>
           </div>
           <button class="x" @click="showExportExcelModal = false" style="color: #fff; position: absolute; right: 18px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.15); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;">✕</button>
         </div>
@@ -20316,10 +20453,15 @@ const visibleLeadingFooterColSpan = computed(() => {
     <div v-if="showPrintPreviewZoomModal" class="modal vip-modal-overlay modal-fullscreen-overlay" style="z-index: 10045;" @click.self="showPrintPreviewZoomModal = false">
       <div class="modal-card modal-wide vip-modal-card export-vip-modal modal-fullscreen-card export-zoom-preview-modal">
         <div class="modal-head modal-head-themed export-zoom-head" style="justify-content: space-between; position: relative; margin-bottom: 0; padding: 10px 24px; border-bottom: none; border-radius: 0; flex-shrink: 0;">
-          <div class="export-zoom-title-wrap" style="color: #ffffff; text-transform: uppercase; font-weight: 900; font-size: 14px; letter-spacing: 0.5px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+          <button type="button" class="m-grab-back-only" @click="showExportPreviewZoomModal = false" aria-label="Quay lại"></button>
+          <div class="export-zoom-title-wrap dt-only-head" style="color: #ffffff; text-transform: uppercase; font-weight: 900; font-size: 14px; letter-spacing: 0.5px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
             <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
             <span class="dt-lbl">XEM TRƯỚC &amp; CHỈNH SỬA BẢN IN — {{ activePrintTemplate?.ten_mau || 'Mẫu chuẩn' }} (Khổ {{ activePrintTemplate?.cau_hinh_trang?.kho_giay || 'A4' }} • {{ activePrintTemplate?.cau_hinh_trang?.huong_giay === 'portrait' ? 'Dọc' : 'Ngang' }})</span>
             <span class="mb-lbl">XEM TRƯỚC ({{ activePrintTemplate?.cau_hinh_trang?.kho_giay || 'A4' }} {{ activePrintTemplate?.cau_hinh_trang?.huong_giay === 'portrait' ? 'Dọc' : 'Ngang' }})</span>
+          </div>
+          <div class="m-grab-head-stack">
+            <span class="m-grab-eyebrow">Khổ {{ activePrintTemplate?.cau_hinh_trang?.kho_giay || 'A4' }} • {{ activePrintTemplate?.cau_hinh_trang?.huong_giay === 'portrait' ? 'Dọc' : 'Ngang' }}</span>
+            <span class="m-grab-title">Xem trước bản in</span>
           </div>
 
           <div class="export-zoom-head-controls" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
@@ -20676,9 +20818,13 @@ const visibleLeadingFooterColSpan = computed(() => {
       <div class="modal-card picker-modal-card" style="width: 680px; max-width: 94vw; height: 74vh; max-height: 680px; border-radius: 14px; display: flex; flex-direction: column; padding: 0; overflow: hidden;">
         <!-- HEADER -->
         <div class="modal-head" style="padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); position: relative; flex-shrink: 0;">
-          <h3 style="margin: 0; font-size: 15px; font-weight: 800; color: #ffffff !important; letter-spacing: 0.4px; text-transform: uppercase;">
+          <h3 class="dt-only-head" style="margin: 0; font-size: 15px; font-weight: 800; color: #ffffff !important; letter-spacing: 0.4px; text-transform: uppercase;">
             {{ customerPickerTitle }}
           </h3>
+          <div class="m-grab-head-stack">
+            <span class="m-grab-eyebrow">Danh bạ đối tác</span>
+            <span class="m-grab-title">{{ customerPickerColumnLabel ? 'Chọn ' + customerPickerColumnLabel : 'Chọn khách hàng' }}</span>
+          </div>
           <button class="x" @click="showCustomerPickerModal = false">✕</button>
         </div>
 
@@ -20783,9 +20929,13 @@ const visibleLeadingFooterColSpan = computed(() => {
       <div class="modal-card picker-modal-card" style="width: 680px; max-width: 94vw; height: 74vh; max-height: 680px; border-radius: 14px; display: flex; flex-direction: column; padding: 0; overflow: hidden;">
         <!-- HEADER -->
         <div class="modal-head" style="padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); position: relative; flex-shrink: 0;">
-          <h3 style="margin: 0; font-size: 15px; font-weight: 800; color: #ffffff !important; letter-spacing: 0.4px; text-transform: uppercase;">
+          <h3 class="dt-only-head" style="margin: 0; font-size: 15px; font-weight: 800; color: #ffffff !important; letter-spacing: 0.4px; text-transform: uppercase;">
             {{ productPickerTitle }}
           </h3>
+          <div class="m-grab-head-stack">
+            <span class="m-grab-eyebrow">Kho sản phẩm hệ thống</span>
+            <span class="m-grab-title">{{ productPickerColumnLabel ? 'Chọn ' + productPickerColumnLabel : 'Chọn sản phẩm' }}</span>
+          </div>
           <button class="x" @click="showProductPickerModal = false">✕</button>
         </div>
 
@@ -20886,12 +21036,16 @@ const visibleLeadingFooterColSpan = computed(() => {
         
         <!-- Header -->
         <div class="modal-head" :style="{ background: 'linear-gradient(135deg, ' + (adjustPriceModal.isNormalEdit ? 'rgba(59,130,246,0.12)' : 'rgba(16,185,129,0.12)') + ' 0%, rgba(15,23,42,0.95) 100%)', padding: '20px 24px', borderBottom: '1px solid ' + (adjustPriceModal.isNormalEdit ? 'rgba(59,130,246,0.15)' : 'rgba(16,185,129,0.15)'), display: 'flex', justifyContent: 'space-between', alignItems: 'center' }">
-          <h3 style="color: #fff; font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 12px; margin: 0; letter-spacing: 0.3px;">
+          <h3 class="dt-only-head" style="color: #fff; font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 12px; margin: 0; letter-spacing: 0.3px;">
             <div :style="{ width: '36px', height: '36px', borderRadius: '10px', background: adjustPriceModal.isNormalEdit ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 15px ' + (adjustPriceModal.isNormalEdit ? 'rgba(59,130,246,0.4)' : 'rgba(16,185,129,0.4)') }">
               <i :class="adjustPriceModal.isNormalEdit ? 'ri-edit-line' : 'ri-arrow-up-down-fill'" style="color: #fff; font-size: 18px;"></i>
             </div>
             {{ adjustPriceModal.isNormalEdit ? 'Sửa Thường' : 'Điều Chỉnh Giá' }}
           </h3>
+          <div class="m-grab-head-stack">
+            <span class="m-grab-eyebrow">{{ adjustPriceModal.targetName || (adjustPriceModal.mode === 'all' ? 'Áp dụng toàn bộ báo giá' : 'Cập nhật đơn giá') }}</span>
+            <span class="m-grab-title">{{ adjustPriceModal.isNormalEdit ? 'Sửa giá thực tế' : 'Điều chỉnh giá bán' }}</span>
+          </div>
           <button class="x" @click="adjustPriceModal.show = false" style="background: rgba(255,255,255,0.05); color: #94a3b8; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; font-size: 16px;">✕</button>
         </div>
         
@@ -21285,7 +21439,7 @@ const visibleLeadingFooterColSpan = computed(() => {
 
   <!-- MODAL XÁC NHẬN LƯU KHÁCH TRỐNG -->
   <div v-if="showConfirmSaveEmptyCustomer" class="modal modal-overlay" style="z-index: 10010; display: flex; align-items: center; justify-content: center;" @click.self="showConfirmSaveEmptyCustomer = false">
-    <div class="modal-card" style="width: min(400px, 90vw); text-align: center; padding: 24px; border-radius: 12px; background: #1e293b; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.3);">
+    <div class="modal-card confirm-empty-cust-card" style="width: min(400px, 90vw); text-align: center; padding: 24px; border-radius: 12px; background: #1e293b; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.3);">
       <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(245, 158, 11, 0.1); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
         <i class="lucide-alert-triangle" style="width: 32px; height: 32px; color: #f59e0b;"></i>
       </div>
@@ -21522,12 +21676,16 @@ const visibleLeadingFooterColSpan = computed(() => {
           class="modal-head modal-head-themed"
           style="justify-content: center; position: relative; padding: 14px 24px; border-bottom: none; border-radius: 0; flex-shrink: 0;"
         >
-          <div style="color: #ffffff; text-transform: uppercase; font-weight: 900; font-size: 16px; letter-spacing: 0.5px;">
+          <div class="dt-only-head" style="color: #ffffff; text-transform: uppercase; font-weight: 900; font-size: 16px; letter-spacing: 0.5px;">
             {{
               importConfirmMode === 'mua_hang'
                 ? 'KIỂM TRA HÀNG HÓA (FILE MUA HÀNG) & XÁC NHẬN LƯU DATABASE'
                 : 'KIỂM TRA FILE BÁO GIÁ (KHÁCH HÀNG & HÀNG HÓA) & XÁC NHẬN LƯU DATABASE'
             }}
+          </div>
+          <div class="m-grab-head-stack">
+            <span class="m-grab-eyebrow">{{ importConfirmMode === 'mua_hang' ? 'Đối chiếu file mua hàng' : 'Đối chiếu file báo giá' }}</span>
+            <span class="m-grab-title">Kiểm tra &amp; Lưu dữ liệu</span>
           </div>
           <button
             class="x"
@@ -22983,6 +23141,9 @@ const visibleLeadingFooterColSpan = computed(() => {
   margin-bottom: 8px;
   flex-shrink: 0;
 }
+.product-catalog-sticky-head {
+  display: contents;
+}
 .sidebar-head h3 {
   margin: 0;
   font-size: 14px;
@@ -24402,7 +24563,7 @@ td.dvt { font-family: inherit; white-space: normal; }
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   display: flex; align-items: center; justify-content: center;
-  z-index: 9999; padding: 20px;
+  z-index: 10002; padding: 20px;
   animation: fadeIn .2s ease forwards;
 }
 @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
@@ -26052,7 +26213,9 @@ td.dvt { font-family: inherit; white-space: normal; }
 .export-multi-head-title .mb-lbl,
 .export-zoom-title-wrap .mb-lbl,
 .pv-mode-toggle-btn .mb-lbl,
-.pv-reset-btn .mb-lbl {
+.pv-reset-btn .mb-lbl,
+.m-grab-head-stack,
+.m-grab-back-only {
   display: none !important;
 }
 
@@ -26094,7 +26257,7 @@ td.dvt { font-family: inherit; white-space: normal; }
     filter: none !important;
   }
 
-  /* LOGIC 3 MÀN HÌNH: SCREEN 1 (KHO SẢN PHẨM), SCREEN 2 (BÁO GIÁ), SCREEN 3 (TỔNG KẾT) */
+  /* LOGIC 3 MÀN HÌNH: SCREEN 1 (KHO SẢN PHẨM), SCREEN 2 (BÁO GIÁ) & SCREEN 3 (TỔNG KẾT CUỘN MƯỢT LIỀN MẠCH) */
   .main-grid.mobile-step-1 .quote-center {
     display: none !important;
   }
@@ -26113,20 +26276,23 @@ td.dvt { font-family: inherit; white-space: normal; }
   .main-grid:not(.mobile-step-1) .quote-center {
     display: block !important;
     width: 100% !important;
-    height: auto !important;
-    min-height: 100dvh !important;
-    overflow: visible !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    overflow: hidden !important;
   }
   .main-grid:not(.mobile-step-1) .quote-table-container {
     display: block !important;
     flex: none !important;
     width: 100% !important;
-    height: auto !important;
-    min-height: 100dvh !important;
-    overflow: visible !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-y: contain !important;
   }
 
-  /* Screen 2: Chỉ hiện danh sách sản phẩm trong báo giá, ẩn phần Tổng kết */
+  /* Screen 2: Trang Báo giá riêng biệt (Chỉ hiện danh sách hàng hóa trong báo giá, ẩn phần Tổng kết) */
   .main-grid.mobile-step-2 .quote-center .quote-table-wrap {
     display: block !important;
     flex: none !important;
@@ -26139,7 +26305,7 @@ td.dvt { font-family: inherit; white-space: normal; }
     display: none !important;
   }
 
-  /* Screen 3: Trang Tổng Kết (Chỉ hiện Chiết khấu + Tài chính, ẩn danh sách sản phẩm) */
+  /* Screen 3: Trang Tổng kết riêng biệt (Chỉ hiện Chiết khấu + Tài chính, ẩn danh sách hàng hóa) */
   .main-grid.mobile-step-3 .quote-center .quote-table-wrap {
     display: none !important;
   }
@@ -26156,6 +26322,7 @@ td.dvt { font-family: inherit; white-space: normal; }
   }
 
   .page {
+    --mobile-modal-head-top: max(calc(env(safe-area-inset-top, 0px) - 2px), 36px);
     padding: 0 !important;
     margin: 0 !important;
     width: 100% !important;
@@ -26170,6 +26337,7 @@ td.dvt { font-family: inherit; white-space: normal; }
     width: 100% !important;
     max-width: 100% !important;
     display: block !important;
+    overflow: visible !important;
     box-sizing: border-box !important;
   }
 
@@ -26190,7 +26358,35 @@ td.dvt { font-family: inherit; white-space: normal; }
     padding: 12px 12px 156px 12px !important;
     background: transparent !important;
     overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-y: contain !important;
     border: none !important;
+    box-shadow: none !important;
+  }
+
+  .product-catalog-sticky-head {
+    display: block !important;
+    position: sticky !important;
+    top: -12px !important;
+    z-index: 45 !important;
+    margin: -12px -12px 10px -12px !important;
+    padding: 12px 12px 10px 12px !important;
+    background: rgba(11, 17, 24, 0.9) !important;
+    border-bottom: 1px solid rgba(51, 65, 85, 0.45) !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32) !important;
+    backdrop-filter: blur(18px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(180%) !important;
+    transition:
+      transform 0.36s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.25s ease,
+      box-shadow 0.25s ease !important;
+    will-change: transform, opacity;
+  }
+
+  .product-catalog-sticky-head.is-header-hidden {
+    transform: translateY(-112%) !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
     box-shadow: none !important;
   }
 
@@ -26202,15 +26398,15 @@ td.dvt { font-family: inherit; white-space: normal; }
     margin-bottom: 8px !important;
   }
 
-  .sidebar-left > .top-bar {
-    position: sticky !important;
-    top: -12px !important;
-    z-index: 40 !important;
-    padding: 8px 0 10px 0 !important;
-    margin-bottom: 6px !important;
-    background: rgba(11, 17, 24, 0.92) !important;
-    backdrop-filter: blur(12px) !important;
-    -webkit-backdrop-filter: blur(12px) !important;
+  .sidebar-left .top-bar {
+    position: relative !important;
+    top: 0 !important;
+    z-index: 2 !important;
+    padding: 0 !important;
+    margin-bottom: 0 !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 
   .product-grid {
@@ -26289,7 +26485,7 @@ td.dvt { font-family: inherit; white-space: normal; }
     letter-spacing: -0.2px !important;
   }
 
-  /* DOCKED BOTTOM BAR LIỀN TRÊN BOTTOM NAVIGATION (MÀN HÌNH 1, 2 & 3) */
+  /* FLOATING GLASS BAR NỔI TRÊN PILL BOTTOM NAVIGATION (MÀN HÌNH 1, 2 & 3) */
   .mobile-screen1-cart-bar,
   .mobile-screen2-action-bar {
     display: flex !important;
@@ -26297,21 +26493,32 @@ td.dvt { font-family: inherit; white-space: normal; }
     justify-content: space-between !important;
     gap: 10px !important;
     position: fixed !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: calc(56px + env(safe-area-inset-bottom, 0px)) !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    margin: 0 !important;
-    border-radius: 0 !important;
+    left: 12px !important;
+    right: 12px !important;
+    bottom: calc(74px + env(safe-area-inset-bottom, 0px)) !important;
+    width: auto !important;
+    max-width: calc(100vw - 24px) !important;
+    margin: 0 auto !important;
+    border-radius: 20px !important;
     z-index: 950 !important;
-    padding: 9px 14px !important;
-    background: #0f172a !important;
-    border: none !important;
-    border-top: 1px solid rgba(56, 189, 248, 0.32) !important;
-    box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.4) !important;
-    backdrop-filter: blur(16px) !important;
-    -webkit-backdrop-filter: blur(16px) !important;
+    padding: 8px 12px !important;
+    background: rgba(15, 23, 42, 0.78) !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    border-top: 1px solid rgba(56, 189, 248, 0.38) !important;
+    box-shadow:
+      0 12px 30px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 rgba(255, 255, 255, 0.16) !important;
+    backdrop-filter: blur(22px) saturate(185%) !important;
+    -webkit-backdrop-filter: blur(22px) saturate(185%) !important;
+    transition:
+      bottom 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.3s ease !important;
+  }
+
+  .app-layout.mobile-nav-hidden .mobile-screen1-cart-bar,
+  .app-layout.mobile-nav-hidden .mobile-screen2-action-bar {
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   @media (min-width: 769px) and (max-width: 1100px) {
@@ -26321,146 +26528,217 @@ td.dvt { font-family: inherit; white-space: normal; }
       left: 72px !important;
       right: 0 !important;
       width: auto !important;
+      max-width: none !important;
+      border-radius: 0 !important;
     }
   }
 
-  .m-cart-summary {
+  .m-dock-left {
     display: flex !important;
     align-items: center !important;
-    gap: 10px !important;
-    flex: 1 !important;
+    gap: 8px !important;
+    flex: 1 1 auto !important;
     min-width: 0 !important;
-    cursor: pointer !important;
   }
 
-  .m-cart-icon-wrap {
-    position: relative !important;
-    width: 38px !important;
-    height: 38px !important;
-    border-radius: 10px !important;
+  .m-dock-back-btn {
+    width: 32px !important;
+    min-width: 32px !important;
+    height: 32px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 999px !important;
     background: rgba(30, 41, 59, 0.9) !important;
-    border: 1px solid rgba(71, 85, 105, 0.6) !important;
-    color: #94a3b8 !important;
-    display: flex !important;
+    border: 1px solid rgba(148, 163, 184, 0.35) !important;
+    color: #e2e8f0 !important;
+    display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
     flex-shrink: 0 !important;
+    cursor: pointer !important;
+    box-shadow: none !important;
+    transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1) !important;
   }
 
-  .m-cart-icon-wrap.has-items {
-    background: rgba(16, 185, 129, 0.16) !important;
-    border-color: rgba(16, 185, 129, 0.45) !important;
-    color: #34d399 !important;
+  .m-dock-back-btn:not(.is-disabled):active {
+    transform: scale(0.9) !important;
   }
 
-  .m-cart-count-badge {
-    position: absolute !important;
-    top: -5px !important;
-    right: -5px !important;
-    min-width: 18px !important;
-    height: 18px !important;
-    padding: 0 4px !important;
-    border-radius: 999px !important;
-    background: #ef4444 !important;
-    color: #ffffff !important;
-    font-size: 10px !important;
-    font-weight: 800 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    border: 2px solid #0f172a !important;
+  .m-dock-back-btn.is-disabled {
+    opacity: 0.35 !important;
+    cursor: default !important;
+    pointer-events: none !important;
   }
 
   .m-cart-text-col {
     display: flex !important;
     flex-direction: column !important;
     min-width: 0 !important;
+    cursor: pointer !important;
   }
 
   .m-cart-sub {
-    font-size: 10.5px !important;
+    font-size: 10px !important;
     font-weight: 600 !important;
     color: #94a3b8 !important;
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
+    line-height: 1.2 !important;
   }
 
   .m-cart-total {
-    font-size: 14.5px !important;
+    font-size: 13px !important;
     font-weight: 800 !important;
     color: #34d399 !important;
-    line-height: 1.25 !important;
+    line-height: 1.2 !important;
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
   }
 
   .m-cart-empty-hint {
-    font-size: 12px !important;
+    font-size: 11.5px !important;
     font-weight: 700 !important;
     color: #e2e8f0 !important;
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
+    line-height: 1.2 !important;
   }
 
-  .m-cart-btn-group {
+  /* CỤM 4 NÚT QUY TRÌNH BÊN PHẢI DOCK (.m-dock-steps) */
+  .m-dock-steps {
     display: flex !important;
     align-items: center !important;
-    gap: 6px !important;
+    gap: 3px !important;
     flex-shrink: 0 !important;
   }
 
-  .m-cart-util-btn {
-    width: 38px !important;
-    min-width: 38px !important;
-    height: 38px !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    border-radius: 10px !important;
-    background: rgba(30, 41, 59, 0.9) !important;
-    border: 1px solid rgba(56, 189, 248, 0.35) !important;
-    color: #38bdf8 !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    cursor: pointer !important;
-    box-shadow: none !important;
+  .m-step-arrow {
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    color: rgba(148, 163, 184, 0.55) !important;
+    user-select: none !important;
+    line-height: 1 !important;
+    margin: 0 1px !important;
   }
 
-  .m-cart-cta-btn {
-    height: 38px !important;
-    padding: 0 14px !important;
+  .m-step-pill {
+    position: relative !important;
+    height: 32px !important;
+    min-width: 28px !important;
+    width: auto !important;
+    padding: 0 8px !important;
     margin: 0 !important;
-    border-radius: 10px !important;
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-    border: none !important;
-    color: #ffffff !important;
-    font-size: 12.5px !important;
+    border-radius: 999px !important;
+    background: rgba(30, 41, 59, 0.85) !important;
+    border: 1px solid rgba(148, 163, 184, 0.25) !important;
+    color: #94a3b8 !important;
+    font-size: 11.5px !important;
     font-weight: 800 !important;
     display: inline-flex !important;
     align-items: center !important;
-    gap: 6px !important;
-    white-space: nowrap !important;
+    justify-content: center !important;
+    gap: 0 !important;
     cursor: pointer !important;
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35) !important;
-    width: auto !important;
+    box-shadow: none !important;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      background 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+      color 0.25s ease,
+      padding 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 0.3s ease,
+      box-shadow 0.32s cubic-bezier(0.22, 1, 0.36, 1) !important;
+  }
+
+  .m-step-pill:active {
+    transform: scale(0.91) !important;
+  }
+
+  .m-step-pill.is-done {
+    background: rgba(16, 185, 129, 0.14) !important;
+    border-color: rgba(16, 185, 129, 0.42) !important;
+    color: #34d399 !important;
+  }
+
+  .m-step-pill.is-active {
+    padding: 0 11px !important;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    border-color: rgba(110, 231, 183, 0.65) !important;
+    color: #ffffff !important;
+    box-shadow:
+      0 4px 12px rgba(16, 185, 129, 0.38),
+      inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+  }
+
+  .m-step-pill.m-step-save.is-active {
+    background: linear-gradient(135deg, #2563eb 0%, #059669 100%) !important;
+    border-color: rgba(147, 197, 253, 0.65) !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.38) !important;
+  }
+
+  .m-step-num {
+    font-size: 11.5px !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+  }
+
+  .m-step-label {
+    display: inline-block !important;
+    max-width: 0 !important;
+    opacity: 0 !important;
+    overflow: hidden !important;
+    white-space: nowrap !important;
+    font-size: 11.5px !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    transition:
+      max-width 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.22s ease !important;
+  }
+
+  .m-step-pill.is-active .m-step-label {
+    max-width: 85px !important;
+    opacity: 1 !important;
+  }
+
+  .m-step-mini-badge {
+    position: absolute !important;
+    top: -5px !important;
+    right: -4px !important;
+    min-width: 15px !important;
+    height: 15px !important;
+    padding: 0 3px !important;
+    border-radius: 999px !important;
+    background: #ef4444 !important;
+    color: #ffffff !important;
+    font-size: 9px !important;
+    font-weight: 800 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: 1.5px solid #0f172a !important;
+    line-height: 1 !important;
   }
 
   /* ═══════════════════════════════════════════════════
-     MÀN HÌNH 2: TỜ BÁO GIÁ TỔNG HỢP (.quote-center)
+     MÀN HÌNH 2 & 3: TỜ BÁO GIÁ & TỔNG KẾT (.quote-center)
      ═══════════════════════════════════════════════════ */
   .quote-table-container {
     display: block !important;
     flex: none !important;
     width: 100% !important;
-    height: auto !important;
-    min-height: 100dvh !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
     border: none !important;
     background: transparent !important;
-    overflow: visible !important;
-    padding: 0 0 156px 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-y: contain !important;
+    padding: 0 0 180px 0 !important;
   }
 
   .quote-table-container,
@@ -26483,24 +26761,7 @@ td.dvt { font-family: inherit; white-space: normal; }
   }
 
   .mobile-back-to-store-btn {
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 4px !important;
-    height: 32px !important;
-    padding: 0 10px !important;
-    margin: 0 !important;
-    width: auto !important;
-    min-width: max-content !important;
-    border-radius: 8px !important;
-    background: rgba(16, 185, 129, 0.14) !important;
-    border: 1px solid rgba(16, 185, 129, 0.45) !important;
-    color: #34d399 !important;
-    font-size: 12px !important;
-    font-weight: 800 !important;
-    flex-shrink: 0 !important;
-    cursor: pointer !important;
-    box-shadow: none !important;
+    display: none !important;
   }
 
   .quote-tabs-scroll {
@@ -27394,6 +27655,7 @@ td.dvt { font-family: inherit; white-space: normal; }
     flex-direction: column !important;
     height: 100dvh !important;
     max-height: 100dvh !important;
+    border-radius: 0 !important;
     padding: 0 !important;
     overflow: hidden !important;
   }
@@ -27639,8 +27901,14 @@ td.dvt { font-family: inherit; white-space: normal; }
     color: #2563eb !important;
   }
 
-  .page.theme-light-blue .sidebar-left > .top-bar {
-    background: rgba(238, 244, 251, 0.94) !important;
+  .page.theme-light-blue .product-catalog-sticky-head {
+    background: rgba(238, 244, 251, 0.92) !important;
+    border-bottom: 1px solid #cbd5e1 !important;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08) !important;
+  }
+
+  .page.theme-light-blue .sidebar-left .top-bar {
+    background: transparent !important;
   }
 
   .page.theme-light-blue .card-code-tag {
@@ -27657,26 +27925,20 @@ td.dvt { font-family: inherit; white-space: normal; }
 
   .page.theme-light-blue .mobile-screen1-cart-bar,
   .page.theme-light-blue .mobile-screen2-action-bar {
-    background: #ffffff !important;
-    border: none !important;
-    border-top: 1px solid #93c5fd !important;
-    box-shadow: 0 -6px 20px rgba(15, 23, 42, 0.1) !important;
+    background: rgba(255, 255, 255, 0.85) !important;
+    border: 1px solid rgba(147, 197, 253, 0.65) !important;
+    border-top: 1px solid #60a5fa !important;
+    box-shadow:
+      0 12px 28px rgba(15, 23, 42, 0.14),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+    backdrop-filter: blur(22px) saturate(185%) !important;
+    -webkit-backdrop-filter: blur(22px) saturate(185%) !important;
   }
 
-  .page.theme-light-blue .m-cart-icon-wrap {
+  .page.theme-light-blue .m-dock-back-btn {
     background: #f1f5f9 !important;
     border-color: #cbd5e1 !important;
-    color: #475569 !important;
-  }
-
-  .page.theme-light-blue .m-cart-icon-wrap.has-items {
-    background: #eff6ff !important;
-    border-color: #93c5fd !important;
-    color: #2563eb !important;
-  }
-
-  .page.theme-light-blue .m-cart-count-badge {
-    border-color: #ffffff !important;
+    color: #1e293b !important;
   }
 
   .page.theme-light-blue .m-cart-sub {
@@ -27691,15 +27953,31 @@ td.dvt { font-family: inherit; white-space: normal; }
     color: #0f172a !important;
   }
 
-  .page.theme-light-blue .m-cart-util-btn {
-    background: #f8fafc !important;
+  .page.theme-light-blue .m-step-arrow {
+    color: #94a3b8 !important;
+  }
+
+  .page.theme-light-blue .m-step-pill {
+    background: #f1f5f9 !important;
     border-color: #cbd5e1 !important;
+    color: #475569 !important;
+  }
+
+  .page.theme-light-blue .m-step-pill.is-done {
+    background: #eff6ff !important;
+    border-color: #93c5fd !important;
     color: #2563eb !important;
   }
 
-  .page.theme-light-blue .m-cart-cta-btn {
+  .page.theme-light-blue .m-step-pill.is-active {
     background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+    border-color: #60a5fa !important;
+    color: #ffffff !important;
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3) !important;
+  }
+
+  .page.theme-light-blue .m-step-mini-badge {
+    border-color: #ffffff !important;
   }
 
   .page.theme-light-blue .mobile-back-to-store-btn {
@@ -27989,12 +28267,12 @@ td.dvt { font-family: inherit; white-space: normal; }
   .modal-card .export-vip-close,
   .modal-card .modal-close,
   .history-modal-header .x {
-    width: 32px !important;
-    min-width: 32px !important;
-    max-width: 32px !important;
-    height: 32px !important;
-    min-height: 32px !important;
-    max-height: 32px !important;
+    width: 34px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    max-height: 34px !important;
     margin-bottom: 0 !important;
     padding: 0 !important;
     flex-shrink: 0 !important;
@@ -28025,12 +28303,12 @@ td.dvt { font-family: inherit; white-space: normal; }
     box-shadow: none !important;
   }
 
-  .modal-card:not(.save-export-cust-modal) > div[style*="overflow-y: auto"] {
+  .modal-card:not(.save-export-cust-modal):not(.modal-fullscreen-card) > div[style*="overflow-y: auto"] {
     max-height: none !important;
     overflow: visible !important;
   }
 
-  .modal-card:not(.save-export-cust-modal) .save-modal-actions {
+  .modal-card:not(.save-export-cust-modal):not(.modal-fullscreen-card) .save-modal-actions {
     position: sticky !important;
     bottom: calc(-16px - env(safe-area-inset-bottom, 24px)) !important;
     background: #0f172a !important;
@@ -28041,15 +28319,32 @@ td.dvt { font-family: inherit; white-space: normal; }
     border-top: 1px solid rgba(255,255,255,0.1) !important;
   }
 
-  .modal, .vip-modal-overlay, .load-invoice-modal-overlay, .modal-overlay {
+  /* FULLSCREEN MODAL TRÊN ĐIỆN THOẠI (NỀN HEADER TRÀN LÊN MÉP TRÊN NHƯ GRAB) */
+  .modal,
+  .vip-modal-overlay,
+  .load-invoice-modal-overlay,
+  .modal-overlay,
+  .modal.modal-fullscreen-overlay {
     padding: 0 !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    box-sizing: border-box !important;
   }
 
-  .modal-card, .vip-modal-card, .load-invoice-modal, .modal-content {
+  .modal-card,
+  .vip-modal-card,
+  .load-invoice-modal,
+  .modal-content {
     width: 100% !important;
     max-width: 100% !important;
-    height: 100% !important;
-    max-height: 100% !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
     margin: 0 !important;
     padding: 16px !important;
     padding-bottom: calc(16px + env(safe-area-inset-bottom, 24px)) !important;
@@ -28057,6 +28352,7 @@ td.dvt { font-family: inherit; white-space: normal; }
     border-radius: 0 !important;
     background: #0f172a !important;
     border: none !important;
+    box-shadow: none !important;
     animation: slideInLeftMobile 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) forwards !important;
     overflow-y: auto !important;
   }
@@ -28101,6 +28397,7 @@ td.dvt { font-family: inherit; white-space: normal; }
     flex-direction: column !important;
     height: 100dvh !important;
     max-height: 100dvh !important;
+    border-radius: 0 !important;
     padding: 0 !important;
     overflow: hidden !important;
   }
@@ -28907,6 +29204,10 @@ td.dvt { font-family: inherit; white-space: normal; }
    ═══════════════════════════════════════════════════════════════════════════ */
 .modal.modal-fullscreen-overlay {
   padding: 0 !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
 }
 
 .modal-card.modal-fullscreen-card,
@@ -28917,6 +29218,8 @@ td.dvt { font-family: inherit; white-space: normal; }
   max-width: 100vw !important;
   height: 100vh !important;
   max-height: 100vh !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
   margin: 0 !important;
   padding: 0 !important;
   border-radius: 0 !important;
@@ -28924,6 +29227,50 @@ td.dvt { font-family: inherit; white-space: normal; }
   display: flex !important;
   flex-direction: column !important;
   overflow: hidden !important;
+}
+
+@media (max-width: 1100px) {
+  .modal.modal-fullscreen-overlay {
+    padding: 0 !important;
+    align-items: center !important;
+    box-sizing: border-box !important;
+  }
+
+  .modal-card.modal-fullscreen-card,
+  .modal .modal-card.export-vip-modal.modal-fullscreen-card,
+  .modal .modal-card.load-invoice-modal.modal-fullscreen-card,
+  .modal .modal-card.history-modal-card.modal-fullscreen-card {
+    height: 100vh !important;
+    max-height: 100vh !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    border-top: none !important;
+    box-shadow: none !important;
+  }
+
+  .modal-card.modal-fullscreen-card > div[style*="overflow-y: auto"],
+  .modal-card.modal-fullscreen-card .fullscreen-modal-grid-3col,
+  .modal-card.modal-fullscreen-card .fullscreen-modal-grid-4col,
+  .modal-card.modal-fullscreen-card .modal-body,
+  .modal-card.modal-fullscreen-card .load-invoice-grid,
+  .modal-card.modal-fullscreen-card .history-table-wrap {
+    flex: 1 1 0% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .modal-card.modal-fullscreen-card > .modal-actions,
+  .modal-card.modal-fullscreen-card .fullscreen-modal-footer,
+  .modal-card.modal-fullscreen-card .history-modal-footer,
+  .modal-card.modal-fullscreen-card .cust-modal-footer,
+  .modal-card.modal-fullscreen-card .more-actions-footer {
+    flex-shrink: 0 !important;
+    margin-top: 0 !important;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+  }
 }
 
 .export-vip-modal.modal-fullscreen-card .export-vip-head {
@@ -28957,6 +29304,7 @@ td.dvt { font-family: inherit; white-space: normal; }
     flex-direction: column !important;
     height: 100dvh !important;
     max-height: 100dvh !important;
+    border-radius: 0 !important;
     overflow: hidden !important;
   }
 
@@ -31946,6 +32294,7 @@ td.dvt { font-family: inherit; white-space: normal; }
     max-width: 100vw !important;
     height: 100dvh !important;
     max-height: 100dvh !important;
+    border-radius: 0 !important;
     overflow: hidden !important;
   }
 
@@ -32387,5 +32736,387 @@ td.dvt { font-family: inherit; white-space: normal; }
   .export-zoom-preview-modal .export-zoom-footer .export-zoom-back-btn { order: 4 !important; }
   .export-zoom-preview-modal .export-zoom-footer .fmt-export-html { order: 5 !important; }
   .export-zoom-preview-modal .export-zoom-footer .fmt-export-pdf { order: 6 !important; }
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     HỆ THỐNG "GRAB APP BAR" ĐỒNG BỘ CHO TOÀN BỘ MODAL TRÊN MOBILE (<= 1100px)
+     1. Nền Soft Ambient Wash tràn sát mép trên (phía sau giờ & pin, không hở viền đen)
+     2. Nút Quay lại [ ← ] tròn kính mờ bên trái (thay cục nút ✕ đỏ tươi #ef4444)
+     3. Phân cấp chữ 2 tầng (Eyebrow 11px + Title 16.5px mềm mại, không đè chữ)
+     4. Khung thân nội dung bo góc nhẹ 18px ôm dưới Header (Sheet-in-Header)
+     ═══════════════════════════════════════════════════════════════════════════ */
+  .dt-only-head,
+  .export-vip-head-glow,
+  .history-modal-icon-wrap,
+  .export-zoom-preview-modal .export-zoom-head-controls > button.x {
+    display: none !important;
+  }
+
+  .modal .modal-card.more-actions-modal,
+  .modal .modal-card.picker-modal-card,
+  .modal .modal-content,
+  .modal-overlay .modal-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+
+  .modal .modal-card.more-actions-modal .more-actions-body,
+  .modal .modal-content > .modal-body,
+  .modal-overlay .modal-content > .modal-body {
+    flex: 1 1 0% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* Hộp xác nhận nhỏ 2 nút giữ dạng dialog gọn giữa màn hình */
+  .modal .modal-card.confirm-empty-cust-card {
+    width: min(360px, 90vw) !important;
+    height: auto !important;
+    max-height: 85dvh !important;
+    padding: 24px 20px !important;
+    border-radius: 18px !important;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55) !important;
+  }
+
+  /* Các modal đơn giản có padding: 16px trên .modal-card: kéo .modal-head tràn sát mép trên/trái/phải */
+  .modal-card:not(.save-export-cust-modal):not(.modal-fullscreen-card):not(.picker-modal-card):not(.more-actions-modal):not(.export-data-modal):not(.export-multi-format-modal):not(.export-zoom-preview-modal) > .modal-head,
+  .modal-card:not(.save-export-cust-modal):not(.modal-fullscreen-card):not(.picker-modal-card):not(.more-actions-modal):not(.export-data-modal):not(.export-multi-format-modal):not(.export-zoom-preview-modal) > .modal-header {
+    margin: -16px -16px 8px -16px !important;
+  }
+
+  /* Khung Header Grab App Bar (Dark Mode Default: Soft Aurora Slate Wash) */
+  .modal-card > .modal-head,
+  .modal-card > .modal-head-themed,
+  .save-export-cust-modal .modal-head-themed,
+  .export-multi-format-modal .export-multi-head,
+  .export-zoom-preview-modal .export-zoom-head,
+  .more-actions-modal .more-actions-head,
+  .export-vip-modal .export-vip-head,
+  .history-modal-card .history-modal-header,
+  .modal-content > .modal-header,
+  .modal-card > .modal-header {
+    position: relative !important;
+    padding-top: var(--mobile-modal-head-top, max(calc(env(safe-area-inset-top, 0px) - 2px), 36px)) !important;
+    padding-bottom: 24px !important;
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+    border-bottom: none !important;
+    border-radius: 0 !important;
+    background:
+      radial-gradient(125% 135% at 12% 0%, rgba(16, 185, 129, 0.22) 0%, rgba(56, 189, 248, 0.14) 48%, rgba(11, 22, 38, 0) 85%),
+      linear-gradient(180deg, #091322 0%, #102038 100%) !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 12px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Gờ bo cong 18px của thân nội dung ôm nhẹ dưới Header (Sheet-in-Header giống Grab) */
+  .modal-card > .modal-head::after,
+  .modal-card > .modal-head-themed::after,
+  .save-export-cust-modal .modal-head-themed::after,
+  .export-multi-format-modal .export-multi-head::after,
+  .export-zoom-preview-modal .export-zoom-head::after,
+  .more-actions-modal .more-actions-head::after,
+  .export-vip-modal .export-vip-head::after,
+  .history-modal-card .history-modal-header::after,
+  .modal-content > .modal-header::after,
+  .modal-card > .modal-header::after {
+    content: '' !important;
+    position: absolute !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: -1px !important;
+    height: 14px !important;
+    border-radius: 18px 18px 0 0 !important;
+    background: #0f172a !important;
+    border-top: 1px solid rgba(148, 163, 184, 0.16) !important;
+    pointer-events: none !important;
+    z-index: 2 !important;
+  }
+
+  /* Cụm chữ 2 tầng phân cấp kiểu Grab (Eyebrow 11px + Title 16.5px) */
+  .m-grab-head-stack {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    gap: 2px !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    text-align: left !important;
+  }
+
+  .m-grab-eyebrow {
+    display: block !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    line-height: 1.25 !important;
+    color: rgba(203, 213, 225, 0.78) !important;
+    -webkit-text-fill-color: rgba(203, 213, 225, 0.78) !important;
+    letter-spacing: 0.1px !important;
+    text-transform: none !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .m-grab-title {
+    display: block !important;
+    font-size: 16.5px !important;
+    font-weight: 700 !important;
+    line-height: 1.25 !important;
+    color: #f8fafc !important;
+    -webkit-text-fill-color: #f8fafc !important;
+    letter-spacing: -0.2px !important;
+    text-transform: none !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  /* Chuẩn hóa Modal Lịch sử và các Modal nhỏ dùng thẻ h3 về cùng kiểu chữ 2 tầng mềm mại */
+  .history-modal-header-left {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+  }
+  .history-modal-header-left > div {
+    display: flex !important;
+    flex-direction: column-reverse !important;
+    gap: 2px !important;
+    min-width: 0 !important;
+  }
+  .history-modal-subtitle {
+    margin: 0 !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    color: rgba(203, 213, 225, 0.78) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  .history-modal-title,
+  .modal-card > .modal-head > h3:not(.dt-only-head),
+  .modal-content > .modal-header > h3:not(.dt-only-head),
+  .modal-card > .modal-head > div:not(.dt-only-head):not(.m-grab-head-stack):first-child {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    line-height: 1.3 !important;
+    letter-spacing: -0.2px !important;
+    text-transform: none !important;
+    text-align: left !important;
+    color: #f8fafc !important;
+    -webkit-text-fill-color: #f8fafc !important;
+    background: none !important;
+    -webkit-background-clip: border-box !important;
+  }
+
+  /* Nút Quay lại [ ← ] tròn kính mờ đặt bên trái (order: -1) chuẩn Grab, bỏ hoàn toàn nền đỏ #ef4444 */
+  .m-grab-back-only,
+  .modal-card > .modal-head > button.x,
+  .modal-card > .modal-head > .x,
+  .modal-card > .modal-head-themed > button.x,
+  .save-export-cust-modal .modal-head-themed > button.x,
+  .export-multi-format-modal .export-multi-head > button.x,
+  .more-actions-modal .more-actions-head > button.x,
+  .export-vip-modal .export-vip-head .export-vip-close,
+  .history-modal-card .history-modal-header button.x,
+  .modal-content > .modal-header > button {
+    order: -1 !important;
+    position: static !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    transform: none !important;
+    width: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    max-height: 36px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 999px !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    color: #f8fafc !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    flex-shrink: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: transform 0.16s ease, background 0.2s ease !important;
+  }
+
+  .modal-content > .modal-header > button svg {
+    display: none !important;
+  }
+
+  .m-grab-back-only::before,
+  .modal-card > .modal-head > button.x::before,
+  .modal-card > .modal-head > .x::before,
+  .modal-card > .modal-head-themed > button.x::before,
+  .save-export-cust-modal .modal-head-themed > button.x::before,
+  .export-multi-format-modal .export-multi-head > button.x::before,
+  .more-actions-modal .more-actions-head > button.x::before,
+  .export-vip-modal .export-vip-head .export-vip-close::before,
+  .history-modal-card .history-modal-header button.x::before,
+  .modal-content > .modal-header > button::before {
+    content: '' !important;
+    display: block !important;
+    width: 18px !important;
+    height: 18px !important;
+    background-color: currentColor !important;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 12H5'/%3E%3Cpath d='m12 19-7-7 7-7'/%3E%3C/svg%3E") no-repeat center / contain !important;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 12H5'/%3E%3Cpath d='m12 19-7-7 7-7'/%3E%3C/svg%3E") no-repeat center / contain !important;
+  }
+
+  .m-grab-back-only:hover,
+  .modal-card > .modal-head > button.x:hover,
+  .modal-card > .modal-head > .x:hover,
+  .export-vip-modal .export-vip-head .export-vip-close:hover,
+  .history-modal-card .history-modal-header button.x:hover,
+  .modal-content > .modal-header > button:hover {
+    background: rgba(255, 255, 255, 0.16) !important;
+    color: #ffffff !important;
+    transform: none !important;
+  }
+
+  .m-grab-back-only:active,
+  .modal-card > .modal-head > button.x:active,
+  .modal-card > .modal-head > .x:active,
+  .export-vip-modal .export-vip-head .export-vip-close:active,
+  .history-modal-card .history-modal-header button.x:active,
+  .modal-content > .modal-header > button:active {
+    transform: scale(0.91) !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     LIGHT MODE (.page.theme-light-blue): PASTEL XANH LAM DỊU + CHỮ TỐI #0f172a CHUẨN GRAB
+     ═══════════════════════════════════════════════════════════════════════════ */
+  .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head,
+  .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head-themed,
+  .page.theme-light-blue .save-export-cust-modal .modal-head-themed,
+  .page.theme-light-blue .export-multi-format-modal .export-multi-head,
+  .page.theme-light-blue .export-zoom-preview-modal .export-zoom-head,
+  .page.theme-light-blue .more-actions-modal .more-actions-head,
+  .page.theme-light-blue .history-modal-card .history-modal-header,
+  .page.theme-light-blue .modal-content > .modal-header {
+    background:
+      radial-gradient(125% 145% at 10% 0%, rgba(96, 165, 250, 0.35) 0%, rgba(147, 197, 253, 0.22) 52%, rgba(224, 242, 254, 0) 88%),
+      linear-gradient(180deg, #cfe4ff 0%, #e7f1ff 100%) !important;
+    border-bottom: none !important;
+  }
+
+  .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head::after,
+  .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head-themed::after,
+  .page.theme-light-blue .save-export-cust-modal .modal-head-themed::after,
+  .page.theme-light-blue .export-multi-format-modal .export-multi-head::after,
+  .page.theme-light-blue .more-actions-modal .more-actions-head::after,
+  .page.theme-light-blue .history-modal-card .history-modal-header::after,
+  .page.theme-light-blue .modal-content > .modal-header::after {
+    background: #f0f5fa !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.92) !important;
+    box-shadow: 0 -4px 12px rgba(15, 23, 42, 0.04) !important;
+  }
+
+  .page.theme-light-blue .export-zoom-preview-modal .export-zoom-head::after {
+    background: #f1f5f9 !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.92) !important;
+  }
+
+  .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head:has(+ .cust-top-toolbar)::after,
+  .page.theme-light-blue .history-modal-card .history-modal-header:has(+ .history-summary)::after,
+  .page.theme-light-blue .modal-content > .modal-header::after,
+  .page.theme-light-blue .picker-modal-card > .modal-head::after {
+    background: #ffffff !important;
+  }
+
+  .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head .m-grab-title,
+  .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head > h3:not(.dt-only-head),
+  .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head > div:not(.dt-only-head):not(.m-grab-head-stack):first-child,
+  .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head > div:not(.dt-only-head):not(.m-grab-head-stack):first-child *,
+  .page.theme-light-blue .export-zoom-preview-modal .export-zoom-head .m-grab-title,
+  .page.theme-light-blue .history-modal-card .history-modal-title,
+  .page.theme-light-blue .modal-content > .modal-header .m-grab-title,
+  .page.theme-light-blue .modal-content > .modal-header > h3:not(.dt-only-head) {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+  }
+
+  .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head .m-grab-eyebrow,
+  .page.theme-light-blue .export-zoom-preview-modal .export-zoom-head .m-grab-eyebrow,
+  .page.theme-light-blue .history-modal-card .history-modal-subtitle,
+  .page.theme-light-blue .modal-content > .modal-header .m-grab-eyebrow {
+    color: #475569 !important;
+    -webkit-text-fill-color: #475569 !important;
+  }
+
+  .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head > button.x,
+  .page.theme-light-blue .export-zoom-preview-modal .export-zoom-head .m-grab-back-only,
+  .page.theme-light-blue .history-modal-card .history-modal-header button.x,
+  .page.theme-light-blue .modal-content > .modal-header > button {
+    background: rgba(255, 255, 255, 0.78) !important;
+    border: 1px solid rgba(15, 23, 42, 0.08) !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06) !important;
+  }
+
+  .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head > button.x:hover,
+  .page.theme-light-blue .export-zoom-preview-modal .export-zoom-head .m-grab-back-only:hover,
+  .page.theme-light-blue .history-modal-card .history-modal-header button.x:hover,
+  .page.theme-light-blue .modal-content > .modal-header > button:hover {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  /* Lightbox phóng to ảnh thuế: nút tròn kính mờ nằm gọn dưới thanh pin */
+  .tax-fullscreen-lightbox .tax-fullscreen-close {
+    position: fixed !important;
+    top: var(--mobile-modal-head-top, max(calc(env(safe-area-inset-top, 0px) - 2px), 36px)) !important;
+    left: 14px !important;
+    right: auto !important;
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    border-radius: 999px !important;
+    background: rgba(15, 23, 42, 0.72) !important;
+    border: 1px solid rgba(255, 255, 255, 0.22) !important;
+    font-size: 0 !important;
+    color: #ffffff !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 5 !important;
+  }
+  .tax-fullscreen-lightbox .tax-fullscreen-close::before {
+    content: '' !important;
+    display: block !important;
+    width: 18px !important;
+    height: 18px !important;
+    background-color: currentColor !important;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 12H5'/%3E%3Cpath d='m12 19-7-7 7-7'/%3E%3C/svg%3E") no-repeat center / contain !important;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 12H5'/%3E%3Cpath d='m12 19-7-7 7-7'/%3E%3C/svg%3E") no-repeat center / contain !important;
+  }
 }
 </style>
