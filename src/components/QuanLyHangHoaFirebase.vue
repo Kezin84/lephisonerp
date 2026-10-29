@@ -1113,7 +1113,7 @@
                 </div>
                 <div class="form-group" v-if="formData.Don_vi_tien_te !== 'VND'">
                   <label>Tỉ giá</label>
-                  <NumberInput v-model="formData.Ti_gia" />
+                  <NumberInput v-model="formData.Ti_gia" :decimals="0" />
                 </div>
 
                 <!-- GIÁ VỐN / OFF HÃNG -->
@@ -1126,7 +1126,7 @@
                       Giá mua sau thuế từ NCC / Hãng
                     </span>
                   </div>
-                  <NumberInput v-model="formData.Gia_tieu_chuan" @update:modelValue="onModalGiaVonChange" />
+                  <NumberInput v-model="formData.Gia_tieu_chuan" :decimals="String(formData.Don_vi_tien_te || 'VND').toUpperCase() === 'USD' ? 2 : 0" @update:modelValue="onModalGiaVonChange" />
 
                   <!-- KHUNG ĐIỀU CHỈNH ĐƠN GIÁ BÁN TỪ GIÁ VỐN (% HOẶC SỐ TIỀN CỤ THỂ) -->
                   <div
@@ -1156,12 +1156,10 @@
                         <option value="amount">Số tiền cụ thể</option>
                       </select>
                       <div v-if="modalCostMarkup.type === 'percent'" style="position: relative; display: inline-flex; align-items: center;">
-                        <input
-                          type="number"
-                          step="0.1"
-                          min="0"
-                          v-model.number="modalCostMarkup.value"
-                          @input="applyModalCostMarkupToDonGia"
+                        <NumberInput
+                          v-model="modalCostMarkup.value"
+                          :decimals="2"
+                          @update:modelValue="applyModalCostMarkupToDonGia"
                           style="width: 86px; height: 32px; padding: 4px 24px 4px 8px; border-radius: 6px; border: 1px solid rgba(192, 132, 252, 0.45); background: #0f172a; color: #34d399; font-weight: 700; font-size: 13px; text-align: right;"
                         />
                         <span style="position: absolute; right: 7px; font-size: 12px; color: #94a3b8; font-weight: 700; pointer-events: none;">%</span>
@@ -1169,6 +1167,7 @@
                       <div v-else style="width: 140px;">
                         <NumberInput
                           v-model="modalCostMarkup.value"
+                          :decimals="String(formData.Don_vi_tien_te || 'VND').toUpperCase() === 'USD' ? 2 : 0"
                           @update:modelValue="applyModalCostMarkupToDonGia"
                         />
                       </div>
@@ -1199,7 +1198,7 @@
                       Giá gốc hệ thống: <strong style="color: #cbd5e1;">{{ formatCurrency(formData._gia_goc_he_thong, formData.Don_vi_tien_te) }}</strong>
                     </span>
                   </div>
-                  <NumberInput v-model="formData.Don_gia" @update:modelValue="onModalDonGiaChange" />
+                  <NumberInput v-model="formData.Don_gia" :decimals="String(formData.Don_vi_tien_te || 'VND').toUpperCase() === 'USD' ? 2 : 0" @update:modelValue="onModalDonGiaChange" />
                   <div
                     v-if="isEditing && activePriceList && formData._has_pl_entry"
                     style="margin-top: 8px; padding: 8px 10px; background: rgba(245, 158, 11, 0.08); border: 1px dashed rgba(245, 158, 11, 0.35); border-radius: 8px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;"
@@ -1219,12 +1218,10 @@
                         <option value="decrease">- Giảm</option>
                       </select>
                       <div style="position: relative; display: inline-flex; align-items: center;">
-                        <input
-                          type="number"
-                          step="0.1"
-                          min="0"
-                          v-model.number="formData._pl_pct"
-                          @input="onModalPriceListPctChange"
+                        <NumberInput
+                          v-model="formData._pl_pct"
+                          :decimals="2"
+                          @update:modelValue="onModalPriceListPctChange"
                           style="width: 86px; height: 32px; padding: 4px 24px 4px 8px; border-radius: 6px; border: 1px solid rgba(245, 158, 11, 0.4); background: #0f172a; color: #34d399; font-weight: 700; font-size: 13px; text-align: right;"
                         />
                         <span style="position: absolute; right: 7px; font-size: 12px; color: #94a3b8; font-weight: 700; pointer-events: none;">%</span>
@@ -1234,11 +1231,11 @@
                 </div>
                 <div class="form-group col-span-2">
                   <label>Thuế VAT (%)</label>
-                  <NumberInput v-model="formData.Thue_VAT" />
+                  <NumberInput v-model="formData.Thue_VAT" :decimals="2" />
                 </div>
                 <div class="form-group col-span-2">
                   <label>Giá nhập</label>
-                  <NumberInput v-model="formData.gia_nhap" />
+                  <NumberInput v-model="formData.gia_nhap" :decimals="String(formData.Don_vi_tien_te || 'VND').toUpperCase() === 'USD' ? 2 : 0" />
                 </div>
 
                 <!-- LỊCH SỬ FILE ĐÍNH KÈM & MỐC THỜI GIAN UPLOAD FILE (ĐỘC LẬP VỚI LAST_UPDATED CỦA HÀNG HÓA) -->
@@ -1605,17 +1602,15 @@
               <option value="amount">Số tiền cụ thể</option>
             </select>
             <div v-if="importBulkCostMarkup.type === 'percent'" style="position: relative; display: inline-flex; align-items: center;">
-              <input
-                type="number"
-                step="0.1"
-                min="0"
-                v-model.number="importBulkCostMarkup.value"
+              <NumberInput
+                v-model="importBulkCostMarkup.value"
+                :decimals="2"
                 style="width: 86px; height: 32px; padding: 4px 24px 4px 8px; border-radius: 6px; border: 1px solid rgba(192, 132, 252, 0.45); background: #0f172a; color: #34d399; font-weight: 700; font-size: 13px; text-align: right;"
               />
               <span style="position: absolute; right: 7px; font-size: 12px; color: #94a3b8; font-weight: 700; pointer-events: none;">%</span>
             </div>
             <div v-else style="width: 145px;">
-              <NumberInput v-model="importBulkCostMarkup.value" />
+              <NumberInput v-model="importBulkCostMarkup.value" :decimals="0" />
             </div>
             <button
               type="button"
@@ -1779,12 +1774,12 @@
                     :style="{ color: String(row.Type || '').toLowerCase().includes('renewal') ? '#fbbf24' : '#34d399', fontWeight: 700 }"
                   />
                 </td>
-                <td><NumberInput v-model="row.Gia_tieu_chuan" class="imp-input imp-input--num" style="color: #e9d5ff; font-weight: 700;" /></td>
-                <td><NumberInput v-model="row.Don_gia" class="imp-input imp-input--num imp-input--green" /></td>
-                <td><NumberInput v-model="row.gia_nhap" class="imp-input imp-input--num imp-input--green" /></td>
-                <td><NumberInput v-model="row.Thue_VAT" class="imp-input imp-input--num imp-input--green" /></td>
+                <td><NumberInput v-model="row.Gia_tieu_chuan" :decimals="String(row.Don_vi_tien_te || 'VND').toUpperCase() === 'USD' ? 2 : 0" class="imp-input imp-input--num" style="color: #e9d5ff; font-weight: 700;" /></td>
+                <td><NumberInput v-model="row.Don_gia" :decimals="String(row.Don_vi_tien_te || 'VND').toUpperCase() === 'USD' ? 2 : 0" class="imp-input imp-input--num imp-input--green" /></td>
+                <td><NumberInput v-model="row.gia_nhap" :decimals="String(row.Don_vi_tien_te || 'VND').toUpperCase() === 'USD' ? 2 : 0" class="imp-input imp-input--num imp-input--green" /></td>
+                <td><NumberInput v-model="row.Thue_VAT" :decimals="2" class="imp-input imp-input--num imp-input--green" /></td>
                 <td><input type="text" v-model="row.Don_vi_tien_te" class="imp-input imp-input--sm" /></td>
-                <td><NumberInput v-model="row.Ti_gia" class="imp-input imp-input--num imp-input--green" /></td>
+                <td><NumberInput v-model="row.Ti_gia" :decimals="0" class="imp-input imp-input--num imp-input--green" /></td>
                 <td><input type="text" v-model="row.DVT" class="imp-input imp-input--sm" /></td>
                 <td><input type="text" v-model="row.License_duration" class="imp-input" placeholder="12 months..." /></td>
                 <td><input type="text" v-model="row.volume" class="imp-input" placeholder="1-9 users..." style="color: #38bdf8; font-weight: 600;" /></td>
@@ -1792,7 +1787,7 @@
                 <td><input type="text" v-model="row.thoi_han_bao_hanh" class="imp-input" /></td>
                 <td><input type="text" v-model="row.Ten_nha_cung_cap" class="imp-input" /></td>
                 <td><input type="text" v-model="row.Ma_nha_cung_cap" class="imp-input" /></td>
-                <td><input type="number" v-model="row.muc_phan_tram_off" class="imp-input imp-input--num" /></td>
+                <td><NumberInput v-model="row.muc_phan_tram_off" :decimals="2" class="imp-input imp-input--num" /></td>
                 <td><textarea v-model="row.Ma_hang_lien_ket" class="imp-input imp-input--textarea" rows="1"></textarea></td>
                 <td><textarea v-model="row.Ten_hang_lien_ket" class="imp-input imp-input--textarea" rows="1"></textarea></td>
                 <td><input type="text" v-model="row.Ghi_chu" class="imp-input" /></td>
@@ -1981,7 +1976,8 @@
             </label>
             <NumberInput
               v-model="newUsdExchangeRate"
-              placeholder="Ví dụ: 26,200"
+              :decimals="0"
+              placeholder="Ví dụ: 26.200"
               style="font-size: 18px; font-weight: 800; color: #34d399; border-color: rgba(16, 185, 129, 0.5); background: rgba(6, 78, 59, 0.2);"
             />
             <!-- Nút điều chỉnh nhanh -->
@@ -2127,13 +2123,11 @@
                   {{ priceListForm.bulkType === 'percent' ? 'Mức % tăng/giảm' : 'Số tiền tăng/giảm' }}
                 </label>
                 <div style="position: relative; display: flex; align-items: center;">
-                  <input
+                  <NumberInput
                     v-if="priceListForm.bulkType === 'percent'"
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    v-model.number="priceListForm.bulkValue"
-                    @input="onBulkRuleAutoApply"
+                    v-model="priceListForm.bulkValue"
+                    :decimals="2"
+                    @update:modelValue="onBulkRuleAutoApply"
                     placeholder="VD: 10"
                     class="pl-input"
                     style="padding-right: 32px; font-weight: 700; color: #fbbf24;"
@@ -2141,6 +2135,7 @@
                   <NumberInput
                     v-else
                     v-model="priceListForm.bulkValue"
+                    :decimals="0"
                     @update:modelValue="onBulkRuleAutoApply"
                     placeholder="VD: 500.000"
                     class="pl-input"
@@ -2297,13 +2292,11 @@
                       <option value="amount">Tiền</option>
                       <option value="custom">Tùy chỉnh</option>
                     </select>
-                    <input
+                    <NumberInput
                       v-if="row.type === 'percent'"
-                      type="number"
-                      step="0.1"
-                      min="0"
-                      v-model.number="row.value"
-                      @input="recalcRowPrice(row, true)"
+                      v-model="row.value"
+                      :decimals="2"
+                      @update:modelValue="recalcRowPrice(row, true)"
                       class="imp-input imp-input--num"
                       style="width: 72px; min-width: 72px;"
                       placeholder="0%"
@@ -2311,6 +2304,7 @@
                     <NumberInput
                       v-else-if="row.type === 'amount'"
                       v-model="row.value"
+                      :decimals="String(row.Don_vi_tien_te || 'VND').toUpperCase() === 'USD' ? 2 : 0"
                       @update:modelValue="recalcRowPrice(row, true)"
                       class="imp-input imp-input--num"
                       style="width: 95px; min-width: 95px;"
@@ -2322,6 +2316,7 @@
                 <td @click.stop>
                   <NumberInput
                     v-model="row.gia_ban_moi"
+                    :decimals="String(row.Don_vi_tien_te || 'VND').toUpperCase() === 'USD' ? 2 : 0"
                     @update:modelValue="onCustomRowPriceChange(row)"
                     class="imp-input imp-input--num imp-input--amber"
                     style="font-size: 13px; color: #34d399 !important; border-color: rgba(16, 185, 129, 0.35);"

@@ -1105,15 +1105,15 @@
                     <div class="sr-modal-fin-col">
                       <div class="sr-form-group" style="margin: 0;">
                         <label class="sr-modal-label" style="color: #ffffff; font-weight: 700; margin-bottom: 6px; display: block;">Doanh số bán</label>
-                        <input :id="'input-doanhSoBan-' + item.id" type="text" :value="fmtInput(item.doanhSoBan)" @input="e => formatNumberInput(e, item, 'doanhSoBan')" class="sr-modal-input text-right" style="padding: 6px 10px;" />
+                        <input :id="'input-doanhSoBan-' + item.id" type="text" inputmode="numeric" placeholder="0" :value="fmtInput(item.doanhSoBan)" @input="e => formatNumberInput(e, item, 'doanhSoBan')" @paste="e => onFinancialPaste(e, item, 'doanhSoBan')" class="sr-modal-input text-right" style="padding: 6px 10px;" />
                       </div>
                       <div class="sr-form-group" style="margin: 0;">
                         <label class="sr-modal-label" style="color: #ffffff; font-weight: 700; margin-bottom: 6px; display: block;">Giá mua</label>
-                        <input :id="'input-giaMua-' + item.id" type="text" :value="fmtInput(item.giaMua)" @input="e => formatNumberInput(e, item, 'giaMua')" class="sr-modal-input text-right" style="padding: 6px 10px;" />
+                        <input :id="'input-giaMua-' + item.id" type="text" inputmode="numeric" placeholder="0" :value="fmtInput(item.giaMua)" @input="e => formatNumberInput(e, item, 'giaMua')" @paste="e => onFinancialPaste(e, item, 'giaMua')" class="sr-modal-input text-right" style="padding: 6px 10px;" />
                       </div>
                       <div class="sr-form-group" style="margin: 0;">
                         <label class="sr-modal-label" style="color: #ffffff; font-weight: 700; margin-bottom: 6px; display: block;">Tổng CP đơn hàng</label>
-                        <input :id="'input-tongCP-' + item.id" type="text" :value="fmtInput(item.tongCP)" @input="e => formatNumberInput(e, item, 'tongCP')" class="sr-modal-input text-right" style="padding: 6px 10px;" />
+                        <input :id="'input-tongCP-' + item.id" type="text" inputmode="numeric" placeholder="0" :value="fmtInput(item.tongCP)" @input="e => formatNumberInput(e, item, 'tongCP')" @paste="e => onFinancialPaste(e, item, 'tongCP')" class="sr-modal-input text-right" style="padding: 6px 10px;" />
                       </div>
                     </div>
 
@@ -1121,11 +1121,11 @@
                     <div class="sr-modal-fin-col">
                       <div class="sr-form-group" style="margin: 0;">
                         <label class="sr-modal-label" style="color: #ffffff; font-weight: 700; margin-bottom: 6px; display: block;">Net COM </label>
-                        <input :id="'input-netCom-' + item.id" type="text" :value="fmtInput(item.netCom)" @input="e => formatNumberInput(e, item, 'netCom', true)" class="sr-modal-input text-right" style="color: #34d399; font-weight: 700; padding: 6px 10px; border-color: rgba(16,185,129,.3); background: rgba(16,185,129,.08);" />
+                        <input :id="'input-netCom-' + item.id" type="text" inputmode="numeric" placeholder="0" :value="fmtInput(item.netCom)" @input="e => formatNumberInput(e, item, 'netCom', true)" @paste="e => onFinancialPaste(e, item, 'netCom', true)" class="sr-modal-input text-right" style="color: #34d399; font-weight: 700; padding: 6px 10px; border-color: rgba(16,185,129,.3); background: rgba(16,185,129,.08);" />
                       </div>
                       <div class="sr-form-group" style="margin: 0;">
                         <label class="sr-modal-label" style="color: #ffffff; font-weight: 700; margin-bottom: 6px; display: block;">Gross com</label>
-                        <input :id="'input-grossCom-' + item.id" type="text" :value="fmtInput(item.grossCom)" @input="e => formatNumberInput(e, item, 'grossCom')" class="sr-modal-input text-right" style="padding: 6px 10px;" />
+                        <input :id="'input-grossCom-' + item.id" type="text" inputmode="numeric" placeholder="0" :value="fmtInput(item.grossCom)" @input="e => formatNumberInput(e, item, 'grossCom')" @paste="e => onFinancialPaste(e, item, 'grossCom')" class="sr-modal-input text-right" style="padding: 6px 10px;" />
                       </div>
                       <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; gap: 8px;">
                         <span style="font-size: 13px; color: #ffffff; font-weight: 700; white-space: nowrap;">Thuế</span>
@@ -1188,7 +1188,7 @@
                       <div style="height: 28px; width: 1px; background: #334155;"></div>
                       <div v-if="multiEditModal.mode === 'create'">
                         <label style="font-size: 11px; color: #34d399; font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 4px;">Khách đã thanh toán ban đầu</label>
-                        <input type="text" :value="fmtInput(item.soTienDaThanhToan || 0)" @input="e => formatNumberInput(e, item, 'soTienDaThanhToan', false)" placeholder="0" class="sr-modal-input text-right" style="padding: 5px 10px; width: 160px; color: #34d399; font-weight: 700; border-color: rgba(16,185,129,0.4);" />
+                        <input type="text" inputmode="numeric" :value="fmtInput(item.soTienDaThanhToan || 0)" @input="e => formatNumberInput(e, item, 'soTienDaThanhToan', false)" @paste="e => onFinancialPaste(e, item, 'soTienDaThanhToan', false)" placeholder="0" class="sr-modal-input text-right" style="padding: 5px 10px; width: 160px; color: #34d399; font-weight: 700; border-color: rgba(16,185,129,0.4);" />
                       </div>
                       <div v-else>
                         <div style="font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Khách đã thanh toán</div>
@@ -2054,8 +2054,10 @@
                       <td style="padding: 8px 10px;">
                         <input
                           type="text"
+                          inputmode="numeric"
                           :value="inst.so_tien_phai_thu > 0 ? inst.so_tien_phai_thu.toLocaleString('vi-VN') : ''"
                           @input="onInstallmentAmountInput(idx, $event)"
+                          @paste="onInstallmentAmountPaste(idx, $event)"
                           placeholder="0"
                           class="sr-modal-input text-right"
                           style="width: 135px; padding: 6px 8px; font-size: 12px; font-weight: 700; color: #f8fafc;"
@@ -2197,7 +2199,7 @@
             <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px;">
               <div>
                 <label style="font-size: 11.5px; color: #cbd5e1; font-weight: 600; display: block; margin-bottom: 5px;">Số tiền khách thanh toán (VNĐ)</label>
-                <input type="text" :value="paymentModal.amountStr" @input="onPaymentAmountInput" placeholder="Nhập số tiền..." class="sr-modal-input text-right" style="width: 100%; padding: 9px 12px; font-size: 15px; font-weight: 800; color: #34d399; border-color: rgba(16, 185, 129, 0.45); background: rgba(16, 185, 129, 0.06);" />
+                <input type="text" inputmode="numeric" :value="paymentModal.amountStr" @input="onPaymentAmountInput" @paste="onPaymentAmountPaste" placeholder="Nhập số tiền..." class="sr-modal-input text-right" style="width: 100%; padding: 9px 12px; font-size: 15px; font-weight: 800; color: #34d399; border-color: rgba(16, 185, 129, 0.45); background: rgba(16, 185, 129, 0.06);" />
               </div>
               <div>
                 <label style="font-size: 11.5px; color: #cbd5e1; font-weight: 600; display: block; margin-bottom: 5px;">Thời gian thanh toán</label>
@@ -2246,6 +2248,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { parsePastedNumber } from '../utils/smartNumber'
 import ExcelJS from 'exceljs'
 import * as XLSX from 'xlsx-js-style'
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js'
@@ -3452,8 +3455,28 @@ function onInstallmentAmountInput(idx: number, e: Event) {
   const m = paymentModal.value
   if (!m.row || !m.scheduleItems[idx]) return
   const target = e.target as HTMLInputElement
-  const raw = target.value.replace(/[^0-9]/g, '')
-  const amt = raw ? Number(raw) : 0
+  const ie = e as InputEvent
+  let amt = 0
+  if (ie.inputType === 'insertFromPaste' || ie.inputType === 'insertFromDrop') {
+    amt = Math.max(0, parsePastedNumber(target.value, 0, false))
+  } else {
+    const raw = target.value.replace(/[^0-9]/g, '')
+    amt = raw ? Number(raw) : 0
+  }
+  const totalSau = tongSauVat(m.row)
+  m.scheduleItems[idx].so_tien_phai_thu = amt
+  m.scheduleItems[idx].ty_le_pct = totalSau > 0 ? Math.round((amt / totalSau) * 10000) / 100 : 0
+  target.value = amt > 0 ? amt.toLocaleString('vi-VN') : ''
+}
+
+function onInstallmentAmountPaste(idx: number, e: ClipboardEvent) {
+  const m = paymentModal.value
+  if (!m.row || !m.scheduleItems[idx]) return
+  e.preventDefault()
+  const target = e.target as HTMLInputElement
+  const pasted = e.clipboardData?.getData('text') ?? ''
+  if (!pasted) return
+  const amt = Math.max(0, parsePastedNumber(pasted, 0, false))
   const totalSau = tongSauVat(m.row)
   m.scheduleItems[idx].so_tien_phai_thu = amt
   m.scheduleItems[idx].ty_le_pct = totalSau > 0 ? Math.round((amt / totalSau) * 10000) / 100 : 0
@@ -3577,8 +3600,25 @@ function setPaymentQuickPct(pct: number) {
 
 function onPaymentAmountInput(e: Event) {
   const target = e.target as HTMLInputElement
-  const raw = target.value.replace(/[^0-9]/g, '')
-  const num = raw ? Number(raw) : 0
+  const ie = e as InputEvent
+  let num = 0
+  if (ie.inputType === 'insertFromPaste' || ie.inputType === 'insertFromDrop') {
+    num = Math.max(0, parsePastedNumber(target.value, 0, false))
+  } else {
+    const raw = target.value.replace(/[^0-9]/g, '')
+    num = raw ? Number(raw) : 0
+  }
+  paymentModal.value.amount = num
+  paymentModal.value.amountStr = num > 0 ? num.toLocaleString('vi-VN') : ''
+  target.value = paymentModal.value.amountStr
+}
+
+function onPaymentAmountPaste(e: ClipboardEvent) {
+  e.preventDefault()
+  const target = e.target as HTMLInputElement
+  const pasted = e.clipboardData?.getData('text') ?? ''
+  if (!pasted) return
+  const num = Math.max(0, parsePastedNumber(pasted, 0, false))
   paymentModal.value.amount = num
   paymentModal.value.amountStr = num > 0 ? num.toLocaleString('vi-VN') : ''
   target.value = paymentModal.value.amountStr
@@ -5134,6 +5174,16 @@ function fmtInput(val: number) {
 
 function formatNumberInput(e: Event, item: ImportItem, field: keyof ImportItem, triggerCalc = true) {
   const target = e.target as HTMLInputElement;
+  const ie = e as InputEvent;
+  if (ie.inputType === 'insertFromPaste' || ie.inputType === 'insertFromDrop') {
+    const numericVal = parsePastedNumber(target.value, 0, true);
+    (item as any)[field] = numericVal;
+    target.value = numericVal !== 0 ? numericVal.toLocaleString('vi-VN') : '';
+    if (triggerCalc) {
+      onFinancialInput(item, field);
+    }
+    return;
+  }
   const raw = target.value.replace(/[^0-9-]/g, '');
   const isNegative = raw.startsWith('-');
   const digits = raw.replace(/-/g, '');
@@ -5147,6 +5197,19 @@ function formatNumberInput(e: Event, item: ImportItem, field: keyof ImportItem, 
   } else {
     target.value = numericVal.toLocaleString('vi-VN');
   }
+  if (triggerCalc) {
+    onFinancialInput(item, field);
+  }
+}
+
+function onFinancialPaste(e: ClipboardEvent, item: ImportItem, field: keyof ImportItem, triggerCalc = true) {
+  e.preventDefault();
+  const target = e.target as HTMLInputElement;
+  const pasted = e.clipboardData?.getData('text') ?? '';
+  if (!pasted) return;
+  const numericVal = parsePastedNumber(pasted, 0, true);
+  (item as any)[field] = numericVal;
+  target.value = numericVal !== 0 ? numericVal.toLocaleString('vi-VN') : '';
   if (triggerCalc) {
     onFinancialInput(item, field);
   }

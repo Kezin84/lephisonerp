@@ -515,7 +515,7 @@
               <div class="form-group">
                 <label>Volume</label>
                 <div style="display: flex; gap: 8px;">
-                  <NumberInput v-model="formData.volume" class="input-field" style="flex: 1;" />
+                  <NumberInput v-model="formData.volume" :decimals="0" class="input-field" style="flex: 1;" />
                   <button type="button" @click="triggerScanVolumeFile" class="tech-vip-btn" style="padding: 0 16px; border-radius: 8px; flex-shrink: 0; background: rgba(56, 189, 248, 0.1); border-color: rgba(56, 189, 248, 0.3); color: #38bdf8; display: flex; align-items: center; gap: 6px;" title="Quét file tìm Tổng cộng trước thuế">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
                     Quét File
@@ -1017,7 +1017,7 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                 Số tiền quét được (có thể chỉnh sửa nếu cần):
               </label>
-              <NumberInput v-model="scanConfirmEditableAmount" placeholder="Nhập số tiền chính xác..." class="elite-input" style="width: 100%; box-sizing: border-box; padding: 0.85rem 1rem; border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.3); background: rgba(0,0,0,0.3); color: #10b981; font-size: 1.1rem; font-weight: 700; outline: none; transition: all 0.2s;" onfocus="this.style.borderColor='#10b981'; this.style.boxShadow='0 0 0 3px rgba(16, 185, 129, 0.2)'" onblur="this.style.borderColor='rgba(16, 185, 129, 0.3)'; this.style.boxShadow='none'" />
+              <NumberInput v-model="scanConfirmEditableAmount" :decimals="0" placeholder="Nhập số tiền chính xác..." class="elite-input" style="width: 100%; box-sizing: border-box; padding: 0.85rem 1rem; border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.3); background: rgba(0,0,0,0.3); color: #10b981; font-size: 1.1rem; font-weight: 700; outline: none; transition: all 0.2s;" onfocus="this.style.borderColor='#10b981'; this.style.boxShadow='0 0 0 3px rgba(16, 185, 129, 0.2)'" onblur="this.style.borderColor='rgba(16, 185, 129, 0.3)'; this.style.boxShadow='none'" />
             </div>
           </div>
         </div>

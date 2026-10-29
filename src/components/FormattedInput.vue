@@ -1,11 +1,14 @@
 <template>
   <input
+    ref="inputEl"
     type="text"
+    :inputmode="computedInputMode"
     :value="displayValue"
     @input="onInput"
+    @paste="onPaste"
     @blur="onBlur"
     @focus="onFocus"
-    :placeholder="placeholder"
+    :placeholder="computedPlaceholder"
     :disabled="disabled"
     :readonly="readonly"
     autocomplete="off"
@@ -13,7 +16,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { computed, ref, watch, type PropType } from 'vue';
+import {
+  formatViNumber,
+  parseViFormattedNumber,
+  processLiveNumericInput,
+  resolveSmartPaste
+} from '../utils/smartNumber';
+
+type InputModeAttr =
+  | 'none'
+  | 'text'
+  | 'tel'
+  | 'url'
+  | 'email'
+  | 'numeric'
+  | 'decimal'
+  | 'search';
 
 const props = defineProps({
   modelValue: {
@@ -35,124 +54,180 @@ const props = defineProps({
   decimals: {
     type: Number,
     default: 2
+  },
+  allowNegative: {
+    type: Boolean,
+    default: false
+  },
+  inputmode: {
+    type: String as PropType<InputModeAttr | ''>,
+    default: ''
   }
 });
 
 const emit = defineEmits(['update:modelValue']);
 
+const inputEl = ref<HTMLInputElement | null>(null);
 const isFocused = ref(false);
 const displayValue = ref('');
 
-// Format a number with vi-VN style (dots for thousands)
-function formatNumber(num: number | string | null | undefined): string {
-  if (num === null || num === undefined || num === '') return '';
-  const n = Number(num);
-  if (isNaN(n)) return '';
-  return new Intl.NumberFormat('vi-VN', {
-    maximumFractionDigits: props.decimals
-  }).format(n);
-}
+const computedPlaceholder = computed(() =>
+  props.placeholder !== '' ? props.placeholder : '0'
+);
 
-// Parse a formatted string back to a number
-function parseNumber(str: string): number {
-  if (!str) return 0;
-  
-  str = String(str).trim();
-  
-  // In vi-VN format, '.' is the thousand separator and ',' is the decimal separator.
-  // We strictly remove all '.' and convert ',' to '.' for JavaScript Number parsing.
-  str = str.replace(/\./g, '').replace(',', '.');
-  
-  // Remove any remaining invalid characters (keep digits, dot, minus)
-  const cleanStr = str.replace(/[^\d.-]/g, '');
-  const parsed = Number(cleanStr);
-  return isNaN(parsed) ? 0 : parsed;
-}
+const computedInputMode = computed<InputModeAttr>(() => {
+  if (props.inputmode) return props.inputmode;
+  if (props.allowNegative) return 'text';
+  return props.decimals <= 0 ? 'numeric' : 'decimal';
+});
 
 watch(
-  () => props.modelValue,
-  (newVal) => {
+  [() => props.modelValue, () => props.decimals],
+  ([newVal]) => {
     if (!isFocused.value) {
-      displayValue.value = formatNumber(newVal);
+      displayValue.value = formatViNumber(newVal, props.decimals);
+    } else {
+      const targetNum =
+        newVal === '' || newVal === null || newVal === undefined
+          ? 0
+          : Number(newVal);
+      const currentParsed = parseViFormattedNumber(
+        displayValue.value,
+        props.decimals,
+        true
+      );
+      if (
+        Number.isFinite(targetNum) &&
+        Math.abs(currentParsed - targetNum) > 1e-9
+      ) {
+        const nextDisplay =
+          targetNum === 0 ? '' : formatViNumber(targetNum, props.decimals);
+        displayValue.value = nextDisplay;
+        if (inputEl.value) {
+          inputEl.value.value = nextDisplay;
+          requestAnimationFrame(() => {
+            if (inputEl.value && inputEl.value.value === nextDisplay) {
+              const len = nextDisplay.length;
+              inputEl.value.setSelectionRange(len, len);
+            }
+          });
+        }
+      }
     }
   },
   { immediate: true }
 );
 
-function onInput(event: Event) {
+function onFocus(event: FocusEvent) {
+  isFocused.value = true;
+  if (props.readonly || props.disabled) return;
+
+  const target = event.target as HTMLInputElement | null;
+  const currentNum = Number(props.modelValue);
+  const isZeroVal =
+    props.modelValue === 0 ||
+    props.modelValue === '0' ||
+    (props.modelValue !== '' &&
+      props.modelValue !== null &&
+      props.modelValue !== undefined &&
+      Number.isFinite(currentNum) &&
+      currentNum === 0) ||
+    displayValue.value.trim() === '0';
+
+  if (isZeroVal) {
+    displayValue.value = '';
+    if (target) {
+      target.value = '';
+    }
+  }
+}
+
+function onPaste(event: ClipboardEvent) {
+  if (props.readonly || props.disabled) return;
+  event.preventDefault();
+
   const target = event.target as HTMLInputElement;
-  const rawValue = target.value;
-  
-  // Save cursor position
-  const cursorPosition = target.selectionStart || 0;
-  const beforeCursor = rawValue.substring(0, cursorPosition);
-  const digitsBeforeCursor = beforeCursor.replace(/[^\d]/g, '').length;
-  
-  const parsed = parseNumber(rawValue);
-  emit('update:modelValue', parsed);
+  const pastedText = event.clipboardData?.getData('text') ?? '';
+  if (!pastedText) return;
 
-  if (rawValue === '' || rawValue === '-') {
-    displayValue.value = rawValue;
-    return;
-  }
+  const prevDisplay = displayValue.value;
+  const selStart = target.selectionStart ?? prevDisplay.length;
+  const selEnd = target.selectionEnd ?? prevDisplay.length;
 
-  // Format the number on the fly
-  let formattedString = formatNumber(parsed);
-  
-  // Keep trailing decimal commas or trailing decimal zeros so the user can type them
-  const cleanRaw = rawValue.replace(/[^\d.,-]/g, '');
-  if (props.decimals > 0) {
-    if (cleanRaw.endsWith(',')) {
-      formattedString += ',';
-    } else if (cleanRaw.includes(',')) {
-      const parts = cleanRaw.split(',');
-      const intPart = formattedString.split(',')[0] || '0';
-      const decPart = parts.slice(1).join('');
-      formattedString = intPart + ',' + decPart;
-    }
-  }
+  const resolved = resolveSmartPaste({
+    pastedText,
+    currentDisplay: prevDisplay,
+    currentModelValue: props.modelValue,
+    selectionStart: selStart,
+    selectionEnd: selEnd,
+    decimals: props.decimals,
+    allowNegative: true
+  });
 
-  displayValue.value = formattedString;
-  
-  // Restore cursor position
+  const expectedPasteDisplay = resolved.displayValue;
+  displayValue.value = expectedPasteDisplay;
+  target.value = expectedPasteDisplay;
+  emit('update:modelValue', resolved.numericValue);
+
   requestAnimationFrame(() => {
-    let newCursorPos = 0;
-    let digitsCount = 0;
-    
-    for (let i = 0; i < formattedString.length; i++) {
-      if (/\d/.test(formattedString[i])) {
-        digitsCount++;
-      }
-      if (digitsCount === digitsBeforeCursor) {
-        newCursorPos = i + 1;
-        break;
-      }
+    if (target.value === expectedPasteDisplay) {
+      target.setSelectionRange(resolved.cursorPosition, resolved.cursorPosition);
     }
-    
-    // Adjust if cursor was just after a separator or negative sign
-    if (beforeCursor.endsWith(',') || beforeCursor.endsWith('-')) {
-      newCursorPos++;
-    }
-    
-    if (newCursorPos === 0 && digitsBeforeCursor > 0) {
-      newCursorPos = formattedString.length;
-    } else if (digitsBeforeCursor === 0 && rawValue.startsWith('-')) {
-      newCursorPos = 1;
-    }
-    
-    target.setSelectionRange(newCursorPos, newCursorPos);
   });
 }
 
-function onBlur(event: Event) {
-  isFocused.value = false;
-  // Format the display value when focus is lost
-  const parsed = parseNumber((event.target as HTMLInputElement).value);
-  displayValue.value = formatNumber(parsed);
-  emit('update:modelValue', parsed);
+function onInput(event: Event) {
+  if (props.readonly || props.disabled) return;
+
+  const target = event.target as HTMLInputElement;
+  const ie = event as InputEvent;
+  const prevDisplay = displayValue.value;
+  const cursorPosition = target.selectionStart ?? target.value.length;
+
+  const result = processLiveNumericInput({
+    rawValue: target.value,
+    prevDisplay,
+    cursorPosition,
+    inputType: ie.inputType,
+    inputData: ie.data,
+    decimals: props.decimals,
+    allowNegative: true
+  });
+
+  const expectedInputDisplay = result.displayValue;
+  displayValue.value = expectedInputDisplay;
+  target.value = expectedInputDisplay;
+  emit('update:modelValue', result.numericValue);
+
+  requestAnimationFrame(() => {
+    if (target.value === expectedInputDisplay) {
+      target.setSelectionRange(result.cursorPosition, result.cursorPosition);
+    }
+  });
 }
 
-function onFocus() {
-  isFocused.value = true;
+function onBlur(event: FocusEvent) {
+  isFocused.value = false;
+  if (props.readonly || props.disabled) {
+    displayValue.value = formatViNumber(props.modelValue, props.decimals);
+    return;
+  }
+
+  const target = event.target as HTMLInputElement | null;
+  const raw = (target?.value ?? displayValue.value).trim();
+
+  if (raw === '' || raw === '-') {
+    const zeroFormatted = formatViNumber(0, props.decimals);
+    displayValue.value = zeroFormatted;
+    if (target) target.value = zeroFormatted;
+    emit('update:modelValue', 0);
+    return;
+  }
+
+  const parsed = parseViFormattedNumber(raw, props.decimals, true);
+  const formatted = formatViNumber(parsed, props.decimals);
+  displayValue.value = formatted;
+  if (target) target.value = formatted;
+  emit('update:modelValue', parsed);
 }
 </script>

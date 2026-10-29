@@ -337,17 +337,25 @@ code {
     height: 56px !important;
     max-height: 56px !important;
     z-index: 960;
-    background: rgba(15, 23, 42, 0.72) !important;
-    backdrop-filter: blur(24px) saturate(185%) !important;
-    -webkit-backdrop-filter: blur(24px) saturate(185%) !important;
-    border: 1px solid rgba(255, 255, 255, 0.14) !important;
-    border-top: 1px solid rgba(255, 255, 255, 0.24) !important;
+    /* iOS Liquid Glass Ultra-Clear (Dark Crystal Default) */
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.09) 0%,
+      rgba(15, 23, 42, 0.04) 50%,
+      rgba(255, 255, 255, 0.04) 100%
+    ) !important;
+    backdrop-filter: blur(5px) saturate(185%) brightness(1.06) !important;
+    -webkit-backdrop-filter: blur(5px) saturate(185%) brightness(1.06) !important;
+    border: 1px solid rgba(255, 255, 255, 0.24) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.54) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.18) !important;
     border-radius: 999px !important;
     box-shadow:
-      0 14px 36px rgba(0, 0, 0, 0.55),
-      0 4px 12px rgba(0, 0, 0, 0.35),
-      inset 0 1px 0 rgba(255, 255, 255, 0.2),
-      inset 0 -1px 0 rgba(255, 255, 255, 0.05) !important;
+      0 8px 24px rgba(0, 0, 0, 0.2),
+      0 2px 6px rgba(0, 0, 0, 0.08),
+      inset 0 1.5px 1.5px rgba(255, 255, 255, 0.5),
+      inset 0 -1px 1.5px rgba(255, 255, 255, 0.16),
+      inset 0 0 10px rgba(255, 255, 255, 0.04) !important;
     display: flex !important;
     flex-direction: row !important;
     align-items: center !important;
@@ -357,6 +365,7 @@ code {
     transition:
       transform 0.38s cubic-bezier(0.22, 1, 0.36, 1),
       opacity 0.28s ease,
+      background 0.28s ease,
       box-shadow 0.3s ease !important;
   }
   .app-layout.mobile-nav-hidden .sidebar,
@@ -417,7 +426,8 @@ code {
     text-align: center !important;
     border-radius: 999px !important;
     font-size: 12.5px !important;
-    color: rgba(226, 232, 240, 0.78) !important;
+    color: rgba(248, 250, 252, 0.88) !important;
+    text-shadow: 0 1px 5px rgba(0, 0, 0, 0.5) !important;
     background: transparent !important;
     box-sizing: border-box !important;
     border: 1px solid transparent !important;
@@ -470,22 +480,29 @@ code {
     width: 21px !important;
     height: 21px !important;
     flex-shrink: 0 !important;
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.4));
     transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), color 0.25s ease !important;
   }
   .nav-item:hover {
-    background: rgba(255, 255, 255, 0.07);
+    background: rgba(255, 255, 255, 0.05);
     color: #ffffff !important;
   }
   .nav-item.router-link-active {
-    background: rgba(255, 255, 255, 0.13) !important;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.14) 0%,
+      rgba(255, 255, 255, 0.03) 55%,
+      rgba(255, 255, 255, 0.08) 100%
+    ) !important;
     color: #ffffff !important;
-    border: 1px solid rgba(255, 255, 255, 0.16) !important;
-    border-top: 1px solid rgba(255, 255, 255, 0.28) !important;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.55) !important;
+    border: 1px solid rgba(255, 255, 255, 0.24) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.52) !important;
     padding: 0 16px !important;
     margin-top: 0 !important;
     box-shadow:
-      0 4px 14px rgba(0, 0, 0, 0.28),
-      inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
+      0 3px 10px rgba(0, 0, 0, 0.14),
+      inset 0 1px 1.5px rgba(255, 255, 255, 0.45) !important;
   }
   .nav-item.router-link-active svg {
     color: #2dd4bf !important;
@@ -499,6 +516,57 @@ code {
     max-width: 150px !important;
     opacity: 1 !important;
     margin-left: 8px !important;
+  }
+
+  /* iOS Liquid Glass Ultra-Clear (Clear Water Crystal cho nền sáng .theme-light-blue) */
+  .app-layout:has(.theme-light-blue) .sidebar {
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.15) 0%,
+      rgba(255, 255, 255, 0.02) 50%,
+      rgba(255, 255, 255, 0.1) 100%
+    ) !important;
+    backdrop-filter: blur(5px) saturate(185%) brightness(1.04) !important;
+    -webkit-backdrop-filter: blur(5px) saturate(185%) brightness(1.04) !important;
+    border: 1px solid rgba(255, 255, 255, 0.58) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.96) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.42) !important;
+    box-shadow:
+      0 8px 24px rgba(15, 23, 42, 0.1),
+      0 2px 6px rgba(15, 23, 42, 0.04),
+      inset 0 1.5px 1.5px rgba(255, 255, 255, 0.96),
+      inset 0 -1px 1.5px rgba(255, 255, 255, 0.52),
+      inset 0 0 12px rgba(255, 255, 255, 0.12) !important;
+  }
+  .app-layout:has(.theme-light-blue) .nav-item:not(.hide-on-mobile) {
+    color: #0f172a !important;
+    text-shadow:
+      0 1px 6px rgba(255, 255, 255, 0.92),
+      0 0 2px rgba(255, 255, 255, 0.96) !important;
+  }
+  .app-layout:has(.theme-light-blue) .nav-item svg {
+    filter: drop-shadow(0 1px 3px rgba(255, 255, 255, 0.9));
+  }
+  .app-layout:has(.theme-light-blue) .nav-item:hover {
+    background: rgba(255, 255, 255, 0.14) !important;
+    color: #0f172a !important;
+  }
+  .app-layout:has(.theme-light-blue) .nav-item.router-link-active {
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.24) 0%,
+      rgba(255, 255, 255, 0.05) 55%,
+      rgba(219, 234, 254, 0.12) 100%
+    ) !important;
+    color: #0f172a !important;
+    border: 1px solid rgba(255, 255, 255, 0.72) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.98) !important;
+    box-shadow:
+      0 3px 10px rgba(15, 23, 42, 0.07),
+      inset 0 1px 1.5px rgba(255, 255, 255, 0.96) !important;
+  }
+  .app-layout:has(.theme-light-blue) .nav-item.router-link-active svg {
+    color: #2563eb !important;
   }
   .main-content {
     max-width: 100% !important;

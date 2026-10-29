@@ -117,6 +117,7 @@
                           <template v-if="col.key === 'Ti_gia_pipeline'">
                             <FormattedInput 
                               v-model="customRates[pIdx]" 
+                              :decimals="0"
                               class="rate-input"
                             />
                           </template>

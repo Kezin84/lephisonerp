@@ -9,6 +9,7 @@ import { useRoute, useRouter } from 'vue-router'
 import draggable from 'vuedraggable'
 import ExcelEditor from './ExcelEditor.vue'
 import FormattedInput from './FormattedInput.vue'
+import { parsePastedNumber } from '../utils/smartNumber'
 import PipelinePreviewModal from './PipelinePreviewModal.vue'
 import html2canvas from 'html2canvas'
 import * as XLSX from 'xlsx-js-style'
@@ -66,6 +67,62 @@ const firebaseApp = !getApps().length ? initializeApp(firebaseConfig) : getApp()
 const database = getDatabase(firebaseApp);
 const route = useRoute()
 const router = useRouter()
+
+/* ======================
+   AUTO-GROW MULTI-LINE INPUT DIRECTIVE (MOBILE)
+====================== */
+const autoGrowWidthMap = new WeakMap<HTMLTextAreaElement, number>()
+function syncAutoGrowInput(el: HTMLTextAreaElement) {
+  if (!el) return
+  if (typeof window !== 'undefined' && window.innerWidth > 1100) {
+    el.style.removeProperty('height')
+    el.style.removeProperty('min-height')
+    return
+  }
+  if (el.offsetParent === null) return
+  const scrollParent = el.closest(
+    '.quote-edit-body-scroll, .save-modal-body-scroll, [style*="overflow-y"], .modal-card'
+  ) as HTMLElement | null
+  const prevScroll = scrollParent ? scrollParent.scrollTop : 0
+  el.style.setProperty('min-height', '0px', 'important')
+  el.style.setProperty('height', '0px', 'important')
+  const sh = el.scrollHeight
+  el.style.removeProperty('min-height')
+  el.style.setProperty('height', `${Math.max(46, sh + 2)}px`, 'important')
+  if (scrollParent) scrollParent.scrollTop = prevScroll
+}
+const autoGrowObserver =
+  typeof ResizeObserver !== 'undefined'
+    ? new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const el = entry.target as HTMLTextAreaElement
+          const w = Math.round(entry.contentRect.width)
+          if (w > 0 && autoGrowWidthMap.get(el) !== w) {
+            autoGrowWidthMap.set(el, w)
+            syncAutoGrowInput(el)
+          }
+        }
+      })
+    : null
+const vAutoGrow = {
+  mounted(el: HTMLTextAreaElement) {
+    const onInput = () => syncAutoGrowInput(el)
+    ;(el as any).__agOnInput = onInput
+    el.addEventListener('input', onInput)
+    autoGrowObserver?.observe(el)
+    requestAnimationFrame(() => syncAutoGrowInput(el))
+  },
+  updated(el: HTMLTextAreaElement) {
+    syncAutoGrowInput(el)
+  },
+  unmounted(el: HTMLTextAreaElement) {
+    if ((el as any).__agOnInput) {
+      el.removeEventListener('input', (el as any).__agOnInput)
+    }
+    autoGrowObserver?.unobserve(el)
+    autoGrowWidthMap.delete(el)
+  }
+}
 
 /* ======================
    FIREBASE RTDB HELPERS
@@ -2392,6 +2449,7 @@ let lastProductSidebarScrollTop = 0
 const setMobileStep = (step: number) => {
   const targetStep = Math.min(3, Math.max(1, step))
   mobileStep.value = targetStep
+  showQuoteColSetting.value = false
   if (targetStep === 1) {
     isMobileProductHeaderHidden.value = false
     return
@@ -2599,6 +2657,7 @@ async function openLoadInvoiceModal() {
   loadFromDate.value = '';
   loadToDate.value = '';
   loadSearchQuery.value = '';
+  showLoadMobileDateFilter.value = false;
   showLoadInvoiceModal.value = true;
   invoiceListState.value = 'loading'
   try {
@@ -4073,6 +4132,7 @@ const loadFromDate = ref('')
 const loadToDate = ref('')
 const loadStatusFilter = ref('')
 const loadSortBy = ref('desc')
+const showLoadMobileDateFilter = ref(false)
 const loadInvoiceDisplayLimit = ref(LOAD_CARD_LAZY_BATCH_SIZE)
 const invoiceLazySentinelRef = ref<HTMLElement | null>(null)
 let invoiceLazyObserver: IntersectionObserver | null = null
@@ -6598,11 +6658,14 @@ function removeScheduleInstallment(idx: number) {
   })
 }
 
-function onInstallmentPctChange(idx: number, e: Event) {
+function onInstallmentPctChange(idx: number, valOrEvent: number | Event) {
   const m = paymentModal.value
   if (!m.row || !m.scheduleItems[idx]) return
-  const target = e.target as HTMLInputElement
-  const pct = Math.max(0, Math.min(100, Number(target.value) || 0))
+  const rawVal =
+    typeof valOrEvent === 'number'
+      ? valOrEvent
+      : Number((valOrEvent.target as HTMLInputElement)?.value) || 0
+  const pct = Math.max(0, Math.min(100, rawVal))
   const totalSau = poTongSauVat(m.row)
   m.scheduleItems[idx].ty_le_pct = pct
   m.scheduleItems[idx].so_tien_phai_thu = Math.round(totalSau * (pct / 100))
@@ -6612,8 +6675,28 @@ function onInstallmentAmountInput(idx: number, e: Event) {
   const m = paymentModal.value
   if (!m.row || !m.scheduleItems[idx]) return
   const target = e.target as HTMLInputElement
-  const raw = String(target.value || '').replace(/[^0-9]/g, '')
-  const amt = raw ? Number(raw) : 0
+  const ie = e as InputEvent
+  let amt = 0
+  if (ie.inputType === 'insertFromPaste' || ie.inputType === 'insertFromDrop') {
+    amt = Math.max(0, parsePastedNumber(target.value, 0, false))
+  } else {
+    const raw = String(target.value || '').replace(/[^0-9]/g, '')
+    amt = raw ? Number(raw) : 0
+  }
+  const totalSau = poTongSauVat(m.row)
+  m.scheduleItems[idx].so_tien_phai_thu = amt
+  m.scheduleItems[idx].ty_le_pct = totalSau > 0 ? Math.round((amt / totalSau) * 10000) / 100 : 0
+  target.value = amt > 0 ? amt.toLocaleString('vi-VN') : ''
+}
+
+function onInstallmentAmountPaste(idx: number, e: ClipboardEvent) {
+  const m = paymentModal.value
+  if (!m.row || !m.scheduleItems[idx]) return
+  e.preventDefault()
+  const target = e.target as HTMLInputElement
+  const pasted = e.clipboardData?.getData('text') ?? ''
+  if (!pasted) return
+  const amt = Math.max(0, parsePastedNumber(pasted, 0, false))
   const totalSau = poTongSauVat(m.row)
   m.scheduleItems[idx].so_tien_phai_thu = amt
   m.scheduleItems[idx].ty_le_pct = totalSau > 0 ? Math.round((amt / totalSau) * 10000) / 100 : 0
@@ -6757,8 +6840,25 @@ function setPaymentQuickPct(pct: number) {
 
 function onPaymentAmountInput(e: Event) {
   const target = e.target as HTMLInputElement
-  const raw = String(target.value || '').replace(/[^0-9]/g, '')
-  const num = raw ? Number(raw) : 0
+  const ie = e as InputEvent
+  let num = 0
+  if (ie.inputType === 'insertFromPaste' || ie.inputType === 'insertFromDrop') {
+    num = Math.max(0, parsePastedNumber(target.value, 0, false))
+  } else {
+    const raw = String(target.value || '').replace(/[^0-9]/g, '')
+    num = raw ? Number(raw) : 0
+  }
+  paymentModal.value.amount = num
+  paymentModal.value.amountStr = num > 0 ? num.toLocaleString('vi-VN') : ''
+  target.value = paymentModal.value.amountStr
+}
+
+function onPaymentAmountPaste(e: ClipboardEvent) {
+  e.preventDefault()
+  const target = e.target as HTMLInputElement
+  const pasted = e.clipboardData?.getData('text') ?? ''
+  if (!pasted) return
+  const num = Math.max(0, parsePastedNumber(pasted, 0, false))
   paymentModal.value.amount = num
   paymentModal.value.amountStr = num > 0 ? num.toLocaleString('vi-VN') : ''
   target.value = paymentModal.value.amountStr
@@ -7964,9 +8064,133 @@ const adjustPriceModal = ref({
   currentTotal: 0,
   adjustType: 'percent' as 'percent' | 'number',
   percentValue: 0,
+  percentSign: 1 as 1 | -1,
   numberValue: 0,
+  numberSign: 1 as 1 | -1,
   isNormalEdit: false, // true = sửa thường (cập nhật giá thực tế, không tạo chênh lệch)
 })
+
+const adjustPercentPresetsDecrease = [-5, -10, -15] as const
+const adjustPercentPresetsIncrease = [5, 10, 15] as const
+
+const isAdjustChenhLechField = computed(() =>
+  ['item_chenh_lech', 'total_chenh_lech'].includes(adjustPriceModal.value.targetField || '')
+)
+
+const adjustPreviewTotal = computed(() => {
+  if (adjustPriceModal.value.adjustType === 'percent') {
+    const pct = Number(adjustPriceModal.value.percentValue) || 0
+    return adjustPriceModal.value.currentTotal * (1 + pct / 100)
+  }
+  return Number(adjustPriceModal.value.numberValue) || 0
+})
+
+const adjustDeltaAmount = computed(() =>
+  Math.round(adjustPreviewTotal.value) - Math.round(adjustPriceModal.value.currentTotal)
+)
+
+const adjustDeltaPercent = computed<number | null>(() => {
+  if (adjustPriceModal.value.adjustType === 'percent') {
+    return Number(adjustPriceModal.value.percentValue) || 0
+  }
+  const base = adjustPriceModal.value.currentTotal
+  if (!base) return null
+  return ((adjustPreviewTotal.value - base) / Math.abs(base)) * 100
+})
+
+const adjustDeltaPercentLabel = computed(() => {
+  const pct = adjustDeltaPercent.value
+  if (pct === null || !Number.isFinite(pct)) return ''
+  const rounded = Math.round(pct * 100) / 100
+  if (rounded === 0) return '0%'
+  const formatted = new Intl.NumberFormat('vi-VN', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  }).format(Math.abs(rounded))
+  return `${rounded > 0 ? '+' : '-'}${formatted}%`
+})
+
+const hasAdjustPriceChanged = computed(() =>
+  adjustDeltaAmount.value !== 0 ||
+  (adjustPriceModal.value.adjustType === 'percent' && (Number(adjustPriceModal.value.percentValue) || 0) !== 0)
+)
+
+function setAdjustPercentSign(sign: 1 | -1) {
+  adjustPriceModal.value.percentSign = sign
+  const cur = Number(adjustPriceModal.value.percentValue) || 0
+  if (cur !== 0) {
+    adjustPriceModal.value.percentValue = sign * Math.abs(cur)
+  }
+}
+
+function onAdjustPercentInput(val: number | string) {
+  const num = Number(val) || 0
+  const prev = Number(adjustPriceModal.value.percentValue) || 0
+  if (num === 0) {
+    adjustPriceModal.value.percentValue = 0
+    return
+  }
+  if (num < 0) {
+    adjustPriceModal.value.percentSign = -1
+    adjustPriceModal.value.percentValue = num
+    return
+  }
+  if (prev < 0 && Math.abs(Math.abs(prev) - num) < 1e-9) {
+    adjustPriceModal.value.percentSign = 1
+    adjustPriceModal.value.percentValue = num
+    return
+  }
+  adjustPriceModal.value.percentValue =
+    adjustPriceModal.value.percentSign < 0 ? -num : num
+}
+
+function selectAdjustPercentPreset(pct: number) {
+  adjustPriceModal.value.adjustType = 'percent'
+  adjustPriceModal.value.percentSign = pct < 0 ? -1 : 1
+  adjustPriceModal.value.percentValue = pct
+}
+
+function setAdjustNumberSign(sign: 1 | -1) {
+  adjustPriceModal.value.numberSign = sign
+  const cur = Number(adjustPriceModal.value.numberValue) || 0
+  if (cur !== 0) {
+    adjustPriceModal.value.numberValue = sign * Math.abs(cur)
+  }
+}
+
+function onAdjustNumberInput(val: number | string) {
+  const num = Number(val) || 0
+  if (!isAdjustChenhLechField.value) {
+    adjustPriceModal.value.numberSign = 1
+    adjustPriceModal.value.numberValue = Math.max(0, num)
+    return
+  }
+  const prev = Number(adjustPriceModal.value.numberValue) || 0
+  if (num === 0) {
+    adjustPriceModal.value.numberValue = 0
+    return
+  }
+  if (num < 0) {
+    adjustPriceModal.value.numberSign = -1
+    adjustPriceModal.value.numberValue = num
+    return
+  }
+  if (prev < 0 && Math.abs(Math.abs(prev) - num) < 1e-9) {
+    adjustPriceModal.value.numberSign = 1
+    adjustPriceModal.value.numberValue = num
+    return
+  }
+  adjustPriceModal.value.numberValue =
+    adjustPriceModal.value.numberSign < 0 ? -num : num
+}
+
+function resetAdjustPriceToOriginal() {
+  const orig = adjustPriceModal.value.currentTotal
+  adjustPriceModal.value.percentValue = 0
+  adjustPriceModal.value.percentSign = 1
+  adjustPriceModal.value.numberValue = orig
+  adjustPriceModal.value.numberSign = orig < 0 ? -1 : 1
+}
 
 function openAdjustPrice(mode: 'item'|'group'|'all'|'field', id: string, name: string, field?: string, isNormal?: boolean) {
   let total = 0;
@@ -8013,7 +8237,9 @@ function openAdjustPrice(mode: 'item'|'group'|'all'|'field', id: string, name: s
     currentTotal: total,
     adjustType: 'percent',
     percentValue: 0,
+    percentSign: 1,
     numberValue: total,
+    numberSign: total < 0 ? -1 : 1,
     isNormalEdit: !!isNormal,
   };
 }
@@ -11422,8 +11648,10 @@ const handleBeforeUnload = (_e: BeforeUnloadEvent) => {
 }
 
 const isMobileDevice = ref(window.innerWidth <= 768)
+const isMobileQuoteViewport = ref(window.innerWidth <= 1100)
 const handleResizeMobile = () => {
   isMobileDevice.value = window.innerWidth <= 768
+  isMobileQuoteViewport.value = window.innerWidth <= 1100
 }
 
 onMounted(() => {
@@ -15115,13 +15343,27 @@ const visibleLeadingFooterColSpan = computed(() => {
 
             <button
               type="button"
+              class="mobile-top-display-btn"
+              :class="{ 'is-active': showQuoteColSetting }"
+              @click.stop="showQuoteColSetting = !showQuoteColSetting"
+              title="Thiết lập hiển thị & Giao diện"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14.5" height="14.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              </svg>
+            </button>
+
+            <button
+              type="button"
               class="mobile-top-util-btn"
               @click.stop="showMoreActionsModal = true"
-              title="Tiện ích & Nạp dữ liệu báo giá"
+              title="Thao tác & Tiện ích mở rộng"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="3"></circle>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="5" r="1.5"></circle>
+                <circle cx="12" cy="12" r="1.5"></circle>
+                <circle cx="12" cy="19" r="1.5"></circle>
               </svg>
             </button>
 
@@ -15306,7 +15548,10 @@ const visibleLeadingFooterColSpan = computed(() => {
             <button
               type="button"
               class="m-step-pill"
-              :class="{ 'is-done': true }"
+              :class="{
+                'is-current': mobileStep === 1 && !showSaveModal && !showExportInfoModal,
+                'is-done': mobileStep >= 2 || showSaveModal || showExportInfoModal
+              }"
               @click.stop="setMobileStep(1)"
             >
               <span class="m-step-num">1</span>
@@ -15316,7 +15561,12 @@ const visibleLeadingFooterColSpan = computed(() => {
             <button
               type="button"
               class="m-step-pill"
-              :class="{ 'is-active': mobileStep === 1 && !showSaveModal && !showExportInfoModal, 'is-done': mobileStep >= 2 || showSaveModal || showExportInfoModal }"
+              :class="{
+                'is-active': mobileStep === 1 && !showSaveModal && !showExportInfoModal,
+                'is-next-pulse': mobileStep === 1 && !showSaveModal && !showExportInfoModal && selectedItems.length > 0,
+                'is-current': mobileStep === 2 && !showSaveModal && !showExportInfoModal,
+                'is-done': mobileStep >= 3 || showSaveModal || showExportInfoModal
+              }"
               @click.stop="setMobileStep(2)"
             >
               <span class="m-step-num">2</span>
@@ -15327,7 +15577,12 @@ const visibleLeadingFooterColSpan = computed(() => {
             <button
               type="button"
               class="m-step-pill"
-              :class="{ 'is-active': mobileStep === 2 && !showSaveModal && !showExportInfoModal, 'is-done': mobileStep >= 3 || showSaveModal || showExportInfoModal }"
+              :class="{
+                'is-active': mobileStep === 2 && !showSaveModal && !showExportInfoModal,
+                'is-next-pulse': mobileStep === 2 && !showSaveModal && !showExportInfoModal,
+                'is-current': mobileStep === 3 && !showSaveModal && !showExportInfoModal,
+                'is-done': showSaveModal || showExportInfoModal
+              }"
               @click.stop="setMobileStep(3)"
             >
               <span class="m-step-num">3</span>
@@ -15337,7 +15592,11 @@ const visibleLeadingFooterColSpan = computed(() => {
             <button
               type="button"
               class="m-step-pill m-step-save"
-              :class="{ 'is-active': mobileStep === 3 || showSaveModal || showExportInfoModal }"
+              :class="{
+                'is-active': mobileStep === 3 || showSaveModal || showExportInfoModal,
+                'is-next-pulse': mobileStep === 3 && !showSaveModal && !showExportInfoModal,
+                'is-current': showSaveModal || showExportInfoModal
+              }"
               @click.stop="showSaveModal = true"
             >
               <span class="m-step-num">4</span>
@@ -15639,12 +15898,20 @@ const visibleLeadingFooterColSpan = computed(() => {
             <!-- CỤM TRÁI: TIÊU ĐỀ + NÚT LÀM MỚI + THANH ĐỊNH DANH HỢP ĐỒNG GỘP GỌN -->
             <div class="header-left-cluster" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0;">
               <h3 class="quote-main-heading" style="margin: 0; white-space: nowrap; width: auto; flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px;">
-                <i class="lucide-file-text"></i>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                </svg>
                 <span>Bảng báo giá chi tiết</span>
               </h3>
 
-              <button type="button" class="btn-reset-quote" @click="resetToanBoBaoGia" style="background: #ef4444; color: #ffffff; border: none; padding: 0 10px; height: 28px; margin: 0; border-radius: 6px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; transition: all 0.2s; box-shadow: 0 1px 3px rgba(239, 68, 68, 0.4); font-size: 12px; white-space: nowrap; flex-shrink: 0; width: max-content; cursor: pointer;" title="Xóa toàn bộ hàng hóa trong báo giá" onmouseover="this.style.background='#dc2626'; this.style.boxShadow='0 2px 5px rgba(239,68,68,0.5)';" onmouseout="this.style.background='#ef4444'; this.style.boxShadow='0 1px 3px rgba(239,68,68,0.4)';">
-                <i class="lucide-rotate-ccw" style="font-size: 12px; color: #ffffff;"></i>
+              <button type="button" class="btn-reset-quote" @click="resetToanBoBaoGia" style="background: #ef4444; color: #ffffff; border: none; padding: 0 10px; height: 28px; margin: 0; border-radius: 6px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; transition: all 0.2s; box-shadow: 0 1px 3px rgba(239, 68, 68, 0.4); font-size: 12px; white-space: nowrap; flex-shrink: 0; width: max-content; cursor: pointer;" title="Xóa toàn bộ hàng hóa trong báo giá">
+                <svg class="btn-reset-ico" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;" aria-hidden="true">
+                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                  <path d="M3 3v5h5"></path>
+                </svg>
                 <span class="reset-btn-text">Làm mới</span>
               </button>
 
@@ -15701,13 +15968,22 @@ const visibleLeadingFooterColSpan = computed(() => {
                   }"
                   title="Chọn giao diện & các cột hiển thị trong bảng báo giá"
                 >
-                  <i class="lucide-settings" :style="{ fontSize: '13px', color: quoteThemeMode === 'light' ? '#2563eb' : '#38bdf8' }"></i>
+                  <svg class="btn-setting-ico" xmlns="http://www.w3.org/2000/svg" width="14.5" height="14.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" :style="{ color: quoteThemeMode === 'light' ? '#2563eb' : '#cbd5e1', flexShrink: 0 }" aria-hidden="true">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                  </svg>
                   <span class="col-setting-btn-text">Thiết lập hiển thị</span>
                 </button>
 
+                <Teleport v-if="showQuoteColSetting" to=".page" :disabled="!isMobileQuoteViewport">
                   <div
-                    v-if="showQuoteColSetting"
+                    class="quote-col-setting-backdrop"
+                    @click="showQuoteColSetting = false"
+                    style="position: fixed; inset: 0; z-index: 30; background: transparent;"
+                  ></div>
+                  <div
                     class="quote-col-setting-dropdown"
+                    :class="{ 'is-step1-pos': mobileStep === 1 }"
                     @click.stop
                     :style="{
                       position: 'absolute',
@@ -15821,7 +16097,19 @@ const visibleLeadingFooterColSpan = computed(() => {
                         }"
                         :title="quoteGroupByCategory ? 'Đang hiển thị theo nhóm Danh mục. Nhấn để chuyển sang hiển thị Riêng lẻ từng sản phẩm' : 'Đang hiển thị Riêng lẻ từng sản phẩm. Nhấn để chuyển sang hiển thị theo nhóm Danh mục'"
                       >
-                        <i :class="quoteGroupByCategory ? 'lucide-layers' : 'lucide-file-text'" style="font-size: 13px;"></i>
+                        <svg v-if="quoteGroupByCategory" xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;" aria-hidden="true">
+                          <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                          <polyline points="2 17 12 22 22 17"></polyline>
+                          <polyline points="2 12 12 17 22 12"></polyline>
+                        </svg>
+                        <svg v-else xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;" aria-hidden="true">
+                          <line x1="8" y1="6" x2="21" y2="6"></line>
+                          <line x1="8" y1="12" x2="21" y2="12"></line>
+                          <line x1="8" y1="18" x2="21" y2="18"></line>
+                          <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                          <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                          <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                        </svg>
                         {{ quoteGroupByCategory ? 'Hiển thị: Theo danh mục' : 'Hiển thị: Riêng lẻ' }}
                       </button>
                     </div>
@@ -15852,25 +16140,26 @@ const visibleLeadingFooterColSpan = computed(() => {
                       </label>
                     </div>
                   </div>
+                </Teleport>
                 </div>
 
               <button
                 type="button"
                 class="mobile-top-util-btn"
                 @click.stop="showMoreActionsModal = true"
-                title="Tiện ích & Nạp dữ liệu báo giá"
+                title="Thao tác & Tiện ích mở rộng"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="3"></circle>
-                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="5" r="1.5"></circle>
+                  <circle cx="12" cy="12" r="1.5"></circle>
+                  <circle cx="12" cy="19" r="1.5"></circle>
                 </svg>
               </button>
               </div>
           </div>
-          <div v-if="showQuoteColSetting" @click="showQuoteColSetting = false" style="position: fixed; inset: 0; z-index: 30; background: transparent;"></div>
 
-          <!-- ================== MOBILE COMPACT CUSTOMER CARD (TRÊN ĐẦU TỜ BÁO GIÁ) ================== -->
-          <div class="mobile-quote-customer-card">
+          <!-- ================== MOBILE COMPACT CUSTOMER CARD (ĐÃ TẮT VÌ BƯỚC 4 LƯU/XUẤT ĐÃ CÓ FORM KHÁCH HÀNG) ================== -->
+          <div v-if="false" class="mobile-quote-customer-card">
             <div class="m-cust-header" @click="showMobileCustomerInline = !showMobileCustomerInline">
               <div class="m-cust-icon" :class="{ 'has-cust': Boolean(khach.MST || khach.Ten_cong_ty || khach.Ten_khach_hang) }">
                 <i class="lucide-user"></i>
@@ -16158,117 +16447,166 @@ const visibleLeadingFooterColSpan = computed(() => {
 
           <!-- ================== MOBILE SCREEN 3: TRANG TỔNG KẾT (CHIẾT KHẤU & TÀI CHÍNH) ================== -->
           <div class="mobile-quote-summary-card">
-            <!-- 1. KHỐI CHIẾT KHẤU & CHÊNH LỆCH GIÁ -->
-            <div class="m-sum-discount-wrap">
+            <!-- CARD 1: KHỐI CHIẾT KHẤU & CHÊNH LỆCH GIÁ -->
+            <div class="m-sum-card is-discount">
               <div class="m-sum-header m-sum-discount-header">
                 <div class="m-sum-title-group">
-                  <i class="lucide-trending-down"></i>
+                  <span class="m-sum-head-icon is-amber">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"></path>
+                      <path d="m15 9-6 6"></path>
+                      <path d="M9 9h.01"></path>
+                      <path d="M15 15h.01"></path>
+                    </svg>
+                  </span>
                   <span>CHIẾT KHẤU &amp; CHÊNH LỆCH GIÁ</span>
                 </div>
-                <span v-if="tongChietKhau !== 0" class="m-sum-discount-badge">{{ formatVND(tongChietKhau) }}</span>
+                <span v-if="tongChietKhau !== 0" class="m-sum-discount-badge">{{ formatVND(tongChietKhau) }} ₫</span>
+                <span v-else class="m-sum-currency-badge is-amber">VND</span>
               </div>
 
-              <div class="m-sum-discount-body">
-                <div class="m-sum-row">
+              <div class="m-sum-body m-sum-discount-body">
+                <div class="m-sum-row is-input-row">
                   <span class="m-sum-label">
-                    Chiết khấu trước thuế
-                    <FormattedInput v-model="chietKhauTruocThuePct" placeholder="0" class="m-sum-pct-input" /> %
+                    <span>Chiết khấu trước thuế</span>
+                    <span class="m-sum-pct-pill">
+                      <FormattedInput
+                        v-model="chietKhauTruocThuePct"
+                        :decimals="2"
+                        inputmode="decimal"
+                        placeholder="0"
+                        class="m-sum-pct-input"
+                      />
+                      <em class="m-sum-pct-unit">%</em>
+                    </span>
                   </span>
                   <span class="m-sum-val">
-                    {{ formatVND(chietKhauTruocThue) }}
-                    <button type="button" class="m-sum-hist" @click="openHistory('chietKhauTruocThue', 'Chiết khấu tổng trước thuế')"><i class="ri-history-line"></i></button>
+                    <span class="m-sum-num">{{ formatVND(chietKhauTruocThue) }}</span>
+                    <button type="button" class="m-sum-hist" @click="openHistory('chietKhauTruocThue', 'Chiết khấu tổng trước thuế')" title="Xem lịch sử"><i class="ri-history-line"></i></button>
                   </span>
                 </div>
-                <div class="m-sum-row">
+
+                <div class="m-sum-row is-input-row">
                   <span class="m-sum-label">
-                    Thuế chênh lệch giá
-                    <FormattedInput v-model="thueChenhLechPct" placeholder="0" class="m-sum-pct-input" /> %
+                    <span>Thuế chênh lệch giá</span>
+                    <span class="m-sum-pct-pill">
+                      <FormattedInput
+                        v-model="thueChenhLechPct"
+                        :decimals="2"
+                        inputmode="decimal"
+                        placeholder="0"
+                        class="m-sum-pct-input"
+                      />
+                      <em class="m-sum-pct-unit">%</em>
+                    </span>
                   </span>
                   <span class="m-sum-val">
-                    {{ formatVND(thueChenhLech) }}
-                    <button type="button" class="m-sum-hist" @click="openHistory('thueChenhLech', 'Thuế chênh lệch giá')"><i class="ri-history-line"></i></button>
+                    <span class="m-sum-num">{{ formatVND(thueChenhLech) }}</span>
+                    <button type="button" class="m-sum-hist" @click="openHistory('thueChenhLech', 'Thuế chênh lệch giá')" title="Xem lịch sử"><i class="ri-history-line"></i></button>
                   </span>
                 </div>
+
                 <div class="m-sum-row">
                   <span class="m-sum-label">
-                    Chênh lệch giá
-                    <button type="button" class="m-sum-inline-adj" @click="openAdjustPrice('all', '', 'Tổng chênh lệch giá', 'total_chenh_lech')" title="Điều chỉnh tổng chênh lệch">
+                    <span>Chênh lệch giá</span>
+                    <button
+                      type="button"
+                      class="m-sum-inline-adj-pill"
+                      @click="openAdjustPrice('all', '', 'Tổng chênh lệch giá', 'total_chenh_lech')"
+                      title="Điều chỉnh tổng chênh lệch giá"
+                    >
                       <i class="ri-arrow-up-down-fill"></i>
+                      <span>Điều chỉnh</span>
                     </button>
                   </span>
-                  <span class="m-sum-val" :class="chenhLechGia >= 0 ? 'pos' : 'neg'">
-                    {{ chenhLechGia >= 0 ? '+' : '' }}{{ formatVND(chenhLechGia) }}
-                    <button type="button" class="m-sum-hist" @click="openHistory('chenhLechGia', 'Chênh lệch giá')"><i class="ri-history-line"></i></button>
+                  <span class="m-sum-val" :class="chenhLechGia > 0 ? 'pos' : chenhLechGia < 0 ? 'neg' : ''">
+                    <span class="m-sum-num">{{ chenhLechGia > 0 ? '+' : '' }}{{ formatVND(chenhLechGia) }}</span>
+                    <button type="button" class="m-sum-hist" @click="openHistory('chenhLechGia', 'Chênh lệch giá')" title="Xem lịch sử"><i class="ri-history-line"></i></button>
                   </span>
                 </div>
-                <div class="m-sum-row">
+
+                <div class="m-sum-row is-last-plain">
                   <span class="m-sum-label">Còn lại</span>
                   <span class="m-sum-val">
-                    {{ formatVND(conLai) }}
-                    <button type="button" class="m-sum-hist" @click="openHistory('conLai', 'Còn lại')"><i class="ri-history-line"></i></button>
+                    <span class="m-sum-num">{{ formatVND(conLai) }}</span>
+                    <button type="button" class="m-sum-hist" @click="openHistory('conLai', 'Còn lại')" title="Xem lịch sử"><i class="ri-history-line"></i></button>
                   </span>
                 </div>
-                <div class="m-sum-row m-sum-discount-total">
-                  <span class="m-sum-label">Tổng Chiết khấu</span>
+
+                <div class="m-sum-highlight-box m-sum-discount-total">
+                  <div class="m-sum-hl-left">
+                    <span class="m-sum-hl-sub">Tổng hợp chiết khấu (VND)</span>
+                    <span class="m-sum-label">Tổng Chiết khấu</span>
+                  </div>
                   <span class="m-sum-val">
-                    {{ formatVND(tongChietKhau) }}
-                    <button type="button" class="m-sum-hist" @click="openHistory('tongChietKhau', 'Tổng Chiết khấu')"><i class="ri-history-line"></i></button>
+                    <span class="m-sum-num">{{ formatVND(tongChietKhau) }}</span>
+                    <button type="button" class="m-sum-hist" @click="openHistory('tongChietKhau', 'Tổng Chiết khấu')" title="Xem lịch sử"><i class="ri-history-line"></i></button>
                   </span>
                 </div>
               </div>
             </div>
 
-            <!-- 2. KHỐI TỔNG HỢP TÀI CHÍNH -->
-            <div class="m-sum-header">
-              <div class="m-sum-title-group">
-                <i class="lucide-wallet"></i>
-                <span>TỔNG HỢP TÀI CHÍNH ({{ quoteCurrency }})</span>
+            <!-- CARD 2: KHỐI TỔNG HỢP TÀI CHÍNH -->
+            <div class="m-sum-card is-finance">
+              <div class="m-sum-header m-sum-finance-header">
+                <div class="m-sum-title-group">
+                  <span class="m-sum-head-icon is-emerald">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15.5" height="15.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"></path>
+                      <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"></path>
+                    </svg>
+                  </span>
+                  <span>TỔNG HỢP TÀI CHÍNH</span>
+                </div>
+                <span class="m-sum-currency-badge is-emerald">{{ quoteCurrency }}</span>
               </div>
-              <button
-                type="button"
-                class="m-sum-adjust-btn"
-                @click="openAdjustPrice('all', '', 'Toàn bộ báo giá')"
-              >
-                <i class="ri-arrow-up-down-fill"></i>
-                <span>Điều chỉnh giá</span>
-              </button>
-            </div>
 
-            <div class="m-sum-body">
-              <div class="m-sum-row">
-                <span class="m-sum-label">Tổng giá thực tế</span>
-                <span class="m-sum-val">
-                  {{ formatVND(tongGiaThucTe) }}
-                  <button type="button" class="m-sum-hist" @click="openHistory('tongGiaThucTe', 'Tổng giá thực tế')"><i class="ri-history-line"></i></button>
-                </span>
-              </div>
-              <div class="m-sum-row">
-                <span class="m-sum-label">Tổng trước thuế (HĐ)</span>
-                <span class="m-sum-val">
-                  {{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.truoc) : formatVND(totals.truoc) }}
-                  <button type="button" class="m-sum-hist" @click="openHistory('truoc', 'Tổng trước thuế ( HĐ)')"><i class="ri-history-line"></i></button>
-                </span>
-              </div>
-              <div class="m-sum-row">
-                <span class="m-sum-label">Tổng tiền thuế (VAT)</span>
-                <span class="m-sum-val warn">
-                  {{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.vat) : formatVND(totals.vat) }}
-                  <button type="button" class="m-sum-hist" @click="openHistory('vat', 'Tổng VAT')"><i class="ri-history-line"></i></button>
-                </span>
-              </div>
-              <div v-if="quoteColVisible.net_margin" class="m-sum-row">
-                <span class="m-sum-label">Lợi nhuận ròng (Net Margin)</span>
-                <span class="m-sum-val" :class="totals.loi >= 0 ? 'pos' : 'neg'">
-                  <span v-if="totals.loi >= 0">▲</span><span v-else>▼</span>
-                  {{ quoteCurrency === 'USD' ? formatUSD(Math.abs(totalsUSD.loi)) : formatVND(Math.abs(totals.loi)) }}
-                </span>
-              </div>
-              <div class="m-sum-row m-sum-grand-total">
-                <span class="m-sum-label">TỔNG THANH TOÁN (SAU THUẾ)</span>
-                <span class="m-sum-val">
-                  {{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.sau) : formatVND(totals.sau) }}
-                  <button type="button" class="m-sum-hist" @click="openHistory('sau', 'Tổng sau thuế')"><i class="ri-history-line"></i></button>
-                </span>
+              <div class="m-sum-body">
+                <div class="m-sum-row">
+                  <span class="m-sum-label">Tổng giá thực tế</span>
+                  <span class="m-sum-val">
+                    <span class="m-sum-num">{{ formatVND(tongGiaThucTe) }}</span>
+                    <button type="button" class="m-sum-hist" @click="openHistory('tongGiaThucTe', 'Tổng giá thực tế')" title="Xem lịch sử"><i class="ri-history-line"></i></button>
+                  </span>
+                </div>
+
+                <div class="m-sum-row">
+                  <span class="m-sum-label">
+                    <span>Tổng trước thuế (HĐ)</span>
+                    <button
+                      type="button"
+                      class="m-sum-inline-adj-pill is-emerald"
+                      @click="openAdjustPrice('all', '', 'Toàn bộ báo giá')"
+                      title="Điều chỉnh toàn bộ báo giá"
+                    >
+                      <i class="ri-arrow-up-down-fill"></i>
+                      <span>Điều chỉnh</span>
+                    </button>
+                  </span>
+                  <span class="m-sum-val">
+                    <span class="m-sum-num">{{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.truoc) : formatVND(totals.truoc) }}</span>
+                    <button type="button" class="m-sum-hist" @click="openHistory('truoc', 'Tổng trước thuế ( HĐ)')" title="Xem lịch sử"><i class="ri-history-line"></i></button>
+                  </span>
+                </div>
+
+                <div class="m-sum-row is-last-plain">
+                  <span class="m-sum-label">Tổng tiền thuế (VAT)</span>
+                  <span class="m-sum-val warn">
+                    <span class="m-sum-num">{{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.vat) : formatVND(totals.vat) }}</span>
+                    <button type="button" class="m-sum-hist" @click="openHistory('vat', 'Tổng VAT')" title="Xem lịch sử"><i class="ri-history-line"></i></button>
+                  </span>
+                </div>
+
+                <div class="m-sum-highlight-box m-sum-grand-total">
+                  <div class="m-sum-hl-left">
+                    <span class="m-sum-hl-sub">Đã bao gồm VAT ({{ quoteCurrency }})</span>
+                    <span class="m-sum-label">Tổng thanh toán</span>
+                  </div>
+                  <span class="m-sum-val">
+                    <span class="m-sum-num">{{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.sau) : formatVND(totals.sau) }}</span>
+                    <button type="button" class="m-sum-hist" @click="openHistory('sau', 'Tổng sau thuế')" title="Xem lịch sử"><i class="ri-history-line"></i></button>
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -16296,7 +16634,10 @@ const visibleLeadingFooterColSpan = computed(() => {
               <button
                 type="button"
                 class="m-step-pill"
-                :class="{ 'is-done': true }"
+                :class="{
+                  'is-current': mobileStep === 1 && !showSaveModal && !showExportInfoModal,
+                  'is-done': mobileStep >= 2 || showSaveModal || showExportInfoModal
+                }"
                 @click.stop="setMobileStep(1)"
               >
                 <span class="m-step-num">1</span>
@@ -16306,7 +16647,12 @@ const visibleLeadingFooterColSpan = computed(() => {
               <button
                 type="button"
                 class="m-step-pill"
-                :class="{ 'is-active': mobileStep === 1 && !showSaveModal && !showExportInfoModal, 'is-done': mobileStep >= 2 || showSaveModal || showExportInfoModal }"
+                :class="{
+                  'is-active': mobileStep === 1 && !showSaveModal && !showExportInfoModal,
+                  'is-next-pulse': mobileStep === 1 && !showSaveModal && !showExportInfoModal && selectedItems.length > 0,
+                  'is-current': mobileStep === 2 && !showSaveModal && !showExportInfoModal,
+                  'is-done': mobileStep >= 3 || showSaveModal || showExportInfoModal
+                }"
                 @click.stop="setMobileStep(2)"
               >
                 <span class="m-step-num">2</span>
@@ -16317,7 +16663,12 @@ const visibleLeadingFooterColSpan = computed(() => {
               <button
                 type="button"
                 class="m-step-pill"
-                :class="{ 'is-active': mobileStep === 2 && !showSaveModal && !showExportInfoModal, 'is-done': mobileStep >= 3 || showSaveModal || showExportInfoModal }"
+                :class="{
+                  'is-active': mobileStep === 2 && !showSaveModal && !showExportInfoModal,
+                  'is-next-pulse': mobileStep === 2 && !showSaveModal && !showExportInfoModal,
+                  'is-current': mobileStep === 3 && !showSaveModal && !showExportInfoModal,
+                  'is-done': showSaveModal || showExportInfoModal
+                }"
                 @click.stop="setMobileStep(3)"
               >
                 <span class="m-step-num">3</span>
@@ -16327,7 +16678,11 @@ const visibleLeadingFooterColSpan = computed(() => {
               <button
                 type="button"
                 class="m-step-pill m-step-save"
-                :class="{ 'is-active': mobileStep === 3 || showSaveModal || showExportInfoModal }"
+                :class="{
+                  'is-active': mobileStep === 3 || showSaveModal || showExportInfoModal,
+                  'is-next-pulse': mobileStep === 3 && !showSaveModal && !showExportInfoModal,
+                  'is-current': showSaveModal || showExportInfoModal
+                }"
                 @click.stop="showSaveModal = true"
               >
                 <span class="m-step-num">4</span>
@@ -16647,14 +17002,14 @@ const visibleLeadingFooterColSpan = computed(() => {
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Mã KH</label>
                     <div class="input-with-picker">
-                      <input v-model="maKHInput" placeholder="Tự động tạo hoặc nhập Mã KH" @change="fillCustomerByMa(maKHInput)" @blur="onBlurMaKH" style="width: 100%; padding: 10px 60px 10px 12px; border-radius: 8px; font-size: 13px; margin: 0;" />
+                      <textarea rows="1" class="m-wrap-input has-right-picker" v-auto-grow @keydown.enter.prevent v-model="maKHInput" placeholder="Tự động tạo hoặc nhập Mã KH" @change="fillCustomerByMa(maKHInput)" @blur="onBlurMaKH" style="width: 100%; padding: 10px 60px 10px 12px; border-radius: 8px; font-size: 13px; margin: 0;"></textarea>
                       <button type="button" class="inline-picker-btn" @click="openCustomerPicker('ma_kh')">Chọn</button>
                     </div>
                   </div>
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Tên người liên hệ</label>
                     <div class="input-with-picker">
-                      <input v-model="tenKHInput" placeholder="Tên người liên hệ" @change="fillCustomerByTen(tenKHInput)" @blur="onBlurTenKH" style="width: 100%; padding: 10px 60px 10px 12px; border-radius: 8px; font-size: 13px; margin: 0;" />
+                      <textarea rows="1" class="m-wrap-input has-right-picker" v-auto-grow @keydown.enter.prevent v-model="tenKHInput" placeholder="Tên người liên hệ" @change="fillCustomerByTen(tenKHInput)" @blur="onBlurTenKH" style="width: 100%; padding: 10px 60px 10px 12px; border-radius: 8px; font-size: 13px; margin: 0;"></textarea>
                       <button type="button" class="inline-picker-btn" @click="openCustomerPicker('ten_kh')">Chọn</button>
                     </div>
                   </div>
@@ -16671,7 +17026,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 5px;">
                   <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Ghi chú khách hàng</label>
-                  <input v-model="khach.Ghi_chu" placeholder="Ghi chú thêm về khách hàng..." style="padding: 10px 12px; border-radius: 8px; font-size: 13px;" />
+                  <textarea rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="khach.Ghi_chu" placeholder="Ghi chú thêm về khách hàng..." style="padding: 10px 12px; border-radius: 8px; font-size: 13px;"></textarea>
                 </div>
               </div>
 
@@ -16716,7 +17071,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Tên công ty</label>
                     <div class="input-with-picker">
-                      <input v-model="khach.Ten_cong_ty" placeholder="Tên công ty đầy đủ" @change="fillCustomerByCongTy(khach.Ten_cong_ty)" @blur="onBlurCongTy" style="width: 100%; padding: 10px 60px 10px 12px; border-radius: 8px; font-size: 13px; margin: 0;" />
+                      <textarea rows="1" class="m-wrap-input has-right-picker" v-auto-grow @keydown.enter.prevent v-model="khach.Ten_cong_ty" placeholder="Tên công ty đầy đủ" @change="fillCustomerByCongTy(khach.Ten_cong_ty)" @blur="onBlurCongTy" style="width: 100%; padding: 10px 60px 10px 12px; border-radius: 8px; font-size: 13px; margin: 0;"></textarea>
                       <button type="button" class="inline-picker-btn" @click="openCustomerPicker('ten_cong_ty')">Chọn</button>
                     </div>
                   </div>
@@ -16731,7 +17086,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                 <div style="display: grid; grid-template-columns: 2.2fr 1fr; gap: 12px;">
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Địa chỉ xuất hóa đơn</label>
-                    <input v-model="khach.Dia_chi_cong_ty" placeholder="Địa chỉ trụ sở / xuất hóa đơn" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;" />
+                    <textarea rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="khach.Dia_chi_cong_ty" placeholder="Địa chỉ trụ sở / xuất hóa đơn" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;"></textarea>
                   </div>
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Website</label>
@@ -17266,10 +17621,10 @@ const visibleLeadingFooterColSpan = computed(() => {
                       <input type="text" v-model="inst.noi_dung" style="padding: 6px 8px; font-size: 12px; border-radius: 6px; margin: 0;" />
                     </td>
                     <td style="padding: 8px 10px;">
-                      <input type="number" min="0" max="100" step="0.5" :value="inst.ty_le_pct" @input="onInstallmentPctChange(idx, $event)" style="padding: 6px; font-size: 12px; text-align: right; border-radius: 6px; margin: 0;" />
+                      <FormattedInput :modelValue="inst.ty_le_pct" :decimals="2" @update:modelValue="onInstallmentPctChange(idx, $event)" placeholder="0" style="padding: 6px; font-size: 12px; text-align: right; border-radius: 6px; margin: 0;" />
                     </td>
                     <td style="padding: 8px 10px;">
-                      <input type="text" :value="inst.so_tien_phai_thu > 0 ? inst.so_tien_phai_thu.toLocaleString('vi-VN') : ''" @input="onInstallmentAmountInput(idx, $event)" style="padding: 6px 8px; font-size: 12px; text-align: right; border-radius: 6px; margin: 0;" />
+                      <input type="text" inputmode="numeric" :value="inst.so_tien_phai_thu > 0 ? inst.so_tien_phai_thu.toLocaleString('vi-VN') : ''" @input="onInstallmentAmountInput(idx, $event)" @paste="onInstallmentAmountPaste(idx, $event)" placeholder="0" style="padding: 6px 8px; font-size: 12px; text-align: right; border-radius: 6px; margin: 0;" />
                     </td>
                     <td style="padding: 8px 10px;">
                       <input type="date" :value="debtDdmmyyyyToIso(inst.han_thanh_toan)" @change="onInstallmentDatePickerChange(idx, $event)" style="padding: 5px 8px; font-size: 12px; border-radius: 6px; margin: 0;" />
@@ -17348,7 +17703,7 @@ const visibleLeadingFooterColSpan = computed(() => {
           <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px;">
             <div>
               <label style="font-size: 11.5px; color: #cbd5e1; font-weight: 600; display: block; margin-bottom: 5px;">Số tiền khách thanh toán (VNĐ)</label>
-              <input type="text" :value="paymentModal.amountStr" @input="onPaymentAmountInput" placeholder="Nhập số tiền..." style="padding: 9px 12px; border-radius: 8px; font-size: 15px; font-weight: 800; color: #10b981; text-align: right; margin: 0;" />
+              <input type="text" inputmode="numeric" :value="paymentModal.amountStr" @input="onPaymentAmountInput" @paste="onPaymentAmountPaste" placeholder="Nhập số tiền..." style="padding: 9px 12px; border-radius: 8px; font-size: 15px; font-weight: 800; color: #10b981; text-align: right; margin: 0;" />
             </div>
             <div>
               <label style="font-size: 11.5px; color: #cbd5e1; font-weight: 600; display: block; margin-bottom: 5px;">Thời gian thanh toán</label>
@@ -17714,7 +18069,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                 </button>
               </div>
               <div style="position: relative; display: flex; align-items: center;" :class="{ 'input-loading': productsState === 'loading', 'input-loaded': productsState === 'loaded', 'input-ready': productsState === 'ready' }">
-                <input v-model="itemForm.Ten_hang" placeholder="Nhập tên hàng hóa..." @input="updateMaHang" @blur="autoFillProduct(itemForm.Ten_hang)" style="width: 100%; padding: 10px 64px 10px 36px; border-radius: 8px; font-weight: 500; margin: 0;" />
+                <textarea rows="1" class="m-wrap-input has-left-icon has-right-picker" v-auto-grow @keydown.enter.prevent v-model="itemForm.Ten_hang" placeholder="Nhập tên hàng hóa..." @input="updateMaHang" @blur="autoFillProduct(itemForm.Ten_hang)" style="width: 100%; padding: 10px 64px 10px 36px; border-radius: 8px; font-weight: 500; margin: 0;"></textarea>
                 <i class="lucide-package" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                 <button type="button" class="inline-picker-btn" @click="openProductPicker('manual', 'ten_hang')">Chọn</button>
               </div>
@@ -17723,7 +18078,7 @@ const visibleLeadingFooterColSpan = computed(() => {
             <div style="display: flex; flex-direction: column; gap: 6px;">
               <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">SKU Code</label>
               <div style="position: relative; display: flex; align-items: center;">
-                <input v-model="itemForm.sku_code" placeholder="Nhập mã SKU (SKU Code)..." style="width: 100%; padding: 10px 64px 10px 36px; border-radius: 8px; font-weight: 500; margin: 0;" />
+                <textarea rows="1" class="m-wrap-input has-left-icon has-right-picker" v-auto-grow @keydown.enter.prevent v-model="itemForm.sku_code" placeholder="Nhập mã SKU (SKU Code)..." style="width: 100%; padding: 10px 64px 10px 36px; border-radius: 8px; font-weight: 500; margin: 0;"></textarea>
                 <i class="lucide-barcode" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                 <button type="button" class="inline-picker-btn" @click="openProductPicker('manual', 'sku_code')">Chọn</button>
               </div>
@@ -17733,14 +18088,14 @@ const visibleLeadingFooterColSpan = computed(() => {
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Danh mục</label>
                 <div class="input-with-picker">
-                  <input v-model="itemForm.Danh_muc" placeholder="HW, SW, SVR..." @input="updateMaHang" style="width: 100%; padding: 10px 60px 10px 14px; border-radius: 8px; margin: 0;" />
+                  <textarea rows="1" class="m-wrap-input has-right-picker" v-auto-grow @keydown.enter.prevent v-model="itemForm.Danh_muc" placeholder="HW, SW, SVR..." @input="updateMaHang" style="width: 100%; padding: 10px 60px 10px 14px; border-radius: 8px; margin: 0;"></textarea>
                   <button type="button" class="inline-picker-btn" @click="openProductPicker('manual', 'danh_muc')">Chọn</button>
                 </div>
               </div>
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">ĐVT</label>
                 <div class="input-with-picker">
-                  <input v-model="itemForm.DVT" placeholder="CÁI, BỘ, BẢN QUYỀN..." style="width: 100%; padding: 10px 60px 10px 14px; border-radius: 8px; margin: 0;" />
+                  <textarea rows="1" class="m-wrap-input has-right-picker" v-auto-grow @keydown.enter.prevent v-model="itemForm.DVT" placeholder="CÁI, BỘ, BẢN QUYỀN..." style="width: 100%; padding: 10px 60px 10px 14px; border-radius: 8px; margin: 0;"></textarea>
                   <button type="button" class="inline-picker-btn" @click="openProductPicker('manual', 'dvt')">Chọn</button>
                 </div>
               </div>
@@ -17750,7 +18105,7 @@ const visibleLeadingFooterColSpan = computed(() => {
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Hãng</label>
                 <div style="position: relative; display: flex; align-items: center;">
-                  <input v-model="itemForm.Ten_nha_cung_cap" placeholder="Nhà cung cấp..." @input="updateMaNcc" style="width: 100%; padding: 10px 64px 10px 36px; border-radius: 8px; margin: 0;" />
+                  <textarea rows="1" class="m-wrap-input has-left-icon has-right-picker" v-auto-grow @keydown.enter.prevent v-model="itemForm.Ten_nha_cung_cap" placeholder="Nhà cung cấp..." @input="updateMaNcc" style="width: 100%; padding: 10px 64px 10px 36px; border-radius: 8px; margin: 0;"></textarea>
                   <i class="lucide-truck" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                   <button type="button" class="inline-picker-btn" @click="openProductPicker('manual', 'hang')">Chọn</button>
                 </div>
@@ -17758,14 +18113,14 @@ const visibleLeadingFooterColSpan = computed(() => {
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Bảo hành</label>
                 <div style="position: relative;">
-                  <input v-model="itemForm.thoi_han_bao_hanh" placeholder="VD: 12 tháng..." style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px;" />
+                  <textarea rows="1" class="m-wrap-input has-left-icon" v-auto-grow @keydown.enter.prevent v-model="itemForm.thoi_han_bao_hanh" placeholder="VD: 12 tháng..." style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px;"></textarea>
                   <i class="lucide-shield-check" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                 </div>
               </div>
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Volume</label>
                 <div style="position: relative;">
-                  <input v-model="itemForm.volume" placeholder="VD: 1Dvc, 3Dvc, 10Dvc..." style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px;" />
+                  <textarea rows="1" class="m-wrap-input has-left-icon" v-auto-grow @keydown.enter.prevent v-model="itemForm.volume" placeholder="VD: 1Dvc, 3Dvc, 10Dvc..." style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px;"></textarea>
                   <i class="lucide-layers" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                 </div>
               </div>
@@ -17806,7 +18161,7 @@ const visibleLeadingFooterColSpan = computed(() => {
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Tỉ giá</label>
                 <div style="position: relative;">
-                  <FormattedInput v-model="itemForm.Ti_gia" placeholder="1" :disabled="!itemForm.Don_vi_tien_te || itemForm.Don_vi_tien_te.toUpperCase() === 'VND'" style="width: 100%; padding: 10px 14px; border-radius: 8px;" />
+                  <FormattedInput v-model="itemForm.Ti_gia" :decimals="0" placeholder="1" :disabled="!itemForm.Don_vi_tien_te || itemForm.Don_vi_tien_te.toUpperCase() === 'VND'" style="width: 100%; padding: 10px 14px; border-radius: 8px;" />
                   <span v-if="itemForm.Don_vi_tien_te && itemForm.Don_vi_tien_te.toUpperCase() !== 'VND'" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 10px; font-weight: 600; color: #f59e0b; pointer-events: none;">₫/{{ itemForm.Don_vi_tien_te }}</span>
                 </div>
               </div>
@@ -17817,6 +18172,7 @@ const visibleLeadingFooterColSpan = computed(() => {
               <div style="position: relative;">
                 <FormattedInput
                   v-if="!itemForm.Don_vi_tien_te || itemForm.Don_vi_tien_te.toUpperCase() === 'VND'"
+                  :decimals="0"
                   :modelValue="(itemForm.Don_gia || 0) * (Number(itemForm.Ti_gia) || 1)"
                   @update:modelValue="itemForm.Don_gia = $event / (Number(itemForm.Ti_gia) || 1)"
                   placeholder="Nhập đơn giá xuất..."
@@ -17839,6 +18195,7 @@ const visibleLeadingFooterColSpan = computed(() => {
               <div style="position: relative;">
                 <FormattedInput
                   v-if="!itemForm.Don_vi_tien_te || itemForm.Don_vi_tien_te.toUpperCase() === 'VND'"
+                  :decimals="0"
                   :modelValue="(itemForm.Gia_tieu_chuan || 0) * (Number(itemForm.Ti_gia) || 1)"
                   @update:modelValue="itemForm.Gia_tieu_chuan = $event / (Number(itemForm.Ti_gia) || 1)"
                   placeholder="0"
@@ -17860,6 +18217,7 @@ const visibleLeadingFooterColSpan = computed(() => {
               <div style="position: relative;">
                 <FormattedInput
                   v-if="!itemForm.Don_vi_tien_te || itemForm.Don_vi_tien_te.toUpperCase() === 'VND'"
+                  :decimals="0"
                   :modelValue="(itemForm.gia_nhap || 0) * (Number(itemForm.Ti_gia) || 1)"
                   @update:modelValue="itemForm.gia_nhap = $event / (Number(itemForm.Ti_gia) || 1)"
                   placeholder="0"
@@ -17898,7 +18256,7 @@ const visibleLeadingFooterColSpan = computed(() => {
               <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px; margin: 0;">Số lượng xuất</label>
               <div class="qty" style="transform: scale(1.1); transform-origin: right center;">
                 <button type="button" @click="itemForm.So_luong = Math.max(1, toNum(itemForm.So_luong, 1) - 1)">&#x2212;</button>
-                <FormattedInput class="qty-input-inline" v-model="itemForm.So_luong" placeholder="1" style="width: 36px; background: transparent !important; border: none !important; text-align: center; border-radius: 0; font-weight: 800; font-size: 14px; padding: 0; color: #fff; box-shadow: none;" />
+                <FormattedInput class="qty-input-inline" :decimals="0" v-model="itemForm.So_luong" placeholder="1" style="width: 36px; background: transparent !important; border: none !important; text-align: center; border-radius: 0; font-weight: 800; font-size: 14px; padding: 0; color: #fff; box-shadow: none;" />
                 <button type="button" @click="itemForm.So_luong = toNum(itemForm.So_luong, 1) + 1">+</button>
               </div>
             </div>
@@ -17988,7 +18346,7 @@ const visibleLeadingFooterColSpan = computed(() => {
               </div>
               <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Tên hàng <span style="color: #ef4444;">*</span></label>
               <div style="position: relative; display: flex; align-items: center;" :class="{ 'input-loading': productsState === 'loading', 'input-loaded': productsState === 'loaded', 'input-ready': productsState === 'ready' }">
-                <input v-model="cardEdit.Ten_hang" placeholder="Nhập tên hàng hóa..." @input="updateCardMaHang" style="width: 100%; padding: 10px 64px 10px 36px; border-radius: 8px; font-weight: 500; margin: 0;" />
+                <textarea rows="1" class="m-wrap-input has-left-icon has-right-picker" v-auto-grow @keydown.enter.prevent v-model="cardEdit.Ten_hang" placeholder="Nhập tên hàng hóa..." @input="updateCardMaHang" style="width: 100%; padding: 10px 64px 10px 36px; border-radius: 8px; font-weight: 500; margin: 0;"></textarea>
                 <i class="lucide-package" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                 <button type="button" class="inline-picker-btn" @click="openProductPicker('card')">Chọn</button>
               </div>
@@ -17997,7 +18355,7 @@ const visibleLeadingFooterColSpan = computed(() => {
             <div style="display: flex; flex-direction: column; gap: 6px;">
               <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">SKU Code</label>
               <div style="position: relative; display: flex; align-items: center;">
-                <input v-model="cardEdit.sku_code" placeholder="Nhập mã SKU (SKU Code)..." style="width: 100%; padding: 10px 64px 10px 36px; border-radius: 8px; font-weight: 500; margin: 0;" />
+                <textarea rows="1" class="m-wrap-input has-left-icon has-right-picker" v-auto-grow @keydown.enter.prevent v-model="cardEdit.sku_code" placeholder="Nhập mã SKU (SKU Code)..." style="width: 100%; padding: 10px 64px 10px 36px; border-radius: 8px; font-weight: 500; margin: 0;"></textarea>
                 <i class="lucide-barcode" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                 <button type="button" class="inline-picker-btn" @click="openProductPicker('card', 'sku_code')">Chọn</button>
               </div>
@@ -18007,14 +18365,14 @@ const visibleLeadingFooterColSpan = computed(() => {
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Danh mục</label>
                 <div class="input-with-picker">
-                  <input v-model="cardEdit.Danh_muc" placeholder="HW, SW, SVR..." style="width: 100%; padding: 10px 60px 10px 14px; border-radius: 8px; margin: 0;" />
+                  <textarea rows="1" class="m-wrap-input has-right-picker" v-auto-grow @keydown.enter.prevent v-model="cardEdit.Danh_muc" placeholder="HW, SW, SVR..." style="width: 100%; padding: 10px 60px 10px 14px; border-radius: 8px; margin: 0;"></textarea>
                   <button type="button" class="inline-picker-btn" @click="openProductPicker('card', 'danh_muc')">Chọn</button>
                 </div>
               </div>
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">ĐVT</label>
                 <div class="input-with-picker">
-                  <input v-model="cardEdit.DVT" placeholder="CÁI, BỘ, BẢN QUYỀN..." style="width: 100%; padding: 10px 60px 10px 14px; border-radius: 8px; margin: 0;" />
+                  <textarea rows="1" class="m-wrap-input has-right-picker" v-auto-grow @keydown.enter.prevent v-model="cardEdit.DVT" placeholder="CÁI, BỘ, BẢN QUYỀN..." style="width: 100%; padding: 10px 60px 10px 14px; border-radius: 8px; margin: 0;"></textarea>
                   <button type="button" class="inline-picker-btn" @click="openProductPicker('card', 'dvt')">Chọn</button>
                 </div>
               </div>
@@ -18024,7 +18382,7 @@ const visibleLeadingFooterColSpan = computed(() => {
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Hãng</label>
                 <div style="position: relative; display: flex; align-items: center;">
-                  <input v-model="cardEdit.Ten_nha_cung_cap" placeholder="Nhà cung cấp..." @input="updateCardMaNcc" style="width: 100%; padding: 10px 64px 10px 36px; border-radius: 8px; margin: 0;" />
+                  <textarea rows="1" class="m-wrap-input has-left-icon has-right-picker" v-auto-grow @keydown.enter.prevent v-model="cardEdit.Ten_nha_cung_cap" placeholder="Nhà cung cấp..." @input="updateCardMaNcc" style="width: 100%; padding: 10px 64px 10px 36px; border-radius: 8px; margin: 0;"></textarea>
                   <i class="lucide-truck" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                   <button type="button" class="inline-picker-btn" @click="openProductPicker('card', 'hang')">Chọn</button>
                 </div>
@@ -18033,7 +18391,7 @@ const visibleLeadingFooterColSpan = computed(() => {
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">License duration</label>
                 <div style="position: relative;">
-                  <input v-model="cardEdit.License_duration" placeholder="Thời hạn (vd: 1 Year, Perpetual...)" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px;" />
+                  <textarea rows="1" class="m-wrap-input has-left-icon" v-auto-grow @keydown.enter.prevent v-model="cardEdit.License_duration" placeholder="Thời hạn (vd: 1 Year, Perpetual...)" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px;"></textarea>
                   <i class="lucide-clock" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                 </div>
               </div>
@@ -18041,7 +18399,7 @@ const visibleLeadingFooterColSpan = computed(() => {
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Thời gian bảo hành</label>
                 <div style="position: relative;">
-                  <input v-model="cardEdit.thoi_han_bao_hanh" placeholder="VD: 12 tháng, 24 tháng..." style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px;" />
+                  <textarea rows="1" class="m-wrap-input has-left-icon" v-auto-grow @keydown.enter.prevent v-model="cardEdit.thoi_han_bao_hanh" placeholder="VD: 12 tháng, 24 tháng..." style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px;"></textarea>
                   <i class="lucide-shield-check" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                 </div>
               </div>
@@ -18049,7 +18407,7 @@ const visibleLeadingFooterColSpan = computed(() => {
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Volume</label>
                 <div style="position: relative;">
-                  <input v-model="cardEdit.volume" placeholder="VD: 1Dvc, 3Dvc, 10Dvc..." style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px;" />
+                  <textarea rows="1" class="m-wrap-input has-left-icon" v-auto-grow @keydown.enter.prevent v-model="cardEdit.volume" placeholder="VD: 1Dvc, 3Dvc, 10Dvc..." style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px;"></textarea>
                   <i class="lucide-layers" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                 </div>
               </div>
@@ -18153,7 +18511,7 @@ const visibleLeadingFooterColSpan = computed(() => {
             <div style="display: flex; flex-direction: column; gap: 6px;">
               <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">ĐƠN GIÁ BÁN (VND)</label>
               <div style="position: relative;">
-                <FormattedInput :modelValue="(cardEdit.Don_gia || 0) * (Number(cardEdit.Ti_gia) || 1)" @update:modelValue="cardEdit.Don_gia = $event / (Number(cardEdit.Ti_gia) || 1)" placeholder="Nhập đơn giá xuất..." style="width: 100%; padding: 12px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 16px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
+                <FormattedInput :decimals="0" :modelValue="(cardEdit.Don_gia || 0) * (Number(cardEdit.Ti_gia) || 1)" @update:modelValue="cardEdit.Don_gia = $event / (Number(cardEdit.Ti_gia) || 1)" placeholder="Nhập đơn giá xuất..." style="width: 100%; padding: 12px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 16px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
                 <i class="lucide-tag" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
                 <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #10b981; pointer-events: none;">₫</span>
               </div>
@@ -18165,7 +18523,7 @@ const visibleLeadingFooterColSpan = computed(() => {
             <div style="display: flex; flex-direction: column; gap: 6px;">
               <label style="font-size: 11px; text-transform: uppercase; color: #fbbf24; font-weight: 600; letter-spacing: 0.5px;">Giá vốn / Giá off hãng (VND)</label>
               <div style="position: relative;">
-                <FormattedInput :modelValue="(cardEdit.Gia_tieu_chuan || 0) * (Number(cardEdit.Ti_gia) || 1)" @update:modelValue="cardEdit.Gia_tieu_chuan = $event / (Number(cardEdit.Ti_gia) || 1)" placeholder="0" style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px; color: #fbbf24; font-weight: 700;" />
+                <FormattedInput :decimals="0" :modelValue="(cardEdit.Gia_tieu_chuan || 0) * (Number(cardEdit.Ti_gia) || 1)" @update:modelValue="cardEdit.Gia_tieu_chuan = $event / (Number(cardEdit.Ti_gia) || 1)" placeholder="0" style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px; color: #fbbf24; font-weight: 700;" />
                 <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #fbbf24; pointer-events: none;">₫</span>
               </div>
               <div v-if="cardEdit.Don_vi_tien_te && cardEdit.Don_vi_tien_te.toUpperCase() !== 'VND' && cardEdit.Ti_gia > 1" style="font-size: 11px; color: #fbbf24; margin-top: 2px;">
@@ -18176,7 +18534,7 @@ const visibleLeadingFooterColSpan = computed(() => {
             <div style="display: flex; flex-direction: column; gap: 6px;">
               <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Giá Nhập (VND)</label>
               <div style="position: relative;">
-                <FormattedInput :modelValue="(cardEdit.gia_nhap || 0) * (Number(cardEdit.Ti_gia) || 1)" @update:modelValue="cardEdit.gia_nhap = $event / (Number(cardEdit.Ti_gia) || 1)" placeholder="0" style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px;" />
+                <FormattedInput :decimals="0" :modelValue="(cardEdit.gia_nhap || 0) * (Number(cardEdit.Ti_gia) || 1)" @update:modelValue="cardEdit.gia_nhap = $event / (Number(cardEdit.Ti_gia) || 1)" placeholder="0" style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px;" />
                 <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #64748b; pointer-events: none;">₫</span>
               </div>
               <div v-if="cardEdit.Don_vi_tien_te && cardEdit.Don_vi_tien_te.toUpperCase() !== 'VND' && cardEdit.Ti_gia > 1" style="font-size: 11px; color: #64748b; margin-top: 2px;">
@@ -18194,7 +18552,7 @@ const visibleLeadingFooterColSpan = computed(() => {
               </div>
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Tỉ giá</label>
-                <FormattedInput v-model="cardEdit.Ti_gia" placeholder="1" style="width: 100%; padding: 10px 14px; border-radius: 8px;" />
+                <FormattedInput v-model="cardEdit.Ti_gia" :decimals="0" placeholder="1" style="width: 100%; padding: 10px 14px; border-radius: 8px;" />
               </div>
             </div>
             
@@ -18220,7 +18578,7 @@ const visibleLeadingFooterColSpan = computed(() => {
               <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px; margin: 0;">Số lượng xuất</label>
               <div class="qty" style="transform: scale(1.1); transform-origin: right center;">
                 <button type="button" @click="cardEdit.So_luong = Math.max(1, toNum(cardEdit.So_luong, 1) - 1)">&#x2212;</button>
-                <FormattedInput class="qty-input-inline" v-model="cardEdit.So_luong" placeholder="1" style="width: 36px; background: transparent !important; border: none !important; text-align: center; border-radius: 0; font-weight: 800; font-size: 14px; padding: 0; color: #fff; box-shadow: none;" />
+                <FormattedInput class="qty-input-inline" :decimals="0" v-model="cardEdit.So_luong" placeholder="1" style="width: 36px; background: transparent !important; border: none !important; text-align: center; border-radius: 0; font-weight: 800; font-size: 14px; padding: 0; color: #fff; box-shadow: none;" />
                 <button type="button" @click="cardEdit.So_luong = toNum(cardEdit.So_luong, 1) + 1">+</button>
               </div>
             </div>
@@ -18399,7 +18757,7 @@ const visibleLeadingFooterColSpan = computed(() => {
 
     <!-- ================== MODAL: CHỈNH SỬA ITEM BÁO GIÁ (FULLSCREEN - 2 TABS) ================== -->
     <div v-if="showQuoteEditModal && quoteEdit" class="modal vip-modal-overlay modal-fullscreen-overlay" @click.self="closeQuoteEdit()">
-      <div class="modal-card modal-wide vip-modal-card modal-fullscreen-card">
+      <div class="modal-card modal-wide vip-modal-card modal-fullscreen-card quote-edit-modal-card">
         <div class="modal-head modal-head-themed" style="justify-content: space-between; position: relative; padding: 12px 24px; border-bottom: none; border-radius: 0; flex-shrink: 0;">
           <div class="dt-only-head" style="display: flex; align-items: center; gap: 12px; min-width: 0;">
             <div class="modal-head-title-text" style="color: #ffffff; text-transform: uppercase; font-weight: 900; font-size: 17px; margin: 0; display: flex; align-items: center; gap: 10px; letter-spacing: 0.5px; white-space: nowrap;">
@@ -18422,7 +18780,7 @@ const visibleLeadingFooterColSpan = computed(() => {
 
         <!-- THANH ĐIỀU HƯỚNG 2 TAB + TÓM TẮT NHANH -->
         <div class="quote-edit-tabbar" style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 24px; background: rgba(15, 23, 42, 0.75); border-bottom: 1px solid rgba(255, 255, 255, 0.08); flex-shrink: 0; flex-wrap: wrap;">
-          <div style="display: flex; align-items: center; gap: 10px;">
+          <div class="quote-edit-tab-group" style="display: flex; align-items: center; gap: 10px;">
             <button
               type="button"
               class="quote-edit-tab-btn"
@@ -18467,7 +18825,7 @@ const visibleLeadingFooterColSpan = computed(() => {
           </div>
         </div>
 
-        <div style="display: flex; flex-direction: column; gap: 20px; padding: 20px 24px; flex: 1; min-height: 0; overflow-y: auto;">
+        <div class="quote-edit-body-scroll" style="display: flex; flex-direction: column; gap: 20px; padding: 20px 24px; flex: 1; min-height: 0; overflow-y: auto;">
           <div v-if="false">
             <input v-model="quoteEdit.Ma_nha_cung_cap" />
             <input v-model="quoteEdit.Ma_hang_lien_ket" />
@@ -18496,7 +18854,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                 <div style="display: flex; flex-direction: column; gap: 6px;">
                   <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Mã hàng</label>
                   <div style="position: relative; display: flex; align-items: center;">
-                    <input id="qe-Ma_hang" v-model="quoteEdit.Ma_hang" style="width: 100%; padding: 10px 64px 10px 36px; border-radius: 8px; font-weight: 600; margin: 0;" />
+                    <textarea id="qe-Ma_hang" rows="1" class="m-wrap-input has-left-icon has-right-picker" v-auto-grow @keydown.enter.prevent v-model="quoteEdit.Ma_hang" style="width: 100%; padding: 10px 64px 10px 36px; border-radius: 8px; font-weight: 600; margin: 0;"></textarea>
                     <i class="lucide-tag" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                     <button type="button" class="inline-picker-btn" @click="openProductPicker('quoteEdit', 'ma_hang')">Chọn</button>
                   </div>
@@ -18505,7 +18863,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                 <div style="display: flex; flex-direction: column; gap: 6px;">
                   <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">SKU Code</label>
                   <div style="position: relative; display: flex; align-items: center;">
-                    <input id="qe-sku_code" v-model="quoteEdit.sku_code" placeholder="Nhập mã SKU..." style="width: 100%; padding: 10px 64px 10px 36px; border-radius: 8px; font-weight: 500; margin: 0;" />
+                    <textarea id="qe-sku_code" rows="1" class="m-wrap-input has-left-icon has-right-picker" v-auto-grow @keydown.enter.prevent v-model="quoteEdit.sku_code" placeholder="Nhập mã SKU..." style="width: 100%; padding: 10px 64px 10px 36px; border-radius: 8px; font-weight: 500; margin: 0;"></textarea>
                     <i class="lucide-barcode" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                     <button type="button" class="inline-picker-btn" @click="openProductPicker('quoteEdit', 'sku_code')">Chọn</button>
                   </div>
@@ -18520,7 +18878,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                 </div>
                 <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Tên hàng <span style="color: #ef4444;">*</span></label>
                 <div style="position: relative; display: flex; align-items: center;">
-                  <input id="qe-Ten_hang" v-model="quoteEdit.Ten_hang" style="width: 100%; padding: 10px 64px 10px 36px; border-radius: 8px; font-weight: 600; margin: 0;" />
+                  <textarea id="qe-Ten_hang" rows="1" class="m-wrap-input has-left-icon has-right-picker" v-auto-grow @keydown.enter.prevent v-model="quoteEdit.Ten_hang" style="width: 100%; padding: 10px 64px 10px 36px; border-radius: 8px; font-weight: 600; margin: 0;"></textarea>
                   <i class="lucide-package" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                   <button type="button" class="inline-picker-btn" @click="openProductPicker('quoteEdit', 'ten_hang')">Chọn</button>
                 </div>
@@ -18531,7 +18889,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                 <div style="display: flex; flex-direction: column; gap: 6px;">
                   <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Hãng</label>
                   <div style="position: relative; display: flex; align-items: center;">
-                    <input id="qe-Ten_nha_cung_cap" v-model="quoteEdit.Ten_nha_cung_cap" style="width: 100%; padding: 10px 64px 10px 36px; border-radius: 8px; margin: 0;" />
+                    <textarea id="qe-Ten_nha_cung_cap" rows="1" class="m-wrap-input has-left-icon has-right-picker" v-auto-grow @keydown.enter.prevent v-model="quoteEdit.Ten_nha_cung_cap" style="width: 100%; padding: 10px 64px 10px 36px; border-radius: 8px; margin: 0;"></textarea>
                     <i class="lucide-truck" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                     <button type="button" class="inline-picker-btn" @click="openProductPicker('quoteEdit', 'hang')">Chọn</button>
                   </div>
@@ -18540,7 +18898,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                 <div style="display: flex; flex-direction: column; gap: 6px;">
                   <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Danh mục</label>
                   <div class="input-with-picker">
-                    <input id="qe-Danh_muc" v-model="quoteEdit.Danh_muc" placeholder="HW, SW, SVR..." style="width: 100%; padding: 10px 60px 10px 14px; border-radius: 8px; margin: 0;" />
+                    <textarea id="qe-Danh_muc" rows="1" class="m-wrap-input has-right-picker" v-auto-grow @keydown.enter.prevent v-model="quoteEdit.Danh_muc" placeholder="HW, SW, SVR..." style="width: 100%; padding: 10px 60px 10px 14px; border-radius: 8px; margin: 0;"></textarea>
                     <button type="button" class="inline-picker-btn" @click="openProductPicker('quoteEdit', 'danh_muc')">Chọn</button>
                   </div>
                 </div>
@@ -18551,7 +18909,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                 <div style="display: flex; flex-direction: column; gap: 6px;">
                   <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Type</label>
                   <div style="position: relative;">
-                    <input id="qe-Type" v-model="quoteEdit.Type" placeholder="Base, Renewal..." style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 500;" />
+                    <textarea id="qe-Type" rows="1" class="m-wrap-input has-left-icon" v-auto-grow @keydown.enter.prevent v-model="quoteEdit.Type" placeholder="Base, Renewal..." style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 500;"></textarea>
                     <i class="lucide-layers" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                   </div>
                 </div>
@@ -18559,7 +18917,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                 <div style="display: flex; flex-direction: column; gap: 6px;">
                   <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">ĐVT</label>
                   <div class="input-with-picker">
-                    <input id="qe-DVT" v-model="quoteEdit.DVT" style="width: 100%; padding: 10px 60px 10px 14px; border-radius: 8px; font-weight: 500; margin: 0;" />
+                    <textarea id="qe-DVT" rows="1" class="m-wrap-input has-right-picker" v-auto-grow @keydown.enter.prevent v-model="quoteEdit.DVT" style="width: 100%; padding: 10px 60px 10px 14px; border-radius: 8px; font-weight: 500; margin: 0;"></textarea>
                     <button type="button" class="inline-picker-btn" @click="openProductPicker('quoteEdit', 'dvt')">Chọn</button>
                   </div>
                 </div>
@@ -18570,7 +18928,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                 <div style="display: flex; flex-direction: column; gap: 6px;">
                   <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">License duration</label>
                   <div style="position: relative;">
-                    <input id="qe-License_duration" v-model="quoteEdit.License_duration" placeholder="1 Year..." style="width: 100%; padding: 10px 12px; padding-left: 32px; border-radius: 8px;" />
+                    <textarea id="qe-License_duration" rows="1" class="m-wrap-input has-left-icon" v-auto-grow @keydown.enter.prevent v-model="quoteEdit.License_duration" placeholder="1 Year..." style="width: 100%; padding: 10px 12px; padding-left: 32px; border-radius: 8px;"></textarea>
                     <i class="lucide-clock" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: #64748b; pointer-events: none;"></i>
                   </div>
                 </div>
@@ -18578,7 +18936,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                 <div style="display: flex; flex-direction: column; gap: 6px;">
                   <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Bảo hành</label>
                   <div style="position: relative;">
-                    <input id="qe-thoi_han_bao_hanh" v-model="quoteEdit.thoi_han_bao_hanh" placeholder="12 tháng..." style="width: 100%; padding: 10px 12px; padding-left: 32px; border-radius: 8px;" />
+                    <textarea id="qe-thoi_han_bao_hanh" rows="1" class="m-wrap-input has-left-icon" v-auto-grow @keydown.enter.prevent v-model="quoteEdit.thoi_han_bao_hanh" placeholder="12 tháng..." style="width: 100%; padding: 10px 12px; padding-left: 32px; border-radius: 8px;"></textarea>
                     <i class="lucide-shield-check" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: #64748b; pointer-events: none;"></i>
                   </div>
                 </div>
@@ -18586,7 +18944,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                 <div style="display: flex; flex-direction: column; gap: 6px;">
                   <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Volume</label>
                   <div style="position: relative;">
-                    <input id="qe-volume" v-model="quoteEdit.volume" placeholder="1Dvc, 3Dvc..." style="width: 100%; padding: 10px 12px; padding-left: 32px; border-radius: 8px;" />
+                    <textarea id="qe-volume" rows="1" class="m-wrap-input has-left-icon" v-auto-grow @keydown.enter.prevent v-model="quoteEdit.volume" placeholder="1Dvc, 3Dvc..." style="width: 100%; padding: 10px 12px; padding-left: 32px; border-radius: 8px;"></textarea>
                     <i class="lucide-layers" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: #64748b; pointer-events: none;"></i>
                   </div>
                 </div>
@@ -18707,17 +19065,17 @@ const visibleLeadingFooterColSpan = computed(() => {
               </div>
 
               <!-- Đơn vị tiền tệ & Tỉ giá -->
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div class="qe-2col-mobile" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                 <div style="display: flex; flex-direction: column; gap: 6px;">
                   <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Đơn vị tiền tệ</label>
-                  <div style="position: relative;">
+                  <div class="qe-has-left-icon" style="position: relative;">
                     <input v-model="quoteEdit.Don_vi_tien_te" readonly style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; background: rgba(255,255,255,0.05); color: #94a3b8;" />
                     <i class="lucide-coins" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                   </div>
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 6px;">
                   <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Tỉ giá</label>
-                  <FormattedInput id="qe-Ti_gia" v-model="quoteEdit.Ti_gia" @input="ensureNumberField(quoteEdit, 'Ti_gia')" style="width: 100%; padding: 10px 14px; border-radius: 8px;" />
+                  <FormattedInput id="qe-Ti_gia" :decimals="0" v-model="quoteEdit.Ti_gia" @input="ensureNumberField(quoteEdit, 'Ti_gia')" style="width: 100%; padding: 10px 14px; border-radius: 8px;" />
                 </div>
               </div>
 
@@ -18727,11 +19085,11 @@ const visibleLeadingFooterColSpan = computed(() => {
                   <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">% Off Hãng</span>
                 </label>
                 <div style="display: flex; align-items: center; gap: 8px;">
-                  <div style="position: relative; flex: 1; min-width: 0;">
+                  <div class="qe-has-right-unit" style="position: relative; flex: 1; min-width: 0;">
                     <FormattedInput :modelValue="quoteEditTieuChuanPct" @update:modelValue="updateTieuChuanPct" style="width: 100%; padding: 10px 14px; padding-right: 30px; border-radius: 8px; font-weight: 600; color: #a78bfa; border: 1px solid rgba(139,92,246,0.5); background: rgba(139,92,246,0.1);" />
                     <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 600; color: #a78bfa; pointer-events: none;">%</span>
                   </div>
-                  <button class="btn btn-sm btn-primary" style="width: auto !important; flex: none; padding: 8px 14px; font-size: 12px; background: #8b5cf6; border: none; border-radius: 8px; color: white; cursor: pointer; white-space: nowrap; font-weight: 700;" @click.prevent="openKasperskyCalculator" title="Tính toán % off Kaspersky">
+                  <button class="btn btn-sm btn-primary qe-calc-btn" style="width: auto !important; flex: none; padding: 8px 14px; font-size: 12px; background: #8b5cf6; border: none; border-radius: 8px; color: white; cursor: pointer; white-space: nowrap; font-weight: 700;" @click.prevent="openKasperskyCalculator" title="Tính toán % off Kaspersky">
                     <i class="fas fa-calculator"></i> Tính
                   </button>
                 </div>
@@ -18743,13 +19101,13 @@ const visibleLeadingFooterColSpan = computed(() => {
                   <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Giá vốn / Giá off hãng (VND)</span>
                 </label>
                 <div style="display: flex; align-items: center; gap: 8px;">
-                  <div style="position: relative; flex: 1;">
-                    <FormattedInput id="qe-Gia_tieu_chuan" :modelValue="(quoteEdit.Gia_tieu_chuan || 0) * (Number(quoteEdit.Ti_gia) || 1)" @update:modelValue="quoteEdit.Gia_tieu_chuan = $event / (Number(quoteEdit.Ti_gia) || 1)" @input="ensureNumberField(quoteEdit, 'Gia_tieu_chuan')" style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px; font-weight: 600; color: #8b5cf6;" />
+                  <div class="qe-has-right-unit" style="position: relative; flex: 1;">
+                    <FormattedInput id="qe-Gia_tieu_chuan" :decimals="0" :modelValue="(quoteEdit.Gia_tieu_chuan || 0) * (Number(quoteEdit.Ti_gia) || 1)" @update:modelValue="quoteEdit.Gia_tieu_chuan = $event / (Number(quoteEdit.Ti_gia) || 1)" @input="ensureNumberField(quoteEdit, 'Gia_tieu_chuan')" style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px; font-weight: 600; color: #8b5cf6;" />
                     <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #8b5cf6; pointer-events: none;">₫</span>
                   </div>
                   <template v-if="quoteEdit.Don_vi_tien_te && quoteEdit.Don_vi_tien_te.toUpperCase() !== 'VND' && quoteEdit.Ti_gia > 1">
                     <span style="font-size: 12px; color: #8b5cf6; font-weight: 600;">≈</span>
-                    <div style="position: relative; width: 130px;">
+                    <div class="qe-has-right-unit" style="position: relative; width: 130px;">
                       <FormattedInput id="qe-Gia_tieu_chuan_usd" v-model="quoteEdit.Gia_tieu_chuan" @input="ensureNumberField(quoteEdit, 'Gia_tieu_chuan')" style="width: 100%; padding: 10px 10px; padding-right: 36px; border-radius: 8px; font-weight: 600; font-size: 13px; border: 1px dashed rgba(139,92,246,0.3); background: rgba(139,92,246,0.05); color: #a78bfa;" />
                       <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #8b5cf6; pointer-events: none;">{{ quoteEdit.Don_vi_tien_te }}</span>
                     </div>
@@ -18763,13 +19121,13 @@ const visibleLeadingFooterColSpan = computed(() => {
                   <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Giá Nhập (VND)</span>
                 </label>
                 <div style="display: flex; align-items: center; gap: 8px;">
-                  <div style="position: relative; flex: 1;">
-                    <FormattedInput id="qe-gia_nhap" :modelValue="(quoteEdit.gia_nhap || 0) * (Number(quoteEdit.Ti_gia) || 1)" @update:modelValue="quoteEdit.gia_nhap = $event / (Number(quoteEdit.Ti_gia) || 1)" @input="ensureNumberField(quoteEdit, 'gia_nhap')" style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px; font-weight: 500;" />
+                  <div class="qe-has-right-unit" style="position: relative; flex: 1;">
+                    <FormattedInput id="qe-gia_nhap" :decimals="0" :modelValue="(quoteEdit.gia_nhap || 0) * (Number(quoteEdit.Ti_gia) || 1)" @update:modelValue="quoteEdit.gia_nhap = $event / (Number(quoteEdit.Ti_gia) || 1)" @input="ensureNumberField(quoteEdit, 'gia_nhap')" style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px; font-weight: 500;" />
                     <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #94a3b8; pointer-events: none;">₫</span>
                   </div>
                   <template v-if="quoteEdit.Don_vi_tien_te && quoteEdit.Don_vi_tien_te.toUpperCase() !== 'VND' && quoteEdit.Ti_gia > 1">
                     <span style="font-size: 12px; color: #64748b; font-weight: 600;">≈</span>
-                    <div style="position: relative; width: 130px;">
+                    <div class="qe-has-right-unit" style="position: relative; width: 130px;">
                       <FormattedInput id="qe-gia_nhap_usd" v-model="quoteEdit.gia_nhap" @input="ensureNumberField(quoteEdit, 'gia_nhap')" style="width: 100%; padding: 10px 10px; padding-right: 36px; border-radius: 8px; font-weight: 600; font-size: 13px; border: 1px dashed rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); color: #e2e8f0;" />
                       <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #94a3b8; pointer-events: none;">{{ quoteEdit.Don_vi_tien_te }}</span>
                     </div>
@@ -18793,14 +19151,14 @@ const visibleLeadingFooterColSpan = computed(() => {
                   </div>
                 </label>
                 <div style="display: flex; align-items: center; gap: 8px;">
-                  <div style="position: relative; flex: 1;">
-                    <FormattedInput id="qe-Don_gia" :modelValue="(quoteEdit.Don_gia || 0) * (Number(quoteEdit.Ti_gia) || 1)" @update:modelValue="quoteEdit.Don_gia = $event / (Number(quoteEdit.Ti_gia) || 1)" @input="ensureNumberField(quoteEdit, 'Don_gia')" :readonly="true" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
+                  <div class="qe-has-left-icon qe-has-right-unit" style="position: relative; flex: 1;">
+                    <FormattedInput id="qe-Don_gia" :decimals="0" :modelValue="(quoteEdit.Don_gia || 0) * (Number(quoteEdit.Ti_gia) || 1)" @update:modelValue="quoteEdit.Don_gia = $event / (Number(quoteEdit.Ti_gia) || 1)" @input="ensureNumberField(quoteEdit, 'Don_gia')" :readonly="true" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
                     <i class="lucide-tag" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
                     <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #10b981; pointer-events: none;">₫</span>
                   </div>
                   <template v-if="quoteEdit.Don_vi_tien_te && quoteEdit.Don_vi_tien_te.toUpperCase() !== 'VND' && quoteEdit.Ti_gia > 1">
                     <span style="font-size: 12px; color: #10b981; font-weight: 600;">≈</span>
-                    <div style="position: relative; width: 130px;">
+                    <div class="qe-has-right-unit" style="position: relative; width: 130px;">
                       <FormattedInput id="qe-Don_gia_usd" v-model="quoteEdit.Don_gia" @input="ensureNumberField(quoteEdit, 'Don_gia')" style="width: 100%; padding: 10px 10px; padding-right: 36px; border-radius: 8px; font-weight: 600; font-size: 13px; border: 1px dashed rgba(16,185,129,0.3); background: rgba(16,185,129,0.05); color: #10b981;" />
                       <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #10b981; pointer-events: none;">{{ quoteEdit.Don_vi_tien_te }}</span>
                     </div>
@@ -18814,7 +19172,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                   <span style="font-size: 13px; font-weight: 700; color: #10b981;"><i class="lucide-layers" style="width: 16px; height: 16px; margin-right: 6px; vertical-align: text-bottom;"></i> SỐ LƯỢNG (QTY)</span>
                   <div class="qty" style="margin: 0; transform-origin: right;">
                     <button type="button" @click="quoteEdit.So_luong = Math.max(1, toNum(quoteEdit.So_luong, 1) - 1)">&#x2212;</button>
-                    <FormattedInput id="qe-So_luong" class="qty-input-inline" v-model="quoteEdit.So_luong" @input="ensureNumberField(quoteEdit, 'So_luong')" style="width: 44px; background: transparent !important; border: none !important; text-align: center; border-radius: 0; font-weight: 800; font-size: 15px; padding: 0; color: #fff; box-shadow: none;" />
+                    <FormattedInput id="qe-So_luong" class="qty-input-inline" :decimals="0" v-model="quoteEdit.So_luong" @input="ensureNumberField(quoteEdit, 'So_luong')" style="width: 44px; background: transparent !important; border: none !important; text-align: center; border-radius: 0; font-weight: 800; font-size: 15px; padding: 0; color: #fff; box-shadow: none;" />
                     <button type="button" @click="quoteEdit.So_luong = toNum(quoteEdit.So_luong, 1) + 1">+</button>
                   </div>
                 </div>
@@ -18831,10 +19189,10 @@ const visibleLeadingFooterColSpan = computed(() => {
               </div>
 
               <!-- % Off khách & Thuế VAT -->
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div class="qe-2col-mobile" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                 <div style="display: flex; flex-direction: column; gap: 6px;">
                   <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">% Off khách</label>
-                  <div style="position: relative;">
+                  <div class="qe-has-right-unit" style="position: relative;">
                     <FormattedInput id="qe-muc_phan_tram_off" v-model="quoteEditMucOffGoc" style="width: 100%; padding: 10px 14px; padding-right: 30px; border-radius: 8px; color: #f59e0b; font-weight: 700;" />
                     <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 600; color: #f59e0b; pointer-events: none;">%</span>
                   </div>
@@ -18842,7 +19200,7 @@ const visibleLeadingFooterColSpan = computed(() => {
 
                 <div style="display: flex; flex-direction: column; gap: 6px;">
                   <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Thuế VAT</label>
-                  <div style="position: relative;">
+                  <div class="qe-has-right-unit" style="position: relative;">
                     <FormattedInput id="qe-Thue_VAT" v-model="quoteEdit.Thue_VAT" @input="ensureNumberField(quoteEdit, 'Thue_VAT')" style="width: 100%; padding: 10px 14px; padding-right: 30px; border-radius: 8px; color: #3b82f6; font-weight: 700;" />
                     <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 600; color: #3b82f6; pointer-events: none;">%</span>
                   </div>
@@ -18864,7 +19222,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                     </button>
                   </div>
                 </label>
-                <div style="position: relative;">
+                <div class="qe-has-left-icon qe-has-right-unit" style="position: relative;">
                   <FormattedInput id="qe-unit_price_kh" :modelValue="unitPrice(quoteEdit)" :decimals="quoteCurrency === 'USD' ? 2 : 0" :readonly="true" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
                   <i class="lucide-tag" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
                   <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #10b981; pointer-events: none;">₫</span>
@@ -18889,7 +19247,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                     </button>
                   </div>
                 </label>
-                <div style="position: relative;">
+                <div class="qe-has-left-icon qe-has-right-unit" style="position: relative;">
                   <FormattedInput id="qe-line_truoc_thue" :modelValue="lineTruocThue(quoteEdit)" :decimals="quoteCurrency === 'USD' ? 2 : 0" :readonly="true" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
                   <i class="lucide-calculator" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
                   <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #10b981; pointer-events: none;">₫</span>
@@ -18910,7 +19268,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                     </button>
                   </div>
                 </label>
-                <div style="position: relative;">
+                <div class="qe-has-left-icon qe-has-right-unit" style="position: relative;">
                   <input readonly :value="(itemChenhLechHieuDung(quoteEdit) > 0 ? '+' : '') + formatVND(itemChenhLechHieuDung(quoteEdit))" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #10b981; border: 1px solid rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important; outline: none;" />
                   <i class="lucide-trending-up" v-if="itemChenhLechHieuDung(quoteEdit) > 0" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
                   <i class="lucide-trending-down" v-else-if="itemChenhLechHieuDung(quoteEdit) < 0" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
@@ -19075,11 +19433,11 @@ const visibleLeadingFooterColSpan = computed(() => {
       <div class="grid2">
         <div>
           <label>Mã hàng</label>
-          <input id="qeraw-Ma_hang" v-model="quoteEditRaw.Ma_hang" readonly />
+          <textarea id="qeraw-Ma_hang" rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="quoteEditRaw.Ma_hang" readonly></textarea>
         </div>
         <div>
           <label>Tên hàng</label>
-          <input id="qeraw-Ten_hang" v-model="quoteEditRaw.Ten_hang" />
+          <textarea id="qeraw-Ten_hang" rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="quoteEditRaw.Ten_hang"></textarea>
         </div>
       </div>
 
@@ -19113,6 +19471,7 @@ const visibleLeadingFooterColSpan = computed(() => {
       <div>
         <label>Tỉ giá gốc</label>
         <FormattedInput
+          :decimals="0"
           v-model="quoteEditRaw._Ti_gia_goc"
           @input="ensureNumberField(quoteEditRaw, '_Ti_gia_goc')"
         />
@@ -19122,6 +19481,7 @@ const visibleLeadingFooterColSpan = computed(() => {
         <label>ĐƠN GIÁ GỐC (VND)</label>
         <FormattedInput
           id="qeraw-Don_gia_goc"
+          :decimals="0"
           :modelValue="(quoteEditRaw._Don_gia_goc || 0) * (Number(quoteEditRaw._Ti_gia_goc) || 1)"
           @update:modelValue="quoteEditRaw._Don_gia_goc = $event / (Number(quoteEditRaw._Ti_gia_goc) || 1)"
           @input="ensureNumberField(quoteEditRaw, '_Don_gia_goc')"
@@ -19162,14 +19522,14 @@ const visibleLeadingFooterColSpan = computed(() => {
       <div class="grid3">
         <div>
           <label>Giá Hardware gốc (VND)</label>
-          <FormattedInput id="qeraw-gia_hardware_goc" :modelValue="(quoteEditRaw._gia_hardware_goc || 0) * (Number(quoteEditRaw._Ti_gia_goc) || 1)" @update:modelValue="quoteEditRaw._gia_hardware_goc = $event / (Number(quoteEditRaw._Ti_gia_goc) || 1)" @input="ensureNumberField(quoteEditRaw, '_gia_hardware_goc')" />
+          <FormattedInput id="qeraw-gia_hardware_goc" :decimals="0" :modelValue="(quoteEditRaw._gia_hardware_goc || 0) * (Number(quoteEditRaw._Ti_gia_goc) || 1)" @update:modelValue="quoteEditRaw._gia_hardware_goc = $event / (Number(quoteEditRaw._Ti_gia_goc) || 1)" @input="ensureNumberField(quoteEditRaw, '_gia_hardware_goc')" />
           <div v-if="quoteEditRaw.Don_vi_tien_te && quoteEditRaw.Don_vi_tien_te.toUpperCase() !== 'VND' && quoteEditRaw._Ti_gia_goc > 1" style="font-size: 11px; color: #64748b; margin-top: 4px;">
             ≈ {{ Number(quoteEditRaw._gia_hardware_goc || 0).toLocaleString('vi-VN') }} {{ quoteEditRaw.Don_vi_tien_te }}
           </div>
         </div>
         <div>
           <label>Giá Nhập gốc (VND)</label>
-          <FormattedInput id="qeraw-gia_nhap_goc" :modelValue="(quoteEditRaw._gia_nhap_goc || 0) * (Number(quoteEditRaw._Ti_gia_goc) || 1)" @update:modelValue="quoteEditRaw._gia_nhap_goc = $event / (Number(quoteEditRaw._Ti_gia_goc) || 1)" @input="ensureNumberField(quoteEditRaw, '_gia_nhap_goc')" />
+          <FormattedInput id="qeraw-gia_nhap_goc" :decimals="0" :modelValue="(quoteEditRaw._gia_nhap_goc || 0) * (Number(quoteEditRaw._Ti_gia_goc) || 1)" @update:modelValue="quoteEditRaw._gia_nhap_goc = $event / (Number(quoteEditRaw._Ti_gia_goc) || 1)" @input="ensureNumberField(quoteEditRaw, '_gia_nhap_goc')" />
           <div v-if="quoteEditRaw.Don_vi_tien_te && quoteEditRaw.Don_vi_tien_te.toUpperCase() !== 'VND' && quoteEditRaw._Ti_gia_goc > 1" style="font-size: 11px; color: #64748b; margin-top: 4px;">
             ≈ {{ Number(quoteEditRaw._gia_nhap_goc || 0).toLocaleString('vi-VN') }} {{ quoteEditRaw.Don_vi_tien_te }}
           </div>
@@ -19207,8 +19567,37 @@ const visibleLeadingFooterColSpan = computed(() => {
       <button class="x" @click="showLoadPipelineModal = false">×</button>
     </div>
     
-    <div class="load-invoice-search" style="padding: 16px 24px 8px; flex-shrink: 0;">
+    <div class="load-invoice-search dt-only-load-toolbar" style="padding: 16px 24px 8px; flex-shrink: 0;">
        <input v-model="loadPipelineSearch" placeholder="Tìm kiếm theo Số PO, Tên dự án, Mã Hợp đồng..." class="search-input" style="width: 100%; padding: 12px 16px; border-radius: 8px; border: 1px solid #334155; background: #1e293b; color: #f8fafc; font-size: 15px;" />
+    </div>
+
+    <div class="m-load-toolbar is-pipeline">
+      <div class="m-load-search-row">
+        <div class="m-load-search-box">
+          <svg class="m-load-search-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input
+            v-model="loadPipelineSearch"
+            type="text"
+            class="m-load-search-input"
+            placeholder="Tìm Số PO, Tên dự án, Mã HĐ..."
+          />
+          <button
+            v-if="loadPipelineSearch"
+            type="button"
+            class="m-load-clear-btn"
+            @click="loadPipelineSearch = ''"
+            aria-label="Xóa tìm kiếm"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
     </div>
 
     <div class="load-invoice-grid" @scroll.passive="onLoadPipelineGridScroll" style="flex: 1; min-height: 0; overflow-y: auto; padding: 8px 24px 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 16px; align-content: start;">
@@ -19280,9 +19669,9 @@ const visibleLeadingFooterColSpan = computed(() => {
       {{ loadPipelineMsg }}
     </p>
 
-    <div class="modal-actions" style="justify-content: center; padding: 14px 24px; margin-top: 0; border-top: 1px solid #334155; flex-shrink: 0;">
-      <button @click="showLoadPipelineModal = false" style="padding: 10px 32px;">Đóng</button>
-      <button class="btn-load-fe" :disabled="loadingPipeline || !loadPipelineFilter" @click="loadPipelineToFE">
+    <div class="modal-actions load-pipeline-footer" style="justify-content: center; padding: 14px 24px; margin-top: 0; border-top: 1px solid #334155; flex-shrink: 0;">
+      <button class="btn-load-close" @click="showLoadPipelineModal = false" style="padding: 10px 32px;">Đóng</button>
+      <button class="btn-load-fe btn-load-primary" :disabled="loadingPipeline || !loadPipelineFilter" @click="loadPipelineToFE">
         {{ loadingPipeline ? 'Đang nạp...' : 'Nạp dữ liệu' }}
       </button>
     </div>
@@ -19301,11 +19690,11 @@ const visibleLeadingFooterColSpan = computed(() => {
       <button class="x" @click="showLoadInvoiceModal = false">✕</button>
     </div>
 
-    <div class="load-invoice-search" style="padding: 16px 24px 8px; flex-shrink: 0;">
+    <div class="load-invoice-search dt-only-load-toolbar" style="padding: 16px 24px 8px; flex-shrink: 0;">
        <input v-model="loadSearchQuery" placeholder="Tìm kiếm theo Số HĐ, Mã HĐ, Số PO, Tên khách hàng, Tên công ty..." class="search-input" style="width: 100%; padding: 12px 16px; border-radius: 8px; border: 1px solid #334155; background: #1e293b; color: #f8fafc; font-size: 15px;" />
     </div>
 
-    <div class="load-invoice-filters" style="display: flex; gap: 12px; padding: 0 24px 12px; align-items: center; justify-content: flex-start; flex-wrap: wrap; flex-shrink: 0;">
+    <div class="load-invoice-filters dt-only-load-toolbar" style="display: flex; gap: 12px; padding: 0 24px 12px; align-items: center; justify-content: flex-start; flex-wrap: wrap; flex-shrink: 0;">
       <div style="display: flex; align-items: center; gap: 8px;">
         <label style="color: #94a3b8; font-size: 13px; white-space: nowrap;">Từ:</label>
         <input type="date" v-model="loadFromDate" class="filter-input" />
@@ -19323,6 +19712,119 @@ const visibleLeadingFooterColSpan = computed(() => {
         <option value="desc">Mới nhất ➔ Cũ nhất</option>
         <option value="asc">Cũ nhất ➔ Mới nhất</option>
       </select>
+    </div>
+
+    <!-- Thanh công cụ Tìm kiếm & Bộ lọc tối ưu cho Mobile -->
+    <div class="m-load-toolbar">
+      <div class="m-load-search-row">
+        <div class="m-load-search-box">
+          <svg class="m-load-search-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input
+            v-model="loadSearchQuery"
+            type="text"
+            class="m-load-search-input"
+            placeholder="Tìm Mã HĐ, Số HĐ, PO, Khách hàng..."
+          />
+          <button
+            v-if="loadSearchQuery"
+            type="button"
+            class="m-load-clear-btn"
+            @click="loadSearchQuery = ''"
+            aria-label="Xóa tìm kiếm"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+
+        <button
+          type="button"
+          class="m-load-date-toggle"
+          :class="{ 'is-open': showLoadMobileDateFilter, 'has-filter': Boolean(loadFromDate || loadToDate) }"
+          @click="showLoadMobileDateFilter = !showLoadMobileDateFilter"
+          aria-label="Lọc theo khoảng ngày"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          <span v-if="loadFromDate || loadToDate" class="m-load-filter-dot"></span>
+        </button>
+      </div>
+
+      <div class="m-load-quick-row">
+        <div class="m-load-status-seg" role="tablist" aria-label="Trạng thái hợp đồng">
+          <button
+            type="button"
+            class="m-load-seg-btn"
+            :class="{ active: loadStatusFilter === '' }"
+            @click="loadStatusFilter = ''"
+          >
+            Tất cả
+          </button>
+          <button
+            type="button"
+            class="m-load-seg-btn"
+            :class="{ 'active is-official': loadStatusFilter === 'Chính thức' }"
+            @click="loadStatusFilter = 'Chính thức'"
+          >
+            Chính thức
+          </button>
+          <button
+            type="button"
+            class="m-load-seg-btn"
+            :class="{ 'active is-temp': loadStatusFilter === 'Tạm' }"
+            @click="loadStatusFilter = 'Tạm'"
+          >
+            Tạm
+          </button>
+        </div>
+
+        <button
+          type="button"
+          class="m-load-sort-btn"
+          @click="loadSortBy = loadSortBy === 'desc' ? 'asc' : 'desc'"
+        >
+          <svg class="m-load-sort-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m3 16 4 4 4-4"></path>
+            <path d="M7 20V4"></path>
+            <path d="m21 8-4-4-4 4"></path>
+            <path d="M17 4v16"></path>
+          </svg>
+          <span>{{ loadSortBy === 'desc' ? 'Mới nhất' : 'Cũ nhất' }}</span>
+        </button>
+      </div>
+
+      <div v-if="showLoadMobileDateFilter" class="m-load-date-drawer">
+        <div class="m-load-date-grid">
+          <div class="m-load-date-col">
+            <label class="m-load-date-lbl">Từ ngày</label>
+            <input type="date" v-model="loadFromDate" class="m-load-date-input" />
+          </div>
+          <div class="m-load-date-col">
+            <label class="m-load-date-lbl">Đến ngày</label>
+            <input type="date" v-model="loadToDate" class="m-load-date-input" />
+          </div>
+        </div>
+        <div v-if="loadFromDate || loadToDate" class="m-load-date-foot">
+          <span class="m-load-date-count">Kết quả: <strong>{{ filteredContractRowsForCards.length }}</strong> hợp đồng</span>
+          <button type="button" class="m-load-date-reset" @click="loadFromDate = ''; loadToDate = ''">Xóa lọc ngày</button>
+        </div>
+      </div>
+
+      <div v-else-if="loadFromDate || loadToDate" class="m-load-active-date-chip" @click="showLoadMobileDateFilter = true">
+        <span class="m-load-chip-text">
+          Lọc ngày: {{ loadFromDate || '...' }} đến {{ loadToDate || '...' }} ({{ filteredContractRowsForCards.length }})
+        </span>
+        <button type="button" class="m-load-chip-clear" @click.stop="loadFromDate = ''; loadToDate = ''">Xóa</button>
+      </div>
     </div>
 
     <div class="load-invoice-grid" @scroll.passive="onLoadInvoiceGridScroll" style="flex: 1; min-height: 0; overflow-y: auto; padding: 0 24px 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 16px; align-content: start;">
@@ -19393,12 +19895,12 @@ const visibleLeadingFooterColSpan = computed(() => {
 
     <p v-if="loadMsg" class="muted" style="text-align: center; margin: 8px 0;">{{ loadMsg }}</p>
 
-    <div class="modal-actions" style="justify-content: center; padding: 14px 24px; margin-top: 0; border-top: 1px solid #334155; gap: 12px; display: flex; flex-shrink: 0;">
-      <button @click="showLoadInvoiceModal = false" style="padding: 10px 32px; background: rgba(255,255,255,0.05); color: #f1f5f9; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;">Đóng</button>
-      <button class="btn-load-fe" :disabled="loadingInvoice || !loadKey" @click="cloneInvoiceToFE" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+    <div class="modal-actions load-invoice-footer" style="justify-content: center; padding: 14px 24px; margin-top: 0; border-top: 1px solid #334155; gap: 12px; display: flex; flex-shrink: 0;">
+      <button class="btn-load-close" @click="showLoadInvoiceModal = false" style="padding: 10px 32px; background: rgba(255,255,255,0.05); color: #f1f5f9; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;">Đóng</button>
+      <button class="btn-load-fe btn-load-clone" :disabled="loadingInvoice || !loadKey" @click="cloneInvoiceToFE" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
         {{ loadingInvoice ? 'Đang nhân bản...' : 'Nhân bản' }}
       </button>
-      <button class="btn-load-fe" :disabled="loadingInvoice || !loadKey" @click="loadInvoiceToFE" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+      <button class="btn-load-fe btn-load-edit" :disabled="loadingInvoice || !loadKey" @click="loadInvoiceToFE" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
         {{ loadingInvoice ? 'Đang load...' : 'Chỉnh sửa báo giá' }}
       </button>
     </div>
@@ -19636,14 +20138,14 @@ const visibleLeadingFooterColSpan = computed(() => {
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Mã KH</label>
                     <div class="input-with-picker">
-                      <input v-model="maKHInput" placeholder="Tự động tạo hoặc nhập Mã KH" @change="fillCustomerByMa(maKHInput)" @blur="onBlurMaKH" style="width: 100%; padding: 10px 60px 10px 12px; border-radius: 8px; font-size: 13px; margin: 0;" />
+                      <textarea rows="1" class="m-wrap-input has-right-picker" v-auto-grow @keydown.enter.prevent v-model="maKHInput" placeholder="Tự động tạo hoặc nhập Mã KH" @change="fillCustomerByMa(maKHInput)" @blur="onBlurMaKH" style="width: 100%; padding: 10px 60px 10px 12px; border-radius: 8px; font-size: 13px; margin: 0;"></textarea>
                       <button type="button" class="inline-picker-btn" @click="openCustomerPicker('ma_kh')">Chọn</button>
                     </div>
                   </div>
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Tên người liên hệ</label>
                     <div class="input-with-picker">
-                      <input v-model="tenKHInput" placeholder="Tên người liên hệ" @change="fillCustomerByTen(tenKHInput)" @blur="onBlurTenKH" style="width: 100%; padding: 10px 60px 10px 12px; border-radius: 8px; font-size: 13px; margin: 0;" />
+                      <textarea rows="1" class="m-wrap-input has-right-picker" v-auto-grow @keydown.enter.prevent v-model="tenKHInput" placeholder="Tên người liên hệ" @change="fillCustomerByTen(tenKHInput)" @blur="onBlurTenKH" style="width: 100%; padding: 10px 60px 10px 12px; border-radius: 8px; font-size: 13px; margin: 0;"></textarea>
                       <button type="button" class="inline-picker-btn" @click="openCustomerPicker('ten_kh')">Chọn</button>
                     </div>
                   </div>
@@ -19660,7 +20162,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 5px;">
                   <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Ghi chú khách hàng</label>
-                  <input v-model="khach.Ghi_chu" placeholder="Ghi chú thêm về khách hàng..." style="padding: 10px 12px; border-radius: 8px; font-size: 13px;" />
+                  <textarea rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="khach.Ghi_chu" placeholder="Ghi chú thêm về khách hàng..." style="padding: 10px 12px; border-radius: 8px; font-size: 13px;"></textarea>
                 </div>
               </div>
 
@@ -19705,7 +20207,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Tên công ty</label>
                     <div class="input-with-picker">
-                      <input v-model="khach.Ten_cong_ty" placeholder="Tên công ty đầy đủ" @change="fillCustomerByCongTy(khach.Ten_cong_ty)" @blur="onBlurCongTy" style="width: 100%; padding: 10px 60px 10px 12px; border-radius: 8px; font-size: 13px; margin: 0;" />
+                      <textarea rows="1" class="m-wrap-input has-right-picker" v-auto-grow @keydown.enter.prevent v-model="khach.Ten_cong_ty" placeholder="Tên công ty đầy đủ" @change="fillCustomerByCongTy(khach.Ten_cong_ty)" @blur="onBlurCongTy" style="width: 100%; padding: 10px 60px 10px 12px; border-radius: 8px; font-size: 13px; margin: 0;"></textarea>
                       <button type="button" class="inline-picker-btn" @click="openCustomerPicker('ten_cong_ty')">Chọn</button>
                     </div>
                   </div>
@@ -19720,7 +20222,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                 <div style="display: grid; grid-template-columns: 2.2fr 1fr; gap: 12px;">
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Địa chỉ xuất hóa đơn</label>
-                    <input v-model="khach.Dia_chi_cong_ty" placeholder="Địa chỉ trụ sở / xuất hóa đơn" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;" />
+                    <textarea rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="khach.Dia_chi_cong_ty" placeholder="Địa chỉ trụ sở / xuất hóa đơn" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;"></textarea>
                   </div>
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Website</label>
@@ -21030,106 +21532,247 @@ const visibleLeadingFooterColSpan = computed(() => {
       </div>
     </div>
 
-    <!-- ================== MODAL: ĐIỀU CHỈNH GIÁ LIC (VIP) ================== -->
-    <div v-if="adjustPriceModal.show" class="modal" @click.self="adjustPriceModal.show = false">
-      <div class="modal-card" :style="{ width: '460px', padding: '0', background: '#0f172a', border: '1px solid ' + (adjustPriceModal.isNormalEdit ? 'rgba(59,130,246,0.25)' : 'rgba(16,185,129,0.25)'), boxShadow: '0 25px 50px -12px rgba(0,0,0,0.7), 0 0 0 1px ' + (adjustPriceModal.isNormalEdit ? 'rgba(59,130,246,0.1)' : 'rgba(16,185,129,0.1)'), borderRadius: '20px', overflow: 'hidden', animation: 'popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }">
-        
+    <!-- ================== MODAL: SỬA GIÁ / ĐIỀU CHỈNH GIÁ LIC ================== -->
+    <div v-if="adjustPriceModal.show" class="modal adjust-price-modal-overlay" @click.self="adjustPriceModal.show = false">
+      <div
+        class="modal-card adjust-price-modal-card"
+        :class="adjustPriceModal.isNormalEdit ? 'is-normal-mode' : 'is-adjust-mode'"
+      >
         <!-- Header -->
-        <div class="modal-head" :style="{ background: 'linear-gradient(135deg, ' + (adjustPriceModal.isNormalEdit ? 'rgba(59,130,246,0.12)' : 'rgba(16,185,129,0.12)') + ' 0%, rgba(15,23,42,0.95) 100%)', padding: '20px 24px', borderBottom: '1px solid ' + (adjustPriceModal.isNormalEdit ? 'rgba(59,130,246,0.15)' : 'rgba(16,185,129,0.15)'), display: 'flex', justifyContent: 'space-between', alignItems: 'center' }">
-          <h3 class="dt-only-head" style="color: #fff; font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 12px; margin: 0; letter-spacing: 0.3px;">
-            <div :style="{ width: '36px', height: '36px', borderRadius: '10px', background: adjustPriceModal.isNormalEdit ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 15px ' + (adjustPriceModal.isNormalEdit ? 'rgba(59,130,246,0.4)' : 'rgba(16,185,129,0.4)') }">
-              <i :class="adjustPriceModal.isNormalEdit ? 'ri-edit-line' : 'ri-arrow-up-down-fill'" style="color: #fff; font-size: 18px;"></i>
-            </div>
-            {{ adjustPriceModal.isNormalEdit ? 'Sửa Thường' : 'Điều Chỉnh Giá' }}
+        <div class="modal-head adj-modal-head">
+          <h3 class="dt-only-head adj-dt-head">
+            <span class="adj-dt-head-icon">
+              <i :class="adjustPriceModal.isNormalEdit ? 'ri-edit-line' : 'ri-arrow-up-down-fill'"></i>
+            </span>
+            <span class="adj-dt-head-text">
+              <span class="adj-dt-title">{{ adjustPriceModal.isNormalEdit ? 'Sửa Thường' : 'Điều Chỉnh Giá' }}</span>
+              <span class="adj-dt-sub">{{ adjustPriceModal.targetName || (adjustPriceModal.mode === 'all' ? 'Áp dụng toàn bộ báo giá' : 'Cập nhật đơn giá') }}</span>
+            </span>
           </h3>
           <div class="m-grab-head-stack">
             <span class="m-grab-eyebrow">{{ adjustPriceModal.targetName || (adjustPriceModal.mode === 'all' ? 'Áp dụng toàn bộ báo giá' : 'Cập nhật đơn giá') }}</span>
             <span class="m-grab-title">{{ adjustPriceModal.isNormalEdit ? 'Sửa giá thực tế' : 'Điều chỉnh giá bán' }}</span>
           </div>
-          <button class="x" @click="adjustPriceModal.show = false" style="background: rgba(255,255,255,0.05); color: #94a3b8; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; font-size: 16px;">✕</button>
+          <button type="button" class="x" @click="adjustPriceModal.show = false">✕</button>
         </div>
-        
-        <div style="padding: 24px;">
-          <!-- Note giải thích -->
-          <div v-if="adjustPriceModal.isNormalEdit" style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; margin-bottom: 16px; border-radius: 10px; background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.2);">
-            <i class="ri-information-line" style="color: #3b82f6; font-size: 16px; flex-shrink: 0;"></i>
-            <span style="font-size: 12px; color: #93c5fd; line-height: 1.5;">Sửa thường sẽ cập nhật <b>giá thực tế</b>, không tạo chênh lệch giá hay chiết khấu.</span>
+
+        <!-- Body -->
+        <div class="adj-modal-body">
+          <!-- Mode Note Pill -->
+          <div class="adj-mode-pill">
+            <i class="ri-information-line"></i>
+            <span v-if="adjustPriceModal.isNormalEdit">
+              Sửa thường: Cập nhật <b>giá thực tế</b>, không tạo chênh lệch giá
+            </span>
+            <span v-else>
+              Điều chỉnh: Thay đổi <b>giá bán</b>, giữ nguyên giá thực tế để tạo chênh lệch
+            </span>
           </div>
-          <div v-else-if="adjustPriceModal.mode === 'field'" style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; margin-bottom: 16px; border-radius: 10px; background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.2);">
-            <i class="ri-information-line" style="color: #10b981; font-size: 16px; flex-shrink: 0;"></i>
-            <span style="font-size: 12px; color: #6ee7b7; line-height: 1.5;">Điều chỉnh sẽ tạo <b>chênh lệch giá</b> (giá bán thay đổi, giá thực tế giữ nguyên).</span>
-          </div>
-          <!-- Target Info Card -->
-          <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 16px; margin-bottom: 24px; position: relative; overflow: hidden;">
-            <div style="position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, #10b981, transparent); opacity: 0.5;"></div>
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-              <span style="color: #64748b; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Phạm vi áp dụng</span>
-              <span style="color: #e2e8f0; font-weight: 700; font-size: 14px; text-align: right; max-width: 60%; line-height: 1.4;">{{ adjustPriceModal.targetName || (adjustPriceModal.mode === 'all' ? 'Toàn bộ báo giá' : '') }}</span>
+
+          <!-- Live Comparison Card (Giá gốc -> Giá mới + Chênh lệch) -->
+          <div class="adj-compare-card">
+            <div class="adj-compare-scope">
+              <span class="adj-scope-label">Phạm vi áp dụng</span>
+              <span class="adj-scope-name">{{ adjustPriceModal.targetName || (adjustPriceModal.mode === 'all' ? 'Toàn bộ báo giá' : 'Đơn giá mục tiêu') }}</span>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="color: #64748b; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Giá trị gốc</span>
-              <span style="color: #10b981; font-weight: 800; font-size: 20px; text-shadow: 0 0 15px rgba(16,185,129,0.25);">{{ formatVND(adjustPriceModal.currentTotal) }} <span style="font-size: 16px;">₫</span></span>
+
+            <div class="adj-compare-prices">
+              <div class="adj-price-col is-orig">
+                <span class="adj-price-caption">Giá trị gốc</span>
+                <span class="adj-price-val">{{ formatVND(adjustPriceModal.currentTotal) }}<small>₫</small></span>
+              </div>
+              <div class="adj-price-arrow" aria-hidden="true">
+                <i class="ri-arrow-right-line"></i>
+              </div>
+              <div class="adj-price-col is-new" :class="{ 'is-changed': hasAdjustPriceChanged }">
+                <span class="adj-price-caption">Giá mới dự kiến</span>
+                <span class="adj-price-val">{{ formatVND(adjustPreviewTotal) }}<small>₫</small></span>
+              </div>
+            </div>
+
+            <div class="adj-compare-delta-bar">
+              <div
+                class="adj-delta-badge"
+                :class="adjustDeltaAmount < 0 ? 'is-down' : adjustDeltaAmount > 0 ? 'is-up' : 'is-neutral'"
+              >
+                <template v-if="adjustDeltaAmount < 0">
+                  <span>Giảm {{ formatVND(Math.abs(adjustDeltaAmount)) }} ₫</span>
+                  <em v-if="adjustDeltaPercentLabel">({{ adjustDeltaPercentLabel }})</em>
+                </template>
+                <template v-else-if="adjustDeltaAmount > 0">
+                  <span>Tăng {{ formatVND(adjustDeltaAmount) }} ₫</span>
+                  <em v-if="adjustDeltaPercentLabel">({{ adjustDeltaPercentLabel }})</em>
+                </template>
+                <template v-else>
+                  <span>Giữ nguyên giá gốc</span>
+                </template>
+              </div>
+
+              <button
+                v-if="hasAdjustPriceChanged"
+                type="button"
+                class="adj-reset-btn"
+                @click="resetAdjustPriceToOriginal()"
+              >
+                <i class="ri-restart-line"></i>
+                <span>Về giá gốc</span>
+              </button>
             </div>
           </div>
-          
-          <!-- Segmented Control -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 24px; background: rgba(0,0,0,0.4); padding: 4px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); position: relative;">
-            <button 
-              :style="{ 
-                borderRadius: '10px', padding: '10px', fontWeight: '700', fontSize: '13px', textAlign: 'center', transition: 'all 0.3s ease', border: 'none', 
-                background: adjustPriceModal.adjustType === 'percent' ? 'rgba(16,185,129,0.15)' : 'transparent', 
-                color: adjustPriceModal.adjustType === 'percent' ? '#10b981' : '#64748b', 
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                boxShadow: adjustPriceModal.adjustType === 'percent' ? '0 2px 10px rgba(0,0,0,0.2), inset 0 1px 0 rgba(16,185,129,0.2)' : 'none'
-              }" 
+
+          <!-- Segmented Control (2 Tabs ngang) -->
+          <div class="adj-segmented" role="tablist">
+            <button
+              type="button"
+              class="adj-seg-btn"
+              :class="{ active: adjustPriceModal.adjustType === 'percent' }"
               @click="adjustPriceModal.adjustType = 'percent'"
             >
-              <i class="ri-percent-line" style="font-size: 16px;"></i> Tăng/Giảm theo %
+              <i class="ri-percent-line"></i>
+              <span>Theo %</span>
             </button>
-            <button 
-              :style="{ 
-                borderRadius: '10px', padding: '10px', fontWeight: '700', fontSize: '13px', textAlign: 'center', transition: 'all 0.3s ease', border: 'none', 
-                background: adjustPriceModal.adjustType === 'number' ? 'rgba(16,185,129,0.15)' : 'transparent', 
-                color: adjustPriceModal.adjustType === 'number' ? '#10b981' : '#64748b', 
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                boxShadow: adjustPriceModal.adjustType === 'number' ? '0 2px 10px rgba(0,0,0,0.2), inset 0 1px 0 rgba(16,185,129,0.2)' : 'none'
-              }" 
+            <button
+              type="button"
+              class="adj-seg-btn"
+              :class="{ active: adjustPriceModal.adjustType === 'number' }"
               @click="adjustPriceModal.adjustType = 'number'"
             >
-              <i class="ri-money-dollar-circle-line" style="font-size: 16px;"></i> Nhập giá trị
+              <i class="ri-money-dollar-circle-line"></i>
+              <span>Nhập số tiền</span>
             </button>
           </div>
-          
+
           <!-- Input Area -->
-          <div style="margin-bottom: 32px;">
-            <div v-if="adjustPriceModal.adjustType === 'percent'" style="animation: fadeIn 0.3s ease;">
-              <label style="display: block; font-size: 12px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.5px;">Mức Điều Chỉnh (VD: 10 Tăng, -5 Giảm)</label>
-              <div style="position: relative;">
-                <FormattedInput v-model="adjustPriceModal.percentValue" placeholder="0" style="width: 100%; padding: 14px 16px; padding-right: 48px; border-radius: 12px; background: rgba(15,23,42,0.8); border: 2px solid rgba(16,185,129,0.2); color: #fff; font-size: 18px; font-weight: 800; outline: none; transition: all 0.3s; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);" />
-                <div style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; background: rgba(16,185,129,0.1); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #10b981; font-weight: 800; font-size: 14px; pointer-events: none;">%</div>
+          <div class="adj-input-section">
+            <div v-if="adjustPriceModal.adjustType === 'percent'" class="adj-tab-pane">
+              <div class="adj-field-head">
+                <label class="adj-field-label">Mức điều chỉnh phần trăm</label>
               </div>
-              <div style="margin-top: 16px; display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: linear-gradient(90deg, rgba(16,185,129,0.1) 0%, rgba(16,185,129,0.02) 100%); border-radius: 10px; border-left: 3px solid #10b981;">
-                <span style="color: #cbd5e1; font-size: 13px; font-weight: 600;">Dự kiến mới:</span>
-                <span style="color: #10b981; font-weight: 800; font-size: 16px; letter-spacing: 0.5px;">{{ formatVND(adjustPriceModal.currentTotal * (1 + (adjustPriceModal.percentValue || 0) / 100)) }} ₫</span>
+
+              <div class="adj-percent-row">
+                <div class="adj-sign-toggle" role="group" aria-label="Chiều điều chỉnh">
+                  <button
+                    type="button"
+                    class="adj-sign-btn is-minus"
+                    :class="{ active: adjustPriceModal.percentSign < 0 }"
+                    @click="setAdjustPercentSign(-1)"
+                  >
+                    Giảm -
+                  </button>
+                  <button
+                    type="button"
+                    class="adj-sign-btn is-plus"
+                    :class="{ active: adjustPriceModal.percentSign > 0 }"
+                    @click="setAdjustPercentSign(1)"
+                  >
+                    Tăng +
+                  </button>
+                </div>
+
+                <div class="adj-input-wrap">
+                  <FormattedInput
+                    class="adj-main-input"
+                    :model-value="adjustPriceModal.percentValue"
+                    @update:model-value="onAdjustPercentInput"
+                    :decimals="2"
+                    :allow-negative="true"
+                    inputmode="decimal"
+                    placeholder="0"
+                    @keydown.enter.prevent="applyAdjustPrice()"
+                  />
+                  <span class="adj-unit-badge">%</span>
+                </div>
+              </div>
+
+              <div class="adj-presets-wrap">
+                <span class="adj-presets-caption">Chọn nhanh mức %</span>
+                <div class="adj-chip-grid">
+                  <button
+                    v-for="pct in adjustPercentPresetsDecrease"
+                    :key="'dec-' + pct"
+                    type="button"
+                    class="adj-chip-btn is-down"
+                    :class="{ active: Number(adjustPriceModal.percentValue) === pct }"
+                    @click="selectAdjustPercentPreset(pct)"
+                  >
+                    {{ pct }}%
+                  </button>
+                  <button
+                    v-for="pct in adjustPercentPresetsIncrease"
+                    :key="'inc-' + pct"
+                    type="button"
+                    class="adj-chip-btn is-up"
+                    :class="{ active: Number(adjustPriceModal.percentValue) === pct }"
+                    @click="selectAdjustPercentPreset(pct)"
+                  >
+                    +{{ pct }}%
+                  </button>
+                </div>
               </div>
             </div>
-            
-            <div v-else style="animation: fadeIn 0.3s ease;">
-              <label style="display: block; font-size: 12px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.5px;">Nhập Giá Trị Mong Muốn</label>
-              <div style="position: relative;">
-                <FormattedInput v-model="adjustPriceModal.numberValue" :decimals="quoteCurrency === 'USD' ? 2 : 0" placeholder="Nhập số tiền..." style="width: 100%; padding: 14px 16px; padding-right: 48px; border-radius: 12px; background: rgba(15,23,42,0.8); border: 2px solid rgba(16,185,129,0.2); color: #fff; font-size: 18px; font-weight: 800; outline: none; transition: all 0.3s; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);" />
-                <div style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; background: rgba(16,185,129,0.1); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #10b981; font-weight: 800; font-size: 14px; pointer-events: none;">₫</div>
+
+            <div v-else class="adj-tab-pane">
+              <div class="adj-field-head">
+                <label class="adj-field-label">Nhập giá trị mong muốn</label>
+                <div
+                  v-if="isAdjustChenhLechField"
+                  class="adj-sign-toggle is-inline"
+                  role="group"
+                  aria-label="Dấu chênh lệch"
+                >
+                  <button
+                    type="button"
+                    class="adj-sign-btn is-minus"
+                    :class="{ active: adjustPriceModal.numberSign < 0 }"
+                    @click="setAdjustNumberSign(-1)"
+                  >
+                    Âm -
+                  </button>
+                  <button
+                    type="button"
+                    class="adj-sign-btn is-plus"
+                    :class="{ active: adjustPriceModal.numberSign > 0 }"
+                    @click="setAdjustNumberSign(1)"
+                  >
+                    Dương +
+                  </button>
+                </div>
+              </div>
+
+              <div class="adj-input-wrap">
+                <FormattedInput
+                  class="adj-main-input"
+                  :model-value="adjustPriceModal.numberValue"
+                  @update:model-value="onAdjustNumberInput"
+                  :decimals="quoteCurrency === 'USD' ? 2 : 0"
+                  :allow-negative="isAdjustChenhLechField"
+                  :inputmode="quoteCurrency === 'USD' ? 'decimal' : 'numeric'"
+                  placeholder="Nhập số tiền..."
+                  @keydown.enter.prevent="applyAdjustPrice()"
+                />
+                <span class="adj-unit-badge">₫</span>
               </div>
             </div>
           </div>
-          
-          <!-- Actions -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-            <button @click.prevent="adjustPriceModal.show = false" style="padding: 14px; border-radius: 12px; font-weight: 700; font-size: 14px; background: rgba(255,255,255,0.05); color: #94a3b8; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: all 0.2s;">Hủy Bỏ</button>
-            <button @click.prevent="applyAdjustPrice()" :style="{ padding: '14px', borderRadius: '12px', fontWeight: '700', fontSize: '15px', background: adjustPriceModal.isNormalEdit ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: '#fff', border: 'none', cursor: 'pointer', boxShadow: adjustPriceModal.isNormalEdit ? '0 4px 15px rgba(59,130,246,0.3)' : '0 4px 15px rgba(16,185,129,0.3)', transition: 'all 0.2s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }">
-              <i class="lucide-check"></i> Xác Nhận
-            </button>
-          </div>
+        </div>
+
+        <!-- Sticky Footer -->
+        <div class="adj-modal-footer">
+          <button
+            type="button"
+            class="adj-btn-cancel"
+            @click.prevent="adjustPriceModal.show = false"
+          >
+            Hủy
+          </button>
+          <button
+            type="button"
+            class="adj-btn-confirm"
+            @click.prevent="applyAdjustPrice()"
+          >
+            <i class="lucide-check"></i>
+            <span>{{ adjustPriceModal.isNormalEdit ? 'Lưu giá mới' : 'Xác nhận điều chỉnh' }}</span>
+          </button>
         </div>
       </div>
     </div>
@@ -21777,6 +22420,7 @@ const visibleLeadingFooterColSpan = computed(() => {
               <div style="position: relative; width: 115px;">
                 <FormattedInput
                   v-model="muaHangBulkMarkup.value"
+                  :decimals="muaHangBulkMarkup.mode === 'percent' ? 2 : 0"
                   :placeholder="muaHangBulkMarkup.mode === 'percent' ? 'VD: 15' : 'VD: 500.000'"
                   style="width: 100%; padding: 4px 22px 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; margin: 0;"
                 />
@@ -26192,6 +26836,7 @@ td.dvt { font-family: inherit; white-space: normal; }
 }
 /* ================== MOBILE 3-SCREEN FLOW (KHO SP -> BÁO GIÁ -> TỔNG KẾT -> MODAL KHÁCH HÀNG) ================== */
 .mobile-progress-wrapper,
+.mobile-top-display-btn,
 .mobile-top-util-btn,
 .mobile-screen1-cart-bar,
 .mobile-back-to-store-btn,
@@ -26219,6 +26864,13 @@ td.dvt { font-family: inherit; white-space: normal; }
   display: none !important;
 }
 
+@media (min-width: 1101px) {
+  .btn-reset-quote:hover {
+    background: #dc2626 !important;
+    box-shadow: 0 2px 5px rgba(239, 68, 68, 0.5) !important;
+  }
+}
+
 @media (max-width: 1100px) {
   .mobile-progress-wrapper,
   .hide-on-mobile-quote,
@@ -26228,13 +26880,47 @@ td.dvt { font-family: inherit; white-space: normal; }
     display: none !important;
   }
 
+  .mobile-top-display-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 30px !important;
+    min-width: 30px !important;
+    height: 30px !important;
+    min-height: 30px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 8px !important;
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    color: #cbd5e1 !important;
+    flex-shrink: 0 !important;
+    cursor: pointer !important;
+    box-shadow: none !important;
+    transition: all 0.18s ease !important;
+  }
+
+  .mobile-top-display-btn.is-active {
+    border-color: rgba(56, 189, 248, 0.55) !important;
+    color: #38bdf8 !important;
+    background: rgba(30, 41, 59, 0.98) !important;
+  }
+
+  .sidebar-head-product select,
+  .sidebar-head-product .btn-pricelist-toggle {
+    height: 30px !important;
+    min-height: 30px !important;
+    box-sizing: border-box !important;
+  }
+
   .mobile-top-util-btn {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    width: 32px !important;
-    min-width: 32px !important;
-    height: 32px !important;
+    width: 30px !important;
+    min-width: 30px !important;
+    height: 30px !important;
+    min-height: 30px !important;
     padding: 0 !important;
     margin: 0 !important;
     border-radius: 8px !important;
@@ -26658,9 +27344,18 @@ td.dvt { font-family: inherit; white-space: normal; }
   }
 
   .m-step-pill.is-done {
-    background: rgba(16, 185, 129, 0.14) !important;
-    border-color: rgba(16, 185, 129, 0.42) !important;
-    color: #34d399 !important;
+    background: rgba(16, 185, 129, 0.09) !important;
+    border: 1px solid rgba(16, 185, 129, 0.25) !important;
+    color: rgba(52, 211, 153, 0.78) !important;
+  }
+
+  .m-step-pill.is-current:not(.is-active) {
+    background: rgba(16, 185, 129, 0.24) !important;
+    border: 1.8px solid #34d399 !important;
+    color: #ffffff !important;
+    box-shadow:
+      0 0 0 2px rgba(52, 211, 153, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
   }
 
   .m-step-pill.is-active {
@@ -26677,6 +27372,26 @@ td.dvt { font-family: inherit; white-space: normal; }
     background: linear-gradient(135deg, #2563eb 0%, #059669 100%) !important;
     border-color: rgba(147, 197, 253, 0.65) !important;
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.38) !important;
+  }
+
+  @keyframes mDockNextStepPulse {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.065);
+    }
+  }
+
+  .m-step-pill.is-next-pulse {
+    animation: mDockNextStepPulse 2.1s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
+    transform-origin: center center !important;
+    will-change: transform;
+  }
+
+  .m-step-pill.is-next-pulse:active {
+    animation: none !important;
+    transform: scale(0.91) !important;
   }
 
   .m-step-num {
@@ -26798,18 +27513,37 @@ td.dvt { font-family: inherit; white-space: normal; }
 
   .table-header-box .btn-reset-quote {
     order: 2 !important;
-    padding: 0 8px !important;
-    height: 28px !important;
+    padding: 0 9px !important;
+    height: 30px !important;
+    min-height: 30px !important;
     width: auto !important;
-    min-width: 28px !important;
+    min-width: 30px !important;
     margin: 0 !important;
-    border-radius: 7px !important;
+    border-radius: 8px !important;
+    background: rgba(239, 68, 68, 0.16) !important;
+    border: 1px solid rgba(239, 68, 68, 0.42) !important;
+    color: #f87171 !important;
+    box-shadow: none !important;
+  }
+
+  .table-header-box .btn-quote-col-setting {
+    height: 30px !important;
+    min-height: 30px !important;
+    border-radius: 8px !important;
+  }
+
+  .table-header-box .vip-currency-switch {
+    height: 30px !important;
   }
 
   .table-header-box .unified-contract-pill {
     order: 1 !important;
     margin: 0 !important;
-    padding: 4px 9px !important;
+    padding: 0 9px !important;
+    height: 30px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    box-sizing: border-box !important;
     font-size: 11px !important;
     white-space: nowrap !important;
     overflow: hidden !important;
@@ -26835,11 +27569,18 @@ td.dvt { font-family: inherit; white-space: normal; }
     }
     .btn-quote-col-setting,
     .table-header-box .btn-reset-quote {
-      padding: 0 8px !important;
+      padding: 0 !important;
       width: 30px !important;
       min-width: 30px !important;
+      height: 30px !important;
+      min-height: 30px !important;
       justify-content: center !important;
     }
+  }
+
+  .quote-col-setting-backdrop {
+    z-index: 1045 !important;
+    background: rgba(2, 6, 23, 0.32) !important;
   }
 
   .quote-col-setting-dropdown {
@@ -26852,15 +27593,13 @@ td.dvt { font-family: inherit; white-space: normal; }
     z-index: 1050 !important;
   }
 
-  /* KHỐI KHÁCH HÀNG GỌN TRÊN ĐẦU TỜ BÁO GIÁ (.mobile-quote-customer-card) */
+  .quote-col-setting-dropdown.is-step1-pos {
+    top: 54px !important;
+  }
+
+  /* KHỐI KHÁCH HÀNG GỌN TRÊN ĐẦU TỜ BÁO GIÁ (.mobile-quote-customer-card) - Ẩn trên Mobile vì Bước 4 (Lưu/Xuất) đã có form Khách hàng */
   .mobile-quote-customer-card {
-    display: block !important;
-    margin: 10px 12px 6px 12px !important;
-    border-radius: 12px !important;
-    background: rgba(15, 23, 42, 0.85) !important;
-    border: 1px solid rgba(51, 65, 85, 0.8) !important;
-    overflow: hidden !important;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18) !important;
+    display: none !important;
   }
 
   .m-cust-header {
@@ -27447,60 +28186,138 @@ td.dvt { font-family: inherit; white-space: normal; }
     display: none !important;
   }
 
-  /* KHỐI TỔNG HỢP TÀI CHÍNH & CHIẾT KHẤU NGAY DƯỚI DANH SÁCH SP (.mobile-quote-summary-card) */
+  /* KHỐI TỔNG KẾT MOBILE: TÁCH 2 CARD ĐỘC LẬP (CHIẾT KHẤU & TÀI CHÍNH) (.mobile-quote-summary-card) */
   .mobile-quote-summary-card {
     display: block !important;
-    margin: 6px 12px 20px 12px !important;
-    border-radius: 14px !important;
-    background: rgba(15, 23, 42, 0.88) !important;
+    margin: 8px 12px 24px 12px !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+
+  .m-sum-card {
+    border-radius: 16px !important;
+    background: rgba(15, 23, 42, 0.9) !important;
     border: 1px solid rgba(51, 65, 85, 0.85) !important;
     overflow: hidden !important;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25) !important;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.24) !important;
+  }
+
+  .m-sum-card + .m-sum-card {
+    margin-top: 12px !important;
+  }
+
+  .m-sum-card.is-discount {
+    border-color: rgba(245, 158, 11, 0.34) !important;
+  }
+
+  .m-sum-card.is-finance {
+    border-color: rgba(16, 185, 129, 0.36) !important;
   }
 
   .m-sum-header {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    padding: 10px 12px !important;
-    background: rgba(30, 41, 59, 0.85) !important;
+    gap: 8px !important;
+    padding: 11px 13px !important;
+    background: rgba(30, 41, 59, 0.88) !important;
     border-bottom: 1px solid rgba(51, 65, 85, 0.7) !important;
   }
 
-  .m-sum-title-group {
-    display: flex !important;
-    align-items: center !important;
-    gap: 6px !important;
-    font-size: 11.5px !important;
-    font-weight: 800 !important;
-    color: #38bdf8 !important;
-    letter-spacing: 0.3px !important;
+  .m-sum-discount-header {
+    background: linear-gradient(90deg, rgba(245, 158, 11, 0.14) 0%, rgba(30, 41, 59, 0.88) 100%) !important;
+    border-bottom-color: rgba(245, 158, 11, 0.25) !important;
   }
 
-  .m-sum-adjust-btn {
-    height: 26px !important;
-    padding: 0 9px !important;
-    margin: 0 !important;
-    width: auto !important;
-    min-width: max-content !important;
-    border-radius: 6px !important;
-    background: rgba(245, 158, 11, 0.15) !important;
-    border: 1px solid rgba(245, 158, 11, 0.4) !important;
-    color: #fbbf24 !important;
-    font-size: 11px !important;
-    font-weight: 700 !important;
+  .m-sum-finance-header {
+    background: linear-gradient(90deg, rgba(16, 185, 129, 0.15) 0%, rgba(30, 41, 59, 0.88) 100%) !important;
+    border-bottom-color: rgba(16, 185, 129, 0.26) !important;
+  }
+
+  .m-sum-title-group {
     display: inline-flex !important;
     align-items: center !important;
-    gap: 4px !important;
-    cursor: pointer !important;
-    box-shadow: none !important;
+    gap: 8px !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
+    color: #34d399 !important;
+    letter-spacing: 0.35px !important;
+    min-width: 0 !important;
   }
 
-  .m-sum-body {
-    padding: 8px 12px !important;
+  .m-sum-discount-header .m-sum-title-group {
+    color: #fbbf24 !important;
+  }
+
+  .m-sum-head-icon {
+    width: 26px !important;
+    height: 26px !important;
+    border-radius: 7px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 13.5px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .m-sum-head-icon.is-amber {
+    background: rgba(245, 158, 11, 0.18) !important;
+    border: 1px solid rgba(245, 158, 11, 0.38) !important;
+    color: #fbbf24 !important;
+  }
+
+  .m-sum-head-icon.is-emerald,
+  .m-sum-head-icon.is-blue {
+    background: rgba(16, 185, 129, 0.18) !important;
+    border: 1px solid rgba(16, 185, 129, 0.4) !important;
+    color: #34d399 !important;
+  }
+
+  .m-sum-currency-badge {
+    font-size: 10.5px !important;
+    font-weight: 800 !important;
+    padding: 2px 8px !important;
+    border-radius: 999px !important;
+    letter-spacing: 0.4px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .m-sum-currency-badge.is-amber {
+    background: rgba(245, 158, 11, 0.14) !important;
+    border: 1px solid rgba(245, 158, 11, 0.32) !important;
+    color: #fcd34d !important;
+  }
+
+  .m-sum-currency-badge.is-emerald,
+  .m-sum-currency-badge.is-blue {
+    background: rgba(16, 185, 129, 0.15) !important;
+    border: 1px solid rgba(16, 185, 129, 0.35) !important;
+    color: #6ee7b7 !important;
+  }
+
+  .m-sum-discount-badge {
+    font-size: 11.5px !important;
+    font-weight: 800 !important;
+    font-variant-numeric: tabular-nums !important;
+    color: #fbbf24 !important;
+    background: rgba(245, 158, 11, 0.18) !important;
+    border: 1px solid rgba(245, 158, 11, 0.4) !important;
+    padding: 2px 9px !important;
+    border-radius: 999px !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+
+  .m-sum-body,
+  .m-sum-discount-body {
+    padding: 8px 13px 13px 13px !important;
+    background: transparent !important;
     display: flex !important;
     flex-direction: column !important;
-    gap: 6px !important;
+    gap: 2px !important;
   }
 
   .m-sum-row {
@@ -27508,22 +28325,30 @@ td.dvt { font-family: inherit; white-space: normal; }
     align-items: center !important;
     justify-content: space-between !important;
     gap: 8px !important;
-    padding: 4px 0 !important;
-    border-bottom: 1px solid rgba(51, 65, 85, 0.35) !important;
-    font-size: 12.5px !important;
+    padding: 8px 0 !important;
+    border-bottom: 1px solid rgba(51, 65, 85, 0.38) !important;
+    font-size: 13.5px !important;
   }
 
+  .m-sum-row.is-input-row {
+    padding: 6px 0 !important;
+  }
+
+  .m-sum-row.is-last-plain,
   .m-sum-row:last-child {
     border-bottom: none !important;
   }
 
   .m-sum-label {
     color: #cbd5e1 !important;
+    font-size: 13px !important;
     font-weight: 600 !important;
+    line-height: 1.3 !important;
     display: inline-flex !important;
     align-items: center !important;
     gap: 6px !important;
     flex-wrap: wrap !important;
+    min-width: 0 !important;
   }
 
   .m-sum-val {
@@ -27533,115 +28358,199 @@ td.dvt { font-family: inherit; white-space: normal; }
     align-items: center !important;
     gap: 5px !important;
     white-space: nowrap !important;
+    flex-shrink: 0 !important;
   }
 
-  .m-sum-val.warn { color: #fbbf24 !important; }
-  .m-sum-val.pos { color: #34d399 !important; }
-  .m-sum-val.neg { color: #f87171 !important; }
+  .m-sum-num {
+    font-size: 14px !important;
+    font-weight: 800 !important;
+    font-variant-numeric: tabular-nums !important;
+    letter-spacing: -0.1px !important;
+  }
+
+  .m-sum-val.warn,
+  .m-sum-val.warn .m-sum-num {
+    color: #fbbf24 !important;
+  }
+
+  .m-sum-val.pos,
+  .m-sum-val.pos .m-sum-num {
+    color: #34d399 !important;
+  }
+
+  .m-sum-val.neg,
+  .m-sum-val.neg .m-sum-num {
+    color: #f87171 !important;
+  }
+
+  .m-sum-pct-pill {
+    position: relative !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    width: 72px !important;
+    height: 34px !important;
+    flex-shrink: 0 !important;
+  }
+
+  input.m-sum-pct-input {
+    width: 100% !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    padding: 0 21px 0 8px !important;
+    margin: 0 !important;
+    text-align: right !important;
+    border-radius: 8px !important;
+    border: 1px solid rgba(245, 158, 11, 0.38) !important;
+    background: rgba(9, 14, 23, 0.85) !important;
+    color: #fbbf24 !important;
+    font-size: 16px !important;
+    font-weight: 800 !important;
+    font-variant-numeric: tabular-nums !important;
+    box-sizing: border-box !important;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  input.m-sum-pct-input:focus {
+    border-color: #fbbf24 !important;
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.22) !important;
+    outline: none !important;
+  }
+
+  .m-sum-pct-unit {
+    position: absolute !important;
+    right: 7px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
+    font-style: normal !important;
+    color: #94a3b8 !important;
+    pointer-events: none !important;
+    line-height: 1 !important;
+  }
+
+  button.m-sum-inline-adj-pill {
+    width: auto !important;
+    min-width: max-content !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    padding: 0 9px !important;
+    margin: 0 !important;
+    border-radius: 999px !important;
+    background: rgba(245, 158, 11, 0.16) !important;
+    border: 1px solid rgba(245, 158, 11, 0.45) !important;
+    color: #fbbf24 !important;
+    font-size: 11.5px !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    cursor: pointer !important;
+    box-shadow: none !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+
+  button.m-sum-inline-adj-pill i {
+    font-size: 12.5px !important;
+  }
+
+  button.m-sum-inline-adj-pill.is-emerald {
+    background: rgba(16, 185, 129, 0.15) !important;
+    border-color: rgba(16, 185, 129, 0.45) !important;
+    color: #34d399 !important;
+  }
 
   .m-sum-hist {
-    width: 22px !important;
-    min-width: 22px !important;
-    height: 22px !important;
+    width: 28px !important;
+    min-width: 28px !important;
+    height: 28px !important;
+    min-height: 28px !important;
     padding: 0 !important;
     margin: 0 !important;
-    border-radius: 5px !important;
-    background: transparent !important;
-    border: none !important;
-    color: #64748b !important;
+    border-radius: 7px !important;
+    background: rgba(30, 41, 59, 0.55) !important;
+    border: 1px solid rgba(71, 85, 105, 0.35) !important;
+    color: #94a3b8 !important;
+    font-size: 13.5px !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
     cursor: pointer !important;
     box-shadow: none !important;
+    flex-shrink: 0 !important;
   }
 
-  .m-sum-grand-total {
-    margin-top: 2px !important;
-    padding: 8px 10px !important;
-    border-radius: 9px !important;
-    background: rgba(16, 185, 129, 0.14) !important;
-    border: 1px solid rgba(16, 185, 129, 0.38) !important;
+  .m-sum-highlight-box {
+    margin-top: 6px !important;
+    padding: 10px 12px !important;
+    border-radius: 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
   }
 
-  .m-sum-grand-total .m-sum-label {
-    color: #34d399 !important;
-    font-weight: 800 !important;
-    font-size: 12px !important;
-  }
-
-  .m-sum-grand-total .m-sum-val {
-    color: #10b981 !important;
-    font-size: 15.5px !important;
-    font-weight: 900 !important;
-  }
-
-  .m-sum-discount-wrap {
-    border-bottom: 1px solid rgba(51, 65, 85, 0.7) !important;
-  }
-
-  .m-sum-discount-header .m-sum-title-group {
-    color: #fbbf24 !important;
-  }
-
-  .m-sum-discount-badge {
-    font-size: 11px !important;
-    font-weight: 800 !important;
-    color: #fbbf24 !important;
-    background: rgba(245, 158, 11, 0.16) !important;
-    border: 1px solid rgba(245, 158, 11, 0.35) !important;
-    padding: 1px 7px !important;
-    border-radius: 999px !important;
-  }
-
-  .m-sum-discount-body {
-    padding: 8px 12px 10px 12px !important;
-    background: rgba(9, 14, 23, 0.45) !important;
+  .m-sum-hl-left {
     display: flex !important;
     flex-direction: column !important;
-    gap: 6px !important;
+    align-items: flex-start !important;
+    gap: 2px !important;
+    min-width: 0 !important;
   }
 
-  .m-sum-pct-input {
-    width: 48px !important;
-    height: 24px !important;
-    padding: 0 4px !important;
-    margin: 0 !important;
-    text-align: center !important;
-    border-radius: 5px !important;
-    border: 1px solid #475569 !important;
-    background: #0f172a !important;
-    color: #f87171 !important;
-    font-size: 12px !important;
-    font-weight: 700 !important;
-  }
-
-  .m-sum-inline-adj {
-    width: 22px !important;
-    min-width: 22px !important;
-    height: 22px !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    border-radius: 5px !important;
-    background: rgba(245, 158, 11, 0.16) !important;
-    border: 1px solid rgba(245, 158, 11, 0.38) !important;
-    color: #fbbf24 !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    box-shadow: none !important;
+  .m-sum-hl-sub {
+    font-size: 10.5px !important;
+    font-weight: 600 !important;
+    color: #94a3b8 !important;
+    line-height: 1.2 !important;
   }
 
   .m-sum-discount-total {
-    margin-top: 2px !important;
-    padding-top: 6px !important;
-    border-top: 1px dashed rgba(245, 158, 11, 0.4) !important;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.14) 0%, rgba(217, 119, 6, 0.08) 100%) !important;
+    border: 1px solid rgba(245, 158, 11, 0.38) !important;
   }
 
-  .m-sum-discount-total .m-sum-label,
-  .m-sum-discount-total .m-sum-val {
+  .m-sum-discount-total .m-sum-hl-sub {
+    color: rgba(252, 211, 77, 0.78) !important;
+  }
+
+  .m-sum-discount-total .m-sum-label {
     color: #fbbf24 !important;
+    font-size: 13.5px !important;
     font-weight: 800 !important;
+  }
+
+  .m-sum-discount-total .m-sum-val,
+  .m-sum-discount-total .m-sum-num {
+    color: #fbbf24 !important;
+    font-size: 16.5px !important;
+    font-weight: 900 !important;
+  }
+
+  .m-sum-grand-total {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.1) 100%) !important;
+    border: 1px solid rgba(16, 185, 129, 0.46) !important;
+    padding: 11px 12px !important;
+  }
+
+  .m-sum-grand-total .m-sum-hl-sub {
+    color: rgba(110, 231, 183, 0.85) !important;
+  }
+
+  .m-sum-grand-total .m-sum-label {
+    color: #6ee7b7 !important;
+    font-size: 13.5px !important;
+    font-weight: 800 !important;
+  }
+
+  .m-sum-grand-total .m-sum-val,
+  .m-sum-grand-total .m-sum-num {
+    color: #34d399 !important;
+    font-size: 18.5px !important;
+    font-weight: 900 !important;
   }
 
   .m-cart-save-export-btn {
@@ -27895,10 +28804,29 @@ td.dvt { font-family: inherit; white-space: normal; }
     box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04) !important;
   }
 
+  .page.theme-light-blue .mobile-top-display-btn {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #2563eb !important;
+  }
+
+  .page.theme-light-blue .mobile-top-display-btn.is-active {
+    background: #eff6ff !important;
+    border-color: #60a5fa !important;
+    color: #1d4ed8 !important;
+  }
+
   .page.theme-light-blue .mobile-top-util-btn {
     background: #f8fafc !important;
     border-color: #cbd5e1 !important;
     color: #2563eb !important;
+  }
+
+  .page.theme-light-blue .table-header-box .btn-reset-quote {
+    background: #fef2f2 !important;
+    border: 1px solid #fca5a5 !important;
+    color: #dc2626 !important;
+    box-shadow: none !important;
   }
 
   .page.theme-light-blue .product-catalog-sticky-head {
@@ -27965,8 +28893,15 @@ td.dvt { font-family: inherit; white-space: normal; }
 
   .page.theme-light-blue .m-step-pill.is-done {
     background: #eff6ff !important;
-    border-color: #93c5fd !important;
-    color: #2563eb !important;
+    border: 1px solid #bfdbfe !important;
+    color: #3b82f6 !important;
+  }
+
+  .page.theme-light-blue .m-step-pill.is-current:not(.is-active) {
+    background: #dbeafe !important;
+    border: 1.8px solid #2563eb !important;
+    color: #1e3a8a !important;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16) !important;
   }
 
   .page.theme-light-blue .m-step-pill.is-active {
@@ -27986,12 +28921,18 @@ td.dvt { font-family: inherit; white-space: normal; }
     color: #1d4ed8 !important;
   }
 
+  .page.theme-light-blue .mobile-quote-summary-card {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
   .page.theme-light-blue .mobile-quote-customer-card,
-  .page.theme-light-blue .mobile-quote-summary-card,
+  .page.theme-light-blue .m-sum-card,
   .page.theme-light-blue .m-qcard {
     background: #ffffff !important;
     border-color: #cbd5e1 !important;
-    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05) !important;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06) !important;
   }
 
   .page.theme-light-blue .m-qcard {
@@ -28131,19 +29072,67 @@ td.dvt { font-family: inherit; white-space: normal; }
     color: #334155 !important;
   }
 
+  .page.theme-light-blue .m-sum-card.is-discount {
+    border-color: #fcd34d !important;
+  }
+
+  .page.theme-light-blue .m-sum-card.is-finance {
+    border-color: #6ee7b7 !important;
+  }
+
   .page.theme-light-blue .m-sum-header {
     background: #f8fafc !important;
     border-bottom-color: #e2e8f0 !important;
   }
 
-  .page.theme-light-blue .m-sum-title-group {
-    color: #1d4ed8 !important;
+  .page.theme-light-blue .m-sum-discount-header {
+    background: linear-gradient(90deg, #fffbeb 0%, #fef3c7 100%) !important;
+    border-bottom-color: #fde68a !important;
   }
 
-  .page.theme-light-blue .m-sum-adjust-btn {
-    background: #fffbeb !important;
-    border-color: #fcd34d !important;
+  .page.theme-light-blue .m-sum-finance-header {
+    background: linear-gradient(90deg, #ecfdf5 0%, #d1fae5 100%) !important;
+    border-bottom-color: #a7f3d0 !important;
+  }
+
+  .page.theme-light-blue .m-sum-title-group {
+    color: #047857 !important;
+  }
+
+  .page.theme-light-blue .m-sum-discount-header .m-sum-title-group {
     color: #b45309 !important;
+  }
+
+  .page.theme-light-blue .m-sum-head-icon.is-amber {
+    background: #fef3c7 !important;
+    border-color: #f59e0b !important;
+    color: #b45309 !important;
+  }
+
+  .page.theme-light-blue .m-sum-head-icon.is-emerald,
+  .page.theme-light-blue .m-sum-head-icon.is-blue {
+    background: #d1fae5 !important;
+    border-color: #10b981 !important;
+    color: #047857 !important;
+  }
+
+  .page.theme-light-blue .m-sum-currency-badge.is-amber,
+  .page.theme-light-blue .m-sum-discount-badge {
+    background: #fef3c7 !important;
+    border-color: #f59e0b !important;
+    color: #b45309 !important;
+  }
+
+  .page.theme-light-blue .m-sum-currency-badge.is-emerald,
+  .page.theme-light-blue .m-sum-currency-badge.is-blue {
+    background: #d1fae5 !important;
+    border-color: #10b981 !important;
+    color: #047857 !important;
+  }
+
+  .page.theme-light-blue .m-sum-body,
+  .page.theme-light-blue .m-sum-discount-body {
+    background: transparent !important;
   }
 
   .page.theme-light-blue .m-sum-row {
@@ -28154,49 +29143,92 @@ td.dvt { font-family: inherit; white-space: normal; }
     color: #334155 !important;
   }
 
-  .page.theme-light-blue .m-sum-val {
+  .page.theme-light-blue .m-sum-val,
+  .page.theme-light-blue .m-sum-num {
     color: #0f172a !important;
   }
 
-  .page.theme-light-blue .m-sum-val.warn { color: #d97706 !important; }
-  .page.theme-light-blue .m-sum-val.pos { color: #059669 !important; }
-  .page.theme-light-blue .m-sum-val.neg { color: #dc2626 !important; }
-
-  .page.theme-light-blue .m-sum-grand-total {
-    background: #eff6ff !important;
-    border-color: #93c5fd !important;
+  .page.theme-light-blue .m-sum-val.warn,
+  .page.theme-light-blue .m-sum-val.warn .m-sum-num {
+    color: #d97706 !important;
   }
 
-  .page.theme-light-blue .m-sum-grand-total .m-sum-label {
-    color: #1e40af !important;
+  .page.theme-light-blue .m-sum-val.pos,
+  .page.theme-light-blue .m-sum-val.pos .m-sum-num {
+    color: #059669 !important;
   }
 
-  .page.theme-light-blue .m-sum-grand-total .m-sum-val {
-    color: #1d4ed8 !important;
-  }
-
-  .page.theme-light-blue .m-sum-discount-wrap {
-    border-top-color: #e2e8f0 !important;
-  }
-
-  .page.theme-light-blue .m-sum-discount-toggle {
-    background: #f8fafc !important;
-    color: #334155 !important;
-  }
-
-  .page.theme-light-blue .m-sum-discount-body {
-    background: #ffffff !important;
-  }
-
-  .page.theme-light-blue .m-sum-pct-input {
-    background: #ffffff !important;
-    border-color: #cbd5e1 !important;
+  .page.theme-light-blue .m-sum-val.neg,
+  .page.theme-light-blue .m-sum-val.neg .m-sum-num {
     color: #dc2626 !important;
   }
 
+  .page.theme-light-blue input.m-sum-pct-input {
+    background: #fffbeb !important;
+    border-color: #f59e0b !important;
+    color: #b45309 !important;
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+  }
+
+  .page.theme-light-blue input.m-sum-pct-input:focus {
+    background: #ffffff !important;
+    border-color: #d97706 !important;
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2) !important;
+  }
+
+  .page.theme-light-blue .m-sum-pct-unit {
+    color: #92400e !important;
+  }
+
+  .page.theme-light-blue button.m-sum-inline-adj-pill {
+    background: #fffbeb !important;
+    border-color: #f59e0b !important;
+    color: #b45309 !important;
+  }
+
+  .page.theme-light-blue button.m-sum-inline-adj-pill.is-emerald {
+    background: #ecfdf5 !important;
+    border-color: #10b981 !important;
+    color: #047857 !important;
+  }
+
+  .page.theme-light-blue .m-sum-hist {
+    background: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+    color: #64748b !important;
+  }
+
+  .page.theme-light-blue .m-sum-discount-total {
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%) !important;
+    border-color: #fcd34d !important;
+  }
+
+  .page.theme-light-blue .m-sum-discount-total .m-sum-hl-sub {
+    color: #92400e !important;
+  }
+
   .page.theme-light-blue .m-sum-discount-total .m-sum-label,
-  .page.theme-light-blue .m-sum-discount-total .m-sum-val {
-    color: #d97706 !important;
+  .page.theme-light-blue .m-sum-discount-total .m-sum-val,
+  .page.theme-light-blue .m-sum-discount-total .m-sum-num {
+    color: #b45309 !important;
+  }
+
+  .page.theme-light-blue .m-sum-grand-total {
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%) !important;
+    border-color: #6ee7b7 !important;
+  }
+
+  .page.theme-light-blue .m-sum-grand-total .m-sum-hl-sub {
+    color: #065f46 !important;
+  }
+
+  .page.theme-light-blue .m-sum-grand-total .m-sum-label {
+    color: #064e3b !important;
+  }
+
+  .page.theme-light-blue .m-sum-grand-total .m-sum-val,
+  .page.theme-light-blue .m-sum-grand-total .m-sum-num {
+    color: #059669 !important;
   }
 
   .page.theme-light-blue .m-act-btn.util {
@@ -28206,7 +29238,7 @@ td.dvt { font-family: inherit; white-space: normal; }
   }
 
   /* ================= MODALS TRÊN MOBILE ================= */
-  .modal-card [style*="grid"]:not(.save-modal-actions-3btn):not(.cust-toolbar-import-row) {
+  .modal-card [style*="grid"]:not([style*="display: none"]):not([style*="display:none"]):not(.quote-edit-tab-panel):not(.quote-edit-tab-group):not(.qe-2col-mobile):not(.save-modal-actions-3btn):not(.cust-toolbar-import-row) {
     display: flex !important;
     flex-direction: column !important;
     gap: 16px !important;
@@ -28228,7 +29260,7 @@ td.dvt { font-family: inherit; white-space: normal; }
     color: #f8fafc !important;
     transition: all 0.25s ease !important;
   }
-  .modal-card textarea {
+  .modal-card textarea:not(.m-wrap-input) {
     height: auto !important;
     min-height: 96px !important;
     padding: 14px !important;
@@ -32785,8 +33817,8 @@ td.dvt { font-family: inherit; white-space: normal; }
   }
 
   /* Các modal đơn giản có padding: 16px trên .modal-card: kéo .modal-head tràn sát mép trên/trái/phải */
-  #app .page .modal-card:not(.save-export-cust-modal):not(.modal-fullscreen-card):not(.picker-modal-card):not(.more-actions-modal):not(.export-data-modal):not(.export-multi-format-modal):not(.export-zoom-preview-modal) > .modal-head,
-  #app .page .modal-card:not(.save-export-cust-modal):not(.modal-fullscreen-card):not(.picker-modal-card):not(.more-actions-modal):not(.export-data-modal):not(.export-multi-format-modal):not(.export-zoom-preview-modal) > .modal-header {
+  #app .page .modal-card:not(.save-export-cust-modal):not(.modal-fullscreen-card):not(.adjust-price-modal-card):not(.picker-modal-card):not(.more-actions-modal):not(.export-data-modal):not(.export-multi-format-modal):not(.export-zoom-preview-modal) > .modal-head,
+  #app .page .modal-card:not(.save-export-cust-modal):not(.modal-fullscreen-card):not(.adjust-price-modal-card):not(.picker-modal-card):not(.more-actions-modal):not(.export-data-modal):not(.export-multi-format-modal):not(.export-zoom-preview-modal) > .modal-header {
     margin: -16px -16px 8px -16px !important;
   }
 
@@ -33131,6 +34163,1607 @@ td.dvt { font-family: inherit; white-space: normal; }
     background-color: currentColor !important;
     -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 12H5'/%3E%3Cpath d='m12 19-7-7 7-7'/%3E%3C/svg%3E") no-repeat center / contain !important;
     mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 12H5'/%3E%3Cpath d='m12 19-7-7 7-7'/%3E%3C/svg%3E") no-repeat center / contain !important;
+  }
+}
+
+/* ==========================================================================
+   MULTI-LINE AUTO-WRAP INPUT (.m-wrap-input) & MODAL CHỈNH SỬA HÀNG MOBILE
+   ========================================================================== */
+@media (min-width: 1101px) {
+  #app .page textarea.m-wrap-input {
+    min-height: 40px !important;
+    height: 40px !important;
+    max-height: 40px !important;
+    resize: none !important;
+    white-space: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    line-height: 18px !important;
+    font-family: inherit !important;
+    scrollbar-width: none;
+  }
+  #app .page textarea.m-wrap-input::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (max-width: 1100px) {
+  /* 1. Ô nhập tự động xuống hàng khi text dài trên Mobile */
+  #app .page .modal-card textarea.m-wrap-input {
+    min-height: 46px !important;
+    height: auto;
+    resize: none !important;
+    white-space: pre-wrap !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+    overflow: hidden !important;
+    line-height: 1.42 !important;
+    padding: 12px 14px !important;
+    font-family: inherit !important;
+    field-sizing: content;
+  }
+
+  #app .page .modal-card textarea.m-wrap-input.has-left-icon {
+    padding-left: 36px !important;
+  }
+
+  #app .page .modal-card textarea.m-wrap-input.has-right-picker,
+  #app .page .modal-card .input-with-picker textarea.m-wrap-input {
+    padding-right: 68px !important;
+  }
+
+  /* 2. Modal Chỉnh sửa hàng hóa: Thanh Segmented 2 Tab gọn 1 dòng + Ẩn 4 pill tóm tắt */
+  #app .page .quote-edit-modal-card {
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+
+  #app .page .quote-edit-modal-card .quote-edit-quick-pills {
+    display: none !important;
+  }
+
+  #app .page .quote-edit-modal-card .quote-edit-tabbar {
+    padding: 8px 12px !important;
+    gap: 0 !important;
+  }
+
+  #app .page .quote-edit-modal-card .quote-edit-tab-group {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    width: 100% !important;
+    gap: 6px !important;
+    padding: 4px !important;
+    border-radius: 12px !important;
+    background: rgba(15, 23, 42, 0.72) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-sizing: border-box !important;
+  }
+
+  #app .page.theme-light-blue .quote-edit-modal-card .quote-edit-tab-group {
+    background: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+  }
+
+  #app .page .quote-edit-modal-card .quote-edit-tab-btn {
+    width: 100% !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    padding: 0 10px !important;
+    margin: 0 !important;
+    border-radius: 9px !important;
+    font-size: 13px !important;
+    font-weight: 800 !important;
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    box-shadow: none !important;
+  }
+
+  #app .page .quote-edit-modal-card .quote-edit-tab-btn small {
+    display: none !important;
+  }
+
+  /* 3. Thân cuộn & Tách triệt để 2 Tab (không bao giờ đè chồng) */
+  #app .page .quote-edit-modal-card > .quote-edit-body-scroll {
+    padding: 12px !important;
+    gap: 12px !important;
+    flex: 1 1 0% !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  #app .page .quote-edit-modal-card .quote-edit-tab-panel {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 0 0 auto !important;
+    min-height: auto !important;
+    gap: 14px !important;
+    width: 100% !important;
+  }
+
+  #app .page .quote-edit-modal-card .quote-edit-tab-panel[style*="display: none"],
+  #app .page .quote-edit-modal-card .quote-edit-tab-panel[style*="display:none"] {
+    display: none !important;
+  }
+
+  #app .page .quote-edit-modal-card .modal-group {
+    padding: 14px !important;
+    border-radius: 14px !important;
+    gap: 12px !important;
+  }
+
+  #app .page .quote-edit-modal-card .modal-banner-header {
+    margin: -14px -14px 2px -14px !important;
+    padding: 11px 14px !important;
+    border-radius: 13px 13px 0 0 !important;
+  }
+
+  /* 4. Lưới 2 cột gọn cho cặp ô ngắn & Khoảng cách chuẩn cho ô giá có icon / đơn vị */
+  #app .page .quote-edit-modal-card .qe-2col-mobile {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+
+  #app .page .quote-edit-modal-card .qe-has-left-icon input {
+    padding-left: 36px !important;
+  }
+
+  #app .page .quote-edit-modal-card .qe-has-right-unit input {
+    padding-right: 34px !important;
+  }
+
+  /* 5. Nút phụ nhỏ gọn trong Tab Hàng & Tab Giá (Sửa giá, Điều chỉnh, Tính, File, QTY) */
+  #app .page .quote-edit-modal-card button.util-btn.small {
+    width: auto !important;
+    min-width: max-content !important;
+    height: 26px !important;
+    min-height: 26px !important;
+    padding: 0 8px !important;
+    margin: 0 !important;
+    border-radius: 6px !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    gap: 4px !important;
+    box-shadow: none !important;
+  }
+
+  #app .page .quote-edit-modal-card button.qe-calc-btn {
+    width: auto !important;
+    min-width: max-content !important;
+    height: 46px !important;
+    min-height: 46px !important;
+    padding: 0 14px !important;
+    margin: 0 !important;
+    border-radius: 10px !important;
+    font-size: 12.5px !important;
+    flex-shrink: 0 !important;
+  }
+
+  #app .page .modal-card .modal-file-history-box button {
+    width: auto !important;
+    min-width: max-content !important;
+    height: 26px !important;
+    min-height: 26px !important;
+    padding: 0 8px !important;
+    margin: 0 !important;
+    border-radius: 5px !important;
+    font-size: 11px !important;
+    box-shadow: none !important;
+  }
+
+  #app .page .quote-edit-modal-card .modal-qty-box {
+    padding: 8px 12px !important;
+  }
+
+  #app .page .quote-edit-modal-card .modal-qty-box .qty {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+  }
+
+  #app .page .quote-edit-modal-card .modal-qty-box .qty button {
+    width: 34px !important;
+    min-width: 34px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 8px !important;
+    font-size: 16px !important;
+    box-shadow: none !important;
+  }
+
+  #app .page .quote-edit-modal-card .modal-qty-box .qty input.qty-input-inline,
+  #app .page .quote-edit-modal-card .modal-qty-box .qty .qty-input-inline input {
+    width: 48px !important;
+    min-width: 48px !important;
+    height: 34px !important;
+    padding: 0 4px !important;
+    text-align: center !important;
+  }
+
+  /* 6. Thanh Footer 3 nút cố định 1 hàng ngang chuẩn Safe Area iPhone */
+  #app .page .quote-edit-modal-card > .fullscreen-modal-footer {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)) 12px !important;
+  }
+
+  #app .page .quote-edit-modal-card > .fullscreen-modal-footer > button {
+    height: 42px !important;
+    min-height: 42px !important;
+    margin: 0 !important;
+    border-radius: 10px !important;
+    font-size: 13.5px !important;
+    white-space: nowrap !important;
+  }
+
+  #app .page .quote-edit-modal-card > .fullscreen-modal-footer > button.btn-del {
+    width: auto !important;
+    padding: 0 12px !important;
+    margin-right: auto !important;
+  }
+
+  #app .page .quote-edit-modal-card > .fullscreen-modal-footer > button.modal-btn-secondary {
+    width: auto !important;
+    padding: 0 16px !important;
+  }
+
+  #app .page .quote-edit-modal-card > .fullscreen-modal-footer > button:last-child {
+    width: auto !important;
+    flex: 1 1 auto !important;
+    max-width: 165px !important;
+    padding: 0 16px !important;
+  }
+}
+
+/* ==========================================================================
+   MODAL SỬA GIÁ / ĐIỀU CHỈNH GIÁ (.adjust-price-modal-card) - DESKTOP & MOBILE FULLSCREEN
+   ========================================================================== */
+#app .page .adjust-price-modal-card {
+  --adj-accent: #10b981;
+  --adj-accent-strong: #059669;
+  --adj-accent-text: #34d399;
+  --adj-accent-soft: rgba(16, 185, 129, 0.14);
+  --adj-accent-faint: rgba(16, 185, 129, 0.07);
+  --adj-accent-border: rgba(16, 185, 129, 0.32);
+  --adj-accent-glow: rgba(16, 185, 129, 0.28);
+  --adj-grad: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  width: 480px;
+  max-width: 94vw;
+  padding: 0;
+  background: #0f172a;
+  border: 1px solid var(--adj-accent-border);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.72), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  border-radius: 20px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: popIn 0.26s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#app .page .adjust-price-modal-card.is-normal-mode {
+  --adj-accent: #3b82f6;
+  --adj-accent-strong: #2563eb;
+  --adj-accent-text: #60a5fa;
+  --adj-accent-soft: rgba(59, 130, 246, 0.14);
+  --adj-accent-faint: rgba(59, 130, 246, 0.08);
+  --adj-accent-border: rgba(59, 130, 246, 0.34);
+  --adj-accent-glow: rgba(59, 130, 246, 0.3);
+  --adj-grad: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+}
+
+#app .page .adjust-price-modal-card > .adj-modal-head {
+  background: linear-gradient(135deg, var(--adj-accent-soft) 0%, rgba(15, 23, 42, 0.96) 100%);
+  padding: 18px 22px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+#app .page .adjust-price-modal-card .adj-dt-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+#app .page .adjust-price-modal-card .adj-dt-head-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: var(--adj-grad);
+  box-shadow: 0 4px 14px var(--adj-accent-glow);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+#app .page .adjust-price-modal-card .adj-dt-head-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+#app .page .adjust-price-modal-card .adj-dt-title {
+  color: #f8fafc;
+  font-size: 16.5px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+#app .page .adjust-price-modal-card .adj-dt-sub {
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#app .page .adjust-price-modal-card > .adj-modal-head > button.x {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 15px;
+  transition: all 0.2s ease;
+}
+
+#app .page .adjust-price-modal-card > .adj-modal-head > button.x:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
+}
+
+#app .page .adjust-price-modal-card .adj-modal-body {
+  padding: 18px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+}
+
+#app .page .adjust-price-modal-card .adj-mode-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 11px;
+  background: var(--adj-accent-faint);
+  border: 1px solid var(--adj-accent-border);
+  color: var(--adj-accent-text);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+#app .page .adjust-price-modal-card .adj-mode-pill i {
+  font-size: 15px;
+  color: var(--adj-accent);
+  flex-shrink: 0;
+}
+
+#app .page .adjust-price-modal-card .adj-mode-pill b {
+  font-weight: 800;
+}
+
+/* Thẻ đối chiếu Giá gốc -> Giá mới dự kiến */
+#app .page .adjust-price-modal-card .adj-compare-card {
+  position: relative;
+  border-radius: 15px;
+  padding: 13px 14px;
+  background: rgba(30, 41, 59, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+#app .page .adjust-price-modal-card .adj-compare-scope {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 9px;
+  border-bottom: 1px dashed rgba(148, 163, 184, 0.14);
+}
+
+#app .page .adjust-price-modal-card .adj-scope-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+#app .page .adjust-price-modal-card .adj-scope-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #e2e8f0;
+  text-align: right;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+#app .page .adjust-price-modal-card .adj-compare-prices {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 26px minmax(0, 1.12fr);
+  align-items: center;
+  gap: 6px;
+}
+
+#app .page .adjust-price-modal-card .adj-price-col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+#app .page .adjust-price-modal-card .adj-price-col.is-new {
+  text-align: right;
+  align-items: flex-end;
+}
+
+#app .page .adjust-price-modal-card .adj-price-caption {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+#app .page .adjust-price-modal-card .adj-price-val {
+  font-size: 17px;
+  font-weight: 800;
+  color: #cbd5e1;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+#app .page .adjust-price-modal-card .adj-price-val small {
+  font-size: 12.5px;
+  font-weight: 700;
+  margin-left: 3px;
+  opacity: 0.85;
+}
+
+#app .page .adjust-price-modal-card .adj-price-col.is-new .adj-price-val {
+  font-size: 20px;
+  color: var(--adj-accent-text);
+}
+
+#app .page .adjust-price-modal-card .adj-price-arrow {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.1);
+  color: #94a3b8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+#app .page .adjust-price-modal-card .adj-compare-delta-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+#app .page .adjust-price-modal-card .adj-delta-badge {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+}
+
+#app .page .adjust-price-modal-card .adj-delta-badge em {
+  font-style: normal;
+  font-weight: 800;
+}
+
+#app .page .adjust-price-modal-card .adj-delta-badge.is-neutral {
+  background: rgba(148, 163, 184, 0.12);
+  color: #94a3b8;
+}
+
+#app .page .adjust-price-modal-card .adj-delta-badge.is-down {
+  background: rgba(244, 63, 94, 0.14);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  color: #fb7185;
+}
+
+#app .page .adjust-price-modal-card .adj-delta-badge.is-up {
+  background: var(--adj-accent-soft);
+  border: 1px solid var(--adj-accent-border);
+  color: var(--adj-accent-text);
+}
+
+#app .page .adjust-price-modal-card button.adj-reset-btn {
+  width: auto !important;
+  min-width: max-content !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  padding: 0 10px !important;
+  margin: 0 !important;
+  border-radius: 8px !important;
+  background: rgba(148, 163, 184, 0.12) !important;
+  border: 1px solid rgba(148, 163, 184, 0.22) !important;
+  color: #cbd5e1 !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  cursor: pointer;
+  box-shadow: none !important;
+  transition: all 0.18s ease;
+}
+
+#app .page .adjust-price-modal-card button.adj-reset-btn:hover {
+  background: rgba(148, 163, 184, 0.22) !important;
+  color: #ffffff !important;
+}
+
+/* Segmented Control (2 Tabs ngang) */
+#app .page .adjust-price-modal-card .adj-segmented {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 6px !important;
+  padding: 4px !important;
+  border-radius: 12px !important;
+  background: rgba(2, 6, 23, 0.55) !important;
+  border: 1px solid rgba(148, 163, 184, 0.14) !important;
+}
+
+#app .page .adjust-price-modal-card button.adj-seg-btn {
+  width: 100% !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  margin: 0 !important;
+  padding: 0 12px !important;
+  border-radius: 9px !important;
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  color: #94a3b8 !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  cursor: pointer;
+  box-shadow: none !important;
+  white-space: nowrap !important;
+  transition: all 0.2s ease;
+}
+
+#app .page .adjust-price-modal-card button.adj-seg-btn i {
+  font-size: 15px;
+}
+
+#app .page .adjust-price-modal-card button.adj-seg-btn.active {
+  background: var(--adj-accent-soft) !important;
+  border-color: var(--adj-accent-border) !important;
+  color: var(--adj-accent-text) !important;
+  font-weight: 800 !important;
+}
+
+/* Khu vực nhập số & Chọn nhanh % */
+#app .page .adjust-price-modal-card .adj-input-section {
+  display: flex;
+  flex-direction: column;
+}
+
+#app .page .adjust-price-modal-card .adj-tab-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#app .page .adjust-price-modal-card .adj-field-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+#app .page .adjust-price-modal-card .adj-field-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #94a3b8;
+  margin: 0;
+}
+
+#app .page .adjust-price-modal-card .adj-percent-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+#app .page .adjust-price-modal-card .adj-sign-toggle {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 4px !important;
+  padding: 4px !important;
+  border-radius: 12px !important;
+  background: rgba(2, 6, 23, 0.55) !important;
+  border: 1px solid rgba(148, 163, 184, 0.16) !important;
+  width: 146px;
+  flex-shrink: 0;
+}
+
+#app .page .adjust-price-modal-card .adj-sign-toggle.is-inline {
+  width: 154px;
+  padding: 3px !important;
+  border-radius: 10px !important;
+}
+
+#app .page .adjust-price-modal-card button.adj-sign-btn {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 36px !important;
+  margin: 0 !important;
+  padding: 0 6px !important;
+  border-radius: 9px !important;
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  color: #94a3b8 !important;
+  font-size: 12.5px !important;
+  font-weight: 800 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer;
+  white-space: nowrap !important;
+  box-shadow: none !important;
+  transition: all 0.16s ease;
+}
+
+#app .page .adjust-price-modal-card .adj-sign-toggle.is-inline button.adj-sign-btn {
+  min-height: 28px !important;
+  height: 28px !important;
+  font-size: 11.5px !important;
+  border-radius: 7px !important;
+}
+
+#app .page .adjust-price-modal-card button.adj-sign-btn.is-minus.active {
+  background: rgba(244, 63, 94, 0.18) !important;
+  border-color: rgba(244, 63, 94, 0.42) !important;
+  color: #fb7185 !important;
+}
+
+#app .page .adjust-price-modal-card button.adj-sign-btn.is-plus.active {
+  background: var(--adj-accent-soft) !important;
+  border-color: var(--adj-accent-border) !important;
+  color: var(--adj-accent-text) !important;
+}
+
+#app .page .adjust-price-modal-card .adj-input-wrap {
+  position: relative;
+  flex: 1 1 0%;
+  min-width: 0;
+}
+
+#app .page .adjust-price-modal-card input.adj-main-input {
+  width: 100% !important;
+  height: 52px !important;
+  padding: 0 46px 0 14px !important;
+  border-radius: 12px !important;
+  background: rgba(15, 23, 42, 0.9) !important;
+  border: 1.5px solid var(--adj-accent-border) !important;
+  color: #f8fafc !important;
+  font-size: 20px !important;
+  font-weight: 800 !important;
+  font-variant-numeric: tabular-nums !important;
+  outline: none !important;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.22) !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+#app .page .adjust-price-modal-card input.adj-main-input:focus {
+  border-color: var(--adj-accent) !important;
+  box-shadow: 0 0 0 3px var(--adj-accent-soft), inset 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+#app .page .adjust-price-modal-card .adj-unit-badge {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--adj-accent-soft);
+  color: var(--adj-accent-text);
+  font-size: 13.5px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* Lưới 6 Chip chọn nhanh % (3 cột x 2 hàng) */
+#app .page .adjust-price-modal-card .adj-presets-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 2px;
+}
+
+#app .page .adjust-price-modal-card .adj-presets-caption {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+#app .page .adjust-price-modal-card .adj-chip-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+}
+
+#app .page .adjust-price-modal-card button.adj-chip-btn {
+  width: 100% !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  margin: 0 !important;
+  padding: 0 8px !important;
+  border-radius: 10px !important;
+  font-size: 13.5px !important;
+  font-weight: 800 !important;
+  font-variant-numeric: tabular-nums !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer;
+  box-shadow: none !important;
+  transition: transform 0.14s ease, background 0.18s ease, border-color 0.18s ease;
+}
+
+#app .page .adjust-price-modal-card button.adj-chip-btn:active {
+  transform: scale(0.96);
+}
+
+#app .page .adjust-price-modal-card button.adj-chip-btn.is-down {
+  background: rgba(244, 63, 94, 0.08) !important;
+  border: 1px solid rgba(244, 63, 94, 0.22) !important;
+  color: #fda4af !important;
+}
+
+#app .page .adjust-price-modal-card button.adj-chip-btn.is-down.active {
+  background: rgba(244, 63, 94, 0.22) !important;
+  border-color: #fb7185 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(244, 63, 94, 0.22) !important;
+}
+
+#app .page .adjust-price-modal-card button.adj-chip-btn.is-up {
+  background: var(--adj-accent-faint) !important;
+  border: 1px solid var(--adj-accent-border) !important;
+  color: var(--adj-accent-text) !important;
+}
+
+#app .page .adjust-price-modal-card button.adj-chip-btn.is-up.active {
+  background: var(--adj-grad) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px var(--adj-accent-glow) !important;
+}
+
+/* Footer 2 nút nằm ngang cố định */
+#app .page .adjust-price-modal-card .adj-modal-footer {
+  display: grid !important;
+  grid-template-columns: minmax(96px, 0.55fr) minmax(0, 1.45fr) !important;
+  gap: 10px !important;
+  padding: 14px 22px 18px 22px;
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+  background: rgba(15, 23, 42, 0.96);
+  flex-shrink: 0;
+}
+
+#app .page .adjust-price-modal-card button.adj-btn-cancel {
+  width: 100% !important;
+  height: 46px !important;
+  min-height: 46px !important;
+  margin: 0 !important;
+  padding: 0 14px !important;
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(148, 163, 184, 0.18) !important;
+  color: #cbd5e1 !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer;
+  box-shadow: none !important;
+  white-space: nowrap !important;
+}
+
+#app .page .adjust-price-modal-card button.adj-btn-confirm {
+  width: 100% !important;
+  height: 46px !important;
+  min-height: 46px !important;
+  margin: 0 !important;
+  padding: 0 16px !important;
+  border-radius: 12px !important;
+  background: var(--adj-grad) !important;
+  border: none !important;
+  color: #ffffff !important;
+  font-size: 14.5px !important;
+  font-weight: 800 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  cursor: pointer;
+  box-shadow: 0 6px 18px var(--adj-accent-glow) !important;
+  white-space: nowrap !important;
+}
+
+/* --------------------------------------------------------------------------
+   LIGHT MODE (.page.theme-light-blue) CHO MODAL SỬA GIÁ / ĐIỀU CHỈNH GIÁ
+   -------------------------------------------------------------------------- */
+#app .page.theme-light-blue .adjust-price-modal-card {
+  --adj-accent-text: #047857;
+  --adj-accent-soft: rgba(16, 185, 129, 0.13);
+  --adj-accent-faint: #ecfdf5;
+  --adj-accent-border: rgba(16, 185, 129, 0.35);
+  background: #f0f5fa !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.16) !important;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card.is-normal-mode {
+  --adj-accent-text: #1d4ed8;
+  --adj-accent-soft: rgba(59, 130, 246, 0.13);
+  --adj-accent-faint: #eff6ff;
+  --adj-accent-border: rgba(59, 130, 246, 0.36);
+}
+
+@media (min-width: 1101px) {
+  #app .page.theme-light-blue .adjust-price-modal-card > .adj-modal-head {
+    background: linear-gradient(135deg, var(--adj-accent-faint) 0%, #ffffff 100%);
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  #app .page.theme-light-blue .adjust-price-modal-card > .adj-modal-head > button.x {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #475569;
+  }
+
+  #app .page.theme-light-blue .adjust-price-modal-card > .adj-modal-head > button.x:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+  }
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card .adj-dt-title {
+  color: #0f172a;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card .adj-dt-sub {
+  color: #475569;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card .adj-compare-card {
+  background: #ffffff !important;
+  border-color: #dbe4f0 !important;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04) !important;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card .adj-compare-scope {
+  border-bottom-color: #e2e8f0;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card .adj-scope-name {
+  color: #0f172a;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card .adj-price-caption {
+  color: #64748b;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card .adj-price-val {
+  color: #334155;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card .adj-price-arrow {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card .adj-compare-delta-bar {
+  border-top-color: #f1f5f9;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card .adj-delta-badge.is-neutral {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card .adj-delta-badge.is-down {
+  background: #fff1f2;
+  border-color: #fecdd3;
+  color: #e11d48;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card button.adj-reset-btn {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card .adj-segmented,
+#app .page.theme-light-blue .adjust-price-modal-card .adj-sign-toggle {
+  background: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card button.adj-seg-btn,
+#app .page.theme-light-blue .adjust-price-modal-card button.adj-sign-btn {
+  color: #475569 !important;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card button.adj-seg-btn.active {
+  background: #ffffff !important;
+  border-color: var(--adj-accent-border) !important;
+  color: var(--adj-accent-text) !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06) !important;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card button.adj-sign-btn.is-minus.active {
+  background: #ffffff !important;
+  border-color: #fda4af !important;
+  color: #e11d48 !important;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card button.adj-sign-btn.is-plus.active {
+  background: #ffffff !important;
+  border-color: var(--adj-accent-border) !important;
+  color: var(--adj-accent-text) !important;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card .adj-field-label {
+  color: #475569;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card input.adj-main-input {
+  background: #ffffff !important;
+  border-color: var(--adj-accent-border) !important;
+  color: #0f172a !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04) !important;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card button.adj-chip-btn.is-down {
+  background: #fff1f2 !important;
+  border-color: #fecdd3 !important;
+  color: #e11d48 !important;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card button.adj-chip-btn.is-down.active {
+  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card button.adj-chip-btn.is-up {
+  background: #ffffff !important;
+  border-color: var(--adj-accent-border) !important;
+  color: var(--adj-accent-text) !important;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card button.adj-chip-btn.is-up.active {
+  background: var(--adj-grad) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card .adj-modal-footer {
+  background: #ffffff !important;
+  border-top-color: #e2e8f0 !important;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card button.adj-btn-cancel {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+/* --------------------------------------------------------------------------
+   MOBILE FULLSCREEN (<= 1100px) CHUẨN IPHONE 12 PRO MAX & 13 PRO MAX
+   -------------------------------------------------------------------------- */
+@media (max-width: 1100px) {
+  #app .page .modal .modal-card.adjust-price-modal-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    border: none !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+
+  /* Đồng bộ sắc thái Header Grab App Bar theo chế độ Sửa thường (Xanh dương) vs Điều chỉnh (Xanh ngọc) ở Dark Mode */
+  #app .page:not(.theme-light-blue) .adjust-price-modal-card.is-normal-mode > .adj-modal-head {
+    background:
+      radial-gradient(125% 135% at 12% 0%, rgba(59, 130, 246, 0.28) 0%, rgba(56, 189, 248, 0.14) 48%, rgba(11, 22, 38, 0) 85%),
+      linear-gradient(180deg, #091322 0%, #102038 100%) !important;
+  }
+
+  #app .page .adjust-price-modal-card > .adj-modal-head {
+    margin: 0 !important;
+  }
+
+  #app .page .adjust-price-modal-card .adj-modal-body {
+    flex: 1 1 0% !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 8px 14px 16px 14px !important;
+    gap: 11px !important;
+  }
+
+  #app .page .adjust-price-modal-card .adj-mode-pill {
+    padding: 8px 11px !important;
+    font-size: 11.5px !important;
+  }
+
+  #app .page .adjust-price-modal-card .adj-compare-card {
+    padding: 12px 13px !important;
+    gap: 9px !important;
+  }
+
+  #app .page .adjust-price-modal-card .adj-price-val {
+    font-size: 16px !important;
+  }
+
+  #app .page .adjust-price-modal-card .adj-price-col.is-new .adj-price-val {
+    font-size: 19px !important;
+  }
+
+  #app .page .adjust-price-modal-card .adj-percent-row {
+    gap: 7px !important;
+  }
+
+  #app .page .adjust-price-modal-card .adj-sign-toggle {
+    width: 138px !important;
+  }
+
+  #app .page .adjust-price-modal-card input.adj-main-input {
+    height: 50px !important;
+    font-size: 19px !important;
+  }
+
+  #app .page .adjust-price-modal-card .adj-modal-footer {
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px)) 14px !important;
+  }
+
+  #app .page .adjust-price-modal-card button.adj-btn-cancel,
+  #app .page .adjust-price-modal-card button.adj-btn-confirm {
+    height: 46px !important;
+    min-height: 46px !important;
+  }
+}
+
+/* =========================================================================
+   MOBILE REDESIGN: MODAL NAP HOA DON & HOP DONG / PIPELINE (PHUONG AN 1)
+   ========================================================================= */
+.m-load-toolbar {
+  display: none;
+}
+
+@media (max-width: 1100px) {
+  #app .page .load-invoice-modal .dt-only-load-toolbar {
+    display: none !important;
+  }
+
+  /* Dong nhat nen #0b1120 giua go bo cong header va than modal, xoa vet cat 2 mau */
+  #app .page .modal .modal-card.load-invoice-modal.modal-fullscreen-card {
+    background: #0b1120 !important;
+    color: #f8fafc !important;
+  }
+
+  #app .page .modal-card.load-invoice-modal > .modal-head::after {
+    background: #0b1120 !important;
+    border-top: 1px solid rgba(148, 163, 184, 0.18) !important;
+  }
+
+  #app .page .load-invoice-modal .m-load-toolbar {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    padding: 4px 12px 10px 12px !important;
+    background: #0b1120 !important;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12) !important;
+    flex-shrink: 0 !important;
+    z-index: 3 !important;
+  }
+
+  /* Dong 1: Khung tim kiem + Nut mo bo loc ngay */
+  #app .page .load-invoice-modal .m-load-search-row {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  #app .page .load-invoice-modal .m-load-search-box {
+    position: relative !important;
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  #app .page .load-invoice-modal .m-load-search-ico {
+    position: absolute !important;
+    left: 12px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 16px !important;
+    height: 16px !important;
+    color: #64748b !important;
+    pointer-events: none !important;
+    z-index: 2 !important;
+  }
+
+  #app .page .load-invoice-modal input.m-load-search-input {
+    width: 100% !important;
+    height: 42px !important;
+    min-height: 42px !important;
+    max-height: 42px !important;
+    padding: 0 34px 0 36px !important;
+    border-radius: 11px !important;
+    background: #131d31 !important;
+    border: 1px solid rgba(148, 163, 184, 0.18) !important;
+    color: #f8fafc !important;
+    font-size: 16px !important;
+    font-weight: 500 !important;
+    box-shadow: inset 0 1px 2px rgba(2, 6, 23, 0.35) !important;
+  }
+
+  #app .page .load-invoice-modal input.m-load-search-input::placeholder {
+    color: #64748b !important;
+    font-weight: 400 !important;
+    font-size: 13.5px !important;
+  }
+
+  #app .page .load-invoice-modal input.m-load-search-input:focus {
+    background: #162238 !important;
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 2.5px rgba(16, 185, 129, 0.18) !important;
+    outline: none !important;
+  }
+
+  #app .page .load-invoice-modal button.m-load-clear-btn {
+    position: absolute !important;
+    right: 7px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 24px !important;
+    min-width: 24px !important;
+    max-width: 24px !important;
+    height: 24px !important;
+    min-height: 24px !important;
+    max-height: 24px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 999px !important;
+    border: none !important;
+    background: rgba(148, 163, 184, 0.16) !important;
+    color: #cbd5e1 !important;
+    box-shadow: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 2 !important;
+  }
+
+  #app .page .load-invoice-modal button.m-load-clear-btn svg {
+    width: 12px !important;
+    height: 12px !important;
+  }
+
+  #app .page .load-invoice-modal button.m-load-date-toggle {
+    position: relative !important;
+    flex: 0 0 42px !important;
+    width: 42px !important;
+    min-width: 42px !important;
+    max-width: 42px !important;
+    height: 42px !important;
+    min-height: 42px !important;
+    max-height: 42px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 11px !important;
+    background: #131d31 !important;
+    border: 1px solid rgba(148, 163, 184, 0.18) !important;
+    color: #94a3b8 !important;
+    box-shadow: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.2s ease !important;
+  }
+
+  #app .page .load-invoice-modal button.m-load-date-toggle svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  #app .page .load-invoice-modal button.m-load-date-toggle.is-open,
+  #app .page .load-invoice-modal button.m-load-date-toggle.has-filter {
+    background: rgba(16, 185, 129, 0.14) !important;
+    border-color: rgba(16, 185, 129, 0.45) !important;
+    color: #34d399 !important;
+  }
+
+  #app .page .load-invoice-modal .m-load-filter-dot {
+    position: absolute !important;
+    top: 6px !important;
+    right: 6px !important;
+    width: 7px !important;
+    height: 7px !important;
+    border-radius: 999px !important;
+    background: #10b981 !important;
+    box-shadow: 0 0 0 2px #131d31 !important;
+  }
+
+  /* Dong 2: Segmented Pills trang thai + Nut dao chieu sap xep 1 cham */
+  #app .page .load-invoice-modal .m-load-quick-row {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  #app .page .load-invoice-modal .m-load-status-seg {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 3px !important;
+    padding: 3px !important;
+    height: 36px !important;
+    border-radius: 10px !important;
+    background: #131d31 !important;
+    border: 1px solid rgba(148, 163, 184, 0.14) !important;
+    box-sizing: border-box !important;
+  }
+
+  #app .page .load-invoice-modal button.m-load-seg-btn {
+    flex: 1 1 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    max-height: 28px !important;
+    margin: 0 !important;
+    padding: 0 8px !important;
+    border-radius: 7px !important;
+    border: 1px solid transparent !important;
+    background: transparent !important;
+    color: #94a3b8 !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    white-space: nowrap !important;
+    box-shadow: none !important;
+    letter-spacing: 0 !important;
+    transition: all 0.18s ease !important;
+  }
+
+  #app .page .load-invoice-modal button.m-load-seg-btn.active {
+    background: rgba(56, 189, 248, 0.16) !important;
+    border-color: rgba(56, 189, 248, 0.36) !important;
+    color: #f8fafc !important;
+    font-weight: 700 !important;
+  }
+
+  #app .page .load-invoice-modal button.m-load-seg-btn.active.is-official {
+    background: rgba(16, 185, 129, 0.18) !important;
+    border-color: rgba(16, 185, 129, 0.42) !important;
+    color: #34d399 !important;
+  }
+
+  #app .page .load-invoice-modal button.m-load-seg-btn.active.is-temp {
+    background: rgba(234, 179, 8, 0.18) !important;
+    border-color: rgba(234, 179, 8, 0.42) !important;
+    color: #facc15 !important;
+  }
+
+  #app .page .load-invoice-modal button.m-load-sort-btn {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    max-height: 36px !important;
+    margin: 0 !important;
+    padding: 0 10px !important;
+    border-radius: 10px !important;
+    background: #131d31 !important;
+    border: 1px solid rgba(148, 163, 184, 0.16) !important;
+    color: #cbd5e1 !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    white-space: nowrap !important;
+    box-shadow: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+  }
+
+  #app .page .load-invoice-modal .m-load-sort-ico {
+    width: 13.5px !important;
+    height: 13.5px !important;
+    color: #38bdf8 !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Khay loc khoang ngay an/hien 2 cot 50/50 */
+  #app .page .load-invoice-modal .m-load-date-drawer {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    padding: 10px !important;
+    border-radius: 11px !important;
+    background: #131d31 !important;
+    border: 1px solid rgba(16, 185, 129, 0.24) !important;
+  }
+
+  #app .page .load-invoice-modal .m-load-date-grid {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  #app .page .load-invoice-modal .m-load-date-col {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+    min-width: 0 !important;
+  }
+
+  #app .page .load-invoice-modal .m-load-date-lbl {
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    color: #94a3b8 !important;
+    letter-spacing: 0.2px !important;
+    margin: 0 !important;
+  }
+
+  #app .page .load-invoice-modal input.m-load-date-input {
+    width: 100% !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    max-height: 36px !important;
+    padding: 0 8px !important;
+    border-radius: 8px !important;
+    background: #0b1120 !important;
+    border: 1px solid rgba(148, 163, 184, 0.2) !important;
+    color: #f8fafc !important;
+    font-size: 12.5px !important;
+    font-weight: 500 !important;
+    color-scheme: dark !important;
+  }
+
+  #app .page .load-invoice-modal .m-load-date-foot {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    padding-top: 6px !important;
+    border-top: 1px dashed rgba(148, 163, 184, 0.16) !important;
+  }
+
+  #app .page .load-invoice-modal .m-load-date-count {
+    font-size: 11.5px !important;
+    color: #94a3b8 !important;
+  }
+
+  #app .page .load-invoice-modal .m-load-date-count strong {
+    color: #34d399 !important;
+    font-weight: 700 !important;
+  }
+
+  #app .page .load-invoice-modal button.m-load-date-reset {
+    width: auto !important;
+    height: 26px !important;
+    min-height: 26px !important;
+    max-height: 26px !important;
+    margin: 0 !important;
+    padding: 0 9px !important;
+    border-radius: 6px !important;
+    background: rgba(239, 68, 68, 0.14) !important;
+    border: 1px solid rgba(239, 68, 68, 0.3) !important;
+    color: #f87171 !important;
+    font-size: 11.5px !important;
+    font-weight: 600 !important;
+    white-space: nowrap !important;
+    box-shadow: none !important;
+  }
+
+  /* Chip tom tat loc ngay khi dong khay */
+  #app .page .load-invoice-modal .m-load-active-date-chip {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    padding: 5px 8px 5px 10px !important;
+    border-radius: 8px !important;
+    background: rgba(16, 185, 129, 0.12) !important;
+    border: 1px solid rgba(16, 185, 129, 0.28) !important;
+    cursor: pointer !important;
+  }
+
+  #app .page .load-invoice-modal .m-load-chip-text {
+    font-size: 11.5px !important;
+    font-weight: 600 !important;
+    color: #6ee7b7 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    min-width: 0 !important;
+  }
+
+  #app .page .load-invoice-modal button.m-load-chip-clear {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    height: 22px !important;
+    min-height: 22px !important;
+    max-height: 22px !important;
+    margin: 0 !important;
+    padding: 0 8px !important;
+    border-radius: 5px !important;
+    background: rgba(15, 23, 42, 0.65) !important;
+    border: 1px solid rgba(148, 163, 184, 0.2) !important;
+    color: #e2e8f0 !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    white-space: nowrap !important;
+    box-shadow: none !important;
+  }
+
+  /* Danh sach card hop dong rong rai, phan tach ro tren nen #0b1120 */
+  #app .page .load-invoice-modal .load-invoice-grid {
+    padding: 10px 12px 16px 12px !important;
+    gap: 12px !important;
+    background: #0b1120 !important;
+  }
+
+  #app .page .load-invoice-modal .invoice-card,
+  #app .page .load-invoice-modal .skeleton-card {
+    flex-shrink: 0 !important;
+    background: #111c30 !important;
+    border: 1px solid rgba(148, 163, 184, 0.15) !important;
+    border-radius: 14px !important;
+    padding: 13px 14px !important;
+    box-shadow: 0 4px 14px rgba(2, 6, 23, 0.35) !important;
+  }
+
+  #app .page .load-invoice-modal .invoice-card.selected {
+    background: linear-gradient(160deg, rgba(30, 58, 138, 0.38) 0%, #111c30 100%) !important;
+    border-color: #38bdf8 !important;
+    box-shadow: 0 0 0 1.5px #38bdf8, 0 8px 20px rgba(2, 6, 23, 0.5) !important;
+  }
+
+  #app .page .load-invoice-modal .invoice-totals {
+    background: rgba(2, 6, 23, 0.42) !important;
+    border: 1px solid rgba(148, 163, 184, 0.08) !important;
+    border-radius: 10px !important;
+    padding: 9px 11px !important;
+  }
+
+  /* Footer 3 nut (Hoa don) & 2 nut (Pipeline) can thang 1 hang 44px */
+  #app .page .load-invoice-modal .load-invoice-footer,
+  #app .page .load-invoice-modal .load-pipeline-footer {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)) 12px !important;
+    background: rgba(11, 17, 32, 0.96) !important;
+    border-top: 1px solid rgba(148, 163, 184, 0.14) !important;
+  }
+
+  #app .page .load-invoice-modal .load-invoice-footer button,
+  #app .page .load-invoice-modal .load-pipeline-footer button {
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
+    margin: 0 !important;
+    padding: 0 10px !important;
+    border-radius: 11px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    white-space: nowrap !important;
+    line-height: 1 !important;
+  }
+
+  #app .page .load-invoice-modal .load-invoice-footer button.btn-load-close {
+    flex: 0 0 72px !important;
+    width: 72px !important;
+    background: rgba(30, 41, 59, 0.75) !important;
+    border: 1px solid rgba(148, 163, 184, 0.2) !important;
+    color: #e2e8f0 !important;
+    box-shadow: none !important;
+  }
+
+  #app .page .load-invoice-modal .load-invoice-footer button.btn-load-clone {
+    flex: 1 1 0% !important;
+    width: auto !important;
+    min-width: 0 !important;
+  }
+
+  #app .page .load-invoice-modal .load-invoice-footer button.btn-load-edit {
+    flex: 1.38 1 0% !important;
+    width: auto !important;
+    min-width: 0 !important;
+  }
+
+  #app .page .load-invoice-modal .load-pipeline-footer button.btn-load-close {
+    flex: 0 0 92px !important;
+    width: 92px !important;
+    background: rgba(30, 41, 59, 0.75) !important;
+    border: 1px solid rgba(148, 163, 184, 0.2) !important;
+    color: #e2e8f0 !important;
+    box-shadow: none !important;
+  }
+
+  #app .page .load-invoice-modal .load-pipeline-footer button.btn-load-primary {
+    flex: 1 1 0% !important;
+    width: auto !important;
+    min-width: 0 !important;
   }
 }
 </style>

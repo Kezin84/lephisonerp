@@ -1,113 +1,223 @@
 <template>
-  <input type="text" :value="displayValue" @input="onInput" @blur="onBlur" />
+  <input
+    type="text"
+    :inputmode="computedInputMode"
+    :value="displayValue"
+    @input="onInput"
+    @paste="onPaste"
+    @blur="onBlur"
+    @focus="onFocus"
+    :placeholder="computedPlaceholder"
+    :disabled="disabled"
+    :readonly="readonly"
+    autocomplete="off"
+  />
 </template>
 
-<script setup>
-import { ref, watch, onMounted } from 'vue'
+<script setup lang="ts">
+import { computed, ref, watch, type PropType } from 'vue';
+import {
+  formatViNumber,
+  parseViFormattedNumber,
+  processLiveNumericInput,
+  resolveSmartPaste
+} from '../utils/smartNumber';
+
+type InputModeAttr =
+  | 'none'
+  | 'text'
+  | 'tel'
+  | 'url'
+  | 'email'
+  | 'numeric'
+  | 'decimal'
+  | 'search';
 
 const props = defineProps({
   modelValue: {
     type: [Number, String],
     default: ''
+  },
+  placeholder: {
+    type: String,
+    default: ''
+  },
+  disabled: {
+    type: Boolean,
+    default: false
+  },
+  readonly: {
+    type: Boolean,
+    default: false
+  },
+  decimals: {
+    type: Number,
+    default: 2
+  },
+  allowNegative: {
+    type: Boolean,
+    default: false
+  },
+  inputmode: {
+    type: String as PropType<InputModeAttr | ''>,
+    default: ''
   }
-})
+});
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue']);
 
-const format = (val) => {
-  if (val == null || val === '') return ''
-  const parts = val.toString().replace(/,/g, '').split('.')
-  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-  return parts.join('.')
+const isFocused = ref(false);
+const wasEmptyStringOnFocus = ref(false);
+const displayValue = ref('');
+
+const computedPlaceholder = computed(() =>
+  props.placeholder !== '' ? props.placeholder : '0'
+);
+
+const computedInputMode = computed<InputModeAttr>(() => {
+  if (props.inputmode) return props.inputmode;
+  if (props.allowNegative) return 'text';
+  return props.decimals <= 0 ? 'numeric' : 'decimal';
+});
+
+watch(
+  [() => props.modelValue, () => props.decimals],
+  ([newVal]) => {
+    if (!isFocused.value) {
+      displayValue.value = formatViNumber(newVal, props.decimals);
+    } else if (
+      displayValue.value === '' &&
+      newVal !== '' &&
+      newVal !== null &&
+      newVal !== undefined &&
+      Number(newVal) !== 0
+    ) {
+      displayValue.value = formatViNumber(newVal, props.decimals);
+    }
+  },
+  { immediate: true }
+);
+
+function onFocus(event: FocusEvent) {
+  isFocused.value = true;
+  if (props.readonly || props.disabled) return;
+
+  wasEmptyStringOnFocus.value =
+    props.modelValue === '' ||
+    props.modelValue === null ||
+    props.modelValue === undefined;
+
+  const target = event.target as HTMLInputElement | null;
+  const currentNum = Number(props.modelValue);
+  const isZeroVal =
+    props.modelValue === 0 ||
+    props.modelValue === '0' ||
+    (!wasEmptyStringOnFocus.value &&
+      Number.isFinite(currentNum) &&
+      currentNum === 0) ||
+    displayValue.value.trim() === '0';
+
+  if (isZeroVal) {
+    displayValue.value = '';
+    if (target) {
+      target.value = '';
+    }
+  }
 }
 
-const displayValue = ref('')
+function onPaste(event: ClipboardEvent) {
+  if (props.readonly || props.disabled) return;
+  event.preventDefault();
 
-onMounted(() => {
-  displayValue.value = format(props.modelValue)
-})
+  const target = event.target as HTMLInputElement;
+  const pastedText = event.clipboardData?.getData('text') ?? '';
+  if (!pastedText) return;
 
-watch(() => props.modelValue, (newVal) => {
-  const cleanDisplay = displayValue.value.replace(/,/g, '')
-  // Only update displayValue if the numeric value changed 
-  // (to prevent cursor jump when just adding a comma)
-  if (String(newVal) !== cleanDisplay && String(newVal) + '.' !== cleanDisplay) {
-    displayValue.value = format(newVal)
+  wasEmptyStringOnFocus.value = false;
+  const prevDisplay = displayValue.value;
+  const selStart = target.selectionStart ?? prevDisplay.length;
+  const selEnd = target.selectionEnd ?? prevDisplay.length;
+
+  const resolved = resolveSmartPaste({
+    pastedText,
+    currentDisplay: prevDisplay,
+    currentModelValue: props.modelValue,
+    selectionStart: selStart,
+    selectionEnd: selEnd,
+    decimals: props.decimals,
+    allowNegative: true
+  });
+
+  displayValue.value = resolved.displayValue;
+  target.value = resolved.displayValue;
+  emit('update:modelValue', resolved.numericValue);
+
+  requestAnimationFrame(() => {
+    target.setSelectionRange(resolved.cursorPosition, resolved.cursorPosition);
+  });
+}
+
+function onInput(event: Event) {
+  if (props.readonly || props.disabled) return;
+
+  const target = event.target as HTMLInputElement;
+  const ie = event as InputEvent;
+  const prevDisplay = displayValue.value;
+  const cursorPosition = target.selectionStart ?? target.value.length;
+
+  const result = processLiveNumericInput({
+    rawValue: target.value,
+    prevDisplay,
+    cursorPosition,
+    inputType: ie.inputType,
+    inputData: ie.data,
+    decimals: props.decimals,
+    allowNegative: true
+  });
+
+  displayValue.value = result.displayValue;
+  target.value = result.displayValue;
+
+  if (result.isIntermediateEmpty) {
+    emit('update:modelValue', wasEmptyStringOnFocus.value ? '' : 0);
+  } else {
+    wasEmptyStringOnFocus.value = false;
+    emit('update:modelValue', result.numericValue);
   }
-})
 
-const onInput = (e) => {
-  const target = e.target
-  let val = target.value
-  
-  // Save cursor position
-  const cursorPosition = target.selectionStart || 0
-  const beforeCursor = val.substring(0, cursorPosition)
-  const digitsBeforeCursor = beforeCursor.replace(/[^\d]/g, '').length
-  
-  // allow only digits, comma, dot, and minus sign
-  val = val.replace(/[^0-9.,-]/g, '')
-  const raw = val.replace(/,/g, '')
+  requestAnimationFrame(() => {
+    target.setSelectionRange(result.cursorPosition, result.cursorPosition);
+  });
+}
+
+function onBlur(event: FocusEvent) {
+  isFocused.value = false;
+  if (props.readonly || props.disabled) {
+    displayValue.value = formatViNumber(props.modelValue, props.decimals);
+    return;
+  }
+
+  const target = event.target as HTMLInputElement | null;
+  const raw = (target?.value ?? displayValue.value).trim();
 
   if (raw === '' || raw === '-') {
-    displayValue.value = val
-    target.value = val
-    emit('update:modelValue', '')
-    return
+    if (wasEmptyStringOnFocus.value) {
+      displayValue.value = '';
+      if (target) target.value = '';
+      emit('update:modelValue', '');
+    } else {
+      const zeroFormatted = formatViNumber(0, props.decimals);
+      displayValue.value = zeroFormatted;
+      if (target) target.value = zeroFormatted;
+      emit('update:modelValue', 0);
+    }
+    return;
   }
 
-  const numericValue = Number(raw)
-  if (!isNaN(numericValue)) {
-    emit('update:modelValue', numericValue)
-  }
-
-  // Format the number on the fly
-  let formattedString = format(raw)
-  
-  // Preserve trailing decimal dots or zeros typed by the user
-  if (val.endsWith('.')) {
-    formattedString += '.'
-  } else if (val.includes('.')) {
-    const parts = val.split('.')
-    const intPart = formattedString.split('.')[0] || '0'
-    const decPart = parts.slice(1).join('').replace(/[^\d]/g, '')
-    formattedString = intPart + '.' + decPart
-  }
-
-  displayValue.value = formattedString
-  target.value = formattedString
-  
-  // Restore cursor position
-  requestAnimationFrame(() => {
-    let newCursorPos = 0
-    let digitsCount = 0
-    
-    for (let i = 0; i < formattedString.length; i++) {
-      if (/\d/.test(formattedString[i])) {
-        digitsCount++
-      }
-      if (digitsCount === digitsBeforeCursor) {
-        newCursorPos = i + 1
-        break
-      }
-    }
-    
-    // Adjust if cursor was just after a separator or negative sign
-    if (beforeCursor.endsWith(',') || beforeCursor.endsWith('-')) {
-      newCursorPos++
-    }
-    
-    if (newCursorPos === 0 && digitsBeforeCursor > 0) {
-      newCursorPos = formattedString.length
-    } else if (digitsBeforeCursor === 0 && val.startsWith('-')) {
-      newCursorPos = 1
-    }
-    
-    target.setSelectionRange(newCursorPos, newCursorPos)
-  })
-}
-
-const onBlur = () => {
-  displayValue.value = format(props.modelValue)
+  const parsed = parseViFormattedNumber(raw, props.decimals, true);
+  const formatted = formatViNumber(parsed, props.decimals);
+  displayValue.value = formatted;
+  if (target) target.value = formatted;
+  emit('update:modelValue', parsed);
 }
 </script>
