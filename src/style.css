@@ -359,7 +359,8 @@ code {
       opacity 0.28s ease,
       box-shadow 0.3s ease !important;
   }
-  .app-layout.mobile-nav-hidden .sidebar {
+  .app-layout.mobile-nav-hidden .sidebar,
+  .app-layout:has(.modal, .modal-overlay, .pipeline-modal-overlay) .sidebar {
     transform: translateX(-50%) translateY(calc(100% + 26px + env(safe-area-inset-bottom, 0px))) scale(0.92) !important;
     opacity: 0 !important;
     pointer-events: none !important;

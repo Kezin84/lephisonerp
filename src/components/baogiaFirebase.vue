@@ -26322,7 +26322,7 @@ td.dvt { font-family: inherit; white-space: normal; }
   }
 
   .page {
-    --mobile-modal-head-top: max(calc(env(safe-area-inset-top, 0px) - 2px), 36px);
+    --mobile-modal-head-top: max(calc(env(safe-area-inset-top, 0px) + 6px), 52px);
     padding: 0 !important;
     margin: 0 !important;
     width: 100% !important;
@@ -32739,22 +32739,20 @@ td.dvt { font-family: inherit; white-space: normal; }
 
   /* ═══════════════════════════════════════════════════════════════════════════
      HỆ THỐNG "GRAB APP BAR" ĐỒNG BỘ CHO TOÀN BỘ MODAL TRÊN MOBILE (<= 1100px)
-     1. Nền Soft Ambient Wash tràn sát mép trên (phía sau giờ & pin, không hở viền đen)
-     2. Nút Quay lại [ ← ] tròn kính mờ bên trái (thay cục nút ✕ đỏ tươi #ef4444)
-     3. Phân cấp chữ 2 tầng (Eyebrow 11px + Title 16.5px mềm mại, không đè chữ)
-     4. Khung thân nội dung bo góc nhẹ 18px ôm dưới Header (Sheet-in-Header)
+     Dùng prefix #app .page để thắng tuyệt đối specificity của <style scoped> (.vip-modal-card .modal-head[data-v-...])
+     và né hoàn toàn phần khuyết tai thỏ / đồng hồ (47px) trên iPhone 12 Pro Max & 13 Pro Max.
      ═══════════════════════════════════════════════════════════════════════════ */
-  .dt-only-head,
-  .export-vip-head-glow,
-  .history-modal-icon-wrap,
-  .export-zoom-preview-modal .export-zoom-head-controls > button.x {
+  #app .page .dt-only-head,
+  #app .page .export-vip-head-glow,
+  #app .page .history-modal-icon-wrap,
+  #app .page .export-zoom-preview-modal .export-zoom-head-controls > button.x {
     display: none !important;
   }
 
-  .modal .modal-card.more-actions-modal,
-  .modal .modal-card.picker-modal-card,
-  .modal .modal-content,
-  .modal-overlay .modal-content {
+  #app .page .modal .modal-card.more-actions-modal,
+  #app .page .modal .modal-card.picker-modal-card,
+  #app .page .modal .modal-content,
+  #app .page .modal-overlay .modal-content {
     width: 100% !important;
     max-width: 100% !important;
     height: 100dvh !important;
@@ -32766,9 +32764,9 @@ td.dvt { font-family: inherit; white-space: normal; }
     overflow: hidden !important;
   }
 
-  .modal .modal-card.more-actions-modal .more-actions-body,
-  .modal .modal-content > .modal-body,
-  .modal-overlay .modal-content > .modal-body {
+  #app .page .modal .modal-card.more-actions-modal .more-actions-body,
+  #app .page .modal .modal-content > .modal-body,
+  #app .page .modal-overlay .modal-content > .modal-body {
     flex: 1 1 0% !important;
     min-height: 0 !important;
     max-height: none !important;
@@ -32777,7 +32775,7 @@ td.dvt { font-family: inherit; white-space: normal; }
   }
 
   /* Hộp xác nhận nhỏ 2 nút giữ dạng dialog gọn giữa màn hình */
-  .modal .modal-card.confirm-empty-cust-card {
+  #app .page .modal .modal-card.confirm-empty-cust-card {
     width: min(360px, 90vw) !important;
     height: auto !important;
     max-height: 85dvh !important;
@@ -32787,27 +32785,29 @@ td.dvt { font-family: inherit; white-space: normal; }
   }
 
   /* Các modal đơn giản có padding: 16px trên .modal-card: kéo .modal-head tràn sát mép trên/trái/phải */
-  .modal-card:not(.save-export-cust-modal):not(.modal-fullscreen-card):not(.picker-modal-card):not(.more-actions-modal):not(.export-data-modal):not(.export-multi-format-modal):not(.export-zoom-preview-modal) > .modal-head,
-  .modal-card:not(.save-export-cust-modal):not(.modal-fullscreen-card):not(.picker-modal-card):not(.more-actions-modal):not(.export-data-modal):not(.export-multi-format-modal):not(.export-zoom-preview-modal) > .modal-header {
+  #app .page .modal-card:not(.save-export-cust-modal):not(.modal-fullscreen-card):not(.picker-modal-card):not(.more-actions-modal):not(.export-data-modal):not(.export-multi-format-modal):not(.export-zoom-preview-modal) > .modal-head,
+  #app .page .modal-card:not(.save-export-cust-modal):not(.modal-fullscreen-card):not(.picker-modal-card):not(.more-actions-modal):not(.export-data-modal):not(.export-multi-format-modal):not(.export-zoom-preview-modal) > .modal-header {
     margin: -16px -16px 8px -16px !important;
   }
 
   /* Khung Header Grab App Bar (Dark Mode Default: Soft Aurora Slate Wash) */
-  .modal-card > .modal-head,
-  .modal-card > .modal-head-themed,
-  .save-export-cust-modal .modal-head-themed,
-  .export-multi-format-modal .export-multi-head,
-  .export-zoom-preview-modal .export-zoom-head,
-  .more-actions-modal .more-actions-head,
-  .export-vip-modal .export-vip-head,
-  .history-modal-card .history-modal-header,
-  .modal-content > .modal-header,
-  .modal-card > .modal-header {
+  #app .page .modal-card > .modal-head,
+  #app .page .modal-card > .modal-head-themed,
+  #app .page .vip-modal-card .modal-head,
+  #app .page .save-export-cust-modal .modal-head-themed,
+  #app .page .export-multi-format-modal .export-multi-head,
+  #app .page .export-zoom-preview-modal .export-zoom-head,
+  #app .page .more-actions-modal .more-actions-head,
+  #app .page .export-vip-modal .export-vip-head,
+  #app .page .history-modal-card .history-modal-header,
+  #app .page .modal-content > .modal-header,
+  #app .page .modal-card > .modal-header {
     position: relative !important;
-    padding-top: var(--mobile-modal-head-top, max(calc(env(safe-area-inset-top, 0px) - 2px), 36px)) !important;
+    padding-top: var(--mobile-modal-head-top, max(calc(env(safe-area-inset-top, 0px) + 6px), 52px)) !important;
     padding-bottom: 24px !important;
     padding-left: 14px !important;
     padding-right: 14px !important;
+    margin-bottom: 0 !important;
     border-bottom: none !important;
     border-radius: 0 !important;
     background:
@@ -32822,16 +32822,17 @@ td.dvt { font-family: inherit; white-space: normal; }
   }
 
   /* Gờ bo cong 18px của thân nội dung ôm nhẹ dưới Header (Sheet-in-Header giống Grab) */
-  .modal-card > .modal-head::after,
-  .modal-card > .modal-head-themed::after,
-  .save-export-cust-modal .modal-head-themed::after,
-  .export-multi-format-modal .export-multi-head::after,
-  .export-zoom-preview-modal .export-zoom-head::after,
-  .more-actions-modal .more-actions-head::after,
-  .export-vip-modal .export-vip-head::after,
-  .history-modal-card .history-modal-header::after,
-  .modal-content > .modal-header::after,
-  .modal-card > .modal-header::after {
+  #app .page .modal-card > .modal-head::after,
+  #app .page .modal-card > .modal-head-themed::after,
+  #app .page .vip-modal-card .modal-head::after,
+  #app .page .save-export-cust-modal .modal-head-themed::after,
+  #app .page .export-multi-format-modal .export-multi-head::after,
+  #app .page .export-zoom-preview-modal .export-zoom-head::after,
+  #app .page .more-actions-modal .more-actions-head::after,
+  #app .page .export-vip-modal .export-vip-head::after,
+  #app .page .history-modal-card .history-modal-header::after,
+  #app .page .modal-content > .modal-header::after,
+  #app .page .modal-card > .modal-header::after {
     content: '' !important;
     position: absolute !important;
     left: 0 !important;
@@ -32846,7 +32847,7 @@ td.dvt { font-family: inherit; white-space: normal; }
   }
 
   /* Cụm chữ 2 tầng phân cấp kiểu Grab (Eyebrow 11px + Title 16.5px) */
-  .m-grab-head-stack {
+  #app .page .m-grab-head-stack {
     display: flex !important;
     flex-direction: column !important;
     justify-content: center !important;
@@ -32856,7 +32857,7 @@ td.dvt { font-family: inherit; white-space: normal; }
     text-align: left !important;
   }
 
-  .m-grab-eyebrow {
+  #app .page .m-grab-eyebrow {
     display: block !important;
     font-size: 11px !important;
     font-weight: 500 !important;
@@ -32870,7 +32871,7 @@ td.dvt { font-family: inherit; white-space: normal; }
     text-overflow: ellipsis !important;
   }
 
-  .m-grab-title {
+  #app .page .m-grab-title {
     display: block !important;
     font-size: 16.5px !important;
     font-weight: 700 !important;
@@ -32885,17 +32886,17 @@ td.dvt { font-family: inherit; white-space: normal; }
   }
 
   /* Chuẩn hóa Modal Lịch sử và các Modal nhỏ dùng thẻ h3 về cùng kiểu chữ 2 tầng mềm mại */
-  .history-modal-header-left {
+  #app .page .history-modal-header-left {
     flex: 1 1 auto !important;
     min-width: 0 !important;
   }
-  .history-modal-header-left > div {
+  #app .page .history-modal-header-left > div {
     display: flex !important;
     flex-direction: column-reverse !important;
     gap: 2px !important;
     min-width: 0 !important;
   }
-  .history-modal-subtitle {
+  #app .page .history-modal-subtitle {
     margin: 0 !important;
     font-size: 11px !important;
     font-weight: 500 !important;
@@ -32904,10 +32905,11 @@ td.dvt { font-family: inherit; white-space: normal; }
     overflow: hidden !important;
     text-overflow: ellipsis !important;
   }
-  .history-modal-title,
-  .modal-card > .modal-head > h3:not(.dt-only-head),
-  .modal-content > .modal-header > h3:not(.dt-only-head),
-  .modal-card > .modal-head > div:not(.dt-only-head):not(.m-grab-head-stack):first-child {
+  #app .page .history-modal-title,
+  #app .page .modal-card > .modal-head > h3:not(.dt-only-head),
+  #app .page .vip-modal-card .modal-head h3:not(.dt-only-head),
+  #app .page .modal-content > .modal-header > h3:not(.dt-only-head),
+  #app .page .modal-card > .modal-head > div:not(.dt-only-head):not(.m-grab-head-stack):first-child {
     flex: 1 1 auto !important;
     min-width: 0 !important;
     margin: 0 !important;
@@ -32925,16 +32927,18 @@ td.dvt { font-family: inherit; white-space: normal; }
   }
 
   /* Nút Quay lại [ ← ] tròn kính mờ đặt bên trái (order: -1) chuẩn Grab, bỏ hoàn toàn nền đỏ #ef4444 */
-  .m-grab-back-only,
-  .modal-card > .modal-head > button.x,
-  .modal-card > .modal-head > .x,
-  .modal-card > .modal-head-themed > button.x,
-  .save-export-cust-modal .modal-head-themed > button.x,
-  .export-multi-format-modal .export-multi-head > button.x,
-  .more-actions-modal .more-actions-head > button.x,
-  .export-vip-modal .export-vip-head .export-vip-close,
-  .history-modal-card .history-modal-header button.x,
-  .modal-content > .modal-header > button {
+  #app .page .m-grab-back-only,
+  #app .page .modal-card > .modal-head > button.x,
+  #app .page .modal-card > .modal-head > .x,
+  #app .page .modal-card > .modal-head-themed > button.x,
+  #app .page .vip-modal-card .modal-head > button.x,
+  #app .page .vip-modal-card .modal-head > .x,
+  #app .page .save-export-cust-modal .modal-head-themed > button.x,
+  #app .page .export-multi-format-modal .export-multi-head > button.x,
+  #app .page .more-actions-modal .more-actions-head > button.x,
+  #app .page .export-vip-modal .export-vip-head .export-vip-close,
+  #app .page .history-modal-card .history-modal-header button.x,
+  #app .page .modal-content > .modal-header > button {
     order: -1 !important;
     position: static !important;
     top: auto !important;
@@ -32966,20 +32970,22 @@ td.dvt { font-family: inherit; white-space: normal; }
     transition: transform 0.16s ease, background 0.2s ease !important;
   }
 
-  .modal-content > .modal-header > button svg {
+  #app .page .modal-content > .modal-header > button svg {
     display: none !important;
   }
 
-  .m-grab-back-only::before,
-  .modal-card > .modal-head > button.x::before,
-  .modal-card > .modal-head > .x::before,
-  .modal-card > .modal-head-themed > button.x::before,
-  .save-export-cust-modal .modal-head-themed > button.x::before,
-  .export-multi-format-modal .export-multi-head > button.x::before,
-  .more-actions-modal .more-actions-head > button.x::before,
-  .export-vip-modal .export-vip-head .export-vip-close::before,
-  .history-modal-card .history-modal-header button.x::before,
-  .modal-content > .modal-header > button::before {
+  #app .page .m-grab-back-only::before,
+  #app .page .modal-card > .modal-head > button.x::before,
+  #app .page .modal-card > .modal-head > .x::before,
+  #app .page .modal-card > .modal-head-themed > button.x::before,
+  #app .page .vip-modal-card .modal-head > button.x::before,
+  #app .page .vip-modal-card .modal-head > .x::before,
+  #app .page .save-export-cust-modal .modal-head-themed > button.x::before,
+  #app .page .export-multi-format-modal .export-multi-head > button.x::before,
+  #app .page .more-actions-modal .more-actions-head > button.x::before,
+  #app .page .export-vip-modal .export-vip-head .export-vip-close::before,
+  #app .page .history-modal-card .history-modal-header button.x::before,
+  #app .page .modal-content > .modal-header > button::before {
     content: '' !important;
     display: block !important;
     width: 18px !important;
@@ -32989,91 +32995,98 @@ td.dvt { font-family: inherit; white-space: normal; }
     mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 12H5'/%3E%3Cpath d='m12 19-7-7 7-7'/%3E%3C/svg%3E") no-repeat center / contain !important;
   }
 
-  .m-grab-back-only:hover,
-  .modal-card > .modal-head > button.x:hover,
-  .modal-card > .modal-head > .x:hover,
-  .export-vip-modal .export-vip-head .export-vip-close:hover,
-  .history-modal-card .history-modal-header button.x:hover,
-  .modal-content > .modal-header > button:hover {
+  #app .page .m-grab-back-only:hover,
+  #app .page .modal-card > .modal-head > button.x:hover,
+  #app .page .modal-card > .modal-head > .x:hover,
+  #app .page .vip-modal-card .modal-head > button.x:hover,
+  #app .page .vip-modal-card .modal-head > .x:hover,
+  #app .page .export-vip-modal .export-vip-head .export-vip-close:hover,
+  #app .page .history-modal-card .history-modal-header button.x:hover,
+  #app .page .modal-content > .modal-header > button:hover {
     background: rgba(255, 255, 255, 0.16) !important;
     color: #ffffff !important;
     transform: none !important;
   }
 
-  .m-grab-back-only:active,
-  .modal-card > .modal-head > button.x:active,
-  .modal-card > .modal-head > .x:active,
-  .export-vip-modal .export-vip-head .export-vip-close:active,
-  .history-modal-card .history-modal-header button.x:active,
-  .modal-content > .modal-header > button:active {
+  #app .page .m-grab-back-only:active,
+  #app .page .modal-card > .modal-head > button.x:active,
+  #app .page .modal-card > .modal-head > .x:active,
+  #app .page .vip-modal-card .modal-head > button.x:active,
+  #app .page .vip-modal-card .modal-head > .x:active,
+  #app .page .export-vip-modal .export-vip-head .export-vip-close:active,
+  #app .page .history-modal-card .history-modal-header button.x:active,
+  #app .page .modal-content > .modal-header > button:active {
     transform: scale(0.91) !important;
   }
 
   /* ═══════════════════════════════════════════════════════════════════════════
      LIGHT MODE (.page.theme-light-blue): PASTEL XANH LAM DỊU + CHỮ TỐI #0f172a CHUẨN GRAB
      ═══════════════════════════════════════════════════════════════════════════ */
-  .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head,
-  .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head-themed,
-  .page.theme-light-blue .save-export-cust-modal .modal-head-themed,
-  .page.theme-light-blue .export-multi-format-modal .export-multi-head,
-  .page.theme-light-blue .export-zoom-preview-modal .export-zoom-head,
-  .page.theme-light-blue .more-actions-modal .more-actions-head,
-  .page.theme-light-blue .history-modal-card .history-modal-header,
-  .page.theme-light-blue .modal-content > .modal-header {
+  #app .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head,
+  #app .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head-themed,
+  #app .page.theme-light-blue .vip-modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head,
+  #app .page.theme-light-blue .save-export-cust-modal .modal-head-themed,
+  #app .page.theme-light-blue .export-multi-format-modal .export-multi-head,
+  #app .page.theme-light-blue .export-zoom-preview-modal .export-zoom-head,
+  #app .page.theme-light-blue .more-actions-modal .more-actions-head,
+  #app .page.theme-light-blue .history-modal-card .history-modal-header,
+  #app .page.theme-light-blue .modal-content > .modal-header {
     background:
       radial-gradient(125% 145% at 10% 0%, rgba(96, 165, 250, 0.35) 0%, rgba(147, 197, 253, 0.22) 52%, rgba(224, 242, 254, 0) 88%),
       linear-gradient(180deg, #cfe4ff 0%, #e7f1ff 100%) !important;
     border-bottom: none !important;
   }
 
-  .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head::after,
-  .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head-themed::after,
-  .page.theme-light-blue .save-export-cust-modal .modal-head-themed::after,
-  .page.theme-light-blue .export-multi-format-modal .export-multi-head::after,
-  .page.theme-light-blue .more-actions-modal .more-actions-head::after,
-  .page.theme-light-blue .history-modal-card .history-modal-header::after,
-  .page.theme-light-blue .modal-content > .modal-header::after {
+  #app .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head::after,
+  #app .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head-themed::after,
+  #app .page.theme-light-blue .vip-modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head::after,
+  #app .page.theme-light-blue .save-export-cust-modal .modal-head-themed::after,
+  #app .page.theme-light-blue .export-multi-format-modal .export-multi-head::after,
+  #app .page.theme-light-blue .more-actions-modal .more-actions-head::after,
+  #app .page.theme-light-blue .history-modal-card .history-modal-header::after,
+  #app .page.theme-light-blue .modal-content > .modal-header::after {
     background: #f0f5fa !important;
     border-top: 1px solid rgba(255, 255, 255, 0.92) !important;
     box-shadow: 0 -4px 12px rgba(15, 23, 42, 0.04) !important;
   }
 
-  .page.theme-light-blue .export-zoom-preview-modal .export-zoom-head::after {
+  #app .page.theme-light-blue .export-zoom-preview-modal .export-zoom-head::after {
     background: #f1f5f9 !important;
     border-top: 1px solid rgba(255, 255, 255, 0.92) !important;
   }
 
-  .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head:has(+ .cust-top-toolbar)::after,
-  .page.theme-light-blue .history-modal-card .history-modal-header:has(+ .history-summary)::after,
-  .page.theme-light-blue .modal-content > .modal-header::after,
-  .page.theme-light-blue .picker-modal-card > .modal-head::after {
+  #app .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head:has(+ .cust-top-toolbar)::after,
+  #app .page.theme-light-blue .history-modal-card .history-modal-header:has(+ .history-summary)::after,
+  #app .page.theme-light-blue .modal-content > .modal-header::after,
+  #app .page.theme-light-blue .picker-modal-card > .modal-head::after {
     background: #ffffff !important;
   }
 
-  .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head .m-grab-title,
-  .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head > h3:not(.dt-only-head),
-  .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head > div:not(.dt-only-head):not(.m-grab-head-stack):first-child,
-  .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head > div:not(.dt-only-head):not(.m-grab-head-stack):first-child *,
-  .page.theme-light-blue .export-zoom-preview-modal .export-zoom-head .m-grab-title,
-  .page.theme-light-blue .history-modal-card .history-modal-title,
-  .page.theme-light-blue .modal-content > .modal-header .m-grab-title,
-  .page.theme-light-blue .modal-content > .modal-header > h3:not(.dt-only-head) {
+  #app .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head .m-grab-title,
+  #app .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head > h3:not(.dt-only-head),
+  #app .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head > div:not(.dt-only-head):not(.m-grab-head-stack):first-child,
+  #app .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head > div:not(.dt-only-head):not(.m-grab-head-stack):first-child *,
+  #app .page.theme-light-blue .export-zoom-preview-modal .export-zoom-head .m-grab-title,
+  #app .page.theme-light-blue .history-modal-card .history-modal-title,
+  #app .page.theme-light-blue .modal-content > .modal-header .m-grab-title,
+  #app .page.theme-light-blue .modal-content > .modal-header > h3:not(.dt-only-head) {
     color: #0f172a !important;
     -webkit-text-fill-color: #0f172a !important;
   }
 
-  .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head .m-grab-eyebrow,
-  .page.theme-light-blue .export-zoom-preview-modal .export-zoom-head .m-grab-eyebrow,
-  .page.theme-light-blue .history-modal-card .history-modal-subtitle,
-  .page.theme-light-blue .modal-content > .modal-header .m-grab-eyebrow {
+  #app .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head .m-grab-eyebrow,
+  #app .page.theme-light-blue .export-zoom-preview-modal .export-zoom-head .m-grab-eyebrow,
+  #app .page.theme-light-blue .history-modal-card .history-modal-subtitle,
+  #app .page.theme-light-blue .modal-content > .modal-header .m-grab-eyebrow {
     color: #475569 !important;
     -webkit-text-fill-color: #475569 !important;
   }
 
-  .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head > button.x,
-  .page.theme-light-blue .export-zoom-preview-modal .export-zoom-head .m-grab-back-only,
-  .page.theme-light-blue .history-modal-card .history-modal-header button.x,
-  .page.theme-light-blue .modal-content > .modal-header > button {
+  #app .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head > button.x,
+  #app .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head > .x,
+  #app .page.theme-light-blue .export-zoom-preview-modal .export-zoom-head .m-grab-back-only,
+  #app .page.theme-light-blue .history-modal-card .history-modal-header button.x,
+  #app .page.theme-light-blue .modal-content > .modal-header > button {
     background: rgba(255, 255, 255, 0.78) !important;
     border: 1px solid rgba(15, 23, 42, 0.08) !important;
     color: #0f172a !important;
@@ -33081,18 +33094,19 @@ td.dvt { font-family: inherit; white-space: normal; }
     box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06) !important;
   }
 
-  .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head > button.x:hover,
-  .page.theme-light-blue .export-zoom-preview-modal .export-zoom-head .m-grab-back-only:hover,
-  .page.theme-light-blue .history-modal-card .history-modal-header button.x:hover,
-  .page.theme-light-blue .modal-content > .modal-header > button:hover {
+  #app .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head > button.x:hover,
+  #app .page.theme-light-blue .modal-card:not(.export-data-modal):not(.load-invoice-modal) > .modal-head > .x:hover,
+  #app .page.theme-light-blue .export-zoom-preview-modal .export-zoom-head .m-grab-back-only:hover,
+  #app .page.theme-light-blue .history-modal-card .history-modal-header button.x:hover,
+  #app .page.theme-light-blue .modal-content > .modal-header > button:hover {
     background: #ffffff !important;
     color: #0f172a !important;
   }
 
   /* Lightbox phóng to ảnh thuế: nút tròn kính mờ nằm gọn dưới thanh pin */
-  .tax-fullscreen-lightbox .tax-fullscreen-close {
+  #app .page .tax-fullscreen-lightbox .tax-fullscreen-close {
     position: fixed !important;
-    top: var(--mobile-modal-head-top, max(calc(env(safe-area-inset-top, 0px) - 2px), 36px)) !important;
+    top: var(--mobile-modal-head-top, max(calc(env(safe-area-inset-top, 0px) + 6px), 52px)) !important;
     left: 14px !important;
     right: auto !important;
     width: 36px !important;
@@ -33109,7 +33123,7 @@ td.dvt { font-family: inherit; white-space: normal; }
     justify-content: center !important;
     z-index: 5 !important;
   }
-  .tax-fullscreen-lightbox .tax-fullscreen-close::before {
+  #app .page .tax-fullscreen-lightbox .tax-fullscreen-close::before {
     content: '' !important;
     display: block !important;
     width: 18px !important;

@@ -2640,7 +2640,7 @@ const dealRegs = computed(() => {
 
   .pipeline-unified-header {
     position: relative;
-    padding: max(calc(env(safe-area-inset-top, 0px) - 2px), 36px) 14px 24px 14px !important;
+    padding: max(calc(env(safe-area-inset-top, 0px) + 6px), 52px) 14px 24px 14px !important;
     background:
       radial-gradient(125% 135% at 12% 0%, rgba(16, 185, 129, 0.22) 0%, rgba(56, 189, 248, 0.14) 48%, rgba(11, 22, 38, 0) 85%),
       linear-gradient(180deg, #091322 0%, #102038 100%) !important;

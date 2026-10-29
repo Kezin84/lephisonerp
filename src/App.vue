@@ -785,14 +785,19 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .scroll-to-top {
-    bottom: calc(80px + env(safe-area-inset-bottom, 0px));
-    right: 20px;
-    width: 40px;
-    height: 40px;
+    bottom: calc(138px + env(safe-area-inset-bottom, 0px));
+    right: 14px;
+    width: 38px;
+    height: 38px;
   }
   .scroll-to-top svg {
-    width: 20px;
-    height: 20px;
+    width: 19px;
+    height: 19px;
+  }
+  .app-layout:has(.modal, .modal-overlay, .pipeline-modal-overlay) .scroll-to-top {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
   }
 }
 
@@ -905,7 +910,7 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: max(calc(env(safe-area-inset-top, 0px) - 2px), 36px) 16px 14px 16px;
+  padding: max(calc(env(safe-area-inset-top, 0px) + 6px), 52px) 16px 14px 16px;
   background:
     radial-gradient(125% 135% at 12% 0%, rgba(16, 185, 129, 0.2) 0%, rgba(56, 189, 248, 0.12) 50%, rgba(13, 27, 42, 0) 85%),
     linear-gradient(180deg, #091322 0%, #0d1b2a 100%);
