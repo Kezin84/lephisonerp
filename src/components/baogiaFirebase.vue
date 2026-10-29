@@ -2648,6 +2648,7 @@ async function loadInvoiceToFE() {
     flushQuoteTabsToStorageNow()
     showLoadInvoiceModal.value = false
     loadKey.value = ''
+    if (window.innerWidth <= 1100) setMobileStep(2)
     const displayLabel = so || ma
     loadMsg.value = `✅ Đã chuyển tới tab đang mở hợp đồng ${displayLabel}.`
     triggerToast(`Đã chuyển tới tab đang mở hợp đồng ${displayLabel}`)
@@ -2714,6 +2715,7 @@ async function loadInvoiceToFE() {
 
     showLoadInvoiceModal.value = false
     loadKey.value = ''
+    if (window.innerWidth <= 1100) setMobileStep(2)
     loadMsg.value = '✅ Đã load hóa đơn/hợp đồng lên FE.'
     showAsyncSuccess('Load thành công', 'Hóa đơn đã được mở ở tab mới.')
   } catch (e: any) {
@@ -2806,6 +2808,7 @@ async function cloneInvoiceToFE() {
     syncFlatRows()
     showLoadInvoiceModal.value = false
     loadKey.value = ''
+    if (window.innerWidth <= 1100) setMobileStep(2)
     loadMsg.value = '✅ Đã nhân bản hàng hóa.'
     
     flushQuoteTabsToStorageNow()
@@ -4239,6 +4242,7 @@ async function handleExternalRouteAndCloneActions() {
         scrollActiveTabIntoView()
       }
       flushQuoteTabsToStorageNow()
+      if (window.innerWidth <= 1100) setMobileStep(2)
       const displayLabel = existingQuickTab.soHopDong || existingQuickTab.loadedMaHopDong || pendingEditMa
       triggerToast(`Đã chuyển tới tab đang mở hợp đồng ${displayLabel}`)
       if (route.query.ma) {
@@ -4259,6 +4263,7 @@ async function handleExternalRouteAndCloneActions() {
       loadKey.value = pendingEditMa
       await loadInvoiceToFE()
       flushQuoteTabsToStorageNow()
+      if (window.innerWidth <= 1100) setMobileStep(2)
       if (route.query.ma) {
         router.replace('/baogiafirebase')
       }
@@ -4297,6 +4302,7 @@ async function handleExternalRouteAndCloneActions() {
       syncFlatRows()
       flushQuoteTabsToStorageNow()
       scrollActiveTabIntoView()
+      if (window.innerWidth <= 1100) setMobileStep(2)
       if (route.query.clone) {
         router.replace('/baogiafirebase')
       }
@@ -4333,6 +4339,7 @@ async function handleExternalRouteAndCloneActions() {
       syncFlatRows()
       flushQuoteTabsToStorageNow()
       scrollActiveTabIntoView()
+      if (window.innerWidth <= 1100) setMobileStep(2)
       showAsyncSuccess(
         'Thành công',
         `Đã tạo tab báo giá mới với ${selectedItems.value.length} sản phẩm từ giỏ hàng`
@@ -18137,7 +18144,7 @@ const visibleLeadingFooterColSpan = computed(() => {
 
           <div class="hint" style="flex-shrink: 0;">Click vào ô <b>SL / MỨC OFF / VAT</b> để sửa như Excel (tự tính lại ngay).</div>
 
-          <div class="quote-table-wrap" style="flex: 1; min-height: 0; overflow: auto;">
+          <div class="quote-table-wrap preview-raw-quote-wrap" style="flex: 1; min-height: 0; overflow: auto;">
           <table>
             <thead>
               <tr>
@@ -18208,6 +18215,32 @@ const visibleLeadingFooterColSpan = computed(() => {
                   </td>
                   <td class="center">
                     <button class="btn-del" @click.stop="removeSelected(r.idx)">✕</button>
+                  </td>
+                  <td class="mobile-quote-item-cell" colspan="16">
+                    <div class="m-qcard">
+                      <div class="m-qcard-top">
+                        <span class="m-qcard-stt">#{{ r.stt }}</span>
+                        <div class="m-qcard-title">{{ r.item.Ten_hang || 'Chưa có tên hàng' }}</div>
+                        <button type="button" class="m-qcard-del" @click.stop="removeSelected(r.idx)" title="Xóa sản phẩm">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                          </svg>
+                        </button>
+                      </div>
+                      <div v-if="r.item.Ma_hang || r.item.sku_code" class="m-qcard-pills">
+                        <span v-if="r.item.Ma_hang" class="m-qcard-pill"><b>Mã:</b> {{ r.item.Ma_hang }}</span>
+                        <span v-if="r.item.sku_code" class="m-qcard-pill sku"><b>SKU:</b> {{ r.item.sku_code }}</span>
+                      </div>
+                      <div class="m-qcard-bottom">
+                        <div class="m-qcard-calc">
+                          <span class="m-qcard-qty">{{ r.item.So_luong }} {{ r.item.DVT || 'ĐV' }}</span>
+                          <span class="m-qcard-x">×</span>
+                          <span class="m-qcard-unit">{{ formatVND(lineTruocThueRaw(r.item) / Math.max(1, toNum(r.item.So_luong, 1))) }}</span>
+                        </div>
+                        <div class="m-qcard-total">{{ formatVND(lineSauThueRaw(r.item)) }}</div>
+                      </div>
+                    </div>
                   </td>
                 </tr>
               </template>
@@ -26078,24 +26111,36 @@ td.dvt { font-family: inherit; white-space: normal; }
     display: none !important;
   }
   .main-grid:not(.mobile-step-1) .quote-center {
-    display: flex !important;
-    flex-direction: column !important;
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 100dvh !important;
+    overflow: visible !important;
   }
   .main-grid:not(.mobile-step-1) .quote-table-container {
-    display: flex !important;
-    flex-direction: column !important;
+    display: block !important;
+    flex: none !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 100dvh !important;
+    overflow: visible !important;
   }
 
   /* Screen 2: Chỉ hiện danh sách sản phẩm trong báo giá, ẩn phần Tổng kết */
-  .main-grid.mobile-step-2 .quote-table-wrap {
+  .main-grid.mobile-step-2 .quote-center .quote-table-wrap {
     display: block !important;
+    flex: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
   .main-grid.mobile-step-2 .mobile-quote-summary-card {
     display: none !important;
   }
 
   /* Screen 3: Trang Tổng Kết (Chỉ hiện Chiết khấu + Tài chính, ẩn danh sách sản phẩm) */
-  .main-grid.mobile-step-3 .quote-table-wrap {
+  .main-grid.mobile-step-3 .quote-center .quote-table-wrap {
     display: none !important;
   }
   .main-grid.mobile-step-3 .mobile-quote-summary-card {
@@ -26407,10 +26452,14 @@ td.dvt { font-family: inherit; white-space: normal; }
      MÀN HÌNH 2: TỜ BÁO GIÁ TỔNG HỢP (.quote-center)
      ═══════════════════════════════════════════════════ */
   .quote-table-container {
-    height: 100dvh !important;
+    display: block !important;
+    flex: none !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 100dvh !important;
     border: none !important;
     background: transparent !important;
-    overflow-y: auto !important;
+    overflow: visible !important;
     padding: 0 0 156px 0 !important;
   }
 
@@ -26738,11 +26787,26 @@ td.dvt { font-family: inherit; white-space: normal; }
   }
 
   /* DANH SÁCH SẢN PHẨM TRONG BÁO GIÁ (3-TIER COMPACT CARDS) */
-  .quote-table-wrap {
+  .quote-center .quote-table-wrap {
+    display: block !important;
+    flex: none !important;
     width: 100% !important;
-    padding: 4px 12px 0 12px !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    padding: 8px 12px 24px 12px !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .preview-raw-quote-wrap {
+    width: 100% !important;
+    padding: 8px 12px 24px 12px !important;
     margin: 0 !important;
     overflow-x: hidden !important;
+    overflow-y: auto !important;
     border-radius: 0 !important;
     box-shadow: none !important;
   }
@@ -26826,22 +26890,29 @@ td.dvt { font-family: inherit; white-space: normal; }
     box-shadow: none !important;
   }
 
-  .quote-table-wrap table,
-  .quote-table-wrap tbody {
+  .quote-center .quote-table-wrap table,
+  .quote-center .quote-table-wrap tbody,
+  .preview-raw-quote-wrap table,
+  .preview-raw-quote-wrap tbody {
     display: block !important;
     width: 100% !important;
     min-width: 0 !important;
+    height: auto !important;
     background: transparent !important;
   }
 
-  .quote-table-wrap thead,
-  .quote-table-wrap tfoot,
-  .quote-table-wrap tr.spacer-row {
+  .quote-center .quote-table-wrap thead,
+  .quote-center .quote-table-wrap tfoot,
+  .quote-center .quote-table-wrap tr.spacer-row,
+  .preview-raw-quote-wrap thead,
+  .preview-raw-quote-wrap tfoot,
+  .preview-raw-quote-wrap tr.spacer-row {
     display: none !important;
   }
 
   /* Ẩn toàn bộ các ô td của Desktop trên Mobile, chỉ hiện duy nhất .mobile-quote-item-cell */
-  .quote-table-wrap tr.quote-item-row {
+  .quote-center .quote-table-wrap tr.quote-item-row,
+  .preview-raw-quote-wrap tr.quote-item-row {
     display: block !important;
     background: transparent !important;
     border: none !important;
@@ -26849,14 +26920,17 @@ td.dvt { font-family: inherit; white-space: normal; }
     padding: 0 !important;
     margin: 0 0 10px 0 !important;
     width: 100% !important;
+    height: auto !important;
     touch-action: pan-y !important;
   }
 
-  .quote-table-wrap tr.quote-item-row > td:not(.mobile-quote-item-cell) {
+  .quote-center .quote-table-wrap tr.quote-item-row > td:not(.mobile-quote-item-cell),
+  .preview-raw-quote-wrap tr.quote-item-row > td:not(.mobile-quote-item-cell) {
     display: none !important;
   }
 
-  .quote-table-wrap tr.quote-item-row > td.mobile-quote-item-cell {
+  .quote-center .quote-table-wrap tr.quote-item-row > td.mobile-quote-item-cell,
+  .preview-raw-quote-wrap tr.quote-item-row > td.mobile-quote-item-cell {
     display: block !important;
     width: 100% !important;
     max-width: 100% !important;
@@ -26866,7 +26940,8 @@ td.dvt { font-family: inherit; white-space: normal; }
     background: transparent !important;
   }
 
-  .quote-table-wrap tr.quote-item-row > td.mobile-quote-item-cell::before {
+  .quote-center .quote-table-wrap tr.quote-item-row > td.mobile-quote-item-cell::before,
+  .preview-raw-quote-wrap tr.quote-item-row > td.mobile-quote-item-cell::before {
     display: none !important;
     content: none !important;
   }
