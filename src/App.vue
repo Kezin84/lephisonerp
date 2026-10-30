@@ -569,10 +569,21 @@ const isGroupActive = (key) => {
   return paths.some(p => route.path === p || route.path.startsWith(p + '/'))
 }
 
+const EXCLUDED_SCROLL_SELECTORS =
+  '.modal, .vip-modal-overlay, .load-invoice-modal-overlay, .modal-overlay, .pipeline-modal-overlay, .mobile-drawer, .sidebar'
+
+const scrolledTargets = new Set()
+let activeScrollTarget = null
+let isScrollingToTop = false
+let scrollToTopTimer = null
+
 watch(
   () => route.path,
   (newPath) => {
     isMobileNavHidden.value = false
+    showScrollTop.value = false
+    activeScrollTarget = null
+    scrolledTargets.clear()
     for (const [key, paths] of Object.entries(GROUP_ROUTES)) {
       if (paths.some(p => newPath === p || newPath.startsWith(p + '/'))) {
         if (!openGroups[key]) {
@@ -649,9 +660,57 @@ const updateMobileNavByScroll = (currentScrollTop, prevScrollTop) => {
   }
 }
 
+const computeShouldShowScrollTop = () => {
+  if (typeof window === 'undefined') return false
+  if ((window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0) > 300) {
+    return true
+  }
+  if (mainContentRef.value && mainContentRef.value.scrollTop > 300) {
+    return true
+  }
+  for (const el of Array.from(scrolledTargets)) {
+    if (!el || !el.isConnected) {
+      scrolledTargets.delete(el)
+      continue
+    }
+    if (el.clientHeight <= 0) continue
+    if (el.scrollTop <= 0) {
+      scrolledTargets.delete(el)
+      continue
+    }
+    if (el.scrollTop > 300) return true
+  }
+  return false
+}
+
+const clearScrollingToTopGuard = () => {
+  isScrollingToTop = false
+  if (scrollToTopTimer) {
+    clearTimeout(scrollToTopTimer)
+    scrollToTopTimer = null
+  }
+}
+
+const handleGlobalClickSyncScrollTop = (e) => {
+  if (!showScrollTop.value) return
+  if (e?.target instanceof Element && e.target.closest('.scroll-to-top')) return
+  requestAnimationFrame(() => {
+    if (showScrollTop.value && !isScrollingToTop) {
+      showScrollTop.value = computeShouldShowScrollTop()
+    }
+  })
+}
+
 const handleScroll = (e) => {
-  if (e.target) {
-    showScrollTop.value = e.target.scrollTop > 300
+  if (e.target instanceof HTMLElement) {
+    if (e.target.scrollTop > 0) {
+      scrolledTargets.add(e.target)
+    } else {
+      scrolledTargets.delete(e.target)
+    }
+    if (!isScrollingToTop) {
+      showScrollTop.value = computeShouldShowScrollTop()
+    }
   }
 }
 
@@ -664,41 +723,118 @@ const handleGlobalScrollCapture = (e) => {
     target === document.body
   ) {
     const curY = window.scrollY || document.documentElement.scrollTop || 0
-    showScrollTop.value = curY > 300 || (mainContentRef.value && mainContentRef.value.scrollTop > 300)
+    if (!isScrollingToTop) {
+      showScrollTop.value = computeShouldShowScrollTop()
+    }
     updateMobileNavByScroll(curY, lastWindowScrollY)
     lastWindowScrollY = curY
     return
   }
 
   if (target instanceof HTMLElement) {
-    if (
-      target.closest(
-        '.modal, .vip-modal-overlay, .load-invoice-modal-overlay, .modal-overlay, .mobile-drawer, .sidebar'
-      )
-    ) {
+    if (target.closest(EXCLUDED_SCROLL_SELECTORS)) {
       return
     }
     if (target.clientHeight < 160) return
     const curY = target.scrollTop || 0
-    const prevY = lastScrollMap.get(target) ?? curY
-    if (target === mainContentRef.value || curY > 300) {
-      showScrollTop.value = curY > 300
+    const hasPrev = lastScrollMap.has(target)
+    const prevY = hasPrev ? lastScrollMap.get(target) : curY
+
+    // Bo qua su kien cuon ngang thuan tuy (scrollLeft thay doi nhung scrollTop giu nguyen)
+    if (hasPrev && curY === prevY) return
+
+    if (curY > 0) {
+      scrolledTargets.add(target)
+      activeScrollTarget = target
+    } else {
+      scrolledTargets.delete(target)
+      if (activeScrollTarget === target) {
+        activeScrollTarget = null
+      }
+    }
+
+    if (!isScrollingToTop) {
+      showScrollTop.value = computeShouldShowScrollTop()
     }
     updateMobileNavByScroll(curY, prevY)
     lastScrollMap.set(target, curY)
   }
 }
 
+const scrollElementToTop = (el) => {
+  if (!el || el.scrollTop <= 0) return
+  if (typeof el.scrollTo === 'function') {
+    el.scrollTo({ top: 0, behavior: 'smooth' })
+  } else {
+    el.scrollTop = 0
+  }
+}
+
 const scrollToTop = () => {
   isMobileNavHidden.value = false
-  if (mainContentRef.value) {
-    mainContentRef.value.scrollTo({ top: 0, behavior: 'smooth' })
+  showScrollTop.value = false
+
+  clearScrollingToTopGuard()
+  isScrollingToTop = true
+  scrollToTopTimer = setTimeout(() => {
+    isScrollingToTop = false
+    scrollToTopTimer = null
+  }, 650)
+
+  let scrolledInner = false
+
+  if (
+    activeScrollTarget &&
+    activeScrollTarget.isConnected &&
+    activeScrollTarget.clientHeight > 0 &&
+    activeScrollTarget.scrollTop > 0
+  ) {
+    scrollElementToTop(activeScrollTarget)
+    scrolledInner = true
   }
-  window.scrollTo({ top: 0, behavior: 'smooth' })
+
+  for (const el of Array.from(scrolledTargets)) {
+    if (!el || !el.isConnected) {
+      scrolledTargets.delete(el)
+      continue
+    }
+    if (el !== activeScrollTarget && el.clientHeight > 0 && el.scrollTop > 0) {
+      scrollElementToTop(el)
+      scrolledInner = true
+    }
+  }
+
+  if (mainContentRef.value) {
+    if (mainContentRef.value.scrollTop > 0) {
+      scrollElementToTop(mainContentRef.value)
+      scrolledInner = true
+    }
+    if (!scrolledInner) {
+      const descendants = mainContentRef.value.querySelectorAll('*')
+      for (let i = 0; i < descendants.length; i++) {
+        const el = descendants[i]
+        if (
+          el instanceof HTMLElement &&
+          el.scrollTop > 0 &&
+          el.clientHeight > 0 &&
+          !el.closest(EXCLUDED_SCROLL_SELECTORS)
+        ) {
+          scrollElementToTop(el)
+        }
+      }
+    }
+  }
+
+  if ((window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0) > 0) {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 }
 
 onMounted(() => {
   window.addEventListener('scroll', handleGlobalScrollCapture, { passive: true, capture: true })
+  window.addEventListener('touchstart', clearScrollingToTopGuard, { passive: true })
+  window.addEventListener('wheel', clearScrollingToTopGuard, { passive: true })
+  window.addEventListener('click', handleGlobalClickSyncScrollTop, { passive: true })
   fetchIncompleteTasks()
   checkIosInstallPrompt()
   initZaloBotBackgroundService()
@@ -706,6 +842,10 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('scroll', handleGlobalScrollCapture, { capture: true })
+  window.removeEventListener('touchstart', clearScrollingToTopGuard)
+  window.removeEventListener('wheel', clearScrollingToTopGuard)
+  window.removeEventListener('click', handleGlobalClickSyncScrollTop)
+  clearScrollingToTopGuard()
 })
 </script>
 
@@ -727,15 +867,23 @@ onUnmounted(() => {
   box-shadow: 0 4px 15px rgba(22, 163, 74, 0.4);
   opacity: 0;
   visibility: hidden;
+  pointer-events: none;
   transform: translateY(20px);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 900;
+  z-index: 955;
 }
 
 .scroll-to-top.show {
   opacity: 1;
   visibility: visible;
+  pointer-events: auto;
   transform: translateY(0);
+}
+
+.app-layout:has(.modal, .vip-modal-overlay, .load-invoice-modal-overlay, .modal-overlay, .pipeline-modal-overlay) .scroll-to-top {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
 
 .scroll-to-top:hover {
@@ -783,6 +931,15 @@ onUnmounted(() => {
   color: #38bdf8 !important;
 }
 
+@media (min-width: 769px) and (max-width: 1100px) {
+  .scroll-to-top {
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    right: 20px;
+    width: 40px;
+    height: 40px;
+  }
+}
+
 @media (max-width: 768px) {
   .scroll-to-top {
     bottom: calc(138px + env(safe-area-inset-bottom, 0px));
@@ -793,11 +950,6 @@ onUnmounted(() => {
   .scroll-to-top svg {
     width: 19px;
     height: 19px;
-  }
-  .app-layout:has(.modal, .modal-overlay, .pipeline-modal-overlay) .scroll-to-top {
-    opacity: 0 !important;
-    visibility: hidden !important;
-    pointer-events: none !important;
   }
 }
 

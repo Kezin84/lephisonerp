@@ -314,13 +314,25 @@ export function extractVendorNameFromLines(lines: string[]): string {
   return ''
 }
 
+export function isImagePurchaseFile(file: File): boolean {
+  if (!file) return false
+  if (/^image\//i.test(String(file.type || ''))) return true
+  return /\.(png|jpe?g|webp|bmp|gif)$/i.test(String(file.name || ''))
+}
+
 /**
- * Trích xuất toàn bộ văn bản thô từ file PDF hoặc Excel để phục vụ AI phân tích khi sai định dạng
+ * Trích xuất toàn bộ văn bản thô từ file PDF, Ảnh hoặc Excel để phục vụ AI phân tích khi sai định dạng
  */
 export async function extractRawTextFromPurchaseFile(
   file: File,
   onProgress?: (msg: string) => void
 ): Promise<string> {
+  if (isImagePurchaseFile(file)) {
+    onProgress?.('Đang nhận diện văn bản từ hình ảnh bằng OCR...')
+    const ocrRes = await Tesseract.recognize(file, 'vie+eng')
+    return String(ocrRes?.data?.text || '').trim()
+  }
+
   const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf'
   const arrayBuffer = await file.arrayBuffer()
 
@@ -614,6 +626,9 @@ export async function parsePurchaseFileStandard(
   file: File,
   defaultCurrency: string = 'VND'
 ): Promise<{ items: ParsedPurchaseItem[]; vendorName: string }> {
+  if (isImagePurchaseFile(file)) {
+    return { items: [], vendorName: '' }
+  }
   const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf'
   const arrayBuffer = await file.arrayBuffer()
 

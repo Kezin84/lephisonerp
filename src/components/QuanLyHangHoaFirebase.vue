@@ -1025,7 +1025,7 @@
               <div class="panel-content">
                 <div class="form-group">
                   <label>Mã hàng <span class="required">*</span></label>
-                  <input v-model="formData.Ma_hang" type="text" required :disabled="isEditing" />
+                  <input v-model="formData.Ma_hang" type="text" required :disabled="isEditing" placeholder="Tự ghép kèm SKU Code (hoặc tự nhập)..." @input="onFormMaHangManualInput" />
                 </div>
                 <div class="form-group">
                   <label>SKU Code (Mã SKU hãng)</label>
@@ -8608,27 +8608,87 @@ const defaultForm = {
 }
 
 const formData = ref({ ...defaultForm })
+const isManualMaHangEdited = ref(false)
 
-watch([() => formData.value.Danh_muc, () => formData.value.Ten_hang, () => formData.value.Type], ([danhMuc, tenHang, type]) => {
-  if (!isEditing.value) {
-    if (!tenHang) {
-      formData.value.Ma_hang = ''
-      return
+const cleanMaHangBaseSegment = (val) => {
+  return String(val || '')
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toUpperCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^A-Z0-9\-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+const cleanMaHangSkuSegment = (val) => {
+  return String(val || '')
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toUpperCase()
+    .replace(/[\s/]+/g, '-')
+    .replace(/[^A-Z0-9\-*_]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+const buildAutoMaHangWithSku = (danhMuc, tenHang, typeStr, skuCode) => {
+  const segs = [
+    cleanMaHangBaseSegment(danhMuc),
+    cleanMaHangBaseSegment(tenHang),
+    cleanMaHangBaseSegment(typeStr)
+  ].filter(Boolean)
+
+  let baseId = segs.join('-').replace(/-+/g, '-').replace(/^-+|-+$/g, '')
+  const skuSeg = cleanMaHangSkuSegment(skuCode)
+  const skuPlain = cleanMaHangBaseSegment(skuCode)
+
+  if (skuSeg) {
+    if (!baseId) {
+      baseId = skuSeg
+    } else {
+      const hasToken = (hay, needle) => {
+        if (!needle) return false
+        return (
+          hay === needle ||
+          hay.endsWith('-' + needle) ||
+          hay.startsWith(needle + '-') ||
+          hay.includes('-' + needle + '-')
+        )
+      }
+      if (!hasToken(baseId, skuSeg) && !hasToken(baseId, skuPlain)) {
+        baseId = `${baseId}-${skuSeg}`
+      }
     }
-    const rawCategory = danhMuc || ''
-    const typeStr = type || ''
-    
-    let id = rawCategory ? `${rawCategory}-${tenHang}` : tenHang
-    if (typeStr) id += `-${typeStr}`
-    
-    id = id.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D')
-    id = id.toUpperCase().replace(/\s+/g, '-').replace(/[^A-Z0-9\-]/g, '')
-    id = id.replace(/-+/g, '-')
-    id = id.replace(/-+$/, '')
-    
-    formData.value.Ma_hang = id
   }
-})
+
+  return baseId
+}
+
+const onFormMaHangManualInput = () => {
+  if (isEditing.value) return
+  isManualMaHangEdited.value = Boolean(String(formData.value.Ma_hang || '').trim())
+}
+
+watch(
+  [
+    () => formData.value.Danh_muc,
+    () => formData.value.Ten_hang,
+    () => formData.value.Type,
+    () => formData.value.sku_code
+  ],
+  ([danhMuc, tenHang, type, skuCode]) => {
+    if (!isEditing.value && !isManualMaHangEdited.value) {
+      formData.value.Ma_hang = buildAutoMaHangWithSku(danhMuc, tenHang, type, skuCode)
+    }
+  }
+)
 
 watch(() => formData.value.Ten_nha_cung_cap, (newVal) => {
   if (newVal) {
@@ -10261,6 +10321,7 @@ const confirmAiPurchaseFallback = () => {
 
 const openAddModal = () => {
   sessionUploadedFileIds.value = []
+  isManualMaHangEdited.value = false
   formData.value = { ...defaultForm, danh_sach_file: [] }
   modalCostMarkup.value = { direction: 'increase', type: 'percent', value: 0 }
   originalItem.value = null
@@ -10487,6 +10548,15 @@ const syncSessionUploadedFilesPrices = () => {
 }
 
 const saveItem = async () => {
+  if (!isEditing.value && !String(formData.value.Ma_hang || '').trim()) {
+    isManualMaHangEdited.value = false
+    formData.value.Ma_hang = buildAutoMaHangWithSku(
+      formData.value.Danh_muc,
+      formData.value.Ten_hang,
+      formData.value.Type,
+      formData.value.sku_code
+    )
+  }
   if (!formData.value.Ma_hang || !formData.value.Ten_hang) {
     alert('Vui lòng điền mã hàng và tên hàng')
     return
