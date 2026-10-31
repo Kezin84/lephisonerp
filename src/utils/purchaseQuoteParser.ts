@@ -1,11 +1,20 @@
-import * as XLSX from 'xlsx-js-style'
-import Tesseract from 'tesseract.js'
 import * as pdfjsLib from 'pdfjs-dist/build/pdf.js'
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.js?url'
-import { callDeepSeek } from '../services/deepseek'
+import {
+  isImageDocFile,
+  isPdfDocFile,
+  isWordDocFile,
+  readUniversalSpreadsheetSheets,
+  readUniversalWordDocument,
+  extractUniversalRawText,
+  callSmartDocumentAI,
+  type UniversalTableSheet
+} from './universalDocumentReader'
 
-if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
+const _pdfWorker =
+  (pdfjsLib as any)?.GlobalWorkerOptions || (pdfjsLib as any)?.default?.GlobalWorkerOptions
+if (_pdfWorker && !_pdfWorker.workerSrc) {
+  _pdfWorker.workerSrc = pdfWorkerUrl
 }
 
 export interface ParsedPurchaseItem {
@@ -315,113 +324,22 @@ export function extractVendorNameFromLines(lines: string[]): string {
 }
 
 export function isImagePurchaseFile(file: File): boolean {
-  if (!file) return false
-  if (/^image\//i.test(String(file.type || ''))) return true
-  return /\.(png|jpe?g|webp|bmp|gif)$/i.test(String(file.name || ''))
+  return isImageDocFile(file)
 }
 
 /**
- * Trích xuất toàn bộ văn bản thô từ file PDF, Ảnh hoặc Excel để phục vụ AI phân tích khi sai định dạng
+ * Trích xuất toàn bộ văn bản thô từ file PDF, Ảnh, Word hoặc Excel (mọi đuôi) để phục vụ AI phân tích
  */
 export async function extractRawTextFromPurchaseFile(
   file: File,
   onProgress?: (msg: string) => void
 ): Promise<string> {
-  if (isImagePurchaseFile(file)) {
-    onProgress?.('Đang nhận diện văn bản từ hình ảnh bằng OCR...')
-    const ocrRes = await Tesseract.recognize(file, 'vie+eng')
-    return String(ocrRes?.data?.text || '').trim()
-  }
-
-  const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf'
-  const arrayBuffer = await file.arrayBuffer()
-
-  if (isPdf) {
-    onProgress?.('Đang trích xuất văn bản từ file PDF...')
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
-    const textLines: string[] = []
-
-    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-      const page = await pdf.getPage(pageNum)
-      const viewport = page.getViewport({ scale: 1.0 })
-      const textContent = await page.getTextContent()
-      const pageItems: Array<{ str: string; x: number; topY: number }> = []
-
-      for (const rawItem of textContent.items as any[]) {
-        const str = String(rawItem?.str ?? '').trim()
-        if (!str) continue
-        const tr = rawItem.transform || [10, 0, 0, 10, 0, 0]
-        const x = Number(tr[4]) || 0
-        const y = Number(tr[5]) || 0
-        const topY = viewport.height - y
-        pageItems.push({ str, x, topY })
-      }
-
-      pageItems.sort((a, b) => a.topY - b.topY || a.x - b.x)
-      const lines: Array<{ topY: number; tokens: Array<{ str: string; x: number }> }> = []
-      for (const tok of pageItems) {
-        const existing = lines.find(l => Math.abs(l.topY - tok.topY) <= 4)
-        if (existing) {
-          existing.tokens.push({ str: tok.str, x: tok.x })
-        } else {
-          lines.push({ topY: tok.topY, tokens: [{ str: tok.str, x: tok.x }] })
-        }
-      }
-      lines.sort((a, b) => a.topY - b.topY)
-      for (const l of lines) {
-        l.tokens.sort((a, b) => a.x - b.x)
-        textLines.push(l.tokens.map(t => t.str).join(' | '))
-      }
-    }
-
-    const combined = textLines.join('\n').trim()
-    if (combined.length >= 30) {
-      return combined
-    }
-
-    // Nếu PDF dạng ảnh scan -> dùng OCR Tesseract
-    onProgress?.('PDF dạng ảnh quét (Scan) — Đang nhận diện chữ bằng OCR...')
-    const ocrTexts: string[] = []
-    for (let pageNum = 1; pageNum <= Math.min(pdf.numPages, 3); pageNum++) {
-      const page = await pdf.getPage(pageNum)
-      const vp = page.getViewport({ scale: 2.0 })
-      const canvas = document.createElement('canvas')
-      canvas.width = vp.width
-      canvas.height = vp.height
-      const ctx = canvas.getContext('2d')
-      if (ctx) {
-        await page.render({ canvasContext: ctx, viewport: vp }).promise
-        const ocrRes = await Tesseract.recognize(canvas, 'vie+eng')
-        if (ocrRes?.data?.text) {
-          ocrTexts.push(ocrRes.data.text)
-        }
-      }
-    }
-    return ocrTexts.join('\n').trim()
-  }
-
-  // File Excel (.xlsx, .xls, .csv)
-  onProgress?.('Đang đọc nội dung các dòng từ file Excel...')
-  const data = new Uint8Array(arrayBuffer)
-  const wb = XLSX.read(data, { type: 'array' })
-  const outLines: string[] = []
-  for (const sheetName of wb.SheetNames) {
-    const ws = wb.Sheets[sheetName]
-    const rows = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][]
-    outLines.push(`=== SHEET: ${sheetName} ===`)
-    rows.slice(0, 250).forEach((row, rIdx) => {
-      if (!Array.isArray(row)) return
-      const cells = row.map(c => String(c ?? '').replace(/\r?\n/g, ' ').trim()).filter(Boolean)
-      if (cells.length > 0) {
-        outLines.push(`Dòng ${rIdx + 1}: ${cells.join(' | ')}`)
-      }
-    })
-  }
-  return outLines.join('\n').trim()
+  return extractUniversalRawText(file, onProgress)
 }
 
 /**
- * Dùng AI (DeepSeek) phân tích file báo giá mua hàng (PDF / Excel) để bóc tách danh sách hàng hóa
+ * Dùng AI đa phương thức (Vision AI cho Ảnh/PDF Scan, DeepSeek cho Excel/Word/PDF text)
+ * phân tích file báo giá mua hàng để bóc tách danh sách hàng hóa
  * và tính chính xác Giá vốn sau thuế (Gia_tieu_chuan = Giá vốn / Giá off hãng).
  */
 export async function analyzePurchaseFileWithAI(
@@ -429,15 +347,10 @@ export async function analyzePurchaseFileWithAI(
   defaultCurrency: string = 'VND',
   onProgress?: (msg: string) => void
 ): Promise<{ items: ParsedPurchaseItem[]; vendorName: string; rawText: string }> {
-  const rawText = await extractRawTextFromPurchaseFile(file, onProgress)
-  if (!rawText || rawText.length < 10) {
-    throw new Error('Không trích xuất được nội dung văn bản từ file để phân tích AI.')
-  }
-
-  onProgress?.('🤖 AI đang phân tích bảng giá và tính Giá vốn sau thuế...')
+  onProgress?.('AI đang phân tích bảng giá và tính Giá vốn sau thuế...')
 
   const systemPrompt = `Bạn là chuyên gia phân tích chứng từ/báo giá mua hàng thiết bị & phần mềm CNTT.
-Nhiệm vụ: Đọc nội dung văn bản trích xuất từ file Báo giá của Nhà cung cấp và bóc tách danh sách các mặt hàng/dịch vụ kèm GIÁ VỐN SAU THUẾ của 1 đơn vị.
+Nhiệm vụ: Đọc nội dung từ file Báo giá của Nhà cung cấp (có thể ở dạng hình ảnh, bảng scan, PDF, Word hoặc Excel nhiều sheet) và bóc tách danh sách các mặt hàng/dịch vụ kèm GIÁ VỐN SAU THUẾ của 1 đơn vị.
 
 QUY TẮC QUAN TRỌNG VỀ GIÁ VỐN (gia_von_sau_thue):
 1. Người dùng mua hàng từ nhà cung cấp này, vì vậy ĐƠN GIÁ 1 ĐƠN VỊ SAU THUẾ VAT của nhà cung cấp chính là GIÁ VỐN (Giá vốn / Giá off hãng) của người dùng.
@@ -474,25 +387,13 @@ Chỉ trả về JSON thuần đúng cấu trúc sau (không bọc markdown, kh�
   ]
 }`
 
-  const messages = [
-    { role: 'system', content: systemPrompt },
-    { role: 'user', content: `Nội dung file "${file.name}":\n\n${rawText.slice(0, 18000)}` }
-  ]
-
-  const result = await callDeepSeek(messages, false, false)
-  const aiContent = extractDeepSeekText(result)
-  const cleaned = aiContent.replace(/```json/gi, '').replace(/```/g, '').trim()
-
-  let parsedObj: any = null
-  const objMatch = cleaned.match(/\{[\s\S]*\}/)
-  const arrMatch = cleaned.match(/\[[\s\S]*\]/)
-  if (objMatch) {
-    parsedObj = JSON.parse(objMatch[0])
-  } else if (arrMatch) {
-    parsedObj = { items: JSON.parse(arrMatch[0]) }
-  } else {
-    parsedObj = JSON.parse(cleaned)
-  }
+  const { parsed: parsedObj, rawSourceText: rawText } = await callSmartDocumentAI(
+    file,
+    systemPrompt,
+    'Nội dung chứng từ báo giá mua hàng',
+    onProgress,
+    4
+  )
 
   const rawList: any[] = Array.isArray(parsedObj)
     ? parsedObj
@@ -619,7 +520,7 @@ function joinSimpleTokens(tokens: SimplePdfToken[]): string {
 }
 
 /**
- * Đọc file Mua Hàng (PDF / Excel) theo định dạng bảng chuẩn và tự động tính Giá vốn sau thuế (Gia_tieu_chuan).
+ * Đọc file Mua Hàng (PDF / Word / Excel mọi đuôi) theo định dạng bảng chuẩn và tự động tính Giá vốn sau thuế (Gia_tieu_chuan).
  * Nếu file không khớp định dạng chuẩn hoặc không tìm thấy giá vốn hợp lệ, trả về items = [] để kích hoạt thông báo AI phân tích.
  */
 export async function parsePurchaseFileStandard(
@@ -629,11 +530,12 @@ export async function parsePurchaseFileStandard(
   if (isImagePurchaseFile(file)) {
     return { items: [], vendorName: '' }
   }
-  const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf'
-  const arrayBuffer = await file.arrayBuffer()
+  const isPdf = isPdfDocFile(file)
 
   if (isPdf) {
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+    const arrayBuffer = await file.arrayBuffer()
+    const getDocFn = (pdfjsLib as any)?.getDocument || (pdfjsLib as any)?.default?.getDocument
+    const pdf = await getDocFn({ data: arrayBuffer }).promise
     const allLines: SimplePdfLine[] = []
     let pageOffsetY = 0
 
@@ -1121,178 +1023,200 @@ export async function parsePurchaseFileStandard(
     }
   }
 
-  // File Excel (.xlsx, .xls)
-  const data = new Uint8Array(arrayBuffer)
-  const workbook = XLSX.read(data, { type: 'array' })
-  const wsName = workbook.SheetNames[0]
-  const ws = workbook.Sheets[wsName]
-  const rows = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][]
+  // File Word (.docx, .doc, .rtf) hoặc Excel mọi định dạng (.xlsx, .xls, .xlsm, .xlsb, .ods, .csv, .tsv, .xml...)
+  let sheetsToScan: UniversalTableSheet[] = []
+  let extraHeaderLines: string[] = []
 
-  let headerRowIndex = -1
-  const colMap: Record<string, number> = {}
-  const newItems: ParsedPurchaseItem[] = []
-  const summaryLines: string[] = []
-  let inSummary = false
-
-  const topLines = rows.slice(0, 15).map(r => (Array.isArray(r) ? r.map(c => String(c ?? '').trim()).filter(Boolean).join(' ') : ''))
-  const vendorName = extractVendorNameFromLines(topLines)
-
-  for (let i = 0; i < Math.min(rows.length, 500); i++) {
-    const row = rows[i]
-    if (!Array.isArray(row) || row.length === 0) continue
-
-    if (headerRowIndex === -1) {
-      const rowStr = row.map(c => String(c ?? '').toUpperCase().replace(/\s+/g, ' ').trim()).join('|')
-      if (
-        rowStr.includes('MÔ TẢ') ||
-        rowStr.includes('PRICES LIST') ||
-        rowStr.includes('LIST PRICE') ||
-        rowStr.includes('DISCOUNT') ||
-        ((rowStr.includes('STT') || rowStr.includes('MSP') || rowStr.includes('NO.')) &&
-          (rowStr.includes('ĐƠN GIÁ') || rowStr.includes('MODEL') || rowStr.includes('PS') || rowStr.includes('TÊN HÀNG') || rowStr.includes('SẢN PHẨM')))
-      ) {
-        headerRowIndex = i
-        row.forEach((cell, idx) => {
-          const header = String(cell ?? '').toUpperCase().replace(/\s+/g, ' ').trim()
-          if (!header) return
-          if ((header.includes('STT') || header === 'NO.' || header === 'TT' || header === 'MSP') && colMap['stt'] === undefined) colMap['stt'] = idx
-          else if ((header === 'PS' || header.startsWith('PS ') || header.includes('MODEL') || header.includes('PART NUMBER') || header.includes('PART#') || header.includes('SKU') || header.includes('MÃ HÀNG') || header === 'P/N' || header === 'PN') && colMap['ps'] === undefined) colMap['ps'] = idx
-          else if ((header.includes('MÔ TẢ') || header.includes('TÊN HÀNG') || header.includes('DIỄN GIẢI') || header.includes('DESCRIPTION') || header.includes('SẢN PHẨM') || header.includes('THIẾT BỊ') || header.includes('HẠNG MỤC')) && colMap['mota'] === undefined) colMap['mota'] = idx
-          else if ((header.includes('TERM') || header.includes('THỜI HẠN') || header.includes('DURATION')) && colMap['license_duration'] === undefined) colMap['license_duration'] = idx
-          else if ((header === 'ĐVT' || header === 'DVT' || header.includes('ĐƠN VỊ') || header === 'UNIT') && colMap['dvt'] === undefined) colMap['dvt'] = idx
-          else if ((header === 'S.L' || header === 'S.L.' || header === 'SL' || header.includes('SỐ LƯỢNG') || header === 'QTY') && colMap['sl'] === undefined) colMap['sl'] = idx
-          else if ((header.includes('PRICES LIST') || header.includes('LIST PRICE') || header.includes('PRICE LIST')) && colMap['listPrice'] === undefined) colMap['listPrice'] = idx
-          else if ((header.includes('DISCOUNT') || header.includes('OFF HÃNG')) && colMap['discount'] === undefined) colMap['discount'] = idx
-          else if ((header.includes('ĐƠN GIÁ') || header.includes('GIÁ VỐN') || header.includes('UNIT PRICE')) && colMap['giaVon'] === undefined) colMap['giaVon'] = idx
-          else if (((header.includes('THÀNH TIỀN') && !header.includes('CÓ VAT') && !header.includes('SAU VAT') && !header.includes('SAU THUẾ')) || header.includes('CHƯA VAT') || header.includes('TRƯỚC THUẾ') || header === 'TỔNG' || header.includes('TỔNG TIỀN')) && colMap['truocThue'] === undefined) colMap['truocThue'] = idx
-          else if ((header.startsWith('VAT') || (header.includes('THUẾ') && !header.includes('THÀNH TIỀN') && !header.includes('TRƯỚC') && !header.includes('SAU'))) && colMap['vat'] === undefined) colMap['vat'] = idx
-        })
-      }
-      continue
-    }
-
-    const rowJoined = row.map(c => String(c ?? '').trim()).filter(Boolean).join(' ')
-    const rowAllUpper = rowJoined.toUpperCase()
-    if (
-      rowAllUpper.includes('TỔNG CỘNG') ||
-      rowAllUpper.includes('TỔNG CHƯA VAT') ||
-      rowAllUpper.includes('TỔNG TRƯỚC THUẾ') ||
-      rowAllUpper.includes('TỔNG GIÁ TRỊ') ||
-      rowAllUpper.includes('TỔNG THANH TOÁN') ||
-      rowAllUpper.includes('CỘNG TIỀN HÀNG') ||
-      rowAllUpper.includes('PHẦN MỀM KHÔNG CHỊU THUẾ') ||
-      /^VAT\s*\d+/i.test(rowAllUpper)
-    ) {
-      inSummary = true
-    }
-    if (
-      rowAllUpper.includes('CÁC ĐIỀU KHOẢN') ||
-      rowAllUpper.includes('ĐIỀU KHOẢN') ||
-      rowAllUpper.includes('ĐIỀU KIỆN THƯƠNG MẠI')
-    ) {
-      break
-    }
-
-    if (inSummary) {
-      if (rowJoined) summaryLines.push(rowJoined)
-      continue
-    }
-
-    const motaPlain = colMap['mota'] !== undefined ? String(row[colMap['mota']] ?? '').trim() : ''
-    const psVal = colMap['ps'] !== undefined ? String(row[colMap['ps']] ?? '').trim() : ''
-    const psClean = psVal.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim()
-    const combinedText = `${psClean} ${motaPlain}`.trim()
-    if (!combinedText || combinedText.toUpperCase() === 'STT') continue
-
-    const sl = colMap['sl'] !== undefined ? (parseCleanNumber(row[colMap['sl']]) || 1) : 1
-    const listPrice = colMap['listPrice'] !== undefined ? parseCleanNumber(row[colMap['listPrice']]) : 0
-    let giaVon = colMap['giaVon'] !== undefined ? parseCleanNumber(row[colMap['giaVon']]) : 0
-    const truocThue = colMap['truocThue'] !== undefined ? parseCleanNumber(row[colMap['truocThue']]) : 0
-    if (giaVon === 0 && truocThue > 0 && sl > 0) {
-      giaVon = Math.round(truocThue / sl)
-    }
-    if (listPrice === 0 && giaVon === 0 && truocThue === 0) continue
-
-    const vatVal = colMap['vat'] !== undefined ? parseCleanNumber(row[colMap['vat']]) : 0
-    let vatPct = 0
-    if (vatVal > 0 && vatVal < 1) vatPct = Math.round(vatVal * 100)
-    else if (vatVal > 0 && truocThue > 0 && vatVal > 100) vatPct = Math.round((vatVal / truocThue) * 100)
-    else if (vatVal > 0 && vatVal <= 100) vatPct = Math.round(vatVal)
-
-    const motaLines = motaPlain.split(/\r?\n/).map(s => s.trim()).filter(Boolean)
-    const effectiveTenHang =
-      motaLines.length === 1
-        ? (motaLines[0] || psClean)
-        : (psClean || motaLines[0] || combinedText)
-    const meta = extractMetadataFromBulletLines(motaPlain)
-    const explicitMa = psClean || meta.partNumber
-    const generatedMaHang =
-      explicitMa ||
-      removeDiacriticsSimple(effectiveTenHang)
-        .toUpperCase()
-        .replace(/\s+/g, '-')
-        .replace(/[^A-Z0-9\-]/g, '')
-        .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '')
-
-    const dvt = colMap['dvt'] !== undefined ? String(row[colMap['dvt']] ?? '').trim() || 'Bản quyền' : 'Bản quyền'
-    const rawTerm = colMap['license_duration'] !== undefined ? String(row[colMap['license_duration']] ?? '').trim() : meta.duration
-    const sttVal = colMap['stt'] !== undefined ? parseCleanNumber(row[colMap['stt']]) : (newItems.length + 1)
-
-    const effectiveDonGia = listPrice > 0 ? listPrice : giaVon
-    const effectiveGiaTC = giaVon > 0 ? giaVon : listPrice
-    const featuresHtml = (motaPlain || psClean)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/\r?\n/g, '<br>')
-
-    newItems.push({
-      uid: Math.random().toString(36).slice(2, 11),
-      Sheet_name: 'File Mua Hàng',
-      Ma_hang: generatedMaHang,
-      sku_code: explicitMa || '',
-      Ten_hang: effectiveTenHang,
-      Description: motaPlain,
-      Features: featuresHtml,
-      Danh_muc: vendorName || 'MUA HÀNG',
-      Type: meta.itemType || '',
-      License_duration: rawTerm,
-      thoi_han_bao_hanh: meta.warranty || '',
-      DVT: dvt,
-      So_luong: sl,
-      Don_gia: effectiveDonGia,
-      Gia_tieu_chuan: effectiveGiaTC,
-      gia_nhap: 0,
-      gia_hardware: 0,
-      muc_phan_tram_off: 0,
-      Thue_VAT: vatPct,
-      Don_vi_tien_te: defaultCurrency || 'VND',
-      Ti_gia: 1,
-      Ten_nha_cung_cap: vendorName,
-      Ma_nha_cung_cap: vendorName,
-      Trang_thai: 'Còn hàng',
-      Mo_ta_chung: '',
-      Mo_ta_chi_tiet: '',
-      Ma_hang_lien_ket: '',
-      Ten_hang_lien_ket: '',
-      Ghi_chu: '',
-      Main_img: '',
-      volume: '',
-      _hasExplicitMaHang: Boolean(explicitMa),
-      _rawPs: explicitMa || effectiveTenHang,
-      _rawMota: motaPlain,
-      _donGiaTruocThue: effectiveGiaTC,
-      _listPrice: listPrice > 0 ? listPrice : 0,
-      _giaVon: effectiveGiaTC,
-      _sttIndex: sttVal || (newItems.length + 1)
-    } as ParsedPurchaseItem)
+  if (isWordDocFile(file)) {
+    const wordDoc = await readUniversalWordDocument(file)
+    sheetsToScan = wordDoc.tables
+    extraHeaderLines = wordDoc.paragraphs.slice(0, 25)
+  } else {
+    sheetsToScan = await readUniversalSpreadsheetSheets(file)
   }
 
-  applySummaryVatAndComputeAfterTaxCost(newItems, summaryLines, true)
+  let bestItems: ParsedPurchaseItem[] = []
+  let detectedVendorOverall = extractVendorNameFromLines(extraHeaderLines)
+
+  for (const sheet of sheetsToScan) {
+    const rows = sheet.rows
+    let headerRowIndex = -1
+    const colMap: Record<string, number> = {}
+    const sheetItems: ParsedPurchaseItem[] = []
+    const summaryLines: string[] = []
+    let inSummary = false
+
+    const topLines = [
+      ...extraHeaderLines,
+      ...rows.slice(0, 18).map(r => (Array.isArray(r) ? r.map(c => String(c ?? '').trim()).filter(Boolean).join(' ') : ''))
+    ]
+    const vendorName = extractVendorNameFromLines(topLines) || detectedVendorOverall
+    if (vendorName && !detectedVendorOverall) detectedVendorOverall = vendorName
+
+    for (let i = 0; i < Math.min(rows.length, 500); i++) {
+      const row = rows[i]
+      if (!Array.isArray(row) || row.length === 0) continue
+
+      if (headerRowIndex === -1) {
+        const rowStr = row.map(c => String(c ?? '').toUpperCase().replace(/\s+/g, ' ').trim()).join('|')
+        if (
+          rowStr.includes('MÔ TẢ') ||
+          rowStr.includes('PRICES LIST') ||
+          rowStr.includes('LIST PRICE') ||
+          rowStr.includes('DISCOUNT') ||
+          ((rowStr.includes('STT') || rowStr.includes('MSP') || rowStr.includes('NO.') || rowStr.includes('TT')) &&
+            (rowStr.includes('ĐƠN GIÁ') || rowStr.includes('MODEL') || rowStr.includes('PS') || rowStr.includes('TÊN HÀNG') || rowStr.includes('SẢN PHẨM') || rowStr.includes('THIẾT BỊ') || rowStr.includes('DIỄN GIẢI') || rowStr.includes('DESCRIPTION')))
+        ) {
+          headerRowIndex = i
+          row.forEach((cell, idx) => {
+            const header = String(cell ?? '').toUpperCase().replace(/\s+/g, ' ').trim()
+            if (!header) return
+            if ((header.includes('STT') || header === 'NO.' || header === 'TT' || header === 'MSP') && colMap['stt'] === undefined) colMap['stt'] = idx
+            else if ((header === 'PS' || header.startsWith('PS ') || header.includes('MODEL') || header.includes('PART NUMBER') || header.includes('PART#') || header.includes('SKU') || header.includes('MÃ HÀNG') || header === 'P/N' || header === 'PN') && colMap['ps'] === undefined) colMap['ps'] = idx
+            else if ((header.includes('MÔ TẢ') || header.includes('TÊN HÀNG') || header.includes('DIỄN GIẢI') || header.includes('DESCRIPTION') || header.includes('SẢN PHẨM') || header.includes('THIẾT BỊ') || header.includes('HẠNG MỤC')) && colMap['mota'] === undefined) colMap['mota'] = idx
+            else if ((header.includes('TERM') || header.includes('THỜI HẠN') || header.includes('DURATION')) && colMap['license_duration'] === undefined) colMap['license_duration'] = idx
+            else if ((header.includes('BẢO HÀNH') || header.includes('WARRANTY')) && colMap['baoHanh'] === undefined) colMap['baoHanh'] = idx
+            else if ((header === 'ĐVT' || header === 'DVT' || header.includes('ĐƠN VỊ') || header === 'UNIT') && colMap['dvt'] === undefined) colMap['dvt'] = idx
+            else if ((header === 'S.L' || header === 'S.L.' || header === 'SL' || header.includes('SỐ LƯỢNG') || header === 'QTY') && colMap['sl'] === undefined) colMap['sl'] = idx
+            else if ((header.includes('PRICES LIST') || header.includes('LIST PRICE') || header.includes('PRICE LIST')) && colMap['listPrice'] === undefined) colMap['listPrice'] = idx
+            else if ((header.includes('DISCOUNT') || header.includes('OFF HÃNG')) && colMap['discount'] === undefined) colMap['discount'] = idx
+            else if ((header.includes('ĐƠN GIÁ') || header.includes('GIÁ VỐN') || header.includes('UNIT PRICE')) && colMap['giaVon'] === undefined) colMap['giaVon'] = idx
+            else if (((header.includes('THÀNH TIỀN') && !header.includes('CÓ VAT') && !header.includes('SAU VAT') && !header.includes('SAU THUẾ')) || header.includes('CHƯA VAT') || header.includes('TRƯỚC THUẾ') || header === 'TỔNG' || header.includes('TỔNG TIỀN') || header === 'AMOUNT') && colMap['truocThue'] === undefined) colMap['truocThue'] = idx
+            else if ((header.startsWith('VAT') || (header.includes('THUẾ') && !header.includes('THÀNH TIỀN') && !header.includes('TRƯỚC') && !header.includes('SAU'))) && colMap['vat'] === undefined) colMap['vat'] = idx
+          })
+        }
+        continue
+      }
+
+      const rowJoined = row.map(c => String(c ?? '').trim()).filter(Boolean).join(' ')
+      const rowAllUpper = rowJoined.toUpperCase()
+      if (
+        rowAllUpper.includes('TỔNG CỘNG') ||
+        rowAllUpper.includes('TỔNG CHƯA VAT') ||
+        rowAllUpper.includes('TỔNG TRƯỚC THUẾ') ||
+        rowAllUpper.includes('TỔNG GIÁ TRỊ') ||
+        rowAllUpper.includes('TỔNG THANH TOÁN') ||
+        rowAllUpper.includes('CỘNG TIỀN HÀNG') ||
+        rowAllUpper.includes('PHẦN MỀM KHÔNG CHỊU THUẾ') ||
+        /^VAT\s*\d+/i.test(rowAllUpper)
+      ) {
+        inSummary = true
+      }
+      if (
+        rowAllUpper.includes('CÁC ĐIỀU KHOẢN') ||
+        rowAllUpper.includes('ĐIỀU KHOẢN') ||
+        rowAllUpper.includes('ĐIỀU KIỆN THƯƠNG MẠI')
+      ) {
+        break
+      }
+
+      if (inSummary) {
+        if (rowJoined) summaryLines.push(rowJoined)
+        continue
+      }
+
+      const motaPlain = colMap['mota'] !== undefined ? String(row[colMap['mota']] ?? '').trim() : ''
+      const psVal = colMap['ps'] !== undefined ? String(row[colMap['ps']] ?? '').trim() : ''
+      const psClean = psVal.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim()
+      const combinedText = `${psClean} ${motaPlain}`.trim()
+      if (!combinedText || combinedText.toUpperCase() === 'STT') continue
+
+      const sl = colMap['sl'] !== undefined ? (parseCleanNumber(row[colMap['sl']]) || 1) : 1
+      const listPrice = colMap['listPrice'] !== undefined ? parseCleanNumber(row[colMap['listPrice']]) : 0
+      let giaVon = colMap['giaVon'] !== undefined ? parseCleanNumber(row[colMap['giaVon']]) : 0
+      const truocThue = colMap['truocThue'] !== undefined ? parseCleanNumber(row[colMap['truocThue']]) : 0
+      if (giaVon === 0 && truocThue > 0 && sl > 0) {
+        giaVon = Math.round(truocThue / sl)
+      }
+      if (listPrice === 0 && giaVon === 0 && truocThue === 0) continue
+
+      const vatVal = colMap['vat'] !== undefined ? parseCleanNumber(row[colMap['vat']]) : 0
+      let vatPct = 0
+      if (vatVal > 0 && vatVal < 1) vatPct = Math.round(vatVal * 100)
+      else if (vatVal > 0 && truocThue > 0 && vatVal > 100) vatPct = Math.round((vatVal / truocThue) * 100)
+      else if (vatVal > 0 && vatVal <= 100) vatPct = Math.round(vatVal)
+
+      const motaLines = motaPlain.split(/\r?\n/).map(s => s.trim()).filter(Boolean)
+      const effectiveTenHang =
+        motaLines.length === 1
+          ? (motaLines[0] || psClean)
+          : (psClean || motaLines[0] || combinedText)
+      const meta = extractMetadataFromBulletLines(motaPlain)
+      const explicitMa = psClean || meta.partNumber
+      const generatedMaHang =
+        explicitMa ||
+        removeDiacriticsSimple(effectiveTenHang)
+          .toUpperCase()
+          .replace(/\s+/g, '-')
+          .replace(/[^A-Z0-9\-]/g, '')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '')
+
+      const dvt = colMap['dvt'] !== undefined ? String(row[colMap['dvt']] ?? '').trim() || 'Bản quyền' : 'Bản quyền'
+      const rawTerm = colMap['license_duration'] !== undefined ? String(row[colMap['license_duration']] ?? '').trim() : meta.duration
+      const rawWarranty = colMap['baoHanh'] !== undefined ? String(row[colMap['baoHanh']] ?? '').trim() : meta.warranty
+      const sttVal = colMap['stt'] !== undefined ? parseCleanNumber(row[colMap['stt']]) : (sheetItems.length + 1)
+
+      const effectiveDonGia = listPrice > 0 ? listPrice : giaVon
+      const effectiveGiaTC = giaVon > 0 ? giaVon : listPrice
+      const featuresHtml = (motaPlain || psClean)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\r?\n/g, '<br>')
+
+      sheetItems.push({
+        uid: Math.random().toString(36).slice(2, 11),
+        Sheet_name: sheet.name || 'File Mua Hàng',
+        Ma_hang: generatedMaHang,
+        sku_code: explicitMa || '',
+        Ten_hang: effectiveTenHang,
+        Description: motaPlain,
+        Features: featuresHtml,
+        Danh_muc: vendorName || 'MUA HÀNG',
+        Type: meta.itemType || '',
+        License_duration: rawTerm,
+        thoi_han_bao_hanh: rawWarranty || '',
+        DVT: dvt,
+        So_luong: sl,
+        Don_gia: effectiveDonGia,
+        Gia_tieu_chuan: effectiveGiaTC,
+        gia_nhap: 0,
+        gia_hardware: 0,
+        muc_phan_tram_off: 0,
+        Thue_VAT: vatPct,
+        Don_vi_tien_te: defaultCurrency || 'VND',
+        Ti_gia: 1,
+        Ten_nha_cung_cap: vendorName,
+        Ma_nha_cung_cap: vendorName,
+        Trang_thai: 'Còn hàng',
+        Mo_ta_chung: '',
+        Mo_ta_chi_tiet: '',
+        Ma_hang_lien_ket: '',
+        Ten_hang_lien_ket: '',
+        Ghi_chu: '',
+        Main_img: '',
+        volume: '',
+        _hasExplicitMaHang: Boolean(explicitMa),
+        _rawPs: explicitMa || effectiveTenHang,
+        _rawMota: motaPlain,
+        _donGiaTruocThue: effectiveGiaTC,
+        _listPrice: listPrice > 0 ? listPrice : 0,
+        _giaVon: effectiveGiaTC,
+        _sttIndex: sttVal || (sheetItems.length + 1)
+      } as ParsedPurchaseItem)
+    }
+
+    applySummaryVatAndComputeAfterTaxCost(sheetItems, summaryLines, true)
+    const validSheetItems = sheetItems.filter(it => it.Gia_tieu_chuan > 0 || it.Don_gia > 0)
+    if (validSheetItems.length > 0) {
+      bestItems.push(...validSheetItems)
+    }
+  }
+
   return {
-    items: newItems.filter(it => it.Gia_tieu_chuan > 0 || it.Don_gia > 0),
-    vendorName
+    items: bestItems,
+    vendorName: detectedVendorOverall
   }
 }
 

@@ -11,6 +11,7 @@ import ExcelEditor from './ExcelEditor.vue'
 import FormattedInput from './FormattedInput.vue'
 import { parsePastedNumber } from '../utils/smartNumber'
 import PipelinePreviewModal from './PipelinePreviewModal.vue'
+import QuoteGuideTutorial, { type GuideStepItem } from './QuoteGuideTutorial.vue'
 import html2canvas from 'html2canvas'
 import * as XLSX from 'xlsx-js-style'
 import Tesseract from 'tesseract.js'
@@ -50,11 +51,28 @@ import {
   applySummaryVatAndComputeAfterTaxCost,
   extractMetadataFromBulletLines,
   extractVendorNameFromLines,
+  parseCleanNumber,
   parsePurchaseFileStandard,
   analyzePurchaseFileWithAI,
   isImagePurchaseFile,
   type ParsedPurchaseItem
 } from '../utils/purchaseQuoteParser'
+import {
+  UNIVERSAL_IMPORT_ACCEPT,
+  isImageDocFile,
+  isPdfDocFile,
+  isWordDocFile,
+  getFileCategoryIconClass,
+  readUniversalSpreadsheetSheets,
+  readUniversalWordDocument,
+  parseSalesQuoteSheetsStandard,
+  parseCustomerDxmhStandardFromFile,
+  parseCustomerQuoteStandardFromFile,
+  parseTaxStandardFromFile,
+  analyzeSalesQuoteFileWithAI,
+  analyzeCustomerOrTaxFileWithAI,
+  type ExtractedCustomerFields
+} from '../utils/universalDocumentReader'
 import { uploadExcelFileToCloudinarySafe } from '../utils/vendorRefCloudinary'
 
 const firebaseConfig = {
@@ -73,26 +91,43 @@ const route = useRoute()
 const router = useRouter()
 
 /* ======================
-   AUTO-GROW MULTI-LINE INPUT DIRECTIVE (MOBILE)
+   AUTO-GROW MULTI-LINE INPUT DIRECTIVE (PC & MOBILE)
 ====================== */
 const autoGrowWidthMap = new WeakMap<HTMLTextAreaElement, number>()
 function syncAutoGrowInput(el: HTMLTextAreaElement) {
   if (!el) return
-  if (typeof window !== 'undefined' && window.innerWidth > 1100) {
-    el.style.removeProperty('height')
-    el.style.removeProperty('min-height')
-    return
-  }
   if (el.offsetParent === null) return
   const scrollParent = el.closest(
-    '.quote-edit-body-scroll, .save-modal-body-scroll, [style*="overflow-y"], .modal-card'
+    '.quote-edit-body-scroll, .save-modal-body-scroll, .tpl-upload-modal-body, [style*="overflow-y"], .modal-card'
   ) as HTMLElement | null
   const prevScroll = scrollParent ? scrollParent.scrollTop : 0
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 1100
+  const cs = typeof window !== 'undefined' ? window.getComputedStyle(el) : null
+  const borderY = cs
+    ? (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.borderBottomWidth) || 0)
+    : 0
+  const minOuter = isMobile
+    ? (el.classList.contains('m-wrap-compact') ? 32 : 46)
+    : el.classList.contains('m-wrap-compact')
+      ? 29
+      : el.classList.contains('m-wrap-import')
+        ? 35
+        : 38
+  const minBase = borderY > 0.5 ? minOuter : Math.max(24, minOuter - 2)
+  const maxH = isMobile ? 180 : 156
+
   el.style.setProperty('min-height', '0px', 'important')
+  el.style.setProperty('max-height', 'none', 'important')
   el.style.setProperty('height', '0px', 'important')
   const sh = el.scrollHeight
+  const rawH = Math.max(minBase, Math.ceil(sh + borderY))
+  const finalH = Math.min(maxH, rawH)
+
   el.style.removeProperty('min-height')
-  el.style.setProperty('height', `${Math.max(46, sh + 2)}px`, 'important')
+  el.style.removeProperty('max-height')
+  el.style.setProperty('height', `${finalH}px`, 'important')
+  el.style.setProperty('overflow-y', rawH > maxH ? 'auto' : 'hidden', 'important')
+  ;(el as any).__agLastVal = el.value
   if (scrollParent) scrollParent.scrollTop = prevScroll
 }
 const autoGrowObserver =
@@ -101,9 +136,9 @@ const autoGrowObserver =
         for (const entry of entries) {
           const el = entry.target as HTMLTextAreaElement
           const w = Math.round(entry.contentRect.width)
-          if (w > 0 && autoGrowWidthMap.get(el) !== w) {
+          if (autoGrowWidthMap.get(el) !== w) {
             autoGrowWidthMap.set(el, w)
-            syncAutoGrowInput(el)
+            if (w > 0) syncAutoGrowInput(el)
           }
         }
       })
@@ -117,7 +152,11 @@ const vAutoGrow = {
     requestAnimationFrame(() => syncAutoGrowInput(el))
   },
   updated(el: HTMLTextAreaElement) {
+    const valChanged = (el as any).__agLastVal !== el.value
     syncAutoGrowInput(el)
+    if (valChanged) {
+      requestAnimationFrame(() => syncAutoGrowInput(el))
+    }
   },
   unmounted(el: HTMLTextAreaElement) {
     if ((el as any).__agOnInput) {
@@ -1171,14 +1210,16 @@ function toggleLeftDockTab(tab: 'customer' | 'discount' | 'finance') {
   activeLeftDockTab.value = activeLeftDockTab.value === tab ? '' : tab
 }
 
-// --- IMPORT ẢNH THUẾ LOGIC ---
-const showUploadTaxModal = ref(false)
+// --- IMPORT THÔNG TIN THUẾ / ĐKKD LOGIC (MỌI ĐỊNH DẠNG + AI FALLBACK) ---
 const showTaxModal = ref(false)
 const showTaxImageFullScreen = ref(false)
 const taxFullScreenSrc = ref('')
 const taxImageInput = ref<HTMLInputElement | null>(null)
 const taxInfo = ref({ mst: '', tenCongTy: '', tenCongTyEn: '', diaChi: '', nganhNgheChinh: '' })
 const taxPreviewUrl = ref('')
+const lastTaxImportFile = ref<File | null>(null)
+const taxScanSourceMode = ref<'standard' | 'ai'>('standard')
+const taxSourceIsImage = ref(true)
 
 function openTaxImagePreview(src: string) {
   if (!src) return
@@ -1186,36 +1227,20 @@ function openTaxImagePreview(src: string) {
   showTaxImageFullScreen.value = true
 }
 
-function onTaxDragOver(e: DragEvent) {
-  e.preventDefault()
-}
-
-function onTaxDrop(e: DragEvent) {
-  e.preventDefault()
-  if (e.dataTransfer?.files && e.dataTransfer.files[0]) {
-    processTaxFile(e.dataTransfer.files[0])
-  }
-}
-
-function onTaxPaste(e: ClipboardEvent) {
-  if (!showUploadTaxModal.value) return
-  const items = e.clipboardData?.items
-  if (!items) return
-  for (let i = 0; i < items.length; i++) {
-    if (items[i].type.indexOf('image') !== -1) {
-      const blob = items[i].getAsFile()
-      if (blob) processTaxFile(blob)
+async function translateCompanyNameToEnglishSafe(companyName: string): Promise<string> {
+  const clean = String(companyName || '').trim()
+  if (!clean) return ''
+  try {
+    const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=vi&tl=en&dt=t&q=${encodeURIComponent(clean)}`)
+    const json = await res.json()
+    if (json && json[0] && json[0][0] && json[0][0][0]) {
+      return String(json[0][0][0]).trim()
     }
+  } catch (err) {
+    console.warn('Không dịch được tên tiếng Anh qua Google Translate:', err)
   }
+  return ''
 }
-
-onMounted(() => {
-  window.addEventListener('paste', onTaxPaste)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('paste', onTaxPaste)
-})
 
 async function onTaxImageChange(e: Event) {
   const target = e.target as HTMLInputElement
@@ -1226,97 +1251,125 @@ async function onTaxImageChange(e: Event) {
 }
 
 async function processTaxFile(file: File) {
-  showUploadTaxModal.value = false
-  if (taxPreviewUrl.value) URL.revokeObjectURL(taxPreviewUrl.value)
-  taxPreviewUrl.value = URL.createObjectURL(file)
-  showAsyncLoading('Đang quét ảnh (OCR)...')
+  lastTaxImportFile.value = file
+  const isImg = isImageDocFile(file)
+  taxSourceIsImage.value = isImg
+  if (taxPreviewUrl.value) {
+    try {
+      URL.revokeObjectURL(taxPreviewUrl.value)
+    } catch (_) {}
+    taxPreviewUrl.value = ''
+  }
+  if (isImg) {
+    taxPreviewUrl.value = URL.createObjectURL(file)
+  }
+
+  showAsyncLoading('Đang quét thông tin thuế / ĐKKD theo chế độ tiêu chuẩn...')
   try {
-    const { data: { text } } = await Tesseract.recognize(file, 'vie')
-    
-    // 1. MST
-    const mstMatch = text.match(/Mã số thu[êế]\s*([\d\-]+)/i)
-    const mst = mstMatch ? mstMatch[1] : ''
-    
-    // 2. Address
-    const lines = text.split('\n').map(l => l.trim()).filter(l => l)
-    let address = ''
-    for (const line of lines) {
-      if (line.match(/Đ[iị]a chỉ/i) && !line.match(/Thu[ếê]/i)) {
-        address = line.replace(/.*?Đ[iị]a chỉ\s*/i, '').trim()
-        break
-      }
-    }
-    
-    // 3. Company name
-    let companyName = ''
-    for (const line of lines) {
-      if (line.toUpperCase() === line && line.length > 10 && !line.match(/Mã số/i)) {
-        companyName = line.replace(/^['"\-\*\s]+/, '').trim()
-        break
-      }
-    }
-    
-    // Google Translate for Company Name
-    let companyNameEn = ''
-    if (companyName) {
-      try {
-        const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=vi&tl=en&dt=t&q=${encodeURIComponent(companyName)}`)
-        const json = await res.json()
-        if (json && json[0] && json[0][0] && json[0][0][0]) {
-          companyNameEn = json[0][0][0]
-        }
-      } catch (err) {
-        console.error('Lỗi dịch Google:', err)
-      }
-    }
-    
-    // 4. Ngành nghề chính
-    let nganhNgheChinh = ''
-    const nganhIdx = lines.findIndex(l => /Ng[àaáảãạăắằẳẵặâấầẩẫậ]nh\s+ngh[ềeếểễệ]/i.test(l))
-    if (nganhIdx !== -1) {
-      const firstPart = lines[nganhIdx]
-        .replace(/^.*?Ng[àaáảãạăắằẳẵặâấầẩẫậ]nh\s+ngh[ềeếểễệ](?:\s+ch[íiìỉĩị]nh)?\s*[:\-]?\s*/i, '')
-        .trim()
-      const collected: string[] = []
-      if (firstPart) collected.push(firstPart)
-      for (let i = nganhIdx + 1; i < lines.length; i++) {
-        const nextLine = lines[i]
-          .replace(/^ch[íiìỉĩị]nh\s*[:\-]?\s*/i, '')
-          .trim()
-        if (!nextLine) continue
-        if (/^(Mã số|Đ[iị]a chỉ|Tình trạng|Tên quốc tế|Tên viết tắt|Người đại diện|Điện thoại|Ngày hoạt động|Quản lý bởi|Loại hình DN)/i.test(nextLine)) {
-          break
-        }
-        collected.push(nextLine)
-      }
-      nganhNgheChinh = collected.join('\n').trim()
+    const stdRes = await parseTaxStandardFromFile(file, (msg) => {
+      showAsyncLoading(msg)
+    })
+
+    if (!stdRes.isSuccess) {
+      asyncResultModal.value.show = false
+      openAiImportFallback(
+        'thue',
+        file,
+        stdRes.reason || 'Quét tiêu chuẩn không nhận diện được Mã số thuế hoặc Tên công ty từ tài liệu này.'
+      )
+      return
     }
 
-    taxInfo.value = { mst, tenCongTy: companyName, tenCongTyEn: companyNameEn, diaChi: address, nganhNgheChinh }
+    let companyNameEn = String(stdRes.tax.tenCongTyEn || '').trim()
+    if (!companyNameEn && stdRes.tax.tenCongTy) {
+      companyNameEn = await translateCompanyNameToEnglishSafe(stdRes.tax.tenCongTy)
+    }
+
+    taxInfo.value = {
+      mst: stdRes.tax.mst || '',
+      tenCongTy: stdRes.tax.tenCongTy || '',
+      tenCongTyEn: companyNameEn,
+      diaChi: stdRes.tax.diaChi || '',
+      nganhNgheChinh: stdRes.tax.nganhNgheChinh || ''
+    }
+    taxScanSourceMode.value = 'standard'
     asyncResultModal.value.show = false
     showTaxModal.value = true
   } catch (err: any) {
-    console.error(err)
-    showAsyncError('Lỗi', 'Lỗi khi quét ảnh: ' + String(err.message || err))
+    console.error('Lỗi quét thuế tiêu chuẩn:', err)
+    asyncResultModal.value.show = false
+    openAiImportFallback(
+      'thue',
+      file,
+      'Quét tiêu chuẩn gặp lỗi định dạng (' + String(err?.message || err) + ').'
+    )
+  }
+}
+
+async function runAiTaxImportAnalysis(file: File) {
+  if (!file) return
+  lastTaxImportFile.value = file
+  const isImg = isImageDocFile(file)
+  taxSourceIsImage.value = isImg
+  if (isImg && !taxPreviewUrl.value) {
+    taxPreviewUrl.value = URL.createObjectURL(file)
+  }
+
+  showAsyncLoading(`AI đang phân tích thông tin thuế / ĐKKD từ "${file.name}"...`)
+  try {
+    const aiRes = await analyzeCustomerOrTaxFileWithAI(file, 'thue', (msg) => {
+      showAsyncLoading(msg)
+    })
+    const tx = aiRes.tax
+    if (!tx.mst && !tx.tenCongTy) {
+      asyncResultModal.value.show = false
+      showAsyncError(
+        'Không tìm thấy thông tin thuế',
+        'AI không trích xuất được Mã số thuế hoặc Tên doanh nghiệp hợp lệ từ tài liệu này.'
+      )
+      return
+    }
+    let companyNameEn = String(tx.tenCongTyEn || '').trim()
+    if (!companyNameEn && tx.tenCongTy) {
+      companyNameEn = await translateCompanyNameToEnglishSafe(tx.tenCongTy)
+    }
+    taxInfo.value = {
+      mst: tx.mst || '',
+      tenCongTy: tx.tenCongTy || '',
+      tenCongTyEn: companyNameEn,
+      diaChi: tx.diaChi || '',
+      nganhNgheChinh: tx.nganhNgheChinh || ''
+    }
+    taxScanSourceMode.value = 'ai'
+    asyncResultModal.value.show = false
+    showTaxModal.value = true
+    triggerToast('Đã phân tích thông tin thuế bằng AI thành công')
+  } catch (err: any) {
+    console.error('Lỗi AI quét thông tin thuế:', err)
+    asyncResultModal.value.show = false
+    showAsyncError('Lỗi phân tích AI', String(err?.message || err))
   }
 }
 
 function closeTaxModal() {
   showTaxModal.value = false
   if (taxPreviewUrl.value) {
-    URL.revokeObjectURL(taxPreviewUrl.value)
+    try {
+      URL.revokeObjectURL(taxPreviewUrl.value)
+    } catch (_) {}
     taxPreviewUrl.value = ''
   }
 }
 
 function confirmTaxInfo() {
-  khach.value.MST = taxInfo.value.mst
-  khach.value.Ten_cong_ty = taxInfo.value.tenCongTy
-  khach.value.COMPANY = taxInfo.value.tenCongTyEn
-  khach.value.Dia_chi_cong_ty = taxInfo.value.diaChi
-  khach.value.Nganh_nghe_cong_ty = taxInfo.value.nganhNgheChinh
+  if (taxInfo.value.mst) khach.value.MST = taxInfo.value.mst
+  if (taxInfo.value.tenCongTy) khach.value.Ten_cong_ty = taxInfo.value.tenCongTy
+  if (taxInfo.value.tenCongTyEn) khach.value.COMPANY = taxInfo.value.tenCongTyEn
+  if (taxInfo.value.diaChi) khach.value.Dia_chi_cong_ty = taxInfo.value.diaChi
+  if (taxInfo.value.nganhNgheChinh) khach.value.Nganh_nghe_cong_ty = taxInfo.value.nganhNgheChinh
+  hasImportedCustomerPendingSave.value = true
   closeTaxModal()
-  showAsyncSuccess('Thành công', 'Đã cập nhật thông tin khách hàng từ ảnh thuế.')
+  showAsyncSuccess('Thành công', 'Đã cập nhật thông tin khách hàng từ tài liệu thuế.')
 }
 // -----------------------------
 
@@ -1549,6 +1602,15 @@ function focusCatalogUserInput(e: MouseEvent) {
   if (target && target.closest('button')) return
   catalogUserInputRef.value?.focus?.()
 }
+
+function onCatalogUserSegMouseDown(e: MouseEvent) {
+  const target = e.target as HTMLElement | null
+  if (target && target.closest('button')) return
+  if (!isUserInputFocused.value) {
+    e.preventDefault()
+    catalogUserInputRef.value?.focus?.()
+  }
+}
 const supplierFilter = ref('ALL')
 const selectedItems = ref<(HangHoa & { So_luong: number, uid?: string })[]>([])
 
@@ -1571,20 +1633,196 @@ function markLoaded(stateRef: typeof productsState) {
   setTimeout(() => { stateRef.value = 'ready' }, 1500)
 }
 
-// --- TOAST STATE ---
+// --- TOAST STATE (SMART PC TOP-CENTER & MOBILE TOP CAPSULE) ---
+type ToastVariant = 'success' | 'warning' | 'info' | 'error'
+
 const toastMsg = ref('')
 const showToast = ref(false)
-let toastTimeout: any = null
+const toastType = ref<ToastVariant>('success')
+const toastRepeatCount = ref(1)
+const toastDurationMs = ref(2500)
+const toastProgressKey = ref(0)
+const toastIsPulsing = ref(false)
+const toastIsPaused = ref(false)
+const toastDragY = ref(0)
+const toastIsDragging = ref(false)
 
-function triggerToast(msg: string) {
-  if (window.innerWidth <= 768 && msg === 'Đã thêm sản phẩm thành công!') return;
-  toastMsg.value = msg
-  showToast.value = true
-  if (toastTimeout) clearTimeout(toastTimeout)
+let toastTimeout: ReturnType<typeof setTimeout> | null = null
+let toastPulseTimeout: ReturnType<typeof setTimeout> | null = null
+let toastStartedAt = 0
+let toastRemainingMs = 2500
+let toastTouchStartY = 0
+let toastTouchStartX = 0
+let toastDidSwipeMove = false
+
+function inferToastType(msg: string): ToastVariant {
+  const text = (msg || '').trim()
+  if (
+    /^(lỗi|không thể|thất bại|từ chối)\b/i.test(text) ||
+    /(xảy ra lỗi|không hợp lệ|kết nối thất bại|quét thất bại|lưu thất bại|xóa thất bại)/i.test(text)
+  ) {
+    return 'error'
+  }
+  if (
+    /^(chưa có|thiếu|vui lòng|cảnh báo|lưu ý|phát hiện|hết hạn|quá hạn|không tìm thấy)\b/i.test(text) ||
+    /(chưa có trong db|không có dữ liệu|vượt quá)/i.test(text)
+  ) {
+    return 'warning'
+  }
+  if (
+    /^(chạm giữ|hướng dẫn|mẹo|đang\s|đã chuyển tới tab)\b/i.test(text) ||
+    /(dữ liệu minh họa|không ghi db)/i.test(text)
+  ) {
+    return 'info'
+  }
+  return 'success'
+}
+
+function computeToastDuration(msg: string, variant: ToastVariant): number {
+  const len = (msg || '').trim().length
+  const base = len <= 36 ? 2300 : len <= 72 ? 3000 : 3800
+  return variant === 'error' || variant === 'warning' ? Math.min(4200, base + 350) : base
+}
+
+function clearToastTimer() {
+  if (toastTimeout) {
+    clearTimeout(toastTimeout)
+    toastTimeout = null
+  }
+}
+
+function startToastTimer(ms: number) {
+  clearToastTimer()
+  toastRemainingMs = Math.max(400, ms)
+  toastStartedAt = Date.now()
+  toastIsPaused.value = false
   toastTimeout = setTimeout(() => {
     showToast.value = false
-  }, 2500)
+    toastRepeatCount.value = 1
+    toastIsDragging.value = false
+  }, toastRemainingMs)
 }
+
+function pauseToastTimer() {
+  if (!showToast.value || toastIsPaused.value) return
+  clearToastTimer()
+  const elapsed = Date.now() - toastStartedAt
+  toastRemainingMs = Math.max(450, toastRemainingMs - elapsed)
+  toastIsPaused.value = true
+}
+
+function resumeToastTimer() {
+  if (!showToast.value || !toastIsPaused.value || toastIsDragging.value) return
+  startToastTimer(toastRemainingMs)
+}
+
+function dismissToast(keepDragOffsetForLeave = false) {
+  clearToastTimer()
+  if (toastPulseTimeout) {
+    clearTimeout(toastPulseTimeout)
+    toastPulseTimeout = null
+  }
+  showToast.value = false
+  toastIsPaused.value = false
+  toastIsPulsing.value = false
+  toastIsDragging.value = false
+  toastRepeatCount.value = 1
+  if (!keepDragOffsetForLeave) {
+    toastDragY.value = 0
+  }
+}
+
+function onToastAfterLeave() {
+  toastDragY.value = 0
+}
+
+function triggerToast(msg: string, explicitType?: ToastVariant) {
+  if (!msg) return
+  if (typeof window !== 'undefined' && window.innerWidth <= 768 && msg === 'Đã thêm sản phẩm thành công!') return
+
+  const resolvedType = explicitType || inferToastType(msg)
+  const duration = computeToastDuration(msg, resolvedType)
+  const wasAlreadyVisible = showToast.value
+
+  if (wasAlreadyVisible && toastMsg.value === msg) {
+    toastRepeatCount.value = Math.min(99, toastRepeatCount.value + 1)
+  } else {
+    toastRepeatCount.value = 1
+    toastMsg.value = msg
+  }
+
+  toastType.value = resolvedType
+  toastDurationMs.value = duration
+  toastDragY.value = 0
+  toastIsDragging.value = false
+  toastProgressKey.value += 1
+  showToast.value = true
+
+  if (wasAlreadyVisible) {
+    toastIsPulsing.value = false
+    if (toastPulseTimeout) clearTimeout(toastPulseTimeout)
+    requestAnimationFrame(() => {
+      toastIsPulsing.value = true
+      toastPulseTimeout = setTimeout(() => {
+        toastIsPulsing.value = false
+      }, 250)
+    })
+  }
+
+  startToastTimer(duration)
+}
+
+function onToastCardClick() {
+  if (toastDidSwipeMove) {
+    toastDidSwipeMove = false
+    return
+  }
+  if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+    dismissToast(false)
+  }
+}
+
+function onToastTouchStart(e: TouchEvent) {
+  const t = e.touches?.[0]
+  if (!t) return
+  toastTouchStartY = t.clientY
+  toastTouchStartX = t.clientX
+  toastDidSwipeMove = false
+  toastIsDragging.value = true
+  toastDragY.value = 0
+  pauseToastTimer()
+}
+
+function onToastTouchMove(e: TouchEvent) {
+  if (!toastIsDragging.value) return
+  const t = e.touches?.[0]
+  if (!t) return
+  const dy = t.clientY - toastTouchStartY
+  const dx = t.clientX - toastTouchStartX
+  if (Math.abs(dy) > 6 || Math.abs(dx) > 6) {
+    toastDidSwipeMove = true
+  }
+  if (dy < 0) {
+    toastDragY.value = Math.max(-96, dy)
+  } else {
+    toastDragY.value = Math.min(10, dy * 0.16)
+  }
+}
+
+function onToastTouchEnd() {
+  if (!toastIsDragging.value) return
+  const finalY = toastDragY.value
+  toastIsDragging.value = false
+  if (finalY <= -18) {
+    dismissToast(true)
+    return
+  }
+  toastDragY.value = 0
+  resumeToastTimer()
+}
+
+onDeactivated(() => dismissToast(false))
+onUnmounted(() => dismissToast(false))
 
 // --- ASYNC RESULT MODAL STATE ---
 const asyncResultModal = ref<{ show: boolean, type: 'loading' | 'success' | 'error', title: string, msg: string }>({
@@ -1605,6 +1843,175 @@ function showAsyncSuccess(title: string, msg: string = '') {
 function showAsyncError(title: string, msg: string = '') {
   asyncResultModal.value = { show: true, type: 'error', title, msg }
   // Error stays until user closes it
+}
+
+// --- UNIFIED TEMPLATE DIALOG MODAL (ALERT & CONFIRM - PHƯƠNG ÁN 1) ---
+type BaogiaDialogVariant = 'warning' | 'error' | 'danger' | 'info'
+
+interface BaogiaDialogOptions {
+  variant?: BaogiaDialogVariant
+  eyebrow?: string
+  title: string
+  message: string
+  highlightLabel?: string
+  highlightValue?: string
+  subNote?: string
+  confirmText?: string
+  cancelText?: string
+}
+
+interface BaogiaDialogQueueItem {
+  mode: 'alert' | 'confirm'
+  variant: BaogiaDialogVariant
+  eyebrow: string
+  title: string
+  message: string
+  highlightLabel: string
+  highlightValue: string
+  subNote: string
+  confirmText: string
+  cancelText: string
+  resolve: (confirmed: boolean) => void
+}
+
+const baogiaDialog = reactive({
+  show: false,
+  mode: 'alert' as 'alert' | 'confirm',
+  variant: 'warning' as BaogiaDialogVariant,
+  eyebrow: 'Thông báo hệ thống',
+  title: '',
+  message: '',
+  highlightLabel: '',
+  highlightValue: '',
+  subNote: '',
+  confirmText: 'Đã hiểu',
+  cancelText: 'Hủy bỏ'
+})
+
+const baogiaDialogQueue: BaogiaDialogQueueItem[] = []
+let activeBaogiaDialogResolver: ((confirmed: boolean) => void) | null = null
+const baogiaDialogCancelBtnRef = ref<HTMLButtonElement | null>(null)
+const baogiaDialogConfirmBtnRef = ref<HTMLButtonElement | null>(null)
+let isBaogiaDialogKeyListenerAttached = false
+
+function onBaogiaDialogKeydown(ev: KeyboardEvent) {
+  if (!baogiaDialog.show) return
+  if (ev.key === 'Escape') {
+    ev.preventDefault()
+    ev.stopPropagation()
+    resolveBaogiaDialog(false)
+    return
+  }
+  if (ev.key === 'Enter') {
+    const activeEl = typeof document !== 'undefined' ? document.activeElement : null
+    if (
+      activeEl &&
+      (activeEl === baogiaDialogCancelBtnRef.value || activeEl === baogiaDialogConfirmBtnRef.value)
+    ) {
+      return
+    }
+    if (baogiaDialog.mode === 'alert' || baogiaDialog.variant !== 'danger') {
+      ev.preventDefault()
+      ev.stopPropagation()
+      resolveBaogiaDialog(true)
+    }
+  }
+}
+
+function attachBaogiaDialogKeyListener() {
+  if (typeof window === 'undefined' || isBaogiaDialogKeyListenerAttached) return
+  window.addEventListener('keydown', onBaogiaDialogKeydown, true)
+  isBaogiaDialogKeyListenerAttached = true
+}
+
+function detachBaogiaDialogKeyListener() {
+  if (typeof window === 'undefined' || !isBaogiaDialogKeyListenerAttached) return
+  window.removeEventListener('keydown', onBaogiaDialogKeydown, true)
+  isBaogiaDialogKeyListenerAttached = false
+}
+
+function presentNextBaogiaDialog() {
+  const nextItem = baogiaDialogQueue.shift()
+  if (!nextItem) {
+    baogiaDialog.show = false
+    activeBaogiaDialogResolver = null
+    detachBaogiaDialogKeyListener()
+    return
+  }
+  activeBaogiaDialogResolver = nextItem.resolve
+  baogiaDialog.mode = nextItem.mode
+  baogiaDialog.variant = nextItem.variant
+  baogiaDialog.eyebrow = nextItem.eyebrow
+  baogiaDialog.title = nextItem.title
+  baogiaDialog.message = nextItem.message
+  baogiaDialog.highlightLabel = nextItem.highlightLabel
+  baogiaDialog.highlightValue = nextItem.highlightValue
+  baogiaDialog.subNote = nextItem.subNote
+  baogiaDialog.confirmText = nextItem.confirmText
+  baogiaDialog.cancelText = nextItem.cancelText
+  baogiaDialog.show = true
+
+  nextTick(() => {
+    attachBaogiaDialogKeyListener()
+    if (baogiaDialog.mode === 'confirm' && baogiaDialog.variant === 'danger') {
+      baogiaDialogCancelBtnRef.value?.focus()
+    } else {
+      baogiaDialogConfirmBtnRef.value?.focus()
+    }
+  })
+}
+
+function enqueueBaogiaDialog(mode: 'alert' | 'confirm', opts: BaogiaDialogOptions): Promise<boolean> {
+  const variant: BaogiaDialogVariant = opts.variant || (mode === 'confirm' ? 'danger' : 'warning')
+  const defaultEyebrow =
+    variant === 'danger'
+      ? 'Xác nhận thao tác'
+      : variant === 'error'
+        ? 'Cảnh báo lỗi hệ thống'
+        : variant === 'warning'
+          ? 'Kiểm tra thông tin'
+          : 'Thông báo hệ thống'
+
+  return new Promise<boolean>((resolve) => {
+    baogiaDialogQueue.push({
+      mode,
+      variant,
+      eyebrow: opts.eyebrow || defaultEyebrow,
+      title: opts.title,
+      message: opts.message,
+      highlightLabel: opts.highlightLabel || '',
+      highlightValue: opts.highlightValue || '',
+      subNote: opts.subNote || '',
+      confirmText: opts.confirmText || (mode === 'confirm' ? 'Xác nhận' : 'Đã hiểu'),
+      cancelText: opts.cancelText || 'Hủy bỏ',
+      resolve
+    })
+    if (!baogiaDialog.show) {
+      presentNextBaogiaDialog()
+    }
+  })
+}
+
+function openBaogiaAlert(opts: BaogiaDialogOptions): Promise<boolean> {
+  return enqueueBaogiaDialog('alert', opts)
+}
+
+function openBaogiaConfirm(opts: BaogiaDialogOptions): Promise<boolean> {
+  return enqueueBaogiaDialog('confirm', opts)
+}
+
+function resolveBaogiaDialog(confirmed: boolean) {
+  const resolver = activeBaogiaDialogResolver
+  activeBaogiaDialogResolver = null
+  if (baogiaDialogQueue.length > 0) {
+    presentNextBaogiaDialog()
+  } else {
+    baogiaDialog.show = false
+    detachBaogiaDialogKeyListener()
+  }
+  if (resolver) {
+    resolver(confirmed)
+  }
 }
 
 // --- STATE FOR DRAG & DROP ---
@@ -1633,6 +2040,68 @@ function loadSavedQuoteGroupMode(): boolean {
 }
 const quoteGroupByCategory = ref<boolean>(loadSavedQuoteGroupMode())
 
+const EMPTY_CATEGORY_GROUP_KEY = '__EMPTY_CAT__'
+function normalizeQuoteCategoryKey(rawCat: unknown): string {
+  const trimmed = String(rawCat ?? '').trim().toUpperCase()
+  return trimmed || EMPTY_CATEGORY_GROUP_KEY
+}
+
+type QuoteGroupSttFormat = 'roman' | 'number'
+type QuoteItemSttFormat = 'number' | 'roman' | 'hierarchical'
+
+const QUOTE_GROUP_STT_FORMAT_STORAGE_KEY = 'nts_quote_group_stt_format_v1'
+const QUOTE_ITEM_STT_FORMAT_STORAGE_KEY = 'nts_quote_item_stt_format_v1'
+
+function loadSavedQuoteGroupSttFormat(): QuoteGroupSttFormat {
+  try {
+    const raw = localStorage.getItem(QUOTE_GROUP_STT_FORMAT_STORAGE_KEY)
+    if (raw === 'number' || raw === 'roman') return raw
+  } catch {}
+  return 'roman'
+}
+
+function loadSavedQuoteItemSttFormat(): QuoteItemSttFormat {
+  try {
+    const raw = localStorage.getItem(QUOTE_ITEM_STT_FORMAT_STORAGE_KEY)
+    if (raw === 'number' || raw === 'roman' || raw === 'hierarchical') return raw
+  } catch {}
+  return 'number'
+}
+
+const quoteGroupSttFormat = ref<QuoteGroupSttFormat>(loadSavedQuoteGroupSttFormat())
+const quoteItemSttFormat = ref<QuoteItemSttFormat>(loadSavedQuoteItemSttFormat())
+
+function setQuoteGroupSttFormat(fmt: QuoteGroupSttFormat) {
+  quoteGroupSttFormat.value = fmt
+  try {
+    localStorage.setItem(QUOTE_GROUP_STT_FORMAT_STORAGE_KEY, fmt)
+  } catch {}
+  syncFlatRows()
+}
+
+function setQuoteItemSttFormat(fmt: QuoteItemSttFormat) {
+  quoteItemSttFormat.value = fmt
+  try {
+    localStorage.setItem(QUOTE_ITEM_STT_FORMAT_STORAGE_KEY, fmt)
+  } catch {}
+  syncFlatRows()
+}
+
+function formatQuoteGroupStt(groupIdx: number): string {
+  if (quoteGroupSttFormat.value === 'number') return String(groupIdx)
+  return toRoman(groupIdx)
+}
+
+function formatQuoteItemStt(itemIdxInScope: number, parentGroupStt = ''): number | string {
+  if (quoteItemSttFormat.value === 'roman') {
+    return toRoman(itemIdxInScope)
+  }
+  if (quoteItemSttFormat.value === 'hierarchical' && quoteGroupByCategory.value && parentGroupStt) {
+    return `${parentGroupStt}.${itemIdxInScope}`
+  }
+  return itemIdxInScope
+}
+
 const QUOTE_THEME_MODE_STORAGE_KEY = 'nts_quote_theme_mode_v1'
 function loadSavedQuoteThemeMode(): 'dark' | 'light' {
   try {
@@ -1649,22 +2118,18 @@ function setQuoteThemeMode(mode: 'dark' | 'light') {
   } catch {}
 }
 
-function consolidateSelectedItemsByCategory() {
-  if (selectedItems.value.length <= 1) return
+function consolidateSelectedItemsByCategory(): boolean {
+  if (selectedItems.value.length <= 1) return false
   const result: any[] = []
   const handledCats = new Set<string>()
   for (let i = 0; i < selectedItems.value.length; i++) {
     const it = selectedItems.value[i]
-    const catKey = (it.Danh_muc || '').trim().toUpperCase()
-    if (!catKey) {
-      result.push(it)
-      continue
-    }
+    const catKey = normalizeQuoteCategoryKey(it.Danh_muc)
     if (handledCats.has(catKey)) continue
     handledCats.add(catKey)
     for (let j = i; j < selectedItems.value.length; j++) {
       const candidate = selectedItems.value[j]
-      if ((candidate.Danh_muc || '').trim().toUpperCase() === catKey) {
+      if (normalizeQuoteCategoryKey(candidate.Danh_muc) === catKey) {
         result.push(candidate)
       }
     }
@@ -1672,7 +2137,9 @@ function consolidateSelectedItemsByCategory() {
   const changed = result.some((it, idx) => it !== selectedItems.value[idx])
   if (changed) {
     selectedItems.value = result
+    return true
   }
+  return false
 }
 
 function toggleQuoteGroupByCategory() {
@@ -1686,16 +2153,59 @@ function toggleQuoteGroupByCategory() {
   syncFlatRows()
 }
 
+const guideTempTableDemoActive = ref(false)
+
+function createGuideDemoQuoteItem() {
+  return {
+    _isGuideDemo: true,
+    uid: 'guide-demo-row',
+    Ma_hang: 'KASP-DEMO-01',
+    sku_code: 'KL4867XAAFS',
+    Ten_hang: 'Kaspersky Endpoint Security Select (Mặt hàng mẫu hướng dẫn)',
+    Ten_nha_cung_cap: 'Kaspersky',
+    Ma_nha_cung_cap: 'KASP',
+    Danh_muc: 'PHẦN MỀM BẢN QUYỀN',
+    Type: 'Base',
+    DVT: 'License',
+    License_duration: '1 Year',
+    thoi_han_bao_hanh: '12 tháng',
+    Volume: '10-24',
+    Description: 'Bản quyền bảo mật doanh nghiệp (dữ liệu minh họa hướng dẫn Sửa giá)',
+    Features: '',
+    Mo_ta_chung: '',
+    Mo_ta_chi_tiet: '',
+    Ma_hang_lien_ket: '',
+    Ten_hang_lien_ket: '',
+    Don_vi_tien_te: 'VND',
+    Ti_gia: 1,
+    So_luong: 10,
+    Don_gia: 1200000,
+    Gia_tieu_chuan: 840000,
+    gia_nhap: 0,
+    gia_hardware: 0,
+    muc_phan_tram_off: 10,
+    Thue_VAT: 10,
+    _Don_gia_goc: 1200000,
+    _Gia_tieu_chuan_goc: 840000,
+    _Ti_gia_goc: 1,
+    _Thue_VAT_goc: 10,
+    _gia_hardware_goc: 0,
+    _gia_nhap_goc: 0,
+    _muc_phan_tram_off_goc: 10
+  } as any
+}
+
 function syncFlatRows() {
   const rows: any[] = []
   let currentGroupKey: string | null = null
+  let currentGroupSttLabel = ''
   let groupIndex = 0
   let stt = 0
   
   selectedItems.value.forEach((it, idx) => {
     if (!it.uid) it.uid = Math.random().toString(36).substr(2, 9)
     const cat = (it.Danh_muc || '').trim()
-    const gKey = cat.toUpperCase()
+    const gKey = normalizeQuoteCategoryKey(cat)
 
     if (!quoteGroupByCategory.value) {
       stt++
@@ -1703,31 +2213,25 @@ function syncFlatRows() {
         type: 'item',
         item: it,
         idx: idx,
-        stt: stt,
+        stt: formatQuoteItemStt(stt, ''),
         groupKey: '',
         uniqueId: 'item-' + it.uid
       })
       return
     }
     
-    if (gKey) {
-      if (gKey !== currentGroupKey) {
-        currentGroupKey = gKey
-        groupIndex++
-        stt = 0
-        rows.push({
-          type: 'group',
-          key: gKey,
-          title: cat,
-          roman: toRoman(groupIndex),
-          uniqueId: 'group-' + gKey + '-' + groupIndex
-        })
-      }
-    } else {
-      if (currentGroupKey !== '') {
-        currentGroupKey = ''
-        stt = 0
-      }
+    if (gKey !== currentGroupKey) {
+      currentGroupKey = gKey
+      groupIndex++
+      stt = 0
+      currentGroupSttLabel = formatQuoteGroupStt(groupIndex)
+      rows.push({
+        type: 'group',
+        key: gKey,
+        title: cat,
+        roman: currentGroupSttLabel,
+        uniqueId: 'group-' + gKey + '-' + groupIndex
+      })
     }
     
     stt++
@@ -1735,16 +2239,54 @@ function syncFlatRows() {
       type: 'item',
       item: it,
       idx: idx,
-      stt: stt,
+      stt: formatQuoteItemStt(stt, currentGroupSttLabel),
       groupKey: gKey,
       uniqueId: 'item-' + it.uid
     })
   })
+
+  if (rows.length === 0 && guideTempTableDemoActive.value) {
+    const demoItem = createGuideDemoQuoteItem()
+    if (quoteGroupByCategory.value) {
+      const demoGroupRoman = formatQuoteGroupStt(1)
+      rows.push({
+        type: 'group',
+        _isGuideDemo: true,
+        key: '__GUIDE_DEMO_CAT__',
+        title: 'PHẦN MỀM BẢN QUYỀN (MẪU HƯỚNG DẪN)',
+        roman: demoGroupRoman,
+        uniqueId: 'group-guide-demo-1'
+      })
+      rows.push({
+        type: 'item',
+        _isGuideDemo: true,
+        item: demoItem,
+        idx: -1,
+        stt: formatQuoteItemStt(1, demoGroupRoman),
+        groupKey: '__GUIDE_DEMO_CAT__',
+        uniqueId: 'item-guide-demo-1'
+      })
+    } else {
+      rows.push({
+        type: 'item',
+        _isGuideDemo: true,
+        item: demoItem,
+        idx: -1,
+        stt: formatQuoteItemStt(1, ''),
+        groupKey: '',
+        uniqueId: 'item-guide-demo-1'
+      })
+    }
+  }
+
   flatQuoteRows.value = rows
 }
 
 watch(selectedItems, () => {
   if (!isSyncingFromDrag) {
+    if (quoteGroupByCategory.value && consolidateSelectedItemsByCategory()) {
+      return
+    }
     syncFlatRows()
   }
 }, { deep: true, immediate: true });
@@ -1763,6 +2305,11 @@ function hideDragImage(dataTransfer: any) {
 }
 
 function onFlatDragEnd(event: any) {
+  if (guideTempTableDemoActive.value) {
+    draggingGroupKey.value = null
+    syncFlatRows()
+    return
+  }
   isSyncingFromDrag = true
   const newItems: any[] = []
   let draggedItemIdx = -1
@@ -2359,7 +2906,12 @@ const handleContinuePipeline = async () => {
     selectedPipelineKhach.value = filteredPipelineCustomers.value[0];
   }
   if (!selectedPipelineKhach.value && filteredPipelineCustomers.value.length > 1 && !khach.value.Ma_khach_hang) {
-    window.alert('Vui lòng chọn khách hàng hoặc ấn Thêm mới!');
+    await openBaogiaAlert({
+      variant: 'warning',
+      eyebrow: 'Pipeline & Khách hàng',
+      title: 'Chưa chọn khách hàng',
+      message: 'Vui lòng chọn khách hàng trong danh sách hoặc nhấn "Thêm mới" trước khi tiếp tục!'
+    });
     return;
   }
   if (!selectedPipelineKhach.value) {
@@ -3640,7 +4192,7 @@ async function startReadPriceFromFile(file: File, targetType: 'manual' | 'card')
   if (!target || !file) return
 
   revokeReadPriceLocalPreview()
-  const isImg = isImagePurchaseFile(file) || /^image\//i.test(String(file.type || ''))
+  const isImg = isImageDocFile(file)
   const defaultCur = String(target.Don_vi_tien_te || 'VND').trim().toUpperCase() === 'USD' ? 'USD' : 'VND'
   const uploadedAt = new Date().toISOString()
 
@@ -3672,43 +4224,41 @@ async function startReadPriceFromFile(file: File, targetType: 'manual' | 'card')
       return ''
     })
 
-  showAsyncLoading(`Đang đọc giá từ "${file.name}"...`)
+  showAsyncLoading(`Đang quét giá tiêu chuẩn từ "${file.name}"...`)
 
   try {
     let extractedItems: ParsedPurchaseItem[] = []
     let extractedVendor = ''
-    let usedMode: 'standard' | 'ai' = 'standard'
+    let failReason = ''
 
-    if (!isImg) {
+    if (isImg) {
+      failReason = 'File đang ở định dạng hình ảnh nên bộ quét bảng tiêu chuẩn không thể đọc trực tiếp.'
+    } else {
       try {
         const stdRes = await parsePurchaseFileStandard(file, defaultCur)
-        if (stdRes?.items && stdRes.items.length > 0 && stdRes.items.some(it => toNum(it.Gia_tieu_chuan, 0) > 0 || toNum(it.Don_gia, 0) > 0)) {
+        if (
+          stdRes?.items &&
+          stdRes.items.length > 0 &&
+          stdRes.items.some(it => toNum(it.Gia_tieu_chuan, 0) > 0 || toNum(it.Don_gia, 0) > 0)
+        ) {
           extractedItems = stdRes.items
           extractedVendor = stdRes.vendorName || ''
-          usedMode = 'standard'
+        } else {
+          failReason = 'Không nhận diện được bảng hàng hóa hoặc cột đơn giá / giá vốn theo cấu trúc chuẩn.'
         }
-      } catch (stdErr) {
-        console.warn('Parser chuẩn không đọc được file, tự động chuyển sang AI/OCR:', stdErr)
+      } catch (stdErr: any) {
+        console.warn('Parser chuẩn không đọc được file đọc giá:', stdErr)
+        failReason = 'Định dạng cấu trúc file không khớp chuẩn quét thường (' + String(stdErr?.message || stdErr) + ').'
       }
     }
 
     if (!extractedItems.length) {
-      usedMode = 'ai'
-      showAsyncLoading(`Đang phân tích nội dung và tính Giá vốn sau thuế từ "${file.name}"...`)
-      const aiRes = await analyzePurchaseFileWithAI(file, defaultCur, (stepMsg) => {
-        const cleanMsg = String(stepMsg || '').replace(/[^\p{L}\p{N}\p{P}\p{Z}]/gu, '').trim()
-        showAsyncLoading(cleanMsg || `Đang phân tích "${file.name}"...`)
-      })
-      extractedItems = Array.isArray(aiRes?.items) ? aiRes.items : []
-      extractedVendor = aiRes?.vendorName || ''
-    }
-
-    if (!extractedItems.length) {
       asyncResultModal.value.show = false
-      revokeReadPriceLocalPreview()
-      showAsyncError(
-        'Không tìm thấy dữ liệu giá',
-        `Không đọc được dòng hàng hóa và đơn giá hợp lệ từ "${file.name}". Nếu chỉ cần lưu chứng từ, bạn hãy chọn "Chỉ đính kèm" trong cửa sổ tải file.`
+      openAiImportFallback(
+        'product_price',
+        file,
+        failReason || 'Quét thường không tìm thấy dòng hàng hóa và đơn giá hợp lệ trong tài liệu này.',
+        targetType
       )
       return
     }
@@ -3716,7 +4266,7 @@ async function startReadPriceFromFile(file: File, targetType: 'manual' | 'card')
     const { bestIdx, hasStrongMatch } = findBestMatchingParsedRowIndex(extractedItems, target)
     fileReadPriceModal.items = extractedItems
     fileReadPriceModal.vendorName = extractedVendor
-    fileReadPriceModal.sourceMode = usedMode
+    fileReadPriceModal.sourceMode = 'standard'
     fileReadPriceModal.bestMatchIdx = hasStrongMatch ? bestIdx : -1
     fileReadPriceModal.mobileTab = extractedItems.length === 1 ? 'price' : 'rows'
     selectParsedRowInReadModal(bestIdx)
@@ -3725,8 +4275,53 @@ async function startReadPriceFromFile(file: File, targetType: 'manual' | 'card')
   } catch (err: any) {
     console.error('Lỗi đọc giá từ file:', err)
     asyncResultModal.value.show = false
+    openAiImportFallback(
+      'product_price',
+      file,
+      'Quét tiêu chuẩn gặp sự cố (' + String(err?.message || err) + ').',
+      targetType
+    )
+  }
+}
+
+async function runAiProductPriceFallback(file: File, targetType: 'manual' | 'card') {
+  const target = targetType === 'manual' ? itemForm.value : cardEdit.value
+  if (!target || !file) return
+  const defaultCur = String(target.Don_vi_tien_te || 'VND').trim().toUpperCase() === 'USD' ? 'USD' : 'VND'
+
+  showAsyncLoading(`AI đang phân tích bảng giá và tính Giá vốn sau thuế từ "${file.name}"...`)
+  try {
+    const aiRes = await analyzePurchaseFileWithAI(file, defaultCur, (stepMsg) => {
+      showAsyncLoading(stepMsg || `AI đang phân tích "${file.name}"...`)
+    })
+    const extractedItems = Array.isArray(aiRes?.items) ? aiRes.items : []
+    const extractedVendor = aiRes?.vendorName || ''
+
+    if (!extractedItems.length) {
+      asyncResultModal.value.show = false
+      revokeReadPriceLocalPreview()
+      showAsyncError(
+        'AI không tìm thấy dữ liệu giá',
+        `AI không đọc được dòng hàng hóa và đơn giá hợp lệ từ "${file.name}". Nếu chỉ cần lưu chứng từ, bạn hãy chọn "Chỉ đính kèm" trong cửa sổ tải file.`
+      )
+      return
+    }
+
+    const { bestIdx, hasStrongMatch } = findBestMatchingParsedRowIndex(extractedItems, target)
+    fileReadPriceModal.items = extractedItems
+    fileReadPriceModal.vendorName = extractedVendor
+    fileReadPriceModal.sourceMode = 'ai'
+    fileReadPriceModal.bestMatchIdx = hasStrongMatch ? bestIdx : -1
+    fileReadPriceModal.mobileTab = extractedItems.length === 1 ? 'price' : 'rows'
+    selectParsedRowInReadModal(bestIdx)
+    asyncResultModal.value.show = false
+    fileReadPriceModal.show = true
+    triggerToast(`AI đã trích xuất ${extractedItems.length} dòng hàng hóa từ file`)
+  } catch (err: any) {
+    console.error('Lỗi AI đọc giá từ file:', err)
+    asyncResultModal.value.show = false
     revokeReadPriceLocalPreview()
-    showAsyncError('Lỗi đọc giá từ file', String(err?.message || err))
+    showAsyncError('Lỗi phân tích AI', String(err?.message || err))
   }
 }
 
@@ -6106,9 +6701,20 @@ function getPriceListStatusInfo(pl: any) {
 }
 
 const showPriceListPicker = ref<boolean>(false)
+const showPriceListInfoSubbar = ref<boolean>(false)
 const priceListSearchQuery = ref<string>('')
 const plPickerRootRef = ref<HTMLElement | null>(null)
 const plMobileSheetRef = ref<HTMLElement | null>(null)
+
+const priceListInfoToggleTitle = computed(() => {
+  const pl = activePriceList.value
+  if (!pl) return 'Thông tin bảng giá'
+  const actionTxt = showPriceListInfoSubbar.value ? 'Ẩn thông tin bảng giá' : 'Hiện thông tin bảng giá'
+  const periodTxt = formatPriceListPeriod(pl)
+  const statusTxt = getPriceListStatusInfo(pl).label
+  const filterTxt = filterOnlyPriceListItems.value ? 'Đang bật Chỉ SP bảng giá' : 'Đang hiện toàn bộ kho'
+  return `${actionTxt} — ${statusTxt} (${periodTxt}) | ${filterTxt}`
+})
 
 function normalizePriceListSearchText(raw: string): string {
   return String(raw || '')
@@ -6144,6 +6750,9 @@ function closePriceListPicker() {
 function selectPriceListOption(id: string) {
   selectedPriceListId.value = id
   showPriceListPicker.value = false
+  if (!id) {
+    showPriceListInfoSubbar.value = false
+  }
 }
 
 function handlePriceListDocPointerDown(ev: MouseEvent) {
@@ -7382,464 +7991,227 @@ function resetCustomer() {
   tenKHInput.value = ''
 }
 
+const lastCustomerImportFile = ref<File | null>(null)
+const lastCustomerImportMode = ref<'khach_dxmh' | 'khach_baogia'>('khach_dxmh')
+
 function triggerCustomerFileInput() {
-  if (customerFileInput.value) {
-    customerFileInput.value.click()
+  openSmartImportModal('khach_dxmh')
+}
+
+function triggerCustomerQuoteFileInput() {
+  openSmartImportModal('khach_baogia')
+}
+
+async function applyExtractedCustomerFieldsToForm(
+  extracted: ExtractedCustomerFields,
+  toastMessage: string
+) {
+  if (customers.value.length === 0) {
+    try {
+      customers.value = await fetchKhachHangFromFirebase()
+    } catch (err) {
+      console.warn('Không tải được danh sách khách hàng khi đối chiếu import:', err)
+    }
+  }
+
+  const tenKH = String(extracted.Ten_khach_hang || '').trim().toUpperCase()
+  const tenCTRaw = String(extracted.Ten_cong_ty || extracted.COMPANY || '').trim()
+  const tenCT = tenCTRaw ? tenCTRaw.toUpperCase() : ''
+  const mst = String(extracted.MST || '').trim()
+  const diaChi = String(extracted.Dia_chi_cong_ty || extracted.ADDRESS || '').trim()
+  const sdtCaNhan = String(extracted.So_dien_thoai_ca_nhan || '').trim()
+  const sdtCongTy = String(extracted.So_dien_thoai_cong_ty || extracted.TEL || '').trim()
+  const faxCongTy = String(extracted.So_fax_cong_ty || '').trim()
+  const emailCaNhan = String(extracted.Email_ca_nhan || '').trim()
+  const emailCongTy = String(extracted.Email_cong_ty || emailCaNhan || '').trim()
+  const website = String(extracted.Website_cong_ty || '').trim()
+  const companyEn = String(extracted.COMPANY || '').trim()
+  const addressEn = String(extracted.ADDRESS || '').trim()
+  const telEn = String(extracted.TEL || sdtCongTy || '').trim()
+  const tenKHPhu = String(extracted.Ten_khach_hang_phu || '').trim()
+  const sdtPhu = String(extracted.So_dien_thoai_ca_nhan_phu || '').trim()
+  const nganhNghe = String(extracted.Nganh_nghe_cong_ty || '').trim()
+
+  const expectedMaKH = genMaKH(tenKH, tenCT)
+  const expectedMaCT = genMaCT(tenCT)
+  const normText = (s: string) => removeDiacritics(String(s || '')).toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim()
+  const normCode = (s: string) => removeDiacritics(String(s || '')).toUpperCase().replace(/[^A-Z0-9]/g, '')
+
+  const normExpectedMa = normCode(expectedMaKH)
+  const normMst = normCode(mst)
+  const normCT = normText(tenCT)
+  const normKH = normText(tenKH)
+
+  const existingCustomer =
+    (normExpectedMa ? customers.value.find(c => normCode(c.Ma_khach_hang) === normExpectedMa) : undefined) ||
+    (normMst ? customers.value.find(c => c.MST && normCode(c.MST) === normMst) : undefined) ||
+    (normCT && normKH
+      ? customers.value.find(c => normText(c.Ten_cong_ty) === normCT && normText(c.Ten_khach_hang) === normKH)
+      : undefined) ||
+    (normCT && !normKH
+      ? customers.value.find(c => normText(c.Ten_cong_ty) === normCT && !String(c.Ten_khach_hang || '').trim())
+      : undefined)
+
+  const importedFields: Partial<KhachHang> = {
+    Ma_khach_hang: existingCustomer?.Ma_khach_hang || expectedMaKH,
+    Ten_khach_hang: tenKH,
+    Email_ca_nhan: emailCaNhan,
+    So_dien_thoai_ca_nhan: sdtCaNhan,
+    Ma_cong_ty: existingCustomer?.Ma_cong_ty || expectedMaCT,
+    Ten_cong_ty: tenCT,
+    So_dien_thoai_cong_ty: sdtCongTy,
+    So_fax_cong_ty: faxCongTy,
+    Dia_chi_cong_ty: diaChi,
+    Email_cong_ty: emailCongTy,
+    Website_cong_ty: website,
+    MST: mst,
+    Ten_khach_hang_phu: tenKHPhu,
+    So_dien_thoai_ca_nhan_phu: sdtPhu,
+    COMPANY: companyEn,
+    ADDRESS: addressEn,
+    TEL: telEn,
+    Nganh_nghe_cong_ty: nganhNghe
+  }
+
+  if (existingCustomer) {
+    isExistingCustomer.value = true
+    originalKhach.value = JSON.parse(JSON.stringify(existingCustomer))
+    const nonEmptyImported = Object.fromEntries(
+      Object.entries(importedFields).filter(([_, v]) => v !== '' && v !== undefined)
+    )
+    khach.value = {
+      ...JSON.parse(JSON.stringify(existingCustomer)),
+      ...nonEmptyImported
+    }
+  } else {
+    isExistingCustomer.value = false
+    originalKhach.value = null
+    khach.value = {
+      Ma_khach_hang: expectedMaKH,
+      Ten_khach_hang: tenKH,
+      Email_ca_nhan: emailCaNhan,
+      So_dien_thoai_ca_nhan: sdtCaNhan,
+      Ma_cong_ty: expectedMaCT,
+      Ten_cong_ty: tenCT,
+      So_dien_thoai_cong_ty: sdtCongTy,
+      So_fax_cong_ty: faxCongTy,
+      Dia_chi_cong_ty: diaChi,
+      Email_cong_ty: emailCongTy,
+      Website_cong_ty: website,
+      Hoa_hong: '',
+      Tong_chi_tieu: '',
+      Trang_thai: 'Tiềm năng',
+      Tong_loi_nhuan: '',
+      Ghi_chu: '',
+      Ten_khach_hang_phu: tenKHPhu,
+      So_dien_thoai_ca_nhan_phu: sdtPhu,
+      Email_ca_nhan_phu: '',
+      MST: mst,
+      COMPANY: companyEn,
+      ADDRESS: addressEn,
+      TEL: telEn,
+      Nganh_nghe_cong_ty: nganhNghe
+    }
+  }
+
+  maKHInput.value = khach.value.Ma_khach_hang || expectedMaKH
+  tenKHInput.value = khach.value.Ten_khach_hang || tenKH
+  hasImportedCustomerPendingSave.value = true
+  triggerToast(toastMessage)
+}
+
+async function processCustomerImportStandard(
+  file: File,
+  mode: 'khach_dxmh' | 'khach_baogia'
+) {
+  if (!file) return
+  lastCustomerImportFile.value = file
+  lastCustomerImportMode.value = mode
+
+  const modeLabel = mode === 'khach_dxmh' ? 'File ĐXMH / PO' : 'File Báo Giá'
+  showAsyncLoading(`Đang quét thông tin khách hàng tiêu chuẩn từ ${modeLabel}...`)
+  try {
+    const stdRes =
+      mode === 'khach_dxmh'
+        ? await parseCustomerDxmhStandardFromFile(file)
+        : await parseCustomerQuoteStandardFromFile(file)
+
+    if (!stdRes.isSuccess) {
+      asyncResultModal.value.show = false
+      openAiImportFallback(
+        mode,
+        file,
+        stdRes.reason || `Quét thường không nhận diện được Tên công ty / Người liên hệ từ ${modeLabel}.`
+      )
+      return
+    }
+
+    asyncResultModal.value.show = false
+    await applyExtractedCustomerFieldsToForm(
+      stdRes.customer,
+      `Đã import thông tin khách hàng từ ${modeLabel} thành công`
+    )
+  } catch (err: any) {
+    console.error('Lỗi quét khách hàng tiêu chuẩn:', err)
+    asyncResultModal.value.show = false
+    openAiImportFallback(
+      mode,
+      file,
+      `Quét tiêu chuẩn gặp sự cố định dạng (${String(err?.message || err)}).`
+    )
+  }
+}
+
+async function runAiCustomerImportAnalysis(
+  file: File,
+  mode: 'khach_dxmh' | 'khach_baogia'
+) {
+  if (!file) return
+  lastCustomerImportFile.value = file
+  lastCustomerImportMode.value = mode
+
+  const modeLabel = mode === 'khach_dxmh' ? 'File ĐXMH / PO' : 'File Báo Giá'
+  showAsyncLoading(`AI đang phân tích thông tin khách hàng từ "${file.name}"...`)
+  try {
+    const aiRes = await analyzeCustomerOrTaxFileWithAI(file, mode, (msg) => {
+      showAsyncLoading(msg)
+    })
+    const c = aiRes.customer || {}
+    if (!c.Ten_cong_ty && !c.COMPANY && !c.Ten_khach_hang && !c.MST) {
+      asyncResultModal.value.show = false
+      showAsyncError(
+        'Không tìm thấy khách hàng',
+        `AI không tìm thấy thông tin Tên công ty, Người nhận hoặc Mã số thuế trong "${file.name}".`
+      )
+      return
+    }
+
+    asyncResultModal.value.show = false
+    await applyExtractedCustomerFieldsToForm(
+      c,
+      `AI đã trích xuất thông tin khách hàng từ ${modeLabel} thành công`
+    )
+  } catch (err: any) {
+    console.error('Lỗi AI trích xuất khách hàng:', err)
+    asyncResultModal.value.show = false
+    showAsyncError('Lỗi phân tích AI', String(err?.message || err))
   }
 }
 
 async function handleCustomerFileUpload(event: Event) {
   const target = event.target as HTMLInputElement
-  const files = target.files
-  if (!files || files.length === 0) return
-
-  try {
-    const file = files[0]
-    const data = await file.arrayBuffer()
-    const workbook = XLSX.read(data, { type: 'array' })
-    const sheetNamePO = workbook.SheetNames.find(name => name.toUpperCase().trim() === 'PO')
-    const sheetNameDH = workbook.SheetNames.find(name => {
-      const upper = name.toUpperCase().trim()
-      return upper.includes('ĐƠN HÀNG') || upper.includes('DON HANG')
-    })
-
-    let worksheet = null
-    if (sheetNamePO) worksheet = workbook.Sheets[sheetNamePO]
-    else if (sheetNameDH) worksheet = workbook.Sheets[sheetNameDH]
-    else worksheet = workbook.Sheets[workbook.SheetNames[0]]
-
-    const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as any[][]
-    if (rawData.length < 2) {
-      alert('Không tìm thấy thông tin khách hàng hợp lệ trong file đã chọn.')
-      return
-    }
-
-    const record: Record<string, any> = {}
-    for (let r = 0; r < rawData.length; r++) {
-      const row = rawData[r]
-      if (!row) continue
-
-      const label1 = (row[0] || row[1] || '').toString().trim()
-      let val1 = row[2] !== undefined ? row[2] : ''
-      if (row[0] && row[1] && row[0] !== label1) val1 = row[1]
-
-      if (label1.includes('Company')) record['CUS_COMPANY'] = val1
-      if (label1.includes('Address')) record['CUS_ADDRESS'] = val1
-      if (label1.includes('Tel')) record['CUS_TEL'] = val1
-      if (label1 === 'Fax' || label1.includes('Fax')) record['CUS_FAX'] = val1
-      if (label1.includes('Contact')) record['CUS_CONTACT'] = val1
-      if (label1.includes('Email')) {
-        if (r < 13) record['CUS_EMAIL'] = val1
-        else record['INV_EMAIL'] = val1
-      }
-      if (label1 === 'Mobile') record['CUS_MOBILE'] = val1
-      if (label1 === 'Website') record['CUS_WEBSITE'] = val1
-
-      if (label1.includes('Công ty')) record['INV_CONG_TY'] = val1
-      if (label1 === 'Địa chỉ (*)' || label1 === 'Địa chỉ') {
-        if (r > 12) record['INV_DIA_CHI'] = val1
-      }
-      if (label1.includes('MST')) record['INV_MST'] = val1
-
-      const label2 = (row[3] || row[4] || '').toString().trim()
-      let val2 = row[5] !== undefined ? row[5] : ''
-      if (row[3] && row[4] && row[3] !== label2) val2 = row[4]
-
-      if (label2.includes('Người nhận hàng')) record['DEL_NGUOI_NHAN'] = val2
-      if (label2.includes('Số điện thoại')) record['DEL_SDT'] = val2
-    }
-
-    const contactRaw = String(record.CUS_CONTACT || '').trim()
-    const nguoiNhan = String(record.DEL_NGUOI_NHAN || '').trim()
-
-    const tenKHRaw = contactRaw || nguoiNhan
-    const tenKH = tenKHRaw ? tenKHRaw.toUpperCase() : ''
-    const sdt = contactRaw ? String(record.CUS_MOBILE || '').trim() : String(record.DEL_SDT || '').trim()
-    const email = contactRaw ? String(record.CUS_EMAIL || '').trim() : ''
-
-    const hasSecondary = contactRaw && nguoiNhan && contactRaw !== nguoiNhan
-    const tenKHPhu = hasSecondary ? nguoiNhan : ''
-    const sdtPhu = hasSecondary ? String(record.DEL_SDT || '').trim() : ''
-
-    const tenCTRaw = String(record.INV_CONG_TY || record.CUS_COMPANY || '').trim()
-    const tenCT = tenCTRaw ? tenCTRaw.toUpperCase() : ''
-
-    if (!tenKH && !tenCT) {
-      alert('Không tìm thấy thông tin khách hàng hợp lệ trong file đã chọn.')
-      return
-    }
-
-    const expectedMaKH = genMaKH(tenKH, tenCT)
-    const maCT = genMaCT(tenCT)
-    const existingCustomer = customers.value.find(c => c.Ma_khach_hang === expectedMaKH)
-
-    const importedFields: Partial<KhachHang> = {
-      Ma_khach_hang: expectedMaKH,
-      Ten_khach_hang: tenKH,
-      Email_ca_nhan: email,
-      So_dien_thoai_ca_nhan: sdt,
-      Ma_cong_ty: maCT,
-      Ten_cong_ty: tenCT,
-      So_dien_thoai_cong_ty: String(record.CUS_TEL || '').trim(),
-      So_fax_cong_ty: String(record.CUS_FAX || '').trim(),
-      Dia_chi_cong_ty: String(record.INV_DIA_CHI || '').trim(),
-      Email_cong_ty: String(record.INV_EMAIL || record.CUS_EMAIL || '').trim(),
-      Website_cong_ty: String(record.CUS_WEBSITE || '').trim(),
-      MST: String(record.INV_MST || '').trim(),
-      Ten_khach_hang_phu: tenKHPhu,
-      So_dien_thoai_ca_nhan_phu: sdtPhu,
-      COMPANY: String(record.CUS_COMPANY || '').trim(),
-      ADDRESS: String(record.CUS_ADDRESS || '').trim(),
-      TEL: String(record.CUS_TEL || '').trim()
-    }
-
-    if (existingCustomer) {
-      isExistingCustomer.value = true
-      originalKhach.value = JSON.parse(JSON.stringify(existingCustomer))
-      const nonEmptyImported = Object.fromEntries(
-        Object.entries(importedFields).filter(([_, v]) => v !== '' && v !== undefined)
-      )
-      khach.value = {
-        ...JSON.parse(JSON.stringify(existingCustomer)),
-        ...nonEmptyImported
-      }
-    } else {
-      isExistingCustomer.value = false
-      originalKhach.value = null
-      khach.value = {
-        Ma_khach_hang: expectedMaKH,
-        Ten_khach_hang: tenKH,
-        Email_ca_nhan: email,
-        So_dien_thoai_ca_nhan: sdt,
-        Ma_cong_ty: maCT,
-        Ten_cong_ty: tenCT,
-        So_dien_thoai_cong_ty: String(record.CUS_TEL || '').trim(),
-        So_fax_cong_ty: String(record.CUS_FAX || '').trim(),
-        Dia_chi_cong_ty: String(record.INV_DIA_CHI || '').trim(),
-        Email_cong_ty: String(record.INV_EMAIL || record.CUS_EMAIL || '').trim(),
-        Website_cong_ty: String(record.CUS_WEBSITE || '').trim(),
-        Hoa_hong: '',
-        Tong_chi_tieu: '',
-        Trang_thai: 'Tiềm năng',
-        Tong_loi_nhuan: '',
-        Ghi_chu: '',
-        Ten_khach_hang_phu: tenKHPhu,
-        So_dien_thoai_ca_nhan_phu: sdtPhu,
-        Email_ca_nhan_phu: '',
-        MST: String(record.INV_MST || '').trim(),
-        COMPANY: String(record.CUS_COMPANY || '').trim(),
-        ADDRESS: String(record.CUS_ADDRESS || '').trim(),
-        TEL: String(record.CUS_TEL || '').trim(),
-        Nganh_nghe_cong_ty: ''
-      }
-    }
-
-    maKHInput.value = khach.value.Ma_khach_hang || expectedMaKH
-    tenKHInput.value = khach.value.Ten_khach_hang || tenKH
-    hasImportedCustomerPendingSave.value = true
-    triggerToast('Đã import thông tin khách hàng thành công!')
-  } catch (e) {
-    console.error('Lỗi đọc file Excel khách hàng:', e)
-    alert('Lỗi khi đọc file Excel. Định dạng không hợp lệ.')
-  } finally {
-    target.value = ''
-  }
-}
-
-function triggerCustomerQuoteFileInput() {
-  if (customerQuoteFileInput.value) {
-    customerQuoteFileInput.value.click()
-  }
-}
-
-function cleanExtractedQuoteCompany(raw: any): string {
-  if (!raw) return ''
-  const s = String(raw)
-    .replace(/^[\s:–\-]+/, '')
-    .replace(/(?:^|\s)(?:ngày|date)\s*(?::|\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}).*$/i, '')
-    .replace(/(?:^|\s)(?:mst|mã\s*số\s*thuế|tax\s*code)\s*:?.*$/i, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-  if (!s || /^\{+.*\}+$/i.test(s) || /nam\s+trường\s+sơn|ntssi/i.test(s)) return ''
-  return s
-}
-
-function cleanExtractedQuoteRecipient(raw: any): string {
-  if (!raw) return ''
-  const s = String(raw)
-    .replace(/^[\s:–\-]+/, '')
-    .replace(/(?:^|\s)(?:tel|mobile|sđt|số\s*điện\s*thoại|điện\s*thoại|đt|email|e-mail|fax|chức\s*vụ|bộ\s*phận|phòng|ngày|date)\s*:?.*$/i, '')
-    .replace(/(?:[\s\-–/|,(]+(?:\+?84|0)\d[\d\s.\-]{7,}\)?)$/i, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-  if (!s || /^\{+.*\}+$/i.test(s) || /^(?:mr|ms|mrs|miss|dr|anh|chị|chi|ông|ong|bà|ba)\.?$/i.test(s)) return ''
-  return s
-}
-
-function cleanExtractedQuoteAddress(raw: any): string {
-  if (!raw) return ''
-  const s = String(raw)
-    .replace(/^[\s:–\-]+/, '')
-    .replace(/(?:^|\s)(?:ngày|date)\s*(?::|\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}).*$/i, '')
-    .replace(/(?:^|\s)(?:tel|fax|mobile|sđt|số\s*điện\s*thoại|điện\s*thoại|mst|mã\s*số\s*thuế)\s*:?.*$/i, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-  if (!s || /^\{+.*\}+$/i.test(s) || /tăng\s*bạt\s*hổ|tang\s*bat\s*ho/i.test(s)) return ''
-  return s
-}
-
-function extractQuoteCustomerFromRows(rows: any[][]): { tenCT: string; tenKH: string; diaChi: string; extra: Partial<KhachHang> } {
-  let tenCT = ''
-  let tenKH = ''
-  let diaChi = ''
-  const extra: Partial<KhachHang> = {}
-  const maxRows = Math.min(rows.length, 30)
-  for (let r = 0; r < maxRows; r++) {
-    const row = rows[r]
-    if (!Array.isArray(row)) continue
-    const nonEmptyCells = row
-      .map(c => String(c ?? '').trim())
-      .filter(Boolean)
-    if (nonEmptyCells.length === 0) continue
-
-    const rowUpper = nonEmptyCells.join('|').toUpperCase()
-    if (
-      (rowUpper.includes('STT') || rowUpper.includes('NO.')) &&
-      (rowUpper.includes('TÊN HÀNG') || rowUpper.includes('MODEL') || rowUpper.includes('PART#') || rowUpper.includes('DIỄN GIẢI') || rowUpper.includes('SẢN PHẨM') || rowUpper.includes('HÀNG HÓA'))
-    ) {
-      break
-    }
-
-    extractCustomerInfoFromHeaderStrings(nonEmptyCells, extra)
-
-    for (let j = 0; j < nonEmptyCells.length; j++) {
-      const cellText = nonEmptyCells[j]
-      const subLines = cellText.split(/\r?\n/).map(l => l.trim()).filter(Boolean)
-      for (const line of subLines) {
-        if (!tenCT && /(?:kính\s*g[ởiử]i|kinh\s*g[oiu]i)/i.test(line)) {
-          const m = line.match(/(?:kính\s*g[ởiử]i|kinh\s*g[oiu]i)\s*:?\s*(.*)/i)
-          let candidate = m && m[1] ? cleanExtractedQuoteCompany(m[1]) : ''
-          if (!candidate && j + 1 < nonEmptyCells.length) {
-            const nextCell = nonEmptyCells[j + 1]
-            if (!/^(?:ngày|date|địa\s*chỉ|người\s*nhận)(?:\s|:|$)/i.test(nextCell)) {
-              candidate = cleanExtractedQuoteCompany(nextCell)
-            }
-          }
-          if (candidate) tenCT = candidate
-        }
-        if (
-          !diaChi &&
-          /(?:địa\s*chỉ|dia\s*chi|address)/i.test(line) &&
-          !/giao\s*hàng|tăng\s*bạt\s*hổ|tang\s*bat\s*ho/i.test(line)
-        ) {
-          const m = line.match(/(?:địa\s*chỉ|dia\s*chi|address)\s*(?:\(\*\))?\s*:?\s*(.*)/i)
-          let candidate = m && m[1] ? cleanExtractedQuoteAddress(m[1]) : ''
-          if (!candidate && j + 1 < nonEmptyCells.length) {
-            const nextCell = nonEmptyCells[j + 1]
-            if (!/^(?:ngày|date|người\s*nhận|tel|mobile|sđt|email|fax|mst)(?:\s|:|$)/i.test(nextCell)) {
-              candidate = cleanExtractedQuoteAddress(nextCell)
-            }
-          }
-          if (candidate) diaChi = candidate
-        }
-        if (
-          !tenKH &&
-          /(?:người\s*nhận|nguoi\s*nhan|người\s*liên\s*hệ|attn|attention|contact)/i.test(line) &&
-          !/người\s*nhận\s*hàng/i.test(line)
-        ) {
-          const m = line.match(/(?:người\s*nhận|nguoi\s*nhan|người\s*liên\s*hệ|attn|attention|contact)\s*:?\s*(.*)/i)
-          let candidate = m && m[1] ? cleanExtractedQuoteRecipient(m[1]) : ''
-          if (!candidate && j + 1 < nonEmptyCells.length) {
-            const nextCell = nonEmptyCells[j + 1]
-            if (!/^(?:ngày|date|địa\s*chỉ|tel|mobile|sđt|email|fax|mst)(?:\s|:|$)/i.test(nextCell)) {
-              candidate = cleanExtractedQuoteRecipient(nextCell)
-            }
-          }
-          if (candidate) tenKH = candidate
-        }
-      }
-    }
-    if (tenCT && tenKH && diaChi) break
-  }
-  return {
-    tenCT: tenCT || String(extra.Ten_cong_ty || '').trim(),
-    tenKH: tenKH || String(extra.Ten_khach_hang || '').trim(),
-    diaChi: diaChi || String(extra.Dia_chi_cong_ty || '').trim(),
-    extra
-  }
-}
-
-async function extractQuoteCustomerFromPdfBuffer(arrayBuffer: ArrayBuffer) {
-  const getDocFn = (pdfjsLib as any)?.getDocument || (pdfjsLib as any)?.default?.getDocument
-  const doc = await getDocFn({ data: new Uint8Array(arrayBuffer) }).promise
-  const page = await doc.getPage(1)
-  const vp = page.getViewport({ scale: 1.0 })
-  const tc = await page.getTextContent()
-  const lines: Array<{ topY: number; tokens: Array<{ str: string; x: number; xRight: number }> }> = []
-  for (const it of (tc.items || []) as any[]) {
-    const str = String(it?.str ?? '')
-    if (!str.trim()) continue
-    const tr = it.transform || [10, 0, 0, 10, 0, 0]
-    const x = Number(tr[4]) || 0
-    const width = Number(it.width) || str.length * 4.5
-    const topY = vp.height - (Number(tr[5]) || 0)
-    let line = lines.find(l => Math.abs(l.topY - topY) <= 3.5)
-    if (!line) {
-      line = { topY, tokens: [] }
-      lines.push(line)
-    }
-    line.tokens.push({ str, x, xRight: x + width })
-  }
-  lines.sort((a, b) => a.topY - b.topY)
-  const rows = lines.map(l => {
-    l.tokens.sort((a, b) => a.x - b.x)
-    let txt = ''
-    l.tokens.forEach((t, idx) => {
-      if (idx > 0) {
-        const prev = l.tokens[idx - 1]
-        if (t.x - prev.xRight > 1.5 && !prev.str.endsWith(' ') && !t.str.startsWith(' ')) {
-          txt += ' '
-        }
-      }
-      txt += t.str
-    })
-    return [txt.trim()]
-  })
-  return extractQuoteCustomerFromRows(rows)
+  const file = target.files && target.files[0] ? target.files[0] : null
+  target.value = ''
+  if (!file) return
+  await processCustomerImportStandard(file, 'khach_dxmh')
 }
 
 async function handleCustomerQuoteFileUpload(event: Event) {
   const target = event.target as HTMLInputElement
-  const files = target.files
-  if (!files || files.length === 0) return
-
-  try {
-    const file = files[0]
-    const data = await file.arrayBuffer()
-    const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf'
-
-    let tenCT = ''
-    let tenKH = ''
-    let diaChi = ''
-    let extra: Partial<KhachHang> = {}
-
-    if (isPdf) {
-      const res = await extractQuoteCustomerFromPdfBuffer(data)
-      tenCT = res.tenCT
-      tenKH = res.tenKH
-      diaChi = res.diaChi
-      extra = res.extra
-    } else {
-      const workbook = XLSX.read(data, { type: 'array' })
-      for (const sheetName of workbook.SheetNames) {
-        const ws = workbook.Sheets[sheetName]
-        if (!ws) continue
-        const rawData = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }) as any[][]
-        const res = extractQuoteCustomerFromRows(rawData)
-        if (res.tenCT || res.tenKH || res.diaChi) {
-          tenCT = res.tenCT
-          tenKH = res.tenKH
-          diaChi = res.diaChi
-          extra = res.extra
-          break
-        }
-      }
-    }
-
-    const finalTenKH = (tenKH || '').trim().toUpperCase()
-    const finalTenCT = (tenCT || '').trim().toUpperCase()
-    const finalDiaChi = (diaChi || '').trim()
-    const finalSdt = String(extra.So_dien_thoai_ca_nhan || '').trim()
-    const finalEmail = String(extra.Email_ca_nhan || '').trim()
-    const finalMst = String(extra.MST || '').trim()
-    const finalFax = String(extra.So_fax_cong_ty || '').trim()
-
-    if (!finalTenKH && !finalTenCT) {
-      alert('Không tìm thấy thông tin Kính gửi (Tên công ty) hoặc Người nhận hợp lệ trong file báo giá đã chọn.')
-      return
-    }
-
-    const expectedMaKH = genMaKH(finalTenKH, finalTenCT)
-    const expectedMaCT = genMaCT(finalTenCT)
-    const normText = (s: string) => removeDiacritics(String(s || '')).toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim()
-    const normCode = (s: string) => removeDiacritics(String(s || '')).toUpperCase().replace(/[^A-Z0-9]/g, '')
-
-    const normExpectedMa = normCode(expectedMaKH)
-    const normCT = normText(finalTenCT)
-    const normKH = normText(finalTenKH)
-
-    const existingCustomer =
-      (normExpectedMa ? customers.value.find(c => normCode(c.Ma_khach_hang) === normExpectedMa) : undefined) ||
-      (normCT && normKH
-        ? customers.value.find(c => normText(c.Ten_cong_ty) === normCT && normText(c.Ten_khach_hang) === normKH)
-        : undefined) ||
-      (normCT && !normKH
-        ? customers.value.find(c => normText(c.Ten_cong_ty) === normCT && !String(c.Ten_khach_hang || '').trim())
-        : undefined)
-
-    const importedFields: Partial<KhachHang> = {
-      Ma_khach_hang: existingCustomer?.Ma_khach_hang || expectedMaKH,
-      Ten_khach_hang: finalTenKH,
-      Ma_cong_ty: existingCustomer?.Ma_cong_ty || expectedMaCT,
-      Ten_cong_ty: finalTenCT,
-      Dia_chi_cong_ty: finalDiaChi,
-      So_dien_thoai_ca_nhan: finalSdt,
-      Email_ca_nhan: finalEmail,
-      MST: finalMst,
-      So_fax_cong_ty: finalFax
-    }
-
-    if (existingCustomer) {
-      isExistingCustomer.value = true
-      originalKhach.value = JSON.parse(JSON.stringify(existingCustomer))
-      const nonEmptyImported = Object.fromEntries(
-        Object.entries(importedFields).filter(([_, v]) => v !== '' && v !== undefined)
-      )
-      khach.value = {
-        ...JSON.parse(JSON.stringify(existingCustomer)),
-        ...nonEmptyImported
-      }
-    } else {
-      isExistingCustomer.value = false
-      originalKhach.value = null
-      khach.value = {
-        Ma_khach_hang: expectedMaKH,
-        Ten_khach_hang: finalTenKH,
-        Email_ca_nhan: finalEmail,
-        So_dien_thoai_ca_nhan: finalSdt,
-        Ma_cong_ty: expectedMaCT,
-        Ten_cong_ty: finalTenCT,
-        So_dien_thoai_cong_ty: '',
-        So_fax_cong_ty: finalFax,
-        Dia_chi_cong_ty: finalDiaChi,
-        Email_cong_ty: '',
-        Website_cong_ty: '',
-        Hoa_hong: '',
-        Tong_chi_tieu: '',
-        Trang_thai: 'Tiềm năng',
-        Tong_loi_nhuan: '',
-        Ghi_chu: '',
-        Ten_khach_hang_phu: '',
-        So_dien_thoai_ca_nhan_phu: '',
-        Email_ca_nhan_phu: '',
-        MST: finalMst,
-        COMPANY: '',
-        ADDRESS: '',
-        TEL: '',
-        Nganh_nghe_cong_ty: ''
-      }
-    }
-
-    maKHInput.value = khach.value.Ma_khach_hang || expectedMaKH
-    tenKHInput.value = khach.value.Ten_khach_hang || finalTenKH
-    hasImportedCustomerPendingSave.value = true
-    triggerToast('Đã import thông tin khách hàng từ file báo giá thành công!')
-  } catch (e) {
-    console.error('Lỗi đọc file báo giá khách hàng:', e)
-    alert('Lỗi khi đọc file báo giá. Định dạng không hợp lệ.')
-  } finally {
-    target.value = ''
-  }
+  const file = target.files && target.files[0] ? target.files[0] : null
+  target.value = ''
+  if (!file) return
+  await processCustomerImportStandard(file, 'khach_baogia')
 }
 
 /* ── Công nợ & Lịch sử thanh toán Khách hàng (đồng bộ với CustomerFirebase) ── */
@@ -8091,13 +8463,116 @@ function doesRowMatchCustomer(r: any, kh: any): boolean {
   return false
 }
 
+function getPoContractContent(po: any, maxLen = 0): string {
+  if (!po) return 'Chưa có nội dung HĐ/PO'
+  const raw = String(
+    po.content_of_contract_PO ??
+    po.content_of_contract_po ??
+    po['content_of_contract/PO'] ??
+    po.Content_of_Contract_PO ??
+    po.ten_po ??
+    po.Ten_PO ??
+    po.so_hop_dong ??
+    po.ma_hop_dong ??
+    ''
+  ).trim()
+  const label = raw || 'Chưa có nội dung HĐ/PO'
+  if (maxLen > 0 && label.length > maxLen) {
+    return label.slice(0, maxLen).trimEnd() + '…'
+  }
+  return label
+}
+
+function getPoCreatedDateShort(po: any): string {
+  if (!po || !po.created_time) return ''
+  const d = parseDebtDateStr(po.created_time)
+  if (d && !isNaN(d.getTime())) {
+    const p = (n: number) => String(n).padStart(2, '0')
+    return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`
+  }
+  const m = String(po.created_time).match(/(\d{1,2}\/\d{1,2}\/\d{4})/)
+  return m ? m[1] : ''
+}
+
+function getPaymentHistoryCustomerInfo(h: any): { tenKH: string; tenCongTy: string } {
+  let tenKH = String(h?.ten_khach_hang || h?.Ten_khach_hang || '').trim()
+  let tenCongTy = String(h?.ten_cong_ty || h?.Ten_cong_ty || '').trim()
+
+  const srId = String(h?.id_salereport || '').trim()
+  let matchedSr: any = null
+  if ((!tenKH || !tenCongTy) && srId) {
+    matchedSr = saleReportRowsForDebt.value.find(
+      r => String(r.ID || '') === srId || String(r._firebaseKey || '') === srId
+    )
+    if (matchedSr) {
+      if (!tenKH) tenKH = String(matchedSr.Ten_khach_hang || matchedSr.ten_khach_hang || '').trim()
+      if (!tenCongTy) tenCongTy = String(matchedSr.Ten_cong_ty || matchedSr.ten_cong_ty || '').trim()
+    }
+  }
+
+  const lookupCode = String(h?.maKH || matchedSr?.Ma_khach_hang || matchedSr?.Ma_cong_ty || '').trim().toUpperCase()
+  if ((!tenKH || !tenCongTy) && lookupCode) {
+    const matchedKh = customers.value.find(c => {
+      const cMkh = String(c.Ma_khach_hang || c.ma_khach_hang || '').trim().toUpperCase()
+      const cMct = String(c.Ma_cong_ty || c.ma_cong_ty || '').trim().toUpperCase()
+      return (cMkh && cMkh === lookupCode) || (cMct && cMct === lookupCode)
+    })
+    if (matchedKh) {
+      if (!tenKH) tenKH = String(matchedKh.Ten_khach_hang || matchedKh.ten_khach_hang || '').trim()
+      if (!tenCongTy) tenCongTy = String(matchedKh.Ten_cong_ty || matchedKh.ten_cong_ty || '').trim()
+    }
+  }
+
+  const m = paymentModal.value
+  if (!tenKH) {
+    tenKH = String(
+      m.row?.Ten_khach_hang ||
+      m.row?.ten_khach_hang ||
+      m.customer?.Ten_khach_hang ||
+      m.customer?.ten_khach_hang ||
+      ''
+    ).trim()
+  }
+  if (!tenCongTy) {
+    tenCongTy = String(
+      m.row?.Ten_cong_ty ||
+      m.row?.ten_cong_ty ||
+      m.customer?.Ten_cong_ty ||
+      m.customer?.ten_cong_ty ||
+      ''
+    ).trim()
+  }
+
+  return {
+    tenKH: tenKH || '—',
+    tenCongTy: tenCongTy || '—'
+  }
+}
+
 function getCustomerPOs(kh: any): any[] {
   if (!kh) return []
-  return saleReportRowsForDebt.value.filter(r => doesRowMatchCustomer(r, kh))
+  return saleReportRowsForDebt.value
+    .filter(r => doesRowMatchCustomer(r, kh))
+    .sort((a, b) => {
+      const aUnpaid = poCongNo(a) > 0 ? 1 : 0
+      const bUnpaid = poCongNo(b) > 0 ? 1 : 0
+      if (bUnpaid !== aUnpaid) return bUnpaid - aUnpaid
+      const da = parseDebtDateStr(a.created_time)?.getTime() || 0
+      const db = parseDebtDateStr(b.created_time)?.getTime() || 0
+      return db - da
+    })
 }
 
 function getCustomerDebtSummary(kh: any) {
   if (!kh) return { poCount: 0, tongSauVat: 0, daThanhToan: 0, congNo: 0, progressPct: 0 }
+  if (kh._isGuideDemo && Array.isArray(paymentModal.value.customerPOs) && paymentModal.value.customerPOs.length > 0) {
+    const demoPos = paymentModal.value.customerPOs
+    const tongSau = demoPos.reduce((s, r) => s + poTongSauVat(r), 0)
+    const daTT = demoPos.reduce((s, r) => s + poDaThanhToan(r), 0)
+    const cn = demoPos.reduce((s, r) => s + poCongNo(r), 0)
+    const progressPct = tongSau > 0 ? Math.min(100, Math.round((daTT / tongSau) * 100)) : (cn <= 0 ? 100 : 0)
+    return { poCount: demoPos.length, tongSauVat: tongSau, daThanhToan: daTT, congNo: cn, progressPct }
+  }
   const pos = getCustomerPOs(kh)
   if (pos.length > 0) {
     const tongSau = pos.reduce((s, r) => s + poTongSauVat(r), 0)
@@ -8120,6 +8595,9 @@ function getCustomerDebtSummary(kh: any) {
 
 function getPaymentHistoryForPO(r: any): any[] {
   if (!r) return []
+  if (r._isGuideDemo) {
+    return Array.isArray(r._demoHistory) ? r._demoHistory : []
+  }
   const srId = String(r.ID || r._firebaseKey || '')
   const fbKey = String(r._firebaseKey || '')
   return lichSuThanhToanListForDebt.value.filter(
@@ -8129,6 +8607,9 @@ function getPaymentHistoryForPO(r: any): any[] {
 
 function getPaymentHistoryForCustomer(kh: any): any[] {
   if (!kh) return []
+  if (kh._isGuideDemo && Array.isArray(paymentModal.value.customerPOs)) {
+    return paymentModal.value.customerPOs.flatMap(p => (Array.isArray(p?._demoHistory) ? p._demoHistory : []))
+  }
   const pos = getCustomerPOs(kh)
   const poIds = new Set<string>()
   pos.forEach(p => {
@@ -8234,10 +8715,9 @@ function setupModalForPO(row: any) {
     paymentModal.value.scheduleItems = []
     paymentModal.value.singleDueDate = ''
     paymentModal.value.amount = 0
-    paymentModal.value.amountStr = ''
+    paymentModal.value.amountStr = '0'
     return
   }
-  const remaining = poCongNo(row)
   const totalSau = poTongSauVat(row)
   const existingMode =
     row.loai_thanh_toan === 'nhieu_dot' || (Array.isArray(row.ke_hoach_thanh_toan) && row.ke_hoach_thanh_toan.length > 1)
@@ -8266,12 +8746,11 @@ function setupModalForPO(row: any) {
   const singleDue = String(row.han_thanh_toan || existingSchedule[0]?.han_thanh_toan || '')
   const evalInst = evaluateInstallmentSchedule(totalSau, poDaThanhToan(row), existingMode, singleDue, existingSchedule)
   const nextUnpaid = evalInst.find(x => x.con_thieu > 0)
-  const defaultPayAmt = existingMode === 'nhieu_dot' && nextUnpaid ? nextUnpaid.con_thieu : (remaining > 0 ? remaining : 0)
   const defaultNote = existingMode === 'nhieu_dot' && nextUnpaid ? `Thanh toán Đợt ${nextUnpaid.dot} (${nextUnpaid.noi_dung})` : ''
 
   paymentModal.value.row = row
-  paymentModal.value.amount = defaultPayAmt
-  paymentModal.value.amountStr = defaultPayAmt > 0 ? defaultPayAmt.toLocaleString('vi-VN') : ''
+  paymentModal.value.amount = 0
+  paymentModal.value.amountStr = '0'
   paymentModal.value.paymentTime = getDebtFormattedNow()
   paymentModal.value.note = defaultNote
   paymentModal.value.scheduleMode = existingMode
@@ -8312,27 +8791,51 @@ function openRecordPaymentSubModal(evalInst?: any) {
   const m = paymentModal.value
   if (!m.row) return
   m.paymentTime = getDebtFormattedNow()
+  m.amount = 0
+  m.amountStr = '0'
   if (evalInst) {
-    const amt = toNum(evalInst.con_thieu, 0) > 0 ? toNum(evalInst.con_thieu, 0) : toNum(evalInst.so_tien_phai_thu, 0)
-    m.amount = amt
-    m.amountStr = amt > 0 ? amt.toLocaleString('vi-VN') : ''
     m.note = m.scheduleMode === 'nhieu_dot'
       ? `Thanh toán Đợt ${evalInst.dot} (${evalInst.noi_dung})`
       : 'Thanh toán 100% đơn hàng'
   } else {
-    const remaining = poCongNo(m.row)
     const nextUnpaid = modalEvaluatedInstallments.value.find(x => x.con_thieu > 0)
-    const defaultPayAmt = m.scheduleMode === 'nhieu_dot' && nextUnpaid
-      ? nextUnpaid.con_thieu
-      : (remaining > 0 ? remaining : 0)
-    m.amount = defaultPayAmt
-    m.amountStr = defaultPayAmt > 0 ? defaultPayAmt.toLocaleString('vi-VN') : ''
     m.note = m.scheduleMode === 'nhieu_dot' && nextUnpaid
       ? `Thanh toán Đợt ${nextUnpaid.dot} (${nextUnpaid.noi_dung})`
       : ''
   }
   m.showScheduleSubModal = false
   m.showRecordSubModal = true
+}
+
+function applyQuickInstallmentAmount(evalInst: any) {
+  const m = paymentModal.value
+  if (!m.row || !evalInst) return
+  const amt = toNum(evalInst.con_thieu, 0) > 0 ? toNum(evalInst.con_thieu, 0) : toNum(evalInst.so_tien_phai_thu, 0)
+  m.amount = amt
+  m.amountStr = amt > 0 ? amt.toLocaleString('vi-VN') : '0'
+  m.note = m.scheduleMode === 'nhieu_dot'
+    ? `Thanh toán Đợt ${evalInst.dot} (${evalInst.noi_dung})`
+    : 'Thanh toán 100% đơn hàng'
+}
+
+function resetPaymentAmountToZero() {
+  paymentModal.value.amount = 0
+  paymentModal.value.amountStr = '0'
+}
+
+function onPaymentAmountFocus(e: FocusEvent) {
+  const target = e.target as HTMLInputElement
+  if (!target) return
+  if (paymentModal.value.amount === 0 || target.value.trim() === '0') {
+    requestAnimationFrame(() => target.select())
+  }
+}
+
+function onPaymentAmountBlur() {
+  if (!paymentModal.value.amount || paymentModal.value.amount <= 0) {
+    paymentModal.value.amount = 0
+    paymentModal.value.amountStr = '0'
+  }
 }
 
 function applySchedulePreset(pcts: number[], labels?: string[]) {
@@ -8565,6 +9068,16 @@ async function refreshCustomerCalculatedDebt() {
 async function savePaymentScheduleOnly() {
   const m = paymentModal.value
   if (!m.row || m.savingSchedule) return
+  if (m.row._isGuideDemo) {
+    const r = m.row
+    const payload = buildSchedulePayloadForRow(r)
+    r.loai_thanh_toan = payload.loai_thanh_toan
+    r.han_thanh_toan = payload.han_thanh_toan
+    r.ke_hoach_thanh_toan = payload.ke_hoach_thanh_toan
+    m.showScheduleSubModal = false
+    triggerToast('Đã cập nhật thử kế hoạch trên dữ liệu minh họa (không ghi DB)!')
+    return
+  }
   m.savingSchedule = true
   try {
     const r = m.row
@@ -8594,7 +9107,13 @@ async function savePaymentScheduleOnly() {
     triggerToast('Đã lưu kế hoạch & hạn thanh toán!')
   } catch (e) {
     console.error('Lỗi lưu kế hoạch thanh toán:', e)
-    alert('Lỗi khi lưu mốc hạn thanh toán. Vui lòng thử lại.')
+    await openBaogiaAlert({
+      variant: 'error',
+      eyebrow: 'Tiến độ trả nợ',
+      title: 'Không thể lưu mốc hạn thanh toán',
+      message: 'Lỗi khi lưu mốc hạn thanh toán. Vui lòng kiểm tra kết nối và thử lại.',
+      confirmText: 'Đóng'
+    })
   } finally {
     m.savingSchedule = false
   }
@@ -8606,21 +9125,23 @@ function setPaymentQuickPct(pct: number) {
   const base = remaining > 0 ? remaining : poTongSauVat(paymentModal.value.row)
   const val = Math.round(base * (pct / 100))
   paymentModal.value.amount = val
-  paymentModal.value.amountStr = val > 0 ? val.toLocaleString('vi-VN') : ''
+  paymentModal.value.amountStr = val > 0 ? val.toLocaleString('vi-VN') : '0'
 }
 
 function onPaymentAmountInput(e: Event) {
   const target = e.target as HTMLInputElement
   const ie = e as InputEvent
   let num = 0
+  let rawDigits = ''
   if (ie.inputType === 'insertFromPaste' || ie.inputType === 'insertFromDrop') {
     num = Math.max(0, parsePastedNumber(target.value, 0, false))
+    rawDigits = String(num)
   } else {
-    const raw = String(target.value || '').replace(/[^0-9]/g, '')
-    num = raw ? Number(raw) : 0
+    rawDigits = String(target.value || '').replace(/[^0-9]/g, '')
+    num = rawDigits ? Number(rawDigits) : 0
   }
   paymentModal.value.amount = num
-  paymentModal.value.amountStr = num > 0 ? num.toLocaleString('vi-VN') : ''
+  paymentModal.value.amountStr = num > 0 ? num.toLocaleString('vi-VN') : (rawDigits === '' ? '' : '0')
   target.value = paymentModal.value.amountStr
 }
 
@@ -8631,7 +9152,7 @@ function onPaymentAmountPaste(e: ClipboardEvent) {
   if (!pasted) return
   const num = Math.max(0, parsePastedNumber(pasted, 0, false))
   paymentModal.value.amount = num
-  paymentModal.value.amountStr = num > 0 ? num.toLocaleString('vi-VN') : ''
+  paymentModal.value.amountStr = num > 0 ? num.toLocaleString('vi-VN') : '0'
   target.value = paymentModal.value.amountStr
 }
 
@@ -8640,7 +9161,53 @@ async function submitPayment() {
   if (!m.row || m.saving) return
   const payAmt = toNum(m.amount, 0)
   if (payAmt <= 0) {
-    alert('Vui lòng nhập số tiền thanh toán lớn hơn 0!')
+    await openBaogiaAlert({
+      variant: 'warning',
+      eyebrow: 'Ghi nhận đợt thanh toán',
+      title: 'Số tiền chưa hợp lệ',
+      message: 'Vui lòng nhập số tiền khách thanh toán lớn hơn 0 (hoặc chọn nhanh mức 25% / 50% / 100% ngay bên dưới)!',
+      confirmText: 'Nhập lại'
+    })
+    return
+  }
+
+  if (m.row._isGuideDemo) {
+    const r = m.row
+    const payTime = (m.paymentTime || '').trim() || getDebtFormattedNow()
+    const totalSau = poTongSauVat(r)
+    const currentPaid = poDaThanhToan(r)
+    const newPaid = currentPaid + payAmt
+    const newCongNo = Math.max(0, totalSau - newPaid)
+    const schedulePayload = buildSchedulePayloadForRow(r, newPaid)
+    const demoKey = 'LSTT-DEMO-' + Date.now()
+    const demoHistItem = {
+      _isGuideDemo: true,
+      id: demoKey,
+      _firebaseKey: demoKey,
+      id_salereport: String(r.ID || '__GUIDE_DEMO_PO__'),
+      maKH: String(r.Ma_khach_hang || m.customer?.Ma_khach_hang || 'KH-DEMO'),
+      ten_khach_hang: String(r.Ten_khach_hang || m.customer?.Ten_khach_hang || '').trim(),
+      ten_cong_ty: String(r.Ten_cong_ty || m.customer?.Ten_cong_ty || '').trim(),
+      so_tien_thanh_toan: payAmt,
+      cong_no_con_lai: newCongNo,
+      thoi_gian_thanh_toan: payTime,
+      ghi_chu: (m.note || '').trim()
+    }
+    r.so_tien_da_thanh_toan = newPaid
+    r.cong_no = newCongNo
+    r.thoi_gian_thanh_toan = payTime
+    r.loai_thanh_toan = schedulePayload.loai_thanh_toan
+    r.han_thanh_toan = schedulePayload.han_thanh_toan
+    r.ke_hoach_thanh_toan = schedulePayload.ke_hoach_thanh_toan
+    r._demoHistory = [demoHistItem, ...(Array.isArray(r._demoHistory) ? r._demoHistory : [])]
+    const nextEval = evaluateInstallmentSchedule(totalSau, newPaid, m.scheduleMode, m.singleDueDate, m.scheduleItems)
+    const nextUnpaid = nextEval.find(x => x.con_thieu > 0)
+    m.amount = 0
+    m.amountStr = '0'
+    m.paymentTime = getDebtFormattedNow()
+    m.note = m.scheduleMode === 'nhieu_dot' && nextUnpaid ? `Thanh toán Đợt ${nextUnpaid.dot} (${nextUnpaid.noi_dung})` : ''
+    m.showRecordSubModal = false
+    triggerToast('Đã ghi nhận thử thanh toán trên dữ liệu minh họa (không ghi DB)!')
     return
   }
 
@@ -8650,6 +9217,20 @@ async function submitPayment() {
     const fbKey = r._firebaseKey || r.ID
     const srId = String(r.ID || fbKey)
     const maKH = String(r.Ma_khach_hang || m.customer?.Ma_khach_hang || m.customer?.ma_khach_hang || r.Ma_cong_ty || '')
+    const tenKH = String(
+      r.Ten_khach_hang ||
+      r.ten_khach_hang ||
+      m.customer?.Ten_khach_hang ||
+      m.customer?.ten_khach_hang ||
+      ''
+    ).trim()
+    const tenCongTy = String(
+      r.Ten_cong_ty ||
+      r.ten_cong_ty ||
+      m.customer?.Ten_cong_ty ||
+      m.customer?.ten_cong_ty ||
+      ''
+    ).trim()
     const payTime = (m.paymentTime || '').trim() || getDebtFormattedNow()
 
     const totalSau = poTongSauVat(r)
@@ -8666,6 +9247,8 @@ async function submitPayment() {
       id: histKey,
       id_salereport: srId,
       maKH: maKH,
+      ten_khach_hang: tenKH,
+      ten_cong_ty: tenCongTy,
       so_tien_thanh_toan: payAmt,
       cong_no_con_lai: newCongNo,
       thoi_gian_thanh_toan: payTime,
@@ -8716,17 +9299,22 @@ async function submitPayment() {
 
     const nextEval = evaluateInstallmentSchedule(totalSau, newPaid, m.scheduleMode, m.singleDueDate, m.scheduleItems)
     const nextUnpaid = nextEval.find(x => x.con_thieu > 0)
-    const nextPayAmt = m.scheduleMode === 'nhieu_dot' && nextUnpaid ? nextUnpaid.con_thieu : (newCongNo > 0 ? newCongNo : 0)
 
-    m.amount = nextPayAmt
-    m.amountStr = nextPayAmt > 0 ? nextPayAmt.toLocaleString('vi-VN') : ''
+    m.amount = 0
+    m.amountStr = '0'
     m.paymentTime = getDebtFormattedNow()
     m.note = m.scheduleMode === 'nhieu_dot' && nextUnpaid ? `Thanh toán Đợt ${nextUnpaid.dot} (${nextUnpaid.noi_dung})` : ''
     m.showRecordSubModal = false
     triggerToast('Đã ghi nhận thanh toán thành công!')
   } catch (e) {
     console.error('Lỗi ghi nhận thanh toán:', e)
-    alert('Lỗi khi lưu thanh toán. Vui lòng thử lại.')
+    await openBaogiaAlert({
+      variant: 'error',
+      eyebrow: 'Ghi nhận đợt thanh toán',
+      title: 'Lỗi khi lưu thanh toán',
+      message: 'Không thể lưu đợt thanh toán lên hệ thống lúc này. Vui lòng thử lại.',
+      confirmText: 'Đóng'
+    })
   } finally {
     m.saving = false
   }
@@ -8734,7 +9322,39 @@ async function submitPayment() {
 
 async function deletePaymentHistoryItem(h: any) {
   if (!h || !paymentModal.value.row) return
-  if (!confirm(`Bạn có chắc muốn xóa đợt thanh toán ${formatVND(toNum(h.so_tien_thanh_toan, 0))} đ (${h.thoi_gian_thanh_toan || ''}) và tính lại công nợ?`)) return
+  const formattedAmt = `${formatVND(toNum(h.so_tien_thanh_toan, 0))} đ`
+  const payTimeLabel = String(h.thoi_gian_thanh_toan || '').trim()
+  const confirmedDelete = await openBaogiaConfirm({
+    variant: 'danger',
+    eyebrow: 'Lịch sử thanh toán thực tế',
+    title: 'Xác nhận xóa đợt thanh toán',
+    highlightLabel: 'Đợt thanh toán sẽ xóa',
+    highlightValue: payTimeLabel ? `${formattedAmt} • ${payTimeLabel}` : formattedAmt,
+    message: 'Bạn có chắc chắn muốn xóa đợt thanh toán này và tính lại công nợ của đơn hàng không?',
+    subNote: 'Hệ thống sẽ tự động cập nhật lại số tiền đã thanh toán và số dư công nợ còn lại.',
+    cancelText: 'Hủy bỏ',
+    confirmText: 'Xóa đợt thanh toán'
+  })
+  if (!confirmedDelete) return
+
+  if (paymentModal.value.row._isGuideDemo || h._isGuideDemo) {
+    const r = paymentModal.value.row
+    const histKey = h._firebaseKey || h.id
+    r._demoHistory = (Array.isArray(r._demoHistory) ? r._demoHistory : []).filter(
+      (item: any) => (item._firebaseKey || item.id) !== histKey
+    )
+    const newPaid = r._demoHistory.reduce((s: number, item: any) => s + toNum(item.so_tien_thanh_toan, 0), 0)
+    const totalSau = poTongSauVat(r)
+    const newCongNo = Math.max(0, totalSau - newPaid)
+    const schedulePayload = buildSchedulePayloadForRow(r, newPaid)
+    r.so_tien_da_thanh_toan = newPaid
+    r.cong_no = newCongNo
+    r.han_thanh_toan = schedulePayload.han_thanh_toan
+    paymentModal.value.amount = newCongNo > 0 ? newCongNo : 0
+    paymentModal.value.amountStr = newCongNo > 0 ? newCongNo.toLocaleString('vi-VN') : ''
+    triggerToast('Đã xóa thử đợt thanh toán trên dữ liệu minh họa (không ghi DB)!')
+    return
+  }
 
   try {
     const r = paymentModal.value.row
@@ -8782,7 +9402,13 @@ async function deletePaymentHistoryItem(h: any) {
     triggerToast('Đã xóa đợt thanh toán và tính lại công nợ!')
   } catch (e) {
     console.error('Lỗi xóa lịch sử thanh toán:', e)
-    alert('Lỗi khi xóa đợt thanh toán.')
+    await openBaogiaAlert({
+      variant: 'error',
+      eyebrow: 'Lịch sử thanh toán thực tế',
+      title: 'Không thể xóa đợt thanh toán',
+      message: 'Lỗi khi xóa đợt thanh toán trên hệ thống. Vui lòng thử lại.',
+      confirmText: 'Đóng'
+    })
   }
 }
 
@@ -8795,7 +9421,12 @@ async function saveCustomerToDB(closeDetailModal = true) {
   const maCTVal = (k.Ma_cong_ty || genMaCT(tenCTVal) || '').trim()
   const ma = (maKHInput.value?.trim() || k.Ma_khach_hang?.trim() || genMaKH(tenKHVal, tenCTVal)).trim()
   if (!ma) {
-    alert('Vui lòng nhập hoặc tự động tạo Mã KH trước!')
+    await openBaogiaAlert({
+      variant: 'warning',
+      eyebrow: 'Thông tin khách hàng',
+      title: 'Thiếu Mã khách hàng',
+      message: 'Vui lòng nhập Mã KH hoặc điền Tên khách hàng / Tên công ty để tự động tạo Mã KH trước khi lưu!'
+    })
     return
   }
 
@@ -9256,7 +9887,7 @@ type QuoteRow =
       key: string
       item: HangHoa & { So_luong: number }
       idx: number
-      stt?: number   // 👈 BẮT BUỘC
+      stt?: number | string   // 👈 BẮT BUỘC
     }
 
 
@@ -9264,40 +9895,41 @@ type QuoteRow =
 const quoteRows = computed<QuoteRow[]>(() => {
   const rows: QuoteRow[] = []
   let currentGroupKey: string | null = null
+  let currentGroupSttLabel = ''
   let groupIndex = 0   // ✅ STT danh mục
   let stt = 0
 
   selectedItems.value.forEach((it, idx) => {
     const sup = (it.Ten_nha_cung_cap || it.Ma_nha_cung_cap || '').trim() || 'NCC'
     const cat = (it.Danh_muc || '').trim()
-    const gKey = cat.toUpperCase()
+    const gKey = normalizeQuoteCategoryKey(cat)
 
     if (quoteGroupByCategory.value) {
-      if (gKey) {
-        if (gKey !== currentGroupKey) {
-          currentGroupKey = gKey
-          groupIndex++
-          stt = 0
+      if (gKey !== currentGroupKey) {
+        currentGroupKey = gKey
+        groupIndex++
+        stt = 0
+        currentGroupSttLabel = formatQuoteGroupStt(groupIndex)
 
-          rows.push({
-            type: 'group',
-            supplier: sup,
-            category: cat,
-            key: `${gKey}-${groupIndex}`,
-            title: cat,
-            roman: toRoman(groupIndex)
-          } as any)
-        }
-      } else {
-        if (currentGroupKey !== '') {
-          currentGroupKey = ''
-          stt = 0
-        }
+        rows.push({
+          type: 'group',
+          supplier: sup,
+          category: cat,
+          key: `${gKey}-${groupIndex}`,
+          title: cat,
+          roman: currentGroupSttLabel
+        } as any)
       }
     }
 
     stt++
-    rows.push({ type: 'item', item: it, idx, stt, key: `item-${idx}` })
+    rows.push({
+      type: 'item',
+      item: it,
+      idx,
+      stt: formatQuoteItemStt(stt, currentGroupSttLabel),
+      key: `item-${idx}`
+    })
   })
 
   return rows
@@ -9621,6 +10253,22 @@ const applyKaspOff = () => {
 }
 
 function openQuoteEdit(idx: number, focusField?: string) {
+  const priceFocusFields = [
+    'So_luong', 'Ti_gia', 'Gia_tieu_chuan', 'Gia_tieu_chuan_usd',
+    'Don_gia', 'Don_gia_usd', 'gia_nhap', 'gia_nhap_usd',
+    'muc_phan_tram_off', 'unit_price_kh', 'line_truoc_thue',
+    'Thue_VAT', 'item_chenh_lech'
+  ]
+  if (idx < 0 && guideTempTableDemoActive.value && selectedItems.value.length === 0) {
+    closeQuoteEditRaw()
+    _adjustedFields.clear()
+    quoteEditIdx.value = -1
+    pendingQuoteEditFocusField.value = focusField || ''
+    quoteEdit.value = createGuideDemoQuoteItem()
+    activeQuoteEditTab.value = focusField && priceFocusFields.includes(focusField) ? 'price' : 'info'
+    showQuoteEditModal.value = true
+    return
+  }
   const it = selectedItems.value[idx]
   if (!it) return
   closeQuoteEditRaw()
@@ -9629,12 +10277,6 @@ function openQuoteEdit(idx: number, focusField?: string) {
   quoteEditIdx.value = idx
   pendingQuoteEditFocusField.value = focusField || ''
 
-  const priceFocusFields = [
-    'So_luong', 'Ti_gia', 'Gia_tieu_chuan', 'Gia_tieu_chuan_usd',
-    'Don_gia', 'Don_gia_usd', 'gia_nhap', 'gia_nhap_usd',
-    'muc_phan_tram_off', 'unit_price_kh', 'line_truoc_thue',
-    'Thue_VAT', 'item_chenh_lech'
-  ]
   if (focusField && priceFocusFields.includes(focusField)) {
     activeQuoteEditTab.value = 'price'
   } else {
@@ -9655,6 +10297,10 @@ function openQuoteEdit(idx: number, focusField?: string) {
 }
 
 function closeQuoteEdit() {
+  if ((quoteEdit.value as any)?._isGuideDemo && guideStashedRealQuoteEdit) {
+    restoreStashedRealQuoteEdit()
+    return
+  }
   showQuoteEditModal.value = false
   quoteEdit.value = null
   quoteEditIdx.value = -1
@@ -9747,6 +10393,12 @@ const _adjustedFields = new Set<string>()
 
 function saveQuoteEdit() {
   if (!quoteEdit.value) return
+  if ((quoteEdit.value as any)._isGuideDemo) {
+    _adjustedFields.clear()
+    triggerToast('Đã thử lưu giá trên mặt hàng minh họa (không ghi vào báo giá)!', 'info')
+    closeQuoteEdit()
+    return
+  }
   const idx = quoteEditIdx.value
   if (idx < 0) return
 
@@ -10087,17 +10739,35 @@ function resetAdjustPriceToOriginal() {
   adjustPriceModal.value.numberSign = orig < 0 ? -1 : 1
 }
 
+function onUserDismissAdjustPriceModal() {
+  adjustPriceModal.value.show = false
+  if (activeGuideStepId.value === 'table-edit-price-modal') {
+    quoteGuideRef.value?.jumpToStep('table-item-edit-price')
+  }
+}
+
 function openAdjustPrice(mode: 'item'|'group'|'all'|'field', id: string, name: string, field?: string, isNormal?: boolean) {
+  if (activeGuideStepId.value === 'table-item-edit-price' && !isNormal) {
+    triggerToast(
+      'Nút "Điều chỉnh" dùng để kê giá tạo chênh lệch — hãy nhấn nút "Sửa giá" màu xanh dương để mở Hộp thoại Sửa giá thực tế!',
+      'info'
+    )
+    return
+  }
+
   let total = 0;
   if (mode === 'item') {
     const item = selectedItems.value[Number(id)];
     total = lineTruocThue(item);
   } else if (mode === 'group') {
-    const items = selectedItems.value.filter(it => {
-      const cat = (it.Danh_muc || '').trim();
-      return cat.toUpperCase() === id;
-    });
-    total = items.reduce((sum, it) => sum + lineTruocThue(it), 0);
+    if (id === '__GUIDE_DEMO_CAT__' && selectedItems.value.length === 0) {
+      total = 10800000;
+    } else {
+      const items = selectedItems.value.filter(it => {
+        return normalizeQuoteCategoryKey(it.Danh_muc) === id;
+      });
+      total = items.reduce((sum, it) => sum + lineTruocThue(it), 0);
+    }
   } else if (mode === 'field') {
     if (!quoteEdit.value || !field) return;
     if (field === 'unit_price_kh') {
@@ -10122,25 +10792,45 @@ function openAdjustPrice(mode: 'item'|'group'|'all'|'field', id: string, name: s
   } else {
     total = totals.value.truoc;
   }
+
+  const isGuideDemoNormalField =
+    mode === 'field' && Boolean((quoteEdit.value as any)?._isGuideDemo) && Boolean(isNormal);
+  const sampleNumberVal = isGuideDemoNormalField && total > 0 ? Math.max(0, Math.round(total * 0.9)) : total;
   
   adjustPriceModal.value = {
     show: true,
     mode,
     targetId: id,
-    targetName: name,
+    targetName: name || (mode === 'group' ? 'Danh mục trống' : ''),
     targetField: field || '',
     currentTotal: total,
     adjustType: 'percent',
-    percentValue: 0,
-    percentSign: 1,
-    numberValue: total,
-    numberSign: total < 0 ? -1 : 1,
+    percentValue: isGuideDemoNormalField ? -10 : 0,
+    percentSign: isGuideDemoNormalField ? -1 : 1,
+    numberValue: sampleNumberVal,
+    numberSign: sampleNumberVal < 0 ? -1 : 1,
     isNormalEdit: !!isNormal,
   };
+
+  if (isGuideDemoNormalField && activeGuideStepId.value === 'table-item-edit-price') {
+    guidePreserveOpenAdjustModal = true
+    quoteGuideRef.value?.jumpToStep('table-edit-price-modal')
+  }
 }
 
 function applyAdjustPrice() {
   const { mode, targetId, targetField, currentTotal, adjustType, percentValue, numberValue } = adjustPriceModal.value;
+
+  if (mode === 'group' && targetId === '__GUIDE_DEMO_CAT__' && selectedItems.value.length === 0) {
+    adjustPriceModal.value.show = false;
+    triggerToast(
+      adjustPriceModal.value.isNormalEdit
+        ? 'Đã thử Sửa giá thực tế trên danh mục minh họa (không ghi vào báo giá)!'
+        : 'Đã thử Điều chỉnh chênh lệch trên danh mục minh họa (không ghi vào báo giá)!',
+      'info'
+    );
+    return;
+  }
   
   // Tính giá trị cũ trước khi thay đổi
   let oldTotal = currentTotal;
@@ -10162,8 +10852,7 @@ function applyAdjustPrice() {
         count = 1;
       } else if (mode === 'group') {
         count = selectedItems.value.filter(it => {
-          const cat = (it.Danh_muc || '').trim();
-          return cat.toUpperCase() === targetId;
+          return normalizeQuoteCategoryKey(it.Danh_muc) === targetId;
         }).length;
       } else if (mode === 'all') {
         count = selectedItems.value.length;
@@ -10178,6 +10867,7 @@ function applyAdjustPrice() {
   
   if (mode === 'field') {
     if (!quoteEdit.value) return;
+    const isDemoQuoteEdit = Boolean((quoteEdit.value as any)._isGuideDemo);
 
     // Xử lý đặc biệt: Đơn giá (KH), Thành tiền trước thuế, và Chênh lệch giá → reverse-calc về Don_gia
     if (targetField === 'unit_price_kh' || targetField === 'line_truoc_thue' || targetField === 'item_chenh_lech') {
@@ -10193,7 +10883,9 @@ function applyAdjustPrice() {
 
       const label = isUP ? 'Đơn giá (KH)' : (isCL ? 'Chênh lệch giá' : 'Thành tiền trước thuế');
       const editTypeLabel = adjustPriceModal.value.isNormalEdit ? '[Sửa thường]' : '[Điều chỉnh]';
-      addAction(`${editTypeLabel} Sửa ${label} của hàng "${quoteEdit.value.Ten_hang}" từ ${formatVND(oldValVnd)} → ${formatVND(newValVnd)}`, oldValVnd, newValVnd);
+      if (!isDemoQuoteEdit) {
+        addAction(`${editTypeLabel} Sửa ${label} của hàng "${quoteEdit.value.Ten_hang}" từ ${formatVND(oldValVnd)} → ${formatVND(newValVnd)}`, oldValVnd, newValVnd);
+      }
       _adjustedFields.add('Don_gia');
       _adjustedFields.add('muc_phan_tram_off');
 
@@ -10260,6 +10952,12 @@ function applyAdjustPrice() {
 
       quoteEdit.value = { ...quoteEdit.value };
       adjustPriceModal.value.show = false;
+      if (isDemoQuoteEdit) {
+        triggerToast('Đã áp dụng thử giá mới vào mặt hàng mẫu (không ảnh hưởng báo giá thật)!', 'info');
+        if (activeGuideStepId.value === 'table-edit-price-modal') {
+          quoteGuideRef.value?.jumpToStep('table-item-edit-price');
+        }
+      }
       return;
     }
 
@@ -10280,7 +10978,9 @@ function applyAdjustPrice() {
     
     // Ghi lịch sử với giá trị cũ → mới
     const editTypeLabelField = adjustPriceModal.value.isNormalEdit ? '[Sửa thường]' : '[Điều chỉnh]';
-    addAction(`${editTypeLabelField} Sửa ${fieldLabel} của hàng "${quoteEdit.value.Ten_hang}" từ ${formatVND(oldValVnd)} → ${formatVND(newValVnd)}`, oldValVnd, newValVnd)
+    if (!isDemoQuoteEdit) {
+      addAction(`${editTypeLabelField} Sửa ${fieldLabel} của hàng "${quoteEdit.value.Ten_hang}" từ ${formatVND(oldValVnd)} → ${formatVND(newValVnd)}`, oldValVnd, newValVnd)
+    }
     _adjustedFields.add(targetField)
 
     const newValUSD = newValVnd / tg;
@@ -10305,6 +11005,12 @@ function applyAdjustPrice() {
     quoteEdit.value = { ...quoteEdit.value };
     
     adjustPriceModal.value.show = false;
+    if (isDemoQuoteEdit) {
+      triggerToast('Đã áp dụng thử giá mới vào mặt hàng mẫu (không ảnh hưởng báo giá thật)!', 'info');
+      if (activeGuideStepId.value === 'table-edit-price-modal') {
+        quoteGuideRef.value?.jumpToStep('table-item-edit-price');
+      }
+    }
     return;
   }
   
@@ -10376,8 +11082,7 @@ function applyAdjustPrice() {
     adjustItem(selectedItems.value[Number(targetId)]);
   } else if (mode === 'group') {
     selectedItems.value.forEach(it => {
-      const cat = (it.Danh_muc || '').trim();
-      if (cat.toUpperCase() === targetId) {
+      if (normalizeQuoteCategoryKey(it.Danh_muc) === targetId) {
         adjustItem(it);
       }
     });
@@ -10391,8 +11096,7 @@ function applyAdjustPrice() {
     newTotal = lineTruocThue(selectedItems.value[Number(targetId)]);
   } else if (mode === 'group') {
     selectedItems.value.forEach(it => {
-      const cat = (it.Danh_muc || '').trim();
-      if (cat.toUpperCase() === targetId) newTotal += lineTruocThue(it);
+      if (normalizeQuoteCategoryKey(it.Danh_muc) === targetId) newTotal += lineTruocThue(it);
     });
   } else {
     if (targetField === 'total_chenh_lech') {
@@ -10408,7 +11112,8 @@ function applyAdjustPrice() {
     const itemName = selectedItems.value[Number(targetId)]?.Ten_hang || ''
     addAction(`Sửa tổng giá hàng "${itemName}" từ ${formatVND(oldTotal)} → ${formatVND(newTotal)}`, oldTotal, newTotal)
   } else if (mode === 'group') {
-    addAction(`Sửa giá nhóm "${targetId.split('||').join(' - ')}" từ ${formatVND(oldTotal)} → ${formatVND(newTotal)}`, oldTotal, newTotal)
+    const groupLogLabel = targetId === EMPTY_CATEGORY_GROUP_KEY ? 'Danh mục trống' : targetId.split('||').join(' - ')
+    addAction(`Sửa giá nhóm "${groupLogLabel}" từ ${formatVND(oldTotal)} → ${formatVND(newTotal)}`, oldTotal, newTotal)
   } else {
     if (targetField === 'total_chenh_lech') {
       addAction(`Sửa Tổng chênh lệch giá từ ${formatVND(oldTotal)} → ${formatVND(newTotal)}`, oldTotal, newTotal)
@@ -10421,6 +11126,15 @@ function applyAdjustPrice() {
 }
 
 function removeSelected(idx: number) {
+  if ((quoteEdit.value as any)?._isGuideDemo && idx < 0) {
+    _adjustedFields.clear()
+    closeQuoteEdit()
+    return
+  }
+  if (idx < 0 && guideTempTableDemoActive.value) {
+    triggerToast('Đây là dòng sản phẩm minh họa hướng dẫn (tự ẩn khi đóng hướng dẫn)!', 'info')
+    return
+  }
   if (idx < 0 || idx >= selectedItems.value.length) return
   addAction(`Xóa hàng "${selectedItems.value[idx]?.Ten_hang}"`)
   const removedQuoteEdit = quoteEditIdx.value === idx
@@ -12535,6 +13249,7 @@ function buildCurrentQuoteExportContext(): QuoteExportContext {
     currency: isUsdExport ? 'USD' : 'VND',
     tiGia: mainTiGia.value || 1,
     rows: mappedRows,
+    itemSttFormat: quoteItemSttFormat.value,
     totals: {
       truoc: isUsdExport ? Number(totalsUSD.value.truoc) || 0 : Number(totals.value.truoc) || 0,
       vat: isUsdExport ? Number(totalsUSD.value.vat) || 0 : Number(totals.value.vat) || 0,
@@ -13281,9 +13996,17 @@ async function closeQuoteTab(tabId: string, forceWithoutConfirm = false) {
   const tabToClose = quoteTabs.value[idx]
   if (!forceWithoutConfirm && hasQuoteTabData(tabToClose)) {
     const title = getQuoteTabDisplayTitle(tabToClose, idx)
-    const ok = window.confirm(
-      `Bạn có chắc muốn xóa tab "${title}" không?\nDữ liệu chưa lưu trong tab này sẽ bị xóa vĩnh viễn.`
-    )
+    const ok = await openBaogiaConfirm({
+      variant: 'danger',
+      eyebrow: 'Quản lý Tab báo giá',
+      title: 'Xác nhận đóng & xóa Tab',
+      highlightLabel: 'Tab báo giá đang chọn',
+      highlightValue: title,
+      message: `Bạn có chắc chắn muốn xóa tab "${title}" không?`,
+      subNote: 'Dữ liệu chưa lưu trong tab này sẽ bị xóa vĩnh viễn và không thể khôi phục.',
+      cancelText: 'Giữ lại Tab',
+      confirmText: 'Xóa Tab này'
+    })
     if (!ok) return
   }
 
@@ -13663,546 +14386,752 @@ onUnmounted(() => {
   window.removeEventListener('beforeunload', handleBeforeUnload)
 })
 
-// --- IMPORT THEO MẪU BÁO GIÁ & MUA HÀNG ---
-const importTemplateFileInput = ref<HTMLInputElement | null>(null);
-const showImportConfirmModal = ref(false);
-const importConfirmMode = ref<'bao_gia' | 'mua_hang'>('bao_gia');
-const pendingImportItems = ref<any[]>([]);
+// --- HỆ THỐNG IMPORT ĐA ĐỊNH DẠNG THỐNG NHẤT & AI FALLBACK (6 LUỒNG) ---
+type SmartImportFlowMode = 'bao_gia' | 'mua_hang' | 'khach_dxmh' | 'khach_baogia' | 'thue'
+type AiFallbackFlowMode = SmartImportFlowMode | 'product_price'
 
-const importMuaHangFileInput = ref<HTMLInputElement | null>(null);
-const lastMuaHangImportFile = ref<File | null>(null);
+const importTemplateFileInput = ref<HTMLInputElement | null>(null)
+const showImportConfirmModal = ref(false)
+const importConfirmMode = ref<'bao_gia' | 'mua_hang'>('bao_gia')
+const importConfirmSourceMode = ref<'standard' | 'ai'>('standard')
+const pendingImportItems = ref<any[]>([])
 
-// AI Fallback Modal & Bulk Selling Price Adjustment for Mua Hàng Import on Quote Page
-const aiMuaHangFallbackModal = ref<{
-  show: boolean;
-  file: File | null;
-  reason: string;
+const importMuaHangFileInput = ref<HTMLInputElement | null>(null)
+const lastMuaHangImportFile = ref<File | null>(null)
+const lastBaoGiaImportFile = ref<File | null>(null)
+
+const smartImportFileInputRef = ref<HTMLInputElement | null>(null)
+const smartImportImageInputRef = ref<HTMLInputElement | null>(null)
+const smartImportMobPasteRef = ref<HTMLInputElement | null>(null)
+
+const smartImportModal = reactive<{
+  show: boolean
+  mode: SmartImportFlowMode
+  isDragging: boolean
+  showMobPasteBox: boolean
+  files: PendingProductUploadItem[]
+  activeIdx: number
 }>({
   show: false,
+  mode: 'bao_gia',
+  isDragging: false,
+  showMobPasteBox: false,
+  files: [],
+  activeIdx: 0
+})
+
+const smartImportMeta = computed(() => {
+  switch (smartImportModal.mode) {
+    case 'mua_hang':
+      return {
+        title: 'IMPORT FILE MUA HÀNG',
+        mobTitle: 'Import Mua Hàng',
+        badge: 'Đối chiếu Giá vốn sau thuế',
+        iconClass: 'ri-shopping-bag-3-line',
+        primaryCta: 'Tải lên & Quét giá mua'
+      }
+    case 'khach_dxmh':
+      return {
+        title: 'IMPORT KHÁCH HÀNG (FILE ĐXMH / PO)',
+        mobTitle: 'Import KH (File ĐXMH)',
+        badge: 'Trích xuất hồ sơ đối tác',
+        iconClass: 'ri-user-add-line',
+        primaryCta: 'Tải lên & Quét khách hàng'
+      }
+    case 'khach_baogia':
+      return {
+        title: 'IMPORT KHÁCH HÀNG (FILE BÁO GIÁ)',
+        mobTitle: 'Import KH (File Báo Giá)',
+        badge: 'Trích xuất Kính gửi & Người nhận',
+        iconClass: 'ri-contacts-book-2-line',
+        primaryCta: 'Tải lên & Quét khách hàng'
+      }
+    case 'thue':
+      return {
+        title: 'QUÉT THÔNG TIN THUẾ / ĐKKD',
+        mobTitle: 'Quét Thông Tin Thuế',
+        badge: 'MST, Tên công ty, Địa chỉ & Ngành nghề',
+        iconClass: 'ri-building-4-line',
+        primaryCta: 'Tải lên & Quét thông tin thuế'
+      }
+    case 'bao_gia':
+    default:
+      return {
+        title: 'IMPORT FILE BÁO GIÁ',
+        mobTitle: 'Import Báo Giá',
+        badge: 'Khách hàng, Hàng hóa & Điều khoản',
+        iconClass: 'ri-file-upload-line',
+        primaryCta: 'Tải lên & Quét báo giá'
+      }
+  }
+})
+
+function openSmartImportModal(mode: SmartImportFlowMode) {
+  revokePendingUploadPreviews(smartImportModal.files)
+  smartImportModal.mode = mode
+  smartImportModal.isDragging = false
+  smartImportModal.showMobPasteBox = false
+  smartImportModal.files = []
+  smartImportModal.activeIdx = 0
+  smartImportModal.show = true
+}
+
+function closeSmartImportModal() {
+  revokePendingUploadPreviews(smartImportModal.files)
+  smartImportModal.files = []
+  smartImportModal.activeIdx = 0
+  smartImportModal.isDragging = false
+  smartImportModal.showMobPasteBox = false
+  smartImportModal.show = false
+}
+
+function addFilesToSmartImportModal(rawFiles: File[], fromClipboard = false) {
+  if (!rawFiles.length) return
+  revokePendingUploadPreviews(smartImportModal.files)
+  smartImportModal.files = []
+
+  const firstRaw = rawFiles[0]
+  const isGenericClipName =
+    fromClipboard ||
+    /^image\.(png|jpe?g|webp|bmp|gif)$/i.test(String(firstRaw.name || '').trim()) ||
+    !String(firstRaw.name || '').trim()
+  const parsed = splitFileNameAndExt(
+    isGenericClipName ? '' : firstRaw.name,
+    firstRaw.type
+  )
+  const isImg = isImageDocFile(firstRaw)
+  const previewUrl = isImg ? URL.createObjectURL(firstRaw) : ''
+
+  smartImportModal.files.push({
+    id: `sm_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    file: firstRaw,
+    baseName: parsed.baseName,
+    ext: parsed.ext,
+    isImage: isImg,
+    previewUrl,
+    sizeLabel: formatUploadFileSize(firstRaw.size),
+    fromClipboard
+  })
+  smartImportModal.activeIdx = 0
+}
+
+function removeSmartImportPendingItem(idx: number) {
+  if (idx < 0 || idx >= smartImportModal.files.length) return
+  const removed = smartImportModal.files.splice(idx, 1)
+  revokePendingUploadPreviews(removed)
+  smartImportModal.activeIdx = 0
+}
+
+function onSmartImportFileInputChange(e: Event) {
+  const input = e.target as HTMLInputElement | null
+  const list = Array.from(input?.files || [])
+  if (input) input.value = ''
+  if (!list.length) return
+  addFilesToSmartImportModal(list, false)
+}
+
+function onSmartImportDragOver(e: DragEvent) {
+  e.preventDefault()
+  smartImportModal.isDragging = true
+}
+
+function onSmartImportDragLeave(e: DragEvent) {
+  e.preventDefault()
+  smartImportModal.isDragging = false
+}
+
+function onSmartImportDrop(e: DragEvent) {
+  e.preventDefault()
+  smartImportModal.isDragging = false
+  const list = Array.from(e.dataTransfer?.files || [])
+  if (!list.length) return
+  addFilesToSmartImportModal(list, false)
+}
+
+function onSmartImportModalPaste(e: ClipboardEvent) {
+  if (!smartImportModal.show) return
+  const targetEl = e.target as HTMLElement | null
+  if (
+    targetEl &&
+    targetEl.classList?.contains('tpl-upload-name-input')
+  ) {
+    return
+  }
+  const items = e.clipboardData?.items
+  const pastedFiles: File[] = []
+  if (items) {
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i]
+      if (it.kind === 'file') {
+        const blob = it.getAsFile()
+        if (blob) pastedFiles.push(blob)
+      }
+    }
+  }
+  if (!pastedFiles.length && e.clipboardData?.files?.length) {
+    pastedFiles.push(...Array.from(e.clipboardData.files))
+  }
+  if (!pastedFiles.length) return
+  e.preventDefault()
+  smartImportModal.showMobPasteBox = false
+  if (smartImportMobPasteRef.value) smartImportMobPasteRef.value.value = ''
+  addFilesToSmartImportModal(pastedFiles, true)
+  triggerToast('Đã dán tài liệu / ảnh từ Clipboard')
+}
+
+async function pasteFromMobileClipboardToSmartImport() {
+  try {
+    if (navigator.clipboard && typeof navigator.clipboard.read === 'function') {
+      const clipItems = await navigator.clipboard.read()
+      const extracted: File[] = []
+      for (const cItem of clipItems) {
+        const matchedType = cItem.types.find(
+          t => t.startsWith('image/') || t === 'application/pdf'
+        )
+        if (matchedType) {
+          const blob = await cItem.getType(matchedType)
+          const ext = matchedType.includes('jpeg')
+            ? '.jpg'
+            : matchedType.includes('webp')
+            ? '.webp'
+            : matchedType.includes('pdf')
+            ? '.pdf'
+            : '.png'
+          const file = new File([blob], `${makeClipboardTimestampName()}${ext}`, {
+            type: matchedType,
+            lastModified: Date.now()
+          })
+          extracted.push(file)
+        }
+      }
+      if (extracted.length > 0) {
+        addFilesToSmartImportModal(extracted, true)
+        smartImportModal.showMobPasteBox = false
+        triggerToast('Đã dán ảnh / file từ bộ nhớ tạm')
+        return
+      }
+    }
+  } catch (_) {}
+  smartImportModal.showMobPasteBox = true
+  nextTick(() => {
+    smartImportMobPasteRef.value?.focus()
+  })
+  triggerToast('Chạm giữ vào ô bên dưới rồi chọn "Dán" để dán ảnh')
+}
+
+onMounted(() => {
+  window.addEventListener('paste', onSmartImportModalPaste)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('paste', onSmartImportModalPaste)
+})
+
+async function submitSmartImportStandardScan() {
+  const activeItem = smartImportModal.files[smartImportModal.activeIdx] || smartImportModal.files[0]
+  if (!activeItem) return
+  const mode = smartImportModal.mode
+  const finalFile = buildFinalFileFromPendingItem(activeItem)
+  closeSmartImportModal()
+
+  if (mode === 'bao_gia') {
+    await processBaoGiaFileStandard(finalFile)
+  } else if (mode === 'mua_hang') {
+    await processMuaHangFileStandard(finalFile)
+  } else if (mode === 'khach_dxmh' || mode === 'khach_baogia') {
+    await processCustomerImportStandard(finalFile, mode)
+  } else if (mode === 'thue') {
+    await processTaxFile(finalFile)
+  }
+}
+
+// Unified AI Fallback Prompt Modal across all 6 Import/Upload flows
+const aiImportFallbackModal = reactive<{
+  show: boolean
+  mode: AiFallbackFlowMode
+  file: File | null
+  reason: string
+  productTargetType: 'manual' | 'card'
+}>({
+  show: false,
+  mode: 'bao_gia',
   file: null,
-  reason: ''
-});
+  reason: '',
+  productTargetType: 'manual'
+})
+
+const aiFallbackFlowLabel = computed(() => {
+  switch (aiImportFallbackModal.mode) {
+    case 'bao_gia':
+      return 'Import Báo Giá (Khách hàng, Hàng hóa & Điều khoản)'
+    case 'mua_hang':
+      return 'Import Mua Hàng (Tính Giá vốn sau thuế)'
+    case 'khach_dxmh':
+      return 'Import Khách hàng từ File ĐXMH / PO'
+    case 'khach_baogia':
+      return 'Import Khách hàng từ File Báo Giá'
+    case 'thue':
+      return 'Quét Thông tin Thuế / Đăng ký kinh doanh'
+    case 'product_price':
+      return 'Đọc giá sản phẩm từ File / Ảnh đính kèm'
+    default:
+      return 'Quét dữ liệu tài liệu'
+  }
+})
+
+function openAiImportFallback(
+  mode: AiFallbackFlowMode,
+  file: File,
+  reason: string,
+  productTargetType: 'manual' | 'card' = 'manual'
+) {
+  aiImportFallbackModal.mode = mode
+  aiImportFallbackModal.file = file
+  aiImportFallbackModal.reason = reason
+  aiImportFallbackModal.productTargetType = productTargetType
+  aiImportFallbackModal.show = true
+}
+
+function closeAiImportFallback() {
+  if (aiImportFallbackModal.mode === 'product_price') {
+    revokeReadPriceLocalPreview()
+  }
+  aiImportFallbackModal.show = false
+  aiImportFallbackModal.file = null
+}
+
+async function attachOnlyFromAiImportFallback() {
+  const file = aiImportFallbackModal.file
+  const targetType = aiImportFallbackModal.productTargetType
+  revokeReadPriceLocalPreview()
+  aiImportFallbackModal.show = false
+  aiImportFallbackModal.file = null
+  if (!file) return
+  if (targetType === 'manual') {
+    await attachFilesListToManualForm([file])
+  } else {
+    await attachFilesListToCardEdit([file])
+  }
+}
+
+async function confirmAiImportFallback() {
+  const file = aiImportFallbackModal.file
+  const mode = aiImportFallbackModal.mode
+  const targetType = aiImportFallbackModal.productTargetType
+  aiImportFallbackModal.show = false
+  aiImportFallbackModal.file = null
+  if (!file) return
+
+  if (mode === 'bao_gia') {
+    await runAiBaoGiaAnalysis(file)
+  } else if (mode === 'mua_hang') {
+    await runAiMuaHangAnalysis(file)
+  } else if (mode === 'khach_dxmh' || mode === 'khach_baogia') {
+    await runAiCustomerImportAnalysis(file, mode)
+  } else if (mode === 'thue') {
+    await runAiTaxImportAnalysis(file)
+  } else if (mode === 'product_price') {
+    await runAiProductPriceFallback(file, targetType)
+  }
+}
 
 const muaHangBulkMarkup = reactive<{
-  direction: 'up' | 'down';
-  mode: 'percent' | 'amount';
-  value: number;
+  direction: 'up' | 'down'
+  mode: 'percent' | 'amount'
+  value: number
 }>({
   direction: 'up',
   mode: 'percent',
   value: 0
-});
+})
 
 function applyMuaHangBulkMarkupToPendingItems() {
-  if (!pendingImportItems.value || pendingImportItems.value.length === 0) return;
-  const val = Math.max(0, toNum(muaHangBulkMarkup.value, 0));
-  const sign = muaHangBulkMarkup.direction === 'down' ? -1 : 1;
+  if (!pendingImportItems.value || pendingImportItems.value.length === 0) return
+  const val = Math.max(0, toNum(muaHangBulkMarkup.value, 0))
+  const sign = muaHangBulkMarkup.direction === 'down' ? -1 : 1
 
   pendingImportItems.value.forEach(it => {
-    const cost = toNum(it.Gia_tieu_chuan, 0);
-    if (cost <= 0) return;
-    let nextPrice = cost;
+    const cost = toNum(it.Gia_tieu_chuan, 0)
+    if (cost <= 0) return
+    let nextPrice = cost
     if (muaHangBulkMarkup.mode === 'percent') {
-      nextPrice = cost * (1 + (sign * val) / 100);
+      nextPrice = cost * (1 + (sign * val) / 100)
     } else {
-      nextPrice = cost + sign * val;
+      nextPrice = cost + sign * val
     }
-    const isUsd = String(it.Don_vi_tien_te || '').toUpperCase() === 'USD';
-    const finalDonGia = Math.max(0, isUsd ? Number(nextPrice.toFixed(2)) : Math.round(nextPrice));
-    it.Don_gia = finalDonGia;
-    it._listPrice = finalDonGia;
-    it._giaVon = cost;
-    const refreshedMatch = matchImportedItemWithDb(it);
-    it._dbMatch = refreshedMatch;
-  });
+    const isUsd = String(it.Don_vi_tien_te || '').toUpperCase() === 'USD'
+    const finalDonGia = Math.max(0, isUsd ? Number(nextPrice.toFixed(2)) : Math.round(nextPrice))
+    it.Don_gia = finalDonGia
+    it._listPrice = finalDonGia
+    it._giaVon = cost
+    const refreshedMatch = matchImportedItemWithDb(it)
+    it._dbMatch = refreshedMatch
+  })
 
   triggerToast(
-    `Đã cập nhật Đơn giá bán (${muaHangBulkMarkup.direction === 'up' ? '+' : '-'}${val}${muaHangBulkMarkup.mode === 'percent' ? '%' : ''} so với Giá vốn / Giá off hãng) cho ${pendingImportItems.value.length} mặt hàng!`
-  );
+    `Đã cập nhật Đơn giá bán (${muaHangBulkMarkup.direction === 'up' ? '+' : '-'}${val}${muaHangBulkMarkup.mode === 'percent' ? '%' : ''} so với Giá vốn / Giá off hãng) cho ${pendingImportItems.value.length} mặt hàng`
+  )
 }
 
 async function runAiMuaHangAnalysis(file: File) {
-  showAsyncLoading('🤖 AI đang phân tích file báo giá và tính Giá vốn sau thuế...');
+  if (!file) return
+  lastMuaHangImportFile.value = file
+  showAsyncLoading(`AI đang phân tích file mua hàng "${file.name}" và tính Giá vốn sau thuế...`)
   try {
-    await ensureProductsLoadedForImportCheck();
-    const aiItems = await analyzePurchaseFileWithAI(file, quoteCurrency.value || 'VND', (msg) => {
-      showAsyncLoading(msg);
-    });
-    if (!aiItems || aiItems.length === 0) {
-      showAsyncError('Không tìm thấy dữ liệu', 'AI không tìm thấy mặt hàng hợp lệ trong file này.');
-      return;
+    await ensureProductsLoadedForImportCheck()
+    const aiRes = await analyzePurchaseFileWithAI(file, quoteCurrency.value || 'VND', (msg) => {
+      showAsyncLoading(msg)
+    })
+    const aiItems = Array.isArray(aiRes?.items) ? aiRes.items : []
+    if (aiItems.length === 0) {
+      asyncResultModal.value.show = false
+      showAsyncError('Không tìm thấy dữ liệu', 'AI không tìm thấy mặt hàng và giá vốn hợp lệ trong tài liệu này.')
+      return
     }
     const mappedItems = aiItems.map(it => ({
       ...it,
-      uid: Math.random().toString(36).substr(2, 9),
+      uid: Math.random().toString(36).slice(2, 11),
       _hasExplicitMaHang: Boolean(it.Ma_hang),
       _rawPs: it.Ma_hang || it.Ten_hang,
       _rawMota: stripHtmlToPlain(it.Features || ''),
       _listPrice: toNum(it.Don_gia, 0),
       _giaVon: toNum(it.Gia_tieu_chuan, 0)
-    }));
-    asyncResultModal.value.show = false;
-    importConfirmMode.value = 'mua_hang';
-    pendingImportItems.value = enrichImportedItemsWithDbCheck(mappedItems);
-    showImportConfirmModal.value = true;
-    triggerToast(`✨ AI đã phân tích thành công ${mappedItems.length} mặt hàng và tính Giá vốn sau thuế!`);
+    }))
+    asyncResultModal.value.show = false
+    importConfirmMode.value = 'mua_hang'
+    importConfirmSourceMode.value = 'ai'
+    pendingImportItems.value = enrichImportedItemsWithDbCheck(mappedItems)
+    showImportConfirmModal.value = true
+    triggerToast(`AI đã phân tích thành công ${mappedItems.length} mặt hàng và tính Giá vốn sau thuế`)
   } catch (err: any) {
-    console.error('AI Mua Hang Analysis Error:', err);
-    showAsyncError('Lỗi phân tích AI', String(err?.message || err));
+    console.error('AI Mua Hang Analysis Error:', err)
+    asyncResultModal.value.show = false
+    showAsyncError('Lỗi phân tích AI', String(err?.message || err))
   }
-}
-
-async function confirmAiMuaHangFallback() {
-  const file = aiMuaHangFallbackModal.value.file;
-  aiMuaHangFallbackModal.value.show = false;
-  if (!file) return;
-  await runAiMuaHangAnalysis(file);
 }
 
 function triggerImportMuaHangFile() {
-  if (importMuaHangFileInput.value) {
-    importMuaHangFileInput.value.click();
-  }
-}
-
-function normalizeTermDurationText(rawTerm: string, fallbackDesc = ''): string {
-  const t = String(rawTerm || '').replace(/\r?\n/g, ' ').trim();
-  if (t) {
-    if (/^\d+(?:[.,]\d+)?$/.test(t)) {
-      return `${t.replace(',', '.')} Năm`;
-    }
-    return t;
-  }
-  const mosMatch = String(fallbackDesc || '').match(/\b(\d+)\s*(?:MOS|MONTHS|THÁNG)\b/i);
-  if (mosMatch) {
-    const months = parseInt(mosMatch[1], 10);
-    if (months > 0 && months % 12 === 0) return `${months / 12} Năm`;
-    if (months > 0) return `${months} Tháng`;
-  }
-  const yrMatch = String(fallbackDesc || '').match(/\b(\d+)\s*(?:YEAR|YEARS|YR|NĂM)\b/i);
-  if (yrMatch) {
-    return `${yrMatch[1]} Năm`;
-  }
-  return '1 Năm';
-}
-
-async function onImportMuaHangFileChange(event: Event) {
-  const target = event.target as HTMLInputElement;
-  if (!target.files || target.files.length === 0) return;
-
-  const file = target.files[0];
-  lastMuaHangImportFile.value = file;
-  const isPdfFile = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
-  showAsyncLoading(isPdfFile ? 'Đang đọc file mua hàng PDF (tính Giá vốn sau thuế)...' : 'Đang đọc file mua hàng (tính Giá vốn sau thuế)...');
-  try {
-    await ensureProductsLoadedForImportCheck();
-    const arrayBuffer = await file.arrayBuffer();
-
-    if (isPdfFile) {
-      const { items: pdfItems } = await parsePdfQuoteBuffer(arrayBuffer, true);
-      const validCostCount = pdfItems.filter(it => toNum(it.Gia_tieu_chuan, 0) > 0).length;
-      if (pdfItems.length > 0 && validCostCount > 0) {
-        asyncResultModal.value.show = false;
-        importConfirmMode.value = 'mua_hang';
-        pendingImportItems.value = enrichImportedItemsWithDbCheck(pdfItems);
-        showImportConfirmModal.value = true;
-      } else {
-        asyncResultModal.value.show = false;
-        aiMuaHangFallbackModal.value = {
-          show: true,
-          file,
-          reason:
-            pdfItems.length === 0
-              ? 'Không nhận diện được cấu trúc bảng chuẩn từ file PDF mua hàng này.'
-              : 'File PDF không đọc được cột Giá vốn / Đơn giá theo định dạng chuẩn.'
-        };
-      }
-      return;
-    }
-
-    const newItems: any[] = [];
-    const excelSummaryLines: string[] = [];
-    let loadedWithExcelJS = false;
-
-    const parseCleanNum = (val: any): number => {
-      const s = String(excelCellText(val) || '').replace(/[^\d.,-]/g, '').trim();
-      if (!s) return 0;
-      if (/^\d{1,3}(\.\d{3})+$/.test(s)) return parseFloat(s.replace(/\./g, '')) || 0;
-      if (/^\d{1,3}(,\d{3})+$/.test(s)) return parseFloat(s.replace(/,/g, '')) || 0;
-      return parseFloat(s.replace(/,/g, '')) || 0;
-    };
-
-    try {
-      const excelWb = new ExcelJS.Workbook();
-      await excelWb.xlsx.load(arrayBuffer);
-      const ws = excelWb.worksheets[0];
-      if (ws) {
-        loadedWithExcelJS = true;
-        let headerRowIndex = -1;
-        let inSummaryRows = false;
-        const colMap: Record<string, number> = {};
-        const maxRow = Math.min(ws.rowCount || 500, 500);
-        const isColHidden = (c: number) => Boolean(ws.getColumn(c)?.hidden);
-
-        for (let r = 1; r <= maxRow; r++) {
-          const row = ws.getRow(r);
-          if (!row || row.hidden) continue;
-
-          if (headerRowIndex === -1) {
-            const cellTexts: string[] = [];
-            for (let c = 1; c <= 25; c++) {
-              if (isColHidden(c)) continue;
-              cellTexts.push(excelCellText(row.getCell(c).value).toUpperCase().replace(/\s+/g, ' ').trim());
-            }
-            const rowStr = cellTexts.join('|');
-            if (
-              rowStr.includes('MÔ TẢ') ||
-              rowStr.includes('PRICES LIST') ||
-              rowStr.includes('LIST PRICE') ||
-              rowStr.includes('DISCOUNT') ||
-              ((rowStr.includes('STT') || rowStr.includes('MSP') || rowStr.includes('NO.')) &&
-                (rowStr.includes('ĐƠN GIÁ') || rowStr.includes('MODEL') || rowStr.includes('PS') || rowStr.includes('TÊN HÀNG') || rowStr.includes('SẢN PHẨM') || rowStr.includes('THÀNH TIỀN') || rowStr.includes('TỔNG')))
-            ) {
-              headerRowIndex = r;
-              for (let c = 1; c <= 25; c++) {
-                if (isColHidden(c)) continue;
-                const cell = row.getCell(c);
-                if (cell.master && cell.master.address !== cell.address) continue;
-                const header = excelCellText(cell.value).toUpperCase().replace(/\s+/g, ' ').trim();
-                if (!header) continue;
-                if ((header.includes('STT') || header === 'NO.' || header === 'TT' || header === 'MSP') && colMap['stt'] === undefined) colMap['stt'] = c;
-                else if ((header === 'PS' || header.startsWith('PS ') || header.includes('MODEL') || header.includes('PART NUMBER') || header.includes('PART#') || header.includes('SKU') || header.includes('MÃ HÀNG') || header === 'P/N' || header === 'PN') && colMap['ps'] === undefined) colMap['ps'] = c;
-                else if ((header.includes('MÔ TẢ') || header.includes('TÊN HÀNG') || header.includes('DIỄN GIẢI') || header.includes('DESCRIPTION') || header.includes('SẢN PHẨM') || header.includes('HẠNG MỤC') || header.includes('THIẾT BỊ')) && colMap['mota'] === undefined) colMap['mota'] = c;
-                else if ((header.includes('TERM') || header.includes('THỜI HẠN') || header.includes('DURATION')) && colMap['license_duration'] === undefined) colMap['license_duration'] = c;
-                else if ((header === 'ĐVT' || header === 'DVT' || header.includes('ĐƠN VỊ') || header === 'UNIT') && colMap['dvt'] === undefined) colMap['dvt'] = c;
-                else if ((header === 'S.L' || header === 'S.L.' || header === 'SL' || header.includes('SỐ LƯỢNG') || header === 'QTY') && colMap['sl'] === undefined) colMap['sl'] = c;
-                else if ((header.includes('PRICES LIST') || header.includes('LIST PRICE') || header.includes('PRICE LIST')) && colMap['listPrice'] === undefined) colMap['listPrice'] = c;
-                else if ((header.includes('DISCOUNT') || header.includes('OFF HÃNG')) && colMap['discount'] === undefined) colMap['discount'] = c;
-                else if ((header.includes('ĐƠN GIÁ') || header.includes('GIÁ VỐN') || header.includes('UNIT PRICE')) && colMap['giaVon'] === undefined) colMap['giaVon'] = c;
-                else if (((header.includes('THÀNH TIỀN') && !header.includes('CÓ VAT') && !header.includes('SAU VAT') && !header.includes('SAU THUẾ')) || header.includes('CHƯA VAT') || header.includes('TRƯỚC THUẾ') || header === 'TỔNG' || header.includes('TỔNG TIỀN') || header === 'AMOUNT' || header === 'TOTAL') && colMap['truocThue'] === undefined) colMap['truocThue'] = c;
-                else if ((header.startsWith('VAT') || (header.includes('THUẾ') && !header.includes('THÀNH TIỀN') && !header.includes('TRƯỚC') && !header.includes('SAU'))) && colMap['vat'] === undefined) colMap['vat'] = c;
-              }
-            }
-            continue;
-          }
-
-          const getCellPlain = (colKey: string) => {
-            const cIdx = colMap[colKey];
-            if (cIdx === undefined) return '';
-            return excelCellText(row.getCell(cIdx).value).trim();
-          };
-
-          const rowCellsPlain: string[] = [];
-          for (let c = 1; c <= 15; c++) {
-            if (isColHidden(c)) continue;
-            const t = excelCellText(row.getCell(c).value).trim();
-            if (t) rowCellsPlain.push(t);
-          }
-          const rowJoinedPlain = rowCellsPlain.join(' ');
-          const rowAllUpper = rowCellsPlain.map(x => x.toUpperCase()).join('|');
-
-          if (
-            rowAllUpper.includes('CÁC ĐIỀU KHOẢN') ||
-            rowAllUpper.includes('ĐIỀU KHOẢN') ||
-            rowAllUpper.includes('ĐIỀU KIỆN THƯƠNG MẠI')
-          ) {
-            break;
-          }
-
-          if (
-            rowAllUpper.includes('TỔNG CỘNG') ||
-            rowAllUpper.includes('TỔNG CHƯA VAT') ||
-            rowAllUpper.includes('TỔNG TRƯỚC THUẾ') ||
-            rowAllUpper.includes('TỔNG GIÁ TRỊ') ||
-            rowAllUpper.includes('TỔNG THANH TOÁN') ||
-            rowAllUpper.includes('CỘNG TIỀN HÀNG') ||
-            rowAllUpper.includes('PHẦN MỀM KHÔNG CHỊU THUẾ') ||
-            /^VAT\s*\d+/i.test(rowJoinedPlain)
-          ) {
-            inSummaryRows = true;
-            excelSummaryLines.push(rowJoinedPlain);
-            continue;
-          }
-
-          if (inSummaryRows) {
-            if (rowJoinedPlain) excelSummaryLines.push(rowJoinedPlain);
-            continue;
-          }
-
-          const psVal = getCellPlain('ps');
-          const motaPlain = getCellPlain('mota');
-          const motaCell = colMap['mota'] !== undefined ? row.getCell(colMap['mota']) : undefined;
-          const motaHtml = motaCell ? excelCellToFormattedHtml(motaCell) : '';
-
-          const psClean = psVal.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
-          const combinedText = `${psClean} ${motaPlain}`.trim();
-          if (!combinedText || combinedText.toUpperCase() === 'STT' || combinedText.toUpperCase() === 'MSP') continue;
-
-          const sl = parseCleanNum(colMap['sl'] !== undefined ? row.getCell(colMap['sl']).value : 1) || 1;
-          const listPrice = colMap['listPrice'] !== undefined ? parseCleanNum(row.getCell(colMap['listPrice']).value) : 0;
-          let giaVon = colMap['giaVon'] !== undefined ? parseCleanNum(row.getCell(colMap['giaVon']).value) : 0;
-          const truocThue = colMap['truocThue'] !== undefined ? parseCleanNum(row.getCell(colMap['truocThue']).value) : 0;
-          if (giaVon === 0 && truocThue > 0 && sl > 0) {
-            giaVon = Math.round(truocThue / sl);
-          }
-
-          if (listPrice === 0 && giaVon === 0 && truocThue === 0) continue;
-
-          const vatVal = colMap['vat'] !== undefined ? parseCleanNum(row.getCell(colMap['vat']).value) : 0;
-          let vatPct = 0;
-          if (vatVal > 0 && vatVal < 1) vatPct = Math.round(vatVal * 100);
-          else if (vatVal > 0 && truocThue > 0 && vatVal > 100) vatPct = Math.round((vatVal / truocThue) * 100);
-          else if (vatVal > 0 && vatVal <= 100) vatPct = Math.round(vatVal);
-
-          const motaLines = motaPlain.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
-          const effectiveTenHang =
-            motaLines.length === 1
-              ? (motaLines[0] || psClean)
-              : (psClean || motaLines[0] || combinedText);
-          const bulletMeta = extractMetadataFromBulletLines(motaPlain);
-          const generatedMaHang = psClean || bulletMeta.partNumber || removeDiacritics(effectiveTenHang).toUpperCase().replace(/\s+/g, '').replace(/[^A-Z0-9]/g, '');
-          const dvt = getCellPlain('dvt') || 'Bản quyền';
-          const license_duration = bulletMeta.licenseDuration || normalizeTermDurationText(getCellPlain('license_duration'), motaPlain);
-
-          const afterTaxGiaVon = vatPct > 0 ? Math.round((giaVon > 0 ? giaVon : listPrice) * (1 + vatPct / 100)) : (giaVon > 0 ? giaVon : listPrice);
-          const effectiveGiaTC = afterTaxGiaVon;
-          const effectiveDonGia = listPrice > 0 ? listPrice : effectiveGiaTC;
-
-          newItems.push({
-            uid: Math.random().toString(36).substr(2, 9),
-            Ten_hang: effectiveTenHang,
-            Features: motaHtml || escapeTextPreservingExcelFormatting(motaPlain || psClean, true).html,
-            DVT: dvt,
-            License_duration: license_duration,
-            So_luong: sl,
-            Don_gia: effectiveDonGia,
-            Gia_tieu_chuan: effectiveGiaTC,
-            Thue_VAT: vatPct,
-            Ma_hang: generatedMaHang,
-            _hasExplicitMaHang: Boolean(psClean || bulletMeta.partNumber),
-            _rawPs: psClean || bulletMeta.partNumber,
-            _rawMota: motaPlain,
-            _listPrice: effectiveDonGia,
-            _giaVon: effectiveGiaTC,
-            _donGiaTruocThue: giaVon > 0 ? giaVon : listPrice,
-            _thanhTienTruocThue: truocThue || sl * (giaVon > 0 ? giaVon : listPrice),
-            Main_img: '',
-            Ma_nha_cung_cap: '',
-            Ten_nha_cung_cap: '',
-            Mo_ta_chung: '',
-            Mo_ta_chi_tiet: '',
-            Danh_muc: '',
-            thoi_han_bao_hanh: bulletMeta.baoHanh || '',
-            Trang_thai: '',
-            Don_vi_tien_te: quoteCurrency.value || 'VND',
-            Ti_gia: 1,
-            Ma_hang_lien_ket: '',
-            Ten_hang_lien_ket: '',
-            Ghi_chu: '',
-            gia_hardware: 0,
-            gia_nhap: 0,
-            muc_phan_tram_off: 0,
-            volume: '',
-            Description: ''
-          });
-        }
-      }
-    } catch (excelJsErr) {
-      console.warn('Fallback to XLSX reader for purchase file:', excelJsErr);
-      loadedWithExcelJS = false;
-    }
-
-    if (!loadedWithExcelJS || newItems.length === 0) {
-      const data = new Uint8Array(arrayBuffer);
-      const workbook = XLSX.read(data, { type: 'array', cellStyles: true, cellHTML: true });
-      const wsName = workbook.SheetNames[0];
-      const ws = workbook.Sheets[wsName];
-      const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
-
-      let headerRowIndex = -1;
-      let inSummaryRows = false;
-      const colMap: Record<string, number> = {};
-
-      for (let i = 0; i < Math.min(rows.length, 500); i++) {
-        const row = rows[i] as any[];
-        if (!row || row.length === 0) continue;
-
-        if (headerRowIndex === -1) {
-          const rowStr = row.map(c => excelCellText(c).toUpperCase().replace(/\s+/g, ' ').trim()).join('|');
-          if (
-            rowStr.includes('MÔ TẢ') ||
-            rowStr.includes('PRICES LIST') ||
-            rowStr.includes('LIST PRICE') ||
-            rowStr.includes('DISCOUNT') ||
-            ((rowStr.includes('STT') || rowStr.includes('MSP') || rowStr.includes('NO.')) &&
-              (rowStr.includes('ĐƠN GIÁ') || rowStr.includes('MODEL') || rowStr.includes('PS') || rowStr.includes('TÊN HÀNG') || rowStr.includes('SẢN PHẨM') || rowStr.includes('THÀNH TIỀN') || rowStr.includes('TỔNG')))
-          ) {
-            headerRowIndex = i;
-            row.forEach((cell, idx) => {
-              const header = excelCellText(cell).toUpperCase().replace(/\s+/g, ' ').trim();
-              if (!header) return;
-              if ((header.includes('STT') || header === 'NO.' || header === 'TT' || header === 'MSP') && colMap['stt'] === undefined) colMap['stt'] = idx;
-              else if ((header === 'PS' || header.startsWith('PS ') || header.includes('MODEL') || header.includes('PART NUMBER') || header.includes('PART#') || header.includes('SKU') || header.includes('MÃ HÀNG') || header === 'P/N' || header === 'PN') && colMap['ps'] === undefined) colMap['ps'] = idx;
-              else if ((header.includes('MÔ TẢ') || header.includes('TÊN HÀNG') || header.includes('DIỄN GIẢI') || header.includes('DESCRIPTION') || header.includes('SẢN PHẨM') || header.includes('HẠNG MỤC') || header.includes('THIẾT BỊ')) && colMap['mota'] === undefined) colMap['mota'] = idx;
-              else if ((header.includes('TERM') || header.includes('THỜI HẠN') || header.includes('DURATION')) && colMap['license_duration'] === undefined) colMap['license_duration'] = idx;
-              else if ((header === 'ĐVT' || header === 'DVT' || header.includes('ĐƠN VỊ') || header === 'UNIT') && colMap['dvt'] === undefined) colMap['dvt'] = idx;
-              else if ((header === 'S.L' || header === 'S.L.' || header === 'SL' || header.includes('SỐ LƯỢNG') || header === 'QTY') && colMap['sl'] === undefined) colMap['sl'] = idx;
-              else if ((header.includes('PRICES LIST') || header.includes('LIST PRICE') || header.includes('PRICE LIST')) && colMap['listPrice'] === undefined) colMap['listPrice'] = idx;
-              else if ((header.includes('DISCOUNT') || header.includes('OFF HÃNG')) && colMap['discount'] === undefined) colMap['discount'] = idx;
-              else if ((header.includes('ĐƠN GIÁ') || header.includes('GIÁ VỐN') || header.includes('UNIT PRICE')) && colMap['giaVon'] === undefined) colMap['giaVon'] = idx;
-              else if (((header.includes('THÀNH TIỀN') && !header.includes('CÓ VAT') && !header.includes('SAU VAT') && !header.includes('SAU THUẾ')) || header.includes('CHƯA VAT') || header.includes('TRƯỚC THUẾ') || header === 'TỔNG' || header.includes('TỔNG TIỀN') || header === 'AMOUNT' || header === 'TOTAL') && colMap['truocThue'] === undefined) colMap['truocThue'] = idx;
-              else if ((header.startsWith('VAT') || (header.includes('THUẾ') && !header.includes('THÀNH TIỀN') && !header.includes('TRƯỚC') && !header.includes('SAU'))) && colMap['vat'] === undefined) colMap['vat'] = idx;
-            });
-          }
-          continue;
-        }
-
-        const rowCellsPlain = row.map(c => excelCellText(c).trim()).filter(Boolean);
-        const rowJoinedPlain = rowCellsPlain.join(' ');
-        const rowAllUpper = rowCellsPlain.map(c => c.toUpperCase()).join('|');
-        if (
-          rowAllUpper.includes('CÁC ĐIỀU KHOẢN') ||
-          rowAllUpper.includes('ĐIỀU KHOẢN') ||
-          rowAllUpper.includes('ĐIỀU KIỆN THƯƠNG MẠI')
-        ) {
-          break;
-        }
-        if (
-          rowAllUpper.includes('TỔNG CỘNG') ||
-          rowAllUpper.includes('TỔNG CHƯA VAT') ||
-          rowAllUpper.includes('TỔNG TRƯỚC THUẾ') ||
-          rowAllUpper.includes('TỔNG GIÁ TRỊ') ||
-          rowAllUpper.includes('TỔNG THANH TOÁN') ||
-          rowAllUpper.includes('CỘNG TIỀN HÀNG') ||
-          rowAllUpper.includes('PHẦN MỀM KHÔNG CHỊU THUẾ') ||
-          /^VAT\s*\d+/i.test(rowJoinedPlain)
-        ) {
-          inSummaryRows = true;
-          excelSummaryLines.push(rowJoinedPlain);
-          continue;
-        }
-        if (inSummaryRows) {
-          if (rowJoinedPlain) excelSummaryLines.push(rowJoinedPlain);
-          continue;
-        }
-
-        const motaPlain = colMap['mota'] !== undefined ? excelCellText(row[colMap['mota']]).trim() : '';
-        const psVal = colMap['ps'] !== undefined ? excelCellText(row[colMap['ps']]).trim() : '';
-        const psClean = psVal.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
-        const combinedText = `${psClean} ${motaPlain}`.trim();
-
-        if (!combinedText || combinedText.toUpperCase() === 'STT' || combinedText.toUpperCase() === 'MSP') continue;
-
-        const sl = colMap['sl'] !== undefined ? (parseCleanNum(row[colMap['sl']]) || 1) : 1;
-        const listPrice = colMap['listPrice'] !== undefined ? parseCleanNum(row[colMap['listPrice']]) : 0;
-        let giaVon = colMap['giaVon'] !== undefined ? parseCleanNum(row[colMap['giaVon']]) : 0;
-        const truocThue = colMap['truocThue'] !== undefined ? parseCleanNum(row[colMap['truocThue']]) : 0;
-        if (giaVon === 0 && truocThue > 0 && sl > 0) {
-          giaVon = Math.round(truocThue / sl);
-        }
-
-        if (listPrice === 0 && giaVon === 0 && truocThue === 0) continue;
-
-        const vatVal = colMap['vat'] !== undefined ? parseCleanNum(row[colMap['vat']]) : 0;
-        let vatPct = 0;
-        if (vatVal > 0 && vatVal < 1) vatPct = Math.round(vatVal * 100);
-        else if (vatVal > 0 && truocThue > 0 && vatVal > 100) vatPct = Math.round((vatVal / truocThue) * 100);
-        else if (vatVal > 0 && vatVal <= 100) vatPct = Math.round(vatVal);
-
-        const motaLines = motaPlain.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
-        const effectiveTenHang =
-          motaLines.length === 1
-            ? (motaLines[0] || psClean)
-            : (psClean || motaLines[0] || combinedText);
-        const bulletMeta = extractMetadataFromBulletLines(motaPlain);
-        const generatedMaHang = psClean || bulletMeta.partNumber || removeDiacritics(effectiveTenHang).toUpperCase().replace(/\s+/g, '').replace(/[^A-Z0-9]/g, '');
-        const dvt = colMap['dvt'] !== undefined ? excelCellText(row[colMap['dvt']]).trim() || 'Bản quyền' : 'Bản quyền';
-        const rawTerm = colMap['license_duration'] !== undefined ? excelCellText(row[colMap['license_duration']]).trim() : '';
-        const license_duration = bulletMeta.licenseDuration || normalizeTermDurationText(rawTerm, motaPlain);
-
-        const afterTaxGiaVon = vatPct > 0 ? Math.round((giaVon > 0 ? giaVon : listPrice) * (1 + vatPct / 100)) : (giaVon > 0 ? giaVon : listPrice);
-        const effectiveGiaTC = afterTaxGiaVon;
-        const effectiveDonGia = listPrice > 0 ? listPrice : effectiveGiaTC;
-
-        newItems.push({
-          uid: Math.random().toString(36).substr(2, 9),
-          Ten_hang: effectiveTenHang,
-          Features: escapeTextPreservingExcelFormatting(motaPlain || psClean, true).html,
-          DVT: dvt,
-          License_duration: license_duration,
-          So_luong: sl,
-          Don_gia: effectiveDonGia,
-          Gia_tieu_chuan: effectiveGiaTC,
-          Thue_VAT: vatPct,
-          Ma_hang: generatedMaHang,
-          _hasExplicitMaHang: Boolean(psClean || bulletMeta.partNumber),
-          _rawPs: psClean || bulletMeta.partNumber,
-          _rawMota: motaPlain,
-          _listPrice: effectiveDonGia,
-          _giaVon: effectiveGiaTC,
-          _donGiaTruocThue: giaVon > 0 ? giaVon : listPrice,
-          _thanhTienTruocThue: truocThue || sl * (giaVon > 0 ? giaVon : listPrice),
-          Main_img: '',
-          Ma_nha_cung_cap: '',
-          Ten_nha_cung_cap: '',
-          Mo_ta_chung: '',
-          Mo_ta_chi_tiet: '',
-          Danh_muc: '',
-          thoi_han_bao_hanh: bulletMeta.baoHanh || '',
-          Trang_thai: '',
-          Don_vi_tien_te: quoteCurrency.value || 'VND',
-          Ti_gia: 1,
-          Ma_hang_lien_ket: '',
-          Ten_hang_lien_ket: '',
-          Ghi_chu: '',
-          gia_hardware: 0,
-          gia_nhap: 0,
-          muc_phan_tram_off: 0,
-          volume: '',
-          Description: ''
-        });
-      }
-    }
-
-    if (newItems.length > 0 && excelSummaryLines.length > 0) {
-      applySummaryVatAndComputeAfterTaxCost(newItems, excelSummaryLines, true);
-    }
-
-    const validExcelCostCount = newItems.filter(it => toNum(it.Gia_tieu_chuan, 0) > 0).length;
-    if (newItems.length === 0 || validExcelCostCount === 0) {
-      asyncResultModal.value.show = false;
-      aiMuaHangFallbackModal.value = {
-        show: true,
-        file,
-        reason:
-          newItems.length === 0
-            ? 'Không tìm thấy cấu trúc bảng hàng hóa chuẩn trong file mua hàng này.'
-            : 'File không đọc được cột Giá vốn / Đơn giá theo định dạng chuẩn.'
-      };
-      return;
-    }
-
-    asyncResultModal.value.show = false;
-    importConfirmMode.value = 'mua_hang';
-    pendingImportItems.value = enrichImportedItemsWithDbCheck(newItems);
-    showImportConfirmModal.value = true;
-  } catch (err: any) {
-    console.error(err);
-    asyncResultModal.value.show = false;
-    aiMuaHangFallbackModal.value = {
-      show: true,
-      file,
-      reason: 'Không đọc được định dạng file theo chuẩn thông thường (' + String(err?.message || err) + ').'
-    };
-  } finally {
-    target.value = '';
-  }
+  openSmartImportModal('mua_hang')
 }
 
 function triggerImportTemplateFile() {
-  if (importTemplateFileInput.value) {
-    importTemplateFileInput.value.click();
+  openSmartImportModal('bao_gia')
+}
+
+function normalizeTermDurationText(rawTerm: string, fallbackDesc = ''): string {
+  const t = String(rawTerm || '').replace(/\r?\n/g, ' ').trim()
+  if (t) {
+    if (/^\d+(?:[.,]\d+)?$/.test(t)) {
+      return `${t.replace(',', '.')} Năm`
+    }
+    return t
   }
+  const mosMatch = String(fallbackDesc || '').match(/\b(\d+)\s*(?:MOS|MONTHS|THÁNG)\b/i)
+  if (mosMatch) {
+    const months = parseInt(mosMatch[1], 10)
+    if (months > 0 && months % 12 === 0) return `${months / 12} Năm`
+    if (months > 0) return `${months} Tháng`
+  }
+  const yrMatch = String(fallbackDesc || '').match(/\b(\d+)\s*(?:YEAR|YEARS|YR|NĂM)\b/i)
+  if (yrMatch) {
+    return `${yrMatch[1]} Năm`
+  }
+  return '1 Năm'
+}
+
+async function processMuaHangFileStandard(file: File) {
+  if (!file) return
+  lastMuaHangImportFile.value = file
+
+  if (isImageDocFile(file)) {
+    openAiImportFallback(
+      'mua_hang',
+      file,
+      'Tài liệu đang ở định dạng hình ảnh nên bộ quét bảng tiêu chuẩn không thể đọc trực tiếp.'
+    )
+    return
+  }
+
+  const isPdfFile = isPdfDocFile(file)
+  const isWordFile = isWordDocFile(file)
+  showAsyncLoading(
+    isPdfFile
+      ? 'Đang quét file mua hàng PDF theo chế độ tiêu chuẩn...'
+      : isWordFile
+      ? 'Đang quét bảng mua hàng từ file Word theo chế độ tiêu chuẩn...'
+      : 'Đang quét file mua hàng theo chế độ tiêu chuẩn...'
+  )
+
+  try {
+    await ensureProductsLoadedForImportCheck()
+
+    if (isPdfFile) {
+      const arrayBuffer = await file.arrayBuffer()
+      let pdfItems: any[] = []
+      try {
+        const resRich = await parsePdfQuoteBuffer(arrayBuffer, true)
+        pdfItems = resRich.items || []
+      } catch (_) {}
+
+      if (pdfItems.filter(it => toNum(it.Gia_tieu_chuan, 0) > 0).length === 0) {
+        const fallbackStd = await parsePurchaseFileStandard(file, quoteCurrency.value || 'VND')
+        if (fallbackStd.items.length > 0) {
+          pdfItems = fallbackStd.items
+        }
+      }
+
+      const validCostCount = pdfItems.filter(it => toNum(it.Gia_tieu_chuan, 0) > 0).length
+      asyncResultModal.value.show = false
+      if (pdfItems.length > 0 && validCostCount > 0) {
+        importConfirmMode.value = 'mua_hang'
+        importConfirmSourceMode.value = 'standard'
+        pendingImportItems.value = enrichImportedItemsWithDbCheck(pdfItems)
+        showImportConfirmModal.value = true
+      } else {
+        openAiImportFallback(
+          'mua_hang',
+          file,
+          pdfItems.length === 0
+            ? 'Không nhận diện được cấu trúc bảng chuẩn từ file PDF mua hàng này (hoặc PDF dạng ảnh Scan).'
+            : 'File PDF không đọc được cột Giá vốn / Đơn giá theo định dạng chuẩn.'
+        )
+      }
+      return
+    }
+
+    const newItems: any[] = []
+    const excelSummaryLines: string[] = []
+
+    // Thử ExcelJS trước cho file .xlsx chuẩn để giữ rich HTML formatting trong cột Mô tả
+    if (!isWordFile && /\.xlsx$/i.test(file.name)) {
+      try {
+        const arrayBuffer = await file.arrayBuffer()
+        const excelWb = new ExcelJS.Workbook()
+        await excelWb.xlsx.load(arrayBuffer)
+        for (const ws of excelWb.worksheets) {
+          if (!ws || newItems.length > 0) continue
+          let headerRowIndex = -1
+          let inSummaryRows = false
+          const colMap: Record<string, number> = {}
+          const maxRow = Math.min(ws.rowCount || 500, 500)
+          const isColHidden = (c: number) => Boolean(ws.getColumn(c)?.hidden)
+
+          for (let r = 1; r <= maxRow; r++) {
+            const row = ws.getRow(r)
+            if (!row || row.hidden) continue
+
+            if (headerRowIndex === -1) {
+              const cellTexts: string[] = []
+              for (let c = 1; c <= 25; c++) {
+                if (isColHidden(c)) continue
+                cellTexts.push(excelCellText(row.getCell(c).value).toUpperCase().replace(/\s+/g, ' ').trim())
+              }
+              const rowStr = cellTexts.join('|')
+              if (
+                rowStr.includes('MÔ TẢ') ||
+                rowStr.includes('PRICES LIST') ||
+                rowStr.includes('LIST PRICE') ||
+                rowStr.includes('DISCOUNT') ||
+                ((rowStr.includes('STT') || rowStr.includes('MSP') || rowStr.includes('NO.') || rowStr.includes('TT')) &&
+                  (rowStr.includes('ĐƠN GIÁ') || rowStr.includes('MODEL') || rowStr.includes('PS') || rowStr.includes('TÊN HÀNG') || rowStr.includes('SẢN PHẨM') || rowStr.includes('THÀNH TIỀN') || rowStr.includes('TỔNG')))
+              ) {
+                headerRowIndex = r
+                for (let c = 1; c <= 25; c++) {
+                  if (isColHidden(c)) continue
+                  const cell = row.getCell(c)
+                  if (cell.master && cell.master.address !== cell.address) continue
+                  const header = excelCellText(cell.value).toUpperCase().replace(/\s+/g, ' ').trim()
+                  if (!header) continue
+                  if ((header.includes('STT') || header === 'NO.' || header === 'TT' || header === 'MSP') && colMap['stt'] === undefined) colMap['stt'] = c
+                  else if ((header === 'PS' || header.startsWith('PS ') || header.includes('MODEL') || header.includes('PART NUMBER') || header.includes('PART#') || header.includes('SKU') || header.includes('MÃ HÀNG') || header === 'P/N' || header === 'PN') && colMap['ps'] === undefined) colMap['ps'] = c
+                  else if ((header.includes('MÔ TẢ') || header.includes('TÊN HÀNG') || header.includes('DIỄN GIẢI') || header.includes('DESCRIPTION') || header.includes('SẢN PHẨM') || header.includes('HẠNG MỤC') || header.includes('THIẾT BỊ')) && colMap['mota'] === undefined) colMap['mota'] = c
+                  else if ((header.includes('TERM') || header.includes('THỜI HẠN') || header.includes('DURATION')) && colMap['license_duration'] === undefined) colMap['license_duration'] = c
+                  else if ((header === 'ĐVT' || header === 'DVT' || header.includes('ĐƠN VỊ') || header === 'UNIT') && colMap['dvt'] === undefined) colMap['dvt'] = c
+                  else if ((header === 'S.L' || header === 'S.L.' || header === 'SL' || header.includes('SỐ LƯỢNG') || header === 'QTY') && colMap['sl'] === undefined) colMap['sl'] = c
+                  else if ((header.includes('PRICES LIST') || header.includes('LIST PRICE') || header.includes('PRICE LIST')) && colMap['listPrice'] === undefined) colMap['listPrice'] = c
+                  else if ((header.includes('DISCOUNT') || header.includes('OFF HÃNG')) && colMap['discount'] === undefined) colMap['discount'] = c
+                  else if ((header.includes('ĐƠN GIÁ') || header.includes('GIÁ VỐN') || header.includes('UNIT PRICE')) && colMap['giaVon'] === undefined) colMap['giaVon'] = c
+                  else if (((header.includes('THÀNH TIỀN') && !header.includes('CÓ VAT') && !header.includes('SAU VAT') && !header.includes('SAU THUẾ')) || header.includes('CHƯA VAT') || header.includes('TRƯỚC THUẾ') || header === 'TỔNG' || header.includes('TỔNG TIỀN') || header === 'AMOUNT' || header === 'TOTAL') && colMap['truocThue'] === undefined) colMap['truocThue'] = c
+                  else if ((header.startsWith('VAT') || (header.includes('THUẾ') && !header.includes('THÀNH TIỀN') && !header.includes('TRƯỚC') && !header.includes('SAU'))) && colMap['vat'] === undefined) colMap['vat'] = c
+                }
+              }
+              continue
+            }
+
+            const getCellPlain = (colKey: string) => {
+              const cIdx = colMap[colKey]
+              if (cIdx === undefined) return ''
+              return excelCellText(row.getCell(cIdx).value).trim()
+            }
+
+            const rowCellsPlain: string[] = []
+            for (let c = 1; c <= 15; c++) {
+              if (isColHidden(c)) continue
+              const t = excelCellText(row.getCell(c).value).trim()
+              if (t) rowCellsPlain.push(t)
+            }
+            const rowJoinedPlain = rowCellsPlain.join(' ')
+            const rowAllUpper = rowCellsPlain.map(x => x.toUpperCase()).join('|')
+
+            if (
+              rowAllUpper.includes('CÁC ĐIỀU KHOẢN') ||
+              rowAllUpper.includes('ĐIỀU KHOẢN') ||
+              rowAllUpper.includes('ĐIỀU KIỆN THƯƠNG MẠI')
+            ) {
+              break
+            }
+
+            if (
+              rowAllUpper.includes('TỔNG CỘNG') ||
+              rowAllUpper.includes('TỔNG CHƯA VAT') ||
+              rowAllUpper.includes('TỔNG TRƯỚC THUẾ') ||
+              rowAllUpper.includes('TỔNG GIÁ TRỊ') ||
+              rowAllUpper.includes('TỔNG THANH TOÁN') ||
+              rowAllUpper.includes('CỘNG TIỀN HÀNG') ||
+              rowAllUpper.includes('PHẦN MỀM KHÔNG CHỊU THUẾ') ||
+              /^VAT\s*\d+/i.test(rowJoinedPlain)
+            ) {
+              inSummaryRows = true
+              excelSummaryLines.push(rowJoinedPlain)
+              continue
+            }
+
+            if (inSummaryRows) {
+              if (rowJoinedPlain) excelSummaryLines.push(rowJoinedPlain)
+              continue
+            }
+
+            const psVal = getCellPlain('ps')
+            const motaPlain = getCellPlain('mota')
+            const motaCell = colMap['mota'] !== undefined ? row.getCell(colMap['mota']) : undefined
+            const motaHtml = motaCell ? excelCellToFormattedHtml(motaCell) : ''
+
+            const psClean = psVal.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim()
+            const combinedText = `${psClean} ${motaPlain}`.trim()
+            if (!combinedText || combinedText.toUpperCase() === 'STT' || combinedText.toUpperCase() === 'MSP') continue
+
+            const sl = parseCleanNumber(colMap['sl'] !== undefined ? excelCellText(row.getCell(colMap['sl']).value) : 1) || 1
+            const listPrice = colMap['listPrice'] !== undefined ? parseCleanNumber(excelCellText(row.getCell(colMap['listPrice']).value)) : 0
+            let giaVon = colMap['giaVon'] !== undefined ? parseCleanNumber(excelCellText(row.getCell(colMap['giaVon']).value)) : 0
+            const truocThue = colMap['truocThue'] !== undefined ? parseCleanNumber(excelCellText(row.getCell(colMap['truocThue']).value)) : 0
+            if (giaVon === 0 && truocThue > 0 && sl > 0) {
+              giaVon = Math.round(truocThue / sl)
+            }
+            if (listPrice === 0 && giaVon === 0 && truocThue === 0) continue
+
+            const vatVal = colMap['vat'] !== undefined ? parseCleanNumber(excelCellText(row.getCell(colMap['vat']).value)) : 0
+            let vatPct = 0
+            if (vatVal > 0 && vatVal < 1) vatPct = Math.round(vatVal * 100)
+            else if (vatVal > 0 && truocThue > 0 && vatVal > 100) vatPct = Math.round((vatVal / truocThue) * 100)
+            else if (vatVal > 0 && vatVal <= 100) vatPct = Math.round(vatVal)
+
+            const motaLines = motaPlain.split(/\r?\n/).map(s => s.trim()).filter(Boolean)
+            const effectiveTenHang =
+              motaLines.length === 1
+                ? (motaLines[0] || psClean)
+                : (psClean || motaLines[0] || combinedText)
+            const bulletMeta = extractMetadataFromBulletLines(motaPlain)
+            const generatedMaHang =
+              psClean ||
+              bulletMeta.partNumber ||
+              removeDiacritics(effectiveTenHang).toUpperCase().replace(/\s+/g, '').replace(/[^A-Z0-9]/g, '')
+            const dvt = getCellPlain('dvt') || 'Bản quyền'
+            const license_duration = bulletMeta.duration || normalizeTermDurationText(getCellPlain('license_duration'), motaPlain)
+
+            const afterTaxGiaVon = vatPct > 0 ? Math.round((giaVon > 0 ? giaVon : listPrice) * (1 + vatPct / 100)) : (giaVon > 0 ? giaVon : listPrice)
+            const effectiveGiaTC = afterTaxGiaVon
+            const effectiveDonGia = listPrice > 0 ? listPrice : effectiveGiaTC
+
+            newItems.push({
+              uid: Math.random().toString(36).slice(2, 11),
+              Ten_hang: effectiveTenHang,
+              Features: motaHtml || escapeTextPreservingExcelFormatting(motaPlain || psClean, true).html,
+              DVT: dvt,
+              License_duration: license_duration,
+              So_luong: sl,
+              Don_gia: effectiveDonGia,
+              Gia_tieu_chuan: effectiveGiaTC,
+              Thue_VAT: vatPct,
+              Ma_hang: generatedMaHang,
+              _hasExplicitMaHang: Boolean(psClean || bulletMeta.partNumber),
+              _rawPs: psClean || bulletMeta.partNumber,
+              _rawMota: motaPlain,
+              _listPrice: effectiveDonGia,
+              _giaVon: effectiveGiaTC,
+              _donGiaTruocThue: giaVon > 0 ? giaVon : listPrice,
+              _thanhTienTruocThue: truocThue || sl * (giaVon > 0 ? giaVon : listPrice),
+              Main_img: '',
+              Ma_nha_cung_cap: '',
+              Ten_nha_cung_cap: '',
+              Mo_ta_chung: '',
+              Mo_ta_chi_tiet: '',
+              Danh_muc: '',
+              thoi_han_bao_hanh: bulletMeta.warranty || '',
+              Trang_thai: '',
+              Don_vi_tien_te: quoteCurrency.value || 'VND',
+              Ti_gia: 1,
+              Ma_hang_lien_ket: '',
+              Ten_hang_lien_ket: '',
+              Ghi_chu: '',
+              gia_hardware: 0,
+              gia_nhap: 0,
+              muc_phan_tram_off: 0,
+              volume: '',
+              Description: ''
+            })
+          }
+        }
+        if (newItems.length > 0 && excelSummaryLines.length > 0) {
+          applySummaryVatAndComputeAfterTaxCost(newItems, excelSummaryLines, true)
+        }
+      } catch (excelJsErr) {
+        console.warn('Chuyển sang bộ đọc đa định dạng cho file mua hàng:', excelJsErr)
+      }
+    }
+
+    // Fallback sang bộ đọc chuẩn đa định dạng (mọi đuôi Excel / nhiều Sheet / Word .docx/.doc/.rtf)
+    if (newItems.length === 0 || newItems.filter(it => toNum(it.Gia_tieu_chuan, 0) > 0).length === 0) {
+      const stdUniversal = await parsePurchaseFileStandard(file, quoteCurrency.value || 'VND')
+      if (stdUniversal.items.length > 0) {
+        newItems.splice(0, newItems.length, ...stdUniversal.items)
+      }
+    }
+
+    const validCostCount = newItems.filter(it => toNum(it.Gia_tieu_chuan, 0) > 0).length
+    asyncResultModal.value.show = false
+
+    if (newItems.length === 0 || validCostCount === 0) {
+      openAiImportFallback(
+        'mua_hang',
+        file,
+        newItems.length === 0
+          ? 'Không nhận diện được cấu trúc bảng hàng hóa chuẩn trong tài liệu mua hàng này.'
+          : 'Không đọc được cột Giá vốn / Đơn giá hợp lệ theo định dạng chuẩn.'
+      )
+      return
+    }
+
+    importConfirmMode.value = 'mua_hang'
+    importConfirmSourceMode.value = 'standard'
+    pendingImportItems.value = enrichImportedItemsWithDbCheck(newItems)
+    showImportConfirmModal.value = true
+  } catch (err: any) {
+    console.error('Lỗi quét file mua hàng tiêu chuẩn:', err)
+    asyncResultModal.value.show = false
+    openAiImportFallback(
+      'mua_hang',
+      file,
+      'Không đọc được định dạng file theo chuẩn thông thường (' + String(err?.message || err) + ').'
+    )
+  }
+}
+
+async function onImportMuaHangFileChange(event: Event) {
+  const target = event.target as HTMLInputElement
+  const file = target.files && target.files[0] ? target.files[0] : null
+  target.value = ''
+  if (!file) return
+  await processMuaHangFileStandard(file)
 }
 
 interface PdfRichToken {
@@ -14518,63 +15447,6 @@ async function parsePdfQuoteBuffer(arrayBuffer: ArrayBuffer, isPurchaseMode = fa
   for (const line of allLines) {
     line.tokens.sort((a, b) => a.x - b.x);
     line.plainText = joinPdfLineTokens(line.tokens);
-  }
-
-  // If scanned image PDF (no selectable text), OCR page 1 with Tesseract + DeepSeek
-  const totalExtractedChars = allLines.reduce((acc, l) => acc + l.plainText.length, 0);
-  if (totalExtractedChars < 25 && pdf.numPages >= 1) {
-    try {
-      const page1 = await pdf.getPage(1);
-      const vp = page1.getViewport({ scale: 2.0 });
-      const canvas = document.createElement('canvas');
-      canvas.width = vp.width;
-      canvas.height = vp.height;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        await page1.render({ canvasContext: ctx, viewport: vp }).promise;
-        const ocrRes = await Tesseract.recognize(canvas, 'vie+eng');
-        const ocrText = ocrRes?.data?.text || '';
-        if (ocrText.trim().length > 20) {
-          const aiPrompt = `Trích xuất danh sách hàng hóa từ văn bản báo giá OCR sau đây thành JSON array: [{"ten_hang":"...","dien_giai":"...","dvt":"...","thoi_han":"...","so_luong":1,"don_gia":0,"thue_vat":0}]. Giữ nguyên các dòng mô tả trong dien_giai (ngăn cách bằng \\n). Chỉ trả về JSON array:\n\n${ocrText}`;
-          const aiResp = await callDeepSeek(aiPrompt, undefined, DEEPSEEK_MODEL, 0.1);
-          const jsonMatch = aiResp.match(/\[[\s\S]*\]/);
-          if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              const ocrItems = parsed.map((p: any) => {
-                const ten = String(p.ten_hang || '').trim();
-                const dgRaw = String(p.dien_giai || '').trim();
-                const dgHtml = escapeTextPreservingExcelFormatting(dgRaw, true).html;
-                const generatedMaHang = removeDiacritics(ten).toUpperCase().replace(/\s+/g, '').replace(/[^A-Z0-9]/g, '');
-                return {
-                  uid: Math.random().toString(36).substr(2, 9),
-                  Ten_hang: ten,
-                  Features: dgHtml,
-                  DVT: String(p.dvt || 'Bản quyền'),
-                  License_duration: String(p.thoi_han || '1 Năm'),
-                  So_luong: Number(p.so_luong) || 1,
-                  Don_gia: Number(p.don_gia) || 0,
-                  Gia_tieu_chuan: Number(p.don_gia) || 0,
-                  Thue_VAT: Number(p.thue_vat) || 0,
-                  Ma_hang: generatedMaHang,
-                  Main_img: '', Ma_nha_cung_cap: '', Ten_nha_cung_cap: '',
-                  Mo_ta_chung: '', Mo_ta_chi_tiet: '', Danh_muc: '', thoi_han_bao_hanh: '',
-                  Trang_thai: '', Don_vi_tien_te: quoteCurrency.value || 'VND', Ti_gia: 1,
-                  Ma_hang_lien_ket: '', Ten_hang_lien_ket: '', Ghi_chu: '',
-                  gia_hardware: 0, gia_nhap: 0, muc_phan_tram_off: 0, volume: '', Description: ''
-                };
-              }).filter((it: any) => it.Ten_hang);
-              if (!isPurchaseMode) {
-                extractCustomerInfoFromHeaderStrings(ocrText.split(/\r?\n/).slice(0, 25), extractedCustomer);
-              }
-              return { items: ocrItems, termsHtml: '', extractedCustomer };
-            }
-          }
-        }
-      }
-    } catch (ocrErr) {
-      console.warn('OCR PDF fallback failed:', ocrErr);
-    }
   }
 
   // Extract Customer Info from header lines when importing a quotation file
@@ -15968,405 +16840,384 @@ async function applyImportedQuoteCustomerAndCheckDb(extracted: Partial<KhachHang
   }
 }
 
-async function onImportTemplateFileChange(event: Event) {
-  const target = event.target as HTMLInputElement;
-  if (!target.files || target.files.length === 0) return;
-  
-  const file = target.files[0];
-  const isPdfFile = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
-  showAsyncLoading(isPdfFile ? 'Đang đọc file báo giá PDF...' : 'Đang đọc file mẫu...');
+async function runAiBaoGiaAnalysis(file: File) {
+  if (!file) return;
+  lastBaoGiaImportFile.value = file;
+  showAsyncLoading(`AI đang phân tích báo giá "${file.name}" (Khách hàng, Hàng hóa & Điều khoản)...`);
   try {
     await ensureProductsLoadedForImportCheck();
-    const arrayBuffer = await file.arrayBuffer();
+    const aiRes = await analyzeSalesQuoteFileWithAI(
+      file,
+      quoteCurrency.value || 'VND',
+      (msg) => showAsyncLoading(msg)
+    );
+    const aiItems = Array.isArray(aiRes?.items) ? aiRes.items : [];
+    if (aiItems.length === 0) {
+      asyncResultModal.value.show = false;
+      showAsyncError('Không tìm thấy dữ liệu', 'AI không nhận diện được danh sách hàng hóa báo giá hợp lệ trong tài liệu này.');
+      return;
+    }
+    if (aiRes.termsHtml) {
+      importedTermsHtml.value = aiRes.termsHtml;
+      selectedTermId.value = 'custom_import';
+      editableTermContent.value = aiRes.termsHtml;
+    }
+    if (aiRes.extractedCustomer && (aiRes.extractedCustomer.Ten_cong_ty || aiRes.extractedCustomer.Ten_khach_hang)) {
+      await applyImportedQuoteCustomerAndCheckDb(aiRes.extractedCustomer as Partial<KhachHang>);
+    }
+    asyncResultModal.value.show = false;
+    importConfirmMode.value = 'bao_gia';
+    importConfirmSourceMode.value = 'ai';
+    pendingImportItems.value = enrichImportedItemsWithDbCheck(aiItems);
+    showImportConfirmModal.value = true;
+    triggerToast(`AI đã đọc thành công ${aiItems.length} mặt hàng báo giá`);
+  } catch (err: any) {
+    console.error('AI Bao Gia Analysis Error:', err);
+    asyncResultModal.value.show = false;
+    showAsyncError('Lỗi phân tích AI', String(err?.message || err));
+  }
+}
+
+async function processBaoGiaFileStandard(file: File) {
+  if (!file) return;
+  lastBaoGiaImportFile.value = file;
+
+  if (isImageDocFile(file)) {
+    openAiImportFallback(
+      'bao_gia',
+      file,
+      'Tài liệu đang ở định dạng hình ảnh nên bộ quét bảng báo giá tiêu chuẩn không thể đọc trực tiếp.'
+    );
+    return;
+  }
+
+  const isPdfFile = isPdfDocFile(file);
+  const isWordFile = isWordDocFile(file);
+  showAsyncLoading(
+    isPdfFile
+      ? 'Đang quét file báo giá PDF theo chế độ tiêu chuẩn...'
+      : isWordFile
+      ? 'Đang quét bảng báo giá từ file Word theo chế độ tiêu chuẩn...'
+      : 'Đang quét file báo giá theo chế độ tiêu chuẩn...'
+  );
+
+  try {
+    await ensureProductsLoadedForImportCheck();
+
     if (isPdfFile) {
+      const arrayBuffer = await file.arrayBuffer();
       const { items: pdfItems, termsHtml: pdfTermsHtml, extractedCustomer: pdfCustomer } = await parsePdfQuoteBuffer(arrayBuffer);
-      if (pdfTermsHtml) {
-        importedTermsHtml.value = pdfTermsHtml;
-        selectedTermId.value = 'custom_import';
-        editableTermContent.value = pdfTermsHtml;
-      }
+      asyncResultModal.value.show = false;
       if (pdfItems.length > 0) {
+        if (pdfTermsHtml) {
+          importedTermsHtml.value = pdfTermsHtml;
+          selectedTermId.value = 'custom_import';
+          editableTermContent.value = pdfTermsHtml;
+        }
         await applyImportedQuoteCustomerAndCheckDb(pdfCustomer || {});
-        asyncResultModal.value.show = false;
         importConfirmMode.value = 'bao_gia';
+        importConfirmSourceMode.value = 'standard';
         pendingImportItems.value = enrichImportedItemsWithDbCheck(pdfItems);
         showImportConfirmModal.value = true;
       } else {
-        showAsyncError('Lỗi', 'Không tìm thấy dữ liệu bảng báo giá hợp lệ trong file PDF.');
+        openAiImportFallback(
+          'bao_gia',
+          file,
+          'Không nhận diện được cấu trúc bảng báo giá chuẩn từ file PDF này (hoặc PDF dạng ảnh Scan).'
+        );
       }
       return;
     }
 
     const newItems: any[] = [];
-    let readingTerms = false;
     let termsHtml = '';
-    const extractedCustomer: Partial<KhachHang> = {};
+    let extractedCustomer: Partial<KhachHang> = {};
 
-    let loadedWithExcelJS = false;
-    try {
-      const excelWb = new ExcelJS.Workbook();
-      await excelWb.xlsx.load(arrayBuffer);
-      const ws = excelWb.worksheets[0];
-      if (ws) {
-        loadedWithExcelJS = true;
-        let headerRowIndex = -1;
-        const colMap: Record<string, number> = {};
-        const maxRow = Math.min(ws.rowCount || 500, 500);
-        const isColHidden = (c: number) => Boolean(ws.getColumn(c)?.hidden);
+    // Ưu tiên ExcelJS cho file .xlsx chuẩn để bảo toàn định dạng HTML trong cột Diễn giải
+    if (!isWordFile && /\.xlsx$/i.test(file.name)) {
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const excelWb = new ExcelJS.Workbook();
+        await excelWb.xlsx.load(arrayBuffer);
+        for (const ws of excelWb.worksheets) {
+          if (!ws || newItems.length > 0) continue;
+          let headerRowIndex = -1;
+          let readingTerms = false;
+          const colMap: Record<string, number> = {};
+          const maxRow = Math.min(ws.rowCount || 500, 500);
+          const isColHidden = (c: number) => Boolean(ws.getColumn(c)?.hidden);
 
-        for (let r = 1; r <= maxRow; r++) {
-          const row = ws.getRow(r);
-          if (!row || row.hidden) continue;
+          for (let r = 1; r <= maxRow; r++) {
+            const row = ws.getRow(r);
+            if (!row || row.hidden) continue;
 
-          if (headerRowIndex === -1) {
-            const cellTexts: string[] = [];
-            const rawRowCells: string[] = [];
-            for (let c = 1; c <= 25; c++) {
-              if (isColHidden(c)) continue;
-              const rawCellVal = excelCellText(row.getCell(c).value).trim();
-              if (rawCellVal) rawRowCells.push(rawCellVal);
-              cellTexts.push(rawCellVal.toUpperCase());
-            }
-            if (rawRowCells.length > 0) {
-              extractCustomerInfoFromHeaderStrings(rawRowCells, extractedCustomer);
-            }
-            const rowStr = cellTexts.join('|');
-            if (
-              (rowStr.includes('STT') || rowStr.includes('NO.')) &&
-              (rowStr.includes('TÊN HÀNG') || rowStr.includes('MODEL') || rowStr.includes('PART#') || rowStr.includes('HÀNG HÓA') || rowStr.includes('SẢN PHẨM') || rowStr.includes('DIỄN GIẢI') || rowStr.includes('DESCRIPTION'))
-            ) {
-              headerRowIndex = r;
-              let modelCol: number | undefined;
-              let tenHangCandidateCol: number | undefined;
+            if (headerRowIndex === -1) {
+              const cellTexts: string[] = [];
+              const rawRowCells: string[] = [];
               for (let c = 1; c <= 25; c++) {
                 if (isColHidden(c)) continue;
-                const cell = row.getCell(c);
-                if (cell.master && cell.master.address !== cell.address) continue;
-                const header = excelCellText(cell.value).toUpperCase().replace(/\s+/g, ' ').trim();
-                if (!header) continue;
-                if ((header.includes('STT') || header === 'NO.' || header === 'TT') && colMap['stt'] === undefined) colMap['stt'] = c;
-                else if ((header === 'P/N' || header === 'PN' || header.includes('MÃ HÀNG') || header.includes('PART NUMBER')) && colMap['maHang'] === undefined) colMap['maHang'] = c;
-                else if ((header.includes('MODEL') || header.includes('PART#') || header.includes('SKU')) && modelCol === undefined) {
-                  modelCol = c;
-                  if (colMap['tenHang'] === undefined) colMap['tenHang'] = c;
-                } else if (header.includes('TÊN HÀNG') || header.includes('HÀNG HÓA') || header.includes('SẢN PHẨM') || header.includes('DỊCH VỤ')) {
-                  if (colMap['tenHang'] === undefined) colMap['tenHang'] = c;
-                  else if (colMap['tenHang'] === modelCol && tenHangCandidateCol === undefined) tenHangCandidateCol = c;
-                } else if ((header === 'DESCRIPTION' || header === 'PRODUCT DESCRIPTION' || header.startsWith('DESCRIPTION (')) && colMap['description'] === undefined) colMap['description'] = c;
-                else if ((header.includes('DIỄN GIẢI') || header.includes('DIEN GIAI') || header.includes('MÔ TẢ') || header.includes('THÔNG SỐ') || header.includes('ĐẶC TÍNH') || header.includes('NỘI DUNG') || header.includes('HẠNG MỤC') || header.includes('SPEC')) && colMap['features'] === undefined) colMap['features'] = c;
-                else if ((header.includes('HÃNG') || header.includes('NHÀ CUNG CẤP')) && colMap['hang'] === undefined) colMap['hang'] = c;
-                else if ((header.includes('ĐƠN VỊ') || header.includes('DON VI') || header === 'ĐVT' || header === 'DVT' || header === 'UNIT') && colMap['dvt'] === undefined) colMap['dvt'] = c;
-                else if ((header.includes('THỜI HẠN') || header.includes('THOI HAN') || header.includes('DURATION')) && colMap['license_duration'] === undefined) colMap['license_duration'] = c;
-                else if ((header.includes('BẢO HÀNH') || header.includes('BAO HANH') || header.includes('WARRANTY')) && colMap['baoHanh'] === undefined) colMap['baoHanh'] = c;
-                else if ((header === 'S.L' || header === 'S.L.' || header.includes('SỐ LƯỢNG') || header.includes('S.LƯỢNG') || header === 'SL' || header === 'QTY') && colMap['sl'] === undefined) colMap['sl'] = c;
-                else if ((header.includes('ĐƠN GIÁ') || header.includes('DON GIA') || header.includes('UNIT PRICE')) && colMap['donGia'] === undefined) colMap['donGia'] = c;
-                else if (((header.includes('THÀNH TIỀN') && !header.includes('VAT') && !header.includes('SAU THUẾ') && !header.includes('SAU VAT')) || header.includes('TRƯỚC THUẾ') || header.includes('TRUOC THUE') || header.includes('ESTIMATED VALUE') || header.includes('AMOUNT')) && colMap['truocThue'] === undefined) colMap['truocThue'] = c;
-                else if ((header === 'VAT' || header === 'THUẾ VAT' || (header.includes('THUẾ') && !header.includes('TRƯỚC') && !header.includes('SAU') && !header.includes('THÀNH TIỀN'))) && colMap['vat'] === undefined) colMap['vat'] = c;
+                const rawCellVal = excelCellText(row.getCell(c).value).trim();
+                if (rawCellVal) rawRowCells.push(rawCellVal);
+                cellTexts.push(rawCellVal.toUpperCase());
               }
-              if (tenHangCandidateCol !== undefined) {
-                if (colMap['features'] !== undefined || colMap['description'] !== undefined) {
-                  if (modelCol !== undefined && colMap['maHang'] === undefined) colMap['maHang'] = modelCol;
-                  colMap['tenHang'] = tenHangCandidateCol;
-                } else {
-                  colMap['features'] = tenHangCandidateCol;
+              if (rawRowCells.length > 0) {
+                extractCustomerInfoFromHeaderStrings(rawRowCells, extractedCustomer);
+              }
+              const rowStr = cellTexts.join('|');
+              if (
+                (rowStr.includes('STT') || rowStr.includes('NO.') || rowStr.includes('TT')) &&
+                (rowStr.includes('TÊN HÀNG') || rowStr.includes('MODEL') || rowStr.includes('PART#') || rowStr.includes('HÀNG HÓA') || rowStr.includes('SẢN PHẨM') || rowStr.includes('DIỄN GIẢI') || rowStr.includes('DESCRIPTION'))
+              ) {
+                headerRowIndex = r;
+                let modelCol: number | undefined;
+                let tenHangCandidateCol: number | undefined;
+                for (let c = 1; c <= 25; c++) {
+                  if (isColHidden(c)) continue;
+                  const cell = row.getCell(c);
+                  if (cell.master && cell.master.address !== cell.address) continue;
+                  const header = excelCellText(cell.value).toUpperCase().replace(/\s+/g, ' ').trim();
+                  if (!header) continue;
+                  if ((header.includes('STT') || header === 'NO.' || header === 'TT') && colMap['stt'] === undefined) colMap['stt'] = c;
+                  else if ((header === 'P/N' || header === 'PN' || header.includes('MÃ HÀNG') || header.includes('PART NUMBER')) && colMap['maHang'] === undefined) colMap['maHang'] = c;
+                  else if ((header.includes('MODEL') || header.includes('PART#') || header.includes('SKU')) && modelCol === undefined) {
+                    modelCol = c;
+                    if (colMap['tenHang'] === undefined) colMap['tenHang'] = c;
+                  } else if (header.includes('TÊN HÀNG') || header.includes('HÀNG HÓA') || header.includes('SẢN PHẨM') || header.includes('DỊCH VỤ')) {
+                    if (colMap['tenHang'] === undefined) colMap['tenHang'] = c;
+                    else if (colMap['tenHang'] === modelCol && tenHangCandidateCol === undefined) tenHangCandidateCol = c;
+                  } else if ((header === 'DESCRIPTION' || header === 'PRODUCT DESCRIPTION' || header.startsWith('DESCRIPTION (')) && colMap['description'] === undefined) colMap['description'] = c;
+                  else if ((header.includes('DIỄN GIẢI') || header.includes('DIEN GIAI') || header.includes('MÔ TẢ') || header.includes('THÔNG SỐ') || header.includes('ĐẶC TÍNH') || header.includes('NỘI DUNG') || header.includes('HẠNG MỤC') || header.includes('SPEC')) && colMap['features'] === undefined) colMap['features'] = c;
+                  else if ((header.includes('HÃNG') || header.includes('NHÀ CUNG CẤP')) && colMap['hang'] === undefined) colMap['hang'] = c;
+                  else if ((header.includes('ĐƠN VỊ') || header.includes('DON VI') || header === 'ĐVT' || header === 'DVT' || header === 'UNIT') && colMap['dvt'] === undefined) colMap['dvt'] = c;
+                  else if ((header.includes('THỜI HẠN') || header.includes('THOI HAN') || header.includes('DURATION')) && colMap['license_duration'] === undefined) colMap['license_duration'] = c;
+                  else if ((header.includes('BẢO HÀNH') || header.includes('BAO HANH') || header.includes('WARRANTY')) && colMap['baoHanh'] === undefined) colMap['baoHanh'] = c;
+                  else if ((header === 'S.L' || header === 'S.L.' || header.includes('SỐ LƯỢNG') || header.includes('S.LƯỢNG') || header === 'SL' || header === 'QTY') && colMap['sl'] === undefined) colMap['sl'] = c;
+                  else if ((header.includes('ĐƠN GIÁ') || header.includes('DON GIA') || header.includes('UNIT PRICE')) && colMap['donGia'] === undefined) colMap['donGia'] = c;
+                  else if (((header.includes('THÀNH TIỀN') && !header.includes('VAT') && !header.includes('SAU THUẾ') && !header.includes('SAU VAT')) || header.includes('TRƯỚC THUẾ') || header.includes('TRUOC THUE') || header.includes('ESTIMATED VALUE') || header.includes('AMOUNT')) && colMap['truocThue'] === undefined) colMap['truocThue'] = c;
+                  else if ((header === 'VAT' || header === 'THUẾ VAT' || (header.includes('THUẾ') && !header.includes('TRƯỚC') && !header.includes('SAU') && !header.includes('THÀNH TIỀN'))) && colMap['vat'] === undefined) colMap['vat'] = c;
+                }
+                if (tenHangCandidateCol !== undefined) {
+                  if (colMap['features'] !== undefined || colMap['description'] !== undefined) {
+                    if (modelCol !== undefined && colMap['maHang'] === undefined) colMap['maHang'] = modelCol;
+                    colMap['tenHang'] = tenHangCandidateCol;
+                  } else {
+                    colMap['features'] = tenHangCandidateCol;
+                  }
+                }
+                if (colMap['features'] === undefined && colMap['description'] !== undefined) {
+                  colMap['features'] = colMap['description'];
                 }
               }
-              if (colMap['features'] === undefined && colMap['description'] !== undefined) {
-                colMap['features'] = colMap['description'];
-              }
+              continue;
             }
-            continue;
-          }
 
-          const getCellPlain = (colKey: string) => {
-            const cIdx = colMap[colKey];
-            if (cIdx === undefined) return '';
-            return excelCellText(row.getCell(cIdx).value).trim();
-          };
+            const getCellPlain = (colKey: string) => {
+              const cIdx = colMap[colKey];
+              if (cIdx === undefined) return '';
+              return excelCellText(row.getCell(cIdx).value).trim();
+            };
 
-          const stt = getCellPlain('stt').toUpperCase();
-          const tenHang = getCellPlain('tenHang');
-          const featuresPlain = getCellPlain('features');
-          const featuresCell = colMap['features'] !== undefined ? row.getCell(colMap['features']) : undefined;
-          const featuresHtml = featuresCell ? excelCellToFormattedHtml(featuresCell) : '';
-          const descCell = (colMap['description'] !== undefined && colMap['description'] !== colMap['features'])
-            ? row.getCell(colMap['description'])
-            : undefined;
-          const descriptionHtml = descCell ? excelCellToFormattedHtml(descCell) : '';
+            const stt = getCellPlain('stt').toUpperCase();
+            const tenHang = getCellPlain('tenHang');
+            const featuresPlain = getCellPlain('features');
+            const featuresCell = colMap['features'] !== undefined ? row.getCell(colMap['features']) : undefined;
+            const featuresHtml = featuresCell ? excelCellToFormattedHtml(featuresCell) : '';
+            const descCell = (colMap['description'] !== undefined && colMap['description'] !== colMap['features'])
+              ? row.getCell(colMap['description'])
+              : undefined;
+            const descriptionHtml = descCell ? excelCellToFormattedHtml(descCell) : '';
 
-          // Detect if any cell in this row triggers Totals / Commercial Terms
-          let rowAllUpper = `${stt}|${tenHang.toUpperCase()}|${featuresPlain.toUpperCase()}`;
-          for (let c = 1; c <= 14; c++) {
-            if (isColHidden(c)) continue;
-            const cell = row.getCell(c);
-            if (cell.master && cell.master.address !== cell.address) continue;
-            const t = excelCellText(cell.value).trim().toUpperCase();
-            if (t) rowAllUpper += `|${t}`;
-          }
-
-          if (
-            !readingTerms &&
-            (rowAllUpper.includes('TỔNG CỘNG') ||
-              rowAllUpper.includes('ĐIỀU KHOẢN') ||
-              rowAllUpper.includes('ĐIỀU KIỆN THƯƠNG MẠI'))
-          ) {
-            readingTerms = true;
-          }
-
-          if (readingTerms) {
-            const plainParts: string[] = [];
-            const htmlParts: string[] = [];
-            for (let c = 1; c <= 15; c++) {
+            let rowAllUpper = `${stt}|${tenHang.toUpperCase()}|${featuresPlain.toUpperCase()}`;
+            for (let c = 1; c <= 14; c++) {
               if (isColHidden(c)) continue;
               const cell = row.getCell(c);
               if (cell.master && cell.master.address !== cell.address) continue;
-              const vPlain = excelCellText(cell.value).trim();
-              if (vPlain) {
-                plainParts.push(vPlain);
-                const vHtml = excelCellToFormattedHtml(cell);
-                htmlParts.push(vHtml || vPlain);
-              }
+              const t = excelCellText(cell.value).trim().toUpperCase();
+              if (t) rowAllUpper += `|${t}`;
             }
-            if (plainParts.length > 0) {
-              const lineText = plainParts.join(' ');
-              const upperLine = lineText.toUpperCase();
-              if (
-                !upperLine.includes('TỔNG CỘNG') &&
-                !upperLine.includes('THÀNH TIỀN') &&
-                upperLine !== 'VAT' &&
-                !lineText.match(/^[\d\.\,\s]+$/)
-              ) {
-                termsHtml += `<p style="margin: 0; padding-bottom: 4px;">${htmlParts.join(' ')}</p>`;
-              }
+
+            if (
+              !readingTerms &&
+              (rowAllUpper.includes('TỔNG CỘNG') ||
+                rowAllUpper.includes('ĐIỀU KHOẢN') ||
+                rowAllUpper.includes('ĐIỀU KIỆN THƯƠNG MẠI'))
+            ) {
+              readingTerms = true;
             }
-            continue;
-          }
 
-          const effectiveTenHang = tenHang || (featuresPlain ? featuresPlain.split(/\r?\n/)[0].trim() : '');
-          if (!effectiveTenHang) {
-            continue;
-          }
+            if (readingTerms) {
+              const plainParts: string[] = [];
+              const htmlParts: string[] = [];
+              for (let c = 1; c <= 15; c++) {
+                if (isColHidden(c)) continue;
+                const cell = row.getCell(c);
+                if (cell.master && cell.master.address !== cell.address) continue;
+                const vPlain = excelCellText(cell.value).trim();
+                if (vPlain) {
+                  plainParts.push(vPlain);
+                  const vHtml = excelCellToFormattedHtml(cell);
+                  htmlParts.push(vHtml || vPlain);
+                }
+              }
+              if (plainParts.length > 0) {
+                const lineText = plainParts.join(' ');
+                const upperLine = lineText.toUpperCase();
+                if (
+                  !upperLine.includes('TỔNG CỘNG') &&
+                  !upperLine.includes('THÀNH TIỀN') &&
+                  upperLine !== 'VAT' &&
+                  !lineText.match(/^[\d\.\,\s]+$/)
+                ) {
+                  termsHtml += `<p style="margin: 0; padding-bottom: 4px;">${htmlParts.join(' ')}</p>`;
+                }
+              }
+              continue;
+            }
 
-          const dvt = getCellPlain('dvt');
-          const license_duration = getCellPlain('license_duration');
-          const maHangFromCol = getCellPlain('maHang');
-          const hangFromCol = getCellPlain('hang');
-          const baoHanhFromCol = getCellPlain('baoHanh');
+            const effectiveTenHang = tenHang || (featuresPlain ? featuresPlain.split(/\r?\n/)[0].trim() : '');
+            if (!effectiveTenHang) {
+              continue;
+            }
 
-          const slStr = (getCellPlain('sl') || '1').replace(/,/g, '');
-          const sl = parseFloat(slStr) || 1;
+            const dvt = getCellPlain('dvt');
+            const license_duration = getCellPlain('license_duration');
+            const maHangFromCol = getCellPlain('maHang');
+            const hangFromCol = getCellPlain('hang');
+            const baoHanhFromCol = getCellPlain('baoHanh');
 
-          const donGiaStr = (getCellPlain('donGia') || '0').replace(/,/g, '');
-          let donGia = parseFloat(donGiaStr) || 0;
+            const sl = Math.max(1, parseCleanNumber(getCellPlain('sl')) || 1);
+            let donGia = parseCleanNumber(getCellPlain('donGia'));
+            const truocThue = parseCleanNumber(getCellPlain('truocThue')) || (sl * donGia);
+            if (!donGia && truocThue > 0 && sl > 0) {
+              donGia = Math.round(truocThue / sl);
+            }
 
-          const truocThueStr = getCellPlain('truocThue').replace(/,/g, '');
-          const truocThue = parseFloat(truocThueStr) || (sl * donGia);
-          if (!donGia && truocThue > 0 && sl > 0) {
-            donGia = Math.round(truocThue / sl);
-          }
+            const tenCell = colMap['tenHang'] !== undefined ? row.getCell(colMap['tenHang']) : null;
+            const featCell = colMap['features'] !== undefined ? row.getCell(colMap['features']) : null;
+            const isMergedBanner = Boolean(
+              tenCell &&
+              featCell &&
+              tenCell.isMerged &&
+              featCell.isMerged &&
+              tenCell.master?.address === featCell.master?.address
+            );
+            const isRomanSection = /^(I|II|III|IV|V|VI|VII|VIII|IX|X)\.?$/i.test(stt);
+            if (donGia === 0 && truocThue === 0 && (isMergedBanner || isRomanSection || !featuresPlain)) {
+              continue;
+            }
 
-          // Skip section/category header rows (e.g. "I | FIREWALL SOPHOS..." with merged row or 0 price)
-          const tenCell = colMap['tenHang'] !== undefined ? row.getCell(colMap['tenHang']) : null;
-          const featCell = colMap['features'] !== undefined ? row.getCell(colMap['features']) : null;
-          const isMergedBanner = Boolean(
-            tenCell &&
-            featCell &&
-            tenCell.isMerged &&
-            featCell.isMerged &&
-            tenCell.master?.address === featCell.master?.address
-          );
-          const isRomanSection = /^(I|II|III|IV|V|VI|VII|VIII|IX|X)\.?$/i.test(stt);
-          if (donGia === 0 && truocThue === 0 && (isMergedBanner || isRomanSection || !featuresPlain)) {
-            continue;
-          }
+            const vatVal = parseCleanNumber(getCellPlain('vat'));
+            let vatPct = 0;
+            if (vatVal > 0 && vatVal < 1) {
+              vatPct = Math.round(vatVal * 100);
+            } else if (vatVal > 0 && truocThue > 0 && vatVal > 100) {
+              vatPct = Math.round((vatVal / truocThue) * 100);
+            } else if (vatVal > 0 && vatVal <= 100) {
+              vatPct = Math.round(vatVal);
+            }
 
-          const vatStr = (getCellPlain('vat') || '0').replace(/,/g, '');
-          const vatVal = parseFloat(vatStr) || 0;
+            const generatedMaHang = maHangFromCol || removeDiacritics(effectiveTenHang).toUpperCase().replace(/\s+/g, '').replace(/[^A-Z0-9]/g, '');
 
-          let vatPct = 0;
-          if (vatVal > 0 && vatVal < 1) {
-            vatPct = Math.round(vatVal * 100);
-          } else if (vatVal > 0 && truocThue > 0 && vatVal > 100) {
-            vatPct = Math.round((vatVal / truocThue) * 100);
-          } else if (vatVal > 0 && vatVal <= 100) {
-            vatPct = Math.round(vatVal);
-          }
-
-          const generatedMaHang = maHangFromCol || removeDiacritics(effectiveTenHang).toUpperCase().replace(/\s+/g, '').replace(/[^A-Z0-9]/g, '');
-
-          const item = {
-            uid: Math.random().toString(36).substr(2, 9),
-            Ten_hang: effectiveTenHang,
-            Features: featuresHtml || featuresPlain,
-            DVT: dvt || 'Bản quyền',
-            License_duration: license_duration || '1 Năm',
-            So_luong: sl,
-            Don_gia: donGia,
-            Gia_tieu_chuan: donGia,
-            Thue_VAT: vatPct,
-            Ma_hang: generatedMaHang,
-            _hasExplicitMaHang: Boolean(maHangFromCol),
-            Main_img: '',
-            Ma_nha_cung_cap: '',
-            Ten_nha_cung_cap: hangFromCol || '',
-            Mo_ta_chung: '',
-            Mo_ta_chi_tiet: '',
-            Danh_muc: '',
-            thoi_han_bao_hanh: baoHanhFromCol || '',
-            Trang_thai: '',
-            Don_vi_tien_te: quoteCurrency.value || 'VND',
-            Ti_gia: 1,
-            Ma_hang_lien_ket: '',
-            Ten_hang_lien_ket: '',
-            Ghi_chu: '',
-            gia_hardware: 0,
-            gia_nhap: 0,
-            muc_phan_tram_off: 0,
-            volume: '',
-            Description: descriptionHtml || ''
-          };
-
-          newItems.push(item as any);
-        }
-      }
-    } catch (excelJsErr) {
-      console.warn('Fallback to XLSX reader for non-xlsx file:', excelJsErr);
-      loadedWithExcelJS = false;
-    }
-
-    if (!loadedWithExcelJS) {
-      const data = new Uint8Array(arrayBuffer);
-      const workbook = XLSX.read(data, { type: 'array', cellStyles: true, cellHTML: true });
-      const wsName = workbook.SheetNames[0];
-      const ws = workbook.Sheets[wsName];
-      const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
-      
-      let headerRowIndex = -1;
-      const colMap: Record<string, number> = {};
-      
-      for (let i = 0; i < Math.min(rows.length, 500); i++) {
-        const row = rows[i] as any[];
-        if (!row || row.length === 0) continue;
-        
-        if (headerRowIndex === -1) {
-          extractCustomerInfoFromHeaderStrings(
-            row.map(c => excelCellText(c)),
-            extractedCustomer
-          );
-          const rowStr = row.map(c => excelCellText(c).toUpperCase()).join('|');
-          if (rowStr.includes('STT') && (rowStr.includes('TÊN HÀNG') || rowStr.includes('MODEL') || rowStr.includes('DIỄN GIẢI'))) {
-            headerRowIndex = i;
-            row.forEach((cell, idx) => {
-              const header = excelCellText(cell).toUpperCase().trim();
-              if (header.includes('STT') && colMap['stt'] === undefined) colMap['stt'] = idx;
-              else if ((header.includes('TÊN HÀNG') || header.includes('MODEL')) && colMap['tenHang'] === undefined) colMap['tenHang'] = idx;
-              else if ((header === 'DESCRIPTION' || header === 'PRODUCT DESCRIPTION') && colMap['description'] === undefined) colMap['description'] = idx;
-              else if ((header.includes('DIỄN GIẢI') || header.includes('MÔ TẢ')) && colMap['features'] === undefined) colMap['features'] = idx;
-              else if ((header.includes('ĐƠN VỊ TÍNH') || header === 'DVT' || header === 'ĐVT') && colMap['dvt'] === undefined) colMap['dvt'] = idx;
-              else if (header.includes('THỜI HẠN') && colMap['license_duration'] === undefined) colMap['license_duration'] = idx;
-              else if ((header === 'S.L' || header.includes('SỐ LƯỢNG') || header === 'SL') && colMap['sl'] === undefined) colMap['sl'] = idx;
-              else if (header.includes('ĐƠN GIÁ') && colMap['donGia'] === undefined) colMap['donGia'] = idx;
-              else if (header.includes('THÀNH TIỀN') && !header.includes('VAT') && colMap['truocThue'] === undefined) colMap['truocThue'] = idx;
-              else if ((header === 'VAT' || header.includes('THUẾ')) && colMap['vat'] === undefined) colMap['vat'] = idx;
+            newItems.push({
+              uid: Math.random().toString(36).substr(2, 9),
+              Ten_hang: effectiveTenHang,
+              Features: featuresHtml || featuresPlain,
+              DVT: dvt || 'Bản quyền',
+              License_duration: license_duration || '1 Năm',
+              So_luong: sl,
+              Don_gia: donGia,
+              Gia_tieu_chuan: donGia,
+              Thue_VAT: vatPct,
+              Ma_hang: generatedMaHang,
+              _hasExplicitMaHang: Boolean(maHangFromCol),
+              Main_img: '',
+              Ma_nha_cung_cap: '',
+              Ten_nha_cung_cap: hangFromCol || '',
+              Mo_ta_chung: '',
+              Mo_ta_chi_tiet: '',
+              Danh_muc: '',
+              thoi_han_bao_hanh: baoHanhFromCol || '',
+              Trang_thai: '',
+              Don_vi_tien_te: quoteCurrency.value || 'VND',
+              Ti_gia: 1,
+              Ma_hang_lien_ket: '',
+              Ten_hang_lien_ket: '',
+              Ghi_chu: '',
+              gia_hardware: 0,
+              gia_nhap: 0,
+              muc_phan_tram_off: 0,
+              volume: '',
+              Description: descriptionHtml || ''
             });
           }
-          continue;
         }
-        
-        const stt = colMap['stt'] !== undefined ? excelCellText(row[colMap['stt']]).trim().toUpperCase() : '';
-        const tenHang = colMap['tenHang'] !== undefined ? excelCellText(row[colMap['tenHang']]).trim() : '';
-        const rawFeaturesText = colMap['features'] !== undefined ? excelCellText(row[colMap['features']]) : '';
-        const features = escapeTextPreservingExcelFormatting(rawFeaturesText, true).html;
-        
-        if (!readingTerms && (stt.includes('TỔNG CỘNG') || tenHang.toUpperCase().includes('TỔNG CỘNG') || 
-            stt.includes('ĐIỀU KHOẢN') || tenHang.toUpperCase().includes('ĐIỀU KHOẢN') || rawFeaturesText.toUpperCase().includes('ĐIỀU KHOẢN'))) {
-          readingTerms = true;
-        }
-        
-        if (readingTerms) {
-          const arr = [];
-          for (let c = 0; c < row.length; c++) {
-            const v = excelCellText(row[c]).trim();
-            if (v) arr.push(v);
-          }
-          if (arr.length > 0) {
-            const lineText = arr.join(' ');
-            if (!lineText.toUpperCase().includes('TỔNG CỘNG') && !lineText.toUpperCase().includes('VAT') && !lineText.toUpperCase().includes('THÀNH TIỀN') && !lineText.match(/^[\d\.\,]+$/)) {
-               termsHtml += `<p style="margin: 0; padding-bottom: 4px;">${lineText}</p>`;
-            }
-          }
-          continue;
-        }
-        
-        if (!tenHang) {
-          continue;
-        }
-        
-        const dvt = colMap['dvt'] !== undefined ? excelCellText(row[colMap['dvt']]).trim() : '';
-        const license_duration = colMap['license_duration'] !== undefined ? excelCellText(row[colMap['license_duration']]).trim() : '';
-        
-        const slStr = colMap['sl'] !== undefined ? excelCellText(row[colMap['sl']]).replace(/,/g, '') : '1';
-        const sl = parseFloat(slStr) || 1;
-        
-        const donGiaStr = colMap['donGia'] !== undefined ? excelCellText(row[colMap['donGia']]).replace(/,/g, '') : '0';
-        const donGia = parseFloat(donGiaStr) || 0;
-        
-        const truocThueStr = colMap['truocThue'] !== undefined ? excelCellText(row[colMap['truocThue']]).replace(/,/g, '') : '';
-        const truocThue = parseFloat(truocThueStr) || (sl * donGia);
-        
-        const vatStr = colMap['vat'] !== undefined ? excelCellText(row[colMap['vat']]).replace(/,/g, '') : '0';
-        const vatVal = parseFloat(vatStr) || 0;
-        
-        let vatPct = 0;
-        if (vatVal > 0 && truocThue > 0) {
-          vatPct = Math.round((vatVal / truocThue) * 100);
-        }
-        
-        const generatedMaHang = removeDiacritics(tenHang).toUpperCase().replace(/\s+/g, '').replace(/[^A-Z0-9]/g, '');
-
-        const item = {
-          uid: Math.random().toString(36).substr(2, 9),
-          Ten_hang: tenHang,
-          Features: features,
-          DVT: dvt || 'Bản quyền',
-          License_duration: license_duration || '1 Năm',
-          So_luong: sl,
-          Don_gia: donGia,
-          Gia_tieu_chuan: donGia,
-          Thue_VAT: vatPct,
-          Ma_hang: generatedMaHang, Main_img: '', Ma_nha_cung_cap: '', Ten_nha_cung_cap: '',
-          Mo_ta_chung: '', Mo_ta_chi_tiet: '', Danh_muc: '', thoi_han_bao_hanh: '',
-          Trang_thai: '', Don_vi_tien_te: quoteCurrency.value || 'VND', Ti_gia: 1,
-          Ma_hang_lien_ket: '', Ten_hang_lien_ket: '', Ghi_chu: '',
-          gia_hardware: 0, gia_nhap: 0, muc_phan_tram_off: 0, volume: '', Description: ''
-        };
-        
-        newItems.push(item as any);
+      } catch (excelJsErr) {
+        console.warn('Chuyển sang bộ đọc đa định dạng cho file báo giá:', excelJsErr);
       }
     }
-    
-    if (termsHtml) {
-      importedTermsHtml.value = termsHtml;
-      selectedTermId.value = 'custom_import';
-      editableTermContent.value = termsHtml;
+
+    // Fallback sang bộ đọc chuẩn đa định dạng (mọi đuôi Excel .xls/.xlsm/.xlsb/.ods/.csv/.xml & Word .docx/.doc/.rtf)
+    if (newItems.length === 0) {
+      if (isWordFile) {
+        const wordDoc = await readUniversalWordDocument(file);
+        const stdWord = parseSalesQuoteSheetsStandard(wordDoc.tables, wordDoc.paragraphs, quoteCurrency.value || 'VND');
+        if (stdWord.items.length > 0) {
+          newItems.push(...stdWord.items);
+          if (!termsHtml && stdWord.termsHtml) termsHtml = stdWord.termsHtml;
+          if (!extractedCustomer.Ten_cong_ty && !extractedCustomer.Ten_khach_hang) {
+            extractedCustomer = stdWord.extractedCustomer as Partial<KhachHang>;
+          }
+        }
+      } else {
+        const sheets = await readUniversalSpreadsheetSheets(file);
+        const stdExcel = parseSalesQuoteSheetsStandard(sheets, [], quoteCurrency.value || 'VND');
+        if (stdExcel.items.length > 0) {
+          newItems.push(...stdExcel.items);
+          if (!termsHtml && stdExcel.termsHtml) termsHtml = stdExcel.termsHtml;
+          if (!extractedCustomer.Ten_cong_ty && !extractedCustomer.Ten_khach_hang) {
+            extractedCustomer = stdExcel.extractedCustomer as Partial<KhachHang>;
+          }
+        }
+      }
     }
-    
+
+    asyncResultModal.value.show = false;
+
     if (newItems.length > 0) {
+      if (termsHtml) {
+        importedTermsHtml.value = termsHtml;
+        selectedTermId.value = 'custom_import';
+        editableTermContent.value = termsHtml;
+      }
       await applyImportedQuoteCustomerAndCheckDb(extractedCustomer);
-      asyncResultModal.value.show = false;
       importConfirmMode.value = 'bao_gia';
+      importConfirmSourceMode.value = 'standard';
       pendingImportItems.value = enrichImportedItemsWithDbCheck(newItems);
       showImportConfirmModal.value = true;
     } else {
-      showAsyncError('Lỗi', 'Không tìm thấy dữ liệu hợp lệ trong file mẫu.');
+      openAiImportFallback(
+        'bao_gia',
+        file,
+        'Không nhận diện được cấu trúc bảng báo giá tiêu chuẩn trong tài liệu này.'
+      );
     }
-    
   } catch (err: any) {
-    console.error(err);
-    showAsyncError('Lỗi', 'Lỗi khi đọc file: ' + String(err.message || err));
-  } finally {
-    target.value = '';
+    console.error('Standard Bao Gia Scan Error:', err);
+    asyncResultModal.value.show = false;
+    openAiImportFallback(
+      'bao_gia',
+      file,
+      `Tài liệu không đọc được bằng bộ quét chuẩn (${String(err?.message || err)}).`
+    );
   }
+}
+
+async function onImportTemplateFileChange(event: Event) {
+  const target = event.target as HTMLInputElement;
+  const file = target?.files?.[0];
+  if (target) target.value = '';
+  if (!file) return;
+  await processBaoGiaFileStandard(file);
 }
 
 
@@ -17403,10 +18254,720 @@ const visibleLeadingFooterColSpan = computed(() => {
   return count
 })
 
+const showGuideModal = ref(false)
+const activeGuideStepId = ref<string | null>(null)
+const quoteGuideRef = ref<{ jumpToStep: (stepId: string) => void } | null>(null)
+const guideAutoOpenedMenu = ref<'colSetting' | 'moreActions' | 'saveModal' | 'customerDetailModal' | 'debtModal' | 'quoteEditModal' | 'adjustPriceOnly' | null>(null)
+
+interface StashedRealQuoteEdit {
+  item: any
+  idx: number
+  tab: 'info' | 'price'
+  adjustedFields: string[]
+}
+let guideStashedRealQuoteEdit: StashedRealQuoteEdit | null = null
+let guidePreserveOpenAdjustModal = false
+
+function restoreStashedRealQuoteEdit() {
+  if (!guideStashedRealQuoteEdit) return
+  const snap = guideStashedRealQuoteEdit
+  guideStashedRealQuoteEdit = null
+  _adjustedFields.clear()
+  snap.adjustedFields.forEach((f) => _adjustedFields.add(f))
+  quoteEdit.value = snap.item
+  quoteEditIdx.value = snap.idx
+  activeQuoteEditTab.value = snap.tab
+  showQuoteEditModal.value = true
+}
+
+const isGuideDemoQuoteItemModified = computed(() => {
+  const q = quoteEdit.value as any
+  if (!q || !q._isGuideDemo) return false
+  return (
+    toNum(q.Don_gia, 0) !== 1200000 ||
+    Math.abs(toNum(q.muc_phan_tram_off, 0) - 10) > 1e-4 ||
+    toNum(q.So_luong, 0) !== 10
+  )
+})
+
+function resetGuideDemoQuoteEditItem() {
+  if (!quoteEdit.value || !(quoteEdit.value as any)._isGuideDemo) return
+  _adjustedFields.clear()
+  quoteEdit.value = createGuideDemoQuoteItem()
+  triggerToast('Đã khôi phục dữ liệu mẫu về trạng thái ban đầu!', 'info')
+}
+
+const GUIDE_COL_SETTING_STEPS = new Set([
+  'table-theme',
+  'table-category-group',
+  'table-stt-format',
+  'table-columns'
+])
+
+const GUIDE_MORE_ACTIONS_STEPS = new Set([
+  'export-multi-format',
+  'tools-po-notes',
+  'tools-load-old',
+  'tools-import-quote',
+  'tools-import-purchase',
+  'tools-raw-preview',
+  'tools-history'
+])
+
+const GUIDE_DEBT_MODAL_STEPS = new Set([
+  'debt-po-kpi',
+  'debt-schedule-plan',
+  'debt-record-payment',
+  'debt-payment-history'
+])
+
+const GUIDE_EDIT_PRICE_STEPS = new Set([
+  'table-item-edit-price',
+  'table-edit-price-modal'
+])
+
+const GUIDE_TABLE_DEMO_ROW_STEPS = new Set([
+  'table-rows',
+  'table-group-edit-price',
+  'table-group-adjust'
+])
+
+function clearGuideTempTableDemoIfNeeded() {
+  if (!guideTempTableDemoActive.value) return
+  guideTempTableDemoActive.value = false
+  syncFlatRows()
+}
+
+watch(
+  () => adjustPriceModal.value.show,
+  (isOpen) => {
+    if (
+      !isOpen &&
+      !activeGuideStepId.value &&
+      guideTempTableDemoActive.value &&
+      !(showQuoteEditModal.value && (quoteEdit.value as any)?._isGuideDemo)
+    ) {
+      clearGuideTempTableDemoIfNeeded()
+    }
+  }
+)
+
+watch(
+  showQuoteEditModal,
+  (isOpen) => {
+    if (!isOpen && !activeGuideStepId.value && guideTempTableDemoActive.value && !adjustPriceModal.value.show) {
+      clearGuideTempTableDemoIfNeeded()
+    }
+  }
+)
+
+function closeGuideQuoteEditIfNeeded() {
+  guidePreserveOpenAdjustModal = false
+  adjustPriceModal.value.show = false
+  if (guideStashedRealQuoteEdit) {
+    restoreStashedRealQuoteEdit()
+    return
+  }
+  if (showQuoteEditModal.value) {
+    _adjustedFields.clear()
+    closeQuoteEdit()
+  }
+}
+
+async function ensureGuideQuoteEditReady(stepId: string) {
+  if (showQuoteEditModal.value && quoteEdit.value && !(quoteEdit.value as any)._isGuideDemo) {
+    guideStashedRealQuoteEdit = {
+      item: JSON.parse(JSON.stringify(quoteEdit.value)),
+      idx: quoteEditIdx.value,
+      tab: activeQuoteEditTab.value,
+      adjustedFields: Array.from(_adjustedFields)
+    }
+  }
+
+  if (!showQuoteEditModal.value || !quoteEdit.value || !(quoteEdit.value as any)._isGuideDemo) {
+    closeQuoteEditRaw()
+    _adjustedFields.clear()
+    quoteEditIdx.value = -1
+    pendingQuoteEditFocusField.value = ''
+    quoteEdit.value = createGuideDemoQuoteItem()
+    activeQuoteEditTab.value = 'price'
+    showQuoteEditModal.value = true
+  } else {
+    activeQuoteEditTab.value = 'price'
+  }
+
+  await nextTick()
+
+  if (stepId === 'table-edit-price-modal') {
+    if (guidePreserveOpenAdjustModal && adjustPriceModal.value.show) {
+      guidePreserveOpenAdjustModal = false
+    } else {
+      guidePreserveOpenAdjustModal = false
+      openAdjustPrice('field', '', 'Đơn giá (KH)', 'unit_price_kh', true)
+    }
+  } else {
+    guidePreserveOpenAdjustModal = false
+    adjustPriceModal.value.show = false
+  }
+}
+
+function closeGuideDebtModalIfNeeded() {
+  paymentModal.value.showScheduleSubModal = false
+  paymentModal.value.showRecordSubModal = false
+  paymentModal.value.show = false
+  if (paymentModal.value.customer?._isGuideDemo || paymentModal.value.row?._isGuideDemo) {
+    paymentModal.value.customer = null
+    paymentModal.value.customerPOs = []
+    paymentModal.value.row = null
+    paymentModal.value.scheduleItems = []
+    paymentModal.value.singleDueDate = ''
+    paymentModal.value.amount = 0
+    paymentModal.value.amountStr = '0'
+  }
+}
+
+watch(
+  () => paymentModal.value.show,
+  (isOpen) => {
+    if (!isOpen && (paymentModal.value.customer?._isGuideDemo || paymentModal.value.row?._isGuideDemo)) {
+      closeGuideDebtModalIfNeeded()
+    }
+  }
+)
+
+async function ensureGuideDebtModalReady(stepId: string) {
+  const rawKh = khach.value || ({} as any)
+  const hasCustIdentity = Boolean(
+    String(rawKh.Ma_khach_hang || maKHInput.value || '').trim() ||
+    String(rawKh.MST || '').trim() ||
+    String(rawKh.Ten_cong_ty || '').trim() ||
+    String(rawKh.Ten_khach_hang || tenKHInput.value || '').trim()
+  )
+
+  if (hasCustIdentity && !customerDebtDataLoaded.value) {
+    await Promise.race([
+      fetchCustomerDebtDataFromFirebase(false),
+      new Promise<void>((resolve) => window.setTimeout(resolve, 900))
+    ])
+  } else if (!customerDebtDataLoaded.value) {
+    fetchCustomerDebtDataFromFirebase(false)
+  }
+
+  const normalizedKh = {
+    ...rawKh,
+    Ma_khach_hang: rawKh.Ma_khach_hang || maKHInput.value || '',
+    Ten_khach_hang: rawKh.Ten_khach_hang || tenKHInput.value || '',
+    Ma_cong_ty: rawKh.Ma_cong_ty || genMaCT(rawKh.Ten_cong_ty || '')
+  }
+
+  const realPOs = hasCustIdentity ? getCustomerPOs(normalizedKh) : []
+
+  if (realPOs.length > 0) {
+    if (!paymentModal.value.show || paymentModal.value.customer?._isGuideDemo || !paymentModal.value.row) {
+      const firstUnpaid = realPOs.find(p => poCongNo(p) > 0) || realPOs[0]
+      paymentModal.value.customer = normalizedKh
+      paymentModal.value.customerPOs = realPOs
+      paymentModal.value.show = true
+      setupModalForPO(firstUnpaid)
+    }
+  } else if (!paymentModal.value.show || !paymentModal.value.row) {
+    const nowStr = getDebtFormattedNow()
+    const demoCreatedDate = debtAddDaysToDateStr(nowStr, -10)
+    const demoDue1 = debtAddDaysToDateStr(nowStr, -3)
+    const demoDue2 = debtAddDaysToDateStr(nowStr, 20)
+    const demoPayTime = `${debtAddDaysToDateStr(nowStr, -5)} 10:30:00`
+    const baseName = String(rawKh.Ten_cong_ty || rawKh.Ten_khach_hang || '').trim()
+
+    const demoCustomer = {
+      _isGuideDemo: true,
+      Ten_cong_ty: baseName ? `${baseName} (PO mẫu hướng dẫn)` : 'CÔNG TY CỔ PHẦN MINH HỌA (DỮ LIỆU MẪU)',
+      Ten_khach_hang: String(rawKh.Ten_khach_hang || tenKHInput.value || 'Nguyễn Văn Minh').trim(),
+      Ma_khach_hang: String(rawKh.Ma_khach_hang || maKHInput.value || 'KH-DEMO').trim(),
+      Ma_cong_ty: String(rawKh.Ma_cong_ty || 'MINHHOA').trim()
+    }
+
+    const demoPO = {
+      _isGuideDemo: true,
+      _firebaseKey: '__GUIDE_DEMO_PO__',
+      ID: 'PO-DEMO-01',
+      Ma_khach_hang: demoCustomer.Ma_khach_hang,
+      Ten_khach_hang: demoCustomer.Ten_khach_hang,
+      Ten_cong_ty: demoCustomer.Ten_cong_ty,
+      content_of_contract_PO: 'HĐ cung cấp bản quyền phần mềm (PO mẫu hướng dẫn)',
+      created_time: demoCreatedDate,
+      Tong_tien_sau_thueVAT: 100000000,
+      so_tien_da_thanh_toan: 30000000,
+      cong_no: 70000000,
+      loai_thanh_toan: 'nhieu_dot',
+      han_thanh_toan: demoDue2,
+      ke_hoach_thanh_toan: [
+        {
+          dot: 1,
+          noi_dung: 'Đợt 1 - Tạm ứng 30% sau ký HĐ',
+          ty_le_pct: 30,
+          so_tien_phai_thu: 30000000,
+          han_thanh_toan: demoDue1
+        },
+        {
+          dot: 2,
+          noi_dung: 'Đợt 2 - Tất toán 70% nghiệm thu',
+          ty_le_pct: 70,
+          so_tien_phai_thu: 70000000,
+          han_thanh_toan: demoDue2
+        }
+      ],
+      _demoHistory: [
+        {
+          _isGuideDemo: true,
+          id: 'LSTT-DEMO-01',
+          _firebaseKey: 'LSTT-DEMO-01',
+          id_salereport: 'PO-DEMO-01',
+          maKH: demoCustomer.Ma_khach_hang,
+          ten_khach_hang: demoCustomer.Ten_khach_hang,
+          ten_cong_ty: demoCustomer.Ten_cong_ty,
+          so_tien_thanh_toan: 30000000,
+          cong_no_con_lai: 70000000,
+          thoi_gian_thanh_toan: demoPayTime,
+          ghi_chu: 'Thanh toán Đợt 1 chuyển khoản (Dữ liệu minh họa)'
+        }
+      ]
+    }
+
+    paymentModal.value.customer = demoCustomer
+    paymentModal.value.customerPOs = [demoPO]
+    paymentModal.value.show = true
+    setupModalForPO(demoPO)
+  }
+
+  paymentModal.value.showScheduleSubModal = false
+  paymentModal.value.showRecordSubModal = false
+  mobileDebtActiveTab.value = stepId === 'debt-payment-history' ? 'history' : 'schedule'
+}
+
+function openQuoteGuideModal() {
+  showQuoteColSetting.value = false
+  showPriceListPicker.value = false
+  showRecentSearches.value = false
+  showGuideModal.value = true
+}
+
+function cleanupGuideAutoOpened(keepContextOpen: boolean, nextStepId?: string | null) {
+  if (keepContextOpen) {
+    guideAutoOpenedMenu.value = null
+    if (
+      guideTempTableDemoActive.value &&
+      !adjustPriceModal.value.show &&
+      !(showQuoteEditModal.value && (quoteEdit.value as any)?._isGuideDemo)
+    ) {
+      clearGuideTempTableDemoIfNeeded()
+    }
+    return
+  }
+
+  if (guideTempTableDemoActive.value && (!nextStepId || !GUIDE_TABLE_DEMO_ROW_STEPS.has(nextStepId))) {
+    clearGuideTempTableDemoIfNeeded()
+  }
+
+  if (guideAutoOpenedMenu.value === 'colSetting') {
+    if (!nextStepId || !GUIDE_COL_SETTING_STEPS.has(nextStepId)) {
+      showQuoteColSetting.value = false
+      guideAutoOpenedMenu.value = null
+    }
+    return
+  }
+
+  if (guideAutoOpenedMenu.value === 'moreActions') {
+    if (!nextStepId || !GUIDE_MORE_ACTIONS_STEPS.has(nextStepId)) {
+      showMoreActionsModal.value = false
+      guideAutoOpenedMenu.value = null
+    }
+    return
+  }
+
+  if (guideAutoOpenedMenu.value === 'saveModal') {
+    const nextNeedsSaveModal =
+      nextStepId === 'finance-ocr-tax' ||
+      (nextStepId === 'finance-customer' && isMobileQuoteViewport.value)
+    if (!nextNeedsSaveModal) {
+      showSaveModal.value = false
+      guideAutoOpenedMenu.value = null
+    }
+    return
+  }
+
+  if (guideAutoOpenedMenu.value === 'customerDetailModal') {
+    if (nextStepId !== 'debt-customer-overview') {
+      showCustomerDetailModal.value = false
+      guideAutoOpenedMenu.value = null
+    }
+    return
+  }
+
+  if (guideAutoOpenedMenu.value === 'debtModal') {
+    if (!nextStepId || !GUIDE_DEBT_MODAL_STEPS.has(nextStepId)) {
+      closeGuideDebtModalIfNeeded()
+      guideAutoOpenedMenu.value = null
+    }
+    return
+  }
+
+  if (guideAutoOpenedMenu.value === 'quoteEditModal') {
+    if (!nextStepId || !GUIDE_EDIT_PRICE_STEPS.has(nextStepId)) {
+      closeGuideQuoteEditIfNeeded()
+      guideAutoOpenedMenu.value = null
+    } else if (nextStepId !== 'table-edit-price-modal') {
+      adjustPriceModal.value.show = false
+    }
+    return
+  }
+
+  if (guideAutoOpenedMenu.value === 'adjustPriceOnly') {
+    if (nextStepId !== 'table-edit-price-modal') {
+      adjustPriceModal.value.show = false
+      guideAutoOpenedMenu.value = null
+    }
+  }
+}
+
+async function prepareGuideStep(step: GuideStepItem) {
+  showPriceListPicker.value = false
+  showRecentSearches.value = false
+  showMobileQuoteTabsSheet.value = false
+
+  if (!GUIDE_TABLE_DEMO_ROW_STEPS.has(step.id)) {
+    clearGuideTempTableDemoIfNeeded()
+  }
+
+  if (GUIDE_EDIT_PRICE_STEPS.has(step.id)) {
+    showQuoteColSetting.value = false
+    showMoreActionsModal.value = false
+    showSaveModal.value = false
+    showCustomerDetailModal.value = false
+    if (paymentModal.value.show) {
+      closeGuideDebtModalIfNeeded()
+    }
+    await ensureGuideQuoteEditReady(step.id)
+    guideAutoOpenedMenu.value = 'quoteEditModal'
+    return
+  }
+
+  if (adjustPriceModal.value.show) {
+    adjustPriceModal.value.show = false
+  }
+  if (showQuoteEditModal.value && (quoteEdit.value as any)?._isGuideDemo) {
+    closeGuideQuoteEditIfNeeded()
+  }
+
+  if (step.id === 'debt-customer-overview') {
+    showQuoteColSetting.value = false
+    showMoreActionsModal.value = false
+    showSaveModal.value = false
+    if (paymentModal.value.show) {
+      closeGuideDebtModalIfNeeded()
+    }
+    if (!showCustomerDetailModal.value) {
+      showCustomerDetailModal.value = true
+      guideAutoOpenedMenu.value = 'customerDetailModal'
+    }
+    return
+  }
+
+  if (GUIDE_DEBT_MODAL_STEPS.has(step.id)) {
+    showQuoteColSetting.value = false
+    showMoreActionsModal.value = false
+    showSaveModal.value = false
+    showCustomerDetailModal.value = false
+    const wasDebtOpen = paymentModal.value.show && Boolean(paymentModal.value.customer)
+    await ensureGuideDebtModalReady(step.id)
+    if (!wasDebtOpen) {
+      guideAutoOpenedMenu.value = 'debtModal'
+    }
+    return
+  }
+
+  if (paymentModal.value.show) {
+    closeGuideDebtModalIfNeeded()
+  }
+  showCustomerDetailModal.value = false
+
+  if (GUIDE_COL_SETTING_STEPS.has(step.id)) {
+    showMoreActionsModal.value = false
+    showSaveModal.value = false
+    if (isMobileQuoteViewport.value && mobileStep.value !== 2) {
+      setMobileStep(2)
+      await nextTick()
+    }
+    if (!showQuoteColSetting.value) {
+      showQuoteColSetting.value = true
+      guideAutoOpenedMenu.value = 'colSetting'
+    }
+    return
+  }
+
+  if (GUIDE_MORE_ACTIONS_STEPS.has(step.id)) {
+    showQuoteColSetting.value = false
+    showSaveModal.value = false
+    if (!showMoreActionsModal.value) {
+      showMoreActionsModal.value = true
+      guideAutoOpenedMenu.value = 'moreActions'
+    }
+    return
+  }
+
+  const needsSaveModal =
+    step.id === 'finance-ocr-tax' ||
+    (step.id === 'finance-customer' && isMobileQuoteViewport.value)
+
+  if (needsSaveModal) {
+    showQuoteColSetting.value = false
+    showMoreActionsModal.value = false
+    if (!showSaveModal.value) {
+      showSaveModal.value = true
+      guideAutoOpenedMenu.value = 'saveModal'
+    }
+    return
+  }
+
+  showQuoteColSetting.value = false
+  showMoreActionsModal.value = false
+  showSaveModal.value = false
+
+  if (step.groupId === 'catalog') {
+    if (isMobileQuoteViewport.value) {
+      if (mobileStep.value !== 1) setMobileStep(1)
+      isMobileProductHeaderHidden.value = false
+    } else {
+      showProductSidebar.value = true
+    }
+    return
+  }
+
+  if (step.groupId === 'tabs' || step.groupId === 'table') {
+    if (isMobileQuoteViewport.value && mobileStep.value !== 2) {
+      setMobileStep(2)
+    }
+    const needsCategoryHeader =
+      step.id === 'table-group-edit-price' || step.id === 'table-group-adjust'
+    if (needsCategoryHeader && !quoteGroupByCategory.value) {
+      toggleQuoteGroupByCategory()
+    }
+    if (GUIDE_TABLE_DEMO_ROW_STEPS.has(step.id) && selectedItems.value.length === 0) {
+      guideTempTableDemoActive.value = true
+      syncFlatRows()
+    }
+    await nextTick()
+    return
+  }
+
+  if (step.id === 'finance-customer') {
+    showProductSidebar.value = true
+    activeLeftDockTab.value = 'customer'
+    return
+  }
+
+  if (step.id === 'finance-discount' || step.id === 'finance-adjust-diff') {
+    if (isMobileQuoteViewport.value) {
+      if (mobileStep.value !== 3) setMobileStep(3)
+    } else {
+      showProductSidebar.value = true
+      activeLeftDockTab.value = 'discount'
+    }
+    return
+  }
+
+  if (step.id === 'finance-summary' || step.id === 'finance-adjust-total-price') {
+    if (isMobileQuoteViewport.value) {
+      if (mobileStep.value !== 3) setMobileStep(3)
+    } else {
+      showProductSidebar.value = true
+      activeLeftDockTab.value = 'finance'
+    }
+    return
+  }
+
+  if (step.id === 'save-quote') {
+    if (isMobileQuoteViewport.value) {
+      if (mobileStep.value === 1) setMobileStep(2)
+    } else {
+      showProductSidebar.value = true
+    }
+  }
+}
+
+const isAnyQuoteModalOpen = computed(() => Boolean(
+  showGuideModal.value ||
+  (Boolean(activeGuideStepId.value) && activeGuideStepId.value !== 'save-quote') ||
+  (showQuoteColSetting.value && isMobileQuoteViewport.value) ||
+  showMoreActionsModal.value ||
+  smartImportModal.show ||
+  showTaxModal.value ||
+  showTaxImageFullScreen.value ||
+  showCustomerDetailModal.value ||
+  (paymentModal.value.show && paymentModal.value.customer) ||
+  showExportInfoModal.value ||
+  showLoadInfoModal.value ||
+  showManualModal.value ||
+  showConfirmAddDbModal.value ||
+  (showCardModal.value && cardEdit.value) ||
+  productFileListSheet.show ||
+  productFileUploadModal.show ||
+  fileReadPriceModal.show ||
+  showPreviewRawModal.value ||
+  (showQuoteEditModal.value && quoteEdit.value) ||
+  showExcelConfigModal.value ||
+  (showQuoteEditRawModal.value && quoteEditRaw.value) ||
+  showLoadPipelineModal.value ||
+  showLoadInvoiceModal.value ||
+  showPickCompareModal.value ||
+  showCompareModal.value ||
+  showSaveModal.value ||
+  showExportSaveConfirmModal.value ||
+  showExportExcelModal.value ||
+  showPrintPreviewZoomModal.value ||
+  showCustomerPickerModal.value ||
+  showProductPickerModal.value ||
+  adjustPriceModal.value.show ||
+  showHistoryModal.value ||
+  showSelectCustomerModal.value ||
+  showPipelineModal.value ||
+  asyncResultModal.value.show ||
+  showConfirmSaveEmptyCustomer.value ||
+  showImageKitModal.value ||
+  showKasperskyCalculatorModal.value ||
+  showImportConfirmModal.value ||
+  aiImportFallbackModal.show ||
+  baogiaDialog.show ||
+  (showKasperskyImageFullscreen.value && previewImageLink.value) ||
+  showVoiceQuoteModal.value ||
+  (showPriceListPicker.value && isMobileQuoteViewport.value) ||
+  showMobileQuoteTabsSheet.value
+))
+
+let isBaoGiaComponentActive = false
+let mobileViewportResetTimers: number[] = []
+
+function clearMobileViewportResetTimers() {
+  for (const tid of mobileViewportResetTimers) {
+    window.clearTimeout(tid)
+  }
+  mobileViewportResetTimers = []
+}
+
+function resetMobileViewportScroll() {
+  if (typeof window === 'undefined' || !isBaoGiaComponentActive || window.innerWidth > 1100) return
+  if (window.scrollY !== 0 || document.documentElement.scrollTop !== 0 || document.body.scrollTop !== 0) {
+    window.scrollTo(0, 0)
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+  }
+  const mainEl = document.querySelector('.main-content') as HTMLElement | null
+  if (mainEl && mainEl.scrollTop !== 0) {
+    mainEl.scrollTop = 0
+  }
+}
+
+function scheduleMobileViewportScrollReset() {
+  if (typeof window === 'undefined' || !isBaoGiaComponentActive || window.innerWidth > 1100) return
+  clearMobileViewportResetTimers()
+  resetMobileViewportScroll()
+  nextTick(() => {
+    resetMobileViewportScroll()
+  })
+  mobileViewportResetTimers.push(
+    window.setTimeout(resetMobileViewportScroll, 70),
+    window.setTimeout(resetMobileViewportScroll, 260)
+  )
+}
+
+function syncBaoGiaBodyShellClasses() {
+  if (typeof document === 'undefined') return
+  const activeMobile = isBaoGiaComponentActive && isMobileQuoteViewport.value
+  document.body.classList.toggle('baogia-mobile-shell', activeMobile)
+  document.body.classList.toggle('baogia-light-theme', isBaoGiaComponentActive && quoteThemeMode.value === 'light')
+  document.body.classList.toggle('has-open-modal', isBaoGiaComponentActive && isAnyQuoteModalOpen.value)
+}
+
+function cleanupBaoGiaBodyShellClasses() {
+  if (typeof document === 'undefined') return
+  document.body.classList.remove('baogia-mobile-shell', 'baogia-light-theme', 'has-open-modal')
+}
+
+function handleMobileInputFocusOut(e: FocusEvent) {
+  if (!isBaoGiaComponentActive || typeof window === 'undefined' || window.innerWidth > 1100) return
+  const target = e.target
+  if (!(target instanceof HTMLElement)) return
+  const tag = target.tagName
+  if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT' && !target.isContentEditable) return
+  window.setTimeout(() => {
+    const active = document.activeElement as HTMLElement | null
+    const activeTag = active?.tagName || ''
+    if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT' || active?.isContentEditable) {
+      return
+    }
+    scheduleMobileViewportScrollReset()
+  }, 80)
+}
+
+function handleVisualViewportResize() {
+  if (!isBaoGiaComponentActive || typeof window === 'undefined' || window.innerWidth > 1100) return
+  const active = document.activeElement as HTMLElement | null
+  const activeTag = active?.tagName || ''
+  if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT' || active?.isContentEditable) {
+    return
+  }
+  resetMobileViewportScroll()
+}
+
+watch(
+  [isAnyQuoteModalOpen, quoteThemeMode, isMobileQuoteViewport],
+  ([modalOpen], [prevModalOpen]) => {
+    syncBaoGiaBodyShellClasses()
+    if (modalOpen !== prevModalOpen) {
+      scheduleMobileViewportScrollReset()
+    }
+  }
+)
+
+onMounted(() => {
+  isBaoGiaComponentActive = true
+  syncBaoGiaBodyShellClasses()
+  scheduleMobileViewportScrollReset()
+  document.addEventListener('focusout', handleMobileInputFocusOut, true)
+  window.visualViewport?.addEventListener('resize', handleVisualViewportResize)
+})
+
+onActivated(() => {
+  isBaoGiaComponentActive = true
+  syncBaoGiaBodyShellClasses()
+  scheduleMobileViewportScrollReset()
+})
+
+onDeactivated(() => {
+  isBaoGiaComponentActive = false
+  detachBaogiaDialogKeyListener()
+  clearMobileViewportResetTimers()
+  cleanupBaoGiaBodyShellClasses()
+})
+
+onUnmounted(() => {
+  isBaoGiaComponentActive = false
+  detachBaogiaDialogKeyListener()
+  clearMobileViewportResetTimers()
+  cleanupBaoGiaBodyShellClasses()
+  document.removeEventListener('focusout', handleMobileInputFocusOut, true)
+  window.visualViewport?.removeEventListener('resize', handleVisualViewportResize)
+})
+
 </script>
 
 <template>
-  <div class="page" :class="{ 'theme-light-blue': quoteThemeMode === 'light' }">
+  <div
+    class="page baogia-firebase-page"
+    :class="{
+      'theme-light-blue': quoteThemeMode === 'light',
+      'has-open-modal': isAnyQuoteModalOpen
+    }"
+  >
     <!-- MOBILE PROGRESS BAR (Hidden in 2-screen mobile flow) -->
     <div v-if="false" class="mobile-progress-wrapper"></div>
 
@@ -17565,6 +19126,54 @@ const visibleLeadingFooterColSpan = computed(() => {
             </div>
 
             <button
+              v-if="activePriceList"
+              type="button"
+              class="pl-subbar-toggle-btn"
+              :class="[
+                'is-st-' + getPriceListStatusKey(activePriceList),
+                { 'is-expanded': showPriceListInfoSubbar }
+              ]"
+              :title="priceListInfoToggleTitle"
+              :aria-expanded="showPriceListInfoSubbar"
+              aria-label="Ẩn hoặc hiện thông tin bảng giá"
+              @click.stop="showPriceListInfoSubbar = !showPriceListInfoSubbar"
+            >
+              <svg
+                v-if="showPriceListInfoSubbar"
+                xmlns="http://www.w3.org/2000/svg"
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.4"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <polyline points="18 15 12 9 6 15"></polyline>
+              </svg>
+              <svg
+                v-else
+                xmlns="http://www.w3.org/2000/svg"
+                width="14.5"
+                height="14.5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.15"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+              </svg>
+              <span v-if="!showPriceListInfoSubbar" class="pl-subbar-status-dot" aria-hidden="true"></span>
+            </button>
+
+            <button
               type="button"
               class="mobile-top-display-btn"
               :class="{ 'is-active': showQuoteColSetting }"
@@ -17574,6 +19183,21 @@ const visibleLeadingFooterColSpan = computed(() => {
               <svg xmlns="http://www.w3.org/2000/svg" width="14.5" height="14.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <circle cx="12" cy="12" r="3"></circle>
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              </svg>
+            </button>
+
+            <button
+              type="button"
+              class="mobile-top-guide-btn"
+              :class="{ 'is-active': showGuideModal }"
+              @click.stop="openQuoteGuideModal"
+              title="Sơ đồ chức năng & Hướng dẫn tương tác"
+              aria-label="Hướng dẫn sử dụng"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
               </svg>
             </button>
 
@@ -17593,32 +19217,41 @@ const visibleLeadingFooterColSpan = computed(() => {
             <button class="icon-btn hide-on-mobile-quote" @click="showProductSidebar = false" style="width: 31px !important; height: 31px !important; min-width: 31px !important; margin: 0 !important; flex-shrink: 0;" title="Ẩn kho sản phẩm">✕</button>
           </div>
 
-          <div v-if="activePriceList" class="pl-active-subbar">
-            <button
-              type="button"
-              class="pl-inline-filter-chip"
-              :class="{ 'is-on': filterOnlyPriceListItems }"
-              @click="filterOnlyPriceListItems = !filterOnlyPriceListItems"
-            >
-              <span class="pl-mini-switch" :class="{ 'is-on': filterOnlyPriceListItems }">
-                <span class="pl-mini-knob"></span>
-              </span>
-              <span>Chỉ SP bảng giá ({{ formatVND((activePriceList.items || []).length) }})</span>
-            </button>
+          <Transition name="pl-subbar-slide">
+            <div v-if="activePriceList && showPriceListInfoSubbar" class="pl-active-subbar">
+              <button
+                type="button"
+                class="pl-inline-filter-chip"
+                :class="{ 'is-on': filterOnlyPriceListItems }"
+                @click="filterOnlyPriceListItems = !filterOnlyPriceListItems"
+              >
+                <span class="pl-mini-switch" :class="{ 'is-on': filterOnlyPriceListItems }">
+                  <span class="pl-mini-knob"></span>
+                </span>
+                <span>Chỉ SP bảng giá ({{ formatVND((activePriceList.items || []).length) }})</span>
+              </button>
 
-            <div class="pl-inline-meta-right">
-              <span v-if="activePriceList.ngay_bat_dau || activePriceList.ngay_ket_thuc" class="pl-inline-period">
-                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                <span>{{ formatPriceListPeriod(activePriceList) }}</span>
-              </span>
-              <span class="pl-meta-status" :class="'is-st-' + getPriceListStatusKey(activePriceList)">
-                {{ getPriceListStatusInfo(activePriceList).label }}
-              </span>
+              <div class="pl-inline-meta-right">
+                <span v-if="activePriceList.ngay_bat_dau || activePriceList.ngay_ket_thuc" class="pl-inline-period">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                  <span>{{ formatPriceListPeriod(activePriceList) }}</span>
+                </span>
+                <span class="pl-meta-status" :class="'is-st-' + getPriceListStatusKey(activePriceList)">
+                  {{ getPriceListStatusInfo(activePriceList).label }}
+                </span>
+              </div>
             </div>
-          </div>
+          </Transition>
         </div>
         <div class="top-bar catalog-search-topbar">
-          <div class="catalog-search-row">
+          <div
+            class="catalog-search-row"
+            :class="{
+              'is-search-expanded': isSearchInputFocused || isUserInputFocused,
+              'is-kw-expanded': isSearchInputFocused,
+              'is-user-expanded': isUserInputFocused
+            }"
+          >
             <!-- UNIFIED SPLIT SEARCH & USER BAR (PHUONG AN 1) -->
             <div
               ref="catalogUnifiedBarRef"
@@ -17667,6 +19300,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                 class="cub-user-seg"
                 :class="{ 'is-active': Boolean(String(userVolumeFilter || '').trim()) }"
                 title="Lọc theo số lượng User / License (Volume)"
+                @mousedown="onCatalogUserSegMouseDown"
                 @click="focusCatalogUserInput"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="cub-user-icon" aria-hidden="true">
@@ -17964,7 +19598,7 @@ const visibleLeadingFooterColSpan = computed(() => {
         </div>
 
         <!-- ================== DOCK QUY TRÌNH BÁO GIÁ TRÊN MOBILE (SCREEN 1) ================== -->
-        <div class="mobile-screen1-cart-bar">
+        <div class="mobile-screen1-cart-bar" :class="{ 'is-modal-hidden': isAnyQuoteModalOpen }">
           <div class="m-dock-left">
             <button
               type="button"
@@ -18089,57 +19723,63 @@ const visibleLeadingFooterColSpan = computed(() => {
             </button>
           </div>
 
-          <!-- KHỐI 0 : KHÁCH HÀNG -->
-          <div class="totals-box step-customer dock-tab-panel" :class="{ 'dock-tab-active': activeLeftDockTab === 'customer' }">
-            <div
-              class="totals-header"
-              style="background: rgba(16, 185, 129, 0.12); border-bottom: 1px solid rgba(16, 185, 129, 0.25); position: relative; padding: 7px 12px;"
-            >
-              <span class="totals-icon" style="color: #34d399;"><i class="lucide-user"></i></span>
-              <span style="display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: #34d399; font-weight: 800;">
-                Khách hàng
-                <span
-                  v-if="khach.MST || khach.Ten_cong_ty || khach.Ten_khach_hang || khach.Dia_chi_cong_ty"
-                  style="cursor: pointer; background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.45); color: #f87171; padding: 1px 6px; border-radius: 4px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; line-height: 1.2;"
-                  @click.stop="resetCustomer"
-                >Reset</span>
-              </span>
-              <span
-                style="margin-left: auto; cursor: pointer; color: #34d399; font-size: 11.5px; font-weight: 800; text-decoration: underline; text-underline-offset: 3px; transition: all 0.2s; white-space: nowrap;"
-                @click.stop="showCustomerDetailModal = true"
-              >Xem chi tiết ›</span>
-            </div>
-            <div class="totals-body" style="padding: 8px 10px; display: flex; flex-direction: column; gap: 6px;">
-              <!-- Hàng 1: MST + Tên khách hàng (song song 2 cột tận dụng chiều rộng cột trái) -->
-              <div style="display: grid; grid-template-columns: 4fr 6fr; gap: 8px;">
-                <div>
-                  <div style="font-size: 10px; color: #cbd5e1; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 2px; text-align: left;">MST</div>
-                  <div style="position: relative; display: flex; align-items: center;" :class="{ 'input-loading': customersState === 'loading', 'input-loaded': customersState === 'loaded', 'input-ready': customersState === 'ready' }">
-                    <input v-model="khach.MST" class="cell-input" placeholder="Mã số thuế..." style="width: 100%; background: rgba(15,23,42,0.75); border: 1px solid #1e3a2f; border-radius: 7px; padding: 5px 48px 5px 8px; color: #10b981; font-size: 12px; font-weight: 600; outline: none; box-sizing: border-box; margin: 0;" @change="onMSTChange" />
-                    <button type="button" class="inline-picker-btn inline-picker-btn-sm" @click="openCustomerPicker('mst')">Chọn</button>
-                  </div>
-                </div>
-                <div>
-                  <div style="font-size: 10px; color: #cbd5e1; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 2px; text-align: left;">Tên khách</div>
-                  <div style="position: relative; display: flex; align-items: center;" :class="{ 'input-loading': customersState === 'loading', 'input-loaded': customersState === 'loaded', 'input-ready': customersState === 'ready' }">
-                    <input v-model="khach.Ten_khach_hang" class="cell-input" placeholder="Tên người nhận..." style="width: 100%; background: rgba(15,23,42,0.75); border: 1px solid #1e3a2f; border-radius: 7px; padding: 5px 48px 5px 8px; color: #10b981; font-size: 12px; font-weight: 600; outline: none; box-sizing: border-box; margin: 0;" @change="onTenKhachHangChange" />
-                    <button type="button" class="inline-picker-btn inline-picker-btn-sm" @click="openCustomerPicker('ten_kh')">Chọn</button>
-                  </div>
+          <!-- KHỐI 0 : KHÁCH HÀNG (COMPACT INLINE-PREFIX — PHƯƠNG ÁN 1) -->
+          <div data-guide="dock-customer-panel" class="totals-box step-customer dock-tab-panel" :class="{ 'dock-tab-active': activeLeftDockTab === 'customer' }">
+            <div class="totals-body cust-compact-body">
+              <div class="cust-micro-bar">
+                <span class="cust-micro-title">
+                  <i class="lucide-user cust-micro-icon"></i>
+                  <span>Thông tin KH</span>
+                </span>
+                <div class="cust-micro-actions">
+                  <button
+                    v-if="khach.MST || khach.Ten_cong_ty || khach.Ten_khach_hang || khach.Dia_chi_cong_ty"
+                    type="button"
+                    class="cust-micro-btn is-reset"
+                    title="Xóa thông tin khách hàng đang chọn"
+                    @click.stop="resetCustomer"
+                  >
+                    Xóa
+                  </button>
+                  <button
+                    type="button"
+                    class="cust-micro-btn is-detail"
+                    title="Mở bảng thông tin chi tiết khách hàng"
+                    @click.stop="showCustomerDetailModal = true"
+                  >
+                    <span>Chi tiết</span>
+                    <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </button>
                 </div>
               </div>
-              <!-- Hàng 2: Tên công ty -->
-              <div>
-                <div style="font-size: 10px; color: #cbd5e1; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 2px; text-align: left;">Tên công ty</div>
-                <div style="position: relative; display: flex; align-items: center;" :class="{ 'input-loading': customersState === 'loading', 'input-loaded': customersState === 'loaded', 'input-ready': customersState === 'ready' }">
-                  <input v-model="khach.Ten_cong_ty" class="cell-input" placeholder="Nhập tên công ty..." style="width: 100%; background: rgba(15,23,42,0.75); border: 1px solid #1e3a2f; border-radius: 7px; padding: 5px 48px 5px 8px; color: #10b981; font-size: 12px; font-weight: 600; outline: none; box-sizing: border-box; margin: 0;" @change="onTenCongTyChange" />
-                  <button type="button" class="inline-picker-btn inline-picker-btn-sm" @click="openCustomerPicker('ten_cong_ty')">Chọn</button>
-                </div>
+
+              <!-- Hàng 1: MST -->
+              <div class="input-with-picker is-compact-picker has-inline-prefix" :class="{ 'input-loading': customersState === 'loading', 'input-loaded': customersState === 'loaded', 'input-ready': customersState === 'ready' }">
+                <span class="cust-inline-prefix">MST</span>
+                <textarea rows="1" v-auto-grow @keydown.enter.prevent v-model="khach.MST" class="cell-input m-wrap-input m-wrap-compact has-right-picker" placeholder="Mã số thuế..." @change="onMSTChange"></textarea>
+                <button type="button" class="inline-picker-btn inline-picker-btn-sm" @click="openCustomerPicker('mst')">Chọn</button>
+              </div>
+
+              <!-- Hàng 2: Khách -->
+              <div class="input-with-picker is-compact-picker has-inline-prefix" :class="{ 'input-loading': customersState === 'loading', 'input-loaded': customersState === 'loaded', 'input-ready': customersState === 'ready' }">
+                <span class="cust-inline-prefix">Khách</span>
+                <textarea rows="1" v-auto-grow @keydown.enter.prevent v-model="khach.Ten_khach_hang" class="cell-input m-wrap-input m-wrap-compact has-right-picker" placeholder="Tên người nhận..." @change="onTenKhachHangChange"></textarea>
+                <button type="button" class="inline-picker-btn inline-picker-btn-sm" @click="openCustomerPicker('ten_kh')">Chọn</button>
+              </div>
+
+              <!-- Hàng 3: Công ty -->
+              <div class="input-with-picker is-compact-picker has-inline-prefix" :class="{ 'input-loading': customersState === 'loading', 'input-loaded': customersState === 'loaded', 'input-ready': customersState === 'ready' }">
+                <span class="cust-inline-prefix">Công ty</span>
+                <textarea rows="1" v-auto-grow @keydown.enter.prevent v-model="khach.Ten_cong_ty" class="cell-input m-wrap-input m-wrap-compact has-right-picker" placeholder="Nhập tên công ty..." @change="onTenCongTyChange"></textarea>
+                <button type="button" class="inline-picker-btn inline-picker-btn-sm" @click="openCustomerPicker('ten_cong_ty')">Chọn</button>
               </div>
             </div>
           </div>
 
           <!-- KHỐI 1 : CHIẾT KHẤU & CHÊNH LỆCH -->
-          <div class="totals-box step-summary dock-tab-panel" :class="{ 'dock-tab-active': activeLeftDockTab === 'discount' }">
+          <div data-guide="dock-discount-panel" class="totals-box step-summary dock-tab-panel" :class="{ 'dock-tab-active': activeLeftDockTab === 'discount' }">
             <div class="totals-body">
               <div class="totals-row">
                 <span class="totals-label" style="display: flex; align-items: center; gap: 5px;">
@@ -18164,11 +19804,11 @@ const visibleLeadingFooterColSpan = computed(() => {
               <div class="totals-row">
                 <span class="totals-label" style="display: flex; align-items: center; gap: 6px;">
                   Chênh lệch giá
-                  <button class="util-btn small inline-adjust" style="padding: 1px 5px !important; font-size: 10.5px !important; margin: 0 !important; white-space: nowrap; border-radius: 4px;" @click="openAdjustPrice('all', '', 'Tổng chênh lệch giá', 'total_chenh_lech')" title="Điều chỉnh tổng chênh lệch">
+                  <button data-guide="btn-adjust-total-diff" class="util-btn small inline-adjust" style="padding: 1px 5px !important; font-size: 10.5px !important; margin: 0 !important; white-space: nowrap; border-radius: 4px;" @click="openAdjustPrice('all', '', 'Tổng chênh lệch giá', 'total_chenh_lech')" title="Điều chỉnh tổng chênh lệch">
                     <i class="ri-arrow-up-down-fill"></i>
                   </button>
                 </span>
-                <span class="totals-value" :style="{ color: chenhLechGia >= 0 ? '#10b981' : '#ef4444' }">
+                <span class="totals-value text-diff-yellow">
                   {{ chenhLechGia >= 0 ? '+' : '' }}{{ formatVND(chenhLechGia) }}
                   <span class="history-icon" @click="openHistory('chenhLechGia', 'Chênh lệch giá')"><i class="ri-history-line" style="font-size: 13px;"></i></span>
                 </span>
@@ -18191,7 +19831,7 @@ const visibleLeadingFooterColSpan = computed(() => {
           </div>
 
           <!-- KHỐI 2 : TỔNG HỢP TÀI CHÍNH -->
-          <div class="totals-box step-summary dock-tab-panel" :class="{ 'dock-tab-active': activeLeftDockTab === 'finance' }">
+          <div data-guide="dock-finance-panel" class="totals-box step-summary dock-tab-panel" :class="{ 'dock-tab-active': activeLeftDockTab === 'finance' }">
             <div class="totals-body">
               <div class="totals-row">
                 <span class="totals-label">Tổng giá thực tế</span>
@@ -18203,7 +19843,7 @@ const visibleLeadingFooterColSpan = computed(() => {
               <div class="totals-row">
                 <span class="totals-label" style="display: flex; align-items: center; gap: 6px;">
                   Tổng trước thuế (HĐ)
-                  <button class="util-btn small inline-adjust" style="padding: 1px 5px !important; font-size: 10.5px !important; margin: 0 !important;" @click="openAdjustPrice('all', '', 'Toàn bộ báo giá')">
+                  <button data-guide="btn-adjust-all-quote" class="util-btn small inline-adjust" style="padding: 1px 5px !important; font-size: 10.5px !important; margin: 0 !important;" @click="openAdjustPrice('all', '', 'Toàn bộ báo giá')" title="Điều chỉnh giá toàn bộ báo giá">
                     <i class="ri-arrow-up-down-fill"></i>
                   </button>
                 </span>
@@ -18214,7 +19854,7 @@ const visibleLeadingFooterColSpan = computed(() => {
               </div>
               <div class="totals-row">
                 <span class="totals-label">Tổng VAT</span>
-                <span class="totals-value text-warn">
+                <span class="totals-value text-vat-blue">
                   {{ formatVND(totals.vat) }}
                   <span class="history-icon" @click="openHistory('vat', 'Tổng VAT')"><i class="ri-history-line" style="font-size: 13px;"></i></span>
                 </span>
@@ -18229,22 +19869,37 @@ const visibleLeadingFooterColSpan = computed(() => {
             </div>
           </div>
 
-          <!-- KHỐI 3 : THAO TÁC (2 NÚT GỌN: LƯU BÁO GIÁ + ICON 3 CHẤM DỌC) -->
+          <!-- KHỐI 3 : THAO TÁC (LƯU BÁO GIÁ + XUẤT FILE + ICON 3 CHẤM DỌC) -->
           <div class="totals-box step-actions" style="border: none !important; background: transparent !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; padding: 2px 0 0 0 !important; border-radius: 0 !important;">
-            <input type="file" ref="importTemplateFileInput" accept=".xlsx, .xls, .csv, .pdf, application/pdf" style="display: none" @change="onImportTemplateFileChange" />
-            <input type="file" ref="importMuaHangFileInput" accept=".xlsx, .xls, .csv, .pdf, application/pdf" style="display: none" @change="onImportMuaHangFileChange" />
-            <div style="display: flex; align-items: stretch; gap: 6px;">
+            <input type="file" ref="importTemplateFileInput" :accept="UNIVERSAL_IMPORT_ACCEPT" style="display: none" @change="onImportTemplateFileChange" />
+            <input type="file" ref="importMuaHangFileInput" :accept="UNIVERSAL_IMPORT_ACCEPT" style="display: none" @change="onImportMuaHangFileChange" />
+            <div class="sidebar-bottom-action-row" style="display: flex; align-items: stretch; gap: 6px;">
               <button
                 class="action-btn action-save"
                 :disabled="saving || !hasUnsavedChanges()"
                 @click="showSaveModal = true"
-                style="flex: 1; width: auto !important; margin: 0 !important; padding: 9px 12px !important; font-size: 12.5px !important; font-weight: 800; flex-direction: row !important; justify-content: center; min-height: 38px; letter-spacing: 0.6px; text-transform: uppercase; background: linear-gradient(135deg, #3b82f6, #2563eb) !important; border: none; color: #ffffff !important; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);"
+                style="flex: 1.12; min-width: 0; width: auto !important; margin: 0 !important; padding: 9px 10px !important; font-size: 12px !important; font-weight: 800; flex-direction: row !important; align-items: center; justify-content: center; gap: 5px; min-height: 38px; letter-spacing: 0.4px; text-transform: uppercase; white-space: nowrap; background: linear-gradient(135deg, #3b82f6, #2563eb) !important; border: none; color: #ffffff !important; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);"
               >
-                <i class="lucide-save" style="margin-right: 6px; font-size: 15px;"></i> {{ saving ? 'Đang lưu...' : 'Lưu báo giá' }}
+                <i class="lucide-save" style="margin: 0; font-size: 14px; flex-shrink: 0;"></i>
+                <span>{{ saving ? 'Đang lưu...' : 'Lưu báo giá' }}</span>
               </button>
               <button
                 type="button"
-                class="action-btn"
+                class="action-btn action-export-file"
+                @click="showExportInfoModal = true"
+                title="Mở bảng chọn kiểu xuất file (Mẫu in / Excel / Agency / Pipeline)"
+                style="flex: 0.96; min-width: 0; width: auto !important; margin: 0 !important; padding: 9px 10px !important; font-size: 12px !important; font-weight: 800; flex-direction: row !important; align-items: center; justify-content: center; gap: 5px; min-height: 38px; letter-spacing: 0.4px; text-transform: uppercase; white-space: nowrap; background: linear-gradient(135deg, #10b981, #059669) !important; border: none; color: #ffffff !important; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                <span>Xuất file</span>
+              </button>
+              <button
+                type="button"
+                class="action-btn action-more-dots"
                 @click="showMoreActionsModal = true"
                 title="Thao tác & Tiện ích mở rộng"
                 style="flex: 0 0 38px; width: 38px !important; min-width: 38px !important; margin: 0 !important; padding: 0 !important; font-size: 16px !important; font-weight: 800; flex-direction: row !important; align-items: center !important; justify-content: center !important; min-height: 38px; background: rgba(15, 23, 42, 0.65) !important; border: 1px solid rgba(56, 189, 248, 0.35) !important; color: #38bdf8 !important; box-shadow: none !important;"
@@ -18411,8 +20066,8 @@ const visibleLeadingFooterColSpan = computed(() => {
               </div>
             </div>
 
-            <!-- CỤM PHẢI: TIỀN TỆ + THIẾT LẬP HIỂN THỊ -->
-            <div class="header-right-cluster" style="margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <!-- CỤM PHẢI: TIỀN TỆ + THIẾT LẬP HIỂN THỊ + HƯỚNG DẪN -->
+            <div class="header-right-cluster" style="margin-left: auto; display: inline-flex; align-items: center; gap: 6px; flex-wrap: nowrap; flex-shrink: 0;">
               <div class="vip-currency-switch" @click="quoteCurrency = quoteCurrency === 'VND' ? 'USD' : 'VND'" style="display: inline-flex; align-items: center; background: #0f172a; padding: 3px; border-radius: 30px; position: relative; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5), 0 1px 1px rgba(255,255,255,0.05); cursor: pointer; user-select: none; border: 1px solid #1e293b; height: 28px; box-sizing: border-box;">
                 <div :style="{ position: 'absolute', top: '2px', bottom: '2px', width: '44px', background: quoteCurrency === 'VND' ? 'linear-gradient(135deg, #10b981, #059669)' : 'linear-gradient(135deg, #3b82f6, #2563eb)', borderRadius: '24px', transition: 'all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)', left: quoteCurrency === 'VND' ? '3px' : '47px', boxShadow: '0 2px 4px rgba(0,0,0,0.4)' }"></div>
                 <div :style="{ position: 'relative', width: '44px', textAlign: 'center', fontSize: '11px', fontWeight: 800, color: quoteCurrency === 'VND' ? '#ffffff' : '#64748b', transition: 'color 0.25s', zIndex: 2, letterSpacing: '0.4px' }">VND</div>
@@ -18486,7 +20141,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                     </div>
 
                     <!-- CHỌN GIAO DIỆN: DARK MODE / LIGHT MODE (XANH DƯƠNG - TRẮNG) -->
-                    <div :style="{ marginBottom: '10px', paddingBottom: '10px', borderBottom: quoteThemeMode === 'light' ? '1px solid #e2e8f0' : '1px solid #1e293b' }">
+                    <div data-guide="col-theme-mode" :style="{ marginBottom: '10px', paddingBottom: '10px', borderBottom: quoteThemeMode === 'light' ? '1px solid #e2e8f0' : '1px solid #1e293b' }">
                       <div :style="{ fontSize: '11px', fontWeight: '700', color: quoteThemeMode === 'light' ? '#475569' : '#94a3b8', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.4px' }">
                         Giao diện (Theme)
                       </div>
@@ -18629,6 +20284,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                     <div :style="{ marginBottom: '10px', paddingBottom: '10px', borderBottom: quoteThemeMode === 'light' ? '1px solid #e2e8f0' : '1px solid #1e293b' }">
                       <button
                         type="button"
+                        data-guide="col-group-toggle"
                         @click.stop="toggleQuoteGroupByCategory"
                         :style="{
                           width: '100%',
@@ -18671,8 +20327,166 @@ const visibleLeadingFooterColSpan = computed(() => {
                         </svg>
                         {{ quoteGroupByCategory ? 'Hiển thị: Theo danh mục' : 'Hiển thị: Riêng lẻ' }}
                       </button>
+
+                      <!-- TÙY CHỌN KIỂU STT DANH MỤC & HÀNG CON -->
+                      <div data-guide="col-stt-format" style="margin-top: 8px; display: flex; flex-direction: column; gap: 6px;">
+                        <div
+                          v-if="quoteGroupByCategory"
+                          style="display: flex; align-items: center; justify-content: space-between; gap: 8px;"
+                        >
+                          <span :style="{ fontSize: '11.5px', fontWeight: '600', color: quoteThemeMode === 'light' ? '#475569' : '#94a3b8', whiteSpace: 'nowrap' }">
+                            STT Danh mục
+                          </span>
+                          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px; width: 175px;">
+                            <button
+                              type="button"
+                              @click.stop="setQuoteGroupSttFormat('roman')"
+                              :style="{
+                                width: '100%',
+                                margin: '0',
+                                padding: '4px 6px',
+                                borderRadius: '5px',
+                                fontSize: '11.5px',
+                                fontWeight: '700',
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap',
+                                transition: 'all 0.15s ease',
+                                background: quoteGroupSttFormat === 'roman'
+                                  ? (quoteThemeMode === 'light' ? '#eff6ff' : '#1e293b')
+                                  : (quoteThemeMode === 'light' ? '#f8fafc' : '#0f172a'),
+                                color: quoteGroupSttFormat === 'roman'
+                                  ? (quoteThemeMode === 'light' ? '#1d4ed8' : '#34d399')
+                                  : (quoteThemeMode === 'light' ? '#64748b' : '#94a3b8'),
+                                border: quoteGroupSttFormat === 'roman'
+                                  ? (quoteThemeMode === 'light' ? '1px solid #2563eb' : '1px solid #10b981')
+                                  : (quoteThemeMode === 'light' ? '1px solid #cbd5e1' : '1px solid #334155')
+                              }"
+                              title="Đánh STT danh mục bằng số La Mã (I, II, III...)"
+                            >
+                              I, II
+                            </button>
+                            <button
+                              type="button"
+                              @click.stop="setQuoteGroupSttFormat('number')"
+                              :style="{
+                                width: '100%',
+                                margin: '0',
+                                padding: '4px 6px',
+                                borderRadius: '5px',
+                                fontSize: '11.5px',
+                                fontWeight: '700',
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap',
+                                transition: 'all 0.15s ease',
+                                background: quoteGroupSttFormat === 'number'
+                                  ? (quoteThemeMode === 'light' ? '#eff6ff' : '#1e293b')
+                                  : (quoteThemeMode === 'light' ? '#f8fafc' : '#0f172a'),
+                                color: quoteGroupSttFormat === 'number'
+                                  ? (quoteThemeMode === 'light' ? '#1d4ed8' : '#34d399')
+                                  : (quoteThemeMode === 'light' ? '#64748b' : '#94a3b8'),
+                                border: quoteGroupSttFormat === 'number'
+                                  ? (quoteThemeMode === 'light' ? '1px solid #2563eb' : '1px solid #10b981')
+                                  : (quoteThemeMode === 'light' ? '1px solid #cbd5e1' : '1px solid #334155')
+                              }"
+                              title="Đánh STT danh mục bằng số thường (1, 2, 3...)"
+                            >
+                              1, 2
+                            </button>
+                          </div>
+                        </div>
+
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                          <span :style="{ fontSize: '11.5px', fontWeight: '600', color: quoteThemeMode === 'light' ? '#475569' : '#94a3b8', whiteSpace: 'nowrap' }">
+                            {{ quoteGroupByCategory ? 'STT Hàng con' : 'STT Hàng hóa' }}
+                          </span>
+                          <div :style="{ display: 'grid', gridTemplateColumns: quoteGroupByCategory ? '1fr 1fr 1fr' : '1fr 1fr', gap: '5px', width: '175px' }">
+                            <button
+                              type="button"
+                              @click.stop="setQuoteItemSttFormat('number')"
+                              :style="{
+                                width: '100%',
+                                margin: '0',
+                                padding: '4px 6px',
+                                borderRadius: '5px',
+                                fontSize: '11.5px',
+                                fontWeight: '700',
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap',
+                                transition: 'all 0.15s ease',
+                                background: (quoteItemSttFormat === 'number' || (!quoteGroupByCategory && quoteItemSttFormat === 'hierarchical'))
+                                  ? (quoteThemeMode === 'light' ? '#eff6ff' : '#1e293b')
+                                  : (quoteThemeMode === 'light' ? '#f8fafc' : '#0f172a'),
+                                color: (quoteItemSttFormat === 'number' || (!quoteGroupByCategory && quoteItemSttFormat === 'hierarchical'))
+                                  ? (quoteThemeMode === 'light' ? '#1d4ed8' : '#34d399')
+                                  : (quoteThemeMode === 'light' ? '#64748b' : '#94a3b8'),
+                                border: (quoteItemSttFormat === 'number' || (!quoteGroupByCategory && quoteItemSttFormat === 'hierarchical'))
+                                  ? (quoteThemeMode === 'light' ? '1px solid #2563eb' : '1px solid #10b981')
+                                  : (quoteThemeMode === 'light' ? '1px solid #cbd5e1' : '1px solid #334155')
+                              }"
+                              title="Đánh STT sản phẩm bằng số thường (1, 2, 3...)"
+                            >
+                              1, 2
+                            </button>
+                            <button
+                              type="button"
+                              @click.stop="setQuoteItemSttFormat('roman')"
+                              :style="{
+                                width: '100%',
+                                margin: '0',
+                                padding: '4px 6px',
+                                borderRadius: '5px',
+                                fontSize: '11.5px',
+                                fontWeight: '700',
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap',
+                                transition: 'all 0.15s ease',
+                                background: quoteItemSttFormat === 'roman'
+                                  ? (quoteThemeMode === 'light' ? '#eff6ff' : '#1e293b')
+                                  : (quoteThemeMode === 'light' ? '#f8fafc' : '#0f172a'),
+                                color: quoteItemSttFormat === 'roman'
+                                  ? (quoteThemeMode === 'light' ? '#1d4ed8' : '#34d399')
+                                  : (quoteThemeMode === 'light' ? '#64748b' : '#94a3b8'),
+                                border: quoteItemSttFormat === 'roman'
+                                  ? (quoteThemeMode === 'light' ? '1px solid #2563eb' : '1px solid #10b981')
+                                  : (quoteThemeMode === 'light' ? '1px solid #cbd5e1' : '1px solid #334155')
+                              }"
+                              title="Đánh STT sản phẩm bằng số La Mã (I, II, III...)"
+                            >
+                              I, II
+                            </button>
+                            <button
+                              v-if="quoteGroupByCategory"
+                              type="button"
+                              @click.stop="setQuoteItemSttFormat('hierarchical')"
+                              :style="{
+                                width: '100%',
+                                margin: '0',
+                                padding: '4px 6px',
+                                borderRadius: '5px',
+                                fontSize: '11.5px',
+                                fontWeight: '700',
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap',
+                                transition: 'all 0.15s ease',
+                                background: quoteItemSttFormat === 'hierarchical'
+                                  ? (quoteThemeMode === 'light' ? '#eff6ff' : '#1e293b')
+                                  : (quoteThemeMode === 'light' ? '#f8fafc' : '#0f172a'),
+                                color: quoteItemSttFormat === 'hierarchical'
+                                  ? (quoteThemeMode === 'light' ? '#1d4ed8' : '#34d399')
+                                  : (quoteThemeMode === 'light' ? '#64748b' : '#94a3b8'),
+                                border: quoteItemSttFormat === 'hierarchical'
+                                  ? (quoteThemeMode === 'light' ? '1px solid #2563eb' : '1px solid #10b981')
+                                  : (quoteThemeMode === 'light' ? '1px solid #cbd5e1' : '1px solid #334155')
+                              }"
+                              :title="quoteGroupSttFormat === 'number' ? 'Đánh STT phân cấp theo danh mục cha (1.1, 1.2...)' : 'Đánh STT phân cấp theo danh mục cha (I.1, I.2...)'"
+                            >
+                              {{ quoteGroupSttFormat === 'number' ? '1.1' : 'I.1' }}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; max-height: 260px; overflow-y: auto;">
+                    <div data-guide="col-visibility-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; max-height: 260px; overflow-y: auto;">
                       <label
                         v-for="col in QUOTE_TABLE_COLUMNS"
                         :key="col.key"
@@ -18701,6 +20515,41 @@ const visibleLeadingFooterColSpan = computed(() => {
                   </div>
                 </Teleport>
                 </div>
+
+              <button
+                type="button"
+                class="btn-quote-guide"
+                @click.stop="openQuoteGuideModal"
+                :style="{
+                  width: 'auto',
+                  minWidth: '0',
+                  flexShrink: 0,
+                  background: quoteThemeMode === 'light' ? '#ffffff' : '#1e293b',
+                  color: quoteThemeMode === 'light' ? '#1e293b' : '#e2e8f0',
+                  border: quoteThemeMode === 'light' ? '1px solid #cbd5e1' : '1px solid #334155',
+                  padding: '0 8px',
+                  height: '28px',
+                  margin: '0',
+                  borderRadius: '6px',
+                  fontWeight: '700',
+                  fontSize: '11.5px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '4px',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  boxShadow: quoteThemeMode === 'light' ? '0 1px 2px rgba(15, 23, 42, 0.05)' : 'none'
+                }"
+                title="Sơ đồ chức năng & Hướng dẫn tương tác"
+              >
+                <svg class="btn-guide-ico" xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" :style="{ color: quoteThemeMode === 'light' ? '#2563eb' : '#38bdf8', flexShrink: 0 }" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                  <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+                <span class="guide-btn-text">Hướng dẫn</span>
+              </button>
 
               <button
                 type="button"
@@ -18762,14 +20611,14 @@ const visibleLeadingFooterColSpan = computed(() => {
                 <div class="m-cust-field">
                   <label>Mã số thuế</label>
                   <div class="m-cust-input-wrap">
-                    <input v-model="khach.MST" placeholder="Nhập MST..." @change="onMSTChange" />
+                    <textarea rows="1" class="m-wrap-input m-wrap-compact" v-auto-grow @keydown.enter.prevent v-model="khach.MST" placeholder="Nhập MST..." @change="onMSTChange"></textarea>
                     <button type="button" @click="openCustomerPicker('mst')">Chọn</button>
                   </div>
                 </div>
                 <div class="m-cust-field">
                   <label>Người nhận</label>
                   <div class="m-cust-input-wrap">
-                    <input v-model="khach.Ten_khach_hang" placeholder="Tên người nhận..." @change="onTenKhachHangChange" />
+                    <textarea rows="1" class="m-wrap-input m-wrap-compact" v-auto-grow @keydown.enter.prevent v-model="khach.Ten_khach_hang" placeholder="Tên người nhận..." @change="onTenKhachHangChange"></textarea>
                     <button type="button" @click="openCustomerPicker('ten_kh')">Chọn</button>
                   </div>
                 </div>
@@ -18777,7 +20626,7 @@ const visibleLeadingFooterColSpan = computed(() => {
               <div class="m-cust-field" style="margin-top: 8px;">
                 <label>Tên công ty</label>
                 <div class="m-cust-input-wrap">
-                  <input v-model="khach.Ten_cong_ty" placeholder="Nhập tên công ty..." @change="onTenCongTyChange" />
+                  <textarea rows="1" class="m-wrap-input m-wrap-compact" v-auto-grow @keydown.enter.prevent v-model="khach.Ten_cong_ty" placeholder="Nhập tên công ty..." @change="onTenCongTyChange"></textarea>
                   <button type="button" @click="openCustomerPicker('ten_cong_ty')">Chọn</button>
                 </div>
               </div>
@@ -18789,7 +20638,7 @@ const visibleLeadingFooterColSpan = computed(() => {
 
           <div class="quote-table-wrap">
             <!-- MOBILE EMPTY QUOTE STATE -->
-            <div v-if="selectedItems.length === 0" class="mobile-quote-empty-card">
+            <div v-if="selectedItems.length === 0 && !guideTempTableDemoActive" class="mobile-quote-empty-card">
               <div class="m-empty-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -18849,28 +20698,28 @@ const visibleLeadingFooterColSpan = computed(() => {
                 easing="cubic-bezier(0.175, 0.885, 0.32, 1.15)"
                 filter="button, input, textarea, .btn-del"
                 :preventOnFilter="false"
-                :disabled="isMobileDevice"
+                :disabled="isMobileDevice || guideTempTableDemoActive"
                 :set-data="hideDragImage"
                 :move="checkMove"
                 @start="onFlatDragStart"
                 @end="onFlatDragEnd"
               >
                 <template #item="{ element: r }">
-                  <tr v-if="r.type === 'group'" :class="['group-row', isMobileDevice ? '' : 'drag-handle']" style="cursor: grab;" title="Kéo thả danh mục">
+                  <tr v-if="r.type === 'group'" :class="['group-row', (isMobileDevice || guideTempTableDemoActive) ? '' : 'drag-handle']" style="cursor: grab;" title="Kéo thả danh mục">
                     <td v-if="quoteColVisible.stt" class="group-stt">
-                      <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
+                      <div style="display: flex; align-items: center; justify-content: center; gap: 4px; white-space: nowrap;">
                         <i class="lucide-grip-vertical" style="opacity: 0.5;"></i> {{ r.roman }}
                       </div>
                     </td>
                     <td :colspan="Math.max(1, visibleQuoteColCount - (quoteColVisible.stt ? 1 : 0))" class="group-title">
                       <div class="group-title-bar">
                         <span class="group-title-text">{{ r.title }}</span>
-                        <div class="group-row-actions">
-                          <button type="button" class="util-btn small inline-normal-edit" @click.stop="openAdjustPrice('group', r.key, r.title, undefined, true)" title="Sửa thường - cập nhật giá thực tế">
+                        <div data-guide="group-adjust-actions" class="group-row-actions">
+                          <button type="button" data-guide="group-btn-edit-price" class="util-btn small inline-normal-edit" @click.stop="openAdjustPrice('group', r.key, r.title, undefined, true)" title="Sửa thường - cập nhật giá thực tế">
                             <i class="ri-edit-line"></i>
                             <span>Sửa giá</span>
                           </button>
-                          <button type="button" class="util-btn small inline-adjust" @click.stop="openAdjustPrice('group', r.key, r.title)" title="Điều chỉnh chênh lệch giá">
+                          <button type="button" data-guide="group-btn-adjust-diff" class="util-btn small inline-adjust" @click.stop="openAdjustPrice('group', r.key, r.title)" title="Điều chỉnh chênh lệch giá">
                             <i class="ri-arrow-up-down-fill"></i>
                             <span>Điều chỉnh</span>
                           </button>
@@ -18880,7 +20729,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                   </tr>
                   <tr v-else-if="r.type === 'item'" v-show="!draggingGroupKey" :class="['quote-item-row', isMobileDevice ? '' : 'drag-handle']" style="cursor: grab;" title="Nhấn giữ để kéo thả sản phẩm" :id="'quote-row-' + r.idx" @click="openQuoteEdit(r.idx)">
                     <td v-if="quoteColVisible.stt" data-label="STT" style="color: #ffffff; font-weight: 700;">
-                      <div style="display: flex; justify-content: center; align-items: center; gap: 4px;">
+                      <div style="display: flex; justify-content: center; align-items: center; gap: 4px; white-space: nowrap;">
                         <i class="lucide-grip-vertical" style="opacity: 0.3;"></i>
                         {{ r.stt }}
                       </div>
@@ -19120,6 +20969,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                     <span>Chênh lệch giá</span>
                     <button
                       type="button"
+                      data-guide="m-btn-adjust-total-diff"
                       class="m-sum-inline-adj-pill"
                       @click="openAdjustPrice('all', '', 'Tổng chênh lệch giá', 'total_chenh_lech')"
                       title="Điều chỉnh tổng chênh lệch giá"
@@ -19184,6 +21034,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                     <span>Tổng trước thuế (HĐ)</span>
                     <button
                       type="button"
+                      data-guide="m-btn-adjust-all-quote"
                       class="m-sum-inline-adj-pill is-emerald"
                       @click="openAdjustPrice('all', '', 'Toàn bộ báo giá')"
                       title="Điều chỉnh toàn bộ báo giá"
@@ -19221,7 +21072,7 @@ const visibleLeadingFooterColSpan = computed(() => {
           </div>
 
           <!-- ================== DOCK QUY TRÌNH BÁO GIÁ TRÊN MOBILE (SCREEN 2 & SCREEN 3) ================== -->
-          <div class="mobile-screen2-action-bar">
+          <div class="mobile-screen2-action-bar" :class="{ 'is-modal-hidden': isAnyQuoteModalOpen }">
             <div class="m-dock-left">
               <button
                 type="button"
@@ -19323,7 +21174,7 @@ const visibleLeadingFooterColSpan = computed(() => {
 
         <div class="more-actions-body more-actions-split-layout">
           <!-- CỘT TRÁI: GHI CHÚ & PO HỢP ĐỒNG -->
-          <div class="ma-col-left">
+          <div data-guide="ma-po-notes" class="ma-col-left">
             <div class="ma-section-title">Ghi chú &amp; Nội dung PO</div>
             <div class="ma-note-field">
               <label class="ma-field-label">Content of Contract / PO</label>
@@ -19349,7 +21200,7 @@ const visibleLeadingFooterColSpan = computed(() => {
             <div class="ma-tool-group">
               <div class="ma-section-title">Lưu trữ &amp; Xuất bản</div>
               <div class="ma-tool-grid-2">
-                <button type="button" class="ma-tool-btn" @click="showMoreActionsModal = false; showLoadInfoModal = true">
+                <button type="button" data-guide="ma-load-data" class="ma-tool-btn" @click="showMoreActionsModal = false; showLoadInfoModal = true">
                   <span class="ma-tool-icon accent-amber">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                   </span>
@@ -19358,7 +21209,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                     <span class="ma-tool-sub">Mở hợp đồng cũ</span>
                   </span>
                 </button>
-                <button type="button" class="ma-tool-btn" @click="showMoreActionsModal = false; showExportInfoModal = true">
+                <button type="button" data-guide="ma-export-data" class="ma-tool-btn" @click="showMoreActionsModal = false; showExportInfoModal = true">
                   <span class="ma-tool-icon accent-emerald">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
                   </span>
@@ -19374,22 +21225,22 @@ const visibleLeadingFooterColSpan = computed(() => {
             <div class="ma-tool-group">
               <div class="ma-section-title">Import dữ liệu ngoài</div>
               <div class="ma-tool-list">
-                <button type="button" class="ma-tool-btn" @click="showMoreActionsModal = false; triggerImportTemplateFile()">
+                <button type="button" data-guide="ma-import-quote" class="ma-tool-btn" @click="showMoreActionsModal = false; triggerImportTemplateFile()">
                   <span class="ma-tool-icon accent-sky">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><polyline points="9 15 12 12 15 15"></polyline></svg>
                   </span>
                   <span class="ma-tool-text">
-                    <span class="ma-tool-label">Import Báo Giá (Excel / PDF)</span>
-                    <span class="ma-tool-sub">Tải và bóc tách dữ liệu từ file báo giá</span>
+                    <span class="ma-tool-label">Import Báo Giá (Excel / PDF / Word / Ảnh)</span>
+                    <span class="ma-tool-sub">Tải file hoặc dán ảnh báo giá, hỗ trợ quét AI</span>
                   </span>
                 </button>
-                <button type="button" class="ma-tool-btn" @click="showMoreActionsModal = false; triggerImportMuaHangFile()">
+                <button type="button" data-guide="ma-import-purchase" class="ma-tool-btn" @click="showMoreActionsModal = false; triggerImportMuaHangFile()">
                   <span class="ma-tool-icon accent-orange">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
                   </span>
                   <span class="ma-tool-text">
-                    <span class="ma-tool-label">Import Mua Hàng (Excel / PDF)</span>
-                    <span class="ma-tool-sub">Tải và đối chiếu bảng giá mua hàng</span>
+                    <span class="ma-tool-label">Import Mua Hàng (Excel / PDF / Word / Ảnh)</span>
+                    <span class="ma-tool-sub">Tải file hoặc dán ảnh giá mua, hỗ trợ quét AI</span>
                   </span>
                 </button>
               </div>
@@ -19399,7 +21250,7 @@ const visibleLeadingFooterColSpan = computed(() => {
             <div class="ma-tool-group">
               <div class="ma-section-title">Tra cứu &amp; Kiểm tra</div>
               <div class="ma-tool-grid-2">
-                <button type="button" class="ma-tool-btn" @click="showMoreActionsModal = false; showPreviewRawModal = true">
+                <button type="button" data-guide="ma-raw-preview" class="ma-tool-btn" @click="showMoreActionsModal = false; showPreviewRawModal = true">
                   <span class="ma-tool-icon accent-blue">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                   </span>
@@ -19408,7 +21259,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                     <span class="ma-tool-sub">Xem bản gốc</span>
                   </span>
                 </button>
-                <button type="button" class="ma-tool-btn" @click="showMoreActionsModal = false; openGlobalHistory()">
+                <button type="button" data-guide="ma-history" class="ma-tool-btn" @click="showMoreActionsModal = false; openGlobalHistory()">
                   <span class="ma-tool-icon accent-purple">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline><polyline points="12 7 12 12 15 15"></polyline></svg>
                   </span>
@@ -19437,85 +21288,354 @@ const visibleLeadingFooterColSpan = computed(() => {
       </div>
     </div>
 
-    <!-- ================== MODAL: TẢI ẢNH THUẾ LÊN ================== -->
-    <div v-if="showUploadTaxModal" class="modal vip-modal-overlay" @click.self="showUploadTaxModal = false" style="z-index: 10030;" @dragover="onTaxDragOver" @drop="onTaxDrop">
-      <div class="modal-content vip-modal" style="max-width: 640px; padding: 0; background: #ffffff; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
-        <div class="modal-header" style="background: #f8fafc; padding: 16px 24px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; border-top-left-radius: 8px; border-top-right-radius: 8px;">
-          <div class="dt-only-head" style="color: #1e293b; font-weight: 700; font-size: 16px;">Quét Dữ Liệu Từ Ảnh Thuế (OCR)</div>
-          <div class="m-grab-head-stack">
-            <span class="m-grab-eyebrow">Nhận diện thông tin tự động</span>
-            <span class="m-grab-title">Quét dữ liệu ảnh thuế</span>
+    <!-- ================== MODAL: IMPORT ĐA ĐỊNH DẠNG THỐNG NHẤT (5 LUỒNG) ================== -->
+    <div
+      v-if="smartImportModal.show"
+      class="modal vip-modal-overlay product-upload-overlay"
+      style="z-index: 10035;"
+      @click.self="closeSmartImportModal"
+      @dragover="onSmartImportDragOver"
+      @dragleave="onSmartImportDragLeave"
+      @drop="onSmartImportDrop"
+    >
+      <div class="modal-card vip-modal-card tpl-upload-modal-card">
+        <!-- THANH KÉO & HEADER BOTTOM SHEET DÀNH CHO MOBILE -->
+        <div class="tpl-sheet-mob-only-top">
+          <div class="tpl-sheet-grabber-wrap" @click="closeSmartImportModal">
+            <span class="tpl-sheet-grabber"></span>
           </div>
-          <button class="x" @click="showUploadTaxModal = false" style="color: #64748b; background: transparent; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; font-size: 18px;">✕</button>
-        </div>
-        <div class="modal-body" style="padding: 20px 24px; max-height: calc(92vh - 130px); overflow-y: auto;">
-          <p style="color: #64748b; font-size: 13px; margin-bottom: 14px;">Tải lên hình ảnh thông tin thuế, hệ thống sẽ tự động quét thông tin Mã số thuế, Tên công ty, Địa chỉ và Ngành nghề chính.</p>
-          <div style="border: 2px dashed #cbd5e1; border-radius: 8px; padding: 28px 20px; text-align: center; cursor: pointer; background: #f8fafc; transition: all 0.2s;" @click="taxImageInput?.click()" onmouseover="this.style.borderColor='#3b82f6'; this.style.background='#eff6ff'" onmouseout="this.style.borderColor='#cbd5e1'; this.style.background='#f8fafc'">
-            <i class="lucide-image" style="font-size: 40px; color: #94a3b8; margin-bottom: 10px; display: inline-block;"></i>
-            <div style="color: #64748b; font-size: 14px;">Kéo thả ảnh hoặc paste (Ctrl+V) vào đây, hoặc <span style="color: #3b82f6; font-weight: 700;">Nhấn để chọn ảnh</span></div>
-            <input type="file" ref="taxImageInput" accept="image/*" style="display: none" @change="onTaxImageChange" />
-          </div>
-          <!-- Ảnh mẫu hướng dẫn -->
-          <div style="margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 14px;">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-              <span style="font-size: 12px; font-weight: 700; color: #334155; text-transform: uppercase; letter-spacing: 0.4px;">Ảnh mẫu thông tin thuế chuẩn</span>
-              <span style="font-size: 11px; color: #3b82f6; cursor: pointer; font-weight: 600;" @click="openTaxImagePreview(anhMauThueUrl)">Nhấn vào ảnh để phóng to</span>
+          <div class="tpl-sheet-header">
+            <div class="tpl-sheet-head-titles">
+              <span class="tpl-sheet-eyebrow">{{ smartImportMeta.badge }}</span>
+              <h4 class="tpl-sheet-title">{{ smartImportMeta.mobTitle }}</h4>
             </div>
-            <div style="border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #f1f5f9; padding: 6px; cursor: pointer; transition: border-color 0.2s;" @click="openTaxImagePreview(anhMauThueUrl)" onmouseover="this.style.borderColor='#3b82f6'" onmouseout="this.style.borderColor='#cbd5e1'">
-              <img :src="anhMauThueUrl" alt="Ảnh mẫu thông tin thuế" style="width: 100%; max-height: 230px; object-fit: contain; display: block; border-radius: 4px;" />
+            <button
+              type="button"
+              class="tpl-sheet-close-btn"
+              @click="closeSmartImportModal"
+              aria-label="Đóng"
+            >
+              <i class="ri-close-line"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- HEADER ĐỒNG BỘ TEMPLATE DÀNH CHO DESKTOP -->
+        <div class="modal-head modal-head-themed tpl-upload-dt-head" style="justify-content: space-between; position: relative; padding: 12px 22px; border-bottom: none; border-radius: 0; flex-shrink: 0;">
+          <div class="dt-only-head" style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+            <div class="modal-head-title-text" style="color: #ffffff; text-transform: uppercase; font-weight: 900; font-size: 15.5px; margin: 0; display: flex; align-items: center; gap: 8px; letter-spacing: 0.4px;">
+              <i :class="smartImportMeta.iconClass" style="font-size: 18px;"></i>
+              <span>{{ smartImportMeta.title }}</span>
+            </div>
+            <span class="modal-head-badge" style="background: rgba(0,0,0,0.2); color: #fff; padding: 3px 9px; border-radius: 6px; font-size: 11.5px; font-weight: 700;">
+              {{ smartImportMeta.badge }}
+            </span>
+          </div>
+          <button
+            class="x"
+            @click="closeSmartImportModal"
+            style="color: #fff; transition: all 0.2s; position: absolute; right: 18px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.15); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;"
+          >✕</button>
+        </div>
+
+        <!-- BODY -->
+        <div class="tpl-upload-modal-body">
+          <input
+            ref="smartImportFileInputRef"
+            type="file"
+            :accept="UNIVERSAL_IMPORT_ACCEPT"
+            style="display: none;"
+            @change="onSmartImportFileInputChange($event)"
+          />
+          <input
+            ref="smartImportImageInputRef"
+            type="file"
+            accept="image/*"
+            style="display: none;"
+            @change="onSmartImportFileInputChange($event)"
+          />
+
+          <!-- DESKTOP: KHUNG KÉO THẢ / DÁN CTRL+V / CHỌN FILE -->
+          <div
+            class="tpl-upload-dropzone"
+            :class="{
+              'is-dragging': smartImportModal.isDragging,
+              'is-compact': smartImportModal.files.length > 0
+            }"
+            @click="smartImportFileInputRef?.click()"
+          >
+            <div class="tpl-upload-drop-icon">
+              <i class="ri-upload-cloud-2-line"></i>
+            </div>
+            <div class="tpl-upload-drop-title">
+              Nhấn <kbd>Ctrl + V</kbd> để dán ảnh chụp màn hình, hoặc kéo thả file / ảnh vào đây
+            </div>
+            <div class="tpl-upload-drop-sub">
+              Hỗ trợ Excel (tất cả các đuôi .xlsx, .xls, .xlsm, .xlsb, .ods, .csv...), PDF, Word (.docx, .doc, .rtf) và Ảnh
+            </div>
+            <div class="tpl-upload-drop-actions" @click.stop>
+              <button
+                type="button"
+                class="tpl-file-primary-btn tpl-upload-pick-btn"
+                @click="smartImportFileInputRef?.click()"
+              >
+                <i class="ri-folder-open-line"></i> Chọn File tài liệu
+              </button>
+              <button
+                type="button"
+                class="tpl-file-neutral-btn tpl-upload-pick-btn"
+                @click="smartImportImageInputRef?.click()"
+              >
+                <i class="ri-image-add-line"></i> Chọn Ảnh
+              </button>
+            </div>
+          </div>
+
+          <!-- MOBILE: CỤM NÚT CHỌN FILE / CHỤP ẢNH / DÁN CLIPBOARD -->
+          <div class="tpl-upload-mob-picker-box">
+            <div class="tpl-upload-mob-grid">
+              <button
+                type="button"
+                class="tpl-file-primary-btn tpl-upload-mob-btn"
+                @click="smartImportFileInputRef?.click()"
+              >
+                <i class="ri-folder-open-line"></i>
+                <span>Chọn File tài liệu</span>
+              </button>
+              <button
+                type="button"
+                class="tpl-file-neutral-btn tpl-upload-mob-btn"
+                @click="smartImportImageInputRef?.click()"
+              >
+                <i class="ri-image-add-line"></i>
+                <span>Chọn / Chụp Ảnh</span>
+              </button>
+            </div>
+            <button
+              type="button"
+              class="tpl-file-neutral-btn tpl-upload-mob-paste-btn"
+              @click="pasteFromMobileClipboardToSmartImport"
+            >
+              <i class="ri-clipboard-line"></i>
+              <span>Dán ảnh từ bộ nhớ tạm</span>
+            </button>
+            <div v-if="smartImportModal.showMobPasteBox" class="tpl-upload-mob-paste-fallback">
+              <input
+                ref="smartImportMobPasteRef"
+                type="text"
+                readonly
+                placeholder="Chạm giữ vào đây rồi bấm Dán (Paste)..."
+                @paste="onSmartImportModalPaste"
+              />
+            </div>
+          </div>
+
+          <!-- ẢNH MẪU HƯỚNG DẪN KHI Ở CHẾ ĐỘ QUÉT THUẾ CHƯA CHỌN FILE -->
+          <div
+            v-if="smartImportModal.mode === 'thue' && smartImportModal.files.length === 0"
+            class="smart-import-tax-sample"
+          >
+            <div class="smart-import-tax-sample-head">
+              <span>Ảnh mẫu thông tin thuế chuẩn</span>
+              <button
+                type="button"
+                class="tpl-file-neutral-btn tpl-upload-zoom-btn"
+                @click="openTaxImagePreview(anhMauThueUrl)"
+              >
+                <i class="ri-zoom-in-line"></i> Phóng to mẫu
+              </button>
+            </div>
+            <div class="smart-import-tax-sample-frame" @click="openTaxImagePreview(anhMauThueUrl)">
+              <img :src="anhMauThueUrl" alt="Ảnh mẫu thông tin thuế" />
+            </div>
+          </div>
+
+          <!-- FILE / ẢNH ĐÃ ĐƯA VÀO -->
+          <div v-if="smartImportModal.files.length > 0" class="tpl-upload-staged-section">
+            <div class="tpl-upload-staged-head">
+              <span>Tài liệu sẵn sàng quét dữ liệu</span>
+            </div>
+            <div class="tpl-upload-staged-list">
+              <div
+                v-for="(uItem, uIdx) in smartImportModal.files"
+                :key="uItem.id"
+                class="tpl-upload-staged-item is-active"
+              >
+                <div class="tpl-upload-staged-top-row">
+                  <div class="tpl-upload-staged-meta-left">
+                    <div class="tpl-upload-staged-icon">
+                      <i :class="getFileCategoryIconClass(uItem.file)"></i>
+                    </div>
+                    <span class="tpl-upload-ext-badge">{{ uItem.ext }}</span>
+                    <span class="tpl-upload-size-text">Dung lượng: {{ uItem.sizeLabel }}</span>
+                    <span v-if="uItem.fromClipboard" class="tpl-upload-clip-tag">Clipboard</span>
+                  </div>
+                  <button
+                    type="button"
+                    class="tpl-file-neutral-btn tpl-file-delete-btn tpl-upload-item-del-btn"
+                    @click.stop="removeSmartImportPendingItem(uIdx)"
+                    title="Gỡ tài liệu này"
+                  >
+                    <i class="ri-close-line"></i>
+                  </button>
+                </div>
+
+                <div class="tpl-upload-name-edit-row" @click.stop>
+                  <textarea
+                    rows="1"
+                    v-model="uItem.baseName"
+                    class="tpl-upload-name-input m-wrap-input m-wrap-import"
+                    v-auto-grow
+                    @keydown.enter.prevent
+                    placeholder="Tên tài liệu..."
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- XEM TRƯỚC NẾU LÀ ẢNH -->
+            <div
+              v-if="smartImportModal.files[0]?.isImage && smartImportModal.files[0]?.previewUrl"
+              class="tpl-upload-img-preview-box"
+            >
+              <div class="tpl-upload-img-preview-head">
+                <span>Xem trước ảnh đã chọn</span>
+                <button
+                  type="button"
+                  class="tpl-file-neutral-btn tpl-upload-zoom-btn"
+                  @click="openTaxImagePreview(smartImportModal.files[0].previewUrl)"
+                >
+                  <i class="ri-zoom-in-line"></i> Phóng to
+                </button>
+              </div>
+              <div
+                class="tpl-upload-img-preview-frame"
+                @click="openTaxImagePreview(smartImportModal.files[0].previewUrl)"
+              >
+                <img
+                  :src="smartImportModal.files[0].previewUrl"
+                  alt="Xem trước ảnh tài liệu"
+                />
+              </div>
             </div>
           </div>
         </div>
-        <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px; background: #ffffff; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;">
-          <button @click="showUploadTaxModal = false" style="padding: 8px 16px; border-radius: 6px; font-weight: 600; font-size: 13px; color: #475569; background: #ffffff; border: 1px solid #cbd5e1; cursor: pointer; transition: all 0.2s;">Hủy</button>
+
+        <!-- FOOTER -->
+        <div class="modal-actions fullscreen-modal-footer tpl-upload-modal-foot">
+          <button
+            type="button"
+            class="modal-btn-secondary tpl-upload-cancel-btn"
+            style="width: auto !important; margin: 0 !important; padding: 9px 20px; border-radius: 8px; font-weight: 700; font-size: 13.5px;"
+            @click="closeSmartImportModal"
+          >
+            Hủy
+          </button>
+          <div class="tpl-upload-foot-cta-group is-single-cta">
+            <button
+              type="button"
+              class="tpl-upload-read-cta-btn"
+              :disabled="!smartImportModal.files.length"
+              @click="submitSmartImportStandardScan"
+            >
+              <i class="ri-file-search-line"></i>
+              <span>{{ smartImportMeta.primaryCta }}</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- ================== MODAL: IMPORT ẢNH THUẾ ================== -->
-    <div v-if="showTaxModal" class="modal vip-modal-overlay" @click.self="closeTaxModal" style="z-index: 10031;">
-      <div class="modal-content vip-modal" style="max-width: 1100px; padding: 0; background: #0b1118; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid #1e293b;">
-        <div class="modal-header" style="background: linear-gradient(135deg, #1e293b, #0f172a); padding: 16px 24px; border-bottom: 1px solid #334155; display: flex; align-items: center; justify-content: space-between; border-top-left-radius: 12px; border-top-right-radius: 12px;">
-          <div class="dt-only-head" style="color: #fff; text-transform: uppercase; font-weight: 900; font-size: 16px; letter-spacing: 0.5px;"><i class="lucide-scan" style="margin-right: 8px;"></i>XÁC NHẬN THÔNG TIN THUẾ</div>
+    <!-- ================== MODAL: XÁC NHẬN THÔNG TIN THUẾ / ĐKKD ================== -->
+    <div v-if="showTaxModal" class="modal vip-modal-overlay" @click.self="closeTaxModal" style="z-index: 10036;">
+      <div class="modal-card vip-modal-card tax-confirm-modal-card">
+        <div class="modal-head modal-head-themed" style="justify-content: space-between; position: relative; padding: 14px 24px; border-bottom: none; border-radius: 0; flex-shrink: 0;">
+          <div class="dt-only-head" style="display: flex; align-items: center; gap: 10px; color: #fff; text-transform: uppercase; font-weight: 900; font-size: 16px; letter-spacing: 0.5px;">
+            <i class="ri-building-4-line" style="font-size: 19px;"></i>
+            <span>XÁC NHẬN THÔNG TIN THUẾ / ĐKKD</span>
+          </div>
           <div class="m-grab-head-stack">
-            <span class="m-grab-eyebrow">Kiểm tra kết quả OCR</span>
+            <span class="m-grab-eyebrow">Kiểm tra dữ liệu trích xuất</span>
             <span class="m-grab-title">Xác nhận thông tin thuế</span>
           </div>
-          <button class="x" @click="closeTaxModal" style="color: #fff; background: rgba(0,0,0,0.15); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;">✕</button>
+          <button class="x" @click="closeTaxModal" style="color: #fff; position: absolute; right: 18px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.15); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;">✕</button>
         </div>
-        <div class="modal-body" style="padding: 24px; max-height: calc(100vh - 120px); overflow-y: auto; display: flex; gap: 24px;">
-          <div style="flex: 0 0 420px;">
-            <div style="margin-bottom: 16px;">
-              <label style="font-size: 12px; text-transform: uppercase; color: #94a3b8; font-weight: 700; margin-bottom: 8px; display: block;">Mã số thuế</label>
-              <input v-model="taxInfo.mst" class="cell-input" style="width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px 16px; color: #fff; font-size: 15px;" />
-            </div>
-            <div style="margin-bottom: 16px;">
-              <label style="font-size: 12px; text-transform: uppercase; color: #94a3b8; font-weight: 700; margin-bottom: 8px; display: block;">Tên công ty (Tiếng Việt)</label>
-              <textarea v-model="taxInfo.tenCongTy" class="cell-input" style="width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px 16px; color: #fff; font-size: 15px; min-height: 72px;"></textarea>
-            </div>
-            <div style="margin-bottom: 16px;">
-              <label style="font-size: 12px; text-transform: uppercase; color: #38bdf8; font-weight: 700; margin-bottom: 8px; display: block;">Tên công ty (Tiếng Anh - Tự động dịch)</label>
-              <textarea v-model="taxInfo.tenCongTyEn" class="cell-input" style="width: 100%; background: rgba(14, 165, 233, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 12px 16px; color: #38bdf8; font-size: 15px; min-height: 72px;"></textarea>
-            </div>
-            <div style="margin-bottom: 16px;">
-              <label style="font-size: 12px; text-transform: uppercase; color: #94a3b8; font-weight: 700; margin-bottom: 8px; display: block;">Địa chỉ công ty</label>
-              <textarea v-model="taxInfo.diaChi" class="cell-input" style="width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px 16px; color: #fff; font-size: 15px; min-height: 72px;"></textarea>
-            </div>
-            <div style="margin-bottom: 8px;">
-              <label style="font-size: 12px; text-transform: uppercase; color: #94a3b8; font-weight: 700; margin-bottom: 8px; display: block;">Ngành nghề chính</label>
-              <textarea v-model="taxInfo.nganhNgheChinh" placeholder="Ngành nghề kinh doanh chính của công ty..." class="cell-input" style="width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px 16px; color: #fff; font-size: 15px; min-height: 72px;"></textarea>
-            </div>
-          </div>
-          <div style="flex: 1; border-left: 1px solid #334155; padding-left: 24px; display: flex; flex-direction: column;">
-            <label style="font-size: 12px; text-transform: uppercase; color: #94a3b8; font-weight: 700; margin-bottom: 8px; display: block;">Ảnh Thuế Đã Tải Lên (Nhấn để phóng to)</label>
-            <div style="flex: 1; border: 1px dashed #475569; border-radius: 8px; background: #0f172a; display: flex; align-items: center; justify-content: center; overflow: hidden; min-height: 300px; cursor: pointer;" @click="openTaxImagePreview(taxPreviewUrl)" onmouseover="this.style.borderColor='#3b82f6'" onmouseout="this.style.borderColor='#475569'">
-              <img v-if="taxPreviewUrl" :src="taxPreviewUrl" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
-            </div>
+
+        <!-- SUB-TOOLBAR: NGUỒN FILE + CHẾ ĐỘ ĐỌC -->
+        <div class="cust-top-toolbar tax-confirm-subbar">
+          <div class="tax-confirm-subbar-left">
+            <span v-if="lastTaxImportFile" class="qe-pill">
+              <i :class="getFileCategoryIconClass(lastTaxImportFile)"></i>
+              <span class="qe-pill-label">Nguồn:</span>
+              <strong class="qe-pill-val tax-file-pill-name" :title="lastTaxImportFile.name">{{ lastTaxImportFile.name }}</strong>
+            </span>
+            <span class="qe-pill">
+              <span class="qe-pill-label">Chế độ đọc:</span>
+              <strong class="qe-pill-val highlight-sky">{{ taxScanSourceMode === 'ai' ? 'AI' : 'Quét chuẩn' }}</strong>
+            </span>
           </div>
         </div>
-        <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid #334155; display: flex; justify-content: flex-end; gap: 12px; background: #1e293b; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
-          <button class="modal-btn-secondary" @click="closeTaxModal" style="padding: 12px 24px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #fff; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); cursor: pointer; transition: all 0.25s;">Hủy</button>
-          <button @click="confirmTaxInfo" style="padding: 12px 24px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #fff; background: #3b82f6; border: none; cursor: pointer; transition: all 0.25s;">Đồng ý & Cập nhật</button>
+
+        <div class="tax-confirm-body">
+          <div class="tax-confirm-form-col">
+            <div class="tax-field-group">
+              <label class="tax-field-label">Mã số thuế</label>
+              <input v-model="taxInfo.mst" class="cell-input tax-field-input" placeholder="Mã số thuế doanh nghiệp..." />
+            </div>
+            <div class="tax-field-group">
+              <label class="tax-field-label">Tên công ty (Tiếng Việt)</label>
+              <textarea v-model="taxInfo.tenCongTy" class="cell-input tax-field-textarea" placeholder="Tên công ty tiếng Việt..."></textarea>
+            </div>
+            <div class="tax-field-group">
+              <label class="tax-field-label is-accent">Tên công ty (Tiếng Anh)</label>
+              <textarea v-model="taxInfo.tenCongTyEn" class="cell-input tax-field-textarea is-accent" placeholder="Tên quốc tế / Tiếng Anh..."></textarea>
+            </div>
+            <div class="tax-field-group">
+              <label class="tax-field-label">Địa chỉ công ty</label>
+              <textarea v-model="taxInfo.diaChi" class="cell-input tax-field-textarea" placeholder="Địa chỉ trụ sở..."></textarea>
+            </div>
+            <div class="tax-field-group">
+              <label class="tax-field-label">Ngành nghề chính</label>
+              <textarea v-model="taxInfo.nganhNgheChinh" placeholder="Ngành nghề kinh doanh chính của công ty..." class="cell-input tax-field-textarea"></textarea>
+            </div>
+          </div>
+
+          <div class="tax-confirm-preview-col">
+            <label class="tax-field-label">
+              {{ taxSourceIsImage ? 'Ảnh Thuế Đã Tải Lên (Nhấn để phóng to)' : 'Tài liệu Nguồn Đã Tải Lên' }}
+            </label>
+            <div
+              v-if="taxSourceIsImage && taxPreviewUrl"
+              class="tax-preview-image-box"
+              @click="openTaxImagePreview(taxPreviewUrl)"
+            >
+              <img :src="taxPreviewUrl" alt="Ảnh thông tin thuế" />
+            </div>
+            <div v-else class="tax-preview-doc-card">
+              <div class="tax-preview-doc-icon">
+                <i :class="getFileCategoryIconClass(lastTaxImportFile)"></i>
+              </div>
+              <div class="tax-preview-doc-name">{{ lastTaxImportFile?.name || 'Tài liệu thông tin thuế' }}</div>
+              <div v-if="lastTaxImportFile" class="tax-preview-doc-meta">
+                Dung lượng: {{ formatUploadFileSize(lastTaxImportFile.size) }}
+              </div>
+              <button
+                type="button"
+                class="tpl-file-neutral-btn tpl-subbar-btn"
+                style="margin-top: 8px; width: auto !important;"
+                @click="closeTaxModal(); openSmartImportModal('thue')"
+              >
+                <i class="ri-upload-2-line"></i> Chọn tài liệu khác
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions fullscreen-modal-footer tax-confirm-footer">
+          <button type="button" class="modal-btn-secondary" @click="closeTaxModal" style="width: auto !important; margin: 0 !important; padding: 10px 22px; border-radius: 8px; font-weight: 700; font-size: 13.5px;">Hủy</button>
+          <button type="button" class="tpl-file-primary-btn" @click="confirmTaxInfo" style="width: auto !important; margin: 0 !important; padding: 10px 22px; border-radius: 8px; font-weight: 800; font-size: 13.5px;">
+            <i class="ri-check-line"></i> Đồng ý &amp; Cập nhật
+          </button>
         </div>
       </div>
     </div>
@@ -19529,8 +21649,8 @@ const visibleLeadingFooterColSpan = computed(() => {
     </div>
 
     <!-- ================== MODAL: THÔNG TIN KHÁCH HÀNG (FULLSCREEN) ================== -->
-    <input type="file" ref="customerFileInput" accept=".xlsx, .xls" style="display: none;" @change="handleCustomerFileUpload" />
-    <input type="file" ref="customerQuoteFileInput" accept=".xlsx, .xls, .pdf" style="display: none;" @change="handleCustomerQuoteFileUpload" />
+    <input type="file" ref="customerFileInput" :accept="UNIVERSAL_IMPORT_ACCEPT" style="display: none;" @change="handleCustomerFileUpload" />
+    <input type="file" ref="customerQuoteFileInput" :accept="UNIVERSAL_IMPORT_ACCEPT" style="display: none;" @change="handleCustomerQuoteFileUpload" />
     <div v-if="showCustomerDetailModal" class="modal vip-modal-overlay modal-fullscreen-overlay" style="z-index: 10025;" @click.self="showCustomerDetailModal = false">
       <div class="modal-card modal-wide vip-modal-card modal-fullscreen-card save-export-cust-modal">
         <div class="modal-head modal-head-themed" style="justify-content: center; position: relative; padding: 14px 24px; border-bottom: none; border-radius: 0; flex-shrink: 0;">
@@ -19578,7 +21698,7 @@ const visibleLeadingFooterColSpan = computed(() => {
             </div>
           </div>
 
-          <div class="cust-toolbar-import-row" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <div data-guide="cust-import-toolbar" class="cust-toolbar-import-row" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
             <button type="button" class="cust-import-btn dxmh" @click="triggerCustomerFileInput" style="padding: 7px 12px; border-radius: 7px; font-size: 11px; font-weight: 800; text-transform: uppercase; background: #2563eb; color: #ffffff; border: none; cursor: pointer; white-space: nowrap; width: fit-content; flex-shrink: 0; line-height: 1; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 2px 6px rgba(37,99,235,0.3); margin: 0;">
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
               <span class="dt-lbl">Import khách hàng (File DXMH)</span>
@@ -19589,10 +21709,10 @@ const visibleLeadingFooterColSpan = computed(() => {
               <span class="dt-lbl">Import khách hàng (File Báo Giá)</span>
               <span class="mb-lbl">File Báo Giá</span>
             </button>
-            <button type="button" class="cust-import-btn tax" @click="showUploadTaxModal = true" style="padding: 7px 12px; border-radius: 7px; font-size: 11px; font-weight: 800; text-transform: uppercase; background: #0ea5e9; color: #ffffff; border: none; cursor: pointer; white-space: nowrap; width: fit-content; flex-shrink: 0; line-height: 1; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 2px 6px rgba(14,165,233,0.3); margin: 0;">
+            <button type="button" class="cust-import-btn tax" @click="openSmartImportModal('thue')" style="padding: 7px 12px; border-radius: 7px; font-size: 11px; font-weight: 800; text-transform: uppercase; background: #0ea5e9; color: #ffffff; border: none; cursor: pointer; white-space: nowrap; width: fit-content; flex-shrink: 0; line-height: 1; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 2px 6px rgba(14,165,233,0.3); margin: 0;">
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-              <span class="dt-lbl">Import Ảnh Thuế</span>
-              <span class="mb-lbl">Ảnh Thuế</span>
+              <span class="dt-lbl">Import Thuế / ĐKKD</span>
+              <span class="mb-lbl">Thuế / ĐKKD</span>
             </button>
             <button type="button" class="cust-dt-only-btn" @click="resetCustomer" style="padding: 7px 12px; border-radius: 7px; font-size: 11px; font-weight: 800; text-transform: uppercase; background: #ef4444; color: #ffffff; border: none; cursor: pointer; white-space: nowrap; width: fit-content; flex-shrink: 0; line-height: 1; box-shadow: 0 2px 6px rgba(239,68,68,0.3); margin: 0;">
               Reset
@@ -19626,11 +21746,11 @@ const visibleLeadingFooterColSpan = computed(() => {
                 <div style="display: grid; grid-template-columns: 1fr 1.4fr; gap: 12px;">
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">SĐT cá nhân</label>
-                    <input v-model="khach.So_dien_thoai_ca_nhan" placeholder="Số điện thoại liên hệ" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;" />
+                    <textarea rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="khach.So_dien_thoai_ca_nhan" placeholder="Số điện thoại liên hệ" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;"></textarea>
                   </div>
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Email cá nhân</label>
-                    <input v-model="khach.Email_ca_nhan" placeholder="Email cá nhân" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;" />
+                    <textarea rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="khach.Email_ca_nhan" placeholder="Email cá nhân" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;"></textarea>
                   </div>
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 5px;">
@@ -19657,15 +21777,15 @@ const visibleLeadingFooterColSpan = computed(() => {
                 <div style="display: grid; grid-template-columns: 1.1fr 0.9fr 1.2fr; gap: 12px;">
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Tên KH phụ</label>
-                    <input v-model="khach.Ten_khach_hang_phu" placeholder="Tên người nhận phụ" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;" />
+                    <textarea rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="khach.Ten_khach_hang_phu" placeholder="Tên người nhận phụ" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;"></textarea>
                   </div>
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">SĐT phụ</label>
-                    <input v-model="khach.So_dien_thoai_ca_nhan_phu" placeholder="SĐT phụ" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;" />
+                    <textarea rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="khach.So_dien_thoai_ca_nhan_phu" placeholder="SĐT phụ" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;"></textarea>
                   </div>
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Email phụ</label>
-                    <input v-model="khach.Email_ca_nhan_phu" placeholder="Email phụ" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;" />
+                    <textarea rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="khach.Email_ca_nhan_phu" placeholder="Email phụ" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;"></textarea>
                   </div>
                 </div>
               </div>
@@ -19687,7 +21807,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Mã số thuế (MST)</label>
                     <div class="input-with-picker">
-                      <input v-model="khach.MST" @change="onMSTChange" placeholder="Mã số thuế" style="width: 100%; padding: 10px 60px 10px 12px; border-radius: 8px; font-size: 13px; margin: 0;" />
+                      <textarea rows="1" class="m-wrap-input has-right-picker" v-auto-grow @keydown.enter.prevent v-model="khach.MST" @change="onMSTChange" placeholder="Mã số thuế" style="width: 100%; padding: 10px 60px 10px 12px; border-radius: 8px; font-size: 13px; margin: 0;"></textarea>
                       <button type="button" class="inline-picker-btn" @click="openCustomerPicker('mst')">Chọn</button>
                     </div>
                   </div>
@@ -19699,21 +21819,21 @@ const visibleLeadingFooterColSpan = computed(() => {
                   </div>
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Website</label>
-                    <input v-model="khach.Website_cong_ty" placeholder="Website công ty" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;" />
+                    <textarea rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="khach.Website_cong_ty" placeholder="Website công ty" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;"></textarea>
                   </div>
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr 1.2fr 1.2fr; gap: 12px;">
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">SĐT công ty</label>
-                    <input v-model="khach.So_dien_thoai_cong_ty" placeholder="SĐT bàn / công ty" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;" />
+                    <textarea rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="khach.So_dien_thoai_cong_ty" placeholder="SĐT bàn / công ty" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;"></textarea>
                   </div>
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Email công ty / nhận HĐ</label>
-                    <input v-model="khach.Email_cong_ty" placeholder="Email nhận hóa đơn" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;" />
+                    <textarea rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="khach.Email_cong_ty" placeholder="Email nhận hóa đơn" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;"></textarea>
                   </div>
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Ngành nghề kinh doanh</label>
-                    <input v-model="khach.Nganh_nghe_cong_ty" placeholder="Ngành nghề chính" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;" />
+                    <textarea rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="khach.Nganh_nghe_cong_ty" placeholder="Ngành nghề chính" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;"></textarea>
                   </div>
                 </div>
               </div>
@@ -19724,19 +21844,19 @@ const visibleLeadingFooterColSpan = computed(() => {
                 <div style="display: grid; grid-template-columns: 1.5fr 0.8fr 0.8fr 1.8fr; gap: 12px;">
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">COMPANY</label>
-                    <input v-model="khach.COMPANY" placeholder="Tên công ty trên PO" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;" />
+                    <textarea rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="khach.COMPANY" placeholder="Tên công ty trên PO" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;"></textarea>
                   </div>
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">TEL</label>
-                    <input v-model="khach.TEL" placeholder="TEL" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;" />
+                    <textarea rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="khach.TEL" placeholder="TEL" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;"></textarea>
                   </div>
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Fax</label>
-                    <input v-model="khach.So_fax_cong_ty" placeholder="Số Fax" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;" />
+                    <textarea rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="khach.So_fax_cong_ty" placeholder="Số Fax" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;"></textarea>
                   </div>
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">ADDRESS</label>
-                    <input v-model="khach.ADDRESS" placeholder="Địa chỉ Tiếng Anh trên PO" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;" />
+                    <textarea rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="khach.ADDRESS" placeholder="Địa chỉ Tiếng Anh trên PO" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;"></textarea>
                   </div>
                 </div>
               </div>
@@ -19744,7 +21864,7 @@ const visibleLeadingFooterColSpan = computed(() => {
           </div>
 
           <!-- BOTTOM FULL-WIDTH: CÔNG NỢ & TIẾN ĐỘ TRẢ NỢ CỦA KHÁCH HÀNG -->
-          <div class="cust-group-box cust-debt-box" style="padding: 18px 24px; background: rgba(15, 23, 42, 0.55); border: 1px solid rgba(56, 189, 248, 0.28); border-radius: 10px; display: flex; flex-direction: column; gap: 12px;">
+          <div data-guide="cust-debt-overview" class="cust-group-box cust-debt-box" style="padding: 18px 24px; background: rgba(15, 23, 42, 0.55); border: 1px solid rgba(56, 189, 248, 0.28); border-radius: 10px; display: flex; flex-direction: column; gap: 12px;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
               <div style="display: flex; align-items: center; gap: 28px; flex-wrap: wrap;">
                 <div>
@@ -19816,12 +21936,16 @@ const visibleLeadingFooterColSpan = computed(() => {
       <div class="modal-card modal-wide vip-modal-card modal-fullscreen-card debt-payment-modal">
         <!-- HEADER -->
         <div class="modal-head modal-head-themed" style="justify-content: center; position: relative; margin-bottom: 0; padding: 14px 24px; border-bottom: none; border-radius: 0; flex-shrink: 0;">
-          <div class="dt-only-head" style="color: #ffffff; text-transform: uppercase; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-            <span>TIẾN ĐỘ TRẢ NỢ &amp; LỊCH SỬ THANH TOÁN<template v-if="paymentModal.row"> — PO #{{ paymentModal.row.So_PO || 'N/A' }}</template></span>
+          <div class="dt-only-head" style="color: #ffffff; text-transform: uppercase; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px; max-width: calc(100% - 70px);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            <span :title="paymentModal.row ? getPoContractContent(paymentModal.row) : ''" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              TIẾN ĐỘ TRẢ NỢ &amp; LỊCH SỬ THANH TOÁN<template v-if="paymentModal.row"> — {{ getPoContractContent(paymentModal.row, 58) }}</template>
+            </span>
           </div>
           <div class="m-grab-head-stack">
-            <span class="m-grab-eyebrow">{{ paymentModal.row?.So_PO ? 'Quản lý công nợ • PO #' + paymentModal.row.So_PO : 'Quản lý công nợ' }}</span>
+            <span class="m-grab-eyebrow" :title="paymentModal.row ? getPoContractContent(paymentModal.row) : ''">
+              {{ paymentModal.row ? ('Quản lý công nợ • ' + getPoContractContent(paymentModal.row, 38)) : 'Quản lý công nợ' }}
+            </span>
             <span class="m-grab-title">Tiến độ &amp; Lịch sử thanh toán</span>
           </div>
           <button class="x" @click="paymentModal.show = false" style="color: #fff; position: absolute; right: 18px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.15); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;">✕</button>
@@ -19862,6 +21986,7 @@ const visibleLeadingFooterColSpan = computed(() => {
           <div v-if="paymentModal.row" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
             <button
               type="button"
+              data-guide="debt-dt-btn-schedule"
               @click="openScheduleSubModal"
               style="display: inline-flex; align-items: center; gap: 6px; background: #0284c7; color: #ffffff; border: none; border-radius: 7px; padding: 8px 14px; font-size: 11.5px; font-weight: 800; text-transform: uppercase; cursor: pointer; width: fit-content; margin: 0; box-shadow: 0 2px 6px rgba(2, 132, 199, 0.28);"
             >
@@ -19870,6 +21995,7 @@ const visibleLeadingFooterColSpan = computed(() => {
 
             <button
               type="button"
+              data-guide="debt-dt-btn-record"
               @click="openRecordPaymentSubModal()"
               style="display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #10b981, #059669); color: #ffffff; border: none; border-radius: 7px; padding: 8px 15px; font-size: 11.5px; font-weight: 800; text-transform: uppercase; cursor: pointer; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.28); width: fit-content; margin: 0;"
             >
@@ -19921,7 +22047,7 @@ const visibleLeadingFooterColSpan = computed(() => {
           <!-- 2-COLUMN SPLIT: LEFT PO SIDEBAR + RIGHT TABLES -->
           <div style="flex: 1; min-height: 0; display: grid; grid-template-columns: 310px 1fr; gap: 18px; overflow: hidden;">
             <!-- LEFT SIDEBAR: DANH SÁCH PO CỦA KHÁCH HÀNG -->
-            <div class="cust-group-box cust-group-sub" style="background: rgba(148,163,184,0.04); border: 1px solid rgba(148,163,184,0.16); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow: hidden;">
+            <div data-guide="debt-dt-po-list" class="cust-group-box cust-group-sub" style="background: rgba(148,163,184,0.04); border: 1px solid rgba(148,163,184,0.16); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow: hidden;">
               <div class="cust-group-title-sub" style="font-size: 11.5px; text-transform: uppercase; font-weight: 800; color: #ffffff; letter-spacing: 0.6px; flex-shrink: 0;">
                 DANH SÁCH ĐƠN HÀNG PO ({{ paymentModal.customerPOs.length }})
               </div>
@@ -19941,10 +22067,20 @@ const visibleLeadingFooterColSpan = computed(() => {
                       : '1px solid rgba(148, 163, 184, 0.25)'
                   }"
                 >
-                  <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px;">
-                    <span style="font-size: 13px; font-weight: 800; color: #0284c7;">PO #{{ po.So_PO || 'N/A' }}</span>
+                  <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px;">
+                      <span
+                        :title="getPoContractContent(po)"
+                        style="font-size: 12.5px; font-weight: 800; color: #0284c7; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word;"
+                      >
+                        {{ getPoContractContent(po) }}
+                      </span>
+                      <span v-if="getPoCreatedDateShort(po)" style="font-size: 10.5px; color: #64748b; font-weight: 600;">
+                        Ngày tạo: {{ getPoCreatedDateShort(po) }}
+                      </span>
+                    </div>
                     <span
-                      style="padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 800;"
+                      style="padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 800; flex-shrink: 0; white-space: nowrap;"
                       :style="{
                         background: poCongNo(po) > 0 ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.16)',
                         color: poCongNo(po) > 0 ? '#ef4444' : '#10b981'
@@ -19973,6 +22109,7 @@ const visibleLeadingFooterColSpan = computed(() => {
               <!-- BẢNG 1: TIẾN ĐỘ KẾ HOẠCH & MỐC HẠN THANH TOÁN -->
               <div
                 v-if="paymentModal.row"
+                data-guide="debt-dt-schedule-box"
                 class="cust-group-box cust-group-company"
                 style="background: rgba(56,189,248,0.04); border: 1px solid rgba(56,189,248,0.16); border-radius: 10px; padding: 14px 18px; display: flex; flex-direction: column; gap: 10px; max-height: 45%; min-height: 175px; overflow: hidden;"
               >
@@ -20054,39 +22191,47 @@ const visibleLeadingFooterColSpan = computed(() => {
 
               <!-- BẢNG 2: LỊCH SỬ THANH TOÁN THỰC TẾ -->
               <div
+                data-guide="debt-dt-history-box"
                 class="cust-group-box cust-group-main"
                 style="background: rgba(16,185,129,0.04); border: 1px solid rgba(16,185,129,0.16); border-radius: 10px; padding: 14px 18px; display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; overflow: hidden;"
               >
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; flex-shrink: 0;">
-                  <span style="font-size: 12px; font-weight: 800; color: #10b981; text-transform: uppercase; letter-spacing: 0.5px;">
-                    Lịch sử thanh toán thực tế {{ paymentModal.row ? ('của PO #' + (paymentModal.row.So_PO || 'N/A')) : 'của Khách hàng' }}
+                  <span
+                    :title="paymentModal.row ? getPoContractContent(paymentModal.row) : ''"
+                    style="font-size: 12px; font-weight: 800; color: #10b981; text-transform: uppercase; letter-spacing: 0.5px;"
+                  >
+                    Lịch sử thanh toán thực tế {{ paymentModal.row ? ('— ' + getPoContractContent(paymentModal.row, 56)) : 'của Khách hàng' }}
                     ({{ currentModalPaymentHistory.length }} lần)
                   </span>
-                  <span style="font-size: 11px; color: #64748b;">Schema: <code>lich_su_thanh_toan</code></span>
                 </div>
 
                 <div class="quote-table-wrap" style="flex: 1; min-height: 0; overflow: auto;">
-                  <table style="width: 100%; min-width: 720px; border-collapse: collapse; font-size: 12px;">
+                  <table style="width: 100%; min-width: 780px; border-collapse: collapse; font-size: 12px;">
                     <thead>
                       <tr>
-                        <th style="padding: 10px 12px; width: 60px; text-align: left;">Lần</th>
-                        <th style="padding: 10px 12px; text-align: left;">Mã GD (id)</th>
-                        <th style="padding: 10px 12px; text-align: left;">Thời gian TT</th>
-                        <th style="padding: 10px 12px; text-align: left;">Mã KH (maKH)</th>
-                        <th style="padding: 10px 12px; text-align: right;">Số tiền thanh toán</th>
-                        <th style="padding: 10px 12px; text-align: right;">Công nợ còn lại</th>
+                        <th style="padding: 10px 12px; width: 56px; text-align: left;">Lần</th>
+                        <th style="padding: 10px 12px; text-align: left; white-space: nowrap;">Thời gian TT</th>
+                        <th style="padding: 10px 12px; text-align: left;">Tên KH</th>
+                        <th style="padding: 10px 12px; text-align: left;">Tên Công ty</th>
+                        <th style="padding: 10px 12px; text-align: right; white-space: nowrap;">Số tiền thanh toán</th>
+                        <th style="padding: 10px 12px; text-align: right; white-space: nowrap;">Công nợ còn lại</th>
                         <th style="padding: 10px 12px; text-align: left;">Ghi chú</th>
                         <th style="padding: 10px 12px; text-align: center; width: 65px;">Xóa</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr v-for="(h, idx) in currentModalPaymentHistory" :key="h.id || idx" class="quote-item-row">
-                        <td style="padding: 10px 12px; font-weight: 800; color: #0284c7;">#{{ currentModalPaymentHistory.length - idx }}</td>
-                        <td style="padding: 10px 12px; font-family: monospace; font-size: 11px;">{{ h.id }}</td>
-                        <td style="padding: 10px 12px; font-weight: 600;">{{ h.thoi_gian_thanh_toan || '—' }}</td>
-                        <td style="padding: 10px 12px;">{{ h.maKH }}</td>
-                        <td style="padding: 10px 12px; text-align: right; font-weight: 800; color: #10b981;">+{{ formatVND(toNum(h.so_tien_thanh_toan, 0)) || '0' }} đ</td>
-                        <td style="padding: 10px 12px; text-align: right; font-weight: 800;" :style="{ color: toNum(h.cong_no_con_lai, 0) > 0 ? '#ef4444' : '#10b981' }">
+                        <td
+                          :title="h.id ? ('Mã GD: ' + h.id) : ''"
+                          style="padding: 10px 12px; font-weight: 800; color: #0284c7;"
+                        >
+                          #{{ currentModalPaymentHistory.length - idx }}
+                        </td>
+                        <td style="padding: 10px 12px; font-weight: 600; white-space: nowrap;">{{ h.thoi_gian_thanh_toan || '—' }}</td>
+                        <td style="padding: 10px 12px; font-weight: 600;">{{ getPaymentHistoryCustomerInfo(h).tenKH }}</td>
+                        <td style="padding: 10px 12px; font-weight: 600; max-width: 220px; word-break: break-word;">{{ getPaymentHistoryCustomerInfo(h).tenCongTy }}</td>
+                        <td style="padding: 10px 12px; text-align: right; font-weight: 800; color: #10b981; white-space: nowrap;">+{{ formatVND(toNum(h.so_tien_thanh_toan, 0)) || '0' }} đ</td>
+                        <td style="padding: 10px 12px; text-align: right; font-weight: 800; white-space: nowrap;" :style="{ color: toNum(h.cong_no_con_lai, 0) > 0 ? '#ef4444' : '#10b981' }">
                           {{ formatVND(toNum(h.cong_no_con_lai, 0)) || '0' }} đ
                         </td>
                         <td style="padding: 10px 12px;">{{ h.ghi_chu || '—' }}</td>
@@ -20126,7 +22271,7 @@ const visibleLeadingFooterColSpan = computed(() => {
               <span class="m-debt-cust-code">{{ paymentModal.customer.Ma_khach_hang || 'N/A' }}</span>
             </div>
 
-            <div v-if="paymentModal.row" class="m-debt-plan-row">
+            <div v-if="paymentModal.row" data-guide="debt-m-plan-row" class="m-debt-plan-row">
               <span class="m-debt-plan-badge" :class="paymentModal.scheduleMode === 'nhieu_dot' ? 'is-multi' : 'is-single'">
                 <svg class="m-debt-plan-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                 <span v-if="paymentModal.scheduleMode === 'nhieu_dot'">Chia {{ modalEvaluatedInstallments.length }} đợt thanh toán</span>
@@ -20177,7 +22322,9 @@ const visibleLeadingFooterColSpan = computed(() => {
 
             <div class="m-debt-progress-card">
               <div class="m-debt-progress-head">
-                <span class="m-debt-progress-lbl">Tiến độ thanh toán{{ paymentModal.row?.So_PO ? ' • PO #' + paymentModal.row.So_PO : '' }}</span>
+                <span class="m-debt-progress-lbl" :title="paymentModal.row ? getPoContractContent(paymentModal.row) : ''">
+                  Tiến độ thanh toán{{ paymentModal.row ? (' • ' + getPoContractContent(paymentModal.row, 28)) : '' }}
+                </span>
                 <span class="m-debt-progress-pct" :class="{ 'is-done': modalDebtProgressPct >= 100 }">{{ modalDebtProgressPct }}%</span>
               </div>
               <div class="m-debt-progress-track">
@@ -20187,7 +22334,7 @@ const visibleLeadingFooterColSpan = computed(() => {
           </div>
 
           <!-- 3. HORIZONTAL SCROLLABLE PO PILLS -->
-          <div class="m-debt-po-strip">
+          <div data-guide="debt-m-po-strip" class="m-debt-po-strip">
             <div class="m-debt-sec-head">
               <span class="m-debt-sec-title">Đơn hàng PO ({{ paymentModal.customerPOs.length }})</span>
               <span v-if="paymentModal.customerPOs.length > 1" class="m-debt-sec-hint">Vuốt ngang để chọn PO</span>
@@ -20199,13 +22346,14 @@ const visibleLeadingFooterColSpan = computed(() => {
                 :key="'m-po-' + (po._firebaseKey || po.ID)"
                 type="button"
                 class="m-debt-po-pill"
+                :title="getPoContractContent(po)"
                 :class="{
                   'is-active': paymentModal.row && (paymentModal.row._firebaseKey === po._firebaseKey),
                   'is-paid': poCongNo(po) <= 0
                 }"
                 @click="selectPoInPaymentModal(po)"
               >
-                <span class="m-debt-po-code">PO #{{ po.So_PO || 'N/A' }}</span>
+                <span class="m-debt-po-code">{{ getPoContractContent(po) }}</span>
                 <span class="m-debt-po-sep">•</span>
                 <span class="m-debt-po-state">{{ poCongNo(po) > 0 ? ('Nợ ' + (formatVND(poCongNo(po)) || '0') + ' đ') : 'Đã tất toán' }}</span>
               </button>
@@ -20217,7 +22365,7 @@ const visibleLeadingFooterColSpan = computed(() => {
 
           <!-- 4. SEGMENTED TABS & FINTECH CARDS -->
           <div class="m-debt-tabs-wrap">
-            <div v-if="paymentModal.row" class="m-debt-tabs">
+            <div v-if="paymentModal.row" data-guide="debt-m-tabs" class="m-debt-tabs">
               <button
                 type="button"
                 class="m-debt-tab-btn"
@@ -20292,10 +22440,19 @@ const visibleLeadingFooterColSpan = computed(() => {
                 <div v-for="(h, idx) in currentModalPaymentHistory" :key="'m-hist-' + (h.id || idx)" class="m-debt-hist-card">
                   <div class="m-debt-hist-top">
                     <div class="m-debt-hist-meta">
-                      <span class="m-debt-hist-idx">Lần #{{ currentModalPaymentHistory.length - idx }}</span>
+                      <span class="m-debt-hist-idx" :title="h.id ? ('Mã GD: ' + h.id) : ''">Lần #{{ currentModalPaymentHistory.length - idx }}</span>
                       <span class="m-debt-hist-time">{{ h.thoi_gian_thanh_toan || '—' }}</span>
                     </div>
                     <span class="m-debt-hist-amt">+{{ formatVND(toNum(h.so_tien_thanh_toan, 0)) || '0' }} đ</span>
+                  </div>
+
+                  <div class="m-debt-hist-cust-info">
+                    <span v-if="getPaymentHistoryCustomerInfo(h).tenKH !== '—'" class="m-debt-hist-kh">
+                      KH: <strong>{{ getPaymentHistoryCustomerInfo(h).tenKH }}</strong>
+                    </span>
+                    <span v-if="getPaymentHistoryCustomerInfo(h).tenCongTy !== '—'" class="m-debt-hist-cty">
+                      Cty: <strong>{{ getPaymentHistoryCustomerInfo(h).tenCongTy }}</strong>
+                    </span>
                   </div>
 
                   <div class="m-debt-hist-mid">
@@ -20321,7 +22478,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                 </div>
               </template>
 
-              <div v-else class="m-debt-empty-box">
+              <div v-else data-guide="debt-m-history-empty" class="m-debt-empty-box">
                 <svg class="m-debt-empty-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
                 <div class="m-debt-empty-title">Chưa có lịch sử thanh toán</div>
                 <div class="m-debt-empty-sub">Các đợt khách hàng thanh toán thực tế sẽ được lưu tại đây.</div>
@@ -20341,8 +22498,8 @@ const visibleLeadingFooterColSpan = computed(() => {
         <!-- FOOTER -->
         <div class="cust-modal-footer fullscreen-modal-footer debt-modal-footer" style="padding: 14px 32px; background: rgba(15, 23, 42, 0.95); border-top: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: flex-end; flex-shrink: 0; border-radius: 0 !important;">
           <button type="button" class="modal-btn-secondary btn-debt-close" @click="paymentModal.show = false" style="padding: 10px 24px; border-radius: 8px; background: rgba(255,255,255,0.1); color: #f8fafc; border: 1px solid rgba(255,255,255,0.2); font-weight: 700; cursor: pointer; width: fit-content; margin: 0;">Đóng</button>
-          <button v-if="paymentModal.row" type="button" class="m-only-debt-btn btn-debt-schedule" @click="openScheduleSubModal">Kế hoạch hạn</button>
-          <button v-if="paymentModal.row" type="button" class="m-only-debt-btn btn-debt-record" @click="openRecordPaymentSubModal()">+ Ghi nhận TT</button>
+          <button v-if="paymentModal.row" type="button" data-guide="debt-m-btn-schedule" class="m-only-debt-btn btn-debt-schedule" @click="openScheduleSubModal">Kế hoạch hạn</button>
+          <button v-if="paymentModal.row" type="button" data-guide="debt-m-btn-record" class="m-only-debt-btn btn-debt-record" @click="openRecordPaymentSubModal()">+ Ghi nhận TT</button>
         </div>
       </div>
     </div>
@@ -20351,9 +22508,9 @@ const visibleLeadingFooterColSpan = computed(() => {
     <div v-if="paymentModal.show && paymentModal.row && paymentModal.showScheduleSubModal" class="modal vip-modal-overlay" @click.self="paymentModal.showScheduleSubModal = false" style="z-index: 10040; padding: 20px; background: rgba(2, 6, 23, 0.78);">
       <div class="modal-card vip-modal-card debt-schedule-submodal" style="max-width: 920px; width: 95vw; overflow: hidden; display: flex; flex-direction: column; max-height: 90vh;">
         <div class="modal-head modal-head-themed" style="padding: 14px 22px; margin-bottom: 0; border-radius: 0; display: flex; justify-content: space-between; align-items: center;">
-          <div>
-            <h4 style="margin: 0; color: #ffffff !important; font-size: 15px; font-weight: 800; text-transform: uppercase;">
-              Thiết lập Kế hoạch &amp; Mốc hạn thanh toán — PO #{{ paymentModal.row.So_PO || 'N/A' }}
+          <div style="min-width: 0; padding-right: 12px;">
+            <h4 :title="getPoContractContent(paymentModal.row)" style="margin: 0; color: #ffffff !important; font-size: 15px; font-weight: 800; text-transform: uppercase;">
+              Thiết lập Kế hoạch &amp; Mốc hạn thanh toán — {{ getPoContractContent(paymentModal.row, 52) }}
             </h4>
             <div style="font-size: 12px; color: #ffffff; opacity: 0.9; margin-top: 2px;">
               Tổng giá trị PO sau VAT: <strong>{{ formatVND(poTongSauVat(paymentModal.row)) || '0' }} đ</strong>
@@ -20496,12 +22653,12 @@ const visibleLeadingFooterColSpan = computed(() => {
     <div v-if="paymentModal.show && paymentModal.row && paymentModal.showRecordSubModal" class="modal vip-modal-overlay" @click.self="paymentModal.showRecordSubModal = false" style="z-index: 10040; padding: 20px; background: rgba(2, 6, 23, 0.78);">
       <div class="modal-card vip-modal-card debt-record-submodal" style="max-width: 640px; width: 95vw; overflow: hidden; display: flex; flex-direction: column;">
         <div class="modal-head modal-head-themed" style="padding: 14px 22px; margin-bottom: 0; border-radius: 0; display: flex; justify-content: space-between; align-items: center;">
-          <div>
-            <h4 style="margin: 0; color: #ffffff !important; font-size: 15px; font-weight: 800; text-transform: uppercase;">
-              Ghi nhận đợt thanh toán mới — PO #{{ paymentModal.row.So_PO || 'N/A' }}
+          <div style="min-width: 0; padding-right: 12px;">
+            <h4 :title="getPoContractContent(paymentModal.row)" style="margin: 0; color: #ffffff !important; font-size: 15px; font-weight: 800; text-transform: uppercase;">
+              Ghi nhận đợt thanh toán mới — {{ getPoContractContent(paymentModal.row, 44) }}
             </h4>
             <div style="font-size: 12px; color: #ffffff; opacity: 0.9; margin-top: 2px;">
-              Công nợ hiện tại của PO: <strong>{{ formatVND(poCongNo(paymentModal.row)) || '0' }} đ</strong>
+              Công nợ hiện tại của đơn hàng: <strong>{{ formatVND(poCongNo(paymentModal.row)) || '0' }} đ</strong>
             </div>
           </div>
           <button class="x" @click="paymentModal.showRecordSubModal = false">✕</button>
@@ -20509,45 +22666,70 @@ const visibleLeadingFooterColSpan = computed(() => {
 
         <div class="debt-sub-body" style="padding: 18px 22px; display: flex; flex-direction: column; gap: 14px;">
           <div>
-            <label style="font-size: 11px; color: #94a3b8; font-weight: 600; display: block; margin-bottom: 6px;">Chọn nhanh số tiền thanh toán:</label>
-            <div class="debt-sub-chips" style="display: flex; gap: 6px; flex-wrap: wrap;">
-              <template v-if="paymentModal.scheduleMode === 'nhieu_dot'">
-                <button
-                  v-for="(inst, idx) in modalEvaluatedInstallments.filter(x => x.con_thieu > 0)"
-                  :key="'quick-inst-' + idx"
-                  type="button"
-                  @click="openRecordPaymentSubModal(inst)"
-                  style="background: rgba(124, 58, 237, 0.14); color: #7c3aed; border: 1px solid rgba(124, 58, 237, 0.35); border-radius: 6px; padding: 5px 10px; font-size: 11px; font-weight: 700; cursor: pointer; width: fit-content; margin: 0;"
-                >
-                  Đợt {{ inst.dot }} ({{ formatVND(inst.con_thieu) || '0' }} đ)
+            <label style="font-size: 11.5px; color: #cbd5e1; font-weight: 700; display: block; margin-bottom: 6px;">Số tiền khách thanh toán (VNĐ)</label>
+            <input
+              type="text"
+              inputmode="numeric"
+              :value="paymentModal.amountStr"
+              @focus="onPaymentAmountFocus"
+              @blur="onPaymentAmountBlur"
+              @input="onPaymentAmountInput"
+              @paste="onPaymentAmountPaste"
+              placeholder="0"
+              style="width: 100%; padding: 10px 14px; border-radius: 8px; font-size: 17px; font-weight: 800; color: #10b981; text-align: right; margin: 0;"
+            />
+
+            <div class="debt-quick-amount-below" style="margin-top: 8px;">
+              <div class="debt-sub-chips" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                <span style="font-size: 11px; color: #94a3b8; font-weight: 600; margin-right: 2px;">Chọn nhanh:</span>
+                <template v-if="paymentModal.scheduleMode === 'nhieu_dot'">
+                  <button
+                    v-for="(inst, idx) in modalEvaluatedInstallments.filter(x => x.con_thieu > 0)"
+                    :key="'quick-inst-' + idx"
+                    type="button"
+                    @click="applyQuickInstallmentAmount(inst)"
+                    style="background: rgba(124, 58, 237, 0.14); color: #7c3aed; border: 1px solid rgba(124, 58, 237, 0.35); border-radius: 6px; padding: 5px 10px; font-size: 11px; font-weight: 700; cursor: pointer; width: fit-content; margin: 0;"
+                  >
+                    Đợt {{ inst.dot }} ({{ formatVND(inst.con_thieu) || '0' }} đ)
+                  </button>
+                </template>
+                <button type="button" @click="setPaymentQuickPct(100)" style="background: rgba(16, 185, 129, 0.14); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 6px; padding: 5px 10px; font-size: 11px; font-weight: 700; cursor: pointer; width: fit-content; margin: 0;">
+                  Tất toán 100% nợ ({{ formatVND(poCongNo(paymentModal.row)) || '0' }})
                 </button>
-              </template>
-              <button type="button" @click="setPaymentQuickPct(100)" style="background: rgba(16, 185, 129, 0.14); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 6px; padding: 5px 10px; font-size: 11px; font-weight: 700; cursor: pointer; width: fit-content; margin: 0;">
-                Tất toán 100% nợ ({{ formatVND(poCongNo(paymentModal.row)) || '0' }})
-              </button>
-              <button type="button" @click="setPaymentQuickPct(50)" style="background: rgba(2, 132, 199, 0.14); color: #0284c7; border: 1px solid rgba(2, 132, 199, 0.35); border-radius: 6px; padding: 5px 10px; font-size: 11px; font-weight: 700; cursor: pointer; width: fit-content; margin: 0;">
-                50% công nợ
-              </button>
-              <button type="button" @click="setPaymentQuickPct(30)" style="background: rgba(245, 158, 11, 0.14); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 6px; padding: 5px 10px; font-size: 11px; font-weight: 700; cursor: pointer; width: fit-content; margin: 0;">
-                30% công nợ
-              </button>
+                <button type="button" @click="setPaymentQuickPct(50)" style="background: rgba(2, 132, 199, 0.14); color: #0284c7; border: 1px solid rgba(2, 132, 199, 0.35); border-radius: 6px; padding: 5px 10px; font-size: 11px; font-weight: 700; cursor: pointer; width: fit-content; margin: 0;">
+                  50% công nợ
+                </button>
+                <button type="button" @click="setPaymentQuickPct(30)" style="background: rgba(245, 158, 11, 0.14); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 6px; padding: 5px 10px; font-size: 11px; font-weight: 700; cursor: pointer; width: fit-content; margin: 0;">
+                  30% công nợ
+                </button>
+                <button
+                  v-if="paymentModal.amount > 0"
+                  type="button"
+                  @click="resetPaymentAmountToZero"
+                  style="background: rgba(148, 163, 184, 0.14); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.32); border-radius: 6px; padding: 5px 10px; font-size: 11px; font-weight: 700; cursor: pointer; width: fit-content; margin: 0;"
+                >
+                  Đặt về 0
+                </button>
+              </div>
+            </div>
+
+            <div
+              v-if="poCongNo(paymentModal.row) > 0 && paymentModal.amount > poCongNo(paymentModal.row)"
+              style="margin-top: 8px; padding: 8px 11px; border-radius: 7px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.38); color: #f59e0b; font-size: 11.5px; font-weight: 600;"
+            >
+              Lưu ý: Số tiền đang nhập vượt quá công nợ còn lại của đơn hàng ({{ formatVND(poCongNo(paymentModal.row)) || '0' }} đ).
             </div>
           </div>
 
-          <div class="debt-record-2col" style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px;">
-            <div>
-              <label style="font-size: 11.5px; color: #cbd5e1; font-weight: 600; display: block; margin-bottom: 5px;">Số tiền khách thanh toán (VNĐ)</label>
-              <input type="text" inputmode="numeric" :value="paymentModal.amountStr" @input="onPaymentAmountInput" @paste="onPaymentAmountPaste" placeholder="Nhập số tiền..." style="padding: 9px 12px; border-radius: 8px; font-size: 15px; font-weight: 800; color: #10b981; text-align: right; margin: 0;" />
-            </div>
+          <div class="debt-record-2col" style="display: grid; grid-template-columns: 1fr 1.25fr; gap: 12px;">
             <div>
               <label style="font-size: 11.5px; color: #cbd5e1; font-weight: 600; display: block; margin-bottom: 5px;">Thời gian thanh toán</label>
-              <input type="text" v-model="paymentModal.paymentTime" placeholder="DD/MM/YYYY HH:mm:ss" style="padding: 9px 12px; border-radius: 8px; margin: 0;" />
+              <input type="text" v-model="paymentModal.paymentTime" placeholder="DD/MM/YYYY HH:mm:ss" style="width: 100%; padding: 9px 12px; border-radius: 8px; margin: 0;" />
             </div>
-          </div>
-
-          <div>
-            <label style="font-size: 11.5px; color: #cbd5e1; font-weight: 600; display: block; margin-bottom: 5px;">Ghi chú đợt thanh toán (Tùy chọn)</label>
-            <input type="text" v-model="paymentModal.note" placeholder="VD: Thanh toán đợt 1 chuyển khoản..." style="padding: 9px 12px; border-radius: 8px; margin: 0;" />
+            <div>
+              <label style="font-size: 11.5px; color: #cbd5e1; font-weight: 600; display: block; margin-bottom: 5px;">Ghi chú đợt thanh toán (Tùy chọn)</label>
+              <input type="text" v-model="paymentModal.note" placeholder="VD: Thanh toán đợt 1 chuyển khoản..." style="width: 100%; padding: 9px 12px; border-radius: 8px; margin: 0;" />
+            </div>
           </div>
 
           <div class="cust-group-box cust-group-sub" style="padding: 10px 12px; background: rgba(30, 41, 59, 0.5); border: 1px dashed #334155; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 12px; color: #94a3b8;">
@@ -20956,7 +23138,7 @@ const visibleLeadingFooterColSpan = computed(() => {
               </div>
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Hãng</label>
-                <div style="position: relative; display: flex; align-items: center;">
+                <div class="input-with-picker">
                   <textarea rows="1" class="m-wrap-input has-left-icon has-right-picker" v-auto-grow @keydown.enter.prevent v-model="itemForm.Ten_nha_cung_cap" placeholder="Nhà cung cấp..." @input="updateMaNcc" style="width: 100%; padding: 10px 64px 10px 36px; border-radius: 8px; margin: 0;"></textarea>
                   <i class="lucide-truck" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                   <button type="button" class="inline-picker-btn" @click="openProductPicker('manual', 'hang')">Chọn</button>
@@ -20967,7 +23149,7 @@ const visibleLeadingFooterColSpan = computed(() => {
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">License duration</label>
-                <div style="position: relative; display: flex; align-items: center;">
+                <div class="input-with-picker">
                   <textarea rows="1" class="m-wrap-input has-left-icon has-right-picker" v-auto-grow @keydown.enter.prevent v-model="itemForm.License_duration" placeholder="12 months, 1 Year..." style="width: 100%; padding: 10px 64px 10px 36px; border-radius: 8px; margin: 0;"></textarea>
                   <i class="lucide-clock" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                   <button type="button" class="inline-picker-btn" @click="openProductPicker('manual', 'license_duration')">Chọn</button>
@@ -20975,7 +23157,7 @@ const visibleLeadingFooterColSpan = computed(() => {
               </div>
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Bảo hành</label>
-                <div style="position: relative; display: flex; align-items: center;">
+                <div class="input-with-picker">
                   <textarea rows="1" class="m-wrap-input has-left-icon has-right-picker" v-auto-grow @keydown.enter.prevent v-model="itemForm.thoi_han_bao_hanh" placeholder="VD: 12 tháng..." style="width: 100%; padding: 10px 64px 10px 36px; border-radius: 8px; margin: 0;"></textarea>
                   <i class="lucide-shield-check" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                   <button type="button" class="inline-picker-btn" @click="openProductPicker('manual', 'thoi_han_bao_hanh')">Chọn</button>
@@ -20985,7 +23167,7 @@ const visibleLeadingFooterColSpan = computed(() => {
 
             <div style="display: flex; flex-direction: column; gap: 6px;">
               <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Volume</label>
-              <div style="position: relative; display: flex; align-items: center;">
+              <div class="input-with-picker">
                 <textarea rows="1" class="m-wrap-input has-left-icon has-right-picker" v-auto-grow @keydown.enter.prevent v-model="itemForm.volume" placeholder="VD: 1-9 users, 1Dvc, 10Dvc..." style="width: 100%; padding: 10px 64px 10px 36px; border-radius: 8px; margin: 0;"></textarea>
                 <i class="lucide-layers" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                 <button type="button" class="inline-picker-btn" @click="openProductPicker('manual', 'volume')">Chọn</button>
@@ -21412,7 +23594,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                 <span>Cập nhật cuối: <strong>{{ formatLastUpdated(getProductLastUpdated(cardEdit)) }}</strong></span>
               </div>
               <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Tên hàng <span style="color: #ef4444;">*</span></label>
-              <div style="position: relative; display: flex; align-items: center;" :class="{ 'input-loading': productsState === 'loading', 'input-loaded': productsState === 'loaded', 'input-ready': productsState === 'ready' }">
+              <div class="input-with-picker" :class="{ 'input-loading': productsState === 'loading', 'input-loaded': productsState === 'loaded', 'input-ready': productsState === 'ready' }">
                 <textarea rows="1" class="m-wrap-input has-left-icon has-right-picker" v-auto-grow @keydown.enter.prevent v-model="cardEdit.Ten_hang" placeholder="Nhập tên hàng hóa..." @input="updateCardMaHang" style="width: 100%; padding: 10px 64px 10px 36px; border-radius: 8px; font-weight: 500; margin: 0;"></textarea>
                 <i class="lucide-package" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                 <button type="button" class="inline-picker-btn" @click="openProductPicker('card')">Chọn</button>
@@ -21421,7 +23603,7 @@ const visibleLeadingFooterColSpan = computed(() => {
 
             <div style="display: flex; flex-direction: column; gap: 6px;">
               <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">SKU Code</label>
-              <div style="position: relative; display: flex; align-items: center;">
+              <div class="input-with-picker">
                 <textarea rows="1" class="m-wrap-input has-left-icon has-right-picker" v-auto-grow @keydown.enter.prevent v-model="cardEdit.sku_code" placeholder="Nhập mã SKU (SKU Code)..." style="width: 100%; padding: 10px 64px 10px 36px; border-radius: 8px; font-weight: 500; margin: 0;"></textarea>
                 <i class="lucide-barcode" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                 <button type="button" class="inline-picker-btn" @click="openProductPicker('card', 'sku_code')">Chọn</button>
@@ -21448,7 +23630,7 @@ const visibleLeadingFooterColSpan = computed(() => {
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Hãng</label>
-                <div style="position: relative; display: flex; align-items: center;">
+                <div class="input-with-picker">
                   <textarea rows="1" class="m-wrap-input has-left-icon has-right-picker" v-auto-grow @keydown.enter.prevent v-model="cardEdit.Ten_nha_cung_cap" placeholder="Nhà cung cấp..." @input="updateCardMaNcc" style="width: 100%; padding: 10px 64px 10px 36px; border-radius: 8px; margin: 0;"></textarea>
                   <i class="lucide-truck" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                   <button type="button" class="inline-picker-btn" @click="openProductPicker('card', 'hang')">Chọn</button>
@@ -22023,6 +24205,7 @@ const visibleLeadingFooterColSpan = computed(() => {
           <input
             ref="productFileUploadInputRef"
             type="file"
+            :accept="UNIVERSAL_IMPORT_ACCEPT"
             multiple
             style="display: none;"
             @change="onProductUploadFileInputChange($event)"
@@ -22052,7 +24235,7 @@ const visibleLeadingFooterColSpan = computed(() => {
               Nhấn <kbd>Ctrl + V</kbd> để dán ảnh chụp màn hình, hoặc kéo thả file / ảnh vào đây
             </div>
             <div class="tpl-upload-drop-sub">
-              Hỗ trợ Excel (.xlsx, .xls, .xlsb, .csv), PDF, Word và mọi định dạng Ảnh (.png, .jpg, .webp...)
+              Hỗ trợ Excel (tất cả các đuôi .xlsx, .xls, .xlsm, .xlsb, .ods, .csv...), PDF, Word (.docx, .doc, .rtf) và Ảnh
             </div>
             <div class="tpl-upload-drop-actions" @click.stop>
               <button
@@ -22130,7 +24313,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                 <div class="tpl-upload-staged-top-row">
                   <div class="tpl-upload-staged-meta-left">
                     <div class="tpl-upload-staged-icon">
-                      <i :class="uItem.isImage ? 'ri-image-line' : 'ri-file-text-line'"></i>
+                      <i :class="getFileCategoryIconClass(uItem.file)"></i>
                     </div>
                     <span class="tpl-upload-ext-badge">{{ uItem.ext }}</span>
                     <span class="tpl-upload-size-text">Dung lượng: {{ uItem.sizeLabel }}</span>
@@ -22147,13 +24330,15 @@ const visibleLeadingFooterColSpan = computed(() => {
                 </div>
 
                 <div class="tpl-upload-name-edit-row" @click.stop>
-                  <input
+                  <textarea
+                    rows="1"
                     v-model="uItem.baseName"
-                    type="text"
-                    class="tpl-upload-name-input"
+                    class="tpl-upload-name-input m-wrap-input m-wrap-import"
+                    v-auto-grow
+                    @keydown.enter.prevent
                     placeholder="Nhập tên lưu trữ cho file/ảnh..."
                     @focus="productFileUploadModal.activeIdx = uIdx"
-                  />
+                  ></textarea>
                 </div>
               </div>
             </div>
@@ -22288,17 +24473,6 @@ const visibleLeadingFooterColSpan = computed(() => {
             <span v-else-if="fileReadPriceModal.uploadingCloud" class="qe-pill" style="font-size: 11.5px;">
               <i class="ri-upload-cloud-line"></i> Đang đồng bộ link lưu trữ...
             </span>
-            <button
-              v-if="fileReadPriceModal.file"
-              type="button"
-              class="tpl-file-primary-btn tpl-subbar-btn"
-              :disabled="fileReadPriceModal.analyzingAi"
-              @click="reRunAiPriceReadInModal"
-              title="Dùng AI phân tích lại toàn bộ file/ảnh và tính Giá vốn sau thuế"
-            >
-              <i class="ri-refresh-line"></i>
-              <span>{{ fileReadPriceModal.analyzingAi ? 'Đang phân tích AI...' : 'Phân tích lại bằng AI' }}</span>
-            </button>
           </div>
         </div>
 
@@ -22319,16 +24493,6 @@ const visibleLeadingFooterColSpan = computed(() => {
               >
                 <i class="ri-external-link-line"></i> File gốc
               </a>
-              <button
-                v-if="fileReadPriceModal.file"
-                type="button"
-                class="tpl-file-primary-btn mob-rp-chip-btn"
-                :disabled="fileReadPriceModal.analyzingAi"
-                @click="reRunAiPriceReadInModal"
-              >
-                <i class="ri-refresh-line"></i>
-                <span>{{ fileReadPriceModal.analyzingAi ? 'Đang đọc...' : 'Đọc lại AI' }}</span>
-              </button>
             </div>
           </div>
 
@@ -23023,7 +25187,7 @@ const visibleLeadingFooterColSpan = computed(() => {
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
                 <div style="display: flex; flex-direction: column; gap: 6px;">
                   <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Mã hàng</label>
-                  <div style="position: relative; display: flex; align-items: center;">
+                  <div class="input-with-picker">
                     <textarea id="qe-Ma_hang" rows="1" class="m-wrap-input has-left-icon has-right-picker" v-auto-grow @keydown.enter.prevent v-model="quoteEdit.Ma_hang" style="width: 100%; padding: 10px 64px 10px 36px; border-radius: 8px; font-weight: 600; margin: 0;"></textarea>
                     <i class="lucide-tag" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                     <button type="button" class="inline-picker-btn" @click="openProductPicker('quoteEdit', 'ma_hang')">Chọn</button>
@@ -23032,7 +25196,7 @@ const visibleLeadingFooterColSpan = computed(() => {
 
                 <div style="display: flex; flex-direction: column; gap: 6px;">
                   <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">SKU Code</label>
-                  <div style="position: relative; display: flex; align-items: center;">
+                  <div class="input-with-picker">
                     <textarea id="qe-sku_code" rows="1" class="m-wrap-input has-left-icon has-right-picker" v-auto-grow @keydown.enter.prevent v-model="quoteEdit.sku_code" placeholder="Nhập mã SKU..." style="width: 100%; padding: 10px 64px 10px 36px; border-radius: 8px; font-weight: 500; margin: 0;"></textarea>
                     <i class="lucide-barcode" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                     <button type="button" class="inline-picker-btn" @click="openProductPicker('quoteEdit', 'sku_code')">Chọn</button>
@@ -23047,7 +25211,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                   <span>Cập nhật cuối: <strong>{{ formatLastUpdated(getProductLastUpdated(quoteEdit)) }}</strong></span>
                 </div>
                 <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Tên hàng <span style="color: #ef4444;">*</span></label>
-                <div style="position: relative; display: flex; align-items: center;">
+                <div class="input-with-picker">
                   <textarea id="qe-Ten_hang" rows="1" class="m-wrap-input has-left-icon has-right-picker" v-auto-grow @keydown.enter.prevent v-model="quoteEdit.Ten_hang" style="width: 100%; padding: 10px 64px 10px 36px; border-radius: 8px; font-weight: 600; margin: 0;"></textarea>
                   <i class="lucide-package" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                   <button type="button" class="inline-picker-btn" @click="openProductPicker('quoteEdit', 'ten_hang')">Chọn</button>
@@ -23058,7 +25222,7 @@ const visibleLeadingFooterColSpan = computed(() => {
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
                 <div style="display: flex; flex-direction: column; gap: 6px;">
                   <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Hãng</label>
-                  <div style="position: relative; display: flex; align-items: center;">
+                  <div class="input-with-picker">
                     <textarea id="qe-Ten_nha_cung_cap" rows="1" class="m-wrap-input has-left-icon has-right-picker" v-auto-grow @keydown.enter.prevent v-model="quoteEdit.Ten_nha_cung_cap" style="width: 100%; padding: 10px 64px 10px 36px; border-radius: 8px; margin: 0;"></textarea>
                     <i class="lucide-truck" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; pointer-events: none;"></i>
                     <button type="button" class="inline-picker-btn" @click="openProductPicker('quoteEdit', 'hang')">Chọn</button>
@@ -23348,7 +25512,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                 <label style="display: flex; justify-content: space-between; align-items: center;">
                   <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">List Price</span>
                   <div style="display: flex; gap: 6px;">
-                    <button type="button" class="util-btn small inline-normal-edit" @click="openAdjustPrice('field', '', 'Đơn giá', 'Don_gia', true)" title="Sửa thường - cập nhật giá thực tế">
+                    <button type="button" data-guide="qe-btn-edit-list-price" class="util-btn small inline-normal-edit" :class="{ 'is-guide-pulse': activeGuideStepId === 'table-item-edit-price' }" @click="openAdjustPrice('field', '', 'Đơn giá', 'Don_gia', true)" title="Sửa thường - cập nhật giá thực tế">
                       <i class="ri-edit-line"></i>
                       <span>Sửa giá</span>
                     </button>
@@ -23388,7 +25552,7 @@ const visibleLeadingFooterColSpan = computed(() => {
             </div>
 
             <!-- CỘT PHẢI TAB GIÁ: BÁN HÀNG & LỢI NHUẬN -->
-            <div class="modal-group" style="margin: 0; display: flex; flex-direction: column; gap: 18px; background: rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+            <div data-guide="qe-sales-price-group" class="modal-group" style="margin: 0; display: flex; flex-direction: column; gap: 18px; background: rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
               <div class="modal-banner-header modal-banner-profit" style="padding: 14px 18px; border-radius: 15px 15px 0 0; margin: -20px -20px 0 -20px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
                 <div style="display: flex; align-items: center; gap: 8px;">
                   <i class="ri-pie-chart-line" style="font-size: 17px; flex-shrink: 0;"></i>
@@ -23415,53 +25579,71 @@ const visibleLeadingFooterColSpan = computed(() => {
                 </div>
               </div>
 
-              <!-- Đơn giá (KH) -->
-              <div style="display: flex; flex-direction: column; gap: 6px;">
-                <label style="display: flex; justify-content: space-between; align-items: center;">
-                  <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Đơn giá (KH)</span>
-                  <div style="display: flex; gap: 6px;">
-                    <button type="button" class="util-btn small inline-normal-edit" @click="openAdjustPrice('field', '', 'Đơn giá (KH)', 'unit_price_kh', true)" title="Sửa thường">
-                      <i class="ri-edit-line"></i>
-                      <span>Sửa giá</span>
-                    </button>
-                    <button type="button" class="util-btn small inline-adjust" @click="openAdjustPrice('field', '', 'Đơn giá (KH)', 'unit_price_kh')" title="Điều chỉnh">
-                      <i class="ri-arrow-up-down-fill"></i>
-                      <span>Điều chỉnh</span>
-                    </button>
+              <div data-guide="qe-edit-price-zone" style="display: flex; flex-direction: column; gap: 16px;">
+                <div v-if="(quoteEdit as any)?._isGuideDemo" class="guide-demo-inline-banner">
+                  <div class="gdib-left">
+                    <span class="gdib-badge">DỮ LIỆU MẪU</span>
+                    <span class="gdib-text">Mặt hàng minh họa hướng dẫn — thao tác thử không ảnh hưởng báo giá hiện tại.</span>
                   </div>
-                </label>
-                <div class="qe-has-left-icon qe-has-right-unit" style="position: relative;">
-                  <FormattedInput id="qe-unit_price_kh" :modelValue="unitPrice(quoteEdit)" :decimals="quoteCurrency === 'USD' ? 2 : 0" :readonly="true" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
-                  <i class="lucide-tag" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
-                  <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #10b981; pointer-events: none;">₫</span>
+                  <button
+                    v-if="isGuideDemoQuoteItemModified"
+                    type="button"
+                    class="gdib-reset-btn"
+                    @click="resetGuideDemoQuoteEditItem()"
+                  >
+                    <i class="ri-restart-line"></i>
+                    <span>Khôi phục mẫu</span>
+                  </button>
                 </div>
-                <div class="muted" style="font-size: 11px; margin-top: 2px; color: #94a3b8; text-align: right; width: 100%;">
-                  (Giá gốc: {{ formatVND(unitPriceRaw(quoteEdit)) }} ₫)
-                </div>
-              </div>
 
-              <!-- TT Trước thuế -->
-              <div style="display: flex; flex-direction: column; gap: 6px;">
-                <label style="display: flex; justify-content: space-between; align-items: center;">
-                  <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">TT Trước thuế</span>
-                  <div style="display: flex; gap: 6px;">
-                    <button type="button" class="util-btn small inline-normal-edit" @click="openAdjustPrice('field', '', 'Thành tiền trước thuế', 'line_truoc_thue', true)" title="Sửa thường">
-                      <i class="ri-edit-line"></i>
-                      <span>Sửa giá</span>
-                    </button>
-                    <button type="button" class="util-btn small inline-adjust" @click="openAdjustPrice('field', '', 'Thành tiền trước thuế', 'line_truoc_thue')" title="Điều chỉnh">
-                      <i class="ri-arrow-up-down-fill"></i>
-                      <span>Điều chỉnh</span>
-                    </button>
+                <!-- Đơn giá (KH) -->
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                  <label style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Đơn giá (KH)</span>
+                    <div style="display: flex; gap: 6px;">
+                      <button type="button" data-guide="qe-btn-edit-unit-price" class="util-btn small inline-normal-edit" :class="{ 'is-guide-pulse': activeGuideStepId === 'table-item-edit-price' }" @click="openAdjustPrice('field', '', 'Đơn giá (KH)', 'unit_price_kh', true)" title="Sửa thường">
+                        <i class="ri-edit-line"></i>
+                        <span>Sửa giá</span>
+                      </button>
+                      <button type="button" class="util-btn small inline-adjust" @click="openAdjustPrice('field', '', 'Đơn giá (KH)', 'unit_price_kh')" title="Điều chỉnh">
+                        <i class="ri-arrow-up-down-fill"></i>
+                        <span>Điều chỉnh</span>
+                      </button>
+                    </div>
+                  </label>
+                  <div class="qe-has-left-icon qe-has-right-unit" style="position: relative;">
+                    <FormattedInput id="qe-unit_price_kh" :modelValue="unitPrice(quoteEdit)" :decimals="quoteCurrency === 'USD' ? 2 : 0" :readonly="true" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
+                    <i class="lucide-tag" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
+                    <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #10b981; pointer-events: none;">₫</span>
                   </div>
-                </label>
-                <div class="qe-has-left-icon qe-has-right-unit" style="position: relative;">
-                  <FormattedInput id="qe-line_truoc_thue" :modelValue="lineTruocThue(quoteEdit)" :decimals="quoteCurrency === 'USD' ? 2 : 0" :readonly="true" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
-                  <i class="lucide-calculator" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
-                  <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #10b981; pointer-events: none;">₫</span>
+                  <div class="muted" style="font-size: 11px; margin-top: 2px; color: #94a3b8; text-align: right; width: 100%;">
+                    (Giá gốc: {{ formatVND(unitPriceRaw(quoteEdit)) }} ₫)
+                  </div>
                 </div>
-                <div class="muted" style="font-size: 11px; margin-top: 2px; color: #94a3b8; text-align: right; width: 100%;">
-                  (Tổng gốc: {{ formatVND(lineTruocThueRaw(quoteEdit)) }} ₫)
+
+                <!-- TT Trước thuế -->
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                  <label style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">TT Trước thuế</span>
+                    <div style="display: flex; gap: 6px;">
+                      <button type="button" data-guide="qe-btn-edit-line-total" class="util-btn small inline-normal-edit" :class="{ 'is-guide-pulse': activeGuideStepId === 'table-item-edit-price' }" @click="openAdjustPrice('field', '', 'Thành tiền trước thuế', 'line_truoc_thue', true)" title="Sửa thường">
+                        <i class="ri-edit-line"></i>
+                        <span>Sửa giá</span>
+                      </button>
+                      <button type="button" class="util-btn small inline-adjust" @click="openAdjustPrice('field', '', 'Thành tiền trước thuế', 'line_truoc_thue')" title="Điều chỉnh">
+                        <i class="ri-arrow-up-down-fill"></i>
+                        <span>Điều chỉnh</span>
+                      </button>
+                    </div>
+                  </label>
+                  <div class="qe-has-left-icon qe-has-right-unit" style="position: relative;">
+                    <FormattedInput id="qe-line_truoc_thue" :modelValue="lineTruocThue(quoteEdit)" :decimals="quoteCurrency === 'USD' ? 2 : 0" :readonly="true" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
+                    <i class="lucide-calculator" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
+                    <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #10b981; pointer-events: none;">₫</span>
+                  </div>
+                  <div class="muted" style="font-size: 11px; margin-top: 2px; color: #94a3b8; text-align: right; width: 100%;">
+                    (Tổng gốc: {{ formatVND(lineTruocThueRaw(quoteEdit)) }} ₫)
+                  </div>
                 </div>
               </div>
 
@@ -24310,7 +26492,7 @@ const visibleLeadingFooterColSpan = computed(() => {
             </div>
           </div>
 
-          <div class="cust-toolbar-import-row" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <div data-guide="cust-import-toolbar" class="cust-toolbar-import-row" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
             <button type="button" class="cust-import-btn dxmh" @click="triggerCustomerFileInput" style="padding: 7px 12px; border-radius: 7px; font-size: 11px; font-weight: 800; text-transform: uppercase; background: #2563eb; color: #ffffff; border: none; cursor: pointer; white-space: nowrap; width: fit-content; flex-shrink: 0; line-height: 1; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 2px 6px rgba(37,99,235,0.3); margin: 0;">
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
               <span class="dt-lbl">Import khách hàng (File DXMH)</span>
@@ -24321,10 +26503,10 @@ const visibleLeadingFooterColSpan = computed(() => {
               <span class="dt-lbl">Import khách hàng (File Báo Giá)</span>
               <span class="mb-lbl">File Báo Giá</span>
             </button>
-            <button type="button" class="cust-import-btn tax" @click="showUploadTaxModal = true" style="padding: 7px 12px; border-radius: 7px; font-size: 11px; font-weight: 800; text-transform: uppercase; background: #0ea5e9; color: #ffffff; border: none; cursor: pointer; white-space: nowrap; width: fit-content; flex-shrink: 0; line-height: 1; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 2px 6px rgba(14,165,233,0.3); margin: 0;">
+            <button type="button" class="cust-import-btn tax" @click="openSmartImportModal('thue')" style="padding: 7px 12px; border-radius: 7px; font-size: 11px; font-weight: 800; text-transform: uppercase; background: #0ea5e9; color: #ffffff; border: none; cursor: pointer; white-space: nowrap; width: fit-content; flex-shrink: 0; line-height: 1; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 2px 6px rgba(14,165,233,0.3); margin: 0;">
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-              <span class="dt-lbl">Import Ảnh Thuế</span>
-              <span class="mb-lbl">Ảnh Thuế</span>
+              <span class="dt-lbl">Import Thuế / ĐKKD</span>
+              <span class="mb-lbl">Thuế / ĐKKD</span>
             </button>
             <button v-if="showSaveToDBBtn" type="button" class="cust-dt-only-btn" @click="saveCustomerToDB(false)" :disabled="savingCustomer" style="padding: 7px 12px; border-radius: 7px; font-size: 11px; font-weight: 800; text-transform: uppercase; background: #10b981; color: #ffffff; border: none; cursor: pointer; white-space: nowrap; width: fit-content; flex-shrink: 0; line-height: 1; box-shadow: 0 2px 6px rgba(16,185,129,0.3); margin: 0;">
               {{ savingCustomer ? 'Đang lưu...' : (isCustomerInDB ? 'Lưu khách hàng' : 'Thêm vào DB') }}
@@ -24361,11 +26543,11 @@ const visibleLeadingFooterColSpan = computed(() => {
                 <div style="display: grid; grid-template-columns: 1fr 1.4fr; gap: 12px;">
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">SĐT cá nhân</label>
-                    <input v-model="khach.So_dien_thoai_ca_nhan" placeholder="Số điện thoại liên hệ" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;" />
+                    <textarea rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="khach.So_dien_thoai_ca_nhan" placeholder="Số điện thoại liên hệ" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;"></textarea>
                   </div>
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Email cá nhân</label>
-                    <input v-model="khach.Email_ca_nhan" placeholder="Email cá nhân" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;" />
+                    <textarea rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="khach.Email_ca_nhan" placeholder="Email cá nhân" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;"></textarea>
                   </div>
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 5px;">
@@ -24392,15 +26574,15 @@ const visibleLeadingFooterColSpan = computed(() => {
                 <div style="display: grid; grid-template-columns: 1.1fr 0.9fr 1.2fr; gap: 12px;">
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Tên KH phụ</label>
-                    <input v-model="khach.Ten_khach_hang_phu" placeholder="Tên người nhận phụ" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;" />
+                    <textarea rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="khach.Ten_khach_hang_phu" placeholder="Tên người nhận phụ" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;"></textarea>
                   </div>
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">SĐT phụ</label>
-                    <input v-model="khach.So_dien_thoai_ca_nhan_phu" placeholder="SĐT phụ" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;" />
+                    <textarea rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="khach.So_dien_thoai_ca_nhan_phu" placeholder="SĐT phụ" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;"></textarea>
                   </div>
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Email phụ</label>
-                    <input v-model="khach.Email_ca_nhan_phu" placeholder="Email phụ" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;" />
+                    <textarea rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="khach.Email_ca_nhan_phu" placeholder="Email phụ" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;"></textarea>
                   </div>
                 </div>
               </div>
@@ -24422,7 +26604,7 @@ const visibleLeadingFooterColSpan = computed(() => {
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Mã số thuế (MST)</label>
                     <div class="input-with-picker">
-                      <input v-model="khach.MST" @change="onMSTChange" placeholder="Mã số thuế" style="width: 100%; padding: 10px 60px 10px 12px; border-radius: 8px; font-size: 13px; margin: 0;" />
+                      <textarea rows="1" class="m-wrap-input has-right-picker" v-auto-grow @keydown.enter.prevent v-model="khach.MST" @change="onMSTChange" placeholder="Mã số thuế" style="width: 100%; padding: 10px 60px 10px 12px; border-radius: 8px; font-size: 13px; margin: 0;"></textarea>
                       <button type="button" class="inline-picker-btn" @click="openCustomerPicker('mst')">Chọn</button>
                     </div>
                   </div>
@@ -24434,21 +26616,21 @@ const visibleLeadingFooterColSpan = computed(() => {
                   </div>
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Website</label>
-                    <input v-model="khach.Website_cong_ty" placeholder="Website công ty" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;" />
+                    <textarea rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="khach.Website_cong_ty" placeholder="Website công ty" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;"></textarea>
                   </div>
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr 1.2fr 1.2fr; gap: 12px;">
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">SĐT công ty</label>
-                    <input v-model="khach.So_dien_thoai_cong_ty" placeholder="SĐT bàn / công ty" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;" />
+                    <textarea rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="khach.So_dien_thoai_cong_ty" placeholder="SĐT bàn / công ty" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;"></textarea>
                   </div>
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Email công ty / nhận HĐ</label>
-                    <input v-model="khach.Email_cong_ty" placeholder="Email nhận hóa đơn" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;" />
+                    <textarea rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="khach.Email_cong_ty" placeholder="Email nhận hóa đơn" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;"></textarea>
                   </div>
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Ngành nghề kinh doanh</label>
-                    <input v-model="khach.Nganh_nghe_cong_ty" placeholder="Ngành nghề chính" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;" />
+                    <textarea rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="khach.Nganh_nghe_cong_ty" placeholder="Ngành nghề chính" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;"></textarea>
                   </div>
                 </div>
               </div>
@@ -24459,19 +26641,19 @@ const visibleLeadingFooterColSpan = computed(() => {
                 <div style="display: grid; grid-template-columns: 1.5fr 0.8fr 0.8fr 1.8fr; gap: 12px;">
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">COMPANY</label>
-                    <input v-model="khach.COMPANY" placeholder="Tên công ty trên PO" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;" />
+                    <textarea rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="khach.COMPANY" placeholder="Tên công ty trên PO" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;"></textarea>
                   </div>
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">TEL</label>
-                    <input v-model="khach.TEL" placeholder="TEL" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;" />
+                    <textarea rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="khach.TEL" placeholder="TEL" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;"></textarea>
                   </div>
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">Fax</label>
-                    <input v-model="khach.So_fax_cong_ty" placeholder="Số Fax" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;" />
+                    <textarea rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="khach.So_fax_cong_ty" placeholder="Số Fax" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;"></textarea>
                   </div>
                   <div style="display: flex; flex-direction: column; gap: 5px;">
                     <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600;">ADDRESS</label>
-                    <input v-model="khach.ADDRESS" placeholder="Địa chỉ Tiếng Anh trên PO" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;" />
+                    <textarea rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="khach.ADDRESS" placeholder="Địa chỉ Tiếng Anh trên PO" style="padding: 10px 12px; border-radius: 8px; font-size: 13px;"></textarea>
                   </div>
                 </div>
               </div>
@@ -24493,7 +26675,7 @@ const visibleLeadingFooterColSpan = computed(() => {
           <!-- BOTTOM FULL-WIDTH: CÔNG NỢ + CONTENT OF CONTRACT / PO -->
           <div class="save-modal-bottom-grid cust-collapsible-debt" :class="{ 'is-mobile-open': showMobileCustDebtSection }" style="display: grid; grid-template-columns: 1.15fr 1fr; gap: 20px; align-items: stretch;">
             <!-- CÔNG NỢ & TIẾN ĐỘ TRẢ NỢ -->
-            <div class="cust-group-box cust-debt-box" style="padding: 16px 22px; background: rgba(15, 23, 42, 0.55); border: 1px solid rgba(56, 189, 248, 0.28); border-radius: 10px; display: flex; flex-direction: column; justify-content: space-between; gap: 10px;">
+            <div data-guide="cust-debt-overview" class="cust-group-box cust-debt-box" style="padding: 16px 22px; background: rgba(15, 23, 42, 0.55); border: 1px solid rgba(56, 189, 248, 0.28); border-radius: 10px; display: flex; flex-direction: column; justify-content: space-between; gap: 10px;">
               <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                 <div>
                   <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #0284c7; letter-spacing: 0.6px; margin-bottom: 3px;">Công Nợ Hiện Tại Của Khách Hàng</div>
@@ -24538,11 +26720,11 @@ const visibleLeadingFooterColSpan = computed(() => {
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                 <div style="display: flex; flex-direction: column; gap: 5px;">
                   <label style="font-size: 10px; text-transform: uppercase; color: #d97706; font-weight: 700;">Content of Contract / PO (tùy chọn)</label>
-                  <input v-model="contentOfContractPO" placeholder="Nhập nội dung Contract/PO (nếu có)..." style="padding: 10px 12px; border-radius: 8px; font-size: 13px;" />
+                  <textarea rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="contentOfContractPO" placeholder="Nhập nội dung Contract/PO (nếu có)..." style="padding: 10px 12px; border-radius: 8px; font-size: 13px;"></textarea>
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 5px;">
                   <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 700;">Ghi chú hợp đồng</label>
-                  <input v-model="ghiChuHopDong" placeholder="Nhập ghi chú hợp đồng (nếu có)..." style="padding: 10px 12px; border-radius: 8px; font-size: 13px;" />
+                  <textarea rows="1" class="m-wrap-input" v-auto-grow @keydown.enter.prevent v-model="ghiChuHopDong" placeholder="Nhập ghi chú hợp đồng (nếu có)..." style="padding: 10px 12px; border-radius: 8px; font-size: 13px;"></textarea>
                 </div>
               </div>
               <div style="padding: 10px 12px; border-radius: 8px; background: rgba(16,185,129,0.1); border: 1px dashed rgba(16,185,129,0.45); font-size: 12px;">
@@ -24683,26 +26865,34 @@ const visibleLeadingFooterColSpan = computed(() => {
                 <div style="display: flex; flex-direction: column; gap: 5px;">
                   <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600; margin: 0;">Mã khách hàng</label>
                   <div class="input-with-picker">
-                    <input
+                    <textarea
+                      rows="1"
+                      class="m-wrap-input has-right-picker"
+                      v-auto-grow
+                      @keydown.enter.prevent
                       v-model="maKHInput"
                       placeholder="Chọn / nhập mã KH"
                       @change="fillCustomerByMa(maKHInput)"
                       @blur="onBlurMaKH"
                       style="width: 100%; padding: 10px 60px 10px 12px; border-radius: 8px; font-size: 13px; margin: 0;"
-                    />
+                    ></textarea>
                     <button type="button" class="inline-picker-btn" @click="openCustomerPicker('ma_kh')">Chọn</button>
                   </div>
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 5px;">
                   <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600; margin: 0;">Người nhận (Tên khách hàng)</label>
                   <div class="input-with-picker">
-                    <input
+                    <textarea
+                      rows="1"
+                      class="m-wrap-input has-right-picker"
+                      v-auto-grow
+                      @keydown.enter.prevent
                       v-model="tenKHInput"
                       placeholder="Chọn / nhập tên người nhận"
                       @change="fillCustomerByTen(tenKHInput)"
                       @blur="onBlurTenKH"
                       style="width: 100%; padding: 10px 60px 10px 12px; border-radius: 8px; font-size: 13px; margin: 0;"
-                    />
+                    ></textarea>
                     <button type="button" class="inline-picker-btn" @click="openCustomerPicker('ten_kh')">Chọn</button>
                   </div>
                 </div>
@@ -24712,42 +26902,58 @@ const visibleLeadingFooterColSpan = computed(() => {
                 <div style="display: flex; flex-direction: column; gap: 5px;">
                   <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600; margin: 0;">Kính gởi (Tên công ty)</label>
                   <div class="input-with-picker">
-                    <input
+                    <textarea
+                      rows="1"
+                      class="m-wrap-input has-right-picker"
+                      v-auto-grow
+                      @keydown.enter.prevent
                       v-model="khach.Ten_cong_ty"
                       placeholder="Chọn / nhập tên công ty"
                       @change="fillCustomerByCongTy(khach.Ten_cong_ty)"
                       @blur="onBlurCongTy"
                       style="width: 100%; padding: 10px 60px 10px 12px; border-radius: 8px; font-size: 13px; margin: 0;"
-                    />
+                    ></textarea>
                     <button type="button" class="inline-picker-btn" @click="openCustomerPicker('ten_cong_ty')">Chọn</button>
                   </div>
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 5px;">
                   <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600; margin: 0;">Địa chỉ hiển thị trên báo giá</label>
-                  <input
+                  <textarea
+                    rows="1"
+                    class="m-wrap-input"
+                    v-auto-grow
+                    @keydown.enter.prevent
                     v-model="khach.Dia_chi_cong_ty"
                     placeholder="Địa chỉ công ty..."
                     style="padding: 10px 12px; border-radius: 8px; font-size: 13px; margin: 0;"
-                  />
+                  ></textarea>
                 </div>
               </div>
 
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                 <div style="display: flex; flex-direction: column; gap: 5px;">
                   <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600; margin: 0;">Content of Contract / PO (nếu có)</label>
-                  <input
+                  <textarea
+                    rows="1"
+                    class="m-wrap-input"
+                    v-auto-grow
+                    @keydown.enter.prevent
                     v-model="contentOfContractPO"
                     placeholder="Nhập nội dung Contract/PO..."
                     style="padding: 10px 12px; border-radius: 8px; font-size: 13px; margin: 0;"
-                  />
+                  ></textarea>
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 5px;">
                   <label style="font-size: 10px; text-transform: uppercase; color: #ffffff; font-weight: 600; margin: 0;">Ghi chú hợp đồng</label>
-                  <input
+                  <textarea
+                    rows="1"
+                    class="m-wrap-input"
+                    v-auto-grow
+                    @keydown.enter.prevent
                     v-model="ghiChuHopDong"
                     placeholder="Nhập ghi chú hợp đồng..."
                     style="padding: 10px 12px; border-radius: 8px; font-size: 13px; margin: 0;"
-                  />
+                  ></textarea>
                 </div>
               </div>
             </div>
@@ -25760,8 +27966,9 @@ const visibleLeadingFooterColSpan = computed(() => {
     </div>
 
     <!-- ================== MODAL: SỬA GIÁ / ĐIỀU CHỈNH GIÁ LIC ================== -->
-    <div v-if="adjustPriceModal.show" class="modal adjust-price-modal-overlay" @click.self="adjustPriceModal.show = false">
+    <div v-if="adjustPriceModal.show" class="modal adjust-price-modal-overlay" @click.self="onUserDismissAdjustPriceModal()">
       <div
+        data-guide="adj-price-modal-card"
         class="modal-card adjust-price-modal-card"
         :class="adjustPriceModal.isNormalEdit ? 'is-normal-mode' : 'is-adjust-mode'"
       >
@@ -25780,7 +27987,7 @@ const visibleLeadingFooterColSpan = computed(() => {
             <span class="m-grab-eyebrow">{{ adjustPriceModal.targetName || (adjustPriceModal.mode === 'all' ? 'Áp dụng toàn bộ báo giá' : 'Cập nhật đơn giá') }}</span>
             <span class="m-grab-title">{{ adjustPriceModal.isNormalEdit ? 'Sửa giá thực tế' : 'Điều chỉnh giá bán' }}</span>
           </div>
-          <button type="button" class="x" @click="adjustPriceModal.show = false">✕</button>
+          <button type="button" class="x" @click="onUserDismissAdjustPriceModal()">✕</button>
         </div>
 
         <!-- Body -->
@@ -25796,6 +28003,15 @@ const visibleLeadingFooterColSpan = computed(() => {
             </span>
           </div>
 
+          <!-- Interactive Zone (Mobile Spotlight Target) -->
+          <div data-guide="adj-price-interactive-zone" style="display: flex; flex-direction: column; gap: inherit;">
+          <div
+            v-if="adjustPriceModal.mode === 'field' && (quoteEdit as any)?._isGuideDemo"
+            class="adj-guide-demo-pill"
+          >
+            <span class="agdp-badge">DỮ LIỆU MẪU</span>
+            <span class="agdp-text">Đang mở mẫu -10% • Thử đổi % hoặc nhập số tiền, không ghi vào báo giá thật</span>
+          </div>
           <!-- Live Comparison Card (Giá gốc -> Giá mới + Chênh lệch) -->
           <div class="adj-compare-card">
             <div class="adj-compare-scope">
@@ -25981,6 +28197,7 @@ const visibleLeadingFooterColSpan = computed(() => {
               </div>
             </div>
           </div>
+          </div>
         </div>
 
         <!-- Sticky Footer -->
@@ -25988,7 +28205,7 @@ const visibleLeadingFooterColSpan = computed(() => {
           <button
             type="button"
             class="adj-btn-cancel"
-            @click.prevent="adjustPriceModal.show = false"
+            @click.prevent="onUserDismissAdjustPriceModal()"
           >
             Hủy
           </button>
@@ -26249,15 +28466,89 @@ const visibleLeadingFooterColSpan = computed(() => {
     }"
   />
 
-  <Transition name="toast-slide">
-    <div v-if="showToast" class="success-toast">
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-        <polyline points="22 4 12 14.01 9 11.01"></polyline>
-      </svg>
-      <span>{{ toastMsg }}</span>
+  <Teleport to="body">
+    <div
+      class="smart-toast-layer"
+      :class="{ 'is-light': quoteThemeMode === 'light' }"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      <Transition name="smart-toast-drop" @after-leave="onToastAfterLeave">
+        <div
+          v-if="showToast"
+          class="smart-toast"
+          :class="[
+            'is-' + toastType,
+            {
+              'is-pulsing': toastIsPulsing,
+              'is-paused': toastIsPaused,
+              'is-dragging': toastIsDragging,
+              'has-drag-offset': !toastIsDragging && toastDragY !== 0
+            }
+          ]"
+          :style="toastDragY !== 0 ? {
+            '--toast-drag-y': `${toastDragY}px`,
+            '--toast-drag-opacity': toastDragY < 0 ? String(Math.max(0.22, 1 + toastDragY / 72)) : '1'
+          } : undefined"
+          role="status"
+          @mouseenter="pauseToastTimer"
+          @mouseleave="resumeToastTimer"
+          @click="onToastCardClick"
+          @touchstart.passive="onToastTouchStart"
+          @touchmove.passive="onToastTouchMove"
+          @touchend="onToastTouchEnd"
+          @touchcancel="onToastTouchEnd"
+        >
+          <span class="smart-toast__icon" aria-hidden="true">
+            <svg v-if="toastType === 'success'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <svg v-else-if="toastType === 'warning'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.35" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            <svg v-else-if="toastType === 'error'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="15" y1="9" x2="9" y2="15"></line>
+              <line x1="9" y1="9" x2="15" y2="15"></line>
+            </svg>
+            <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+          </span>
+
+          <span class="smart-toast__msg">{{ toastMsg }}</span>
+
+          <span v-if="toastRepeatCount > 1" class="smart-toast__count" :title="`Lặp lại ${toastRepeatCount} lần`">
+            ×{{ toastRepeatCount }}
+          </span>
+
+          <button
+            type="button"
+            class="smart-toast__close"
+            aria-label="Đóng thông báo"
+            title="Đóng"
+            @click.stop="dismissToast(false)"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+
+          <span
+            :key="toastProgressKey"
+            class="smart-toast__progress"
+            :style="{ animationDuration: toastDurationMs + 'ms' }"
+            aria-hidden="true"
+          ></span>
+        </div>
+      </Transition>
     </div>
-  </Transition>
+  </Teleport>
 
   <!-- ASYNC RESULT MODAL -->
   <Transition name="async-modal">
@@ -26619,6 +28910,10 @@ const visibleLeadingFooterColSpan = computed(() => {
             >
               Khớp giá: <strong>{{ importConfirmStats.priceMatchCount }}</strong>
             </span>
+
+            <span class="import-stat-match-pill import-source-mode-pill">
+              Chế độ đọc: <strong>{{ importConfirmSourceMode === 'ai' ? 'AI' : 'Quét chuẩn' }}</strong>
+            </span>
           </div>
 
           <!-- Right Controls: Bulk Price Markup (Mua hang) + Selection Actions -->
@@ -26661,15 +28956,6 @@ const visibleLeadingFooterColSpan = computed(() => {
                 style="padding: 5px 10px; border-radius: 6px; border: none; background: #10b981; color: #ffffff !important; font-size: 11.5px; font-weight: 800; cursor: pointer; width: fit-content; margin: 0; white-space: nowrap;"
               >
                 Áp dụng
-              </button>
-              <button
-                v-if="lastMuaHangImportFile"
-                type="button"
-                @click="runAiMuaHangAnalysis(lastMuaHangImportFile)"
-                style="padding: 5px 10px; border-radius: 6px; border: 1px solid rgba(139, 92, 246, 0.5); background: #7c3aed; color: #ffffff !important; font-size: 11.5px; font-weight: 700; cursor: pointer; width: fit-content; margin: 0; white-space: nowrap;"
-                title="Phân tích lại file mua hàng bằng AI"
-              >
-                Phân tích lại bằng AI
               </button>
             </div>
 
@@ -26798,52 +29084,68 @@ const visibleLeadingFooterColSpan = computed(() => {
             <div style="display: flex; flex-direction: column; gap: 10px; flex: 1;">
               <div style="display: flex; flex-direction: column; gap: 4px;">
                 <label class="import-field-label">Mã Khách Hàng *</label>
-                <div class="input-with-picker">
-                  <input
+                <div class="input-with-picker is-import-picker">
+                  <textarea
+                    rows="1"
+                    class="m-wrap-input m-wrap-import has-right-picker"
+                    v-auto-grow
+                    @keydown.enter.prevent
                     v-model="maKHInput"
                     placeholder="Tự tạo hoặc nhập mã KH..."
                     @change="fillCustomerByMa(maKHInput)"
                     style="width: 100%; padding: 8px 58px 8px 10px; border-radius: 7px; font-size: 12.5px; font-weight: 700; margin: 0;"
-                  />
+                  ></textarea>
                   <button type="button" class="inline-picker-btn inline-picker-btn-sm" @click="openCustomerPicker('ma_kh')">Chọn</button>
                 </div>
               </div>
 
               <div style="display: flex; flex-direction: column; gap: 4px;">
                 <label class="import-field-label">Người nhận (Tên KH)</label>
-                <div class="input-with-picker">
-                  <input
+                <div class="input-with-picker is-import-picker">
+                  <textarea
+                    rows="1"
+                    class="m-wrap-input m-wrap-import has-right-picker"
+                    v-auto-grow
+                    @keydown.enter.prevent
                     v-model="tenKHInput"
                     placeholder="Tên người nhận / liên hệ..."
                     @change="fillCustomerByTen(tenKHInput)"
                     style="width: 100%; padding: 8px 58px 8px 10px; border-radius: 7px; font-size: 12.5px; font-weight: 600; margin: 0;"
-                  />
+                  ></textarea>
                   <button type="button" class="inline-picker-btn inline-picker-btn-sm" @click="openCustomerPicker('ten_kh')">Chọn</button>
                 </div>
               </div>
 
               <div style="display: flex; flex-direction: column; gap: 4px;">
                 <label class="import-field-label">Tên Công ty</label>
-                <div class="input-with-picker">
-                  <input
+                <div class="input-with-picker is-import-picker">
+                  <textarea
+                    rows="1"
+                    class="m-wrap-input m-wrap-import has-right-picker"
+                    v-auto-grow
+                    @keydown.enter.prevent
                     v-model="khach.Ten_cong_ty"
                     placeholder="Tên công ty..."
                     @change="fillCustomerByCongTy(khach.Ten_cong_ty)"
                     style="width: 100%; padding: 8px 58px 8px 10px; border-radius: 7px; font-size: 12.5px; font-weight: 700; margin: 0;"
-                  />
+                  ></textarea>
                   <button type="button" class="inline-picker-btn inline-picker-btn-sm" @click="openCustomerPicker('ten_cong_ty')">Chọn</button>
                 </div>
               </div>
 
               <div style="display: flex; flex-direction: column; gap: 4px;">
                 <label class="import-field-label">Mã số thuế (MST)</label>
-                <div class="input-with-picker">
-                  <input
+                <div class="input-with-picker is-import-picker">
+                  <textarea
+                    rows="1"
+                    class="m-wrap-input m-wrap-import has-right-picker"
+                    v-auto-grow
+                    @keydown.enter.prevent
                     v-model="khach.MST"
                     placeholder="Mã số thuế..."
                     @change="onMSTChange"
                     style="width: 100%; padding: 8px 58px 8px 10px; border-radius: 7px; font-size: 12.5px; font-weight: 600; margin: 0;"
-                  />
+                  ></textarea>
                   <button type="button" class="inline-picker-btn inline-picker-btn-sm" @click="openCustomerPicker('mst')">Chọn</button>
                 </div>
               </div>
@@ -26851,29 +29153,41 @@ const visibleLeadingFooterColSpan = computed(() => {
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                 <div style="display: flex; flex-direction: column; gap: 4px;">
                   <label class="import-field-label">Số điện thoại</label>
-                  <input
+                  <textarea
+                    rows="1"
+                    class="m-wrap-input m-wrap-import"
+                    v-auto-grow
+                    @keydown.enter.prevent
                     v-model="khach.So_dien_thoai_ca_nhan"
                     placeholder="SĐT liên hệ..."
                     style="width: 100%; padding: 8px 10px; border-radius: 7px; font-size: 12.5px; margin: 0;"
-                  />
+                  ></textarea>
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 4px;">
                   <label class="import-field-label">Email</label>
-                  <input
+                  <textarea
+                    rows="1"
+                    class="m-wrap-input m-wrap-import"
+                    v-auto-grow
+                    @keydown.enter.prevent
                     v-model="khach.Email_ca_nhan"
                     placeholder="Email..."
                     style="width: 100%; padding: 8px 10px; border-radius: 7px; font-size: 12.5px; margin: 0;"
-                  />
+                  ></textarea>
                 </div>
               </div>
 
               <div style="display: flex; flex-direction: column; gap: 4px;">
                 <label class="import-field-label">Địa chỉ công ty</label>
-                <input
+                <textarea
+                  rows="1"
+                  class="m-wrap-input m-wrap-import"
+                  v-auto-grow
+                  @keydown.enter.prevent
                   v-model="khach.Dia_chi_cong_ty"
                   placeholder="Địa chỉ công ty..."
                   style="width: 100%; padding: 8px 10px; border-radius: 7px; font-size: 12.5px; margin: 0;"
-                />
+                ></textarea>
               </div>
             </div>
 
@@ -27283,33 +29597,81 @@ const visibleLeadingFooterColSpan = computed(() => {
       </div>
     </div>
 
-    <!-- AI PURCHASE FALLBACK PROMPT MODAL -->
-    <div class="modal" v-if="aiMuaHangFallbackModal.show" style="z-index: 10010;" @click.self="aiMuaHangFallbackModal.show = false">
-      <div class="modal-card" style="max-width: 480px; width: 92vw; padding: 24px;">
-        <h3 style="display: flex; align-items: center; gap: 8px; color: #a78bfa; margin-bottom: 12px;">
-          ✨ Không đọc được Giá vốn — Dùng AI phân tích?
-        </h3>
-        <p style="font-size: 13.5px; color: #cbd5e1; line-height: 1.55; margin-bottom: 12px;">
-          {{ aiMuaHangFallbackModal.reason }}
-        </p>
-        <div style="padding: 12px; border-radius: 8px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); color: #e2e8f0; font-size: 13px; line-height: 1.5; margin-bottom: 18px;">
-          Bạn có muốn dùng <strong>AI</strong> để phân tích nội dung file <strong style="color: #c4b5fd;">{{ aiMuaHangFallbackModal.file?.name }}</strong>, tự động nhận diện bảng hàng hóa và tính <strong>Giá vốn / Giá off hãng (sau thuế VAT)</strong> không?
+    <!-- ================== MODAL: XÁC NHẬN CHUYỂN SANG QUÉT BẰNG AI (THỐNG NHẤT 6 LUỒNG) ================== -->
+    <div
+      v-if="aiImportFallbackModal.show"
+      class="modal vip-modal-overlay ai-fallback-overlay"
+      style="z-index: 10045;"
+      @click.self="closeAiImportFallback"
+    >
+      <div class="modal-card vip-modal-card ai-fallback-modal-card">
+        <div class="modal-head modal-head-themed" style="justify-content: space-between; position: relative; padding: 13px 22px; border-bottom: none; border-radius: 0; flex-shrink: 0;">
+          <div class="dt-only-head" style="display: flex; align-items: center; gap: 9px; color: #ffffff; text-transform: uppercase; font-weight: 900; font-size: 15px; letter-spacing: 0.4px;">
+            <i class="ri-error-warning-line" style="font-size: 18px;"></i>
+            <span>QUÉT THƯỜNG THẤT BẠI</span>
+          </div>
+          <div class="m-grab-head-stack">
+            <span class="m-grab-eyebrow">{{ aiFallbackFlowLabel }}</span>
+            <span class="m-grab-title">Quét thường thất bại</span>
+          </div>
+          <button
+            class="x"
+            @click="closeAiImportFallback"
+            style="color: #fff; position: absolute; right: 16px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.15); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;"
+          >✕</button>
         </div>
-        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+
+        <div class="ai-fallback-modal-body">
+          <div class="ai-fallback-file-card">
+            <div class="ai-fallback-file-icon">
+              <i :class="getFileCategoryIconClass(aiImportFallbackModal.file)"></i>
+            </div>
+            <div class="ai-fallback-file-info">
+              <div class="ai-fallback-flow-tag">{{ aiFallbackFlowLabel }}</div>
+              <div class="ai-fallback-file-name" :title="aiImportFallbackModal.file?.name || ''">
+                {{ aiImportFallbackModal.file?.name || 'Tài liệu đã tải lên' }}
+              </div>
+            </div>
+          </div>
+
+          <div class="ai-fallback-reason-box">
+            <i class="ri-information-line ai-fallback-reason-icon"></i>
+            <span>{{ aiImportFallbackModal.reason }}</span>
+          </div>
+
+          <div class="ai-fallback-question-box">
+            Quét thường thất bại. Bạn muốn <strong>quét bằng AI</strong> không?
+          </div>
+        </div>
+
+        <div class="modal-actions fullscreen-modal-footer ai-fallback-modal-foot">
           <button
             type="button"
-            style="background: #475569; color: #fff; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;"
-            @click="aiMuaHangFallbackModal.show = false"
+            class="modal-btn-secondary ai-fb-cancel-btn"
+            @click="closeAiImportFallback"
           >
-            Đóng
+            Không, đóng lại
           </button>
-          <button
-            type="button"
-            style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: #fff; padding: 8px 16px; border: none; border-radius: 6px; font-weight: 700; cursor: pointer;"
-            @click="confirmAiMuaHangFallback"
-          >
-            ✨ Dùng AI phân tích ngay
-          </button>
+          <div class="ai-fallback-cta-right">
+            <button
+              v-if="aiImportFallbackModal.mode === 'product_price'"
+              type="button"
+              class="tpl-file-neutral-btn ai-fb-attach-btn"
+              @click="attachOnlyFromAiImportFallback"
+              title="Lưu đính kèm file/ảnh này mà không đọc giá"
+            >
+              <i class="ri-attachment-2"></i>
+              <span>Chỉ đính kèm</span>
+            </button>
+            <button
+              type="button"
+              class="tpl-file-primary-btn ai-fb-confirm-btn"
+              @click="confirmAiImportFallback"
+            >
+              <i class="ri-cpu-line"></i>
+              <span>Quét bằng AI</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -27824,6 +30186,132 @@ const visibleLeadingFooterColSpan = computed(() => {
         </div>
       </div>
     </Transition>
+
+    <!-- ================== MODAL HỘP THOẠI THÔNG BÁO & XÁC NHẬN CHUẨN TEMPLATE (ALERT / CONFIRM) ================== -->
+    <Transition name="async-modal">
+      <div
+        v-if="baogiaDialog.show"
+        class="modal vip-modal-overlay baogia-dialog-overlay"
+        style="z-index: 1000085;"
+        @click.self="resolveBaogiaDialog(false)"
+      >
+        <div
+          class="modal-card vip-modal-card baogia-dialog-card"
+          :class="['is-variant-' + baogiaDialog.variant, 'is-mode-' + baogiaDialog.mode]"
+          role="dialog"
+          aria-modal="true"
+          :aria-label="baogiaDialog.title"
+        >
+          <div
+            class="modal-head modal-head-themed baogia-dialog-head"
+            style="justify-content: space-between; position: relative; padding: 13px 20px; border-bottom: none; border-radius: 0; flex-shrink: 0;"
+          >
+            <div class="dt-only-head baogia-dialog-dt-head">
+              <i
+                v-if="baogiaDialog.variant === 'danger'"
+                class="ri-delete-bin-6-line baogia-dialog-head-ico"
+              ></i>
+              <i
+                v-else-if="baogiaDialog.variant === 'error'"
+                class="ri-close-circle-line baogia-dialog-head-ico"
+              ></i>
+              <i
+                v-else-if="baogiaDialog.variant === 'warning'"
+                class="ri-error-warning-line baogia-dialog-head-ico"
+              ></i>
+              <i
+                v-else
+                class="ri-information-line baogia-dialog-head-ico"
+              ></i>
+              <span>{{ baogiaDialog.title }}</span>
+            </div>
+            <div class="m-grab-head-stack">
+              <span class="m-grab-eyebrow">{{ baogiaDialog.eyebrow }}</span>
+              <span class="m-grab-title">{{ baogiaDialog.title }}</span>
+            </div>
+            <button
+              type="button"
+              class="x baogia-dialog-close-x"
+              @click="resolveBaogiaDialog(false)"
+              aria-label="Đóng hộp thoại"
+            >
+              <svg class="dlg-dt-close-svg" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+
+          <div class="baogia-dialog-body">
+            <div v-if="baogiaDialog.highlightValue" class="baogia-dialog-target-card">
+              <div class="baogia-dialog-target-icon">
+                <i v-if="baogiaDialog.variant === 'danger'" class="ri-delete-bin-6-line"></i>
+                <i v-else-if="baogiaDialog.variant === 'error'" class="ri-close-circle-line"></i>
+                <i v-else class="ri-information-line"></i>
+              </div>
+              <div class="baogia-dialog-target-info">
+                <div class="baogia-dialog-target-tag">{{ baogiaDialog.highlightLabel || baogiaDialog.eyebrow }}</div>
+                <div class="baogia-dialog-target-val" :title="baogiaDialog.highlightValue">
+                  {{ baogiaDialog.highlightValue }}
+                </div>
+              </div>
+            </div>
+
+            <div class="baogia-dialog-msg-box">
+              <div class="baogia-dialog-msg-icon">
+                <i v-if="baogiaDialog.variant === 'danger'" class="ri-alert-line"></i>
+                <i v-else-if="baogiaDialog.variant === 'error'" class="ri-close-circle-line"></i>
+                <i v-else-if="baogiaDialog.variant === 'warning'" class="ri-error-warning-line"></i>
+                <i v-else class="ri-information-line"></i>
+              </div>
+              <div class="baogia-dialog-msg-text">{{ baogiaDialog.message }}</div>
+            </div>
+
+            <div v-if="baogiaDialog.subNote" class="baogia-dialog-subnote">
+              <i class="ri-information-line baogia-dialog-subnote-ico"></i>
+              <span>{{ baogiaDialog.subNote }}</span>
+            </div>
+          </div>
+
+          <div
+            class="modal-actions fullscreen-modal-footer baogia-dialog-foot"
+            :class="{ 'is-single-action': baogiaDialog.mode === 'alert' }"
+          >
+            <button
+              v-if="baogiaDialog.mode === 'confirm'"
+              ref="baogiaDialogCancelBtnRef"
+              type="button"
+              class="modal-btn-secondary baogia-dlg-btn baogia-dlg-cancel"
+              @click="resolveBaogiaDialog(false)"
+            >
+              <span>{{ baogiaDialog.cancelText }}</span>
+            </button>
+
+            <button
+              ref="baogiaDialogConfirmBtnRef"
+              type="button"
+              class="baogia-dlg-btn baogia-dlg-confirm"
+              :class="'is-btn-' + baogiaDialog.variant"
+              @click="resolveBaogiaDialog(true)"
+            >
+              <i v-if="baogiaDialog.mode === 'confirm' && baogiaDialog.variant === 'danger'" class="ri-delete-bin-6-line"></i>
+              <i v-else class="ri-check-line"></i>
+              <span>{{ baogiaDialog.confirmText }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <QuoteGuideTutorial
+      ref="quoteGuideRef"
+      v-model="showGuideModal"
+      :theme-mode="quoteThemeMode"
+      :is-mobile="isMobileQuoteViewport"
+      :prepare-step="prepareGuideStep"
+      :cleanup-auto-opened="cleanupGuideAutoOpened"
+      @spotlight-change="(stepId) => { activeGuideStepId = stepId }"
+    />
   </div>
 </template>
 
@@ -28168,34 +30656,338 @@ const visibleLeadingFooterColSpan = computed(() => {
   100% { opacity: 0.7; transform: translateY(-50%); }
 }
 
-/* ===== TOAST ===== */
-.success-toast {
+/* ===== SMART TOAST (PC TOP-CENTER & MOBILE TOP CAPSULE) ===== */
+.smart-toast-layer {
   position: fixed;
-  top: 30px;
-  right: 30px;
-  background: rgba(15, 23, 42, 0.95);
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(8px);
-  color: #fff;
-  padding: 14px 24px;
-  border-radius: 12px;
+  top: 16px;
+  left: 0;
+  right: 0;
+  z-index: 2000000;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 0 16px;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.smart-toast {
+  --st-bg: rgba(15, 23, 42, 0.94);
+  --st-fg: #f8fafc;
+  --st-accent: #10b981;
+  --st-icon-fg: #34d399;
+  --st-icon-bg: rgba(16, 185, 129, 0.16);
+  --st-border: rgba(16, 185, 129, 0.36);
+  --st-count-bg: rgba(16, 185, 129, 0.18);
+  --st-count-fg: #6ee7b7;
+  --st-close-fg: #94a3b8;
+  --st-close-hover-bg: rgba(148, 163, 184, 0.14);
+  --st-close-hover-fg: #f8fafc;
+  --st-shadow:
+    0 14px 34px -8px rgba(2, 6, 23, 0.68),
+    0 4px 12px -2px rgba(2, 6, 23, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+
+  pointer-events: auto;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+  width: fit-content;
+  min-width: 240px;
+  max-width: min(460px, calc(100vw - 32px));
+  padding: 10px 11px 11px 13px;
+  border-radius: 14px;
+  background: var(--st-bg);
+  border: 1px solid var(--st-border);
+  box-shadow: var(--st-shadow);
+  backdrop-filter: blur(14px) saturate(1.25);
+  -webkit-backdrop-filter: blur(14px) saturate(1.25);
+  color: var(--st-fg);
+  font-family: 'Inter', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   display: flex;
   align-items: center;
-  gap: 12px;
-  z-index: 99999;
-  font-size: 14px;
+  gap: 10px;
+  transition:
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+  will-change: transform, opacity;
+}
+
+/* 4 Semantic Palettes — Dark Mode */
+.smart-toast.is-success {
+  --st-accent: #10b981;
+  --st-icon-fg: #34d399;
+  --st-icon-bg: rgba(16, 185, 129, 0.16);
+  --st-border: rgba(16, 185, 129, 0.36);
+  --st-count-bg: rgba(16, 185, 129, 0.18);
+  --st-count-fg: #6ee7b7;
+}
+.smart-toast.is-warning {
+  --st-accent: #f59e0b;
+  --st-icon-fg: #fbbf24;
+  --st-icon-bg: rgba(245, 158, 11, 0.16);
+  --st-border: rgba(245, 158, 11, 0.38);
+  --st-count-bg: rgba(245, 158, 11, 0.18);
+  --st-count-fg: #fcd34d;
+}
+.smart-toast.is-info {
+  --st-accent: #0ea5e9;
+  --st-icon-fg: #38bdf8;
+  --st-icon-bg: rgba(14, 165, 233, 0.16);
+  --st-border: rgba(56, 189, 248, 0.36);
+  --st-count-bg: rgba(14, 165, 233, 0.18);
+  --st-count-fg: #7dd3fc;
+}
+.smart-toast.is-error {
+  --st-accent: #ef4444;
+  --st-icon-fg: #f87171;
+  --st-icon-bg: rgba(239, 68, 68, 0.16);
+  --st-border: rgba(239, 68, 68, 0.38);
+  --st-count-bg: rgba(239, 68, 68, 0.18);
+  --st-count-fg: #fca5a5;
+}
+
+/* 4 Semantic Palettes — Light Mode */
+.smart-toast-layer.is-light .smart-toast {
+  --st-bg: rgba(255, 255, 255, 0.96);
+  --st-fg: #0f172a;
+  --st-close-fg: #64748b;
+  --st-close-hover-bg: rgba(15, 23, 42, 0.06);
+  --st-close-hover-fg: #0f172a;
+  --st-shadow:
+    0 12px 30px -8px rgba(15, 23, 42, 0.16),
+    0 4px 10px -3px rgba(15, 23, 42, 0.08);
+}
+.smart-toast-layer.is-light .smart-toast.is-success {
+  --st-accent: #10b981;
+  --st-icon-fg: #059669;
+  --st-icon-bg: rgba(16, 185, 129, 0.13);
+  --st-border: rgba(16, 185, 129, 0.34);
+  --st-count-bg: rgba(16, 185, 129, 0.13);
+  --st-count-fg: #047857;
+}
+.smart-toast-layer.is-light .smart-toast.is-warning {
+  --st-accent: #f59e0b;
+  --st-icon-fg: #d97706;
+  --st-icon-bg: rgba(245, 158, 11, 0.14);
+  --st-border: rgba(245, 158, 11, 0.38);
+  --st-count-bg: rgba(245, 158, 11, 0.14);
+  --st-count-fg: #b45309;
+}
+.smart-toast-layer.is-light .smart-toast.is-info {
+  --st-accent: #0284c7;
+  --st-icon-fg: #0284c7;
+  --st-icon-bg: rgba(14, 165, 233, 0.13);
+  --st-border: rgba(14, 165, 233, 0.34);
+  --st-count-bg: rgba(14, 165, 233, 0.13);
+  --st-count-fg: #0369a1;
+}
+.smart-toast-layer.is-light .smart-toast.is-error {
+  --st-accent: #ef4444;
+  --st-icon-fg: #dc2626;
+  --st-icon-bg: rgba(239, 68, 68, 0.12);
+  --st-border: rgba(239, 68, 68, 0.34);
+  --st-count-bg: rgba(239, 68, 68, 0.12);
+  --st-count-fg: #b91c1c;
+}
+
+.smart-toast__icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--st-icon-bg);
+  color: var(--st-icon-fg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.smart-toast__icon svg {
+  width: 15px;
+  height: 15px;
+  display: block;
+}
+
+.smart-toast__msg {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
   font-weight: 600;
-  letter-spacing: 0.2px;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
-.toast-slide-enter-active,
-.toast-slide-leave-active {
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+.smart-toast__count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: var(--st-count-bg);
+  color: var(--st-count-fg);
+  flex-shrink: 0;
 }
-.toast-slide-enter-from,
-.toast-slide-leave-to {
-  transform: translateX(120%);
+
+.smart-toast__close {
+  width: 24px !important;
+  min-width: 24px !important;
+  height: 24px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 7px !important;
+  border: none !important;
+  background: transparent !important;
+  color: var(--st-close-fg) !important;
+  box-shadow: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background-color 0.16s ease, color 0.16s ease;
+}
+.smart-toast__close svg {
+  width: 13.5px;
+  height: 13.5px;
+  display: block;
+}
+.smart-toast__close:hover {
+  background: var(--st-close-hover-bg) !important;
+  color: var(--st-close-hover-fg) !important;
+}
+
+@keyframes smart-toast-progress-shrink {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+.smart-toast__progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--st-accent);
+  opacity: 0.72;
+  transform-origin: left center;
+  animation-name: smart-toast-progress-shrink;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+  pointer-events: none;
+}
+.smart-toast.is-paused .smart-toast__progress {
+  animation-play-state: paused;
+}
+
+/* Single-Toast Merge Micro-Pulse */
+@keyframes smart-toast-merge-pulse {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  40% { transform: translate3d(0, -2px, 0) scale(1.026); }
+  100% { transform: translate3d(0, 0, 0) scale(1); }
+}
+.smart-toast.is-pulsing {
+  animation: smart-toast-merge-pulse 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Live Touch Swipe Tracking */
+.smart-toast.is-dragging {
+  transition: none !important;
+  transform: translate3d(0, var(--toast-drag-y, 0px), 0);
+  opacity: var(--toast-drag-opacity, 1);
+}
+.smart-toast.has-drag-offset {
+  transform: translate3d(0, var(--toast-drag-y, 0px), 0);
+  opacity: var(--toast-drag-opacity, 1);
+}
+
+/* Enter & Leave Transitions (Top-Center & Top Capsule Drop) */
+.smart-toast.smart-toast-drop-enter-active {
+  transition:
+    transform 0.26s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.22s ease;
+}
+.smart-toast.smart-toast-drop-leave-active {
+  transition:
+    transform 0.18s cubic-bezier(0.4, 0, 1, 1),
+    opacity 0.16s ease;
+}
+.smart-toast.smart-toast-drop-enter-from {
+  transform: translate3d(0, -18px, 0) scale(0.96);
   opacity: 0;
+}
+.smart-toast.smart-toast-drop-leave-to {
+  transform: translate3d(0, calc(var(--toast-drag-y, 0px) - 20px), 0) scale(0.96);
+  opacity: 0;
+}
+
+/* Mobile <= 768px — MB-A Floating Top Capsule */
+@media (max-width: 768px) {
+  .smart-toast-layer {
+    top: calc(10px + env(safe-area-inset-top, 0px));
+    padding: 0 12px;
+  }
+  .smart-toast {
+    min-width: 0;
+    max-width: calc(100vw - 24px);
+    padding: 8px 10px 9px 10px;
+    border-radius: 20px;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: pan-x;
+  }
+  .smart-toast__icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+  }
+  .smart-toast__icon svg {
+    width: 13px;
+    height: 13px;
+  }
+  .smart-toast__msg {
+    font-size: 12.5px;
+    line-height: 1.35;
+    -webkit-line-clamp: 2;
+  }
+  .smart-toast__count {
+    font-size: 10.5px;
+    padding: 2px 5px;
+  }
+  .smart-toast__close {
+    width: 20px !important;
+    min-width: 20px !important;
+    height: 20px !important;
+    border-radius: 999px !important;
+  }
+  .smart-toast__close svg {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .smart-toast.smart-toast-drop-enter-active,
+  .smart-toast.smart-toast-drop-leave-active,
+  .smart-toast.is-pulsing {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+@media print {
+  .smart-toast-layer {
+    display: none !important;
+  }
 }
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
@@ -29329,8 +32121,9 @@ tfoot td {
   vertical-align: middle;
 }
 
-/* Zebra + Hover */
-tbody tr.quote-item-row:nth-child(odd) { background: rgba(30, 41, 59, 0.5); }
+/* Uniform Row Background + Hover */
+tbody tr.quote-item-row,
+tbody tr.quote-item-row:nth-child(odd),
 tbody tr.quote-item-row:nth-child(even) { background: rgba(15, 23, 42, 0.3); }
 tbody tr.quote-item-row { cursor: pointer; transition: background .1s; }
 tbody tr.quote-item-row:hover td { background-color: rgba(56,189,248,0.1) !important; }
@@ -29392,7 +32185,7 @@ td.dvt { font-family: inherit; white-space: normal; }
 }
 
 /* ===== COLUMN WIDTHS (table-layout: fixed) ===== */
-.col-stt  { width: 36px; text-align: center; }
+.col-stt  { width: 52px; min-width: 48px; text-align: center; }
 .col-pn   { width: 80px; }
 .col-pn-cell {
   max-width: 80px;
@@ -31318,6 +34111,7 @@ td.dvt { font-family: inherit; white-space: normal; }
 /* ================== MOBILE 3-SCREEN FLOW (KHO SP -> BÁO GIÁ -> TỔNG KẾT -> MODAL KHÁCH HÀNG) ================== */
 .mobile-progress-wrapper,
 .mobile-top-display-btn,
+.mobile-top-guide-btn,
 .mobile-top-util-btn,
 .mobile-screen1-cart-bar,
 .mobile-back-to-store-btn,
@@ -31352,6 +34146,13 @@ td.dvt { font-family: inherit; white-space: normal; }
   }
 }
 
+.btn-quote-col-setting,
+.btn-quote-guide {
+  width: auto !important;
+  min-width: 0 !important;
+  flex-shrink: 0 !important;
+}
+
 @media (max-width: 1100px) {
   .mobile-progress-wrapper,
   .hide-on-mobile-quote,
@@ -31361,7 +34162,8 @@ td.dvt { font-family: inherit; white-space: normal; }
     display: none !important;
   }
 
-  .mobile-top-display-btn {
+  .mobile-top-display-btn,
+  .mobile-top-guide-btn {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -31381,7 +34183,8 @@ td.dvt { font-family: inherit; white-space: normal; }
     transition: all 0.18s ease !important;
   }
 
-  .mobile-top-display-btn.is-active {
+  .mobile-top-display-btn.is-active,
+  .mobile-top-guide-btn.is-active {
     border-color: rgba(56, 189, 248, 0.55) !important;
     color: #38bdf8 !important;
     background: rgba(30, 41, 59, 0.98) !important;
@@ -31443,16 +34246,16 @@ td.dvt { font-family: inherit; white-space: normal; }
   .main-grid:not(.mobile-step-1) .quote-center {
     display: block !important;
     width: 100% !important;
-    height: 100dvh !important;
-    max-height: 100dvh !important;
+    height: 100% !important;
+    max-height: 100% !important;
     overflow: hidden !important;
   }
   .main-grid:not(.mobile-step-1) .quote-table-container {
     display: block !important;
     flex: none !important;
     width: 100% !important;
-    height: 100dvh !important;
-    max-height: 100dvh !important;
+    height: 100% !important;
+    max-height: 100% !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
     -webkit-overflow-scrolling: touch !important;
@@ -31481,20 +34284,15 @@ td.dvt { font-family: inherit; white-space: normal; }
   }
 
   /* ================= NATIVE APP MOBILE LAYOUT ================= */
-  html, body {
-    overflow-x: clip !important;
-    overflow-y: auto !important;
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-
   .page {
     --mobile-modal-head-top: max(calc(env(safe-area-inset-top, 0px) + 6px), 52px);
     padding: 0 !important;
     margin: 0 !important;
     width: 100% !important;
-    min-height: 100vh !important;
-    overflow-x: hidden !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+    overflow: hidden !important;
     box-sizing: border-box !important;
   }
 
@@ -31503,8 +34301,10 @@ td.dvt { font-family: inherit; white-space: normal; }
     padding: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
     display: block !important;
-    overflow: visible !important;
+    overflow: hidden !important;
     box-sizing: border-box !important;
   }
 
@@ -31521,8 +34321,9 @@ td.dvt { font-family: inherit; white-space: normal; }
      MÀN HÌNH 1: KHO SẢN PHẨM (.sidebar-left)
      ═══════════════════════════════════════════════════ */
   .sidebar-left {
-    height: 100dvh !important;
-    padding: 12px 12px 156px 12px !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    padding: 12px 12px calc(156px + env(safe-area-inset-bottom, 0px)) 12px !important;
     background: transparent !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
@@ -31680,7 +34481,18 @@ td.dvt { font-family: inherit; white-space: normal; }
     transition:
       bottom 0.38s cubic-bezier(0.22, 1, 0.36, 1),
       transform 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.24s ease,
       box-shadow 0.3s ease !important;
+  }
+
+  .mobile-screen1-cart-bar.is-modal-hidden,
+  .mobile-screen2-action-bar.is-modal-hidden,
+  .page.has-open-modal .mobile-screen1-cart-bar,
+  .page.has-open-modal .mobile-screen2-action-bar {
+    transform: translateY(calc(100% + 96px + env(safe-area-inset-bottom, 0px))) scale(0.96) !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
   }
 
   .app-layout.mobile-nav-hidden .mobile-screen1-cart-bar,
@@ -31926,15 +34738,15 @@ td.dvt { font-family: inherit; white-space: normal; }
     display: block !important;
     flex: none !important;
     width: 100% !important;
-    height: 100dvh !important;
-    max-height: 100dvh !important;
+    height: 100% !important;
+    max-height: 100% !important;
     border: none !important;
     background: transparent !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
     -webkit-overflow-scrolling: touch !important;
     overscroll-behavior-y: contain !important;
-    padding: 0 0 180px 0 !important;
+    padding: 0 0 calc(180px + env(safe-area-inset-bottom, 0px)) 0 !important;
   }
 
   .quote-table-container,
@@ -32007,7 +34819,8 @@ td.dvt { font-family: inherit; white-space: normal; }
     box-shadow: none !important;
   }
 
-  .table-header-box .btn-quote-col-setting {
+  .table-header-box .btn-quote-col-setting,
+  .table-header-box .btn-quote-guide {
     height: 30px !important;
     min-height: 30px !important;
     border-radius: 8px !important;
@@ -32045,10 +34858,12 @@ td.dvt { font-family: inherit; white-space: normal; }
     .contract-seg-mahd,
     .contract-sep-mahd,
     .col-setting-btn-text,
+    .guide-btn-text,
     .reset-btn-text {
       display: none !important;
     }
     .btn-quote-col-setting,
+    .btn-quote-guide,
     .table-header-box .btn-reset-quote {
       padding: 0 !important;
       width: 30px !important;
@@ -33043,8 +35858,8 @@ td.dvt { font-family: inherit; white-space: normal; }
   .modal-card.save-export-cust-modal {
     display: flex !important;
     flex-direction: column !important;
-    height: 100dvh !important;
-    max-height: 100dvh !important;
+    height: 100% !important;
+    max-height: 100% !important;
     border-radius: 0 !important;
     padding: 0 !important;
     overflow: hidden !important;
@@ -33285,13 +36100,15 @@ td.dvt { font-family: inherit; white-space: normal; }
     box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04) !important;
   }
 
-  .page.theme-light-blue .mobile-top-display-btn {
+  .page.theme-light-blue .mobile-top-display-btn,
+  .page.theme-light-blue .mobile-top-guide-btn {
     background: #ffffff !important;
     border-color: #cbd5e1 !important;
     color: #2563eb !important;
   }
 
-  .page.theme-light-blue .mobile-top-display-btn.is-active {
+  .page.theme-light-blue .mobile-top-display-btn.is-active,
+  .page.theme-light-blue .mobile-top-guide-btn.is-active {
     background: #eff6ff !important;
     border-color: #60a5fa !important;
     color: #1d4ed8 !important;
@@ -33838,13 +36655,16 @@ td.dvt { font-family: inherit; white-space: normal; }
   .load-invoice-modal-overlay,
   .modal-overlay,
   .modal.modal-fullscreen-overlay {
+    position: fixed !important;
+    inset: 0 !important;
     padding: 0 !important;
     align-items: center !important;
     justify-content: center !important;
-    height: 100vh !important;
-    max-height: 100vh !important;
-    height: 100dvh !important;
-    max-height: 100dvh !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    transform: none !important;
+    overscroll-behavior: contain !important;
     box-sizing: border-box !important;
   }
 
@@ -33854,10 +36674,8 @@ td.dvt { font-family: inherit; white-space: normal; }
   .modal-content {
     width: 100% !important;
     max-width: 100% !important;
-    height: 100vh !important;
-    max-height: 100vh !important;
-    height: 100dvh !important;
-    max-height: 100dvh !important;
+    height: 100% !important;
+    max-height: 100% !important;
     margin: 0 !important;
     padding: 16px !important;
     padding-bottom: calc(16px + env(safe-area-inset-bottom, 24px)) !important;
@@ -33868,6 +36686,7 @@ td.dvt { font-family: inherit; white-space: normal; }
     box-shadow: none !important;
     animation: slideInLeftMobile 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) forwards !important;
     overflow-y: auto !important;
+    overscroll-behavior: contain !important;
   }
   @keyframes slideInLeftMobile {
     from { transform: translateX(-100%); opacity: 0.5; }
@@ -33908,8 +36727,8 @@ td.dvt { font-family: inherit; white-space: normal; }
   .modal .modal-card.save-export-cust-modal {
     display: flex !important;
     flex-direction: column !important;
-    height: 100dvh !important;
-    max-height: 100dvh !important;
+    height: 100% !important;
+    max-height: 100% !important;
     border-radius: 0 !important;
     padding: 0 !important;
     overflow: hidden !important;
@@ -34505,13 +37324,13 @@ td.dvt { font-family: inherit; white-space: normal; }
   color: #2563eb !important;
 }
 
-.page.theme-light-blue .step-actions button:not(.action-save) {
+.page.theme-light-blue .step-actions button:not(.action-save):not(.action-export-file) {
   background: #ffffff !important;
   border: 1px solid #93c5fd !important;
   color: #2563eb !important;
 }
 
-.page.theme-light-blue .step-actions button:not(.action-save):hover {
+.page.theme-light-blue .step-actions button:not(.action-save):not(.action-export-file):hover {
   background: #eff6ff !important;
   border-color: #2563eb !important;
 }
@@ -34662,10 +37481,8 @@ td.dvt { font-family: inherit; white-space: normal; }
   color: #92400e !important;
 }
 
-.page.theme-light-blue tbody tr.quote-item-row:nth-child(odd) {
-  background: #ffffff !important;
-}
-
+.page.theme-light-blue tbody tr.quote-item-row,
+.page.theme-light-blue tbody tr.quote-item-row:nth-child(odd),
 .page.theme-light-blue tbody tr.quote-item-row:nth-child(even) {
   background: #f8fafc !important;
 }
@@ -34795,7 +37612,11 @@ td.dvt { font-family: inherit; white-space: normal; }
 
 @media (max-width: 1100px) {
   .modal.modal-fullscreen-overlay {
+    position: fixed !important;
+    inset: 0 !important;
     padding: 0 !important;
+    height: auto !important;
+    max-height: none !important;
     align-items: center !important;
     box-sizing: border-box !important;
   }
@@ -34804,10 +37625,8 @@ td.dvt { font-family: inherit; white-space: normal; }
   .modal .modal-card.export-vip-modal.modal-fullscreen-card,
   .modal .modal-card.load-invoice-modal.modal-fullscreen-card,
   .modal .modal-card.history-modal-card.modal-fullscreen-card {
-    height: 100vh !important;
-    max-height: 100vh !important;
-    height: 100dvh !important;
-    max-height: 100dvh !important;
+    height: 100% !important;
+    max-height: 100% !important;
     border-radius: 0 !important;
     border-top: none !important;
     box-shadow: none !important;
@@ -34866,8 +37685,8 @@ td.dvt { font-family: inherit; white-space: normal; }
     padding: 0 !important;
     display: flex !important;
     flex-direction: column !important;
-    height: 100dvh !important;
-    max-height: 100dvh !important;
+    height: 100% !important;
+    max-height: 100% !important;
     border-radius: 0 !important;
     overflow: hidden !important;
   }
@@ -39231,8 +42050,8 @@ td.dvt { font-family: inherit; white-space: normal; }
     flex-direction: column !important;
     width: 100vw !important;
     max-width: 100vw !important;
-    height: 100dvh !important;
-    max-height: 100dvh !important;
+    height: 100% !important;
+    max-height: 100% !important;
     border-radius: 0 !important;
     overflow: hidden !important;
   }
@@ -39694,8 +42513,8 @@ td.dvt { font-family: inherit; white-space: normal; }
   #app .page .modal-overlay .modal-content {
     width: 100% !important;
     max-width: 100% !important;
-    height: 100dvh !important;
-    max-height: 100dvh !important;
+    height: 100% !important;
+    max-height: 100% !important;
     padding: 0 !important;
     border-radius: 0 !important;
     display: flex !important;
@@ -40078,19 +42897,35 @@ td.dvt { font-family: inherit; white-space: normal; }
    ========================================================================== */
 @media (min-width: 1101px) {
   #app .page textarea.m-wrap-input {
-    min-height: 40px !important;
-    height: 40px !important;
-    max-height: 40px !important;
+    min-height: 38px;
+    height: auto;
     resize: none !important;
-    white-space: nowrap !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
+    white-space: pre-wrap !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+    overflow-x: hidden !important;
+    overflow-y: hidden;
     line-height: 18px !important;
+    padding-top: 9px !important;
+    padding-bottom: 9px !important;
     font-family: inherit !important;
-    scrollbar-width: none;
+    margin: 0 !important;
+    scrollbar-width: thin;
   }
-  #app .page textarea.m-wrap-input::-webkit-scrollbar {
-    display: none;
+
+  #app .page textarea.m-wrap-input.m-wrap-import {
+    min-height: 35px;
+    line-height: 18px !important;
+    padding-top: 7.5px !important;
+    padding-bottom: 7.5px !important;
+  }
+
+  #app .page textarea.m-wrap-input.m-wrap-compact {
+    min-height: 29px;
+    line-height: 17px !important;
+    padding: 5px 8px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
   }
 }
 
@@ -41123,8 +43958,8 @@ td.dvt { font-family: inherit; white-space: normal; }
   #app .page .modal .modal-card.adjust-price-modal-card {
     width: 100% !important;
     max-width: 100% !important;
-    height: 100dvh !important;
-    max-height: 100dvh !important;
+    height: 100% !important;
+    max-height: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
     border-radius: 0 !important;
@@ -47478,6 +50313,1894 @@ td.dvt { font-family: inherit; white-space: normal; }
     font-size: 13.5px !important;
     font-weight: 800 !important;
     white-space: nowrap !important;
+  }
+}
+
+/* ==========================================================================
+   HỆ THỐNG IMPORT ĐA ĐỊNH DẠNG & AI FALLBACK ĐỒNG BỘ TEMPLATE CHÍNH
+   (DARK MODE + LIGHT BLUE MODE + MOBILE RESPONSIVE)
+   ========================================================================== */
+
+/* --- 1. Ảnh mẫu hướng dẫn trong Smart Import Modal (Chế độ Thuế) --- */
+#app .page .smart-import-tax-sample {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+#app .page .smart-import-tax-sample-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #cbd5e1;
+}
+
+#app .page.theme-light-blue .smart-import-tax-sample {
+  border-top-color: #e2e8f0;
+}
+
+#app .page.theme-light-blue .smart-import-tax-sample-head {
+  color: #334155;
+}
+
+#app .page .smart-import-tax-sample-frame {
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.55);
+  padding: 8px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+}
+
+#app .page .smart-import-tax-sample-frame:hover {
+  border-color: #38bdf8;
+}
+
+#app .page.theme-light-blue .smart-import-tax-sample-frame {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+#app .page.theme-light-blue .smart-import-tax-sample-frame:hover {
+  border-color: #2563eb;
+}
+
+#app .page .smart-import-tax-sample-frame img {
+  width: 100%;
+  max-height: 175px;
+  object-fit: contain;
+  display: block;
+  border-radius: 6px;
+}
+
+/* --- 2. Modal Xác Nhận Thông Tin Thuế / ĐKKD (.tax-confirm-modal-card) --- */
+#app .page .modal-card.tax-confirm-modal-card {
+  width: 1060px;
+  max-width: 95vw;
+  max-height: 92vh;
+  padding: 0 !important;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#app .page .tax-confirm-subbar {
+  padding: 10px 24px !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(15, 23, 42, 0.42);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+#app .page.theme-light-blue .tax-confirm-subbar {
+  background: #f1f5f9 !important;
+  border-bottom-color: #cbd5e1 !important;
+}
+
+#app .page .tax-confirm-subbar-left,
+#app .page .tax-confirm-subbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+#app .page .tax-file-pill-name {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#app .page .tax-confirm-body {
+  padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 420px minmax(0, 1fr);
+  gap: 22px;
+}
+
+#app .page .tax-confirm-form-col {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+#app .page .tax-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#app .page .tax-field-label {
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-weight: 800;
+  color: #94a3b8;
+  margin: 0;
+}
+
+#app .page .tax-field-label.is-accent {
+  color: #38bdf8;
+}
+
+#app .page.theme-light-blue .tax-field-label {
+  color: #475569;
+}
+
+#app .page.theme-light-blue .tax-field-label.is-accent {
+  color: #0284c7;
+}
+
+#app .page .tax-field-input,
+#app .page .tax-field-textarea {
+  width: 100%;
+  margin: 0 !important;
+  padding: 10px 13px !important;
+  border-radius: 8px !important;
+  font-size: 14px !important;
+  line-height: 1.45;
+}
+
+#app .page .tax-field-textarea {
+  min-height: 68px;
+  resize: vertical;
+}
+
+#app .page .tax-field-textarea.is-accent {
+  border-color: rgba(56, 189, 248, 0.38) !important;
+}
+
+#app .page.theme-light-blue .tax-field-textarea.is-accent {
+  background: #f0f9ff !important;
+  border-color: #7dd3fc !important;
+  color: #0369a1 !important;
+}
+
+#app .page .tax-confirm-preview-col {
+  border-left: 1px solid rgba(148, 163, 184, 0.18);
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 300px;
+}
+
+#app .page.theme-light-blue .tax-confirm-preview-col {
+  border-left-color: #e2e8f0;
+}
+
+#app .page .tax-preview-image-box {
+  flex: 1 1 auto;
+  min-height: 280px;
+  border: 1px dashed rgba(148, 163, 184, 0.35);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: pointer;
+  padding: 8px;
+}
+
+#app .page.theme-light-blue .tax-preview-image-box {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+#app .page .tax-preview-image-box img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
+#app .page .tax-preview-doc-card {
+  flex: 1 1 auto;
+  min-height: 240px;
+  border: 1px dashed rgba(148, 163, 184, 0.32);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  text-align: center;
+}
+
+#app .page.theme-light-blue .tax-preview-doc-card {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+#app .page .tax-preview-doc-icon {
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
+  background: rgba(56, 189, 248, 0.14);
+  color: #38bdf8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+}
+
+#app .page.theme-light-blue .tax-preview-doc-icon {
+  background: #e0f2fe;
+  color: #0284c7;
+}
+
+#app .page .tax-preview-doc-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: #f8fafc;
+  word-break: break-word;
+}
+
+#app .page.theme-light-blue .tax-preview-doc-name {
+  color: #0f172a;
+}
+
+#app .page .tax-preview-doc-meta {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+#app .page.theme-light-blue .tax-preview-doc-meta {
+  color: #64748b;
+}
+
+#app .page .tax-confirm-footer {
+  padding: 12px 24px !important;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* --- 3. Modal Xác Nhận Chuyển Sang Quét Bằng AI (.ai-fallback-modal-card) --- */
+#app .page .modal-card.ai-fallback-modal-card {
+  width: 510px;
+  max-width: 94vw;
+  padding: 0 !important;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#app .page .ai-fallback-modal-body {
+  padding: 18px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+#app .page .ai-fallback-file-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 13px;
+  border-radius: 10px;
+  background: rgba(30, 41, 59, 0.65);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+#app .page.theme-light-blue .ai-fallback-file-card {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+#app .page .ai-fallback-file-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  color: #38bdf8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+#app .page.theme-light-blue .ai-fallback-file-icon {
+  background: #e0f2fe;
+  border-color: #bae6fd;
+  color: #0284c7;
+}
+
+#app .page .ai-fallback-file-info {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+#app .page .ai-fallback-flow-tag {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.35px;
+  color: #38bdf8;
+}
+
+#app .page.theme-light-blue .ai-fallback-flow-tag {
+  color: #0284c7;
+}
+
+#app .page .ai-fallback-file-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #f8fafc;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#app .page.theme-light-blue .ai-fallback-file-name {
+  color: #0f172a;
+}
+
+#app .page .ai-fallback-reason-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 11px 13px;
+  border-radius: 9px;
+  background: rgba(245, 158, 11, 0.11);
+  border: 1px solid rgba(245, 158, 11, 0.32);
+  color: #fde68a;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+#app .page.theme-light-blue .ai-fallback-reason-box {
+  background: #fffbeb;
+  border-color: #fcd34d;
+  color: #92400e;
+}
+
+#app .page .ai-fallback-reason-icon {
+  font-size: 16px;
+  line-height: 1.35;
+  flex-shrink: 0;
+  color: #f59e0b;
+}
+
+#app .page.theme-light-blue .ai-fallback-reason-icon {
+  color: #d97706;
+}
+
+#app .page .ai-fallback-question-box {
+  padding: 12px 14px;
+  border-radius: 9px;
+  background: rgba(14, 165, 233, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  color: #e2e8f0;
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+#app .page.theme-light-blue .ai-fallback-question-box {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1e293b;
+}
+
+#app .page .ai-fallback-modal-foot {
+  padding: 12px 22px !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+#app .page .ai-fallback-cta-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#app .page .ai-fallback-modal-foot button.ai-fb-cancel-btn,
+#app .page .ai-fallback-modal-foot button.ai-fb-attach-btn,
+#app .page .ai-fallback-modal-foot button.ai-fb-confirm-btn {
+  width: auto !important;
+  margin: 0 !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 0 16px !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  white-space: nowrap !important;
+}
+
+#app .page .ai-fallback-modal-foot button.ai-fb-confirm-btn {
+  font-weight: 800 !important;
+}
+
+@media (max-width: 1100px) {
+  #app .page .modal-card.tpl-upload-modal-card .tpl-upload-foot-cta-group.is-single-cta {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 900px) {
+  #app .page .tax-confirm-body {
+    grid-template-columns: 1fr !important;
+    padding: 14px 16px !important;
+    gap: 16px !important;
+  }
+
+  #app .page .tax-confirm-preview-col {
+    border-left: none !important;
+    border-top: 1px solid rgba(148, 163, 184, 0.18) !important;
+    padding-left: 0 !important;
+    padding-top: 14px !important;
+    min-height: 200px !important;
+  }
+
+  #app .page.theme-light-blue .tax-confirm-preview-col {
+    border-top-color: #e2e8f0 !important;
+  }
+
+  #app .page .ai-fallback-modal-foot {
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)) 16px !important;
+  }
+
+  #app .page .ai-fallback-cta-right {
+    flex: 1 1 auto;
+    justify-content: flex-end;
+  }
+}
+
+/* ==========================================================================
+   UNIFIED FLEXBOX SHELL CHO .input-with-picker & .m-cust-input-wrap
+   Tách riêng cột nhập liệu (tự xuống dòng, giãn chiều cao) và nút CHỌN —
+   không bao giờ bị khuyết chữ hoặc đè chữ vào nút CHỌN trên PC & Mobile
+   ========================================================================== */
+#app .page .input-with-picker {
+  position: relative !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 6px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  padding: 0 6px 0 0 !important;
+  border-radius: 8px !important;
+  border: 1px solid #334155 !important;
+  background-color: #0f172a !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease !important;
+}
+
+#app .page .input-with-picker:focus-within {
+  border-color: #38bdf8 !important;
+  background-color: #0f172a !important;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.16) !important;
+}
+
+#app .page .input-with-picker.is-import-picker {
+  border-radius: 7px !important;
+  padding: 0 5px 0 0 !important;
+  gap: 5px !important;
+}
+
+/* Sidebar Khối Khách hàng bên trái (PC) */
+#app .page .step-customer .input-with-picker.is-compact-picker {
+  background: rgba(15, 23, 42, 0.75) !important;
+  border: 1px solid #1e3a2f !important;
+  border-radius: 7px !important;
+  padding: 0 4px 0 0 !important;
+  gap: 4px !important;
+}
+
+#app .page .step-customer .input-with-picker.is-compact-picker:focus-within {
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.18) !important;
+}
+
+#app .page .step-customer .input-with-picker.is-compact-picker > textarea.cell-input {
+  color: #10b981 !important;
+}
+
+/* Theme Light Blue — Modals & Sidebar */
+#app .page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .input-with-picker,
+#app .page.theme-light-blue .vip-modal-card:not(.export-vip-modal):not(.load-invoice-modal) .input-with-picker,
+#app .page.theme-light-blue .modal-content .input-with-picker {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+#app .page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .input-with-picker:focus-within,
+#app .page.theme-light-blue .vip-modal-card:not(.export-vip-modal):not(.load-invoice-modal) .input-with-picker:focus-within,
+#app .page.theme-light-blue .modal-content .input-with-picker:focus-within {
+  background: #ffffff !important;
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
+}
+
+#app .page.theme-light-blue .step-customer .input-with-picker.is-compact-picker {
+  background: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+#app .page.theme-light-blue .step-customer .input-with-picker.is-compact-picker:focus-within {
+  background: #ffffff !important;
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
+}
+
+#app .page.theme-light-blue .step-customer .input-with-picker.is-compact-picker > textarea.cell-input {
+  color: #0f172a !important;
+}
+
+/* Vùng text bên trong .input-with-picker chiếm trọn không gian bên trái nút CHỌN */
+#app .page .input-with-picker > textarea,
+#app .page .input-with-picker > textarea.m-wrap-input,
+#app .page .input-with-picker > input,
+#app .page .modal-card .input-with-picker > textarea,
+#app .page .modal-card .input-with-picker > textarea.m-wrap-input,
+#app .page .modal-card .input-with-picker > input,
+#app .page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .input-with-picker > textarea,
+#app .page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .input-with-picker > input,
+#app .page.theme-light-blue .vip-modal-card:not(.export-vip-modal):not(.load-invoice-modal) .input-with-picker > textarea,
+#app .page.theme-light-blue .vip-modal-card:not(.export-vip-modal):not(.load-invoice-modal) .input-with-picker > input,
+#app .page.theme-light-blue .modal-content .input-with-picker > textarea,
+#app .page.theme-light-blue .modal-content .input-with-picker > input,
+#app .page.theme-light-blue .step-customer .input-with-picker > textarea.cell-input {
+  order: 1 !important;
+  flex: 1 1 0% !important;
+  min-width: 0 !important;
+  width: auto !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  margin: 0 !important;
+  padding-right: 4px !important;
+  border-radius: inherit !important;
+}
+
+#app .page .input-with-picker > textarea.m-wrap-input {
+  min-height: 36px;
+}
+
+#app .page .input-with-picker.is-import-picker > textarea.m-wrap-input.m-wrap-import {
+  min-height: 33px;
+}
+
+#app .page .input-with-picker.is-compact-picker > textarea.m-wrap-input.m-wrap-compact {
+  min-height: 27px;
+}
+
+#app .page .input-with-picker > textarea.m-wrap-input.has-left-icon,
+#app .page .modal-card .input-with-picker > textarea.m-wrap-input.has-left-icon {
+  padding-left: 36px !important;
+}
+
+/* Nút CHỌN đứng ở cột riêng bên phải, không dùng position: absolute đè chữ */
+#app .page .input-with-picker > button.inline-picker-btn,
+#app .page .modal-card .input-with-picker > button.inline-picker-btn {
+  order: 3 !important;
+  position: static !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  transform: none !important;
+  flex: 0 0 auto !important;
+  flex-shrink: 0 !important;
+  align-self: center !important;
+  margin: 0 !important;
+  width: auto !important;
+  min-width: max-content !important;
+  height: auto !important;
+  min-height: 26px !important;
+  padding: 5px 10px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+}
+
+#app .page .input-with-picker > button.inline-picker-btn.inline-picker-btn-sm,
+#app .page .modal-card .input-with-picker > button.inline-picker-btn.inline-picker-btn-sm {
+  min-height: 22px !important;
+  padding: 3px 7px !important;
+  font-size: 10px !important;
+  border-radius: 5px !important;
+}
+
+/* Trạng thái loading / loaded / ready trên .input-with-picker không đè nút CHỌN */
+#app .page .input-with-picker.input-ready::after {
+  display: none !important;
+  content: none !important;
+}
+
+#app .page .input-with-picker.input-loading::after,
+#app .page .input-with-picker.input-loaded::after {
+  order: 2 !important;
+  position: static !important;
+  right: auto !important;
+  top: auto !important;
+  transform: none !important;
+  flex: 0 0 14px !important;
+  width: 14px !important;
+  height: 14px !important;
+  margin: 0 !important;
+}
+
+#app .page .input-with-picker.input-loading::after {
+  animation: input-spin 0.7s linear infinite !important;
+}
+
+/* Mobile Adjustments cho .input-with-picker & .m-cust-input-wrap */
+@media (max-width: 1100px) {
+  #app .page .modal-card .input-with-picker {
+    border-radius: 10px !important;
+    background: rgba(15, 23, 42, 0.6) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    padding: 0 6px 0 0 !important;
+  }
+
+  #app .page .modal-card .input-with-picker:focus-within {
+    border-color: #38bdf8 !important;
+    background: rgba(15, 23, 42, 0.9) !important;
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2) !important;
+  }
+
+  #app .page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .input-with-picker {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+  }
+
+  #app .page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .input-with-picker:focus-within {
+    background: #ffffff !important;
+    border-color: #2563eb !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
+  }
+
+  #app .page .modal-card .input-with-picker > textarea.m-wrap-input {
+    min-height: 44px !important;
+    padding: 11px 4px 11px 14px !important;
+  }
+
+  #app .page .modal-card .input-with-picker > textarea.m-wrap-input.has-left-icon {
+    padding-left: 36px !important;
+  }
+
+  #app .page .modal-card .input-with-picker > button.inline-picker-btn {
+    min-height: 28px !important;
+    height: 28px !important;
+    padding: 0 10px !important;
+    font-size: 11px !important;
+    border-radius: 6px !important;
+  }
+
+  /* Khối nhập nhanh khách hàng inline trên Mobile (.m-cust-input-wrap) */
+  #app .page .m-cust-input-wrap {
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    padding: 0 4px 0 0 !important;
+    border-radius: 7px !important;
+    background: rgba(15, 23, 42, 0.9) !important;
+    border: 1px solid rgba(51, 65, 85, 0.85) !important;
+  }
+
+  #app .page.theme-light-blue .m-cust-input-wrap {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+  }
+
+  #app .page .m-cust-input-wrap > textarea.m-wrap-input {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    width: auto !important;
+    min-height: 32px !important;
+    height: auto;
+    padding: 7px 4px 7px 9px !important;
+    margin: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
+    color: #f8fafc !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    line-height: 17px !important;
+    resize: none !important;
+    white-space: pre-wrap !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+  }
+
+  #app .page.theme-light-blue .m-cust-input-wrap > textarea.m-wrap-input {
+    color: #0f172a !important;
+  }
+
+  #app .page .m-cust-input-wrap > button {
+    position: static !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: auto !important;
+    flex: 0 0 auto !important;
+    flex-shrink: 0 !important;
+    align-self: center !important;
+    height: 24px !important;
+    min-height: 24px !important;
+    padding: 0 7px !important;
+    margin: 0 !important;
+  }
+}
+
+/* ==========================================================================
+   1. Ô TÌM KIẾM KHO SẢN PHẨM PHÓNG TO TẠI CHỖ KHI CLICK (PHƯƠNG ÁN 1A - PC & MOBILE)
+   2. MÀU SỐ CHÊNH LỆCH GIÁ (VÀNG) & TỔNG VAT (XANH DƯƠNG) TRÊN PC
+   3. NÚT XUẤT FILE CẠNH NÚT LƯU BÁO GIÁ TRÊN PC
+   ========================================================================== */
+#app .page .catalog-search-row {
+  transition: gap 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+#app .page .catalog-search-row.is-search-expanded {
+  gap: 0px !important;
+}
+
+#app .page .catalog-unified-bar {
+  transition:
+    height 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    border-radius 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.18s ease,
+    box-shadow 0.2s ease,
+    background 0.18s ease !important;
+}
+
+#app .page .cub-user-seg {
+  transition:
+    width 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    padding 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    background 0.16s ease !important;
+}
+
+#app .page button.catalog-manual-add-btn {
+  transition:
+    width 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    min-width 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    max-width 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.16s ease,
+    transform 0.18s ease,
+    box-shadow 0.16s ease !important;
+}
+
+/* Thu gọn tạm nút [+] khi đang focus gõ tìm kiếm để nhường tối đa chiều ngang */
+#app .page .catalog-search-row.is-search-expanded button.catalog-manual-add-btn {
+  width: 0px !important;
+  min-width: 0px !important;
+  max-width: 0px !important;
+  opacity: 0 !important;
+  border-width: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+  transform: scale(0.85) !important;
+}
+
+/* Phóng to chiều cao, viền sáng & đổ bóng nổi khối khi click vào ô search */
+#app .page .catalog-unified-bar.is-kw-focused,
+#app .page .catalog-unified-bar.is-user-focused {
+  height: 46px !important;
+  border-radius: 12px !important;
+  background: rgba(15, 23, 42, 0.97) !important;
+  border-color: #10b981 !important;
+  box-shadow:
+    0 0 0 3px rgba(16, 185, 129, 0.2),
+    0 10px 24px -6px rgba(0, 0, 0, 0.55) !important;
+}
+
+#app .page.theme-light-blue .catalog-unified-bar.is-kw-focused,
+#app .page.theme-light-blue .catalog-unified-bar.is-user-focused {
+  background: #ffffff !important;
+  border-color: #2563eb !important;
+  box-shadow:
+    0 0 0 3.5px rgba(37, 99, 235, 0.16),
+    0 10px 22px -6px rgba(37, 99, 235, 0.16) !important;
+}
+
+#app .page .catalog-unified-bar.is-kw-focused .cub-kw-seg {
+  padding: 0 8px 0 13px !important;
+  gap: 8px !important;
+}
+
+#app .page .catalog-unified-bar.is-kw-focused .cub-kw-icon {
+  width: 17px !important;
+  height: 17px !important;
+}
+
+#app .page .catalog-unified-bar.is-kw-focused input.cub-kw-input {
+  font-size: 15.5px !important;
+  font-weight: 700 !important;
+}
+
+#app .page .catalog-unified-bar.is-kw-focused input.cub-kw-input::placeholder {
+  font-size: 14px !important;
+}
+
+#app .page .catalog-unified-bar.is-kw-focused button.cub-clear-btn:not(.is-mini) {
+  width: 22px !important;
+  height: 22px !important;
+  min-width: 22px !important;
+  max-width: 22px !important;
+}
+
+/* Khi đang gõ từ khóa mà ô User trống: thu gọn ngăn User thành nút icon 36px để nhường chiều rộng */
+#app .page .catalog-unified-bar.is-kw-focused:not(.has-user-val) .cub-user-seg {
+  width: 36px !important;
+  padding: 0 !important;
+  justify-content: center !important;
+  gap: 0 !important;
+  border-radius: 0 11px 11px 0 !important;
+}
+
+#app .page .catalog-unified-bar.is-kw-focused:not(.has-user-val) .cub-user-seg input.cub-user-input {
+  width: 0px !important;
+  flex: 0 0 0px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Khi click vào ô User: bung rộng ngăn User rõ ràng để nhập số */
+#app .page .catalog-unified-bar.is-user-focused .cub-user-seg {
+  width: 108px !important;
+  padding: 0 8px 0 10px !important;
+  border-radius: 0 11px 11px 0 !important;
+}
+
+#app .page .catalog-unified-bar.is-user-focused input.cub-user-input {
+  font-size: 15.5px !important;
+  font-weight: 700 !important;
+}
+
+@media (max-width: 1100px) {
+  #app .page .catalog-unified-bar.is-kw-focused,
+  #app .page .catalog-unified-bar.is-user-focused {
+    height: 48px !important;
+    border-radius: 13px !important;
+  }
+
+  #app .page .catalog-unified-bar.is-kw-focused .cub-kw-icon {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  #app .page .catalog-unified-bar.is-kw-focused input.cub-kw-input {
+    font-size: 16.5px !important;
+    font-weight: 700 !important;
+  }
+
+  #app .page .catalog-unified-bar.is-kw-focused input.cub-kw-input::placeholder {
+    font-size: 14.5px !important;
+  }
+
+  #app .page .catalog-unified-bar.is-kw-focused button.cub-clear-btn:not(.is-mini) {
+    width: 24px !important;
+    height: 24px !important;
+    min-width: 24px !important;
+    max-width: 24px !important;
+  }
+
+  #app .page .catalog-unified-bar.is-kw-focused:not(.has-user-val) .cub-user-seg {
+    width: 38px !important;
+    border-radius: 0 12px 12px 0 !important;
+  }
+
+  #app .page .catalog-unified-bar.is-user-focused .cub-user-seg {
+    width: 114px !important;
+    border-radius: 0 12px 12px 0 !important;
+  }
+
+  #app .page .catalog-unified-bar.is-user-focused input.cub-user-input {
+    font-size: 16.5px !important;
+    font-weight: 700 !important;
+  }
+}
+
+/* Màu số Chênh lệch giá (Vàng) & Tổng VAT (Xanh dương) trên giao diện PC */
+#app .page .step-summary .totals-value.text-diff-yellow {
+  color: #fbbf24 !important;
+  text-shadow: 0 0 10px rgba(251, 191, 36, 0.18);
+}
+
+#app .page.theme-light-blue .step-summary .totals-value.text-diff-yellow {
+  color: #d97706 !important;
+  text-shadow: none !important;
+}
+
+#app .page .step-summary .totals-value.text-vat-blue {
+  color: #38bdf8 !important;
+  text-shadow: 0 0 10px rgba(56, 189, 248, 0.18);
+}
+
+#app .page.theme-light-blue .step-summary .totals-value.text-vat-blue {
+  color: #2563eb !important;
+  text-shadow: none !important;
+}
+
+/* Nút Xuất File cạnh nút Lưu Báo Giá ở cột trái PC */
+#app .page .step-actions button.action-export-file {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease !important;
+}
+
+#app .page .step-actions button.action-export-file:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4) !important;
+}
+
+#app .page .step-actions button.action-export-file:active {
+  transform: translateY(0);
+}
+
+/* ==========================================================================
+   KHỐI KHÁCH HÀNG SIDEBAR TRÁI PC — PHƯƠNG ÁN 1:
+   Bỏ Header xanh thô, dùng Thanh công cụ mảnh + Nhãn Inline Prefix trong ô
+   ========================================================================== */
+#app .page .step-customer .totals-body.cust-compact-body {
+  padding: 7px 9px 8px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 5px !important;
+}
+
+#app .page .step-customer .cust-micro-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-height: 20px;
+  padding: 0 1px 1px;
+}
+
+#app .page .step-customer .cust-micro-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.45px;
+  color: #94a3b8 !important;
+  user-select: none;
+  line-height: 1;
+}
+
+#app .page .step-customer .cust-micro-title .cust-micro-icon {
+  font-size: 12px;
+  color: #34d399 !important;
+  line-height: 1;
+  margin: 0;
+}
+
+#app .page.theme-light-blue .step-customer .cust-micro-title {
+  color: #64748b !important;
+}
+
+#app .page.theme-light-blue .step-customer .cust-micro-title .cust-micro-icon {
+  color: #2563eb !important;
+}
+
+#app .page .step-customer .cust-micro-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+}
+
+#app .page .step-customer button.cust-micro-btn {
+  width: auto !important;
+  min-width: 0 !important;
+  height: 20px !important;
+  min-height: 20px !important;
+  margin: 0 !important;
+  padding: 0 7px !important;
+  border-radius: 5px !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 3px !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+  transform: none !important;
+  white-space: nowrap !important;
+  transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease !important;
+}
+
+#app .page .step-customer button.cust-micro-btn.is-reset {
+  background: rgba(148, 163, 184, 0.1) !important;
+  border: 1px solid rgba(148, 163, 184, 0.25) !important;
+  color: #cbd5e1 !important;
+}
+
+#app .page .step-customer button.cust-micro-btn.is-reset:hover {
+  background: rgba(239, 68, 68, 0.18) !important;
+  border-color: rgba(239, 68, 68, 0.48) !important;
+  color: #fca5a5 !important;
+}
+
+#app .page.theme-light-blue .step-customer button.cust-micro-btn.is-reset {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #475569 !important;
+}
+
+#app .page.theme-light-blue .step-customer button.cust-micro-btn.is-reset:hover {
+  background: #fef2f2 !important;
+  border-color: #fca5a5 !important;
+  color: #dc2626 !important;
+}
+
+#app .page .step-customer button.cust-micro-btn.is-detail {
+  padding: 0 6px 0 8px !important;
+  background: rgba(16, 185, 129, 0.14) !important;
+  border: 1px solid rgba(16, 185, 129, 0.35) !important;
+  color: #34d399 !important;
+}
+
+#app .page .step-customer button.cust-micro-btn.is-detail:hover {
+  background: rgba(16, 185, 129, 0.24) !important;
+  border-color: #10b981 !important;
+  color: #6ee7b7 !important;
+}
+
+#app .page.theme-light-blue .step-customer button.cust-micro-btn.is-detail {
+  background: #eff6ff !important;
+  border: 1px solid #93c5fd !important;
+  color: #1d4ed8 !important;
+}
+
+#app .page.theme-light-blue .step-customer button.cust-micro-btn.is-detail:hover {
+  background: #dbeafe !important;
+  border-color: #2563eb !important;
+  color: #1e40af !important;
+}
+
+#app .page .step-customer .input-with-picker.is-compact-picker.has-inline-prefix {
+  overflow: hidden !important;
+  padding: 0 4px 0 0 !important;
+  gap: 4px !important;
+}
+
+#app .page .step-customer .input-with-picker.is-compact-picker.has-inline-prefix > .cust-inline-prefix {
+  order: 0 !important;
+  flex: 0 0 58px !important;
+  width: 58px !important;
+  align-self: stretch !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 0 6px 0 8px !important;
+  box-sizing: border-box !important;
+  font-size: 9.5px !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.3px !important;
+  white-space: nowrap !important;
+  user-select: none !important;
+  color: #94a3b8 !important;
+  background: rgba(30, 41, 59, 0.5) !important;
+  border-right: 1px solid rgba(51, 65, 85, 0.72) !important;
+  transition: color 0.16s ease, border-color 0.16s ease, background-color 0.16s ease !important;
+}
+
+#app .page .step-customer .input-with-picker.is-compact-picker.has-inline-prefix:focus-within > .cust-inline-prefix {
+  color: #34d399 !important;
+  background: rgba(16, 185, 129, 0.1) !important;
+  border-right-color: rgba(16, 185, 129, 0.35) !important;
+}
+
+#app .page.theme-light-blue .step-customer .input-with-picker.is-compact-picker.has-inline-prefix > .cust-inline-prefix {
+  color: #475569 !important;
+  background: #f1f5f9 !important;
+  border-right: 1px solid #cbd5e1 !important;
+}
+
+#app .page.theme-light-blue .step-customer .input-with-picker.is-compact-picker.has-inline-prefix:focus-within > .cust-inline-prefix {
+  color: #1d4ed8 !important;
+  background: #eff6ff !important;
+  border-right-color: #93c5fd !important;
+}
+
+#app .page .step-customer .input-with-picker.is-compact-picker.has-inline-prefix > textarea.m-wrap-compact {
+  padding: 5px 4px !important;
+}
+
+/* ==========================================================================
+   NÚT ẨN / HIỆN THÔNG TIN BẢNG GIÁ TRONG KHO SẢN PHẨM (PC & MOBILE - PHƯƠNG ÁN 1)
+   ========================================================================== */
+#app .page .sidebar-head-product button.pl-subbar-toggle-btn {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 31px !important;
+  min-width: 31px !important;
+  height: 31px !important;
+  min-height: 31px !important;
+  max-height: 31px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 9px !important;
+  background: rgba(15, 23, 42, 0.88) !important;
+  border: 1px solid rgba(16, 185, 129, 0.42) !important;
+  color: #34d399 !important;
+  flex-shrink: 0 !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+  transform: none !important;
+  transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease !important;
+}
+
+#app .page .sidebar-head-product button.pl-subbar-toggle-btn.is-st-upcoming {
+  border-color: rgba(56, 189, 248, 0.42) !important;
+  color: #38bdf8 !important;
+}
+
+#app .page .sidebar-head-product button.pl-subbar-toggle-btn.is-st-expired {
+  border-color: rgba(248, 113, 113, 0.45) !important;
+  color: #f87171 !important;
+}
+
+#app .page .sidebar-head-product button.pl-subbar-toggle-btn:hover {
+  background: rgba(16, 185, 129, 0.16) !important;
+  border-color: #10b981 !important;
+  color: #6ee7b7 !important;
+}
+
+#app .page .sidebar-head-product button.pl-subbar-toggle-btn.is-st-upcoming:hover {
+  background: rgba(56, 189, 248, 0.16) !important;
+  border-color: #38bdf8 !important;
+  color: #7dd3fc !important;
+}
+
+#app .page .sidebar-head-product button.pl-subbar-toggle-btn.is-st-expired:hover {
+  background: rgba(248, 113, 113, 0.16) !important;
+  border-color: #f87171 !important;
+  color: #fca5a5 !important;
+}
+
+#app .page .sidebar-head-product button.pl-subbar-toggle-btn.is-expanded {
+  background: rgba(16, 185, 129, 0.22) !important;
+  border-color: #10b981 !important;
+  color: #6ee7b7 !important;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.16) !important;
+}
+
+#app .page .sidebar-head-product button.pl-subbar-toggle-btn.is-st-upcoming.is-expanded {
+  background: rgba(56, 189, 248, 0.2) !important;
+  border-color: #38bdf8 !important;
+  color: #7dd3fc !important;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.16) !important;
+}
+
+#app .page .sidebar-head-product button.pl-subbar-toggle-btn.is-st-expired.is-expanded {
+  background: rgba(248, 113, 113, 0.2) !important;
+  border-color: #f87171 !important;
+  color: #fca5a5 !important;
+  box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.16) !important;
+}
+
+#app .page .pl-subbar-status-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 1.5px #0f172a;
+  pointer-events: none;
+}
+
+#app .page button.pl-subbar-toggle-btn.is-st-upcoming .pl-subbar-status-dot {
+  background: #38bdf8;
+}
+
+#app .page button.pl-subbar-toggle-btn.is-st-expired .pl-subbar-status-dot {
+  background: #ef4444;
+}
+
+/* Giao diện Sáng (.page.theme-light-blue) */
+#app .page.theme-light-blue .sidebar-head-product button.pl-subbar-toggle-btn {
+  background: #ffffff !important;
+  border: 1px solid #93c5fd !important;
+  color: #2563eb !important;
+}
+
+#app .page.theme-light-blue .sidebar-head-product button.pl-subbar-toggle-btn.is-st-expired {
+  border-color: #fca5a5 !important;
+  color: #dc2626 !important;
+}
+
+#app .page.theme-light-blue .sidebar-head-product button.pl-subbar-toggle-btn:hover,
+#app .page.theme-light-blue .sidebar-head-product button.pl-subbar-toggle-btn.is-expanded {
+  background: #eff6ff !important;
+  border-color: #2563eb !important;
+  color: #1d4ed8 !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.14) !important;
+}
+
+#app .page.theme-light-blue .sidebar-head-product button.pl-subbar-toggle-btn.is-st-expired:hover,
+#app .page.theme-light-blue .sidebar-head-product button.pl-subbar-toggle-btn.is-st-expired.is-expanded {
+  background: #fef2f2 !important;
+  border-color: #ef4444 !important;
+  color: #dc2626 !important;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.14) !important;
+}
+
+#app .page.theme-light-blue .pl-subbar-status-dot {
+  box-shadow: 0 0 0 1.5px #ffffff;
+}
+
+#app .page.theme-light-blue button.pl-subbar-toggle-btn.is-st-upcoming .pl-subbar-status-dot {
+  background: #0284c7;
+}
+
+/* Mobile (<= 1100px): Đồng bộ kích thước 30x30px với các nút top-bar bên cạnh */
+@media (max-width: 1100px) {
+  #app .page .sidebar-head-product button.pl-subbar-toggle-btn {
+    width: 30px !important;
+    min-width: 30px !important;
+    height: 30px !important;
+    min-height: 30px !important;
+    max-height: 30px !important;
+    border-radius: 8px !important;
+  }
+}
+
+.pl-subbar-slide-enter-active,
+.pl-subbar-slide-leave-active {
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+    max-height 0.2s ease;
+  overflow: hidden;
+  max-height: 90px;
+}
+
+.pl-subbar-slide-enter-from,
+.pl-subbar-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+  max-height: 0;
+}
+
+/* =========================================================================
+   DEBT & PAYMENT MODAL REFINEMENTS (PO CONTENT, HISTORY CUSTOMER, SUBMODAL)
+   ========================================================================= */
+#app .page .debt-payment-modal .m-debt-po-code {
+  display: inline-block;
+  max-width: 205px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+#app .page .debt-payment-modal .m-debt-hist-cust-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 5px 8px;
+  margin: 4px 0 6px 0;
+  border-radius: 7px;
+  background: rgba(15, 23, 42, 0.45);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  font-size: 11.5px;
+  color: #94a3b8;
+  line-height: 1.35;
+}
+
+#app .page .debt-payment-modal .m-debt-hist-cust-info strong {
+  color: #e2e8f0;
+  font-weight: 700;
+}
+
+#app .page.theme-light-blue .debt-payment-modal .m-debt-hist-cust-info {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #64748b !important;
+}
+
+#app .page.theme-light-blue .debt-payment-modal .m-debt-hist-cust-info strong {
+  color: #0f172a !important;
+}
+
+@media (max-width: 640px) {
+  #app .page .debt-record-submodal .debt-record-2col {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+}
+
+/* =========================================================================
+   UNIFIED TEMPLATE DIALOG MODAL (ALERT & CONFIRM - PHƯƠNG ÁN 1)
+   Đồng bộ khung .vip-modal-card + .modal-head-themed cho cả Dark & Light Blue
+   ========================================================================= */
+#app .page .baogia-dialog-overlay {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 16px !important;
+  background: rgba(3, 8, 18, 0.72) !important;
+  backdrop-filter: blur(5px) !important;
+  -webkit-backdrop-filter: blur(5px) !important;
+}
+
+#app .page.theme-light-blue .baogia-dialog-overlay {
+  background: rgba(15, 23, 42, 0.45) !important;
+}
+
+#app .page .modal-card.baogia-dialog-card {
+  width: 470px !important;
+  max-width: 94vw !important;
+  height: auto !important;
+  max-height: 88dvh !important;
+  padding: 0 !important;
+  border-radius: 14px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  background: linear-gradient(180deg, #111c30 0%, #0b1322 100%) !important;
+  border: 1px solid rgba(148, 163, 184, 0.22) !important;
+  box-shadow:
+    0 24px 56px -12px rgba(0, 0, 0, 0.72),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset !important;
+}
+
+#app .page.theme-light-blue .modal-card.baogia-dialog-card {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow:
+    0 22px 48px -12px rgba(15, 23, 42, 0.24),
+    0 4px 14px rgba(2, 132, 199, 0.08) !important;
+}
+
+#app .page .baogia-dialog-dt-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #ffffff;
+  text-transform: uppercase;
+  font-weight: 800;
+  font-size: 14.5px;
+  letter-spacing: 0.35px;
+  padding-right: 32px;
+}
+
+#app .page .baogia-dialog-head-ico {
+  font-size: 18px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+#app .page .modal-card.baogia-dialog-card.is-variant-warning .baogia-dialog-head-ico {
+  color: #fbbf24;
+}
+
+#app .page .modal-card.baogia-dialog-card.is-variant-error .baogia-dialog-head-ico,
+#app .page .modal-card.baogia-dialog-card.is-variant-danger .baogia-dialog-head-ico {
+  color: #fca5a5;
+}
+
+#app .page.theme-light-blue .modal-card.baogia-dialog-card.is-variant-warning .baogia-dialog-head-ico {
+  color: #fde68a !important;
+}
+
+#app .page.theme-light-blue .modal-card.baogia-dialog-card.is-variant-error .baogia-dialog-head-ico,
+#app .page.theme-light-blue .modal-card.baogia-dialog-card.is-variant-danger .baogia-dialog-head-ico {
+  color: #fecdd3 !important;
+}
+
+#app .page .baogia-dialog-close-x {
+  color: #fff;
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  cursor: pointer;
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+
+#app .page .baogia-dialog-close-x:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+#app .page .baogia-dialog-body {
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+/* Thẻ đối tượng nổi bật (Tên Tab hoặc Số tiền đợt thanh toán) */
+#app .page .baogia-dialog-target-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 13px;
+  border-radius: 10px;
+  background: rgba(30, 41, 59, 0.68);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+#app .page.theme-light-blue .baogia-dialog-target-card {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+#app .page .baogia-dialog-target-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.32);
+  color: #f87171;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+#app .page.theme-light-blue .baogia-dialog-target-icon {
+  background: #fee2e2;
+  border-color: #fecaca;
+  color: #dc2626;
+}
+
+#app .page .baogia-dialog-target-info {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+#app .page .baogia-dialog-target-tag {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.35px;
+  color: #94a3b8;
+}
+
+#app .page.theme-light-blue .baogia-dialog-target-tag {
+  color: #64748b;
+}
+
+#app .page .baogia-dialog-target-val {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #f8fafc;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#app .page.theme-light-blue .baogia-dialog-target-val {
+  color: #0f172a;
+}
+
+/* Hộp thông điệp chính theo ngữ cảnh */
+#app .page .baogia-dialog-msg-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  background: rgba(245, 158, 11, 0.11);
+  border: 1px solid rgba(245, 158, 11, 0.32);
+  color: #fef3c7;
+}
+
+#app .page .modal-card.baogia-dialog-card.is-variant-error .baogia-dialog-msg-box,
+#app .page .modal-card.baogia-dialog-card.is-variant-danger .baogia-dialog-msg-box {
+  background: rgba(239, 68, 68, 0.11);
+  border-color: rgba(239, 68, 68, 0.32);
+  color: #fee2e2;
+}
+
+#app .page .modal-card.baogia-dialog-card.is-variant-info .baogia-dialog-msg-box {
+  background: rgba(14, 165, 233, 0.11);
+  border-color: rgba(56, 189, 248, 0.3);
+  color: #e0f2fe;
+}
+
+#app .page.theme-light-blue .baogia-dialog-msg-box {
+  background: #fffbeb;
+  border-color: #fcd34d;
+  color: #92400e;
+}
+
+#app .page.theme-light-blue .modal-card.baogia-dialog-card.is-variant-error .baogia-dialog-msg-box,
+#app .page.theme-light-blue .modal-card.baogia-dialog-card.is-variant-danger .baogia-dialog-msg-box {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+#app .page.theme-light-blue .modal-card.baogia-dialog-card.is-variant-info .baogia-dialog-msg-box {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1e3a8a;
+}
+
+#app .page .baogia-dialog-msg-icon {
+  font-size: 17px;
+  line-height: 1.35;
+  flex-shrink: 0;
+  color: #f59e0b;
+}
+
+#app .page .modal-card.baogia-dialog-card.is-variant-error .baogia-dialog-msg-icon,
+#app .page .modal-card.baogia-dialog-card.is-variant-danger .baogia-dialog-msg-icon {
+  color: #f87171;
+}
+
+#app .page .modal-card.baogia-dialog-card.is-variant-info .baogia-dialog-msg-icon {
+  color: #38bdf8;
+}
+
+#app .page.theme-light-blue .baogia-dialog-msg-icon {
+  color: #d97706;
+}
+
+#app .page.theme-light-blue .modal-card.baogia-dialog-card.is-variant-error .baogia-dialog-msg-icon,
+#app .page.theme-light-blue .modal-card.baogia-dialog-card.is-variant-danger .baogia-dialog-msg-icon {
+  color: #dc2626;
+}
+
+#app .page.theme-light-blue .modal-card.baogia-dialog-card.is-variant-info .baogia-dialog-msg-icon {
+  color: #0284c7;
+}
+
+#app .page .baogia-dialog-msg-text {
+  flex: 1;
+  min-width: 0;
+  white-space: pre-line;
+  font-weight: 500;
+}
+
+/* Ghi chú phụ bên dưới */
+#app .page .baogia-dialog-subnote {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  color: #94a3b8;
+  font-size: 12.5px;
+  line-height: 1.48;
+}
+
+#app .page.theme-light-blue .baogia-dialog-subnote {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #475569;
+}
+
+#app .page .baogia-dialog-subnote-ico {
+  font-size: 15px;
+  line-height: 1.35;
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+/* Footer nút hành động */
+#app .page .baogia-dialog-foot {
+  padding: 12px 20px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+  background: rgba(9, 15, 28, 0.72) !important;
+  border-top: 1px solid rgba(148, 163, 184, 0.14) !important;
+}
+
+#app .page.theme-light-blue .baogia-dialog-foot {
+  background: #f8fafc !important;
+  border-top: 1px solid #e2e8f0 !important;
+}
+
+#app .page .baogia-dialog-foot button.baogia-dlg-btn {
+  width: auto !important;
+  margin: 0 !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 0 16px !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  transition: transform 0.15s ease, box-shadow 0.18s ease, background 0.18s ease !important;
+}
+
+#app .page .baogia-dialog-foot button.baogia-dlg-btn:focus-visible {
+  outline: 2px solid #38bdf8 !important;
+  outline-offset: 2px !important;
+}
+
+#app .page .baogia-dialog-foot button.baogia-dlg-confirm {
+  border: none !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.28) !important;
+}
+
+#app .page .baogia-dialog-foot button.baogia-dlg-confirm:hover {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
+  transform: translateY(-1px) !important;
+}
+
+#app .page .baogia-dialog-foot button.baogia-dlg-confirm.is-btn-warning {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important;
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.28) !important;
+}
+
+#app .page .baogia-dialog-foot button.baogia-dlg-confirm.is-btn-warning:hover {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+}
+
+#app .page .baogia-dialog-foot button.baogia-dlg-confirm.is-btn-danger,
+#app .page .baogia-dialog-foot button.baogia-dlg-confirm.is-btn-error {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.32) !important;
+}
+
+#app .page .baogia-dialog-foot button.baogia-dlg-confirm.is-btn-danger:hover,
+#app .page .baogia-dialog-foot button.baogia-dlg-confirm.is-btn-error:hover {
+  background: linear-gradient(135deg, #f87171 0%, #ef4444 100%) !important;
+}
+
+@media (max-width: 1100px) {
+  #app .page .modal-card.baogia-dialog-card {
+    width: min(440px, 92vw) !important;
+    height: auto !important;
+    max-height: 86dvh !important;
+    border-radius: 16px !important;
+  }
+
+  #app .page .modal-card.baogia-dialog-card > .modal-head-themed.baogia-dialog-head {
+    margin: 0 !important;
+    padding: 14px 16px 24px 16px !important;
+  }
+
+  #app .page .modal-card.baogia-dialog-card > .modal-head-themed.baogia-dialog-head > button.x .dlg-dt-close-svg {
+    display: none !important;
+  }
+
+  #app .page .baogia-dialog-body {
+    padding: 12px 16px 16px 16px !important;
+  }
+
+  #app .page .baogia-dialog-foot {
+    padding: 12px 16px !important;
+  }
+
+  #app .page .baogia-dialog-foot:not(.is-single-action) {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  #app .page .baogia-dialog-foot button.baogia-dlg-btn {
+    width: 100% !important;
+    height: 40px !important;
+    min-height: 40px !important;
+  }
+
+  #app .page .baogia-dialog-foot.is-single-action button.baogia-dlg-confirm {
+    width: 100% !important;
+  }
+}
+
+/* ==========================================================================
+   GUIDE DEMO BANNERS & PULSING HIGHLIGHT FOR 03.7 / 03.8 PRICE EDIT TUTORIAL
+   ========================================================================== */
+#app .page .guide-demo-inline-banner,
+#app .page .adj-guide-demo-pill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 11px;
+  border-radius: 9px;
+  background: rgba(56, 189, 248, 0.11);
+  border: 1px dashed rgba(56, 189, 248, 0.45);
+  color: #e0f2fe;
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+#app .page .adj-guide-demo-pill {
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+#app .page .guide-demo-inline-banner .gdib-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+#app .page .guide-demo-inline-banner .gdib-badge,
+#app .page .adj-guide-demo-pill .agdp-badge {
+  flex-shrink: 0;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: rgba(2, 132, 199, 0.28);
+  border: 1px solid rgba(56, 189, 248, 0.5);
+  color: #7dd3fc;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+#app .page .guide-demo-inline-banner .gdib-text,
+#app .page .adj-guide-demo-pill .agdp-text {
+  color: #bae6fd;
+  font-weight: 500;
+}
+
+#app .page .guide-demo-inline-banner button.gdib-reset-btn {
+  width: auto !important;
+  min-width: max-content !important;
+  height: 25px !important;
+  min-height: 25px !important;
+  margin: 0 !important;
+  padding: 0 9px !important;
+  border-radius: 6px !important;
+  border: 1px solid rgba(56, 189, 248, 0.45) !important;
+  background: rgba(15, 23, 42, 0.65) !important;
+  color: #7dd3fc !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+#app .page .guide-demo-inline-banner button.gdib-reset-btn:hover {
+  background: rgba(2, 132, 199, 0.25) !important;
+  border-color: #38bdf8 !important;
+}
+
+#app .page.theme-light-blue .guide-demo-inline-banner,
+#app .page.theme-light-blue .adj-guide-demo-pill {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1e3a8a;
+}
+
+#app .page.theme-light-blue .guide-demo-inline-banner .gdib-badge,
+#app .page.theme-light-blue .adj-guide-demo-pill .agdp-badge {
+  background: #dbeafe;
+  border-color: #60a5fa;
+  color: #1d4ed8;
+}
+
+#app .page.theme-light-blue .guide-demo-inline-banner .gdib-text,
+#app .page.theme-light-blue .adj-guide-demo-pill .agdp-text {
+  color: #1e40af;
+}
+
+#app .page.theme-light-blue .guide-demo-inline-banner button.gdib-reset-btn {
+  background: #ffffff !important;
+  border-color: #60a5fa !important;
+  color: #1d4ed8 !important;
+}
+
+@keyframes guideEditBtnPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.65), 0 0 0 2px rgba(59, 130, 246, 0.9);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(56, 189, 248, 0), 0 0 0 2px rgba(96, 165, 250, 1);
+  }
+}
+
+#app .page button.inline-normal-edit.is-guide-pulse {
+  position: relative;
+  z-index: 2;
+  animation: guideEditBtnPulse 1.6s ease-in-out infinite !important;
+}
+
+@media (max-width: 768px) {
+  #app .page .guide-demo-inline-banner {
+    flex-wrap: wrap;
+    padding: 7px 10px;
+    gap: 6px;
+  }
+  #app .page .adj-guide-demo-pill {
+    padding: 7px 10px;
+    font-size: 11px;
   }
 }
 </style>

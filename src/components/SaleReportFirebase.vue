@@ -511,11 +511,13 @@
       <!-- Left side: Buttons -->
       <div class="toolbar-left-buttons" style="display: flex; gap: 12px; align-items: center; padding-bottom: 2px;">
         <button class="sr-btn sr-btn-import bg-btn" style="background:#2563eb;color:#ffffff;border-color:#1d4ed8;font-weight:700;height:42px;" @click="triggerImport(null, 'bao_gia')">📄 Import Báo giá</button>
+        <button class="sr-btn sr-btn-import bg-btn" style="background:#d97706;color:#ffffff;border-color:#b45309;font-weight:700;height:42px;" @click="triggerDxmhImport(null)">📋 Import DXMH</button>
         <button class="sr-btn sr-btn-import bg-btn" style="background:#8b5cf6;color:#ffffff;border-color:#7c3aed;font-weight:700;height:42px;" @click="triggerReportImport()">📊 Import Report</button>
         <input type="file" ref="reportUploadInput" accept=".xlsx, .xls" multiple style="display: none" @change="onReportFilesSelected" />
-        <button class="sr-btn sr-btn-export" style="background:#16a34a;color:#ffffff;border-color:#15803d;font-weight:700;display:flex;align-items:center;gap:6px;padding:0 16px;height:42px;" @click="showExportModal = true">
+        <button class="sr-btn sr-btn-export" style="background:#16a34a;color:#ffffff;border-color:#15803d;font-weight:700;display:flex;align-items:center;gap:6px;padding:0 16px;height:42px;" @click="openExportFromToolbar()">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="18" height="18"><path fill="#4CAF50" d="M41,10H25v28h16c0.553,0,1-0.447,1-1V11C42,10.447,41.553,10,41,10z"/><path fill="#FFF" d="M32 15H39V18H32zM32 25H39V28H32zM32 30H39V33H32zM32 20H39V23H32zM25 15H30V18H25zM25 25H30V28H25zM25 30H30V33H25zM25 20H30V23H25z"/><path fill="#2E7D32" d="M27,42L6,38.746C5.416,38.655,5,38.146,5,37.555v-27.11c0-0.591,0.416-1.1,1-1.191L27,6V42z"/><path fill="#FFF" d="M19.129,31l-2.411-4.561c-0.092-0.171-0.186-0.483-0.284-0.938h-0.037c-0.046,0.215-0.154,0.541-0.324,0.979L13.652,31H9.895l4.462-7.001L10.274,17h3.837l2.001,4.196c0.156,0.331,0.296,0.725,0.42,1.179h0.04c0.078-0.271,0.224-0.68,0.439-1.22L19.237,17h3.515l-4.199,6.939l4.316,7.059h-3.74V31z"/></svg>
-          Xuất Excel
+          <span>Xuất Excel</span>
+          <span v-if="selectedPoRows.length > 0" style="background: #ffffff; color: #15803d; border-radius: 999px; padding: 1px 7px; font-size: 11px; font-weight: 800; line-height: 1.4;">{{ selectedPoRows.length }}</span>
         </button>
       </div>
 
@@ -599,8 +601,21 @@
     <div class="sr-groups-container" v-if="!loading && filteredRows.length > 0">
       <div v-for="(group, gIdx) in groupedDisplayedRows" :key="group.ma_cong_ty + gIdx" class="sr-report-group" style="margin-bottom: 24px;">
         <div class="folder-header" style="cursor: pointer; margin-bottom: 16px;">
-          <div class="folder-tab" style="background: linear-gradient(135deg, #059669, #10b981); border: 1px solid rgba(16, 185, 129, 0.5); border-bottom: none; border-radius: 10px 10px 0 0; padding: 8px 24px; width: max-content; max-width: 100%; color: #ffffff; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <div class="folder-tab" style="background: linear-gradient(135deg, #059669, #10b981); border: 1px solid rgba(16, 185, 129, 0.5); border-bottom: none; border-radius: 10px 10px 0 0; padding: 8px 20px; width: max-content; max-width: 100%; color: #ffffff; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
             <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+              <button
+                type="button"
+                class="sr-group-select-btn"
+                :class="{ selected: isGroupFullySelected(group) }"
+                @click.stop="toggleSelectGroup(group)"
+                :title="isGroupFullySelected(group) ? 'Bỏ chọn toàn bộ PO của nhóm này' : 'Chọn toàn bộ PO của nhóm này để xuất Excel'"
+              >
+                <span class="sr-card-select-box">
+                  <svg v-if="isGroupFullySelected(group)" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </span>
+                <span>{{ isGroupFullySelected(group) ? 'Đã chọn nhóm' : 'Chọn cả nhóm' }}</span>
+              </button>
+              <div style="width: 1px; height: 14px; background: rgba(255,255,255,0.3);"></div>
               <span style="display: flex; align-items: center; gap: 6px;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
                 <span>{{ group.ma_cong_ty }}</span>
@@ -623,7 +638,22 @@
         </div>
         
         <div class="sr-card-list">
-          <div v-for="(r, idx) in group.items" :key="r.ID || idx" class="sr-record-card" @click="openMultiEditModal(r)" style="cursor: pointer;">
+          <div v-for="(r, idx) in group.items" :key="getPoRowKey(r) || idx" class="sr-card-outer-item">
+            <div class="sr-card-select-bar">
+              <button
+                type="button"
+                class="sr-card-select-pill"
+                :class="{ selected: isPoRowSelected(r) }"
+                @click.stop="toggleSelectPoRow(r)"
+                :title="isPoRowSelected(r) ? 'Bỏ chọn PO này khỏi danh sách xuất Excel' : 'Chọn PO này để xuất Excel'"
+              >
+                <span class="sr-card-select-box">
+                  <svg v-if="isPoRowSelected(r)" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </span>
+                <span>{{ isPoRowSelected(r) ? `Đã chọn PO ${r.So_PO || ''}` : `Chọn xuất PO ${r.So_PO || ''}` }}</span>
+              </button>
+            </div>
+            <div class="sr-record-card" :class="{ 'is-selected-card': isPoRowSelected(r) }" @click="openMultiEditModal(r)" style="cursor: pointer;">
         
         <div class="sr-rc-header">
           <div class="sr-rc-left">
@@ -731,7 +761,7 @@
               </a>
             </div>
 
-            <div class="sr-rc-links" v-if="r.link_excel_bao_gia || r.link_excel_mua_hang" style="display:flex; flex-direction:column; gap:8px; align-items: flex-start;">
+            <div class="sr-rc-links" v-if="r.link_excel_bao_gia || r.link_excel_mua_hang || r.link_excel_dxmh || (r.danh_sach_file_khac && r.danh_sach_file_khac.length > 0)" style="display:flex; flex-direction:column; gap:8px; align-items: flex-start;">
               <div v-if="r.link_excel_bao_gia" style="display:flex; align-items:center; gap: 8px;">
                 <span style="font-size: 13px; font-weight: 700; color: #94a3b8; text-transform: uppercase;">File Báo giá :</span>
                 <a :href="r.link_excel_bao_gia" target="_blank" @click.stop style="display:inline-flex;align-items:center;gap:6px;font-size:14px;color:#ffffff;text-decoration:none;font-weight:600; white-space: nowrap; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
@@ -749,6 +779,33 @@
                   <span>{{ r.ten_file_mua_hang || 'Mua hàng' }}</span>
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 2px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 </a>
+              </div>
+              <div v-if="r.link_excel_dxmh" style="display:flex; align-items:center; gap: 8px;">
+                <span style="font-size: 13px; font-weight: 700; color: #fbbf24; text-transform: uppercase;">File DXMH :</span>
+                <a :href="r.link_excel_dxmh" target="_blank" @click.stop style="display:inline-flex;align-items:center;gap:6px;font-size:14px;color:#ffffff;text-decoration:none;font-weight:600; white-space: nowrap; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20" height="20"><path fill="#4CAF50" d="M41,10H25v28h16c0.553,0,1-0.447,1-1V11C42,10.447,41.553,10,41,10z"/><path fill="#FFF" d="M32 15H39V18H32zM32 25H39V28H32zM32 30H39V33H32zM32 20H39V23H32zM25 15H30V18H25zM25 25H30V28H25zM25 30H30V33H25zM25 20H30V23H25z"/><path fill="#2E7D32" d="M27,42L6,38.746C5.416,38.655,5,38.146,5,37.555v-27.11c0-0.591,0.416-1.1,1-1.191L27,6V42z"/><path fill="#FFF" d="M19.129,31l-2.411-4.561c-0.092-0.171-0.186-0.483-0.284-0.938h-0.037c-0.046,0.215-0.154,0.541-0.324,0.979L13.652,31H9.895l4.462-7.001L10.274,17h3.837l2.001,4.196c0.156,0.331,0.296,0.725,0.42,1.179h0.04c0.078-0.271,0.224-0.68,0.439-1.22L19.237,17h3.515l-4.199,6.939l4.316,7.059h-3.74V31z"/></svg>
+                  <span>{{ r.ten_file_dxmh || 'File DXMH' }}</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 2px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </a>
+              </div>
+              <div v-if="r.danh_sach_file_khac && r.danh_sach_file_khac.length > 0" style="display:flex; align-items:flex-start; gap: 8px; flex-wrap: wrap;">
+                <span style="font-size: 13px; font-weight: 700; color: #c084fc; text-transform: uppercase; padding-top: 2px;">File khác :</span>
+                <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                  <a
+                    v-for="(fk, fkIdx) in r.danh_sach_file_khac"
+                    :key="fk.id || fkIdx"
+                    :href="fk.link_file"
+                    target="_blank"
+                    @click.stop
+                    style="display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:#e2e8f0;background:rgba(168,85,247,0.12);border:1px solid rgba(168,85,247,0.3);padding:3px 9px;border-radius:6px;text-decoration:none;font-weight:600;max-width:260px;transition:opacity 0.2s;"
+                    onmouseover="this.style.opacity='0.8'"
+                    onmouseout="this.style.opacity='1'"
+                    :title="fk.ten_file"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ fk.ten_file || ('File ' + (Number(fkIdx) + 1)) }}</span>
+                  </a>
+                </div>
               </div>
             </div>
           </div>
@@ -810,8 +867,9 @@
         <div class="sr-rc-footer" v-if="r.ghi_chu">
           <strong>Note:</strong> {{ r.ghi_chu }}
         </div>
-      </div>
-      </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div v-if="displayLimit < filteredRows.length" style="display: flex; justify-content: center; margin-top: 24px; margin-bottom: 24px;">
@@ -820,6 +878,59 @@
         </button>
       </div>
     </div>
+
+    <!-- Thanh nổi thao tác nhanh khi chọn Card PO để xuất Excel -->
+    <Teleport to="body">
+      <div
+        v-if="selectedPoRows.length > 0 && !multiEditModal.show && !showExportModal && !paymentModal.show"
+        class="sr-selection-floating-bar"
+      >
+        <div class="sr-sel-bar-info">
+          <span class="sr-sel-count-badge">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Đã chọn {{ selectedPoRows.length }} PO
+          </span>
+          <div class="sr-sel-metrics">
+            <span>Volume (DSB): <strong style="color: #38bdf8;">{{ fmt(selectedPoTotalDsb) }} đ</strong></span>
+            <span class="sr-sel-dot">•</span>
+            <span>Net COM: <strong style="color: #34d399;">{{ fmt(selectedPoTotalNetCom) }} đ</strong></span>
+          </div>
+        </div>
+        <div class="sr-sel-bar-actions">
+          <button
+            v-if="selectedPoRows.length < filteredRows.length"
+            type="button"
+            class="sr-sel-btn sr-sel-btn-ghost"
+            @click="selectAllFilteredPoRows()"
+          >
+            Chọn tất cả đang lọc ({{ filteredRows.length }})
+          </button>
+          <button
+            type="button"
+            class="sr-sel-btn sr-sel-btn-clear"
+            @click="clearSelectedPoRows()"
+          >
+            ✕ Bỏ chọn
+          </button>
+          <button
+            type="button"
+            class="sr-sel-btn sr-sel-btn-preview"
+            @click="openExportModalForSelected()"
+          >
+            Xem DS &amp; Sắp xếp
+          </button>
+          <button
+            type="button"
+            class="sr-sel-btn sr-sel-btn-export"
+            :disabled="exporting"
+            @click="exportSelectedPoRowsDirectly()"
+          >
+            <svg v-if="exporting" class="spin" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            <span>{{ exporting ? 'Đang xuất...' : `📥 Xuất Excel ngay (${selectedPoRows.length} PO)` }}</span>
+          </button>
+        </div>
+      </div>
+    </Teleport>
 
     <div v-if="loading" class="sr-loading">
       <div class="sr-spinner"></div>
@@ -941,6 +1052,91 @@
                     <!-- Frame Mua Hàng -->
                     <iframe v-if="item.previewUrlMH || (item.row?.link_excel_mua_hang && !item.rawFileMuaHang)" :src="item.previewUrlMH ? (item.previewUrlMH.startsWith('blob:') ? item.previewUrlMH : `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(item.previewUrlMH)}`) : ((item.row?.ten_file_mua_hang || item.row?.link_excel_mua_hang || '').toLowerCase().endsWith('.pdf') ? item.row.link_excel_mua_hang : `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(item.row.link_excel_mua_hang)}`)" style="width: 100%; height: 500px; border: 1px solid #334155; border-radius: 8px; margin-top: -4px; background: #fff;"></iframe>
                     <div v-if="item.previewHtmlMH && !item.previewUrlMH" style="width: 100%; height: 500px; border: 1px solid #334155; border-radius: 8px; margin-top: -4px; background: #fff; overflow: auto; padding: 16px; color: #334155; font-size: 13px;" v-html="item.previewHtmlMH"></div>
+
+                    <!-- File DXMH -->
+                    <div style="background: rgba(15,23,42,.6); border: 1px dashed rgba(245,158,11,.35); border-radius: 8px; padding: 16px; display: flex; align-items: center; gap: 16px;">
+                      <div @click="triggerDxmhImport(item)" style="cursor:pointer; flex-shrink: 0; display:flex; align-items:center; justify-content: center; width: 40px; height: 40px; background:rgba(245,158,11,.12); border:1px solid rgba(245,158,11,.3); border-radius:8px;" title="Chọn file Đề xuất mua hàng (DXMH)">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+                      </div>
+                      <div style="flex: 1; overflow: hidden;">
+                        <h5 style="margin: 0 0 4px 0; color: #e2e8f0; font-size: 13px;">File DXMH</h5>
+                        <div style="color: #fbbf24; font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                          {{ item.rawFileDxmh?.name || item.tenFileDxmh || item.row?.ten_file_dxmh || 'Chưa đính kèm file' }}
+                        </div>
+                      </div>
+                      <div style="display: flex; gap: 8px;">
+                        <a v-if="item.previewUrlDXMH || (item.row?.link_excel_dxmh && !item.rawFileDxmh)" :href="item.previewUrlDXMH ? `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(item.previewUrlDXMH)}` : `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(item.row.link_excel_dxmh)}`" target="_blank" class="sr-btn" style="background: rgba(56,189,248,.1); color: #38bdf8; border: 1px solid rgba(56,189,248,.25); padding: 4px 12px; font-size: 12px; height: 32px; display: flex; align-items: center; justify-content: center; text-decoration: none; gap: 6px;" title="Mở rộng để xem toàn bộ">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg> Mở rộng
+                        </a>
+                        <button v-if="!(item.rawFileDxmh?.name || item.tenFileDxmh || item.row?.ten_file_dxmh)" type="button" class="sr-btn" @click="triggerDxmhImport(item)" style="background: rgba(245,158,11,.12); color: #fbbf24; border: 1px dashed rgba(245,158,11,.45); padding: 4px 12px; font-size: 12px; height: 32px; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                          Thêm file
+                        </button>
+                        <button v-else type="button" class="sr-btn" @click="triggerDxmhImport(item)" style="background: rgba(245,158,11,.12); color: #fbbf24; border: 1px solid rgba(245,158,11,.3); padding: 4px 12px; font-size: 12px; height: 32px; display: flex; align-items: center; justify-content: center;">Đổi file</button>
+                      </div>
+                    </div>
+                    <!-- Frame / Preview DXMH -->
+                    <iframe v-if="item.previewUrlDXMH || (item.row?.link_excel_dxmh && !item.rawFileDxmh)" :src="`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(item.previewUrlDXMH || item.row.link_excel_dxmh)}`" style="width: 100%; height: 500px; border: 1px solid #334155; border-radius: 8px; margin-top: -4px; background: #fff;"></iframe>
+                    <div v-if="item.previewHtmlDXMH && !item.previewUrlDXMH" style="width: 100%; height: 500px; border: 1px solid #334155; border-radius: 8px; margin-top: -4px; background: #fff; overflow: auto; padding: 16px; color: #334155; font-size: 13px;" v-html="item.previewHtmlDXMH"></div>
+
+                    <!-- File Khác (Nhiều file đính kèm ngoài ảnh chứng từ, báo giá, mua hàng, DXMH) -->
+                    <div style="background: rgba(15,23,42,.6); border: 1px dashed rgba(168,85,247,.38); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+                      <div style="display: flex; align-items: center; gap: 16px;">
+                        <div @click="triggerOtherFilesUpload(item)" style="cursor:pointer; flex-shrink: 0; display:flex; align-items:center; justify-content: center; width: 40px; height: 40px; background:rgba(168,85,247,.12); border:1px solid rgba(168,85,247,.3); border-radius:8px;" title="Thêm các file khác">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                        </div>
+                        <div style="flex: 1; overflow: hidden;">
+                          <h5 style="margin: 0 0 4px 0; color: #e2e8f0; font-size: 13px;">File khác</h5>
+                          <div style="color: #c084fc; font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            {{ (item.otherFiles && item.otherFiles.length > 0) ? `Đã đính kèm ${item.otherFiles.length} file` : 'Hợp đồng, biên bản, PDF, Word, ZIP, ảnh...' }}
+                          </div>
+                        </div>
+                        <div>
+                          <button type="button" class="sr-btn" @click="triggerOtherFilesUpload(item)" style="background: rgba(168,85,247,.14); color: #c084fc; border: 1px dashed rgba(168,85,247,.45); padding: 4px 12px; font-size: 12px; height: 32px; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            Thêm file
+                          </button>
+                        </div>
+                      </div>
+
+                      <div v-if="item.otherFiles && item.otherFiles.length > 0" style="display: flex; flex-direction: column; gap: 8px; padding-top: 8px; border-top: 1px dashed rgba(71,85,105,.5);">
+                        <div
+                          v-for="(fk, fkIdx) in item.otherFiles"
+                          :key="fk.id || fkIdx"
+                          style="display: flex; align-items: center; gap: 10px; background: rgba(30,41,59,.55); border: 1px solid rgba(71,85,105,.5); border-radius: 7px; padding: 8px 10px;"
+                        >
+                          <img v-if="fk.ten_file?.toLowerCase().endsWith('.pdf')" src="/pdf-icon.png" style="width: 18px; height: 18px; object-fit: contain; flex-shrink: 0;" />
+                          <svg v-else xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                          <div style="flex: 1; min-width: 0;">
+                            <div style="font-size: 12.5px; font-weight: 600; color: #f8fafc; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" :title="fk.ten_file">
+                              {{ fk.ten_file }}
+                            </div>
+                            <div style="font-size: 11px; color: #94a3b8; display: flex; align-items: center; gap: 6px; margin-top: 2px;">
+                              <span v-if="fk.rawFile && !fk.link_file" style="color: #fbbf24; font-weight: 600;">• Chờ tải lên khi lưu</span>
+                              <span v-else>{{ fk.ngay_tai || 'Đã lưu' }}</span>
+                            </div>
+                          </div>
+                          <a
+                            v-if="fk.link_file || fk.previewUrl"
+                            :href="getOtherFileOpenUrl(fk)"
+                            target="_blank"
+                            style="background: rgba(56,189,248,.12); color: #38bdf8; border: 1px solid rgba(56,189,248,.3); border-radius: 6px; padding: 4px 8px; font-size: 11.5px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;"
+                            title="Mở / Tải file"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+                            Mở
+                          </a>
+                          <button
+                            type="button"
+                            @click="removeOtherFile(item, fkIdx)"
+                            style="background: rgba(239,68,68,.12); color: #f87171; border: 1px solid rgba(239,68,68,.3); border-radius: 6px; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;"
+                            title="Gỡ file này"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 
     </div>
@@ -949,15 +1145,36 @@
     <div style="background: linear-gradient(145deg, rgba(30,41,59,0.7), rgba(15,23,42,0.9)); border: 1px solid rgba(56,189,248,0.2); border-radius: 12px; padding: 20px; box-shadow: inset 0 1px 1px rgba(255,255,255,0.05), 0 4px 20px rgba(0,0,0,0.3); flex-shrink: 0; position: relative; overflow: hidden;">
       <div style="position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: linear-gradient(90deg, transparent, #38bdf8, transparent); opacity: 0.5;"></div>
       
-      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed rgba(51,65,85,0.8); padding-bottom: 12px; margin-bottom: 20px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; border-bottom: 1px dashed rgba(51,65,85,0.8); padding-bottom: 12px; margin-bottom: 20px;">
         <h4 style="margin: 0; font-size: 15px; color: #f8fafc; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 8px;">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
           Thông tin tổng quan PO
         </h4>
         
-        <div style="display: flex; align-items: center; gap: 8px; background: rgba(15,23,42,0.6); border: 1px solid rgba(51,65,85,0.6); padding: 4px 12px; border-radius: 20px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          <input type="text" v-model="item.createdTime" style="background: transparent; border: none; color: #cbd5e1; font-size: 12px; width: 140px; outline: none; font-family: monospace;" placeholder="Thời gian tạo..." />
+        <div style="display: flex; align-items: center; gap: 8px; background: rgba(15,23,42,0.85); border: 1px solid rgba(56,189,248,0.4); padding: 5px 10px; border-radius: 10px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.25);">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; white-space: nowrap;">Thời gian PO:</span>
+          <input
+            type="text"
+            v-model="item.createdTime"
+            @input="isModalDirty = true"
+            style="background: rgba(30,41,59,0.75); border: 1px solid rgba(71,85,105,0.8); border-radius: 6px; padding: 3px 8px; color: #f8fafc; font-size: 12.5px; font-weight: 600; width: 156px; outline: none; font-family: monospace; transition: all 0.2s;"
+            onfocus="this.style.borderColor='#38bdf8'; this.style.boxShadow='0 0 0 2px rgba(56,189,248,0.2)'"
+            onblur="this.style.borderColor='rgba(71,85,105,0.8)'; this.style.boxShadow='none'"
+            placeholder="DD/MM/YYYY HH:mm:ss"
+            title="Chỉnh sửa thời gian PO (DD/MM/YYYY HH:mm:ss)"
+          />
+          <label style="position: relative; display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 6px; background: rgba(56,189,248,0.14); border: 1px solid rgba(56,189,248,0.38); color: #38bdf8; cursor: pointer; flex-shrink: 0;" title="Chọn ngày giờ PO từ lịch">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <input
+              type="datetime-local"
+              step="1"
+              :value="createdTimeToDatetimeLocal(item.createdTime)"
+              @input="onCreatedTimePickerInput(item, $event)"
+              @click="openNativeDateTimePicker($event)"
+              style="position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer;"
+            />
+          </label>
         </div>
       </div>
 
@@ -980,13 +1197,37 @@
                       <label class="sr-modal-label" style="margin-bottom: 6px; color: #ffffff; font-weight: 700;">PO</label>
                       <input type="text" v-model="item.soPO" class="sr-modal-input text-left" style="background: rgba(15,23,42,0.6); border-color: rgba(51,65,85,0.8); transition: all 0.2s;" onfocus="this.style.borderColor='#38bdf8'; this.style.boxShadow='0 0 0 2px rgba(56,189,248,0.2)'" onblur="this.style.borderColor='rgba(51,65,85,0.8)'; this.style.boxShadow='none'" />
                     </div>
-                    <div class="sr-form-group" style="grid-column: span 6; margin: 0;">
+                    <div class="sr-form-group" style="grid-column: span 5; margin: 0;">
                       <label class="sr-modal-label" style="margin-bottom: 6px; color: #ffffff; font-weight: 700;">Content of contract/PO (Tên File)</label>
                       <input type="text" v-model="item.content" class="sr-modal-input text-left" style="background: rgba(15,23,42,0.6); border-color: rgba(51,65,85,0.8); color: #38bdf8; transition: all 0.2s;" onfocus="this.style.borderColor='#38bdf8'; this.style.boxShadow='0 0 0 2px rgba(56,189,248,0.2)'" onblur="this.style.borderColor='rgba(51,65,85,0.8)'; this.style.boxShadow='none'" />
                     </div>
-                    <div class="sr-form-group" style="grid-column: span 2; margin: 0;">
-                      <label class="sr-modal-label" style="margin-bottom: 6px; color: #ffffff; font-weight: 700;">Product Type</label>
-                      <input type="text" v-model="item.productType" class="sr-modal-input text-left" style="background: rgba(15,23,42,0.6); border-color: rgba(51,65,85,0.8); transition: all 0.2s;" onfocus="this.style.borderColor='#38bdf8'; this.style.boxShadow='0 0 0 2px rgba(56,189,248,0.2)'" onblur="this.style.borderColor='rgba(51,65,85,0.8)'; this.style.boxShadow='none'" />
+                    <div class="sr-form-group" style="grid-column: span 3; margin: 0;">
+                      <label class="sr-modal-label" style="margin-bottom: 6px; color: #ffffff; font-weight: 700;">Product Type (NCC)</label>
+                      <select
+                        v-model="item.productType"
+                        class="sr-modal-input text-left"
+                        style="background: rgba(15,23,42,0.6); border-color: rgba(51,65,85,0.8); color: #f8fafc; cursor: pointer; transition: all 0.2s;"
+                        onfocus="this.style.borderColor='#38bdf8'; this.style.boxShadow='0 0 0 2px rgba(56,189,248,0.2)'"
+                        onblur="this.style.borderColor='rgba(51,65,85,0.8)'; this.style.boxShadow='none'"
+                        @change="isModalDirty = true"
+                      >
+                        <option value="" style="background: #0f172a; color: #94a3b8;">-- Chọn NCC (Hàng hóa) --</option>
+                        <option
+                          v-if="item.productType && !isInHangHoaNccList(item.productType)"
+                          :value="item.productType"
+                          style="background: #0f172a; color: #fbbf24;"
+                        >
+                          {{ item.productType }} (Giá trị cũ)
+                        </option>
+                        <option
+                          v-for="ncc in hangHoaNccList"
+                          :key="ncc"
+                          :value="ncc"
+                          style="background: #0f172a; color: #f8fafc;"
+                        >
+                          {{ ncc }}
+                        </option>
+                      </select>
                     </div>
                     <div class="sr-form-group" style="grid-column: span 2; margin: 0;">
                       <label class="sr-modal-label" style="margin-bottom: 6px; color: #ffffff; font-weight: 700;">AM</label>
@@ -1017,9 +1258,9 @@
                               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
                               Dùng tên DB
                             </button>
-                            <button type="button" @click="applyItemCustomerSource(item, 'quote')" style="background: rgba(168,85,247,0.12); color: #c084fc; border: 1px solid rgba(168,85,247,0.35); border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="Áp dụng tên vừa trích xuất từ file Báo giá (Giữ nguyên Mã KH)">
+                            <button type="button" @click="applyItemCustomerSource(item, 'quote')" style="background: rgba(168,85,247,0.12); color: #c084fc; border: 1px solid rgba(168,85,247,0.35); border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" :title="'Áp dụng tên vừa trích xuất từ file ' + (item.extractedSourceLabel || 'Báo giá') + ' (Giữ nguyên Mã KH)'">
                               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                              Dùng tên Báo giá
+                              Dùng tên {{ item.extractedSourceLabel || 'Báo giá' }}
                             </button>
                           </template>
                           <button type="button" @click="toggleItemCustomerPicker(item)" style="background: rgba(16,185,129,0.12); color: #34d399; border: 1px solid rgba(16,185,129,0.35); border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: all 0.2s;">
@@ -1313,6 +1554,10 @@
 
     <!-- Hidden file input for import -->
     <input type="file" ref="fileInput" style="display: none" accept=".xlsx, .xls, .pdf" multiple @change="onFileSelected" />
+    <!-- Hidden file input for DXMH import -->
+    <input type="file" ref="dxmhInput" style="display: none" accept=".xlsx, .xls" multiple @change="onDxmhSelected" />
+    <!-- Hidden file input for Other attachments (File khác) -->
+    <input type="file" ref="otherFilesInput" style="display: none" multiple @change="onOtherFilesSelected" />
     <!-- Hidden file input for scanning image -->
     <input type="file" ref="scanInput" style="display: none" accept="image/*" @change="onScanSelected" />
 
@@ -1369,7 +1614,7 @@
             </div>
             <div>
               <h3>Xuất Sale Report</h3>
-              <p class="sr-modal-sub">Chọn tháng để xuất file Excel</p>
+              <p class="sr-modal-sub">{{ exportFromSelectionMode ? 'Xuất các PO đã tick chọn trên danh sách thẻ' : 'Chọn khoảng thời gian để xuất file Excel' }}</p>
             </div>
             <button class="sr-modal-close" @click="showExportModal = false">&times;</button>
           </div>
@@ -1469,7 +1714,8 @@
               </button>
             </template>
             <template v-else>
-              <button class="sr-btn sr-btn-cancel" @click="showExportPreview = false">&larr; Quay lại</button>
+              <button v-if="exportFromSelectionMode" class="sr-btn sr-btn-cancel" @click="switchExportToTimeFilterMode()">Chọn theo Thời gian</button>
+              <button v-else class="sr-btn sr-btn-cancel" @click="showExportPreview = false">&larr; Quay lại</button>
               <button class="sr-btn sr-btn-save" style="background:linear-gradient(135deg,#10b981,#059669);box-shadow:0 2px 8px rgba(5,150,105,.3)" @click="doExport" :disabled="exportRecords.length === 0 || exporting">
                 <svg v-if="exporting" class="spin" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
                 {{ exporting ? 'Đang xuất...' : '📥 Xuất file' }}
@@ -1644,9 +1890,9 @@
               <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.35); display: flex; align-items: center; justify-content: center; color: #38bdf8;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
               </div>
-              <div>
-                <h3 style="margin: 0; color: #f8fafc; font-size: 16px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">
-                  Quản lý Công nợ & Thanh toán — PO #{{ paymentModal.row.So_PO || 'N/A' }}
+              <div style="min-width: 0;">
+                <h3 :title="getPoContractContent(paymentModal.row)" style="margin: 0; color: #f8fafc; font-size: 16px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">
+                  Quản lý Công nợ & Thanh toán — {{ getPoContractContent(paymentModal.row, 54) }}
                 </h3>
                 <div style="font-size: 12px; color: #94a3b8; margin-top: 3px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
                   <span style="display: inline-flex; align-items: center; gap: 4px;">
@@ -1813,34 +2059,33 @@
             <!-- Bảng Lịch sử thanh toán (lich_su_thanh_toan) -->
             <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid #1e293b; border-radius: 12px; overflow: hidden;">
               <div style="padding: 12px 16px; background: rgba(30, 41, 59, 0.6); border-bottom: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 13px; font-weight: 700; color: #e2e8f0; text-transform: uppercase; display: inline-flex; align-items: center; gap: 6px;">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                  Lịch sử thanh toán thực tế của PO ({{ getPaymentHistoryForPO(paymentModal.row).length }} lần)
+                <span :title="getPoContractContent(paymentModal.row)" style="font-size: 13px; font-weight: 700; color: #e2e8f0; text-transform: uppercase; display: inline-flex; align-items: center; gap: 6px;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                  <span>Lịch sử thanh toán thực tế — {{ getPoContractContent(paymentModal.row, 54) }} ({{ getPaymentHistoryForPO(paymentModal.row).length }} lần)</span>
                 </span>
-                <span style="font-size: 11px; color: #64748b;">Schema: <code>lich_su_thanh_toan</code></span>
               </div>
               <div style="overflow-x: auto;">
-                <table style="width: 100%; border-collapse: collapse; font-size: 12px; color: #e2e8f0;">
+                <table style="width: 100%; min-width: 760px; border-collapse: collapse; font-size: 12px; color: #e2e8f0;">
                   <thead>
                     <tr style="background: rgba(15, 23, 42, 0.9); border-bottom: 1px solid #334155; text-align: left; color: #94a3b8;">
-                      <th style="padding: 10px 12px;">Lần</th>
-                      <th style="padding: 10px 12px;">Mã GD (id)</th>
-                      <th style="padding: 10px 12px;">Thời gian TT</th>
-                      <th style="padding: 10px 12px;">Mã KH (maKH)</th>
-                      <th style="padding: 10px 12px; text-align: right;">Số tiền thanh toán</th>
-                      <th style="padding: 10px 12px; text-align: right;">Công nợ còn lại</th>
+                      <th style="padding: 10px 12px; width: 56px;">Lần</th>
+                      <th style="padding: 10px 12px; white-space: nowrap;">Thời gian TT</th>
+                      <th style="padding: 10px 12px;">Tên KH</th>
+                      <th style="padding: 10px 12px;">Tên Công ty</th>
+                      <th style="padding: 10px 12px; text-align: right; white-space: nowrap;">Số tiền thanh toán</th>
+                      <th style="padding: 10px 12px; text-align: right; white-space: nowrap;">Công nợ còn lại</th>
                       <th style="padding: 10px 12px;">Ghi chú</th>
-                      <th style="padding: 10px 12px; text-align: center; width: 50px;">Xóa</th>
+                      <th style="padding: 10px 12px; text-align: center; width: 55px;">Xóa</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr v-for="(h, idx) in getPaymentHistoryForPO(paymentModal.row)" :key="h.id || idx" style="border-bottom: 1px dashed #1e293b;">
-                      <td style="padding: 10px 12px; font-weight: 700; color: #38bdf8;">#{{ getPaymentHistoryForPO(paymentModal.row).length - idx }}</td>
-                      <td style="padding: 10px 12px; font-family: monospace; font-size: 11px; color: #94a3b8;">{{ h.id }}</td>
-                      <td style="padding: 10px 12px; color: #f8fafc;">{{ h.thoi_gian_thanh_toan || '—' }}</td>
-                      <td style="padding: 10px 12px; color: #cbd5e1;">{{ h.maKH }}</td>
-                      <td style="padding: 10px 12px; text-align: right; font-weight: 700; color: #34d399;">+{{ fmt(toNum(h.so_tien_thanh_toan)) }} đ</td>
-                      <td style="padding: 10px 12px; text-align: right; font-weight: 700;" :style="{ color: toNum(h.cong_no_con_lai) > 0 ? '#f87171' : '#34d399' }">
+                      <td :title="h.id ? ('Mã GD: ' + h.id) : ''" style="padding: 10px 12px; font-weight: 700; color: #38bdf8;">#{{ getPaymentHistoryForPO(paymentModal.row).length - idx }}</td>
+                      <td style="padding: 10px 12px; color: #f8fafc; white-space: nowrap;">{{ h.thoi_gian_thanh_toan || '—' }}</td>
+                      <td style="padding: 10px 12px; color: #e2e8f0; font-weight: 600;">{{ getPaymentHistoryCustomerInfo(h).tenKH }}</td>
+                      <td style="padding: 10px 12px; color: #cbd5e1; max-width: 220px; word-break: break-word;">{{ getPaymentHistoryCustomerInfo(h).tenCongTy }}</td>
+                      <td style="padding: 10px 12px; text-align: right; font-weight: 700; color: #34d399; white-space: nowrap;">+{{ fmt(toNum(h.so_tien_thanh_toan)) }} đ</td>
+                      <td style="padding: 10px 12px; text-align: right; font-weight: 700; white-space: nowrap;" :style="{ color: toNum(h.cong_no_con_lai) > 0 ? '#f87171' : '#34d399' }">
                         {{ fmt(toNum(h.cong_no_con_lai)) }} đ
                       </td>
                       <td style="padding: 10px 12px; color: #94a3b8;">{{ h.ghi_chu || '—' }}</td>
@@ -1852,7 +2097,7 @@
                     </tr>
                     <tr v-if="getPaymentHistoryForPO(paymentModal.row).length === 0">
                       <td colspan="8" style="padding: 24px; text-align: center; color: #64748b; font-style: italic;">
-                        Chưa có lịch sử thanh toán nào cho PO này.
+                        Chưa có lịch sử thanh toán nào cho đơn hàng này.
                       </td>
                     </tr>
                   </tbody>
@@ -1876,9 +2121,9 @@
               <div style="width: 36px; height: 36px; border-radius: 9px; background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.35); display: flex; align-items: center; justify-content: center; color: #38bdf8;">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
               </div>
-              <div>
-                <h4 style="margin: 0; color: #f8fafc; font-size: 15px; font-weight: 800; text-transform: uppercase;">
-                  Thiết lập Kế hoạch & Mốc hạn thanh toán — PO #{{ paymentModal.row.So_PO || 'N/A' }}
+              <div style="min-width: 0; padding-right: 12px;">
+                <h4 :title="getPoContractContent(paymentModal.row)" style="margin: 0; color: #f8fafc; font-size: 15px; font-weight: 800; text-transform: uppercase;">
+                  Thiết lập Kế hoạch & Mốc hạn thanh toán — {{ getPoContractContent(paymentModal.row, 52) }}
                 </h4>
                 <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">
                   Tổng giá trị PO sau VAT: <strong style="color: #38bdf8;">{{ fmt(tongSauVat(paymentModal.row)) }} đ</strong>
@@ -2152,16 +2397,16 @@
       <div v-if="paymentModal.show && paymentModal.row && paymentModal.showRecordSubModal" class="sr-modal-overlay" @click.self="paymentModal.showRecordSubModal = false" style="z-index: 100065; padding: 20px; background: rgba(2, 6, 23, 0.78);">
         <div class="sr-modal" style="max-width: 620px; width: 95vw; background: #0f172a; border: 1px solid rgba(16, 185, 129, 0.45); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);">
           <div class="sr-modal-header" style="background: rgba(15, 23, 42, 0.95); border-bottom: 1px solid #1e293b; padding: 16px 22px; display: flex; justify-content: space-between; align-items: center;">
-            <div style="display: flex; align-items: center; gap: 10px;">
-              <div style="width: 36px; height: 36px; border-radius: 9px; background: rgba(16, 185, 129, 0.16); border: 1px solid rgba(16, 185, 129, 0.4); display: flex; align-items: center; justify-content: center; color: #34d399;">
+            <div style="display: flex; align-items: center; gap: 10px; min-width: 0; padding-right: 12px;">
+              <div style="width: 36px; height: 36px; border-radius: 9px; background: rgba(16, 185, 129, 0.16); border: 1px solid rgba(16, 185, 129, 0.4); display: flex; align-items: center; justify-content: center; color: #34d399; flex-shrink: 0;">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
               </div>
-              <div>
-                <h4 style="margin: 0; color: #f8fafc; font-size: 15px; font-weight: 800; text-transform: uppercase;">
-                  Ghi nhận đợt thanh toán mới — PO #{{ paymentModal.row.So_PO || 'N/A' }}
+              <div style="min-width: 0;">
+                <h4 :title="getPoContractContent(paymentModal.row)" style="margin: 0; color: #f8fafc; font-size: 15px; font-weight: 800; text-transform: uppercase;">
+                  Ghi nhận đợt thanh toán mới — {{ getPoContractContent(paymentModal.row, 44) }}
                 </h4>
                 <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">
-                  Công nợ hiện tại của PO: <strong style="color: #f87171;">{{ fmt(congNo(paymentModal.row)) }} đ</strong>
+                  Công nợ hiện tại của đơn hàng: <strong style="color: #f87171;">{{ fmt(congNo(paymentModal.row)) }} đ</strong>
                 </div>
               </div>
             </div>
@@ -2169,16 +2414,30 @@
           </div>
 
           <div class="sr-modal-body" style="padding: 18px 22px; display: flex; flex-direction: column; gap: 14px;">
-            <!-- Chọn nhanh theo đợt hoặc theo % công nợ -->
             <div>
-              <label style="font-size: 11px; color: #94a3b8; font-weight: 600; display: block; margin-bottom: 6px;">Chọn nhanh số tiền thanh toán:</label>
-              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <label style="font-size: 11.5px; color: #cbd5e1; font-weight: 700; display: block; margin-bottom: 6px;">Số tiền khách thanh toán (VNĐ)</label>
+              <input
+                type="text"
+                inputmode="numeric"
+                :value="paymentModal.amountStr"
+                @focus="onPaymentAmountFocus"
+                @blur="onPaymentAmountBlur"
+                @input="onPaymentAmountInput"
+                @paste="onPaymentAmountPaste"
+                placeholder="0"
+                class="sr-modal-input text-right"
+                style="width: 100%; padding: 10px 14px; font-size: 17px; font-weight: 800; color: #34d399; border-color: rgba(16, 185, 129, 0.45); background: rgba(16, 185, 129, 0.06);"
+              />
+
+              <!-- Chọn nhanh theo đợt hoặc theo % công nợ ngay bên dưới ô nhập số tiền -->
+              <div style="margin-top: 8px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                <span style="font-size: 11px; color: #94a3b8; font-weight: 600; margin-right: 2px;">Chọn nhanh:</span>
                 <template v-if="paymentModal.scheduleMode === 'nhieu_dot'">
                   <button
                     v-for="(inst, idx) in modalEvaluatedInstallments.filter(x => x.con_thieu > 0)"
                     :key="'quick-inst-' + idx"
                     type="button"
-                    @click="openRecordPaymentSubModal(inst)"
+                    @click="applyQuickInstallmentAmount(inst)"
                     style="background: rgba(168, 85, 247, 0.16); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4); border-radius: 6px; padding: 5px 10px; font-size: 11px; font-weight: 700; cursor: pointer;"
                   >
                     Đợt {{ inst.dot }} ({{ fmt(inst.con_thieu) }} đ)
@@ -2193,23 +2452,33 @@
                 <button type="button" @click="setPaymentQuickPct(30)" style="background: rgba(245, 158, 11, 0.12); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 6px; padding: 5px 10px; font-size: 11px; font-weight: 700; cursor: pointer;">
                   30% công nợ
                 </button>
+                <button
+                  v-if="paymentModal.amount > 0"
+                  type="button"
+                  @click="resetPaymentAmountToZero"
+                  style="background: rgba(148, 163, 184, 0.14); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.32); border-radius: 6px; padding: 5px 10px; font-size: 11px; font-weight: 700; cursor: pointer;"
+                >
+                  Đặt về 0
+                </button>
+              </div>
+
+              <div
+                v-if="congNo(paymentModal.row) > 0 && paymentModal.amount > congNo(paymentModal.row)"
+                style="margin-top: 8px; padding: 8px 11px; border-radius: 7px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.38); color: #fbbf24; font-size: 11.5px; font-weight: 600;"
+              >
+                Lưu ý: Số tiền đang nhập vượt quá công nợ còn lại của đơn hàng ({{ fmt(congNo(paymentModal.row)) }} đ).
               </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px;">
-              <div>
-                <label style="font-size: 11.5px; color: #cbd5e1; font-weight: 600; display: block; margin-bottom: 5px;">Số tiền khách thanh toán (VNĐ)</label>
-                <input type="text" inputmode="numeric" :value="paymentModal.amountStr" @input="onPaymentAmountInput" @paste="onPaymentAmountPaste" placeholder="Nhập số tiền..." class="sr-modal-input text-right" style="width: 100%; padding: 9px 12px; font-size: 15px; font-weight: 800; color: #34d399; border-color: rgba(16, 185, 129, 0.45); background: rgba(16, 185, 129, 0.06);" />
-              </div>
+            <div class="sr-debt-record-2col" style="display: grid; grid-template-columns: 1fr 1.25fr; gap: 12px;">
               <div>
                 <label style="font-size: 11.5px; color: #cbd5e1; font-weight: 600; display: block; margin-bottom: 5px;">Thời gian thanh toán</label>
                 <input type="text" v-model="paymentModal.paymentTime" placeholder="DD/MM/YYYY HH:mm:ss" class="sr-modal-input" style="width: 100%; padding: 9px 10px; font-size: 12.5px; color: #f8fafc;" />
               </div>
-            </div>
-
-            <div>
-              <label style="font-size: 11.5px; color: #cbd5e1; font-weight: 600; display: block; margin-bottom: 5px;">Ghi chú đợt thanh toán (Tùy chọn)</label>
-              <input type="text" v-model="paymentModal.note" placeholder="VD: Thanh toán đợt 1 chuyển khoản..." class="sr-modal-input" style="width: 100%; padding: 9px 12px; font-size: 12.5px; color: #f8fafc;" />
+              <div>
+                <label style="font-size: 11.5px; color: #cbd5e1; font-weight: 600; display: block; margin-bottom: 5px;">Ghi chú đợt thanh toán (Tùy chọn)</label>
+                <input type="text" v-model="paymentModal.note" placeholder="VD: Thanh toán đợt 1 chuyển khoản..." class="sr-modal-input" style="width: 100%; padding: 9px 12px; font-size: 12.5px; color: #f8fafc;" />
+              </div>
             </div>
 
             <!-- Live preview công nợ còn lại sau đợt thanh toán -->
@@ -2362,7 +2631,8 @@ async function confirmYearAndImportReport() {
         const monCell = row.getCell(4).value?.toString() || '';
         const customer = row.getCell(5).value?.toString() || '';
         const contentVal = row.getCell(6).value?.toString() || '';
-        const productType = row.getCell(7).value?.toString() || '';
+        const rawProductType = (row.getCell(7).value?.toString() || '').trim();
+        const productType = matchHangHoaNcc(rawProductType) || rawProductType;
         
         // Lấy thời gian tạo theo cột Month và năm đã chọn, ngày mặc định là 01
         let createdTime = '';
@@ -2504,8 +2774,47 @@ const paymentModal = ref<{
   showRecordSubModal: false
 })
 
+const hangHoaNccList = ref<string[]>([])
+
+function isInHangHoaNccList(val: string | undefined | null): boolean {
+  if (!val) return false
+  return hangHoaNccList.value.includes(String(val))
+}
+
+function matchHangHoaNcc(rawHint: string | undefined | null, fallbackText?: string): string {
+  if (hangHoaNccList.value.length === 0) return ''
+  const hint = String(rawHint || '').trim()
+  if (hint) {
+    const exact = hangHoaNccList.value.find(n => n.toLowerCase() === hint.toLowerCase())
+    if (exact) return exact
+    const sortedByLen = [...hangHoaNccList.value].sort((a, b) => b.length - a.length)
+    const partial = sortedByLen.find(
+      n => n.length >= 2 && (hint.toLowerCase().includes(n.toLowerCase()) || n.toLowerCase().includes(hint.toLowerCase()))
+    )
+    if (partial) return partial
+  }
+  if (fallbackText) {
+    const hay = String(fallbackText).toLowerCase()
+    const sortedNccs = [...hangHoaNccList.value].sort((a, b) => b.length - a.length)
+    for (const ncc of sortedNccs) {
+      if (ncc.length < 2) continue
+      const escaped = ncc.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const re = new RegExp(`(^|[_\\-\\s.,()\\[\\]])${escaped}($|[_\\-\\s.,()\\[\\]])`, 'i')
+      if (re.test(hay)) return ncc
+    }
+  }
+  return ''
+}
+
 const uniqueProductTypes = computed(() => {
   const map = new Map<string, string>()
+  hangHoaNccList.value.forEach(ncc => {
+    const original = String(ncc || '').trim()
+    const lower = original.toLowerCase()
+    if (lower && !map.has(lower)) {
+      map.set(lower, original)
+    }
+  })
   rows.value.forEach(r => {
     if (r.Ten_nha_cung_cap) {
       const original = String(r.Ten_nha_cung_cap).trim()
@@ -2515,7 +2824,7 @@ const uniqueProductTypes = computed(() => {
       }
     }
   })
-  return Array.from(map.values()).sort((a, b) => a.localeCompare(b))
+  return Array.from(map.values()).sort((a, b) => a.localeCompare(b, 'vi'))
 })
 
 watch([dateFrom, dateTo], ([newFrom, newTo], [oldFrom, oldTo]) => {
@@ -2872,9 +3181,41 @@ async function syncAllCustomersCongNo(currentRows?: any[]) {
 async function loadData() {
   loading.value = true
   try {
-    // ─── Read sale_report from Firebase ───
-    const saleReportSnapshot = await get(dbRef(database, 'sale_report'))
-    const saleReportData = saleReportSnapshot.val() || {}
+    // ─── Read sale_report & hang_hoa (NCC list) from Firebase in parallel ───
+    const [saleReportRes, hangHoaRes] = await Promise.allSettled([
+      get(dbRef(database, 'sale_report')),
+      get(dbRef(database, 'hang_hoa'))
+    ])
+
+    if (hangHoaRes.status === 'fulfilled') {
+      const hangHoaData = hangHoaRes.value.val() || {}
+      const nccMap = new Map<string, string>()
+      Object.values(hangHoaData).forEach((hh: any) => {
+        if (!hh || typeof hh !== 'object') return
+        const rawNcc = String(
+          hh.Ten_nha_cung_cap || hh.ten_nha_cung_cap || hh.Ma_nha_cung_cap || hh.ma_nha_cung_cap || ''
+        ).trim()
+        if (!rawNcc) return
+        const key = rawNcc.toLowerCase()
+        if (!nccMap.has(key)) {
+          nccMap.set(key, rawNcc)
+        } else {
+          // Ưu tiên giữ phiên bản viết hoa đồng nhất nếu có
+          const existingVal = nccMap.get(key) || ''
+          if (rawNcc === rawNcc.toUpperCase() && existingVal !== existingVal.toUpperCase()) {
+            nccMap.set(key, rawNcc)
+          }
+        }
+      })
+      hangHoaNccList.value = Array.from(nccMap.values()).sort((a, b) => a.localeCompare(b, 'vi'))
+    } else {
+      console.warn('Lỗi load hang_hoa (NCC) từ Firebase:', hangHoaRes.reason)
+    }
+
+    if (saleReportRes.status === 'rejected') {
+      throw saleReportRes.reason
+    }
+    const saleReportData = saleReportRes.value.val() || {}
     
     const mappedRows: any[] = []
     const backfillUpdates: Record<string, any> = {}
@@ -2895,6 +3236,11 @@ async function loadData() {
           : 'mot_lan'
       const hanTT = item.han_thanh_toan !== undefined ? String(item.han_thanh_toan || '') : ''
       const keHoachTT = Array.isArray(item.ke_hoach_thanh_toan) ? item.ke_hoach_thanh_toan : []
+      const danhSachFileKhac = Array.isArray(item.danh_sach_file_khac)
+        ? item.danh_sach_file_khac.filter(Boolean)
+        : (item.danh_sach_file_khac && typeof item.danh_sach_file_khac === 'object'
+            ? Object.values(item.danh_sach_file_khac).filter(Boolean)
+            : [])
 
       if (item.so_tien_da_thanh_toan === undefined || item.cong_no === undefined || item.thoi_gian_thanh_toan === undefined) {
         backfillUpdates[`sale_report/${firebaseKey}/so_tien_da_thanh_toan`] = daTT
@@ -2910,6 +3256,7 @@ async function loadData() {
         loai_thanh_toan: loaiTT,
         han_thanh_toan: hanTT,
         ke_hoach_thanh_toan: keHoachTT,
+        danh_sach_file_khac: danhSachFileKhac,
         _firebaseKey: firebaseKey, // lưu key Firebase để update/delete
         ID: item.ID || firebaseKey
       })
@@ -3210,6 +3557,71 @@ const getGroupDaThanhToan = (groupOrItems: any) => {
   return arr.reduce((s: number, r: any) => s + daThanhToan(r), 0)
 }
 
+function getPoContractContent(po: any, maxLen = 0): string {
+  if (!po) return 'Chưa có nội dung HĐ/PO'
+  const raw = String(
+    po.content_of_contract_PO ??
+    po.content_of_contract_po ??
+    po['content_of_contract/PO'] ??
+    po.Content_of_Contract_PO ??
+    po.ten_po ??
+    po.Ten_PO ??
+    po.so_hop_dong ??
+    po.ma_hop_dong ??
+    ''
+  ).trim()
+  const label = raw || 'Chưa có nội dung HĐ/PO'
+  if (maxLen > 0 && label.length > maxLen) {
+    return label.slice(0, maxLen).trimEnd() + '…'
+  }
+  return label
+}
+
+function getPaymentHistoryCustomerInfo(h: any): { tenKH: string; tenCongTy: string } {
+  let tenKH = String(h?.ten_khach_hang || h?.Ten_khach_hang || '').trim()
+  let tenCongTy = String(h?.ten_cong_ty || h?.Ten_cong_ty || '').trim()
+
+  const srId = String(h?.id_salereport || '').trim()
+  let matchedSr: any = null
+  if ((!tenKH || !tenCongTy) && srId) {
+    matchedSr = rows.value.find(
+      r => String(r.ID || '') === srId || String(r._firebaseKey || '') === srId
+    )
+    if (matchedSr) {
+      if (!tenKH) tenKH = String(matchedSr.Ten_khach_hang || matchedSr.ten_khach_hang || '').trim()
+      if (!tenCongTy) tenCongTy = String(matchedSr.Ten_cong_ty || matchedSr.ten_cong_ty || '').trim()
+    }
+  }
+
+  const lookupCode = String(h?.maKH || matchedSr?.Ma_khach_hang || matchedSr?.Ma_cong_ty || '').trim().toUpperCase()
+  if ((!tenKH || !tenCongTy) && lookupCode) {
+    const khEntries = Object.entries(khachHangMap.value || {})
+    for (const [khKey, khObj] of khEntries) {
+      if (!khObj || typeof khObj !== 'object') continue
+      const cMkh = String(khObj.ma_khach_hang || khObj.Ma_khach_hang || khKey || '').trim().toUpperCase()
+      const cMct = String(khObj.ma_cong_ty || khObj.Ma_cong_ty || '').trim().toUpperCase()
+      if ((cMkh && cMkh === lookupCode) || (cMct && cMct === lookupCode)) {
+        if (!tenKH) tenKH = String(khObj.ten_khach_hang || khObj.Ten_khach_hang || '').trim()
+        if (!tenCongTy) tenCongTy = String(khObj.ten_cong_ty || khObj.Ten_cong_ty || '').trim()
+        break
+      }
+    }
+  }
+
+  const m = paymentModal.value
+  if (!tenKH) {
+    tenKH = String(m.row?.Ten_khach_hang || m.row?.ten_khach_hang || '').trim()
+  }
+  if (!tenCongTy) {
+    tenCongTy = String(m.row?.Ten_cong_ty || m.row?.ten_cong_ty || '').trim()
+  }
+
+  return {
+    tenKH: tenKH || '—',
+    tenCongTy: tenCongTy || '—'
+  }
+}
+
 const getPaymentHistoryForPO = (r: any) => {
   if (!r) return []
   const srId = String(r.ID || r._firebaseKey || '')
@@ -3234,7 +3646,6 @@ const getCustomerTotalCongNo = (r: any) => {
 }
 
 function openPaymentModal(row: any) {
-  const remaining = congNo(row)
   const totalSau = tongSauVat(row)
   const existingMode: 'mot_lan' | 'nhieu_dot' =
     row.loai_thanh_toan === 'nhieu_dot' || (Array.isArray(row.ke_hoach_thanh_toan) && row.ke_hoach_thanh_toan.length > 1)
@@ -3262,12 +3673,8 @@ function openPaymentModal(row: any) {
 
   const singleDue = String(row.han_thanh_toan || existingSchedule[0]?.han_thanh_toan || '')
 
-  // Gợi ý số tiền thanh toán theo đợt tiếp theo chưa thu đủ (nếu chia nhiều đợt)
   const evalInst = evaluateInstallmentSchedule(totalSau, daThanhToan(row), existingMode, singleDue, existingSchedule)
   const nextUnpaid = evalInst.find(x => x.con_thieu > 0)
-  const defaultPayAmt = existingMode === 'nhieu_dot' && nextUnpaid
-    ? nextUnpaid.con_thieu
-    : (remaining > 0 ? remaining : 0)
   const defaultNote = existingMode === 'nhieu_dot' && nextUnpaid
     ? `Thanh toán Đợt ${nextUnpaid.dot} (${nextUnpaid.noi_dung})`
     : ''
@@ -3275,8 +3682,8 @@ function openPaymentModal(row: any) {
   paymentModal.value = {
     show: true,
     row,
-    amount: defaultPayAmt,
-    amountStr: defaultPayAmt > 0 ? defaultPayAmt.toLocaleString('vi-VN') : '',
+    amount: 0,
+    amountStr: '0',
     paymentTime: getFormattedNow(),
     note: defaultNote,
     saving: false,
@@ -3298,27 +3705,51 @@ function openRecordPaymentSubModal(evalInst?: any) {
   const m = paymentModal.value
   if (!m.row) return
   m.paymentTime = getFormattedNow()
+  m.amount = 0
+  m.amountStr = '0'
   if (evalInst) {
-    const amt = toNum(evalInst.con_thieu) > 0 ? toNum(evalInst.con_thieu) : toNum(evalInst.so_tien_phai_thu)
-    m.amount = amt
-    m.amountStr = amt > 0 ? amt.toLocaleString('vi-VN') : ''
     m.note = m.scheduleMode === 'nhieu_dot'
       ? `Thanh toán Đợt ${evalInst.dot} (${evalInst.noi_dung})`
       : 'Thanh toán 100% đơn hàng'
   } else {
-    const remaining = congNo(m.row)
     const nextUnpaid = modalEvaluatedInstallments.value.find(x => x.con_thieu > 0)
-    const defaultPayAmt = m.scheduleMode === 'nhieu_dot' && nextUnpaid
-      ? nextUnpaid.con_thieu
-      : (remaining > 0 ? remaining : 0)
-    m.amount = defaultPayAmt
-    m.amountStr = defaultPayAmt > 0 ? defaultPayAmt.toLocaleString('vi-VN') : ''
     m.note = m.scheduleMode === 'nhieu_dot' && nextUnpaid
       ? `Thanh toán Đợt ${nextUnpaid.dot} (${nextUnpaid.noi_dung})`
       : ''
   }
   m.showScheduleSubModal = false
   m.showRecordSubModal = true
+}
+
+function applyQuickInstallmentAmount(evalInst: any) {
+  const m = paymentModal.value
+  if (!m.row || !evalInst) return
+  const amt = toNum(evalInst.con_thieu) > 0 ? toNum(evalInst.con_thieu) : toNum(evalInst.so_tien_phai_thu)
+  m.amount = amt
+  m.amountStr = amt > 0 ? amt.toLocaleString('vi-VN') : '0'
+  m.note = m.scheduleMode === 'nhieu_dot'
+    ? `Thanh toán Đợt ${evalInst.dot} (${evalInst.noi_dung})`
+    : 'Thanh toán 100% đơn hàng'
+}
+
+function resetPaymentAmountToZero() {
+  paymentModal.value.amount = 0
+  paymentModal.value.amountStr = '0'
+}
+
+function onPaymentAmountFocus(e: FocusEvent) {
+  const target = e.target as HTMLInputElement
+  if (!target) return
+  if (paymentModal.value.amount === 0 || target.value.trim() === '0') {
+    requestAnimationFrame(() => target.select())
+  }
+}
+
+function onPaymentAmountBlur() {
+  if (!paymentModal.value.amount || paymentModal.value.amount <= 0) {
+    paymentModal.value.amount = 0
+    paymentModal.value.amountStr = '0'
+  }
 }
 
 const modalEvaluatedInstallments = computed(() => {
@@ -3595,21 +4026,23 @@ function setPaymentQuickPct(pct: number) {
   const base = remaining > 0 ? remaining : tongSauVat(paymentModal.value.row)
   const val = Math.round(base * (pct / 100))
   paymentModal.value.amount = val
-  paymentModal.value.amountStr = val > 0 ? val.toLocaleString('vi-VN') : ''
+  paymentModal.value.amountStr = val > 0 ? val.toLocaleString('vi-VN') : '0'
 }
 
 function onPaymentAmountInput(e: Event) {
   const target = e.target as HTMLInputElement
   const ie = e as InputEvent
   let num = 0
+  let rawDigits = ''
   if (ie.inputType === 'insertFromPaste' || ie.inputType === 'insertFromDrop') {
     num = Math.max(0, parsePastedNumber(target.value, 0, false))
+    rawDigits = String(num)
   } else {
-    const raw = target.value.replace(/[^0-9]/g, '')
-    num = raw ? Number(raw) : 0
+    rawDigits = target.value.replace(/[^0-9]/g, '')
+    num = rawDigits ? Number(rawDigits) : 0
   }
   paymentModal.value.amount = num
-  paymentModal.value.amountStr = num > 0 ? num.toLocaleString('vi-VN') : ''
+  paymentModal.value.amountStr = num > 0 ? num.toLocaleString('vi-VN') : (rawDigits === '' ? '' : '0')
   target.value = paymentModal.value.amountStr
 }
 
@@ -3620,7 +4053,7 @@ function onPaymentAmountPaste(e: ClipboardEvent) {
   if (!pasted) return
   const num = Math.max(0, parsePastedNumber(pasted, 0, false))
   paymentModal.value.amount = num
-  paymentModal.value.amountStr = num > 0 ? num.toLocaleString('vi-VN') : ''
+  paymentModal.value.amountStr = num > 0 ? num.toLocaleString('vi-VN') : '0'
   target.value = paymentModal.value.amountStr
 }
 
@@ -3639,6 +4072,8 @@ async function submitPayment() {
     const fbKey = r._firebaseKey || r.ID
     const srId = String(r.ID || fbKey)
     const maKH = String(r.Ma_khach_hang || r.Ma_cong_ty || genMaKhachHang(r.Ten_khach_hang || '', r.Ten_cong_ty || ''))
+    const tenKH = String(r.Ten_khach_hang || r.ten_khach_hang || '').trim()
+    const tenCongTy = String(r.Ten_cong_ty || r.ten_cong_ty || '').trim()
     const payTime = (m.paymentTime || '').trim() || getFormattedNow()
 
     const totalSau = tongSauVat(r)
@@ -3655,6 +4090,8 @@ async function submitPayment() {
       id: histKey,
       id_salereport: srId,
       maKH: maKH,
+      ten_khach_hang: tenKH,
+      ten_cong_ty: tenCongTy,
       so_tien_thanh_toan: payAmt,
       cong_no_con_lai: newCongNo,
       thoi_gian_thanh_toan: payTime,
@@ -3705,13 +4142,11 @@ async function submitPayment() {
     // Đồng bộ cong_no vào schema khach_hang
     await syncAllCustomersCongNo()
 
-    // Gợi ý số tiền đợt tiếp theo sau khi đã thu đợt hiện tại
     const nextEval = evaluateInstallmentSchedule(totalSau, newPaid, m.scheduleMode, m.singleDueDate, m.scheduleItems)
     const nextUnpaid = nextEval.find(x => x.con_thieu > 0)
-    const nextPayAmt = m.scheduleMode === 'nhieu_dot' && nextUnpaid ? nextUnpaid.con_thieu : (newCongNo > 0 ? newCongNo : 0)
 
-    m.amount = nextPayAmt
-    m.amountStr = nextPayAmt > 0 ? nextPayAmt.toLocaleString('vi-VN') : ''
+    m.amount = 0
+    m.amountStr = '0'
     m.paymentTime = getFormattedNow()
     m.note = m.scheduleMode === 'nhieu_dot' && nextUnpaid ? `Thanh toán Đợt ${nextUnpaid.dot} (${nextUnpaid.noi_dung})` : ''
     m.showRecordSubModal = false
@@ -4670,6 +5105,15 @@ function openTopCustomerModal(metric: string) {
 
 
 // ─── Modal edit ───
+interface OtherAttachmentItem {
+  id: string;
+  ten_file: string;
+  link_file: string;
+  ngay_tai?: string;
+  rawFile?: File;
+  previewUrl?: string;
+}
+
 interface ImportItem {
   id: number;
   row: any;
@@ -4687,6 +5131,7 @@ interface ImportItem {
   extractedCompany?: string;
   extractedRecipient?: string;
   extractedMST?: string;
+  extractedSourceLabel?: string;
   _approvedDbNameUpdate?: boolean;
   customerPickerOpen?: boolean;
   customerSearchQuery?: string;
@@ -4700,8 +5145,11 @@ interface ImportItem {
   base64Img?: string;
   rawFileBaoGia?: File;
   rawFileMuaHang?: File;
+  rawFileDxmh?: File;
   linkBaoGia?: string;
   linkMuaHang?: string;
+  linkDxmh?: string;
+  tenFileDxmh?: string;
   predictPct?: string;
   _origGross?: number;
   _origNet?: number;
@@ -4710,8 +5158,13 @@ interface ImportItem {
   previewMuaHang?: boolean;
   previewUrlBG?: string;
   previewUrlMH?: string;
+  previewUrlDXMH?: string;
   previewHtmlBG?: string;
   previewHtmlMH?: string;
+  previewHtmlDXMH?: string;
+  dxmhCustomerDetails?: Record<string, any>;
+  dxmhRecipient?: string;
+  otherFiles?: OtherAttachmentItem[];
   goodsList?: any[];
   goodsTotal?: any;
   soTienDaThanhToan?: number;
@@ -4728,6 +5181,18 @@ const isModalDirty = ref(false)
 
 function normalizeCustomerCompareStr(s: any): string {
   return String(s || '').trim().replace(/\s+/g, ' ').toLowerCase()
+}
+
+function hasDxmhOnItem(item: ImportItem | null | undefined): boolean {
+  if (!item) return false
+  return Boolean(
+    item.rawFileDxmh ||
+    item.previewUrlDXMH ||
+    item.linkDxmh ||
+    item.tenFileDxmh ||
+    item.row?.link_excel_dxmh ||
+    item.row?.ten_file_dxmh
+  )
 }
 
 const khachHangList = computed(() => {
@@ -4796,16 +5261,20 @@ function hasItemCustomerDiffWithQuote(item: ImportItem | null | undefined): bool
   const dbComp = String(dbCus.ten_cong_ty || '').trim()
   const dbRec = String(dbCus.ten_khach_hang || '').trim()
   const compDiff = extComp && dbComp && normalizeCustomerCompareStr(extComp) !== normalizeCustomerCompareStr(dbComp)
-  const recDiff = extRec && dbRec && normalizeCustomerCompareStr(extRec) !== normalizeCustomerCompareStr(dbRec)
+  const itemHasDxmh = item.extractedSourceLabel === 'DXMH' || hasDxmhOnItem(item)
+  const recDiff = !itemHasDxmh && extRec && dbRec && normalizeCustomerCompareStr(extRec) !== normalizeCustomerCompareStr(dbRec)
   return Boolean(compDiff || recDiff)
 }
 
 function applyItemCustomerSource(item: ImportItem, source: 'db' | 'quote') {
   if (!item) return
   const dbCus = getMatchedDbCustomerForItem(item)
+  const itemHasDxmh = hasDxmhOnItem(item)
   if (source === 'db' && dbCus) {
     item.customer = dbCus.ten_cong_ty || dbCus.ten_khach_hang || item.customer || ''
-    item.recipient = dbCus.ten_khach_hang || item.recipient || ''
+    item.recipient = itemHasDxmh
+      ? (item.dxmhRecipient || item.recipient || dbCus.ten_khach_hang || '')
+      : (dbCus.ten_khach_hang || item.recipient || '')
     item.mst = dbCus.mst || item.mst || ''
     item.linkedMaKH = dbCus.ma_khach_hang
     item.linkedMaCongTy = dbCus.ma_cong_ty || genMaCongTy(dbCus.ten_cong_ty || dbCus.ten_khach_hang)
@@ -4813,7 +5282,11 @@ function applyItemCustomerSource(item: ImportItem, source: 'db' | 'quote') {
     isModalDirty.value = true
   } else if (source === 'quote') {
     if (item.extractedCompany) item.customer = item.extractedCompany
-    if (item.extractedRecipient) item.recipient = item.extractedRecipient
+    if (itemHasDxmh) {
+      item.recipient = item.dxmhRecipient || (item.extractedSourceLabel === 'DXMH' ? item.extractedRecipient : '') || item.recipient || ''
+    } else if (item.extractedRecipient) {
+      item.recipient = item.extractedRecipient
+    }
     if (item.extractedMST) item.mst = item.extractedMST
     if (dbCus) {
       item.linkedMaKH = dbCus.ma_khach_hang
@@ -4858,7 +5331,9 @@ function selectDbCustomerForModalItem(item: ImportItem, cus: any) {
 
   item.mst = cus.mst || item.mst || ''
   item.customer = cus.ten_cong_ty || cus.ten_khach_hang || ''
-  item.recipient = cus.ten_khach_hang || ''
+  item.recipient = (hasDxmhOnItem(item) && item.dxmhRecipient)
+    ? item.dxmhRecipient
+    : (cus.ten_khach_hang || '')
   item.linkedMaKH = newMaKH
   item.linkedMaCongTy = cus.ma_cong_ty || genMaCongTy(cus.ten_cong_ty || cus.ten_khach_hang)
   item._approvedDbNameUpdate = false
@@ -4870,12 +5345,20 @@ function applyExtractedQuoteCustomerToModalItem(
   item: ImportItem,
   extractedCompany: string,
   extractedRecipient: string,
-  extractedMST: string
+  extractedMST: string,
+  sourceLabel: string = 'Báo giá'
 ) {
   if (!item) return
+  const isDxmhSource = sourceLabel === 'DXMH'
+  const itemHasDxmh = isDxmhSource || hasDxmhOnItem(item)
+  if (isDxmhSource && extractedRecipient) {
+    item.dxmhRecipient = extractedRecipient
+  }
+
   item.extractedCompany = extractedCompany || ''
   item.extractedRecipient = extractedRecipient || ''
   item.extractedMST = extractedMST || ''
+  item.extractedSourceLabel = sourceLabel
 
   let dbCus = getMatchedDbCustomerForItem(item)
   if (!dbCus) {
@@ -4898,31 +5381,45 @@ function applyExtractedQuoteCustomerToModalItem(
     const dbRec = String(dbCus.ten_khach_hang || '').trim()
     const dbMst = String(dbCus.mst || '').trim()
 
-    // Phương án A: Trường nào trong DB đang trống thì tự động bù từ Báo giá; trường nào DB đã có thì giữ mặc định theo DB
+    // Tên công ty & MST: ưu tiên DB nếu DB đã có, tự động bù nếu DB đang trống
     item.mst = dbMst || extractedMST || item.mst || ''
     item.customer = dbComp || extractedCompany || item.customer || ''
-    item.recipient = dbRec || extractedRecipient || item.recipient || ''
 
-    // Phương án B: Nếu tên trong Báo giá lệch với tên trong DB -> hỏi xác nhận + bật nút chuyển đổi nhanh 1-click
+    // Người nhận (Tên KH): nếu PO có File DXMH thì luôn lấy theo đúng File DXMH; chưa có File DXMH thì lấy Tên KH từ DB như cũ
+    if (isDxmhSource) {
+      item.recipient = extractedRecipient || dbRec || item.recipient || ''
+    } else if (itemHasDxmh) {
+      item.recipient = item.dxmhRecipient || item.recipient || dbRec || extractedRecipient || ''
+    } else {
+      item.recipient = dbRec || extractedRecipient || item.recipient || ''
+    }
+
+    // Nếu tên trong file lệch với tên trong DB -> hỏi xác nhận + bật nút chuyển đổi nhanh 1-click (bỏ qua recDiff khi PO lấy người nhận theo DXMH)
     const compDiff = extractedCompany && dbComp && normalizeCustomerCompareStr(extractedCompany) !== normalizeCustomerCompareStr(dbComp)
-    const recDiff = extractedRecipient && dbRec && normalizeCustomerCompareStr(extractedRecipient) !== normalizeCustomerCompareStr(dbRec)
+    const recDiff = !itemHasDxmh && extractedRecipient && dbRec && normalizeCustomerCompareStr(extractedRecipient) !== normalizeCustomerCompareStr(dbRec)
     if (compDiff || recDiff) {
-      let diffMsg = `Khách hàng đã có trong DB (Mã KH giữ nguyên: ${dbCus.ma_khach_hang}) nhưng tên trong File Báo giá có sự khác biệt:\n\n`
-      if (compDiff) diffMsg += `- Tên công ty:\n  + Trong DB: "${dbComp}"\n  + Trong Báo giá: "${extractedCompany}"\n`
-      if (recDiff) diffMsg += `- Người nhận (Tên KH):\n  + Trong DB: "${dbRec}"\n  + Trong Báo giá: "${extractedRecipient}"\n`
-      diffMsg += `\nBạn có muốn áp dụng tên theo File Báo giá và cập nhật lại tên hiển thị vào DB không?\n(Lưu ý: Mã KH "${dbCus.ma_khach_hang}" và Mã công ty vẫn giữ nguyên 100% để không ảnh hưởng Công nợ. Nếu bấm Hủy, hệ thống giữ tên DB và bạn vẫn có thể bấm nút chuyển đổi nhanh phía trên ô nhập).`
+      let diffMsg = `Khách hàng đã có trong DB (Mã KH giữ nguyên: ${dbCus.ma_khach_hang}) nhưng tên trong File ${sourceLabel} có sự khác biệt:\n\n`
+      if (compDiff) diffMsg += `- Tên công ty:\n  + Trong DB: "${dbComp}"\n  + Trong ${sourceLabel}: "${extractedCompany}"\n`
+      if (recDiff) diffMsg += `- Người nhận (Tên KH):\n  + Trong DB: "${dbRec}"\n  + Trong ${sourceLabel}: "${extractedRecipient}"\n`
+      diffMsg += `\nBạn có muốn áp dụng tên theo File ${sourceLabel} và cập nhật lại tên hiển thị vào DB không?\n(Lưu ý: Mã KH "${dbCus.ma_khach_hang}" và Mã công ty vẫn giữ nguyên 100% để không ảnh hưởng Công nợ. Nếu bấm Hủy, hệ thống giữ tên DB và bạn vẫn có thể bấm nút chuyển đổi nhanh phía trên ô nhập).`
 
       if (confirm(diffMsg)) {
         if (extractedCompany) item.customer = extractedCompany
-        if (extractedRecipient) item.recipient = extractedRecipient
+        if (!itemHasDxmh && extractedRecipient) item.recipient = extractedRecipient
         item._approvedDbNameUpdate = true
       }
     }
   } else {
     // Khách mới hoàn toàn
     item.customer = extractedCompany || item.customer || ''
-    item.recipient = extractedRecipient || item.recipient || item.customer || ''
-    if (extractedMST && !item.mst) item.mst = extractedMST
+    if (isDxmhSource) {
+      item.recipient = extractedRecipient || item.recipient || item.customer || ''
+    } else if (itemHasDxmh) {
+      item.recipient = item.dxmhRecipient || item.recipient || extractedRecipient || item.customer || ''
+    } else {
+      item.recipient = extractedRecipient || item.recipient || item.customer || ''
+    }
+    if (extractedMST) item.mst = extractedMST
     if (!item.mst) {
       const existingRow = rows.value.find(r => r.Ten_cong_ty?.trim().toLowerCase() === item.customer.toLowerCase() && r.MST)
       if (existingRow) item.mst = existingRow.MST
@@ -4934,6 +5431,8 @@ async function upsertCustomerFromModalItem(item: ImportItem) {
   const rawComp = String(item.customer || '').trim()
   const rawRec = String(item.recipient || '').trim()
   const rawMst = String(item.mst || '').trim()
+  const dxmhInfo = item.dxmhCustomerDetails || null
+  const itemHasDxmh = hasDxmhOnItem(item)
 
   const existingCus = getMatchedDbCustomerForItem(item)
   if (existingCus) {
@@ -4948,10 +5447,49 @@ async function upsertCustomerFromModalItem(item: ImportItem) {
     const khUpdates: Record<string, any> = {}
     if (!dbMst && rawMst) khUpdates.mst = rawMst
     if (!dbComp && rawComp) khUpdates.ten_cong_ty = rawComp
-    if (!dbRec && rawRec) khUpdates.ten_khach_hang = rawRec
+    if (!dbRec) {
+      const fallbackDbRec = itemHasDxmh
+        ? (String(dxmhInfo?.ten_khach_hang || '').trim() || rawRec)
+        : rawRec
+      if (fallbackDbRec) khUpdates.ten_khach_hang = fallbackDbRec
+    }
+
+    // Bổ sung thông tin chi tiết khách hàng trích xuất từ File DXMH (giống CustomerFirebase) cho các trường đang trống
+    if (dxmhInfo) {
+      const extraFields = [
+        'email_ca_nhan',
+        'so_dien_thoai_ca_nhan',
+        'so_dien_thoai_cong_ty',
+        'so_fax_cong_ty',
+        'dia_chi_cong_ty',
+        'email_cong_ty',
+        'website_cong_ty',
+        'ten_khach_hang_phu',
+        'so_dien_thoai_ca_nhan_phu',
+        'company',
+        'address',
+        'tel'
+      ]
+      extraFields.forEach(field => {
+        const incomingVal = String(dxmhInfo[field] || '').trim()
+        const currentVal = String(existingCus[field] || '').trim()
+        if (incomingVal && (!currentVal || item._approvedDbNameUpdate)) {
+          khUpdates[field] = incomingVal
+        }
+      })
+      if (!existingCus.sdt && (dxmhInfo.so_dien_thoai_ca_nhan || dxmhInfo.so_dien_thoai_cong_ty)) {
+        khUpdates.sdt = String(dxmhInfo.so_dien_thoai_ca_nhan || dxmhInfo.so_dien_thoai_cong_ty).trim()
+      }
+      if (!existingCus.email && (dxmhInfo.email_ca_nhan || dxmhInfo.email_cong_ty)) {
+        khUpdates.email = String(dxmhInfo.email_ca_nhan || dxmhInfo.email_cong_ty).trim()
+      }
+      if (!existingCus.dia_chi && (dxmhInfo.dia_chi_cong_ty || dxmhInfo.address)) {
+        khUpdates.dia_chi = String(dxmhInfo.dia_chi_cong_ty || dxmhInfo.address).trim()
+      }
+    }
 
     const compChanged = dbComp && rawComp && normalizeCustomerCompareStr(dbComp) !== normalizeCustomerCompareStr(rawComp)
-    const recChanged = dbRec && rawRec && normalizeCustomerCompareStr(dbRec) !== normalizeCustomerCompareStr(rawRec)
+    const recChanged = !itemHasDxmh && dbRec && rawRec && normalizeCustomerCompareStr(dbRec) !== normalizeCustomerCompareStr(rawRec)
     const mstChanged = dbMst && rawMst && dbMst !== rawMst
 
     if (compChanged || recChanged || mstChanged) {
@@ -4995,30 +5533,52 @@ async function upsertCustomerFromModalItem(item: ImportItem) {
     }
   }
 
-  // Khách hàng mới hoàn toàn -> Tạo bản ghi mới vào khach_hang
+  // Khách hàng mới hoàn toàn -> Tạo bản ghi mới vào khach_hang (Tương thích đầy đủ schema CustomerFirebase)
   const tenCongTy = rawComp || rawRec
   const tenKhachHang = rawRec || rawComp
-  const maKHGen = item.row?.Ma_khach_hang || genMaKhachHang(tenKhachHang, tenCongTy) || ('KH_UNKNOWN_' + Date.now())
-  const maCongTyGen = item.row?.Ma_cong_ty || genMaCongTy(tenCongTy || tenKhachHang) || ('CTY_UNKNOWN_' + Date.now())
+  const masterTenKH = (itemHasDxmh && String(dxmhInfo?.ten_khach_hang || '').trim())
+    ? String(dxmhInfo?.ten_khach_hang || '').trim()
+    : (tenKhachHang || tenCongTy)
+  const maKHGen = item.row?.Ma_khach_hang || genMaKhachHang(masterTenKH, tenCongTy) || ('KH_UNKNOWN_' + Date.now())
+  const maCongTyGen = item.row?.Ma_cong_ty || genMaCongTy(tenCongTy || masterTenKH) || ('CTY_UNKNOWN_' + Date.now())
   const mstVal = rawMst
 
   if (tenCongTy || tenKhachHang) {
     try {
       const newKhRef = push(dbRef(database, 'khach_hang'))
       const newKey = newKhRef.key
+      const sdtCaNhan = String(dxmhInfo?.so_dien_thoai_ca_nhan || '').trim()
+      const sdtCongTy = String(dxmhInfo?.so_dien_thoai_cong_ty || '').trim()
+      const emailCaNhan = String(dxmhInfo?.email_ca_nhan || '').trim()
+      const emailCongTy = String(dxmhInfo?.email_cong_ty || '').trim()
+      const diaChiCongTy = String(dxmhInfo?.dia_chi_cong_ty || dxmhInfo?.address || '').trim()
+
       const newKhPayload = {
         mst: mstVal,
         ma_cong_ty: maCongTyGen,
-        ten_cong_ty: tenCongTy || tenKhachHang,
+        ten_cong_ty: tenCongTy || masterTenKH,
         ma_khach_hang: maKHGen,
-        ten_khach_hang: tenKhachHang || tenCongTy,
-        sdt: '',
-        email: '',
-        dia_chi: '',
+        ten_khach_hang: masterTenKH,
+        email_ca_nhan: emailCaNhan,
+        so_dien_thoai_ca_nhan: sdtCaNhan,
+        so_dien_thoai_cong_ty: sdtCongTy,
+        so_fax_cong_ty: String(dxmhInfo?.so_fax_cong_ty || '').trim(),
+        dia_chi_cong_ty: diaChiCongTy,
+        email_cong_ty: emailCongTy,
+        website_cong_ty: String(dxmhInfo?.website_cong_ty || '').trim(),
+        ten_khach_hang_phu: String(dxmhInfo?.ten_khach_hang_phu || '').trim(),
+        so_dien_thoai_ca_nhan_phu: String(dxmhInfo?.so_dien_thoai_ca_nhan_phu || '').trim(),
+        company: String(dxmhInfo?.company || '').trim(),
+        address: String(dxmhInfo?.address || '').trim(),
+        tel: String(dxmhInfo?.tel || '').trim(),
+        sdt: sdtCaNhan || sdtCongTy,
+        email: emailCaNhan || emailCongTy,
+        dia_chi: diaChiCongTy,
         ngay_thanh_lap: '',
+        tagKH: [],
         doanh_so: 0,
         cong_no: 0,
-        ghi_chu: 'Tạo tự động từ Sale Report / Báo giá',
+        ghi_chu: dxmhInfo ? 'Tạo tự động từ Sale Report / File DXMH' : 'Tạo tự động từ Sale Report / Báo giá',
         created_time: new Date().toISOString(), createdAt: Date.now(),
         last_updated: new Date().toISOString()
       }
@@ -5274,12 +5834,18 @@ function openMultiEditModal(row: any, fieldToFocus?: string) {
       _approvedDbNameUpdate: false,
       customerPickerOpen: false,
       customerSearchQuery: '',
-      createdTime: fmtDate(row.created_time) || '',
+      createdTime: fmtDate(row.created_time) || getFormattedNow(),
       content: row.content_of_contract_PO || '',
       netCom: netCom(row),
       am: row.account_manager_name || '',
       taxPct: thuePct(row),
       scanning: false,
+      linkDxmh: row.link_excel_dxmh || '',
+      tenFileDxmh: row.ten_file_dxmh || '',
+      dxmhRecipient: (row.link_excel_dxmh || row.ten_file_dxmh) ? (row.Ten_khach_hang || '') : undefined,
+      otherFiles: Array.isArray(row.danh_sach_file_khac)
+        ? row.danh_sach_file_khac.filter(Boolean).map((f: any) => ({ ...f }))
+        : [],
       activeTab: 'po',
       goodsList: []
     }]
@@ -5317,6 +5883,10 @@ function openMultiEditModal(row: any, fieldToFocus?: string) {
         }
       }
     })
+  }
+
+  if (multiEditModal.value.items[0]) {
+    void autoRepairItemXlsOfficeLinks(multiEditModal.value.items[0])
   }
 }
 
@@ -5358,7 +5928,16 @@ function onRowSelectedInModal(item: ImportItem) {
   item.linkedMaCongTy = item.row.Ma_cong_ty || ''
   item.content = item.row.content_of_contract_PO || ''
   item.soPO = item.row.So_PO || ''
-  item.createdTime = fmtDate(item.row.created_time) || ''
+  item.createdTime = fmtDate(item.row.created_time) || getFormattedNow()
+  if (!item.rawFileDxmh) {
+    item.linkDxmh = item.row.link_excel_dxmh || ''
+    item.tenFileDxmh = item.row.ten_file_dxmh || ''
+  }
+  if (!item.otherFiles || item.otherFiles.length === 0) {
+    item.otherFiles = Array.isArray(item.row.danh_sach_file_khac)
+      ? item.row.danh_sach_file_khac.filter(Boolean).map((f: any) => ({ ...f }))
+      : []
+  }
   
   if (item.content) {
     item.doanhSoBan = doanhSoBan(item.row)
@@ -5377,12 +5956,368 @@ function onRowSelectedInModal(item: ImportItem) {
       item.taxPct = thuePct(item.row)
     }
   }
+  void autoRepairItemXlsOfficeLinks(item)
 }
 
 function getFormattedNow() {
   const d = new Date()
   const p = (n: any) => String(n).padStart(2, '0')
   return `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+}
+
+function normalizePoCreatedTime(raw: string | undefined | null, fallback?: string): string {
+  const s = String(raw || '').trim()
+  if (!s) {
+    return fallback ? (fmtDate(fallback) || fallback) : getFormattedNow()
+  }
+  const m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/)
+  if (m) {
+    const dd = m[1].padStart(2, '0')
+    const mm = m[2].padStart(2, '0')
+    const yyyy = m[3]
+    const hh = (m[4] || '00').padStart(2, '0')
+    const mi = (m[5] || '00').padStart(2, '0')
+    const ss = (m[6] || '00').padStart(2, '0')
+    return `${dd}/${mm}/${yyyy} ${hh}:${mi}:${ss}`
+  }
+  const parsed = parseDateStr(s)
+  if (parsed && !isNaN(parsed.getTime())) {
+    const p = (n: number) => String(n).padStart(2, '0')
+    return `${p(parsed.getDate())}/${p(parsed.getMonth() + 1)}/${parsed.getFullYear()} ${p(parsed.getHours())}:${p(parsed.getMinutes())}:${p(parsed.getSeconds())}`
+  }
+  return s
+}
+
+function createdTimeToDatetimeLocal(s: string | undefined | null): string {
+  const parsed = parseDateStr(String(s || '').trim())
+  if (!parsed || isNaN(parsed.getTime())) return ''
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${parsed.getFullYear()}-${p(parsed.getMonth() + 1)}-${p(parsed.getDate())}T${p(parsed.getHours())}:${p(parsed.getMinutes())}:${p(parsed.getSeconds())}`
+}
+
+function onCreatedTimePickerInput(item: ImportItem, e: Event) {
+  const val = (e.target as HTMLInputElement)?.value || ''
+  if (!val) return
+  const m = val.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/)
+  if (m) {
+    const existingSecMatch = String(item.createdTime || '').match(/:(\d{2})$/)
+    const sec = m[6] || (existingSecMatch ? existingSecMatch[1] : '00')
+    item.createdTime = `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}:${sec}`
+    isModalDirty.value = true
+  }
+}
+
+function openNativeDateTimePicker(e: Event) {
+  try {
+    (e.target as any)?.showPicker?.()
+  } catch (_) {
+    // Browser fallback when showPicker is unsupported
+  }
+}
+
+// ─── Chuẩn hóa file .xls (BIFF8) để Microsoft Office Online Viewer không lỗi XLSInvalidUrlFailure ───
+// Một số file .xls (tạo từ mẫu mua hàng cũ) chứa bản ghi BIFF8 SUPBOOK (0x01AE) trỏ tới đường dẫn mạng LAN UNC
+// có khoảng trắng / ký tự đặc biệt trong hostname (VD: "\\May 2\c\...\DT-THL7.xls"). Excel Online chuyển đường dẫn này
+// thành URI "file://May 2/..." và từ chối mở toàn bộ file với lỗi XLSInvalidUrlFailure.
+// Hàm dưới đây chỉ thay ký tự không hợp lệ trong phần hostname của bản ghi SUPBOOK bằng '_', giữ nguyên 100% dữ liệu & định dạng gốc.
+const verifiedCleanXlsUrls = new Set<string>()
+const repairedXlsUrlCache = new Map<string, string>()
+
+function sanitizeXlsArrayBufferForOfficeViewer(ab: ArrayBuffer): { buffer: ArrayBuffer; patched: boolean } {
+  try {
+    const bytes = new Uint8Array(ab)
+    // Kiểm tra chữ ký OLE2 Compound Document: D0 CF 11 E0 A1 B1 1A E1
+    if (
+      bytes.length < 512 ||
+      bytes[0] !== 0xD0 || bytes[1] !== 0xCF ||
+      bytes[2] !== 0x11 || bytes[3] !== 0xE0
+    ) {
+      return { buffer: ab, patched: false }
+    }
+
+    const cfbLib = (XLSX as any)?.CFB
+    if (!cfbLib || typeof cfbLib.read !== 'function' || typeof cfbLib.write !== 'function') {
+      return { buffer: ab, patched: false }
+    }
+
+    const cfb = cfbLib.read(bytes, { type: 'array' })
+    const wbEntry = (cfb?.FileIndex || []).find(
+      (e: any) => e && e.type === 2 && (e.name === 'Workbook' || e.name === 'Book')
+    )
+    if (!wbEntry || !wbEntry.content) {
+      return { buffer: ab, patched: false }
+    }
+
+    const stream = wbEntry.content instanceof Uint8Array
+      ? new Uint8Array(wbEntry.content)
+      : Uint8Array.from(wbEntry.content)
+    const dv = new DataView(stream.buffer, stream.byteOffset, stream.byteLength)
+
+    const isValidUriHostChar = (ch: number) =>
+      (ch >= 0x30 && ch <= 0x39) || // 0-9
+      (ch >= 0x41 && ch <= 0x5A) || // A-Z
+      (ch >= 0x61 && ch <= 0x7A) || // a-z
+      ch === 0x2D || ch === 0x2E || ch === 0x5F // - . _
+
+    let pos = 0
+    let patched = false
+
+    while (pos + 4 <= stream.byteLength) {
+      const recId = dv.getUint16(pos, true)
+      const recLen = dv.getUint16(pos + 2, true)
+      if (pos + 4 + recLen > stream.byteLength) break
+
+      // BIFF8 SUPBOOK (0x01AE) - External Workbook Reference
+      if (recId === 0x01AE && recLen > 5) {
+        const ctab = dv.getUint16(pos + 4, true)
+        const cch = dv.getUint16(pos + 6, true)
+        const flags = stream[pos + 8]
+        if (ctab > 0 && cch > 0 && (flags & ~0x0D) === 0) {
+          let charStart = pos + 9
+          if (flags & 0x08) charStart += 2 // cRun
+          if (flags & 0x04) charStart += 4 // cbExtRst
+          const isUtf16 = (flags & 0x01) !== 0
+          const byteLen = isUtf16 ? cch * 2 : cch
+
+          if (charStart + byteLen <= pos + 4 + recLen) {
+            const readChar = (i: number) =>
+              isUtf16 ? dv.getUint16(charStart + i * 2, true) : stream[charStart + i]
+            const writeChar = (i: number, code: number) => {
+              if (isUtf16) dv.setUint16(charStart + i * 2, code, true)
+              else stream[charStart + i] = code & 0xFF
+            }
+
+            // 1. Đường dẫn UNC mã hóa theo chuẩn MS-XLS VirtPath: \x01\x01@<host>\x03... hoặc \x01@<host>\x03...
+            let hostStart = -1
+            if (cch >= 4 && readChar(0) === 0x01 && readChar(1) === 0x01 && readChar(2) === 0x40) {
+              hostStart = 3
+            } else if (cch >= 3 && readChar(0) === 0x01 && readChar(1) === 0x40) {
+              hostStart = 2
+            }
+
+            // 2. Đường dẫn URI trực tiếp: file://<host>/..., http://<host>/..., https://<host>/...
+            if (hostStart === -1 && cch >= 8) {
+              let prefix = ''
+              const maxP = Math.min(cch, 10)
+              for (let k = 0; k < maxP; k++) prefix += String.fromCharCode(readChar(k))
+              const mUri = prefix.match(/^(?:file|https?):\/\//i)
+              if (mUri && prefix[mUri[0].length] !== '/') {
+                hostStart = mUri[0].length
+              }
+            }
+
+            if (hostStart !== -1) {
+              for (let i = hostStart; i < cch; i++) {
+                const ch = readChar(i)
+                if (ch === 0x03 || ch === 0x5C || ch === 0x2F || ch === 0x3A) break
+                if (!isValidUriHostChar(ch)) {
+                  writeChar(i, 0x5F) // '_'
+                  patched = true
+                }
+              }
+            }
+          }
+        }
+      }
+
+      pos += 4 + recLen
+    }
+
+    if (!patched) {
+      return { buffer: ab, patched: false }
+    }
+
+    wbEntry.content = stream
+    const written = cfbLib.write(cfb, { type: 'array' })
+    const outBytes: Uint8Array = written instanceof Uint8Array ? written : Uint8Array.from(written)
+    const outBuffer = outBytes.buffer.slice(outBytes.byteOffset, outBytes.byteOffset + outBytes.byteLength) as ArrayBuffer
+    return { buffer: outBuffer, patched: true }
+  } catch (err) {
+    console.warn('Không thể chuẩn hóa SUPBOOK trong file .xls, giữ nguyên file gốc:', err)
+    return { buffer: ab, patched: false }
+  }
+}
+
+async function sanitizeXlsFileForOfficeViewer(file: any): Promise<any> {
+  if (!(file instanceof Blob)) return file
+  const fileName = (file instanceof File ? file.name : '') || 'workbook.xls'
+  const lowerName = fileName.toLowerCase()
+  const isLikelyXls =
+    lowerName.endsWith('.xls') ||
+    file.type === 'application/vnd.ms-excel'
+  if (!isLikelyXls || file.size < 512 || file.size > 25 * 1024 * 1024) {
+    return file
+  }
+  try {
+    const ab = await file.arrayBuffer()
+    const { buffer, patched } = sanitizeXlsArrayBufferForOfficeViewer(ab)
+    if (!patched) return file
+    return new File([buffer], fileName, {
+      type: file.type || 'application/vnd.ms-excel',
+      lastModified: file instanceof File ? file.lastModified : Date.now()
+    })
+  } catch (_) {
+    return file
+  }
+}
+
+async function uploadRawToCloudinary(payload: any): Promise<string> {
+  try {
+    const formData = new FormData()
+    formData.append('upload_preset', 'upload_file')
+    formData.append('file', payload)
+    const uploadRes = await fetch('https://api.cloudinary.com/v1_1/db6fzs3rh/auto/upload', {
+      method: 'POST',
+      body: formData
+    }).then(r => r.json())
+    return uploadRes.secure_url || ''
+  } catch (e) {
+    console.error('Lỗi upload file lên Cloudinary:', e)
+    return ''
+  }
+}
+
+async function uploadFileToCloudinary(file: any): Promise<string> {
+  const prepared = await sanitizeXlsFileForOfficeViewer(file)
+  const url = await uploadRawToCloudinary(prepared)
+  if (url && /\.xls(?:$|\?)/i.test(url)) {
+    verifiedCleanXlsUrls.add(url)
+  }
+  return url
+}
+
+async function repairSingleXlsCloudinaryUrl(rawUrl: string, fileNameHint?: string): Promise<string> {
+  const url = String(rawUrl || '').trim()
+  if (!url || !url.startsWith('https://res.cloudinary.com/')) return ''
+  const hintLower = String(fileNameHint || '').trim().toLowerCase()
+  const isXls = hintLower.endsWith('.xls') || /\.xls(?:$|\?)/i.test(url)
+  if (!isXls || hintLower.endsWith('.xlsx')) return ''
+
+  if (verifiedCleanXlsUrls.has(url)) return ''
+  const cached = repairedXlsUrlCache.get(url)
+  if (cached) return cached
+
+  try {
+    const resp = await fetch(url)
+    if (!resp.ok) return ''
+    const ab = await resp.arrayBuffer()
+    const { buffer, patched } = sanitizeXlsArrayBufferForOfficeViewer(ab)
+    if (!patched) {
+      verifiedCleanXlsUrls.add(url)
+      return ''
+    }
+    const cleanName = (fileNameHint && fileNameHint.toLowerCase().endsWith('.xls'))
+      ? fileNameHint
+      : 'workbook.xls'
+    const fixedFile = new File([buffer], cleanName, { type: 'application/vnd.ms-excel' })
+    const newUrl = await uploadRawToCloudinary(fixedFile)
+    if (newUrl) {
+      verifiedCleanXlsUrls.add(newUrl)
+      repairedXlsUrlCache.set(url, newUrl)
+      return newUrl
+    }
+  } catch (err) {
+    console.warn('Không thể tự động sửa link .xls cũ cho Office Viewer:', err)
+  }
+  return ''
+}
+
+async function autoRepairItemXlsOfficeLinks(item: ImportItem | undefined | null) {
+  if (!item || !item.row) return
+  const targetRow = item.row
+  const firebaseKey = targetRow._firebaseKey || targetRow.ID
+  const dbPatch: Record<string, any> = {}
+
+  if (!item.rawFileMuaHang && targetRow.link_excel_mua_hang) {
+    const oldUrl = targetRow.link_excel_mua_hang
+    const fixedUrl = await repairSingleXlsCloudinaryUrl(oldUrl, targetRow.ten_file_mua_hang)
+    if (fixedUrl && !item.rawFileMuaHang && targetRow.link_excel_mua_hang === oldUrl) {
+      targetRow.link_excel_mua_hang = fixedUrl
+      if (item.previewUrlMH === oldUrl) item.previewUrlMH = fixedUrl
+      dbPatch.link_excel_mua_hang = fixedUrl
+    }
+  }
+
+  if (!item.rawFileBaoGia && targetRow.link_excel_bao_gia) {
+    const oldUrl = targetRow.link_excel_bao_gia
+    const fixedUrl = await repairSingleXlsCloudinaryUrl(oldUrl, targetRow.ten_file_bao_gia)
+    if (fixedUrl && !item.rawFileBaoGia && targetRow.link_excel_bao_gia === oldUrl) {
+      targetRow.link_excel_bao_gia = fixedUrl
+      if (item.previewUrlBG === oldUrl) item.previewUrlBG = fixedUrl
+      dbPatch.link_excel_bao_gia = fixedUrl
+    }
+  }
+
+  if (!item.rawFileDxmh && targetRow.link_excel_dxmh) {
+    const oldUrl = targetRow.link_excel_dxmh
+    const fixedUrl = await repairSingleXlsCloudinaryUrl(oldUrl, targetRow.ten_file_dxmh)
+    if (fixedUrl && !item.rawFileDxmh && targetRow.link_excel_dxmh === oldUrl) {
+      targetRow.link_excel_dxmh = fixedUrl
+      if (item.linkDxmh === oldUrl) item.linkDxmh = fixedUrl
+      if (item.previewUrlDXMH === oldUrl) item.previewUrlDXMH = fixedUrl
+      dbPatch.link_excel_dxmh = fixedUrl
+    }
+  }
+
+  if (Array.isArray(item.otherFiles) && item.otherFiles.length > 0) {
+    let otherChanged = false
+    for (const fk of item.otherFiles) {
+      if (!fk || fk.rawFile || !fk.link_file) continue
+      const oldUrl = fk.link_file
+      const fixedUrl = await repairSingleXlsCloudinaryUrl(oldUrl, fk.ten_file)
+      if (fixedUrl && !fk.rawFile && fk.link_file === oldUrl) {
+        fk.link_file = fixedUrl
+        otherChanged = true
+      }
+    }
+    if (otherChanged && Array.isArray(targetRow.danh_sach_file_khac)) {
+      const updatedList = item.otherFiles
+        .filter(fk => fk && fk.link_file)
+        .map(fk => ({
+          id: fk.id,
+          ten_file: fk.ten_file,
+          link_file: fk.link_file,
+          ngay_tai: fk.ngay_tai || ''
+        }))
+      targetRow.danh_sach_file_khac = updatedList
+      dbPatch.danh_sach_file_khac = updatedList
+    }
+  }
+
+  if (firebaseKey && Object.keys(dbPatch).length > 0) {
+    try {
+      await update(dbRef(database, `sale_report/${firebaseKey}`), dbPatch)
+    } catch (err) {
+      console.warn('Không thể cập nhật link .xls đã sửa lên Firebase:', err)
+    }
+  }
+}
+
+async function resolveUploadedOtherFiles(item: ImportItem, nowStr: string) {
+  const list = Array.isArray(item.otherFiles) ? item.otherFiles : []
+  const saved: Array<{ id: string; ten_file: string; link_file: string; ngay_tai: string }> = []
+  for (let i = 0; i < list.length; i++) {
+    const fk = list[i]
+    if (!fk) continue
+    let finalLink = String(fk.link_file || '').trim()
+    if (!finalLink && fk.rawFile) {
+      finalLink = await uploadFileToCloudinary(fk.rawFile)
+      if (!finalLink) {
+        alert(`⚠️ Không thể tải file "${fk.ten_file}" lên Cloudinary. Vui lòng thử lại.`)
+        continue
+      }
+      fk.link_file = finalLink
+    }
+    if (finalLink) {
+      saved.push({
+        id: fk.id || ('FK_' + Date.now() + '_' + i + '_' + Math.floor(Math.random() * 1000)),
+        ten_file: fk.ten_file || ('File ' + (i + 1)),
+        link_file: finalLink,
+        ngay_tai: fk.ngay_tai || nowStr
+      })
+    }
+  }
+  return saved
 }
 
 function formatNgayTaoHopDong() {
@@ -5436,24 +6371,30 @@ async function saveMultiModal() {
         const bulkSaleReportItems = [];
         
         for (const item of validItems) {
-          const uploadCloudinary = async (file: any) => {
-            try {
-              const formData = new FormData()
-              formData.append('upload_preset', 'upload_file')
-              formData.append('file', file)
-              const uploadRes = await fetch('https://api.cloudinary.com/v1_1/db6fzs3rh/auto/upload', { method: 'POST', body: formData }).then(r => r.json())
-              return uploadRes.secure_url || ''
-            } catch (e) { return '' }
-          }
-  
           let uploadedUrl = ''
           if (item.base64Img) {
-            uploadedUrl = await uploadCloudinary('data:image/jpeg;base64,' + item.base64Img)
+            uploadedUrl = await uploadFileToCloudinary('data:image/jpeg;base64,' + item.base64Img)
           }
   
-          let linkBG = '', linkMH = '', tenBG = '', tenMH = ''
-          if (item.rawFileBaoGia) { linkBG = await uploadCloudinary(item.rawFileBaoGia); tenBG = item.rawFileBaoGia.name; }
-          if (item.rawFileMuaHang) { linkMH = await uploadCloudinary(item.rawFileMuaHang); tenMH = item.rawFileMuaHang.name; }
+          let linkBG = '', linkMH = '', linkDXMH = '', tenBG = '', tenMH = '', tenDXMH = ''
+          if (item.rawFileBaoGia) {
+            linkBG = (item.previewUrlBG && item.previewUrlBG.startsWith('https://res.cloudinary.com/'))
+              ? item.previewUrlBG
+              : await uploadFileToCloudinary(item.rawFileBaoGia);
+            tenBG = item.rawFileBaoGia.name;
+          }
+          if (item.rawFileMuaHang) {
+            linkMH = (item.previewUrlMH && item.previewUrlMH.startsWith('https://res.cloudinary.com/'))
+              ? item.previewUrlMH
+              : await uploadFileToCloudinary(item.rawFileMuaHang);
+            tenMH = item.rawFileMuaHang.name;
+          }
+          if (item.rawFileDxmh) {
+            linkDXMH = (item.previewUrlDXMH && item.previewUrlDXMH.startsWith('https://res.cloudinary.com/'))
+              ? item.previewUrlDXMH
+              : await uploadFileToCloudinary(item.rawFileDxmh);
+            tenDXMH = item.rawFileDxmh.name;
+          }
   
           const maHD = 'HD' + Date.now() + Math.floor(Math.random() * 10000);
           hdLen++;
@@ -5478,7 +6419,9 @@ async function saveMultiModal() {
           const initPaid = toNum(item.soTienDaThanhToan);
           const initCongNo = Math.max(0, tSau - initPaid);
           const nowStr = getFormattedNow();
+          const finalCreatedTime = normalizePoCreatedTime(item.createdTime, nowStr);
           const initPayTime = initPaid > 0 ? nowStr : '';
+          const savedOtherFiles = await resolveUploadedOtherFiles(item, nowStr);
 
           const srID = 'SR_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
   
@@ -5493,7 +6436,7 @@ async function saveMultiModal() {
               Ma_cong_ty: maCongTyGen,
               Ten_cong_ty: tenCongTy,
               MST: mstVal,
-              created_time: item.createdTime || nowStr,
+              created_time: finalCreatedTime,
               content_of_contract_PO: item.content,
               Tong_tien_truoc_thueVAT: tTruoc,
               Tong_thueVAT: tVat,
@@ -5511,8 +6454,11 @@ async function saveMultiModal() {
               img_save: uploadedUrl,
               link_excel_bao_gia: linkBG,
               link_excel_mua_hang: linkMH,
+              link_excel_dxmh: linkDXMH,
               ten_file_bao_gia: tenBG,
-              ten_file_mua_hang: tenMH
+              ten_file_mua_hang: tenMH,
+              ten_file_dxmh: tenDXMH,
+              danh_sach_file_khac: savedOtherFiles
           });
         }
 
@@ -5544,25 +6490,9 @@ async function saveMultiModal() {
       } else {
         // Update sequence
       for (const item of validItems) {
-        const uploadCloudinary = async (file: any) => {
-          try {
-            const formData = new FormData()
-            formData.append('upload_preset', 'upload_file')
-            formData.append('file', file)
-            const uploadRes = await fetch('https://api.cloudinary.com/v1_1/db6fzs3rh/auto/upload', {
-              method: 'POST',
-              body: formData
-            }).then(r => r.json())
-            return uploadRes.secure_url || ''
-          } catch (e) {
-            console.error('Lỗi upload file:', e)
-            return ''
-          }
-        }
-
         let uploadedUrl = ''
         if (item.base64Img) {
-          uploadedUrl = await uploadCloudinary('data:image/jpeg;base64,' + item.base64Img)
+          uploadedUrl = await uploadFileToCloudinary('data:image/jpeg;base64,' + item.base64Img)
           if (!uploadedUrl) {
             alert('Lỗi upload ảnh lên Cloudinary')
           }
@@ -5570,16 +6500,32 @@ async function saveMultiModal() {
 
         let linkBG = ''
         let linkMH = ''
+        let linkDXMH = ''
         let tenBG = ''
         let tenMH = ''
+        let tenDXMH = ''
         if (item.rawFileBaoGia) {
-          linkBG = await uploadCloudinary(item.rawFileBaoGia)
+          linkBG = (item.previewUrlBG && item.previewUrlBG.startsWith('https://res.cloudinary.com/'))
+            ? item.previewUrlBG
+            : await uploadFileToCloudinary(item.rawFileBaoGia)
           tenBG = item.rawFileBaoGia.name
         }
         if (item.rawFileMuaHang) {
-          linkMH = await uploadCloudinary(item.rawFileMuaHang)
+          linkMH = (item.previewUrlMH && item.previewUrlMH.startsWith('https://res.cloudinary.com/'))
+            ? item.previewUrlMH
+            : await uploadFileToCloudinary(item.rawFileMuaHang)
           tenMH = item.rawFileMuaHang.name
         }
+        if (item.rawFileDxmh) {
+          linkDXMH = (item.previewUrlDXMH && item.previewUrlDXMH.startsWith('https://res.cloudinary.com/'))
+            ? item.previewUrlDXMH
+            : await uploadFileToCloudinary(item.rawFileDxmh)
+          tenDXMH = item.rawFileDxmh.name
+        }
+
+        const nowStr = getFormattedNow()
+        const finalCreatedTime = normalizePoCreatedTime(item.createdTime, item.row?.created_time || nowStr)
+        const savedOtherFiles = await resolveUploadedOtherFiles(item, nowStr)
 
         const maHD = item.row.ma_hop_dong || 'HD' + Date.now();
         
@@ -5613,6 +6559,8 @@ async function saveMultiModal() {
         const updatePayload: Record<string, any> = {
             ma_hop_dong: maHD,
             so_hop_dong: soHD,
+            So_PO: item.soPO,
+            created_time: finalCreatedTime,
             Ma_khach_hang: maKHGen,
             Ten_khach_hang: tenKhachHang || tenCongTy,
             Ma_cong_ty: maCongTyGen,
@@ -5633,10 +6581,12 @@ async function saveMultiModal() {
             thue_chenh_lech_gia: item.grossCom * (item.taxPct / 100),
             con_lai: item.netCom,
             content_of_contract_PO: item.content,
+            danh_sach_file_khac: savedOtherFiles
         };
         if (uploadedUrl) updatePayload.img_save = uploadedUrl;
         if (linkBG) { updatePayload.link_excel_bao_gia = linkBG; updatePayload.ten_file_bao_gia = tenBG; }
         if (linkMH) { updatePayload.link_excel_mua_hang = linkMH; updatePayload.ten_file_mua_hang = tenMH; }
+        if (linkDXMH) { updatePayload.link_excel_dxmh = linkDXMH; updatePayload.ten_file_dxmh = tenDXMH; }
 
         // ─── Update sale_report in Firebase ───
         const firebaseKey = item.row._firebaseKey || item.row.ID;
@@ -5746,11 +6696,14 @@ async function saveMultiModal() {
         }
 
         // ─── Update local state ───
-        item.row.MST = item.mst
+        item.row.So_PO = item.soPO
+        item.row.created_time = finalCreatedTime
+        item.row.content_of_contract_PO = item.content
+        item.row.MST = mstVal
         item.row.Ma_khach_hang = maKHGen
-        item.row.Ten_khach_hang = item.recipient || item.customer
+        item.row.Ten_khach_hang = tenKhachHang || tenCongTy
         item.row.Ma_cong_ty = maCongTyGen
-        item.row.Ten_cong_ty = item.customer
+        item.row.Ten_cong_ty = tenCongTy
         item.row.account_manager_name = item.am
         item.row.Ten_nha_cung_cap = item.productType
         item.row.Tong_tien_truoc_thueVAT = tTruoc
@@ -5765,6 +6718,10 @@ async function saveMultiModal() {
         item.row.phan_tram_thue_chenh_lech_gia = item.taxPct
         item.row.thue_chenh_lech_gia = item.grossCom * (item.taxPct / 100)
         item.row.con_lai = item.netCom
+        item.row.danh_sach_file_khac = savedOtherFiles
+        if (uploadedUrl) {
+          item.row.img_save = uploadedUrl
+        }
         if (linkBG) {
           item.row.link_excel_bao_gia = linkBG
           item.row.ten_file_bao_gia = tenBG
@@ -5772,6 +6729,10 @@ async function saveMultiModal() {
         if (linkMH) {
           item.row.link_excel_mua_hang = linkMH
           item.row.ten_file_mua_hang = tenMH
+        }
+        if (linkDXMH) {
+          item.row.link_excel_dxmh = linkDXMH
+          item.row.ten_file_dxmh = tenDXMH
         }
       }
       await syncAllCustomersCongNo()
@@ -5854,6 +6815,385 @@ function triggerImport(r: any, type: 'bao_gia' | 'mua_hang' | 'update_item_mua_h
     fileInput.value.value = ''
     fileInput.value.click()
   }
+}
+
+// ─── Import File DXMH (Đề xuất mua hàng) ───
+const dxmhInput = ref<HTMLInputElement | null>(null)
+const dxmhTargetItem = ref<ImportItem | null>(null)
+
+function triggerDxmhImport(targetItem: ImportItem | null) {
+  dxmhTargetItem.value = targetItem
+  if (dxmhInput.value) {
+    dxmhInput.value.multiple = targetItem === null
+    dxmhInput.value.value = ''
+    dxmhInput.value.click()
+  }
+}
+
+function parseDxmhExcelBuffer(arrayBuffer: ArrayBuffer, fileName: string) {
+  const workbook = XLSX.read(arrayBuffer, { type: 'array' })
+  const sheetNamePO = workbook.SheetNames.find(name => name.toUpperCase().trim() === 'PO')
+  const sheetNameDH = workbook.SheetNames.find(name => {
+    const upper = name.toUpperCase().trim()
+    return upper.includes('ĐƠN HÀNG') || upper.includes('DON HANG')
+  })
+  const worksheet = sheetNamePO
+    ? workbook.Sheets[sheetNamePO]
+    : (sheetNameDH ? workbook.Sheets[sheetNameDH] : workbook.Sheets[workbook.SheetNames[0]])
+
+  let previewHtml = XLSX.utils.sheet_to_html(worksheet)
+  previewHtml = previewHtml.replace(
+    /<table/gi,
+    '<table class="preview-excel-table" style="border-collapse:collapse; font-family: \'Calibri\', sans-serif; font-size: 13px; color: #1e293b; background: white; margin: 0;"'
+  )
+  previewHtml = previewHtml.replace(
+    /<td/gi,
+    '<td style="border: 1px solid #cbd5e1; padding: 6px 10px; white-space: nowrap; min-width: 60px; text-align: left; vertical-align: bottom;"'
+  )
+
+  const rawData = XLSX.utils.sheet_to_json<any[]>(worksheet, { header: 1, defval: '' })
+  const record: Record<string, string> = {}
+  let extractedSoPO = ''
+  let vendorHint = ''
+
+  for (let r = 0; r < rawData.length; r++) {
+    const row = rawData[r]
+    if (!row || !Array.isArray(row)) continue
+
+    // 1. Trích xuất Số PO & Hãng/NCC trên dòng "PO/HĐ (*)"
+    const col0 = String(row[0] ?? '').trim()
+    const col1 = String(row[1] ?? '').trim()
+    if (/^(PO\s*(\/\s*H[ĐD])?|SỐ\s*PO|SO\s*PO)/i.test(col0)) {
+      if (!extractedSoPO && col1 && !/^(PO|SỐ|SO)/i.test(col1)) {
+        extractedSoPO = col1
+      }
+      if (!vendorHint && row[2] !== undefined && String(row[2]).trim() !== '') {
+        vendorHint = String(row[2]).trim()
+      }
+    } else if (!col0 && /^(PO\s*(\/\s*H[ĐD])?|SỐ\s*PO|SO\s*PO)/i.test(col1)) {
+      const col2 = String(row[2] ?? '').trim()
+      if (!extractedSoPO && col2) {
+        extractedSoPO = col2
+      }
+      if (!vendorHint && row[3] !== undefined && String(row[3]).trim() !== '') {
+        vendorHint = String(row[3]).trim()
+      }
+    }
+
+    // 2. Trích xuất thông tin khách hàng giống hệt CustomerFirebase.vue
+    const label1 = String(row[0] || row[1] || '').trim()
+    let val1: any = row[2] !== undefined ? row[2] : ''
+    if (row[0] && row[1] && String(row[0]).trim() !== label1) val1 = row[1]
+    const val1Str = String(val1 ?? '').trim()
+
+    if (label1.includes('Company')) record.CUS_COMPANY = val1Str
+    if (label1.includes('Address')) record.CUS_ADDRESS = val1Str
+    if (label1.includes('Tel')) record.CUS_TEL = val1Str
+    if (label1 === 'Fax' || label1.includes('Fax')) record.CUS_FAX = val1Str
+    if (label1.includes('Contact')) record.CUS_CONTACT = val1Str
+    if (label1.includes('Email')) {
+      if (r < 13) record.CUS_EMAIL = val1Str
+      else record.INV_EMAIL = val1Str
+    }
+    if (label1 === 'Mobile' || label1.startsWith('Mobile')) record.CUS_MOBILE = val1Str
+    if (label1 === 'Website' || label1.startsWith('Website')) record.CUS_WEBSITE = val1Str
+
+    if (label1.includes('Công ty')) record.INV_CONG_TY = val1Str
+    if (label1 === 'Địa chỉ (*)' || label1 === 'Địa chỉ' || label1.startsWith('Địa chỉ')) {
+      if (r > 12) record.INV_DIA_CHI = val1Str
+    }
+    if (label1.includes('MST') || label1.toLowerCase().includes('mã số thuế')) {
+      record.INV_MST = val1Str
+    }
+
+    const label2 = String(row[3] || row[4] || '').trim()
+    let val2: any = row[5] !== undefined ? row[5] : ''
+    if (row[3] && row[4] && String(row[3]).trim() !== label2) val2 = row[4]
+    const val2Str = String(val2 ?? '').trim()
+
+    if (label2.includes('Người nhận')) record.DEL_NGUOI_NHAN = val2Str
+    if (label2.includes('Số điện thoại')) record.DEL_SDT = val2Str
+  }
+
+  const content = fileName.replace(/\.[^/.]+$/, '')
+
+  // Fallback Số PO từ đầu tên file (VD: 684_DXMH_...)
+  if (!extractedSoPO) {
+    const poFromName = content.match(/^(\d{1,6})(?:[_\-\s.]|$)/)
+    if (poFromName) extractedSoPO = poFromName[1]
+  }
+
+  // Chuẩn hóa MST (loại bỏ khoảng trắng bên trong như "0102 003 289" -> "0102003289")
+  const mst = String(record.INV_MST || '').replace(/\s+/g, '').trim()
+
+  const contactRaw = String(record.CUS_CONTACT || '').trim()
+  const nguoiNhan = String(record.DEL_NGUOI_NHAN || '').trim()
+  const tenKH = contactRaw || nguoiNhan
+  // Tên người nhận trên PO lấy chuẩn theo File DXMH: ưu tiên "Người nhận hàng (*)" (Mục III), fallback "Contact (*)" (Mục I)
+  const nguoiNhanDxmh = nguoiNhan || contactRaw
+  const sdt = contactRaw ? String(record.CUS_MOBILE || '').trim() : String(record.DEL_SDT || '').trim()
+  const email = contactRaw ? String(record.CUS_EMAIL || '').trim() : ''
+
+  const hasSecondary = Boolean(contactRaw && nguoiNhan && contactRaw !== nguoiNhan)
+  const tenKHPhu = hasSecondary ? nguoiNhan : ''
+  const sdtPhu = hasSecondary ? String(record.DEL_SDT || '').trim() : ''
+  const tenCT = String(record.INV_CONG_TY || record.CUS_COMPANY || '').trim()
+
+  const dxmhCustomerDetails = {
+    ten_khach_hang: tenKH,
+    email_ca_nhan: email,
+    so_dien_thoai_ca_nhan: sdt,
+    ten_cong_ty: tenCT,
+    so_dien_thoai_cong_ty: String(record.CUS_TEL || '').trim(),
+    so_fax_cong_ty: String(record.CUS_FAX || '').trim(),
+    dia_chi_cong_ty: String(record.INV_DIA_CHI || record.CUS_ADDRESS || '').trim(),
+    email_cong_ty: String(record.INV_EMAIL || record.CUS_EMAIL || '').trim(),
+    website_cong_ty: String(record.CUS_WEBSITE || '').trim(),
+    mst,
+    ten_khach_hang_phu: tenKHPhu,
+    so_dien_thoai_ca_nhan_phu: sdtPhu,
+    company: String(record.CUS_COMPANY || '').trim(),
+    address: String(record.CUS_ADDRESS || '').trim(),
+    tel: String(record.CUS_TEL || '').trim()
+  }
+
+  // Gợi ý thời gian PO từ tên file (VD: ..._08.10.2026) hoặc thời gian hiện tại (người dùng được phép sửa tự do)
+  let extractedTime = getFormattedNow()
+  const dateInName = content.match(/(?:^|[_\-\s])(\d{1,2})[.\-](\d{1,2})[.\-](20\d{2})(?:$|[_\-\s])/)
+  if (dateInName) {
+    const dNum = Number(dateInName[1])
+    const mNum = Number(dateInName[2])
+    const yNum = Number(dateInName[3])
+    if (dNum >= 1 && dNum <= 31 && mNum >= 1 && mNum <= 12) {
+      const now = new Date()
+      const p = (n: number) => String(n).padStart(2, '0')
+      extractedTime = `${p(dNum)}/${p(mNum)}/${yNum} ${p(now.getHours())}:${p(now.getMinutes())}:${p(now.getSeconds())}`
+    }
+  }
+
+  // Tự động khớp NCC trong schema hang_hoa nếu có
+  const productType = matchHangHoaNcc(vendorHint, content)
+
+  return {
+    rawRowCount: rawData.length,
+    soPO: extractedSoPO,
+    content,
+    mst,
+    tenCT,
+    tenKH,
+    nguoiNhanDxmh,
+    productType,
+    extractedTime,
+    previewHtml,
+    dxmhCustomerDetails
+  }
+}
+
+async function onDxmhSelected(e: Event) {
+  const target = e.target as HTMLInputElement
+  if (!target.files || target.files.length === 0) return
+  const tgtItem = dxmhTargetItem.value
+
+  loading.value = true
+  try {
+    // Trường hợp 1: Đính kèm / Cập nhật File DXMH trực tiếp trên 1 PO trong Modal
+    if (tgtItem) {
+      const file = target.files[0]
+      const arrayBuffer = await file.arrayBuffer()
+      const parsed = parseDxmhExcelBuffer(arrayBuffer, file.name)
+      if (parsed.rawRowCount < 2) {
+        alert('File DXMH không có dữ liệu hợp lệ.')
+        return
+      }
+      const pUrl = await uploadFileToCloudinary(file)
+
+      tgtItem.rawFileDxmh = file
+      tgtItem.tenFileDxmh = file.name
+      tgtItem.previewUrlDXMH = pUrl
+      tgtItem.previewHtmlDXMH = parsed.previewHtml
+      tgtItem.content = parsed.content
+      if (parsed.soPO) tgtItem.soPO = parsed.soPO
+      if (parsed.productType && (!tgtItem.productType || !isInHangHoaNccList(tgtItem.productType))) {
+        tgtItem.productType = parsed.productType
+      }
+      tgtItem.dxmhCustomerDetails = parsed.dxmhCustomerDetails
+      tgtItem.dxmhRecipient = parsed.nguoiNhanDxmh || ''
+
+      if (parsed.tenCT || parsed.nguoiNhanDxmh || parsed.tenKH || parsed.mst) {
+        applyExtractedQuoteCustomerToModalItem(
+          tgtItem,
+          parsed.tenCT,
+          parsed.nguoiNhanDxmh,
+          parsed.mst,
+          'DXMH'
+        )
+      }
+      if (parsed.mst) {
+        tgtItem.mst = parsed.mst
+      }
+      if (!tgtItem.createdTime) {
+        tgtItem.createdTime = parsed.extractedTime
+      }
+      isModalDirty.value = true
+      return
+    }
+
+    // Trường hợp 2: Import 1 hoặc nhiều File DXMH từ thanh công cụ để tạo PO mới
+    const parsedItems: ImportItem[] = []
+    let currentMaxPO = Math.max(...rows.value.map(r => parseInt(String(r.So_PO))).filter(n => !isNaN(n)), 0)
+    let errorCount = 0
+
+    for (let fIdx = 0; fIdx < target.files.length; fIdx++) {
+      const file = target.files[fIdx]
+      try {
+        const arrayBuffer = await file.arrayBuffer()
+        const parsed = parseDxmhExcelBuffer(arrayBuffer, file.name)
+        if (parsed.rawRowCount < 2 || (!parsed.tenCT && !parsed.nguoiNhanDxmh && !parsed.tenKH && !parsed.soPO && !parsed.mst)) {
+          errorCount++
+          continue
+        }
+
+        const pUrl = await uploadFileToCloudinary(file)
+        let finalSoPO = parsed.soPO
+        if (!finalSoPO) {
+          currentMaxPO++
+          finalSoPO = currentMaxPO > 0 ? String(currentMaxPO) : ''
+        }
+
+        const newItemObj: ImportItem = {
+          id: Date.now() + fIdx,
+          row: null,
+          doanhSoBan: 0,
+          giaMua: 0,
+          tongCP: 0,
+          grossCom: 0,
+          soPO: finalSoPO,
+          productType: parsed.productType,
+          customer: parsed.tenCT || parsed.nguoiNhanDxmh || parsed.tenKH,
+          recipient: parsed.nguoiNhanDxmh || parsed.tenCT,
+          mst: parsed.mst,
+          extractedCompany: parsed.tenCT,
+          extractedRecipient: parsed.nguoiNhanDxmh,
+          extractedMST: parsed.mst,
+          extractedSourceLabel: 'DXMH',
+          createdTime: parsed.extractedTime,
+          content: parsed.content,
+          netCom: 0,
+          am: 'Lê Phi Sơn',
+          taxPct: 25,
+          scanning: false,
+          rawFileDxmh: file,
+          tenFileDxmh: file.name,
+          previewUrlDXMH: pUrl,
+          previewHtmlDXMH: parsed.previewHtml,
+          dxmhCustomerDetails: parsed.dxmhCustomerDetails,
+          dxmhRecipient: parsed.nguoiNhanDxmh,
+          otherFiles: [],
+          goodsList: []
+        }
+
+        applyExtractedQuoteCustomerToModalItem(
+          newItemObj,
+          parsed.tenCT,
+          parsed.nguoiNhanDxmh,
+          parsed.mst,
+          'DXMH'
+        )
+        if (parsed.mst) {
+          newItemObj.mst = parsed.mst
+        }
+        parsedItems.push(newItemObj)
+      } catch (err) {
+        console.error('Lỗi đọc file DXMH:', file.name, err)
+        errorCount++
+      }
+    }
+
+    if (parsedItems.length === 0) {
+      alert('Không tìm thấy thông tin hợp lệ trong file DXMH đã chọn.')
+      return
+    }
+
+    if (errorCount > 0) {
+      alert(`Đã trích xuất ${parsedItems.length} file DXMH. Có ${errorCount} file lỗi định dạng.`)
+    }
+
+    isModalDirty.value = true
+    multiEditModal.value = {
+      show: true,
+      mode: 'create',
+      items: parsedItems,
+      isReportImport: false
+    }
+  } catch (err) {
+    console.error('Lỗi khi xử lý file DXMH:', err)
+    alert('Lỗi khi đọc file DXMH. Vui lòng kiểm tra lại định dạng Excel.')
+  } finally {
+    loading.value = false
+    target.value = ''
+  }
+}
+
+// ─── File Khác (Other Attachments) ───
+const otherFilesInput = ref<HTMLInputElement | null>(null)
+const otherFilesTargetItem = ref<ImportItem | null>(null)
+
+function triggerOtherFilesUpload(item: ImportItem) {
+  otherFilesTargetItem.value = item
+  if (otherFilesInput.value) {
+    otherFilesInput.value.value = ''
+    otherFilesInput.value.click()
+  }
+}
+
+function onOtherFilesSelected(e: Event) {
+  const target = e.target as HTMLInputElement
+  if (!target.files || target.files.length === 0) return
+  const item = otherFilesTargetItem.value
+  if (!item) return
+
+  if (!Array.isArray(item.otherFiles)) {
+    item.otherFiles = []
+  }
+
+  const nowStr = getFormattedNow()
+  for (let i = 0; i < target.files.length; i++) {
+    const file = target.files[i]
+    item.otherFiles.push({
+      id: 'FK_' + Date.now() + '_' + i + '_' + Math.floor(Math.random() * 1000),
+      ten_file: file.name,
+      link_file: '',
+      ngay_tai: nowStr,
+      rawFile: file,
+      previewUrl: URL.createObjectURL(file)
+    })
+  }
+  isModalDirty.value = true
+  target.value = ''
+}
+
+function removeOtherFile(item: ImportItem, idx: number | string) {
+  const numIdx = Number(idx)
+  if (!item || !Array.isArray(item.otherFiles) || numIdx < 0 || numIdx >= item.otherFiles.length) return
+  const removed = item.otherFiles[numIdx]
+  if (removed?.previewUrl && removed.previewUrl.startsWith('blob:')) {
+    try {
+      URL.revokeObjectURL(removed.previewUrl)
+    } catch (_) {}
+  }
+  item.otherFiles.splice(numIdx, 1)
+  isModalDirty.value = true
+}
+
+function getOtherFileOpenUrl(fk: OtherAttachmentItem): string {
+  const rawUrl = fk?.link_file || fk?.previewUrl || ''
+  if (!rawUrl) return '#'
+  if (rawUrl.startsWith('blob:') || rawUrl.startsWith('data:')) return rawUrl
+  const nameLower = String(fk?.ten_file || rawUrl).toLowerCase()
+  if (/\.(xlsx?|xls|docx?|pptx?)$/.test(nameLower)) {
+    return `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(rawUrl)}`
+  }
+  return rawUrl
 }
 
 // ─── Scan Image ───
@@ -6014,22 +7354,6 @@ async function onFileSelected(e: Event) {
   if (!tgt) return
 
   loading.value = true
-
-  const uploadCloudinary = async (file: File) => {
-    try {
-      const formData = new FormData()
-      formData.append('upload_preset', 'upload_file')
-      formData.append('file', file)
-      const uploadRes = await fetch('https://api.cloudinary.com/v1_1/db6fzs3rh/auto/upload', {
-        method: 'POST',
-        body: formData
-      }).then(r => r.json())
-      return uploadRes.secure_url || ''
-    } catch (e) {
-      console.error('Lỗi upload file:', e)
-      return ''
-    }
-  }
 
   const parsedItems: ImportItem[] = []
   let currentMaxPO = Math.max(...rows.value.map(r => parseInt(String(r.So_PO))).filter(n => !isNaN(n)), 0)
@@ -6618,7 +7942,7 @@ async function onFileSelected(e: Event) {
         }
         
         // Upload immediately to Cloudinary to enable Office Online Viewer
-        pUrl = await uploadCloudinary(file)
+        pUrl = await uploadFileToCloudinary(file)
       }
 
       if (!extractedDSB) {
@@ -6652,22 +7976,24 @@ async function onFileSelected(e: Event) {
           tongCP: 0,
           grossCom: 0,
           soPO: currentMaxPO > 0 ? String(currentMaxPO) : '',
-          productType: '',
+          productType: matchHangHoaNcc('', file.name),
           customer: extractedCustomer,
           recipient: finalRecipient,
           mst: extractedMST || (existingRow ? existingRow.MST : ''),
           extractedCompany: extractedCompany || '',
           extractedRecipient: extractedRecipient || '',
           extractedMST: extractedMST || '',
-          createdTime: extractedTime,
+          extractedSourceLabel: 'Báo giá',
+          createdTime: extractedTime || getFormattedNow(),
           content: file.name.replace(/\.[^/.]+$/, ''),
           netCom: 0,
           am: 'Lê Phi Sơn',
           taxPct: 25,
           scanning: false,
-          rawFileBaoGia: fIdx === 0 ? target.files[fIdx] : undefined,
+          rawFileBaoGia: target.files[fIdx],
           previewUrlBG: pUrl,
           previewHtmlBG: pHtml,
+          otherFiles: [],
           goodsList: goodsList,
           goodsTotal: goodsTotal
         }
@@ -6749,14 +8075,99 @@ async function onFileSelected(e: Event) {
 }
 
 
+// ─── Chọn Card PO để Xuất Excel ───
+const selectedPoKeyList = ref<string[]>([])
+const selectedPoKeySet = computed(() => new Set(selectedPoKeyList.value))
+
+function getPoRowKey(r: any): string {
+  if (!r) return ''
+  return String(r._firebaseKey || r.ID || '')
+}
+
+function isPoRowSelected(r: any): boolean {
+  const key = getPoRowKey(r)
+  return Boolean(key && selectedPoKeySet.value.has(key))
+}
+
+function toggleSelectPoRow(r: any) {
+  const key = getPoRowKey(r)
+  if (!key) return
+  if (selectedPoKeySet.value.has(key)) {
+    selectedPoKeyList.value = selectedPoKeyList.value.filter(k => k !== key)
+  } else {
+    selectedPoKeyList.value = [...selectedPoKeyList.value, key]
+  }
+}
+
+function isGroupFullySelected(group: any): boolean {
+  const items = Array.isArray(group?.items) ? group.items : []
+  if (items.length === 0) return false
+  return items.every((r: any) => isPoRowSelected(r))
+}
+
+function toggleSelectGroup(group: any) {
+  const items = Array.isArray(group?.items) ? group.items : []
+  const groupKeys = items.map((r: any) => getPoRowKey(r)).filter(Boolean)
+  if (!groupKeys.length) return
+  if (isGroupFullySelected(group)) {
+    const removeSet = new Set(groupKeys)
+    selectedPoKeyList.value = selectedPoKeyList.value.filter(k => !removeSet.has(k))
+  } else {
+    const next = new Set(selectedPoKeyList.value)
+    groupKeys.forEach((k: string) => next.add(k))
+    selectedPoKeyList.value = Array.from(next)
+  }
+}
+
+function selectAllFilteredPoRows() {
+  const next = new Set(selectedPoKeyList.value)
+  filteredRows.value.forEach(r => {
+    const k = getPoRowKey(r)
+    if (k) next.add(k)
+  })
+  selectedPoKeyList.value = Array.from(next)
+}
+
+function clearSelectedPoRows() {
+  selectedPoKeyList.value = []
+}
+
+watch(rows, (newRows) => {
+  if (!selectedPoKeyList.value.length) return
+  const validKeys = new Set((newRows || []).map(r => getPoRowKey(r)).filter(Boolean))
+  const filtered = selectedPoKeyList.value.filter(k => validKeys.has(k))
+  if (filtered.length !== selectedPoKeyList.value.length) {
+    selectedPoKeyList.value = filtered
+  }
+})
+
+const selectedPoRows = computed(() => {
+  if (!selectedPoKeyList.value.length) return []
+  const setRef = selectedPoKeySet.value
+  return rows.value.filter(r => {
+    const k = getPoRowKey(r)
+    return Boolean(k && setRef.has(k))
+  })
+})
+
+const selectedPoTotalDsb = computed(() =>
+  selectedPoRows.value.reduce((sum, r) => sum + doanhSoBan(r), 0)
+)
+
+const selectedPoTotalNetCom = computed(() =>
+  selectedPoRows.value.reduce((sum, r) => sum + netCom(r), 0)
+)
+
 // ─── Export Excel ───
 const showExportModal = ref(false)
 const showExportPreview = ref(false)
+const exportFromSelectionMode = ref(false)
 const exporting = ref(false)
 
 watch(showExportModal, (val) => {
   if (!val) {
     showExportPreview.value = false
+    exportFromSelectionMode.value = false
   }
 })
 
@@ -6771,6 +8182,41 @@ const exportYearTo = ref('')
 const exportRecords = ref<any[]>([])
 
 const exportSortOrder = ref('Cũ => Mới')
+
+function sortRowsForExport(list: any[], order: string = exportSortOrder.value): any[] {
+  return [...list].sort((a, b) => {
+    const da = parseDateStr(a.created_time)
+    const db = parseDateStr(b.created_time)
+    const timeA = da ? da.getTime() : 0
+    const timeB = db ? db.getTime() : 0
+    return order === 'Mới => Cũ' ? timeB - timeA : timeA - timeB
+  })
+}
+
+function openExportModalForSelected() {
+  if (!selectedPoRows.value.length) return
+  exportFromSelectionMode.value = true
+  exportRecords.value = sortRowsForExport(selectedPoRows.value)
+  showExportPreview.value = true
+  showExportModal.value = true
+}
+
+function openExportFromToolbar() {
+  if (selectedPoRows.value.length > 0) {
+    openExportModalForSelected()
+    return
+  }
+  exportFromSelectionMode.value = false
+  exportRecords.value = sortRowsForExport(rowsForExportFilter.value)
+  showExportPreview.value = false
+  showExportModal.value = true
+}
+
+function switchExportToTimeFilterMode() {
+  exportFromSelectionMode.value = false
+  exportRecords.value = sortRowsForExport(rowsForExportFilter.value)
+  showExportPreview.value = false
+}
 
 const rowsForExportFilter = computed(() => {
   let list = rows.value
@@ -6801,14 +8247,8 @@ const rowsForExportFilter = computed(() => {
 })
 
 watch(rowsForExportFilter, (newList) => {
-  const sorted = [...newList].sort((a, b) => {
-    const da = parseDateStr(a.created_time)
-    const db = parseDateStr(b.created_time)
-    const timeA = da ? da.getTime() : 0
-    const timeB = db ? db.getTime() : 0
-    return exportSortOrder.value === 'Mới => Cũ' ? timeB - timeA : timeA - timeB
-  })
-  exportRecords.value = sorted
+  if (exportFromSelectionMode.value) return
+  exportRecords.value = sortRowsForExport(newList)
 }, { immediate: true })
 
 watch(exportSortOrder, (newOrder) => {
@@ -6843,6 +8283,9 @@ watch([exportYearFrom, exportYearTo], ([newFrom, newTo], [oldFrom, oldTo]) => {
 })
 
 const exportTitle = computed(() => {
+  if (exportFromSelectionMode.value) {
+    return `SALE_REPORT_DA_CHON_${exportRecords.value.length}_PO`
+  }
   if (exportTimeMode.value === 'day') {
     if (!exportDateFrom.value && !exportDateTo.value) return 'SALE_REPORT_ALL'
     return `SALE_REPORT_NGAY_${exportDateFrom.value || 'ALL'}_DEN_${exportDateTo.value || 'ALL'}`
@@ -6858,14 +8301,15 @@ const exportTitle = computed(() => {
   return 'SALE_REPORT'
 })
 
-async function doExport() {
-  if (exporting.value) return
+async function exportRowsToExcel(targetRows: any[], titleCode: string): Promise<boolean> {
+  if (exporting.value) return false
+  if (!targetRows.length) {
+    alert('Không có dữ liệu để xuất')
+    return false
+  }
   exporting.value = true
 
   try {
-    const monthRows = exportRecords.value
-    if (!monthRows.length) { alert('Không có dữ liệu để xuất'); return }
-
     // Load template
     const resp = await fetch('/template_excel/SALE_REPORT_TEMPLATE.xlsx')
     const buf = await resp.arrayBuffer()
@@ -6873,8 +8317,28 @@ async function doExport() {
     await wb.xlsx.load(buf)
     const ws = wb.worksheets[0]
 
-    // Update title row
-    ws.getCell('A1').value = exportTitle.value.replace(/_/g, ' ')
+    // Đảm bảo banner tiêu đề gộp đủ 21 cột (A1:U1) và header S2, T2, U2 luôn chuẩn kể cả khi trình duyệt cache template cũ
+    try { ws.unMergeCells(1, 1, 1, 19) } catch (_) { /* ignore */ }
+    try { ws.unMergeCells(1, 1, 1, 21) } catch (_) { /* ignore */ }
+    try { ws.mergeCells(1, 1, 1, 21) } catch (_) { /* ignore */ }
+
+    const titleCell = ws.getCell('A1')
+    titleCell.value = titleCode.replace(/_/g, ' ')
+
+    const styleRefCell = ws.getCell('Q2')
+    const ensuredHeaders: Array<[number, string]> = [
+      [19, 'Net Margin / Volume'],
+      [20, 'Net com / Volume'],
+      [21, 'Note']
+    ]
+    ensuredHeaders.forEach(([colIdx, headerText]) => {
+      const hCell = ws.getRow(2).getCell(colIdx)
+      hCell.value = headerText
+      if (styleRefCell.font) hCell.font = { ...styleRefCell.font }
+      if (styleRefCell.fill) hCell.fill = JSON.parse(JSON.stringify(styleRefCell.fill))
+      if (styleRefCell.border) hCell.border = JSON.parse(JSON.stringify(styleRefCell.border))
+      if (styleRefCell.alignment) hCell.alignment = { ...styleRefCell.alignment }
+    })
 
     // Get header style from row 2 for data cells
     const borderStyle: Partial<ExcelJS.Borders> = {
@@ -6888,8 +8352,8 @@ async function doExport() {
     const moneyFmt = '#,##0'
     const pctFmtEx = '0.00%'
 
-    // Fill data rows starting from row 3
-    monthRows.forEach((r, idx) => {
+    // Fill data rows starting from row 3 (21 columns A..U)
+    targetRows.forEach((r, idx) => {
       const rowNum = idx + 3
       const dsb = doanhSoBan(r)
       const gm = giaMua(r)
@@ -6901,27 +8365,31 @@ async function doExport() {
       const nm = netMargin(r)
       const nmPct = np !== 0 ? nm / np : 0
       const ncPct = np !== 0 ? nc / np : 0
+      const nmVolPct = dsb !== 0 ? nm / dsb : 0
+      const ncVolPct = dsb !== 0 ? nc / dsb : 0
 
       const vals: any[] = [
-        idx + 1,                        // STT
-        r.MST || '',                    // MST
-        r.So_PO || '',                  // PO
-        r.account_manager_name || '',   // AM
-        getMonth(r.created_time) || '', // Mon
-        r.Ten_cong_ty || '',            // Customer
-        r.content_of_contract_PO || '', // Content
-        r.Ten_nha_cung_cap || '',       // Product type
-        dsb,                            // Doanh số bán
-        gm,                             // Giá mua
-        tcp,                            // Tổng CP đơn hàng
-        gc,                             // Gross com
-        t25,                            // Thuế 25%
-        nc,                             // Net com
-        np,                             // Net PO
-        nm,                             // Net Margin
-        nmPct,                          // Net Margin / Net PO
-        ncPct,                          // Net com / Net PO
-        r.ghi_chu || ''                 // Note
+        idx + 1,                        // 1 (A): STT
+        r.MST || '',                    // 2 (B): MST
+        r.So_PO || '',                  // 3 (C): PO
+        r.account_manager_name || '',   // 4 (D): AM
+        getMonth(r.created_time) || '', // 5 (E): Mon
+        r.Ten_cong_ty || '',            // 6 (F): Customer
+        r.content_of_contract_PO || '', // 7 (G): Content
+        r.Ten_nha_cung_cap || '',       // 8 (H): Product type
+        dsb,                            // 9 (I): Doanh số bán (Volume)
+        gm,                             // 10 (J): Giá mua
+        tcp,                            // 11 (K): Tổng CP đơn hàng
+        gc,                             // 12 (L): Gross com
+        t25,                            // 13 (M): Thuế 25%
+        nc,                             // 14 (N): Net com
+        np,                             // 15 (O): Net PO
+        nm,                             // 16 (P): Net Margin
+        nmPct,                          // 17 (Q): Net Margin / Net PO
+        ncPct,                          // 18 (R): Net com / Net PO
+        nmVolPct,                       // 19 (S): Net Margin / Volume
+        ncVolPct,                       // 20 (T): Net com / Volume
+        r.ghi_chu || ''                 // 21 (U): Note
       ]
 
       const row = ws.getRow(rowNum)
@@ -6936,27 +8404,27 @@ async function doExport() {
         if (ci >= 8 && ci <= 15) {
           cell.numFmt = moneyFmt
         }
-        if (ci === 16 || ci === 17) {
+        if (ci >= 16 && ci <= 19) {
           cell.numFmt = pctFmtEx
         }
       })
       row.commit()
     })
 
-    // Auto-fit columns
-    for (let i = 1; i <= 19; i++) {
-      let maxLen = 0;
-      const col = ws.getColumn(i);
+    // Auto-fit all 21 columns
+    for (let i = 1; i <= 21; i++) {
+      let maxLen = 0
+      const col = ws.getColumn(i)
       col.eachCell({ includeEmpty: false }, cell => {
         if (Number(cell.row) >= 2 && cell.value !== null && cell.value !== undefined) {
-          const valStr = String(cell.value);
-          const lines = valStr.split('\n');
+          const valStr = String(cell.value)
+          const lines = valStr.split('\n')
           for (const line of lines) {
-            maxLen = Math.max(maxLen, line.length);
+            maxLen = Math.max(maxLen, line.length)
           }
         }
-      });
-      col.width = Math.min(50, Math.max(10, maxLen + 2));
+      })
+      col.width = Math.min(50, Math.max(10, maxLen + 2))
     }
 
     // Generate & download
@@ -6965,17 +8433,30 @@ async function doExport() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${exportTitle.value}.xlsx`
+    a.download = `${titleCode}.xlsx`
     a.click()
     URL.revokeObjectURL(url)
-
-    showExportModal.value = false
+    return true
   } catch (e: any) {
     console.error('Lỗi xuất Excel:', e)
     alert('❌ Lỗi xuất Excel: ' + e.message)
+    return false
   } finally {
     exporting.value = false
   }
+}
+
+async function doExport() {
+  const ok = await exportRowsToExcel(exportRecords.value, exportTitle.value)
+  if (ok) {
+    showExportModal.value = false
+  }
+}
+
+async function exportSelectedPoRowsDirectly() {
+  if (!selectedPoRows.value.length) return
+  const sorted = sortRowsForExport(selectedPoRows.value)
+  await exportRowsToExcel(sorted, `SALE_REPORT_DA_CHON_${sorted.length}_PO`)
 }
 </script>
 
@@ -8874,9 +10355,9 @@ async function doExport() {
     justify-content: center;
   }
   .toolbar-left-buttons > button {
-    flex: 1 1 calc(33.333% - 8px);
-    min-width: 100px;
-    padding: 0 4px !important;
+    flex: 1 1 calc(50% - 8px);
+    min-width: 120px;
+    padding: 0 6px !important;
     font-size: 12px !important;
     justify-content: center;
   }
@@ -9002,6 +10483,277 @@ async function doExport() {
 @media (max-width: 768px) {
   .sr-card-list {
     grid-template-columns: 1fr !important;
+  }
+}
+
+/* ─── Outer Card Selection Pill & Floating Export Action Bar ─── */
+.sr-card-outer-item {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sr-card-outer-item > .sr-record-card {
+  flex: 1;
+}
+
+.sr-card-select-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 0 8px 6px;
+}
+
+.sr-card-select-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px 5px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(15, 23, 42, 0.78);
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
+}
+
+.sr-card-select-pill:hover {
+  border-color: rgba(16, 185, 129, 0.55);
+  color: #f8fafc;
+  background: rgba(15, 23, 42, 0.95);
+  transform: translateY(-1px);
+}
+
+.sr-card-select-pill.selected {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.24), rgba(5, 150, 105, 0.34));
+  border-color: #10b981;
+  color: #ecfdf5;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);
+}
+
+.sr-card-select-box {
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  border: 1.5px solid rgba(148, 163, 184, 0.55);
+  background: rgba(2, 6, 23, 0.55);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  flex-shrink: 0;
+  transition: all 0.18s ease;
+}
+
+.sr-card-select-pill.selected .sr-card-select-box {
+  background: #10b981;
+  border-color: #10b981;
+  color: #ffffff;
+}
+
+.sr-group-select-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 10px 4px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(15, 23, 42, 0.28);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+.sr-group-select-btn:hover {
+  background: rgba(15, 23, 42, 0.48);
+  border-color: rgba(255, 255, 255, 0.65);
+}
+
+.sr-group-select-btn .sr-card-select-box {
+  border-color: rgba(255, 255, 255, 0.7);
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.sr-group-select-btn.selected {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: #065f46;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+}
+
+.sr-group-select-btn.selected .sr-card-select-box {
+  background: #059669;
+  border-color: #059669;
+  color: #ffffff;
+}
+
+.sr-record-card.is-selected-card {
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.45), 0 12px 28px -6px rgba(16, 185, 129, 0.28) !important;
+}
+
+.sr-selection-floating-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  z-index: 9500;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 12px 18px;
+  min-width: min(920px, calc(100vw - 32px));
+  max-width: calc(100vw - 24px);
+  background: rgba(15, 23, 42, 0.94);
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  border-radius: 16px;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(16, 185, 129, 0.15);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  font-family: 'Inter', 'Plus Jakarta Sans', system-ui, sans-serif;
+  color: #f8fafc;
+  animation: srFloatBarUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes srFloatBarUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 16px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.sr-sel-bar-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.sr-sel-count-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.35);
+}
+
+.sr-sel-metrics {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: #cbd5e1;
+  flex-wrap: wrap;
+}
+
+.sr-sel-dot {
+  color: #475569;
+}
+
+.sr-sel-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sr-sel-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 13px;
+  border-radius: 9px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.sr-sel-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sr-sel-btn-ghost {
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #38bdf8;
+}
+
+.sr-sel-btn-ghost:hover {
+  background: rgba(56, 189, 248, 0.22);
+}
+
+.sr-sel-btn-clear {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.32);
+  color: #f87171;
+}
+
+.sr-sel-btn-clear:hover {
+  background: rgba(239, 68, 68, 0.22);
+}
+
+.sr-sel-btn-preview {
+  background: rgba(30, 41, 59, 0.9);
+  border: 1px solid #334155;
+  color: #e2e8f0;
+}
+
+.sr-sel-btn-preview:hover {
+  background: #334155;
+  color: #ffffff;
+}
+
+.sr-sel-btn-export {
+  background: linear-gradient(135deg, #16a34a, #15803d);
+  border: 1px solid #22c55e;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(22, 163, 74, 0.38);
+}
+
+.sr-sel-btn-export:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+  .sr-selection-floating-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    bottom: 12px;
+    padding: 12px 14px;
+  }
+  .sr-sel-bar-actions {
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 640px) {
+  .sr-debt-record-2col {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
   }
 }
 </style>

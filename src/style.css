@@ -369,9 +369,14 @@ code {
       box-shadow 0.3s ease !important;
   }
   .app-layout.mobile-nav-hidden .sidebar,
-  .app-layout:has(.modal, .modal-overlay, .pipeline-modal-overlay) .sidebar {
+  .app-layout.has-open-modal .sidebar,
+  body.has-open-modal .app-layout .sidebar,
+  body.app-has-open-modal .app-layout .sidebar,
+  body:has(.modal, .modal-overlay, .vip-modal-overlay, .load-invoice-modal-overlay, .pipeline-modal-overlay, .pl-mobile-sheet-overlay, .qtabs-mobile-sheet-overlay, .quote-col-setting-backdrop, .async-overlay, .sr-modal-overlay, .elite-modal-overlay, .quote-guide-modal-overlay, .quote-guide-spotlight-root) .app-layout .sidebar,
+  .app-layout:has(.modal, .modal-overlay, .vip-modal-overlay, .load-invoice-modal-overlay, .pipeline-modal-overlay, .pl-mobile-sheet-overlay, .qtabs-mobile-sheet-overlay, .quote-col-setting-backdrop, .async-overlay, .sr-modal-overlay, .elite-modal-overlay, .quote-guide-modal-overlay, .quote-guide-spotlight-root) .sidebar {
     transform: translateX(-50%) translateY(calc(100% + 26px + env(safe-area-inset-bottom, 0px))) scale(0.92) !important;
     opacity: 0 !important;
+    visibility: hidden !important;
     pointer-events: none !important;
   }
   .logo {
@@ -584,6 +589,45 @@ code {
   select,
   textarea {
     font-size: 16px;
+  }
+}
+
+@media screen and (max-width: 1100px) {
+  html:has(.baogia-firebase-page),
+  body:has(.baogia-firebase-page),
+  body.baogia-mobile-shell {
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    overflow: hidden !important;
+    overscroll-behavior: none !important;
+  }
+
+  #app:has(.baogia-firebase-page),
+  .app-layout.is-baogia-firebase-route,
+  .app-layout:has(.baogia-firebase-page) {
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .app-layout.is-baogia-firebase-route .main-content,
+  .app-layout:has(.baogia-firebase-page) .main-content {
+    height: 100% !important;
+    max-height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    padding-top: env(safe-area-inset-top, 0px) !important;
+    padding-bottom: 0 !important;
+    box-sizing: border-box !important;
+    background: #09090b !important;
+  }
+
+  .app-layout:has(.baogia-firebase-page.theme-light-blue) .main-content,
+  body.baogia-light-theme .app-layout.is-baogia-firebase-route .main-content {
+    background: #eef4fb !important;
   }
 }
 

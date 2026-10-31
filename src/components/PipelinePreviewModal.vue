@@ -2630,11 +2630,19 @@ const dealRegs = computed(() => {
 }
 
 @media (max-width: 1100px) {
+  .pipeline-modal-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    padding: 0 !important;
+    transform: none !important;
+    overscroll-behavior: contain !important;
+  }
+
   .pipeline-modal-content {
-    width: 100vw !important;
-    max-width: 100vw !important;
-    height: 100dvh !important;
-    max-height: 100dvh !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
     border-radius: 0 !important;
     border: none !important;
   }

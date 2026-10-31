@@ -924,10 +924,10 @@
               <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.35); display: flex; align-items: center; justify-content: center; color: #38bdf8;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
               </div>
-              <div>
+              <div style="min-width: 0;">
                 <h3 style="margin: 0; color: #f8fafc; font-size: 16px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">
                   Tiến độ Trả nợ & Lịch sử Thanh toán
-                  <span v-if="paymentModal.row"> — PO #{{ paymentModal.row.So_PO || 'N/A' }}</span>
+                  <span v-if="paymentModal.row" :title="getPoContractContent(paymentModal.row)"> — {{ getPoContractContent(paymentModal.row, 54) }}</span>
                 </h3>
                 <div style="font-size: 12px; color: #94a3b8; margin-top: 3px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
                   <span style="display: inline-flex; align-items: center; gap: 4px;">
@@ -981,15 +981,16 @@
             <!-- Thanh chọn PO của Khách hàng (nếu có PO trong sale_report) -->
             <div v-if="paymentModal.customerPOs.length > 0" style="background: rgba(15, 23, 42, 0.75); border: 1px solid #1e293b; border-radius: 12px; padding: 12px 16px;">
               <div style="font-size: 11.5px; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-bottom: 8px;">
-                Danh sách PO của khách hàng ({{ paymentModal.customerPOs.length }} đơn hàng) — Chọn PO để xem tiến độ & ghi nhận thanh toán:
+                Danh sách đơn hàng PO ({{ paymentModal.customerPOs.length }} đơn hàng) — Chọn đơn hàng để xem tiến độ & ghi nhận thanh toán:
               </div>
               <div style="display: flex; flex-wrap: wrap; gap: 8px;">
                 <button
                   v-for="po in paymentModal.customerPOs"
                   :key="po._firebaseKey || po.ID"
                   type="button"
+                  :title="getPoContractContent(po)"
                   @click="selectPoInPaymentModal(po)"
-                  style="padding: 7px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s;"
+                  style="padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; max-width: 100%; transition: all 0.2s;"
                   :style="{
                     background: paymentModal.row && (paymentModal.row._firebaseKey === po._firebaseKey)
                       ? 'rgba(56, 189, 248, 0.2)'
@@ -1002,9 +1003,14 @@
                       : '1px solid #334155'
                   }"
                 >
-                  <span>PO #{{ po.So_PO || 'N/A' }}</span>
+                  <span style="max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    {{ getPoContractContent(po) }}
+                  </span>
+                  <span v-if="getPoCreatedDateShort(po)" style="font-size: 11px; color: #94a3b8; font-weight: 600; flex-shrink: 0;">
+                    ({{ getPoCreatedDateShort(po) }})
+                  </span>
                   <span
-                    style="padding: 1px 7px; border-radius: 999px; font-size: 11px;"
+                    style="padding: 1px 7px; border-radius: 999px; font-size: 11px; flex-shrink: 0; white-space: nowrap;"
                     :style="{
                       background: congNo(po) > 0 ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)',
                       color: congNo(po) > 0 ? '#fca5a5' : '#34d399'
@@ -1050,7 +1056,8 @@
                     @click="openScheduleSubModal"
                     style="display: inline-flex; align-items: center; gap: 7px; background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.45); border-radius: 9px; padding: 8px 14px; font-size: 12.5px; font-weight: 700; cursor: pointer;"
                   >
-                    <span>📅 Thiết lập Kế hoạch / Hạn thanh toán</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <span>Thiết lập Kế hoạch / Hạn thanh toán</span>
                   </button>
 
                   <button
@@ -1144,34 +1151,33 @@
             <!-- Bảng Lịch sử thanh toán (lich_su_thanh_toan) -->
             <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid #1e293b; border-radius: 12px; overflow: hidden;">
               <div style="padding: 12px 16px; background: rgba(30, 41, 59, 0.6); border-bottom: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-                <span style="font-size: 13px; font-weight: 700; color: #e2e8f0; text-transform: uppercase;">
-                  Lịch sử thanh toán thực tế {{ paymentModal.row ? ('của PO #' + (paymentModal.row.So_PO || 'N/A')) : 'của Khách hàng' }}
+                <span :title="paymentModal.row ? getPoContractContent(paymentModal.row) : ''" style="font-size: 13px; font-weight: 700; color: #e2e8f0; text-transform: uppercase;">
+                  Lịch sử thanh toán thực tế {{ paymentModal.row ? ('— ' + getPoContractContent(paymentModal.row, 54)) : 'của Khách hàng' }}
                   ({{ currentModalPaymentHistory.length }} lần)
                 </span>
-                <span style="font-size: 11px; color: #64748b;">Schema: <code>lich_su_thanh_toan</code></span>
               </div>
               <div style="overflow-x: auto;">
-                <table style="width: 100%; border-collapse: collapse; font-size: 12px; color: #e2e8f0;">
+                <table style="width: 100%; min-width: 760px; border-collapse: collapse; font-size: 12px; color: #e2e8f0;">
                   <thead>
                     <tr style="background: rgba(15, 23, 42, 0.9); border-bottom: 1px solid #334155; text-align: left; color: #94a3b8;">
-                      <th style="padding: 10px 12px;">Lần</th>
-                      <th style="padding: 10px 12px;">Mã GD (id)</th>
-                      <th style="padding: 10px 12px;">Thời gian TT</th>
-                      <th style="padding: 10px 12px;">Mã KH (maKH)</th>
-                      <th style="padding: 10px 12px; text-align: right;">Số tiền thanh toán</th>
-                      <th style="padding: 10px 12px; text-align: right;">Công nợ còn lại</th>
+                      <th style="padding: 10px 12px; width: 56px;">Lần</th>
+                      <th style="padding: 10px 12px; white-space: nowrap;">Thời gian TT</th>
+                      <th style="padding: 10px 12px;">Tên KH</th>
+                      <th style="padding: 10px 12px;">Tên Công ty</th>
+                      <th style="padding: 10px 12px; text-align: right; white-space: nowrap;">Số tiền thanh toán</th>
+                      <th style="padding: 10px 12px; text-align: right; white-space: nowrap;">Công nợ còn lại</th>
                       <th style="padding: 10px 12px;">Ghi chú</th>
-                      <th style="padding: 10px 12px; text-align: center; width: 50px;">Xóa</th>
+                      <th style="padding: 10px 12px; text-align: center; width: 55px;">Xóa</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr v-for="(h, idx) in currentModalPaymentHistory" :key="h.id || idx" style="border-bottom: 1px dashed #1e293b;">
-                      <td style="padding: 10px 12px; font-weight: 700; color: #38bdf8;">#{{ currentModalPaymentHistory.length - idx }}</td>
-                      <td style="padding: 10px 12px; font-family: monospace; font-size: 11px; color: #94a3b8;">{{ h.id }}</td>
-                      <td style="padding: 10px 12px; color: #f8fafc;">{{ h.thoi_gian_thanh_toan || '—' }}</td>
-                      <td style="padding: 10px 12px; color: #cbd5e1;">{{ h.maKH }}</td>
-                      <td style="padding: 10px 12px; text-align: right; font-weight: 700; color: #34d399;">+{{ formatCurrency(toNum(h.so_tien_thanh_toan)) || '0' }} đ</td>
-                      <td style="padding: 10px 12px; text-align: right; font-weight: 700;" :style="{ color: toNum(h.cong_no_con_lai) > 0 ? '#f87171' : '#34d399' }">
+                      <td :title="h.id ? ('Mã GD: ' + h.id) : ''" style="padding: 10px 12px; font-weight: 700; color: #38bdf8;">#{{ currentModalPaymentHistory.length - idx }}</td>
+                      <td style="padding: 10px 12px; color: #f8fafc; white-space: nowrap;">{{ h.thoi_gian_thanh_toan || '—' }}</td>
+                      <td style="padding: 10px 12px; color: #e2e8f0; font-weight: 600;">{{ getPaymentHistoryCustomerInfo(h).tenKH }}</td>
+                      <td style="padding: 10px 12px; color: #cbd5e1; max-width: 220px; word-break: break-word;">{{ getPaymentHistoryCustomerInfo(h).tenCongTy }}</td>
+                      <td style="padding: 10px 12px; text-align: right; font-weight: 700; color: #34d399; white-space: nowrap;">+{{ formatCurrency(toNum(h.so_tien_thanh_toan)) || '0' }} đ</td>
+                      <td style="padding: 10px 12px; text-align: right; font-weight: 700; white-space: nowrap;" :style="{ color: toNum(h.cong_no_con_lai) > 0 ? '#f87171' : '#34d399' }">
                         {{ formatCurrency(toNum(h.cong_no_con_lai)) || '0' }} đ
                       </td>
                       <td style="padding: 10px 12px; color: #94a3b8;">{{ h.ghi_chu || '—' }}</td>
@@ -1181,9 +1187,9 @@
                           type="button"
                           @click="deletePaymentHistoryItem(h)"
                           title="Xóa đợt thanh toán này và hoàn lại công nợ"
-                          style="background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; padding: 5px 7px; cursor: pointer;"
+                          style="background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; padding: 5px 7px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;"
                         >
-                          🗑
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                         </button>
                       </td>
                     </tr>
@@ -1209,9 +1215,9 @@
       <div v-if="paymentModal.show && paymentModal.row && paymentModal.showScheduleSubModal" class="modal-overlay" @click.self="paymentModal.showScheduleSubModal = false" style="z-index: 100065; padding: 20px; background: rgba(2, 6, 23, 0.78);">
         <div style="max-width: 880px; width: 95vw; background: #0f172a; border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; max-height: 88vh; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);">
           <div style="background: rgba(15, 23, 42, 0.95); border-bottom: 1px solid #1e293b; padding: 16px 22px; display: flex; justify-content: space-between; align-items: center;">
-            <div>
-              <h4 style="margin: 0; color: #f8fafc; font-size: 15px; font-weight: 800; text-transform: uppercase;">
-                Thiết lập Kế hoạch & Mốc hạn thanh toán — PO #{{ paymentModal.row.So_PO || 'N/A' }}
+            <div style="min-width: 0; padding-right: 12px;">
+              <h4 :title="getPoContractContent(paymentModal.row)" style="margin: 0; color: #f8fafc; font-size: 15px; font-weight: 800; text-transform: uppercase;">
+                Thiết lập Kế hoạch & Mốc hạn thanh toán — {{ getPoContractContent(paymentModal.row, 52) }}
               </h4>
               <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">
                 Tổng giá trị PO sau VAT: <strong style="color: #38bdf8;">{{ formatCurrency(tongSauVat(paymentModal.row)) || '0' }} đ</strong>
@@ -1350,12 +1356,12 @@
       <div v-if="paymentModal.show && paymentModal.row && paymentModal.showRecordSubModal" class="modal-overlay" @click.self="paymentModal.showRecordSubModal = false" style="z-index: 100065; padding: 20px; background: rgba(2, 6, 23, 0.78);">
         <div style="max-width: 620px; width: 95vw; background: #0f172a; border: 1px solid rgba(16, 185, 129, 0.45); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);">
           <div style="background: rgba(15, 23, 42, 0.95); border-bottom: 1px solid #1e293b; padding: 16px 22px; display: flex; justify-content: space-between; align-items: center;">
-            <div>
-              <h4 style="margin: 0; color: #f8fafc; font-size: 15px; font-weight: 800; text-transform: uppercase;">
-                Ghi nhận đợt thanh toán mới — PO #{{ paymentModal.row.So_PO || 'N/A' }}
+            <div style="min-width: 0; padding-right: 12px;">
+              <h4 :title="getPoContractContent(paymentModal.row)" style="margin: 0; color: #f8fafc; font-size: 15px; font-weight: 800; text-transform: uppercase;">
+                Ghi nhận đợt thanh toán mới — {{ getPoContractContent(paymentModal.row, 44) }}
               </h4>
               <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">
-                Công nợ hiện tại của PO: <strong style="color: #f87171;">{{ formatCurrency(congNo(paymentModal.row)) || '0' }} đ</strong>
+                Công nợ hiện tại của đơn hàng: <strong style="color: #f87171;">{{ formatCurrency(congNo(paymentModal.row)) || '0' }} đ</strong>
               </div>
             </div>
             <button @click="paymentModal.showRecordSubModal = false" style="background: none; border: none; font-size: 24px; color: #64748b; cursor: pointer;">&times;</button>
@@ -1363,14 +1369,28 @@
 
           <div style="padding: 18px 22px; display: flex; flex-direction: column; gap: 14px;">
             <div>
-              <label style="font-size: 11px; color: #94a3b8; font-weight: 600; display: block; margin-bottom: 6px;">Chọn nhanh số tiền thanh toán:</label>
-              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <label style="font-size: 11.5px; color: #cbd5e1; font-weight: 700; display: block; margin-bottom: 6px;">Số tiền khách thanh toán (VNĐ)</label>
+              <input
+                type="text"
+                inputmode="numeric"
+                :value="paymentModal.amountStr"
+                @focus="onPaymentAmountFocus"
+                @blur="onPaymentAmountBlur"
+                @input="onPaymentAmountInput"
+                @paste="onPaymentAmountPaste"
+                placeholder="0"
+                class="form-input"
+                style="width: 100%; font-size: 17px; font-weight: 800; color: #34d399; text-align: right; border-color: rgba(16, 185, 129, 0.45); background: rgba(16, 185, 129, 0.06);"
+              />
+
+              <div style="margin-top: 8px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                <span style="font-size: 11px; color: #94a3b8; font-weight: 600; margin-right: 2px;">Chọn nhanh:</span>
                 <template v-if="paymentModal.scheduleMode === 'nhieu_dot'">
                   <button
                     v-for="(inst, idx) in modalEvaluatedInstallments.filter(x => x.con_thieu > 0)"
                     :key="'quick-inst-' + idx"
                     type="button"
-                    @click="openRecordPaymentSubModal(inst)"
+                    @click="applyQuickInstallmentAmount(inst)"
                     style="background: rgba(168, 85, 247, 0.16); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4); border-radius: 6px; padding: 5px 10px; font-size: 11px; font-weight: 700; cursor: pointer;"
                   >
                     Đợt {{ inst.dot }} ({{ formatCurrency(inst.con_thieu) || '0' }} đ)
@@ -1385,23 +1405,33 @@
                 <button type="button" @click="setPaymentQuickPct(30)" style="background: rgba(245, 158, 11, 0.12); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 6px; padding: 5px 10px; font-size: 11px; font-weight: 700; cursor: pointer;">
                   30% công nợ
                 </button>
+                <button
+                  v-if="paymentModal.amount > 0"
+                  type="button"
+                  @click="resetPaymentAmountToZero"
+                  style="background: rgba(148, 163, 184, 0.14); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.32); border-radius: 6px; padding: 5px 10px; font-size: 11px; font-weight: 700; cursor: pointer;"
+                >
+                  Đặt về 0
+                </button>
+              </div>
+
+              <div
+                v-if="congNo(paymentModal.row) > 0 && paymentModal.amount > congNo(paymentModal.row)"
+                style="margin-top: 8px; padding: 8px 11px; border-radius: 7px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.38); color: #fbbf24; font-size: 11.5px; font-weight: 600;"
+              >
+                Lưu ý: Số tiền đang nhập vượt quá công nợ còn lại của đơn hàng ({{ formatCurrency(congNo(paymentModal.row)) || '0' }} đ).
               </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px;">
-              <div>
-                <label style="font-size: 11.5px; color: #cbd5e1; font-weight: 600; display: block; margin-bottom: 5px;">Số tiền khách thanh toán (VNĐ)</label>
-                <input type="text" :value="paymentModal.amountStr" @input="onPaymentAmountInput" placeholder="Nhập số tiền..." class="form-input" style="font-size: 15px; font-weight: 800; color: #34d399; text-align: right;" />
-              </div>
+            <div class="cust-debt-record-2col" style="display: grid; grid-template-columns: 1fr 1.25fr; gap: 12px;">
               <div>
                 <label style="font-size: 11.5px; color: #cbd5e1; font-weight: 600; display: block; margin-bottom: 5px;">Thời gian thanh toán</label>
-                <input type="text" v-model="paymentModal.paymentTime" placeholder="DD/MM/YYYY HH:mm:ss" class="form-input" />
+                <input type="text" v-model="paymentModal.paymentTime" placeholder="DD/MM/YYYY HH:mm:ss" class="form-input" style="width: 100%;" />
               </div>
-            </div>
-
-            <div>
-              <label style="font-size: 11.5px; color: #cbd5e1; font-weight: 600; display: block; margin-bottom: 5px;">Ghi chú đợt thanh toán (Tùy chọn)</label>
-              <input type="text" v-model="paymentModal.note" placeholder="VD: Thanh toán đợt 1 chuyển khoản..." class="form-input" />
+              <div>
+                <label style="font-size: 11.5px; color: #cbd5e1; font-weight: 600; display: block; margin-bottom: 5px;">Ghi chú đợt thanh toán (Tùy chọn)</label>
+                <input type="text" v-model="paymentModal.note" placeholder="VD: Thanh toán đợt 1 chuyển khoản..." class="form-input" style="width: 100%;" />
+              </div>
             </div>
 
             <div style="padding: 10px 12px; background: rgba(30, 41, 59, 0.5); border: 1px dashed #334155; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 12px; color: #94a3b8;">
@@ -2863,9 +2893,103 @@ const doesRowMatchCustomer = (r, kh) => {
   return false
 }
 
+const getPoContractContent = (po, maxLen = 0) => {
+  if (!po) return 'Chưa có nội dung HĐ/PO'
+  const raw = String(
+    po.content_of_contract_PO ??
+    po.content_of_contract_po ??
+    po['content_of_contract/PO'] ??
+    po.Content_of_Contract_PO ??
+    po.ten_po ??
+    po.Ten_PO ??
+    po.so_hop_dong ??
+    po.ma_hop_dong ??
+    ''
+  ).trim()
+  const label = raw || 'Chưa có nội dung HĐ/PO'
+  if (maxLen > 0 && label.length > maxLen) {
+    return label.slice(0, maxLen).trimEnd() + '…'
+  }
+  return label
+}
+
+const getPoCreatedDateShort = (po) => {
+  if (!po || !po.created_time) return ''
+  const d = parseDateStr(po.created_time)
+  if (d && !isNaN(d.getTime())) {
+    return formatDateObjToDdmmyyyy(d)
+  }
+  const m = String(po.created_time).match(/(\d{1,2}\/\d{1,2}\/\d{4})/)
+  return m ? m[1] : ''
+}
+
+const getPaymentHistoryCustomerInfo = (h) => {
+  let tenKH = String(h?.ten_khach_hang || h?.Ten_khach_hang || '').trim()
+  let tenCongTy = String(h?.ten_cong_ty || h?.Ten_cong_ty || '').trim()
+
+  const srId = String(h?.id_salereport || '').trim()
+  let matchedSr = null
+  if ((!tenKH || !tenCongTy) && srId) {
+    matchedSr = saleReportRows.value.find(
+      r => String(r.ID || '') === srId || String(r._firebaseKey || '') === srId
+    )
+    if (matchedSr) {
+      if (!tenKH) tenKH = String(matchedSr.Ten_khach_hang || matchedSr.ten_khach_hang || '').trim()
+      if (!tenCongTy) tenCongTy = String(matchedSr.Ten_cong_ty || matchedSr.ten_cong_ty || '').trim()
+    }
+  }
+
+  const lookupCode = String(h?.maKH || matchedSr?.Ma_khach_hang || matchedSr?.Ma_cong_ty || '').trim().toUpperCase()
+  if ((!tenKH || !tenCongTy) && lookupCode) {
+    const matchedKh = customers.value.find(c => {
+      const cMkh = String(c.ma_khach_hang || c.Ma_khach_hang || '').trim().toUpperCase()
+      const cMct = String(c.ma_cong_ty || c.Ma_cong_ty || '').trim().toUpperCase()
+      return (cMkh && cMkh === lookupCode) || (cMct && cMct === lookupCode)
+    })
+    if (matchedKh) {
+      if (!tenKH) tenKH = String(matchedKh.ten_khach_hang || matchedKh.Ten_khach_hang || '').trim()
+      if (!tenCongTy) tenCongTy = String(matchedKh.ten_cong_ty || matchedKh.Ten_cong_ty || '').trim()
+    }
+  }
+
+  const m = paymentModal.value
+  if (!tenKH) {
+    tenKH = String(
+      m.row?.Ten_khach_hang ||
+      m.row?.ten_khach_hang ||
+      m.customer?.ten_khach_hang ||
+      m.customer?.Ten_khach_hang ||
+      ''
+    ).trim()
+  }
+  if (!tenCongTy) {
+    tenCongTy = String(
+      m.row?.Ten_cong_ty ||
+      m.row?.ten_cong_ty ||
+      m.customer?.ten_cong_ty ||
+      m.customer?.Ten_cong_ty ||
+      ''
+    ).trim()
+  }
+
+  return {
+    tenKH: tenKH || '—',
+    tenCongTy: tenCongTy || '—'
+  }
+}
+
 const getCustomerPOs = (kh) => {
   if (!kh) return []
-  return saleReportRows.value.filter(r => doesRowMatchCustomer(r, kh))
+  return saleReportRows.value
+    .filter(r => doesRowMatchCustomer(r, kh))
+    .sort((a, b) => {
+      const aUnpaid = congNo(a) > 0 ? 1 : 0
+      const bUnpaid = congNo(b) > 0 ? 1 : 0
+      if (bUnpaid !== aUnpaid) return bUnpaid - aUnpaid
+      const da = parseDateStr(a.created_time)?.getTime() || 0
+      const db = parseDateStr(b.created_time)?.getTime() || 0
+      return db - da
+    })
 }
 
 const getCustomerDebtSummary = (kh) => {
@@ -2977,10 +3101,9 @@ const setupModalForPO = (row) => {
     paymentModal.value.scheduleItems = []
     paymentModal.value.singleDueDate = ''
     paymentModal.value.amount = 0
-    paymentModal.value.amountStr = ''
+    paymentModal.value.amountStr = '0'
     return
   }
-  const remaining = congNo(row)
   const totalSau = tongSauVat(row)
   const existingMode =
     row.loai_thanh_toan === 'nhieu_dot' || (Array.isArray(row.ke_hoach_thanh_toan) && row.ke_hoach_thanh_toan.length > 1)
@@ -3009,12 +3132,11 @@ const setupModalForPO = (row) => {
   const singleDue = String(row.han_thanh_toan || existingSchedule[0]?.han_thanh_toan || '')
   const evalInst = evaluateInstallmentSchedule(totalSau, daThanhToan(row), existingMode, singleDue, existingSchedule)
   const nextUnpaid = evalInst.find(x => x.con_thieu > 0)
-  const defaultPayAmt = existingMode === 'nhieu_dot' && nextUnpaid ? nextUnpaid.con_thieu : (remaining > 0 ? remaining : 0)
   const defaultNote = existingMode === 'nhieu_dot' && nextUnpaid ? `Thanh toán Đợt ${nextUnpaid.dot} (${nextUnpaid.noi_dung})` : ''
 
   paymentModal.value.row = row
-  paymentModal.value.amount = defaultPayAmt
-  paymentModal.value.amountStr = defaultPayAmt > 0 ? defaultPayAmt.toLocaleString('vi-VN') : ''
+  paymentModal.value.amount = 0
+  paymentModal.value.amountStr = '0'
   paymentModal.value.paymentTime = getFormattedNow()
   paymentModal.value.note = defaultNote
   paymentModal.value.scheduleMode = existingMode
@@ -3047,27 +3169,51 @@ const openRecordPaymentSubModal = (evalInst) => {
   const m = paymentModal.value
   if (!m.row) return
   m.paymentTime = getFormattedNow()
+  m.amount = 0
+  m.amountStr = '0'
   if (evalInst) {
-    const amt = toNum(evalInst.con_thieu) > 0 ? toNum(evalInst.con_thieu) : toNum(evalInst.so_tien_phai_thu)
-    m.amount = amt
-    m.amountStr = amt > 0 ? amt.toLocaleString('vi-VN') : ''
     m.note = m.scheduleMode === 'nhieu_dot'
       ? `Thanh toán Đợt ${evalInst.dot} (${evalInst.noi_dung})`
       : 'Thanh toán 100% đơn hàng'
   } else {
-    const remaining = congNo(m.row)
     const nextUnpaid = modalEvaluatedInstallments.value.find(x => x.con_thieu > 0)
-    const defaultPayAmt = m.scheduleMode === 'nhieu_dot' && nextUnpaid
-      ? nextUnpaid.con_thieu
-      : (remaining > 0 ? remaining : 0)
-    m.amount = defaultPayAmt
-    m.amountStr = defaultPayAmt > 0 ? defaultPayAmt.toLocaleString('vi-VN') : ''
     m.note = m.scheduleMode === 'nhieu_dot' && nextUnpaid
       ? `Thanh toán Đợt ${nextUnpaid.dot} (${nextUnpaid.noi_dung})`
       : ''
   }
   m.showScheduleSubModal = false
   m.showRecordSubModal = true
+}
+
+const applyQuickInstallmentAmount = (evalInst) => {
+  const m = paymentModal.value
+  if (!m.row || !evalInst) return
+  const amt = toNum(evalInst.con_thieu) > 0 ? toNum(evalInst.con_thieu) : toNum(evalInst.so_tien_phai_thu)
+  m.amount = amt
+  m.amountStr = amt > 0 ? amt.toLocaleString('vi-VN') : '0'
+  m.note = m.scheduleMode === 'nhieu_dot'
+    ? `Thanh toán Đợt ${evalInst.dot} (${evalInst.noi_dung})`
+    : 'Thanh toán 100% đơn hàng'
+}
+
+const resetPaymentAmountToZero = () => {
+  paymentModal.value.amount = 0
+  paymentModal.value.amountStr = '0'
+}
+
+const onPaymentAmountFocus = (e) => {
+  const target = e?.target
+  if (!target) return
+  if (paymentModal.value.amount === 0 || String(target.value || '').trim() === '0') {
+    requestAnimationFrame(() => target.select())
+  }
+}
+
+const onPaymentAmountBlur = () => {
+  if (!paymentModal.value.amount || paymentModal.value.amount <= 0) {
+    paymentModal.value.amount = 0
+    paymentModal.value.amountStr = '0'
+  }
 }
 
 const setScheduleMode = (mode) => {
@@ -3316,14 +3462,25 @@ const setPaymentQuickPct = (pct) => {
   const base = remaining > 0 ? remaining : tongSauVat(paymentModal.value.row)
   const val = Math.round(base * (pct / 100))
   paymentModal.value.amount = val
-  paymentModal.value.amountStr = val > 0 ? val.toLocaleString('vi-VN') : ''
+  paymentModal.value.amountStr = val > 0 ? val.toLocaleString('vi-VN') : '0'
 }
 
 const onPaymentAmountInput = (e) => {
   const raw = String(e.target.value || '').replace(/[^0-9]/g, '')
   const num = raw ? Number(raw) : 0
   paymentModal.value.amount = num
-  paymentModal.value.amountStr = num > 0 ? num.toLocaleString('vi-VN') : ''
+  paymentModal.value.amountStr = num > 0 ? num.toLocaleString('vi-VN') : (raw === '' ? '' : '0')
+  e.target.value = paymentModal.value.amountStr
+}
+
+const onPaymentAmountPaste = (e) => {
+  e.preventDefault()
+  const pasted = e.clipboardData?.getData('text') ?? ''
+  if (!pasted) return
+  const raw = String(pasted).replace(/[^0-9]/g, '')
+  const num = raw ? Number(raw) : 0
+  paymentModal.value.amount = num
+  paymentModal.value.amountStr = num > 0 ? num.toLocaleString('vi-VN') : '0'
   e.target.value = paymentModal.value.amountStr
 }
 
@@ -3341,7 +3498,21 @@ const submitPayment = async () => {
     const r = m.row
     const fbKey = r._firebaseKey || r.ID
     const srId = String(r.ID || fbKey)
-    const maKH = String(r.Ma_khach_hang || m.customer?.ma_khach_hang || r.Ma_cong_ty || '')
+    const maKH = String(r.Ma_khach_hang || m.customer?.ma_khach_hang || m.customer?.Ma_khach_hang || r.Ma_cong_ty || '')
+    const tenKH = String(
+      r.Ten_khach_hang ||
+      r.ten_khach_hang ||
+      m.customer?.ten_khach_hang ||
+      m.customer?.Ten_khach_hang ||
+      ''
+    ).trim()
+    const tenCongTy = String(
+      r.Ten_cong_ty ||
+      r.ten_cong_ty ||
+      m.customer?.ten_cong_ty ||
+      m.customer?.Ten_cong_ty ||
+      ''
+    ).trim()
     const payTime = (m.paymentTime || '').trim() || getFormattedNow()
 
     const totalSau = tongSauVat(r)
@@ -3358,6 +3529,8 @@ const submitPayment = async () => {
       id: histKey,
       id_salereport: srId,
       maKH: maKH,
+      ten_khach_hang: tenKH,
+      ten_cong_ty: tenCongTy,
       so_tien_thanh_toan: payAmt,
       cong_no_con_lai: newCongNo,
       thoi_gian_thanh_toan: payTime,
@@ -3407,7 +3580,7 @@ const submitPayment = async () => {
     triggerZaloEventNotification('onPaymentRecorded', {
       ten_khach_hang: m.customer?.ten_cong_ty || m.customer?.ten_khach_hang || maKH,
       ma_khach_hang: maKH,
-      so_po: r.So_PO || srId,
+      so_po: r.So_PO || getPoContractContent(r, 40) || srId,
       so_tien_thanh_toan: payAmt.toLocaleString('vi-VN'),
       cong_no_con_lai: newCongNo.toLocaleString('vi-VN'),
       thoi_gian: payTime,
@@ -3418,10 +3591,9 @@ const submitPayment = async () => {
 
     const nextEval = evaluateInstallmentSchedule(totalSau, newPaid, m.scheduleMode, m.singleDueDate, m.scheduleItems)
     const nextUnpaid = nextEval.find(x => x.con_thieu > 0)
-    const nextPayAmt = m.scheduleMode === 'nhieu_dot' && nextUnpaid ? nextUnpaid.con_thieu : (newCongNo > 0 ? newCongNo : 0)
 
-    m.amount = nextPayAmt
-    m.amountStr = nextPayAmt > 0 ? nextPayAmt.toLocaleString('vi-VN') : ''
+    m.amount = 0
+    m.amountStr = '0'
     m.paymentTime = getFormattedNow()
     m.note = m.scheduleMode === 'nhieu_dot' && nextUnpaid ? `Thanh toán Đợt ${nextUnpaid.dot} (${nextUnpaid.noi_dung})` : ''
     m.showRecordSubModal = false
@@ -5327,5 +5499,12 @@ onMounted(() => {
 @keyframes async-modal-out {
   0% { opacity: 1; transform: scale(1); }
   100% { opacity: 0; transform: scale(0.85) translateY(10px); }
+}
+
+@media (max-width: 640px) {
+  .cust-debt-record-2col {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
 }
 </style>

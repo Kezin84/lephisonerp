@@ -2940,6 +2940,7 @@ export interface QuoteExportContext {
   currency: 'VND' | 'USD'
   tiGia: number
   rows: QuoteExportRowItem[]
+  itemSttFormat?: 'number' | 'roman' | 'hierarchical'
   totals: {
     truoc: number
     vat: number
@@ -3499,6 +3500,26 @@ export function replaceTokensInText(text: string, tokenMap: Record<string, strin
   return out
 }
 
+function formatContinuousFlatStt(idx: number, ctx: QuoteExportContext): string {
+  if (ctx.itemSttFormat === 'roman') {
+    const map: [number, string][] = [
+      [1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'],
+      [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'],
+      [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']
+    ]
+    let n = Math.max(1, Math.floor(idx))
+    let res = ''
+    for (const [v, s] of map) {
+      while (n >= v) {
+        res += s
+        n -= v
+      }
+    }
+    return res
+  }
+  return String(idx)
+}
+
 /* =====================================================
    8. RENDER HTML ĐỂ XEM TRƯỚC / IN PDF / XUẤT PNG / XUẤT HTML
 ===================================================== */
@@ -3581,7 +3602,7 @@ export function renderTemplateToHtml(tpl: PrintTemplateConfig, ctx: QuoteExportC
           continuousItemStt++
           const { textMap } = buildRowTokenMap(qRow, ctx, globalMap)
           if (groupRowIdx <= 0) {
-            textMap['{{STT}}'] = String(continuousItemStt)
+            textMap['{{STT}}'] = formatContinuousFlatStt(continuousItemStt, ctx)
           }
           expandedRows.push({
             sourceRow: itemRowIdx,
@@ -5232,9 +5253,13 @@ export async function generateExcelBlobFromTemplate(
           for (let c = 1; c <= totalCols; c++) {
             const gCell = tpl.grid_cells?.[`${groupRowIdx}_${c}`]
             const cell = row.getCell(c)
-            applyGridStyleToExcelCell(cell, gCell?.style, gCell?.value || '')
-            cell.value = replaceTokensInText(gCell?.value || '', textMap)
-            applyPreviewOverrideToExcelCell(cell, `row_${qRowIdx}_${c}`, gCell?.style, gCell?.value || '')
+            const rawGrpVal = gCell?.value || ''
+            applyGridStyleToExcelCell(cell, gCell?.style, rawGrpVal)
+            const replacedGrpVal = replaceTokensInText(rawGrpVal, textMap)
+            cell.value = rawGrpVal.trim() === '{{NHOM_STT}}' && /^\d+$/.test(replacedGrpVal.trim())
+              ? Number(replacedGrpVal.trim())
+              : replacedGrpVal
+            applyPreviewOverrideToExcelCell(cell, `row_${qRowIdx}_${c}`, gCell?.style, rawGrpVal)
           }
           applyRowMergesWithStyle(outRowIdx, getGridRowMerges(groupRowIdx))
           outRowIdx++
@@ -5243,7 +5268,7 @@ export async function generateExcelBlobFromTemplate(
           const row = ws.getRow(outRowIdx)
           const { textMap, rawNumberMap } = buildRowTokenMap(qRow, ctx, globalMap)
           if (groupRowIdx <= 0) {
-            textMap['{{STT}}'] = String(continuousExcelStt)
+            textMap['{{STT}}'] = formatContinuousFlatStt(continuousExcelStt, ctx)
           }
           const it = qRow.item || {}
           const vatPctVal = formatPctNumber(
@@ -5273,8 +5298,8 @@ export async function generateExcelBlobFromTemplate(
             const wrap = gStyle.wrapText !== false
 
             if (rawText === '{{STT}}') {
-              const sttNum = Number(textMap['{{STT}}'])
-              cell.value = !Number.isNaN(sttNum) && sttNum > 0 ? sttNum : textMap['{{STT}}']
+              const rawSttStr = String(textMap['{{STT}}'] ?? '').trim()
+              cell.value = /^\d+$/.test(rawSttStr) ? Number(rawSttStr) : rawSttStr
               cell.alignment = { horizontal: hAlign, vertical: vAlign, wrapText: wrap }
             } else if (rawText === '{{DL_OFF_NTS}}') {
               cell.value = rawNumberMap['{{DL_OFF_NTS}}'] ?? 0

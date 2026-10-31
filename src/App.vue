@@ -2,7 +2,16 @@
   <div v-if="isLoginRoute">
     <router-view />
   </div>
-  <div v-else class="app-layout" :class="{ 'sidebar-collapsed': !isSidebarOpen, 'mobile-nav-hidden': isMobileNavHidden && !isMobileDrawerOpen }">
+  <div
+    v-else
+    class="app-layout"
+    :class="{
+      'sidebar-collapsed': !isSidebarOpen,
+      'mobile-nav-hidden': isMobileNavHidden && !isMobileDrawerOpen,
+      'has-open-modal': hasGlobalOpenModal,
+      'is-baogia-firebase-route': isBaoGiaFirebaseRoute
+    }"
+  >
     <aside class="sidebar">
       <div class="logo">
         <div v-if="isSidebarOpen" style="display: flex; align-items: center; gap: 12px; overflow: hidden;">
@@ -569,8 +578,61 @@ const isGroupActive = (key) => {
   return paths.some(p => route.path === p || route.path.startsWith(p + '/'))
 }
 
+const isBaoGiaFirebaseRoute = computed(() => route.path === '/baogiafirebase' || route.path.startsWith('/baogiafirebase/'))
+const hasGlobalOpenModal = ref(false)
+
+const GLOBAL_MODAL_SELECTORS =
+  '.modal, .vip-modal-overlay, .load-invoice-modal-overlay, .modal-overlay, .pipeline-modal-overlay, .pl-mobile-sheet-overlay, .qtabs-mobile-sheet-overlay, .quote-col-setting-backdrop, .async-overlay, .sr-modal-overlay, .elite-modal-overlay, .quote-guide-modal-overlay, .quote-guide-spotlight-root'
+
 const EXCLUDED_SCROLL_SELECTORS =
-  '.modal, .vip-modal-overlay, .load-invoice-modal-overlay, .modal-overlay, .pipeline-modal-overlay, .mobile-drawer, .sidebar'
+  `${GLOBAL_MODAL_SELECTORS}, .quote-col-setting-dropdown, .mobile-drawer, .sidebar`
+
+let modalObserver = null
+let modalCheckRaf = 0
+
+const resetMobileShellViewport = () => {
+  if (typeof window === 'undefined' || window.innerWidth > 1100 || !isBaoGiaFirebaseRoute.value) return
+  if (window.scrollY !== 0 || document.documentElement.scrollTop !== 0 || document.body.scrollTop !== 0) {
+    window.scrollTo(0, 0)
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+  }
+  if (mainContentRef.value && mainContentRef.value.scrollTop !== 0) {
+    mainContentRef.value.scrollTop = 0
+  }
+}
+
+const syncGlobalOpenModalState = () => {
+  if (typeof document === 'undefined') return
+  let found = document.body.classList.contains('has-open-modal')
+  if (!found) {
+    const candidates = document.querySelectorAll(GLOBAL_MODAL_SELECTORS)
+    for (let i = 0; i < candidates.length; i++) {
+      const el = candidates[i]
+      if (el instanceof HTMLElement && el.getClientRects().length > 0 && window.getComputedStyle(el).display !== 'none') {
+        found = true
+        break
+      }
+    }
+  }
+  const prev = hasGlobalOpenModal.value
+  if (prev !== found) {
+    hasGlobalOpenModal.value = found
+    document.body.classList.toggle('app-has-open-modal', found)
+    if (prev && !found) {
+      resetMobileShellViewport()
+      setTimeout(resetMobileShellViewport, 60)
+    }
+  }
+}
+
+const scheduleGlobalModalCheck = () => {
+  if (modalCheckRaf) return
+  modalCheckRaf = requestAnimationFrame(() => {
+    modalCheckRaf = 0
+    syncGlobalOpenModalState()
+  })
+}
 
 const scrolledTargets = new Set()
 let activeScrollTarget = null
@@ -715,6 +777,15 @@ const handleScroll = (e) => {
 }
 
 const handleGlobalScrollCapture = (e) => {
+  if (hasGlobalOpenModal.value) {
+    if (isBaoGiaFirebaseRoute.value && typeof window !== 'undefined' && window.innerWidth <= 1100) {
+      const target = e.target
+      if (target === mainContentRef.value && mainContentRef.value && mainContentRef.value.scrollTop !== 0) {
+        mainContentRef.value.scrollTop = 0
+      }
+    }
+    return
+  }
   const target = e.target
   if (
     target === window ||
@@ -722,6 +793,10 @@ const handleGlobalScrollCapture = (e) => {
     target === document.documentElement ||
     target === document.body
   ) {
+    if (isBaoGiaFirebaseRoute.value && typeof window !== 'undefined' && window.innerWidth <= 1100) {
+      resetMobileShellViewport()
+      return
+    }
     const curY = window.scrollY || document.documentElement.scrollTop || 0
     if (!isScrollingToTop) {
       showScrollTop.value = computeShouldShowScrollTop()
@@ -835,6 +910,17 @@ onMounted(() => {
   window.addEventListener('touchstart', clearScrollingToTopGuard, { passive: true })
   window.addEventListener('wheel', clearScrollingToTopGuard, { passive: true })
   window.addEventListener('click', handleGlobalClickSyncScrollTop, { passive: true })
+  window.addEventListener('resize', scheduleGlobalModalCheck, { passive: true })
+  if (typeof MutationObserver !== 'undefined' && document.body) {
+    modalObserver = new MutationObserver(scheduleGlobalModalCheck)
+    modalObserver.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class', 'style']
+    })
+    syncGlobalOpenModalState()
+  }
   fetchIncompleteTasks()
   checkIosInstallPrompt()
   initZaloBotBackgroundService()
@@ -845,6 +931,15 @@ onUnmounted(() => {
   window.removeEventListener('touchstart', clearScrollingToTopGuard)
   window.removeEventListener('wheel', clearScrollingToTopGuard)
   window.removeEventListener('click', handleGlobalClickSyncScrollTop)
+  window.removeEventListener('resize', scheduleGlobalModalCheck)
+  if (modalObserver) {
+    modalObserver.disconnect()
+    modalObserver = null
+  }
+  if (modalCheckRaf) {
+    cancelAnimationFrame(modalCheckRaf)
+    modalCheckRaf = 0
+  }
   clearScrollingToTopGuard()
 })
 </script>
@@ -880,7 +975,8 @@ onUnmounted(() => {
   transform: translateY(0);
 }
 
-.app-layout:has(.modal, .vip-modal-overlay, .load-invoice-modal-overlay, .modal-overlay, .pipeline-modal-overlay) .scroll-to-top {
+.app-layout.has-open-modal .scroll-to-top,
+.app-layout:has(.modal, .vip-modal-overlay, .load-invoice-modal-overlay, .modal-overlay, .pipeline-modal-overlay, .pl-mobile-sheet-overlay, .qtabs-mobile-sheet-overlay, .quote-col-setting-backdrop, .async-overlay) .scroll-to-top {
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;
