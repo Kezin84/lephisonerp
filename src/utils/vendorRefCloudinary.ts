@@ -1,9 +1,21 @@
 import * as XLSX from 'xlsx-js-style'
 import JSZip from 'jszip'
+import { getSystemConfigSync } from '../services/systemConfig'
 
 export const CLOUDINARY_UPLOAD_URL = 'https://api.cloudinary.com/v1_1/db6fzs3rh/auto/upload'
 export const CLOUDINARY_RAW_UPLOAD_URL = 'https://api.cloudinary.com/v1_1/db6fzs3rh/raw/upload'
 export const CLOUDINARY_UPLOAD_PRESET = 'upload_file'
+
+function getRuntimeCloudinaryEndpoints() {
+  const st = getSystemConfigSync().storage
+  const cloud = (st.cloudinaryCloudName || 'db6fzs3rh').trim()
+  const preset = (st.cloudinaryUploadPreset || CLOUDINARY_UPLOAD_PRESET).trim()
+  return {
+    autoUrl: `https://api.cloudinary.com/v1_1/${cloud}/auto/upload`,
+    rawUrl: `https://api.cloudinary.com/v1_1/${cloud}/raw/upload`,
+    preset
+  }
+}
 
 export interface VendorRefFileMeta {
   index_url?: string
@@ -31,9 +43,10 @@ export async function uploadBlobToCloudinary(
   blobOrFile: Blob | File,
   fileName: string
 ): Promise<string> {
+  const { autoUrl, rawUrl, preset } = getRuntimeCloudinaryEndpoints()
   const tryUpload = async (endpointUrl: string) => {
     const fd = new FormData()
-    fd.append('upload_preset', CLOUDINARY_UPLOAD_PRESET)
+    fd.append('upload_preset', preset)
     fd.append('file', blobOrFile, fileName)
     const res = await fetch(endpointUrl, {
       method: 'POST',
@@ -43,10 +56,10 @@ export async function uploadBlobToCloudinary(
     return { res, data }
   }
 
-  let { res, data } = await tryUpload(CLOUDINARY_UPLOAD_URL)
+  let { res, data } = await tryUpload(autoUrl)
   if (!res.ok || !data?.secure_url) {
     // Fallback sang raw/upload cho mọi định dạng file đặc biệt (.xlsb, .msg, .rar, .zip, .docx, file không rõ đuôi...)
-    const rawAttempt = await tryUpload(CLOUDINARY_RAW_UPLOAD_URL)
+    const rawAttempt = await tryUpload(rawUrl)
     if (rawAttempt.res.ok && rawAttempt.data?.secure_url) {
       return String(rawAttempt.data.secure_url)
     }

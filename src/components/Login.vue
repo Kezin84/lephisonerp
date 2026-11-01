@@ -1,5 +1,24 @@
 <template>
   <div class="login-container">
+    <!-- LOCALHOST ONLY: NÚT CỨU HỘ & CHUYỂN MẠCH MOCK / DB THẬT (ẨN 100% TRÊN SONAI.TECH) -->
+    <div v-if="isLocalHost" class="local-rescue-bar">
+      <button
+        type="button"
+        class="local-mode-switch-btn"
+        :class="isMockActive ? 'mode-mock' : 'mode-live'"
+        title="Bấm để chuyển nhanh giữa Mock JSON (Local) và Firebase Thật"
+        @click="handleQuickSwitchMode"
+      >
+        <span class="mode-dot"></span>
+        <span>{{ isMockActive ? 'MOCK JSON (Local)' : 'FIREBASE THẬT' }}</span>
+        <span class="switch-hint">⇄ Đổi</span>
+      </button>
+      <router-link to="/system-config" class="local-cfg-btn" title="Mở Trung tâm Cấu hình Hệ thống & API">
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        <span>Cấu hình &amp; Mock DB</span>
+      </router-link>
+    </div>
+
     <div class="login-box">
       <div class="login-header">
         <div class="logo-wrapper">
@@ -49,10 +68,17 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { initializeApp, getApps, getApp } from 'firebase/app'
 import { getDatabase, ref as dbRef, get } from 'firebase/database'
+import { isLocalDevHost, isMockDbActive, switchDbModeAndReload } from '../services/systemConfig'
+
+const isLocalHost = isLocalDevHost()
+const isMockActive = computed(() => isMockDbActive())
+const handleQuickSwitchMode = () => {
+  switchDbModeAndReload()
+}
 
 const firebaseConfig = {
   apiKey: "AIzaSyB3fHD_sOqyqVygCxP2gZtvaipr-35a1s8",
@@ -360,7 +386,80 @@ const handleLogin = async () => {
   to { transform: rotate(360deg); }
 }
 
+.local-rescue-bar {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 100001;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.local-mode-switch-btn,
+.local-cfg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  transition: all 0.16s ease;
+}
+
+.local-mode-switch-btn.mode-mock {
+  background: rgba(16, 185, 129, 0.16);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.42);
+}
+
+.local-mode-switch-btn.mode-live {
+  background: rgba(239, 68, 68, 0.16);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.42);
+}
+
+.local-mode-switch-btn:hover {
+  filter: brightness(1.12);
+}
+
+.mode-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.switch-hint {
+  opacity: 0.78;
+  font-size: 11px;
+  padding-left: 4px;
+  border-left: 1px solid currentColor;
+}
+
+.local-cfg-btn {
+  background: rgba(15, 23, 42, 0.85);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+}
+
+.local-cfg-btn:hover {
+  background: rgba(2, 132, 199, 0.25);
+  color: #f8fafc;
+}
+
 @media (max-width: 480px) {
+  .local-rescue-bar {
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    justify-content: center;
+  }
   .login-box {
     padding: 30px 20px;
     border-radius: 0;

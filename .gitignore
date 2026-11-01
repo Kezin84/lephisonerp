@@ -25,3 +25,6 @@ dist-ssr
 scratch/
 .agents/
 extracted_report_style.css
+system.config.local.json
+mockdata.local.json
+public/__local_uploads/

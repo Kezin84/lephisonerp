@@ -1,6 +1,17 @@
+import { getSystemConfigSync } from './systemConfig'
+
 export const DEEPSEEK_API_URL = '/byteplus-api/api/v3/chat/completions';
 export const DEEPSEEK_API_KEY = 'VxCgNvLTE.ChthcGlrZXktMjAyNjEwMDUyMTA2MjEtN2ZzOW0Q-5_rmAsYAiCfgOwtKhAaV-B60txBRYBHBOtS7fGX.3anjjKeiObCad8KG5EhozRtIuoD2U-BFpSMbkg0T_HZW4vy4gHGiyyx5DjmiJrkVDu0bG_oO8PuNQmGsOS12HweZ';
 export const DEEPSEEK_MODEL = 'deepseek-v4-pro-ga-260813';
+
+export const getDeepSeekRuntimeConfig = () => {
+  const ai = getSystemConfigSync().ai
+  return {
+    apiUrl: (ai.deepseekApiUrl || DEEPSEEK_API_URL).trim(),
+    apiKey: (ai.deepseekApiKey || DEEPSEEK_API_KEY).trim(),
+    model: (ai.deepseekModel || DEEPSEEK_MODEL).trim()
+  }
+}
 
 /**
  * Gọi API DeepSeek V4 Pro để xử lý các yêu cầu
@@ -9,6 +20,7 @@ export const DEEPSEEK_MODEL = 'deepseek-v4-pro-ga-260813';
  * @param useWebSearch Bật công cụ tìm kiếm web (mặc định: false)
  */
 export const callDeepSeek = async (promptOrMessages: any, stream: boolean = false, useWebSearch: boolean = false) => {
+  const { apiUrl, apiKey, model } = getDeepSeekRuntimeConfig()
   let messages = [];
   if (Array.isArray(promptOrMessages)) {
     messages = promptOrMessages.map((msg: any) => ({
@@ -25,7 +37,7 @@ export const callDeepSeek = async (promptOrMessages: any, stream: boolean = fals
   }
 
   const payload: any = {
-    model: DEEPSEEK_MODEL,
+    model: model,
     stream: stream,
     messages: messages
   };
@@ -41,10 +53,10 @@ export const callDeepSeek = async (promptOrMessages: any, stream: boolean = fals
   }
 
   try {
-    const response = await fetch(DEEPSEEK_API_URL, {
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(payload)

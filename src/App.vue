@@ -1,5 +1,5 @@
 <template>
-  <div v-if="isLoginRoute">
+  <div v-if="isGuestFullscreenRoute">
     <router-view />
   </div>
   <div
@@ -244,6 +244,10 @@
           </div>
           <div class="nav-section-divider hide-on-mobile" v-else></div>
           <div class="nav-group-items" :class="{ 'group-collapsed': !openGroups.system && isSidebarOpen }">
+            <router-link to="/system-config" class="nav-item hide-on-mobile" title="Cấu hình Hệ thống & API">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+              <span class="nav-text">Cấu hình Hệ thống &amp; API</span>
+            </router-link>
             <router-link to="/database-viewer" class="nav-item hide-on-mobile" title="Xem Database">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
               <span class="nav-text">Xem Database</span>
@@ -451,6 +455,10 @@
           <svg :style="{ transform: openGroups.system ? 'rotate(180deg)' : 'rotate(0)' }" class="nav-chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
         </div>
         <div v-show="openGroups.system" class="drawer-group-items">
+          <router-link to="/system-config" class="drawer-item" @click="isMobileDrawerOpen = false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            <span>Cấu hình Hệ thống &amp; API</span>
+          </router-link>
           <router-link to="/database-viewer" class="drawer-item" @click="isMobileDrawerOpen = false">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
             <span>Xem Database</span>
@@ -477,6 +485,27 @@
       </div>
     </div>
 
+    <!-- LOCALHOST ONLY: QUICK DB MODE BADGE (ẨN KHI MỞ MODAL, TRÊN TRANG CONFIG HOẶC TRÊN SONAI.TECH) -->
+    <div
+      v-if="isLocalHost && sysConfig.ui.showQuickBadge && route.name !== 'SystemConfig' && !hasGlobalOpenModal"
+      class="sonai-quick-db-badge"
+      :class="isMockActive ? 'is-mock' : 'is-live'"
+    >
+      <button
+        type="button"
+        class="quick-db-switch"
+        :title="isMockActive ? 'Đang chạy Mock JSON (0 byte Firebase). Bấm để chuyển sang DB Thật' : 'Đang kết nối Firebase Thật! Bấm để chuyển sang Mock JSON'"
+        @click="handleQuickToggleDb"
+      >
+        <span class="q-dot"></span>
+        <span class="q-label">{{ isMockActive ? 'MOCK JSON' : 'DB THẬT' }}</span>
+        <span class="q-swap">⇄</span>
+      </button>
+      <router-link to="/system-config" class="quick-db-gear" title="Mở Cấu hình Hệ thống & API">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      </router-link>
+    </div>
+
     <!-- iOS Safari PWA Install Banner -->
     <div v-if="showIosInstallPrompt" class="ios-install-banner">
       <img src="/apple-touch-icon.png" alt="SONAI" class="ios-install-icon" />
@@ -500,13 +529,30 @@
 <script setup>
 import { ref, reactive, watch, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { initZaloBotBackgroundService } from './utils/zaloBotService'
+import { initZaloBotBackgroundService, stopZaloBotBackgroundService } from './utils/zaloBotService'
+import {
+  useSystemConfig,
+  isLocalDevHost,
+  isMockDbActive,
+  hasAuthSession,
+  switchDbModeAndReload,
+  syncSystemConfigWithCloud
+} from './services/systemConfig'
 
 const route = useRoute()
 const router = useRouter()
-const isLoginRoute = computed(() => route.path === '/login')
+const sysConfig = useSystemConfig()
+const isLocalHost = isLocalDevHost()
+const isMockActive = computed(() => isMockDbActive())
+const isGuestFullscreenRoute = computed(
+  () => route.path === '/login' || (route.name === 'SystemConfig' && !hasAuthSession())
+)
+const handleQuickToggleDb = () => {
+  switchDbModeAndReload()
+}
 
 const handleLogout = () => {
+  stopZaloBotBackgroundService()
   localStorage.removeItem('auth_token')
   sessionStorage.removeItem('auth_token')
   isMobileDrawerOpen.value = false
@@ -534,7 +580,7 @@ const GROUP_ROUTES = {
   sales: ['/baogiafirebase', '/quanlybaogiafirebase', '/pipeline-firebase', '/po-preview-firebase'],
   catalog: ['/customerfirebase', '/quanlyhanghoafirebase', '/license-old-data-firebase'],
   documents: ['/quanlydieukhoanfirebase', '/mau-in-firebase', '/kho-luu-tru-firebase', '/quan-ly-file'],
-  system: ['/database-viewer', '/zalo-bot-config']
+  system: ['/system-config', '/database-viewer', '/zalo-bot-config']
 }
 
 const loadSavedSidebarGroups = () => {
@@ -582,7 +628,7 @@ const isBaoGiaFirebaseRoute = computed(() => route.path === '/baogiafirebase' ||
 const hasGlobalOpenModal = ref(false)
 
 const GLOBAL_MODAL_SELECTORS =
-  '.modal, .vip-modal-overlay, .load-invoice-modal-overlay, .modal-overlay, .pipeline-modal-overlay, .pl-mobile-sheet-overlay, .qtabs-mobile-sheet-overlay, .quote-col-setting-backdrop, .async-overlay, .sr-modal-overlay, .elite-modal-overlay, .quote-guide-modal-overlay, .quote-guide-spotlight-root'
+  '.modal, .vip-modal-overlay, .load-invoice-modal-overlay, .modal-overlay, .pipeline-modal-overlay, .pl-mobile-sheet-overlay, .qtabs-mobile-sheet-overlay, .quote-col-setting-backdrop, .async-overlay, .sr-modal-overlay, .elite-modal-overlay, .quote-guide-modal-overlay, .quote-guide-spotlight-root, .bg-modal-overlay, .pl-sheet-overlay, .bg-attach-sheet-overlay, .bg-lightbox-overlay, .baogia-dialog-overlay'
 
 const EXCLUDED_SCROLL_SELECTORS =
   `${GLOBAL_MODAL_SELECTORS}, .quote-col-setting-dropdown, .mobile-drawer, .sidebar`
@@ -921,12 +967,33 @@ onMounted(() => {
     })
     syncGlobalOpenModalState()
   }
-  fetchIncompleteTasks()
   checkIosInstallPrompt()
-  initZaloBotBackgroundService()
+  window.addEventListener('focus', handleWindowFocusCloudSync, { passive: true })
+  if (hasAuthSession()) {
+    syncSystemConfigWithCloud()
+    fetchIncompleteTasks()
+    initZaloBotBackgroundService()
+  }
 })
 
+const handleWindowFocusCloudSync = () => {
+  if (hasAuthSession()) {
+    syncSystemConfigWithCloud()
+  }
+}
+
+watch(
+  () => route.path,
+  () => {
+    if (hasAuthSession()) {
+      syncSystemConfigWithCloud()
+      initZaloBotBackgroundService()
+    }
+  }
+)
+
 onUnmounted(() => {
+  window.removeEventListener('focus', handleWindowFocusCloudSync)
   window.removeEventListener('scroll', handleGlobalScrollCapture, { capture: true })
   window.removeEventListener('touchstart', clearScrollingToTopGuard)
   window.removeEventListener('wheel', clearScrollingToTopGuard)
@@ -976,7 +1043,8 @@ onUnmounted(() => {
 }
 
 .app-layout.has-open-modal .scroll-to-top,
-.app-layout:has(.modal, .vip-modal-overlay, .load-invoice-modal-overlay, .modal-overlay, .pipeline-modal-overlay, .pl-mobile-sheet-overlay, .qtabs-mobile-sheet-overlay, .quote-col-setting-backdrop, .async-overlay) .scroll-to-top {
+body.app-has-open-modal .app-layout .scroll-to-top,
+.app-layout:has(.modal, .vip-modal-overlay, .load-invoice-modal-overlay, .modal-overlay, .pipeline-modal-overlay, .pl-mobile-sheet-overlay, .qtabs-mobile-sheet-overlay, .quote-col-setting-backdrop, .async-overlay, .bg-modal-overlay, .pl-sheet-overlay, .bg-attach-sheet-overlay, .bg-lightbox-overlay, .baogia-dialog-overlay) .scroll-to-top {
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;
@@ -1423,7 +1491,102 @@ onUnmounted(() => {
   color: #fca5a5;
 }
 
+.sonai-quick-db-badge {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 9998;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  overflow: hidden;
+}
+
+.sonai-quick-db-badge.is-mock {
+  border-color: rgba(16, 185, 129, 0.48);
+}
+
+.sonai-quick-db-badge.is-live {
+  border-color: rgba(239, 68, 68, 0.48);
+}
+
+.quick-db-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  background: transparent;
+  border: none;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sonai-quick-db-badge.is-mock .quick-db-switch {
+  color: #34d399;
+}
+
+.sonai-quick-db-badge.is-live .quick-db-switch {
+  color: #f87171;
+}
+
+.quick-db-switch:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.q-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.q-swap {
+  opacity: 0.75;
+  font-size: 11px;
+}
+
+.quick-db-gear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  color: #38bdf8;
+  border-left: 1px solid rgba(148, 163, 184, 0.2);
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.quick-db-gear:hover {
+  background: rgba(56, 189, 248, 0.18);
+  color: #ffffff;
+}
+
+@media (min-width: 769px) and (max-width: 1100px) {
+  .app-layout:has(.bg-mobile-dock, .mobile-screen1-cart-bar, .mobile-screen2-action-bar) .sonai-quick-db-badge {
+    bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 @media (max-width: 768px) {
+  .sonai-quick-db-badge {
+    bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+    right: 10px;
+  }
+  .app-layout:has(.bg-mobile-dock, .mobile-screen1-cart-bar, .mobile-screen2-action-bar) .sonai-quick-db-badge {
+    bottom: calc(140px + env(safe-area-inset-bottom, 0px));
+    left: 12px;
+    right: auto;
+  }
+  .app-layout.mobile-nav-hidden:has(.bg-mobile-dock, .mobile-screen1-cart-bar, .mobile-screen2-action-bar) .sonai-quick-db-badge {
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
   .nav-section-title,
   .nav-section-divider,
   .sidebar-footer {

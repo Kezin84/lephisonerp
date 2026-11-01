@@ -1,284 +1,634 @@
 <template>
-  <div class="report-container">
-    <header class="header" style="position: relative; justify-content: center;">
-      <div class="title-section" style="text-align: center;">
-        <h1 style="color: #10b981; text-transform: uppercase;">Quản Lý Báo Cáo</h1>
-        <p class="subtitle">Theo dõi và cập nhật trạng thái công việc</p>
-      </div>
-      <div class="header-actions" style="position: absolute; right: 0;">
-        <button class="btn-excel" @click="exportExcel">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-          <span>Xuất Excel</span>
-        </button>
-        <button class="btn-primary" @click="openAddModal">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-          <span>Thêm Báo Cáo Mới</span>
-        </button>
+  <div class="report-container page" :class="{ 'theme-light-blue': uiTheme === 'light' }">
+    <!-- MODULE 1A: MINIMAL PAGE IDENTITY HEADER -->
+    <header class="bg-topbar" data-guide="report-topbar">
+      <div class="bg-brand-title-wrap">
+        <div class="bg-brand-icon" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+        </div>
+        <div class="bg-title-stack">
+          <h1 class="bg-page-title">Quản Lý Báo Cáo</h1>
+          <span class="bg-page-subtitle bg-hide-sm">Theo dõi tiến độ &amp; điều phối lịch công việc</span>
+        </div>
       </div>
     </header>
 
-    <!-- Elite Filters -->
-    <div class="elite-filter-panel">
-      <div class="elite-filter-accent"></div>
-      <div class="elite-filter-header">
-        <div class="elite-filter-title">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
-          <span>Bộ lọc nâng cao</span>
+    <!-- MODULE 2: ASYMMETRIC BENTO COMMAND DECK (LEFT: FILTER WORKSPACE | RIGHT: 1-TALL + 3-STACKED STATUS BENTO) -->
+    <div class="bg-bento-deck">
+      <!-- LEFT BENTO: SEARCH, TIME RANGE & 5 ATTRIBUTE PICKERS (2A: SOLID SYNCHRONIZED HEADER + 5-COL BALANCED PICKERS) -->
+      <section class="bg-filter-strip" ref="filterPickersBarRef" data-guide="report-filters">
+        <!-- 2A: Full-Bleed Solid Colored Header Bar (Emerald Dark / Ocean Blue Light + White Text) -->
+        <div class="bg-filter-head">
+          <div class="bg-filter-head-title">
+            <span class="bg-filter-head-ic" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
+            </span>
+            <span>TÌM KIẾM &amp; BỘ LỌC</span>
+          </div>
+
+          <div class="bg-filter-top-actions">
+            <!-- Reset All Filters (Placed directly on Filter Header Bar) -->
+            <button
+              type="button"
+              class="bg-filter-reset-all bg-tabular"
+              :class="{ 'is-idle': activeCustomFilterCount === 0 }"
+              :disabled="activeCustomFilterCount === 0"
+              @click="resetAllFilters"
+              title="Đặt lại toàn bộ bộ lọc tìm kiếm & thuộc tính"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+              <span>Đặt lại lọc<template v-if="activeCustomFilterCount > 0"> ({{ activeCustomFilterCount }})</template></span>
+            </button>
+
+            <button
+              type="button"
+              class="bg-btn bg-btn-ghost is-refresh-btn"
+              @click="reloadPage"
+              title="Làm mới dữ liệu"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 2v6h6M21.5 22v-6h-6"/><path d="M22 11.5A10 10 0 0 0 3.2 7.2M2 12.5a10 10 0 0 0 18.8 4.2"/></svg>
+              <span class="bg-hide-sm">Làm mới</span>
+            </button>
+          </div>
         </div>
-        <button class="elite-refresh-btn" @click="reloadPage">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 2v6h6M21.5 22v-6h-6"/><path d="M22 11.5A10 10 0 0 0 3.2 7.2M2 12.5a10 10 0 0 0 18.8 4.2"/></svg>
-          Làm mới
+
+        <!-- Sub-row 1: 100% Full-Width Recessed Search Well (+ Mobile Compact Filter Toggle & Refresh) -->
+        <div class="bg-filter-row-top">
+          <div class="bg-search-shell" data-guide="report-search-box" :class="{ 'is-focused': isSearchFocused || !!filters.searchQuery }">
+            <svg class="bg-search-icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input
+              type="text"
+              v-model="filters.searchQuery"
+              class="bg-search-input"
+              placeholder="Tìm nội dung, ghi chú, tên/mã KH, nhắc nhở..."
+              @focus="onSearchFocus"
+              @click="onSearchFocus"
+              @blur="onSearchBlur"
+              @keydown.enter.prevent="commitRecentSearch(filters.searchQuery)"
+            />
+            <button
+              v-if="filters.searchQuery"
+              type="button"
+              class="bg-search-clear"
+              @click="clearSearchQuery"
+              title="Xoá từ khoá"
+            >
+              ✕
+            </button>
+
+            <!-- Recent Search Chips Dropdown -->
+            <div v-if="isSearchFocused && recentSearches.length > 0" class="bg-recent-dropdown">
+              <div class="bg-recent-head">
+                <span>Tìm kiếm gần đây</span>
+                <button type="button" class="bg-recent-clear-all" @mousedown.prevent="clearAllRecentChips">Xoá lịch sử</button>
+              </div>
+              <div class="bg-recent-chips">
+                <div
+                  v-for="chip in recentSearches"
+                  :key="chip"
+                  class="bg-recent-chip"
+                  @mousedown.prevent="selectRecentChip(chip)"
+                >
+                  <span class="bg-recent-chip-text">{{ chip }}</span>
+                  <button
+                    type="button"
+                    class="bg-recent-chip-del"
+                    @mousedown.prevent.stop="removeRecentChip(chip)"
+                    title="Xoá"
+                  >×</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <template v-if="isMobile">
+            <button
+              type="button"
+              class="bg-m-filter-toggle bg-tabular"
+              :class="{ 'is-open': isMobileFilterExpanded, 'has-active': activeCustomFilterCount > 0 }"
+              @click="isMobileFilterExpanded = !isMobileFilterExpanded"
+              title="Mở / Thu gọn bộ lọc thời gian & thuộc tính"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
+              <span>Lọc</span>
+              <span v-if="activeCustomFilterCount > 0" class="bg-m-filter-badge">{{ activeCustomFilterCount }}</span>
+              <span class="bg-m-filter-caret">{{ isMobileFilterExpanded ? '▴' : '▾' }}</span>
+            </button>
+            <button
+              type="button"
+              class="bg-m-refresh-btn"
+              @click="reloadPage"
+              title="Làm mới dữ liệu"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 2v6h6M21.5 22v-6h-6"/><path d="M22 11.5A10 10 0 0 0 3.2 7.2M2 12.5a10 10 0 0 0 18.8 4.2"/></svg>
+            </button>
+          </template>
+        </div>
+
+        <div class="bg-filter-collapsible" :class="{ 'is-m-collapsed': isMobile && !isMobileFilterExpanded }">
+
+        <!-- Sub-row 2: Time Granularity Track + 1-Tap Period Stepper ‹ › + Date Range Capsule + Hôm nay -->
+        <div class="bg-filter-row-main" data-guide="report-time-row">
+          <div class="bg-seg-switch is-compact" role="tablist" aria-label="Chế độ thời gian">
+            <button type="button" class="bg-seg-btn" :class="{ 'is-active': filters.filterMode === 'day' }" @click="setFilterModeAndSync('day')">Ngày</button>
+            <button type="button" class="bg-seg-btn" :class="{ 'is-active': filters.filterMode === 'week' }" @click="setFilterModeAndSync('week')">Tuần</button>
+            <button type="button" class="bg-seg-btn" :class="{ 'is-active': filters.filterMode === 'month' }" @click="setFilterModeAndSync('month')">Tháng</button>
+            <button type="button" class="bg-seg-btn" :class="{ 'is-active': filters.filterMode === 'year' }" @click="setFilterModeAndSync('year')">Năm</button>
+          </div>
+
+          <div class="bg-date-stepper-group">
+            <button
+              type="button"
+              class="bg-period-step-btn"
+              @click="shiftFilterPeriod(-1)"
+              title="Lùi 1 kỳ trước"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            </button>
+
+            <div class="bg-date-range-capsule bg-tabular">
+              <template v-if="filters.filterMode === 'day'">
+                <div class="bg-date-field">
+                  <span class="bg-date-mini-lbl">Từ</span>
+                  <input type="date" v-model="filters.dateFrom" :max="filters.dateTo" @change="onManualDateFilterChange" @click="e => e.target.showPicker && e.target.showPicker()" class="bg-date-input" />
+                </div>
+                <span class="bg-date-arrow">→</span>
+                <div class="bg-date-field">
+                  <span class="bg-date-mini-lbl">Đến</span>
+                  <input type="date" v-model="filters.dateTo" :min="filters.dateFrom" @change="onManualDateFilterChange" @click="e => e.target.showPicker && e.target.showPicker()" class="bg-date-input" />
+                </div>
+              </template>
+
+              <template v-else-if="filters.filterMode === 'week'">
+                <div class="bg-date-field">
+                  <span class="bg-date-mini-lbl">Từ</span>
+                  <input type="week" v-model="filters.weekFrom" :max="filters.weekTo" @change="() => { filters.weekTo = filters.weekFrom; onManualDateFilterChange() }" @click="e => e.target.showPicker && e.target.showPicker()" class="bg-date-input is-week" />
+                </div>
+                <span class="bg-date-arrow">→</span>
+                <div class="bg-date-field">
+                  <span class="bg-date-mini-lbl">Đến</span>
+                  <input type="week" v-model="filters.weekTo" :min="filters.weekFrom" @change="onManualDateFilterChange" @click="e => e.target.showPicker && e.target.showPicker()" class="bg-date-input is-week" />
+                </div>
+              </template>
+
+              <template v-else-if="filters.filterMode === 'month'">
+                <div class="bg-date-field">
+                  <span class="bg-date-mini-lbl">Từ</span>
+                  <input type="month" v-model="filters.monthFrom" :max="filters.monthTo" @change="onManualDateFilterChange" @click="e => e.target.showPicker && e.target.showPicker()" class="bg-date-input is-month" />
+                </div>
+                <span class="bg-date-arrow">→</span>
+                <div class="bg-date-field">
+                  <span class="bg-date-mini-lbl">Đến</span>
+                  <input type="month" v-model="filters.monthTo" :min="filters.monthFrom" @change="onManualDateFilterChange" @click="e => e.target.showPicker && e.target.showPicker()" class="bg-date-input is-month" />
+                </div>
+              </template>
+
+              <template v-else>
+                <div class="bg-date-field">
+                  <span class="bg-date-mini-lbl">Từ</span>
+                  <input type="number" v-model="filters.yearFrom" :max="filters.yearTo" @change="onManualDateFilterChange" placeholder="2024" class="bg-date-input is-year" />
+                </div>
+                <span class="bg-date-arrow">→</span>
+                <div class="bg-date-field">
+                  <span class="bg-date-mini-lbl">Đến</span>
+                  <input type="number" v-model="filters.yearTo" :min="filters.yearFrom" @change="onManualDateFilterChange" placeholder="2026" class="bg-date-input is-year" />
+                </div>
+              </template>
+            </div>
+
+            <button
+              type="button"
+              class="bg-period-step-btn"
+              @click="shiftFilterPeriod(1)"
+              title="Tiến 1 kỳ tiếp theo"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+          </div>
+
+          <div class="bg-filter-quick-btns">
+            <button
+              type="button"
+              class="bg-btn bg-btn-chip"
+              :class="{ 'is-active': isTodayFilterActive }"
+              @click="setTodayFilter"
+            >
+              <span class="bg-today-dot" aria-hidden="true"></span>
+              <span>Hôm nay</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Sub-row 3: 5 Attribute Filter Pickers (Trạng thái removed — handled by Bento Status Cards!) -->
+        <div class="bg-filter-row-pickers" data-guide="report-attr-pickers">
+          <!-- 1. Buổi -->
+          <div class="pl-picker-wrap">
+            <button
+              type="button"
+              class="pl-picker-trigger"
+              :class="{ 'is-custom': isPickerCustomActive('period'), 'is-open': openPickerKey === 'period' }"
+              @click="togglePicker('period')"
+            >
+              <span class="pl-picker-prefix">Buổi:</span>
+              <span class="pl-picker-val">{{ getPickerDisplayLabel('period') }}</span>
+              <span
+                v-if="isPickerCustomActive('period')"
+                class="pl-picker-reset"
+                role="button"
+                title="Đặt lại buổi"
+                @click.stop="resetSingleFilter('period')"
+              >×</span>
+              <svg v-else class="pl-picker-caret" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+
+            <div v-if="!isCompactShell && openPickerKey === 'period'" class="pl-popover">
+              <div class="pl-popover-head">Chọn buổi làm việc</div>
+              <button
+                v-for="opt in periodOptions"
+                :key="'p-' + opt.value"
+                type="button"
+                class="pl-option-item"
+                :class="{ 'is-selected': filters.period === opt.value }"
+                @click="selectPickerOption('period', opt.value)"
+              >
+                <span>{{ opt.label }}</span>
+                <svg v-if="filters.period === opt.value" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- 2. Độ quan trọng -->
+          <div class="pl-picker-wrap">
+            <button
+              type="button"
+              class="pl-picker-trigger"
+              :class="{ 'is-custom': isPickerCustomActive('tag'), 'is-prio-active': filters.tag === 'ƯU TIÊN', 'is-open': openPickerKey === 'tag' }"
+              @click="togglePicker('tag')"
+            >
+              <span class="pl-picker-prefix">Ưu tiên:</span>
+              <span class="pl-picker-val">{{ getPickerDisplayLabel('tag') }}</span>
+              <span
+                v-if="isPickerCustomActive('tag')"
+                class="pl-picker-reset"
+                role="button"
+                title="Đặt lại độ quan trọng"
+                @click.stop="resetSingleFilter('tag')"
+              >×</span>
+              <svg v-else class="pl-picker-caret" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+
+            <div v-if="!isCompactShell && openPickerKey === 'tag'" class="pl-popover">
+              <div class="pl-popover-head">Lọc độ quan trọng</div>
+              <button
+                v-for="opt in priorityOptions"
+                :key="'pr-' + opt.value"
+                type="button"
+                class="pl-option-item"
+                :class="{ 'is-selected': filters.tag === opt.value }"
+                @click="selectPickerOption('tag', opt.value)"
+              >
+                <span>{{ opt.label }}</span>
+                <svg v-if="filters.tag === opt.value" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- 3. Phân loại -->
+          <div class="pl-picker-wrap">
+            <button
+              type="button"
+              class="pl-picker-trigger"
+              :class="{ 'is-custom': isPickerCustomActive('phan_loai'), 'is-open': openPickerKey === 'phan_loai' }"
+              @click="togglePicker('phan_loai')"
+            >
+              <span class="pl-picker-prefix">Phân loại:</span>
+              <span class="pl-picker-val">{{ getPickerDisplayLabel('phan_loai') }}</span>
+              <span
+                v-if="isPickerCustomActive('phan_loai')"
+                class="pl-picker-reset"
+                role="button"
+                title="Đặt lại phân loại"
+                @click.stop="resetSingleFilter('phan_loai')"
+              >×</span>
+              <svg v-else class="pl-picker-caret" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+
+            <div v-if="!isCompactShell && openPickerKey === 'phan_loai'" class="pl-popover">
+              <div class="pl-popover-head">Lọc phân loại báo cáo</div>
+              <button
+                v-for="opt in typeOptions"
+                :key="'tp-' + opt.value"
+                type="button"
+                class="pl-option-item"
+                :class="{ 'is-selected': filters.phan_loai === opt.value }"
+                @click="selectPickerOption('phan_loai', opt.value)"
+              >
+                <span>{{ opt.label }}</span>
+                <svg v-if="filters.phan_loai === opt.value" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- 4. Khách hàng -->
+          <div class="pl-picker-wrap">
+            <button
+              type="button"
+              class="pl-picker-trigger"
+              :class="{ 'is-custom': isPickerCustomActive('maKH') }"
+              @click="openCustomerFilterPicker"
+            >
+              <span class="pl-picker-prefix">Khách hàng:</span>
+              <span class="pl-picker-val is-trunc">{{ getActiveCustomerFilterLabel() }}</span>
+              <span
+                v-if="isPickerCustomActive('maKH')"
+                class="pl-picker-reset"
+                role="button"
+                title="Bỏ lọc khách hàng"
+                @click.stop="resetSingleFilter('maKH')"
+              >×</span>
+              <svg v-else class="pl-picker-caret" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+          </div>
+
+          <!-- 5. Sắp xếp -->
+          <div class="pl-picker-wrap">
+            <button
+              type="button"
+              class="pl-picker-trigger"
+              :class="{ 'is-custom': isPickerCustomActive('sortOrder'), 'is-open': openPickerKey === 'sortOrder' }"
+              @click="togglePicker('sortOrder')"
+            >
+              <span class="pl-picker-prefix">Sắp xếp:</span>
+              <span class="pl-picker-val">{{ getPickerDisplayLabel('sortOrder') }}</span>
+              <span
+                v-if="isPickerCustomActive('sortOrder')"
+                class="pl-picker-reset"
+                role="button"
+                title="Đặt lại mới nhất"
+                @click.stop="resetSingleFilter('sortOrder')"
+              >×</span>
+              <svg v-else class="pl-picker-caret" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+
+            <div v-if="!isCompactShell && openPickerKey === 'sortOrder'" class="pl-popover is-align-right">
+              <div class="pl-popover-head">Thứ tự thời gian</div>
+              <button
+                v-for="opt in sortOptions"
+                :key="'so-' + opt.value"
+                type="button"
+                class="pl-option-item"
+                :class="{ 'is-selected': filters.sortOrder === opt.value }"
+                @click="selectPickerOption('sortOrder', opt.value)"
+              >
+                <span>{{ opt.label }}</span>
+                <svg v-if="filters.sortOrder === opt.value" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="isMobile && activeCustomFilterCount > 0" class="bg-m-filter-reset-bar">
+          <button type="button" class="bg-m-reset-inline-btn bg-tabular" @click="resetAllFilters">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            <span>Đặt lại toàn bộ bộ lọc ({{ activeCustomFilterCount }})</span>
+          </button>
+        </div>
+        </div>
+      </section>
+
+      <!-- RIGHT BENTO: ASYMMETRIC STATUS CARDS (COL 1: TALL HERO TOTAL | COL 2: 3 STACKED STATUS CARDS — PC & MOBILE) -->
+      <section class="bg-kpi-grid" data-guide="report-kpi-bento" role="group" aria-label="Bộ lọc thẻ trạng thái báo cáo">
+        <!-- Column 1: Hero Tall Total Card -->
+        <button
+          type="button"
+          class="bg-kpi-card is-total-hero is-sky"
+          :class="{ 'is-active': !filters.trang_thai || filters.trang_thai === 'Tất cả' }"
+          @click="onCardClick('Tất cả')"
+          title="Xem tất cả báo cáo"
+        >
+          <div class="bg-kpi-hero-top">
+            <span class="bg-kpi-hero-icon" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+            </span>
+            <span class="bg-kpi-hero-lbl">Tổng báo cáo</span>
+          </div>
+
+          <div class="bg-kpi-hero-mid bg-tabular">
+            <span class="bg-kpi-hero-num">{{ totalCount }}</span>
+            <span class="bg-kpi-hero-unit">việc</span>
+          </div>
+
+          <div class="bg-kpi-hero-foot">
+            <div class="bg-kpi-hero-rate bg-tabular">
+              <span class="is-rate-num">{{ completedPercent }}%</span>
+              <span class="is-rate-txt">hoàn tất</span>
+            </div>
+            <div class="bg-kpi-seg-bar" aria-hidden="true">
+              <span class="is-seg-emerald" :style="{ width: completedPercent + '%' }"></span>
+              <span class="is-seg-amber" :style="{ width: pendingSegPercent + '%' }"></span>
+              <span class="is-seg-rose" :style="{ width: failedPercent + '%' }"></span>
+            </div>
+          </div>
         </button>
+
+        <!-- Column 2: 3 Stacked Status Filter Cards (Chưa xong / Hoàn thành / Failed) -->
+        <div class="bg-kpi-stack">
+          <button
+            type="button"
+            class="bg-kpi-card is-stack-row is-amber"
+            :class="{ 'is-active': filters.trang_thai === 'Chưa xử lý' }"
+            @click="onCardClick('Chưa xử lý')"
+            title="Click để lọc việc Chưa xong (click lần nữa để bỏ lọc)"
+          >
+            <span class="bg-kpi-row-fill" :style="{ width: pendingPercent + '%' }" aria-hidden="true"></span>
+            <span class="bg-kpi-row-left">
+              <span class="bg-kpi-dot"></span>
+              <span class="bg-kpi-label">Chưa xong</span>
+            </span>
+            <span class="bg-kpi-row-right bg-tabular">
+              <span class="bg-kpi-pct">{{ pendingPercent }}%</span>
+              <span class="bg-kpi-val">{{ pendingCount }}</span>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            class="bg-kpi-card is-stack-row is-emerald"
+            :class="{ 'is-active': filters.trang_thai === 'Hoàn thành' }"
+            @click="onCardClick('Hoàn thành')"
+            title="Click để lọc việc Hoàn thành (click lần nữa để bỏ lọc)"
+          >
+            <span class="bg-kpi-row-fill" :style="{ width: completedPercent + '%' }" aria-hidden="true"></span>
+            <span class="bg-kpi-row-left">
+              <span class="bg-kpi-dot"></span>
+              <span class="bg-kpi-label">Hoàn thành</span>
+            </span>
+            <span class="bg-kpi-row-right bg-tabular">
+              <span class="bg-kpi-pct">{{ completedPercent }}%</span>
+              <span class="bg-kpi-val">{{ completedCount }}</span>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            class="bg-kpi-card is-stack-row is-rose"
+            :class="{ 'is-active': filters.trang_thai === 'Failed', 'is-zero': failedCount === 0 && filters.trang_thai !== 'Failed' }"
+            @click="onCardClick('Failed')"
+            title="Click để lọc việc Thất bại / Failed (click lần nữa để bỏ lọc)"
+          >
+            <span class="bg-kpi-row-fill" :style="{ width: failedPercent + '%' }" aria-hidden="true"></span>
+            <span class="bg-kpi-row-left">
+              <span class="bg-kpi-dot"></span>
+              <span class="bg-kpi-label">Failed</span>
+            </span>
+            <span class="bg-kpi-row-right bg-tabular">
+              <span class="bg-kpi-pct">{{ failedPercent }}%</span>
+              <span class="bg-kpi-val">{{ failedCount }}</span>
+            </span>
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <!-- MODULE 1B: BOARD ACTION & VIEW BAR (LEFT: ADD + TOOLS | RIGHT: 3-VIEW SWITCH + THEME + GUIDE) -->
+    <div class="bg-board-toolbar">
+      <!-- Left Axis: Primary Add CTA + Nhắc lại + [Lịch trống | Chia việc | Xuất Excel] -->
+      <div class="bg-topbar-actions bg-hide-compact">
+        <button type="button" class="bg-btn bg-btn-emerald is-hero bg-hide-compact" data-guide="btn-open-add-report" @click="openAddModal">
+          <span class="bg-hero-plus-ring" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          </span>
+          <span>Thêm báo cáo</span>
+        </button>
+
+        <button type="button" class="bg-btn bg-btn-amber is-tactile bg-hide-compact" data-guide="btn-open-pending" @click="isPendingModalOpen = true">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14.5" height="14.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2 2"></path><path d="M5 3 2 6"></path><path d="m22 6-3-3"></path></svg>
+          <span>Nhắc lại</span>
+          <span v-if="allPendingReports.length > 0" class="bg-btn-badge is-amber bg-tabular">{{ allPendingReports.length }}</span>
+        </button>
+
+        <div class="bg-tool-island bg-hide-compact">
+          <button type="button" class="bg-btn bg-btn-slate is-island-item" data-guide="btn-open-empty-days" @click="showEmptyDays" title="Xem các buổi còn trống">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            <span>Lịch trống</span>
+          </button>
+
+          <button type="button" class="bg-btn bg-btn-slate is-island-item" data-guide="btn-open-distribute" @click="openDistributeModal" title="Chia đều danh sách công việc">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"></path><path d="M4 20L21 3"></path><path d="M21 16v5h-5"></path><path d="M15 15l6 6"></path><path d="M4 4l5 5"></path></svg>
+            <span>Chia việc</span>
+          </button>
+
+          <button type="button" class="bg-btn bg-btn-sky-soft is-island-item" data-guide="btn-open-export" @click="exportExcel" title="Xuất báo cáo Excel">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <span>Xuất Excel</span>
+          </button>
+        </div>
       </div>
 
-      <div class="elite-filter-body">
-        <div class="elite-filter-row">
-          <div class="elite-date-group group-tabs" style="flex: 0 0 auto; min-width: auto; max-width: none;">
-            <label style="opacity: 0; user-select: none;" class="mobile-hidden-label">Chế độ</label>
-            <div class="elite-mode-tabs">
-              <button type="button" :class="{ active: filters.filterMode === 'day' }" @click="filters.filterMode = 'day'">Ngày</button>
-              <button type="button" :class="{ active: filters.filterMode === 'week' }" @click="filters.filterMode = 'week'">Tuần</button>
-              <button type="button" :class="{ active: filters.filterMode === 'month' }" @click="filters.filterMode = 'month'">Tháng</button>
-              <button type="button" :class="{ active: filters.filterMode === 'year' }" @click="filters.filterMode = 'year'">Năm</button>
-            </div>
-          </div>
-
-          <div class="elite-date-group group-period" style="min-width: 90px; max-width: 140px;">
-            <label>Buổi</label>
-            <CustomSelect v-model="filters.period" :options="periodOptions" />
-          </div>
-
-          <template v-if="filters.filterMode === 'day'">
-            <div class="elite-date-group group-date">
-              <label>Từ ngày</label>
-              <input type="date" v-model="filters.dateFrom" :max="filters.dateTo" @change="fetchReports" @click="e => e.target.showPicker && e.target.showPicker()" class="elite-input" />
-            </div>
-            <span class="elite-range-sep">→</span>
-            <div class="elite-date-group group-date">
-              <label>Đến ngày</label>
-              <input type="date" v-model="filters.dateTo" :min="filters.dateFrom" @change="fetchReports" @click="e => e.target.showPicker && e.target.showPicker()" class="elite-input" />
-            </div>
-          </template>
-
-          <template v-if="filters.filterMode === 'week'">
-            <div class="elite-date-group group-date">
-              <label>Từ tuần</label>
-              <input type="week" v-model="filters.weekFrom" :max="filters.weekTo" @change="() => { filters.weekTo = filters.weekFrom; fetchReports() }" @click="e => e.target.showPicker && e.target.showPicker()" class="elite-input" />
-            </div>
-            <span class="elite-range-sep">→</span>
-            <div class="elite-date-group group-date">
-              <label>Đến tuần</label>
-              <input type="week" v-model="filters.weekTo" :min="filters.weekFrom" @change="fetchReports" @click="e => e.target.showPicker && e.target.showPicker()" class="elite-input" />
-            </div>
-          </template>
-
-          <template v-if="filters.filterMode === 'month'">
-            <div class="elite-date-group group-date">
-              <label>Từ tháng</label>
-              <input type="month" v-model="filters.monthFrom" :max="filters.monthTo" @change="fetchReports" @click="e => e.target.showPicker && e.target.showPicker()" class="elite-input" />
-            </div>
-            <span class="elite-range-sep">→</span>
-            <div class="elite-date-group group-date">
-              <label>Đến tháng</label>
-              <input type="month" v-model="filters.monthTo" :min="filters.monthFrom" @change="fetchReports" @click="e => e.target.showPicker && e.target.showPicker()" class="elite-input" />
-            </div>
-          </template>
-
-          <template v-if="filters.filterMode === 'year'">
-            <div class="elite-date-group group-date">
-              <label>Từ năm</label>
-              <input type="number" v-model="filters.yearFrom" :max="filters.yearTo" @change="fetchReports" placeholder="2024" class="elite-input" />
-            </div>
-            <span class="elite-range-sep">→</span>
-            <div class="elite-date-group group-date">
-              <label>Đến năm</label>
-              <input type="number" v-model="filters.yearTo" :min="filters.yearFrom" @change="fetchReports" placeholder="2025" class="elite-input" />
-            </div>
-          </template>
+      <!-- Right Axis: [Chi tiết | Lịch tuần | Lịch tháng] + [Light / Dark] + [Hướng dẫn / ?] -->
+      <div class="bg-board-view-cluster" data-guide="report-view-cluster">
+        <div class="bg-seg-switch is-view-track" role="tablist" aria-label="Chế độ xem bảng công việc">
+          <button
+            type="button"
+            class="bg-seg-btn"
+            :class="{ 'is-active': desktopViewMode === 'detail' }"
+            @click="desktopViewMode = 'detail'; isCalendarFullscreen = false"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            <span>Chi tiết</span>
+          </button>
+          <button
+            type="button"
+            class="bg-seg-btn"
+            :class="{ 'is-active': desktopViewMode === 'calendar' && calendarSubMode === 'week' }"
+            @click="activateCalendarView('week')"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="9" x2="9" y2="21"></line><line x1="15" y1="9" x2="15" y2="21"></line></svg>
+            <span>Lịch tuần</span>
+          </button>
+          <button
+            type="button"
+            class="bg-seg-btn"
+            :class="{ 'is-active': desktopViewMode === 'calendar' && calendarSubMode === 'month' }"
+            @click="activateCalendarView('month')"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="9" x2="9" y2="21"></line><line x1="15" y1="9" x2="15" y2="21"></line></svg>
+            <span>Lịch tháng</span>
+          </button>
         </div>
 
-        <div v-show="isMobile" class="elite-filter-divider"></div>
-
-        <button v-show="isMobile" class="filter-expand-btn" @click="isExpandedFilters = !isExpandedFilters">
-          <span style="font-weight: 700; font-size: 0.85rem; color: #475569;">{{ isExpandedFilters ? 'Thu gọn bộ lọc nâng cao' : 'Mở rộng bộ lọc nâng cao' }}</span>
-          <svg :class="{'rotate-180': isExpandedFilters}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.3s;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        <!-- Dual-Theme Toggle (Dark Navy ⇄ Enterprise Light Blue) placed right beside View Switcher on PC & Mobile -->
+        <button
+          type="button"
+          class="bg-btn bg-btn-theme"
+          @click="toggleUiTheme"
+          :title="uiTheme === 'light' ? 'Chuyển sang giao diện Dark Navy' : 'Chuyển sang giao diện Light Blue'"
+          :aria-label="uiTheme === 'light' ? 'Chuyển sang giao diện Dark Navy' : 'Chuyển sang giao diện Light Blue'"
+        >
+          <svg v-if="uiTheme === 'light'" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+          <svg v-else xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+          <span class="bg-theme-btn-lbl">{{ uiTheme === 'light' ? 'Dark' : 'Light' }}</span>
         </button>
 
-        <transition name="filter-expand">
-          <div v-show="isExpandedFilters && isMobile" class="elite-filter-row" style="margin-top: 1rem;">
-            <div class="elite-select-group">
-              <label>Sắp xếp</label>
-              <CustomSelect v-model="filters.sortOrder" :options="sortOptions" />
-            </div>
-            <div class="elite-select-group">
-              <label>Độ quan trọng</label>
-              <CustomSelect v-model="filters.tag" :options="priorityOptions" />
-            </div>
-            <div class="elite-select-group">
-              <label>Phân loại</label>
-              <CustomSelect v-model="filters.phan_loai" :options="typeOptions" />
-            </div>
-            <div class="elite-select-group">
-              <label>Trạng thái</label>
-              <CustomSelect v-model="filters.trang_thai" :options="statusOptions" />
-            </div>
-          </div>
-        </transition>
+        <!-- Interactive Functional Mindmap & Live Spotlight Guide (PC: "Hướng dẫn" right of Light/Dark | Mobile: "?" icon right of Light/Dark) -->
+        <button
+          type="button"
+          class="bg-btn bg-btn-guide"
+          data-guide="btn-open-guide"
+          @click="openReportGuideModal"
+          title="Sơ đồ chức năng & Hướng dẫn tương tác"
+          aria-label="Hướng dẫn sử dụng"
+        >
+          <svg class="bg-guide-btn-ic" xmlns="http://www.w3.org/2000/svg" width="15.5" height="15.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          <span class="bg-guide-btn-lbl">Hướng dẫn</span>
+        </button>
       </div>
     </div>
 
-    <!-- Thẻ thống kê -->
-    <div class="stats-row">
-      <div class="stat-card card-total" 
-           :class="{ 'elite-active': filters.trang_thai === 'Tất cả' || !filters.trang_thai }"
-           @click="onCardClick('Tất cả')">
-        <div class="stat-icon total">
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-        </div>
-        <div class="stat-info">
-          <span class="stat-label">Tổng cộng</span>
-          <span class="stat-value">{{ totalCount }} <span class="unit-text">việc</span></span>
-        </div>
-      </div>
-      <div class="stat-card card-pending" 
-           :class="{ 'elite-active': filters.trang_thai === 'Chưa xử lý' }"
-           @click="onCardClick('Chưa xử lý')">
-        <div class="stat-icon pending">
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-        </div>
-        <div class="stat-info">
-          <span class="stat-label">Chưa hoàn thành</span>
-          <span class="stat-value">{{ pendingCount }} <span class="unit-text">việc</span></span>
-        </div>
-      </div>
-      <div class="stat-card card-done" 
-           :class="{ 'elite-active': filters.trang_thai === 'Hoàn thành' }"
-           @click="onCardClick('Hoàn thành')">
-        <div class="stat-icon done">
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-        </div>
-        <div class="stat-info">
-          <span class="stat-label">Đã hoàn thành</span>
-          <span class="stat-value">{{ completedCount }} <span class="unit-text">việc</span></span>
+    <!-- Teleported Mobile Bottom Sheet for Adaptive Filter Pickers (<= 1100px) -->
+    <Teleport to="body">
+      <div
+        v-if="isCompactShell && openPickerKey && pickerMetaMap[openPickerKey]"
+        class="pl-sheet-overlay"
+        :class="{ 'theme-light-blue': uiTheme === 'light' }"
+        @click.self="closePicker"
+      >
+        <div class="pl-sheet-panel">
+          <div class="pl-sheet-grabber"></div>
+          <div class="pl-sheet-head">
+            <div class="pl-sheet-title">{{ pickerMetaMap[openPickerKey].title }}</div>
+            <button type="button" class="pl-sheet-close" @click="closePicker">✕</button>
+          </div>
+          <div class="pl-sheet-list">
+            <button
+              v-for="opt in pickerMetaMap[openPickerKey].options"
+              :key="'m-opt-' + openPickerKey + '-' + opt.value"
+              type="button"
+              class="pl-sheet-option"
+              :class="{ 'is-selected': filters[openPickerKey] === opt.value }"
+              @click="selectPickerOption(openPickerKey, opt.value)"
+            >
+              <span>{{ opt.label }}</span>
+              <svg v-if="filters[openPickerKey] === opt.value" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </button>
+          </div>
         </div>
       </div>
-      <div class="stat-card card-failed" 
-           :class="{ 'elite-active': filters.trang_thai === 'Failed' }"
-           @click="onCardClick('Failed')">
-        <div class="stat-icon failed">
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
-        </div>
-        <div class="stat-info">
-          <span class="stat-label">Thất bại</span>
-          <span class="stat-value">{{ failedCount }} <span class="unit-text">việc</span></span>
-        </div>
-      </div>
-    </div>
+    </Teleport>
 
-    <!-- Action Buttons & PC Filters -->
-    <div class="action-bar-container">
-      <!-- Action Buttons (Now on the left) -->
-      <div class="action-bar">
-        <button v-if="isMobile" class="mobile-action-btn add" @click="openAddModal">
-          <div class="icon-white-bg">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-          </div>
-          THÊM
-        </button>
-        <button v-if="isMobile" class="mobile-action-btn pending" @click="isPendingModalOpen = true">
-          <div class="icon-white-bg">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2 2"></path><path d="M5 3 2 6"></path><path d="m22 6-3-3"></path><path d="M6.38 18.7 4 21"></path><path d="M17.64 18.67 20 21"></path></svg>
-          </div>
-          NHẮC LẠI
-        </button>
-        <button class="mobile-action-btn empty-days" @click="showEmptyDays">
-          <div class="icon-white-bg">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-          </div>
-          LỊCH TRỐNG
-        </button>
-        <button class="mobile-action-btn distribute-tasks" @click="openDistributeModal">
-          <div class="icon-white-bg">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ea580c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"></path><path d="M4 20L21 3"></path><path d="M21 16v5h-5"></path><path d="M15 15l6 6"></path><path d="M4 4l5 5"></path></svg>
-          </div>
-          CHIA VIỆC
-        </button>
-        <button v-if="!isMobile" class="mobile-action-btn move-tasks" @click="openMoveModal">
-          <div class="icon-white-bg">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l4-4 4 4"/><path d="M9 5v14"/><path d="M19 15l-4 4-4-4"/><path d="M15 19V5"/></svg>
-          </div>
-          CHUYỂN VIỆC
-        </button>
-        <button class="mobile-action-btn excel" @click="exportExcel">
-          <div class="icon-white-bg">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-          </div>
-          XUẤT EXCEL
-        </button>
-      </div>
-
-      <!-- PC Filters (ẩn trên mobile) - Now on the right -->
-      <div v-if="!isMobile" class="elite-filter-row pc-filters">
-        <div class="elite-select-group">
-          <label>Sắp xếp</label>
-          <CustomSelect v-model="filters.sortOrder" :options="sortOptions" />
-        </div>
-        <div class="elite-select-group">
-          <label>Độ quan trọng</label>
-          <CustomSelect v-model="filters.tag" :options="priorityOptions" />
-        </div>
-        <div class="elite-select-group">
-          <label>Phân loại</label>
-          <CustomSelect v-model="filters.phan_loai" :options="typeOptions" />
-        </div>
-        <div class="elite-select-group">
-          <label>Trạng thái</label>
-          <CustomSelect v-model="filters.trang_thai" :options="statusOptions" />
-        </div>
-      </div>
-    </div>
-
-    <!-- Bảng Dữ Liệu (PC) -->
-    <!-- Bảng Dữ Liệu -->
-    <div ref="tableSection">
-      <!-- Toolbar (PC only) -->
-      <div class="elite-table-toolbar desktop-only" style="margin-bottom: 1.5rem; position: relative;">
-        <!-- Nút THÊM căn trái tuyệt đối -->
-        <button class="tech-vip-btn" @click="openAddModal" style="position: absolute; left: 0; z-index: 10; display: flex; align-items: center; justify-content: center; gap: 0.5rem; cursor: pointer;">
-          <div style="background: rgba(255,255,255,0.25); border-radius: 50%; padding: 0.3rem; display: flex; align-items: center; justify-content: center;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-          </div>
-          THÊM
-        </button>
-
-        <div class="toolbar-left" style="display: flex; align-items: center; gap: 0.5rem;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line></svg>
-          <h3>DANH SÁCH BÁO CÁO</h3>
-          <button @click="isPendingModalOpen = true" style="margin-left: 1rem; padding: 0.4rem 0.8rem; font-size: 0.85rem; border-radius: 12px; background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border: none; box-shadow: 0 4px 15px -2px rgba(239, 68, 68, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.3); cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-weight: 800; transition: all 0.2s; letter-spacing: 0.02em;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
-            <div style="width: 22px; height: 22px; background: white; border-radius: 7px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.15); flex-shrink: 0;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2 2"></path><path d="M5 3 2 6"></path><path d="m22 6-3-3"></path><path d="M6.38 18.7 4 21"></path><path d="M17.64 18.67 20 21"></path></svg>
-            </div>
-            NHẮC LẠI
-          </button>
-        </div>
-        <div class="toolbar-right" style="margin-left: 1rem; display: flex; align-items: center; gap: 0.75rem;">
-          <span class="record-badge">{{ filteredReports.length }} việc</span>
-        </div>
-      </div>
-      <!-- View Mode Toggle Row -->
-      <div v-if="!isMobile" class="view-mode-row">
-        <div class="view-mode-tabs">
-          <button type="button" :class="{ 'active-green': desktopViewMode === 'detail' }" @click="desktopViewMode = 'detail'">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-            Chi tiết
-          </button>
-          <button type="button" :class="{ 'active-blue': desktopViewMode === 'daily' }" @click="desktopViewMode = 'daily'">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
-            Theo ngày
-          </button>
-        </div>
-      </div>
-
+    <!-- BẢNG THẺ CÔNG VIỆC (PC & MOBILE ĐỒNG BỘ CARD CHI TIẾT) -->
+    <div
+      ref="tableSection"
+      class="bg-board-anchor"
+      :class="{
+        'is-calendar-mode': desktopViewMode === 'calendar',
+        'is-single-status': !isMobile && desktopViewMode === 'detail' && !!filters.trang_thai && filters.trang_thai !== 'Tất cả'
+      }"
+    >
       <!-- Reminder Cards Section (In-board) -->
       <div v-if="dueReminders.length > 0" style="margin-bottom: 1.5rem;">
         <div style="font-weight: 800; font-size: 1.1rem; color: #ef4444; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 8px; text-transform: uppercase; letter-spacing: 0.05em;">
@@ -308,292 +658,434 @@
         </div>
       </div>
 
-      <!-- Kanban Board: chỉ hiện trên desktop khi mode = detail -->
-      <div v-if="!isMobile && desktopViewMode === 'detail'" class="kanban-board">
-        <div v-for="col in kanbanColumns" :key="col.status" 
-             class="kanban-column"
-             :class="[
-               col.status === 'Hoàn thành' ? 'kb-col-done' : 'kb-col-pending'
-             ]">
-          <div class="kanban-header">
-            <div class="kanban-title">
-              <span class="status-dot" :class="col.dotClass"></span>
+      <!-- Kanban Board (V6.1 Bento Task Cards: 2-Column PC Kanban + 1-Column Mobile Unified Detail Stream) -->
+      <div v-if="!isMobile && desktopViewMode === 'detail'" class="kanban-board bg-detail-board">
+        <div
+          v-for="col in kanbanColumns"
+          :key="col.status"
+          class="kanban-column bg-detail-col"
+          :class="[
+            col.status === 'Hoàn thành'
+              ? 'kb-col-done'
+              : (filters.trang_thai === 'Failed' ? 'kb-col-failed' : 'kb-col-pending')
+          ]"
+        >
+          <!-- Column Header (1A: Full-Bleed Solid Colored Header, White Text, Centered) -->
+          <div class="kanban-header bg-dcol-head">
+            <div class="kanban-title bg-dcol-title-wrap">
+              <span v-if="col.status === 'Hoàn thành'" class="bg-dcol-check-ic" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </span>
+              <span v-else class="status-dot" :class="col.dotClass"></span>
               <h3>{{ col.title }}</h3>
+              <span class="kanban-badge bg-dcol-badge bg-tabular">{{ col.reports.length }} việc</span>
             </div>
-            <span class="kanban-badge">{{ col.reports.length }}</span>
           </div>
 
-          <div class="kanban-inner-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; flex: 1;">
-            <!-- Cột Sáng -->
-            <div class="inner-col inner-col-morning"
-                 :class="{ 'kb-col-drag-over': dragOverColumn === col.status + '-Sáng' }"
-                 @dragover.prevent
-                 @dragenter.prevent="onDragEnterColumn(col.status, 'Sáng')"
-                 @dragleave="onDragLeaveColumn($event, $el)"
-                 @drop="onDropReport($event, col.status, 'Sáng')"
-                 style="display: flex; flex-direction: column; gap: 0.5rem; height: 100%; border-radius: 12px; padding: 0.5rem; background: rgba(59, 130, 246, 0.02); border: 1px dashed rgba(59, 130, 246, 0.1);">
-              <div class="inner-col-header" style="text-align: center; font-size: 1.1rem; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 0.05em; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">Buổi sáng</div>
-              <div class="kanban-list" style="padding: 0; min-height: 100px;">
+          <!-- 1A + 2A: Inner 2-Column Split (Buổi Sáng | Buổi Chiều) with Centered Solid Period Header & No Sun Icons -->
+          <div class="kanban-inner-grid bg-dcol-grid">
+            <!-- CỘT SÁNG -->
+            <div
+              class="inner-col inner-col-morning bg-dsub-col is-morning"
+              :class="{ 'kb-col-drag-over': dragOverColumn === col.status + '-Sáng' }"
+              @dragover.prevent
+              @dragenter.prevent="onDragEnterColumn(col.status, 'Sáng')"
+              @dragleave="onDragLeaveColumn($event, $event.currentTarget)"
+              @drop="onDropReport($event, col.status, 'Sáng')"
+            >
+              <div class="bg-dsub-head">
+                <div class="bg-dsub-head-center">
+                  <span class="bg-dsub-title">Buổi sáng</span>
+                  <span class="bg-dsub-count bg-tabular">{{ col.morningTotal }}</span>
+                </div>
+                <button
+                  type="button"
+                  class="bg-dsub-add-btn"
+                  @click.stop="openAddModalForPeriod('Sáng', col.status)"
+                  title="Thêm nhanh báo cáo Buổi sáng"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                </button>
+              </div>
+
+              <div class="kanban-list bg-dsub-list">
                 <div v-if="loading" class="loading-state">
                   <div class="spinner"></div>
                 </div>
-                <div v-else-if="col.morningTotal === 0" class="empty-state" style="padding: 2rem 1rem;">
-                  <div v-if="col.status === 'Chưa xử lý'" class="empty-add-btn-simple" @click="openAddModalForPeriod('Sáng')" title="Thêm công việc">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                  </div>
-                  <span v-else style="font-size: 0.75rem; opacity: 0.5;">Trống</span>
+                <div v-else-if="col.morningTotal === 0" class="bg-dsub-empty">
+                  <button
+                    v-if="col.status === 'Chưa xử lý'"
+                    type="button"
+                    class="bg-dsub-empty-add"
+                    @click="openAddModalForPeriod('Sáng', col.status)"
+                    title="Thêm công việc buổi sáng"
+                  >
+                    <span class="bg-dsub-empty-plus">+</span>
+                    <span>Thêm việc buổi sáng</span>
+                  </button>
+                  <span v-else class="bg-dsub-empty-txt">Chưa có việc buổi sáng</span>
                 </div>
                 <template v-else>
-                  <div v-for="(report, index) in col.morningReports" :key="'card-' + report.id" 
-                       class="report-card-timeline" :id="'report-card-' + report.id" :class="{ 'highlight-card': report.id === highlightedReportId, 'deleting-row': deletingIds.includes(report.id), 'dropped-success': report.id === droppedReportId, 'is-failed': report.isFailed === true || report.isFailed === 'TRUE' }" 
-                       :style="{ animationDelay: (Math.min(index % LAZY_BATCH_SIZE, 10) * 0.04) + 's' }"
-                       draggable="true"
-                       @dragstart="onDragStartReport($event, report)"
-                       @dragend="onDragEndReport"
-                       @click="openEditModal(report)">
-                    <!-- Hình tròn: STT + Thời gian -->
-                    <div class="tl-orb-wrap">
-                      <div class="tl-orb-ring" :class="formatDisplayTime(report.thoi_gian).period === 'Sáng' ? 'tl-ring--morning' : 'tl-ring--afternoon'"></div>
-                      <div class="tl-circle" :class="formatDisplayTime(report.thoi_gian).period === 'Sáng' ? 'tl-circle--morning' : 'tl-circle--afternoon'">
-                        <div class="tl-circle-inner">
-                          <span class="tl-thu-period">{{ formatDisplayTime(report.thoi_gian).thu }} <span class="tl-period" :class="formatDisplayTime(report.thoi_gian).period === 'Sáng' ? 'is-morning' : 'is-afternoon'">{{ formatDisplayTime(report.thoi_gian).period }}</span></span>
-                          <span class="tl-date">{{ formatDisplayTime(report.thoi_gian).date }}</span>
-                          <span class="tl-time">{{ formatDisplayTime(report.thoi_gian).time }}</span>
-                          <span class="tl-stt">#{{ index + 1 }}</span>
-                        </div>
+                  <div
+                    v-for="report in col.morningReports"
+                    :key="'card-' + report.id"
+                    :id="'report-card-' + report.id"
+                    class="bg-detail-card"
+                    :class="{
+                      'is-done': report.trang_thai === 'Hoàn thành',
+                      'is-failed': (report.isFailed === true || report.isFailed === 'TRUE' || report.trang_thai === 'Failed') && report.trang_thai !== 'Hoàn thành',
+                      'is-pending': report.trang_thai !== 'Hoàn thành' && report.isFailed !== true && report.isFailed !== 'TRUE' && report.trang_thai !== 'Failed',
+                      'is-priority': report.tag && splitTags(report.tag).includes('ƯU TIÊN'),
+                      'is-dragging': draggedReportId === report.id,
+                      'highlight-card': report.id === highlightedReportId,
+                      'deleting-row': deletingIds.includes(report.id),
+                      'dropped-success': report.id === droppedReportId
+                    }"
+                    :draggable="!isMobile"
+                    @dragstart="!isMobile && onDragStartReport($event, report)"
+                    @dragend="!isMobile && onDragEndReport($event)"
+                    @click="openEditModal(report)"
+                  >
+                    <!-- Top Meta (No STT) & Badges Row -->
+                    <div class="bg-dcard-top">
+                      <div class="bg-dcard-meta bg-tabular">
+                        <span class="bg-dcard-time">{{ formatDisplayTime(report.thoi_gian).thu }} · {{ formatDisplayTime(report.thoi_gian).date }} · {{ formatDisplayTime(report.thoi_gian).time }}</span>
                       </div>
-                      <div class="tl-orbit-trail"></div>
+                      <div class="bg-dcard-badges">
+                        <span class="bg-dcard-chip is-cat" :class="report.phan_loai === 'ĐỜI SỐNG' ? 'is-life' : 'is-work'">{{ report.phan_loai }}</span>
+                        <span v-if="report.trang_thai !== 'Hoàn thành' && (report.isFailed === true || report.isFailed === 'TRUE')" class="bg-dcard-chip is-failed-chip">FAILED</span>
+                        <template v-if="report.tag">
+                          <span
+                            v-for="t in splitTags(report.tag)"
+                            :key="'m-tg-' + report.id + '-' + t"
+                            v-show="t && t !== 'BÌNH THƯỜNG'"
+                            class="bg-dcard-chip is-prio-chip"
+                          >{{ t }}</span>
+                        </template>
+                        <span v-if="report.maKH" class="bg-dcard-chip is-cus-chip" :title="'Mã KH: ' + report.maKH">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                          <span class="bg-dcard-cus-txt">{{ getCustomerDisplayName(report.maKH) }}</span>
+                        </span>
+                      </div>
                     </div>
-                    <!-- Connector -->
-                    <div class="tl-connector" :class="formatDisplayTime(report.thoi_gian).period === 'Sáng' ? 'tl-conn--morning' : 'tl-conn--afternoon'">
-                      <div class="tl-conn-dot"></div>
-                      <div class="tl-beam-particle" :class="formatDisplayTime(report.thoi_gian).period === 'Sáng' ? 'tl-beam--morning' : 'tl-beam--afternoon'"></div>
+
+                    <!-- Main Title Row (with Circular Tick on Completed Tasks) -->
+                    <div class="bg-dcard-title-row">
+                      <span v-if="report.trang_thai === 'Hoàn thành'" class="bg-dcard-done-circle" title="Đã hoàn thành">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                      </span>
+                      <div class="bg-dcard-title">{{ report.noi_dung }}</div>
                     </div>
-                    <!-- Hình chữ nhật: Nội dung còn lại -->
-                    <div class="tl-rect" :class="[report.trang_thai === 'Hoàn thành' ? 'tl-rect--done' : 'tl-rect--pending', formatDisplayTime(report.thoi_gian).period === 'Sáng' ? 'tl-border--morning' : 'tl-border--afternoon']">
-                      <div class="tl-shimmer-border" :class="report.trang_thai === 'Hoàn thành' ? 'tl-shimmer--done' : 'tl-shimmer--pending'"></div>
-                      <div class="tl-rect-header">
-                        <div class="tl-rect-tags">
-                          <span class="tl-badge-cat" :class="getCategoryClass(report.phan_loai)">{{ report.phan_loai }}</span>
-                          <span v-if="report.isFailed === true || report.isFailed === 'TRUE'" class="is-failed-tag">Failed</span>
-                          <div class="tl-status-chip" :class="getStatusPillClass(report.trang_thai)">
-                            <svg v-if="report.trang_thai === 'Hoàn thành'" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                            <svg v-else xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                            {{ report.trang_thai }}
-                          </div>
-                          <span v-if="report.tag" v-for="t in splitTags(report.tag)" :key="t" v-show="t !== 'BÌNH THƯỜNG'" class="tl-badge-tag" :class="getTagClass(t)">{{ t }}</span>
-                          <span v-if="report.maKH" class="tl-badge-customer" :title="'Mã KH: ' + report.maKH">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 3px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                            {{ getCustomerDisplayName(report.maKH) }}
+
+                    <!-- Highlight Note -->
+                    <div v-if="report.ghi_chu" class="bg-dcard-note">
+                      <span class="bg-dcard-note-tag">NOTE</span>
+                      <span class="bg-dcard-note-txt">{{ report.ghi_chu }}</span>
+                    </div>
+
+                    <!-- Linked Pipelines -->
+                    <div v-if="getLinkedPipelines(report).length > 0" class="bg-dcard-pipelines" @mousedown.stop @click.stop>
+                      <div v-for="(pl, idx) in getLinkedPipelines(report)" :key="'mpl-' + idx" class="bg-dcard-pl-item">
+                        <div class="bg-dcard-pl-main">
+                          <span class="bg-dcard-pl-lbl">Pipeline:</span>
+                          <span class="bg-dcard-pl-txt">{{ pl.content_of_contract_po || 'Không có nội dung' }}</span>
+                        </div>
+                        <button type="button" class="bg-dcard-pl-eye" @click.stop="goToPipeline(pl.Id_pipeline)" title="Xem chi tiết Pipeline">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- Attachments Toggle (Default OPEN in Detail View + Smooth Collapse/Expand) -->
+                    <div v-if="getCalendarTaskAttachments(report).length > 0 || report.id_quanlyfile" class="bg-dcard-files-wrap" @mousedown.stop @click.stop>
+                      <div class="bg-dcard-files-bar">
+                        <button
+                          v-if="getCalendarTaskAttachments(report).length > 0"
+                          type="button"
+                          class="bg-dcard-files-toggle"
+                          :class="{ 'is-open': isDetailTaskFilesOpen(report.id) }"
+                          @click.stop="toggleDetailTaskFiles(report.id)"
+                        >
+                          <span class="bg-dcard-files-toggle-left">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                            <span>Đính kèm ({{ getCalendarTaskAttachments(report).length }})</span>
                           </span>
-                        </div>
-                      </div>
-                      <div v-if="report.img_save" style="display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.5rem 0.5rem 0 0.5rem;">
-                        <a v-for="(link, i) in report.img_save.split('\n').filter(Boolean)" :key="'img'+i" href="#" @click.prevent.stop="selectedImage = link" style="width: 45px; height: 45px; border-radius: 6px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); display: block; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-                           <img :src="link" loading="lazy" decoding="async" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'" />
-                        </a>
-                      </div>
-                      <div class="tl-rect-body">
-                        <div class="tl-body-text">{{ report.noi_dung }}</div>
-                      </div>
-                      <div class="tl-rect-note" v-if="report.ghi_chu">
-                        <div class="tl-note-accent"></div>
-                        <div class="tl-note-content">
-                          <div class="tl-note-icon">NOTE</div>
-                          <span>{{ report.ghi_chu }}</span>
-                        </div>
-                      </div>
-                      
-                      <div class="tl-rect-pipeline" v-if="getLinkedPipelines(report).length > 0" style="display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.4rem;">
-                        <div v-for="(pl, idx) in getLinkedPipelines(report)" :key="'pl-'+idx" style="display: flex; align-items: stretch; gap: 0; border-radius: 6px; overflow: hidden; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2);">
-  <div style="width: 3.5px; min-width: 3.5px; flex-shrink: 0; background: linear-gradient(180deg, #3b82f6, #2563eb); border-radius: 2px 0 0 2px;"></div>
-  <div style="padding: 0.4rem 0.6rem; font-size: 0.8rem; color: #cbd5e1; line-height: 1.3; flex: 1;">
-    <span style="font-weight: 800; color: #60a5fa;">pipeline</span> : <span>{{ pl.content_of_contract_po || 'Không có nội dung' }}</span>
-  </div>
-  <div @click.stop="goToPipeline(pl.Id_pipeline)" style="padding: 0 0.6rem; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #60a5fa; transition: color 0.2s;" onmouseover="this.style.color='#93c5fd'" onmouseout="this.style.color='#60a5fa'" title="Xem chi tiết">
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-  </div>
-</div>
-                      </div>
+                          <span class="bg-dcard-files-caret">{{ isDetailTaskFilesOpen(report.id) ? '▴' : '▾' }}</span>
+                        </button>
 
-                      <div class="tl-attachments" v-if="report.link_excel_bao_gia || report.link_excel_mua_hang" style="display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.5rem; padding: 0 0.5rem;">
-                        <div v-if="report.link_excel_bao_gia" style="display: flex; flex-wrap: wrap; gap: 0.3rem;">
-                          <a v-for="(link, i) in report.link_excel_bao_gia.split('\n').filter(Boolean)" :key="'bg'+i" href="#" @click.prevent.stop="downloadExcelFile(link, getExcelFileName(report, 'link_excel_bao_gia', i, 'Báo giá'))"  class="file-attach-badge" :title="getExcelFileName(report, 'link_excel_bao_gia', i, 'Báo giá')">
-                            <span v-html="getFileIconSvg(getExcelFileName(report, 'link_excel_bao_gia', i, 'Báo giá'))" style="display:flex;align-items:center;"></span>
-                            <span class="file-attach-text">{{ getExcelFileName(report, 'link_excel_bao_gia', i, 'Báo giá') }}</span>
-                          </a>
-                        </div>
-                        <div v-if="report.link_excel_mua_hang" style="display: flex; flex-wrap: wrap; gap: 0.3rem;">
-                          <a v-for="(link, i) in report.link_excel_mua_hang.split('\n').filter(Boolean)" :key="'mh'+i" href="#" @click.prevent.stop="downloadExcelFile(link, getExcelFileName(report, 'link_excel_mua_hang', i, 'Mua hàng'))"  class="file-attach-badge" :title="getExcelFileName(report, 'link_excel_mua_hang', i, 'Mua hàng')">
-                            <span v-html="getFileIconSvg(getExcelFileName(report, 'link_excel_mua_hang', i, 'Mua hàng'))" style="display:flex;align-items:center;"></span>
-                            <span class="file-attach-text">{{ getExcelFileName(report, 'link_excel_mua_hang', i, 'Mua hàng') }}</span>
-                          </a>
-                        </div>
-                      </div>
-
-                      <!-- FILE LIÊN KẾT (FULL WIDTH ROW) -->
-                      <div v-if="report.id_quanlyfile" style="margin-top: 0.6rem; padding: 0 0.5rem;">
-                        <button @click.stop="goToQuanLyFile(report.id_quanlyfile)" type="button" style="width: 100%; justify-content: center; background: rgba(59,130,246,0.1); color: #3b82f6; border: 1px solid rgba(59,130,246,0.2); padding: 8px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='#3b82f6'; this.style.color='white'" onmouseout="this.style.background='rgba(59,130,246,0.1)'; this.style.color='#3b82f6'">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-                          Xem các file đã liên kết
+                        <button
+                          v-if="report.id_quanlyfile"
+                          type="button"
+                          class="bg-dcard-qlf-btn"
+                          @click.stop="goToQuanLyFile(report.id_quanlyfile)"
+                          title="Xem hồ sơ Quản lý file đã liên kết"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                          <span>Hồ sơ file</span>
                         </button>
                       </div>
 
-                      <div class="tl-rect-actions">
-                        <button class="tl-action-btn tl-action-delete" @click.stop="confirmDelete(report.id)">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                          Xoá
-                        </button>
-                        <button v-if="report.trang_thai !== 'Hoàn thành'" class="tl-action-btn" @click.stop="markAsFailed(report)" style="background: linear-gradient(135deg, #f97316, #ea580c); color: white; box-shadow: 0 3px 10px -3px rgba(249, 115, 22, 0.45); border: none; padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 0.3rem; margin-right: 0.3rem;">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                          Fail
-                        </button>
-                        <button v-if="report.trang_thai !== 'Hoàn thành'" class="tl-action-btn tl-action-done" @click.stop="markAsCompleted(report)">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                          Xong
-                        </button>
+                      <div
+                        v-if="getCalendarTaskAttachments(report).length > 0"
+                        class="bg-dcard-att-collapse"
+                        :class="{ 'is-open': isDetailTaskFilesOpen(report.id) }"
+                      >
+                        <div class="bg-dcard-att-collapse-inner">
+                          <div class="tl-attachments tl-att-v5 bg-dcard-att-list">
+                            <div v-for="(att, aIdx) in getCalendarTaskAttachments(report)" :key="'datt-m-' + report.id + '-' + aIdx" class="tl-att-row">
+                              <span class="tl-att-ic" v-html="getCalendarAttIconSvg(att)"></span>
+                              <span class="tl-att-name" :title="att.name" @click.stop.prevent="openCalendarAttachmentView(att)">{{ formatCalendarFileName(att.name, 28) }}</span>
+                              <div class="tl-att-btns">
+                                <button type="button" class="tl-att-act is-view" :title="att.kind === 'image' ? 'Xem ảnh: ' + att.name : (att.kind === 'office' ? 'View Office: ' + att.name : 'Mở xem: ' + att.name)" @click.stop.prevent="openCalendarAttachmentView(att)">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </button>
+                                <button type="button" class="tl-att-act is-dl" :title="'Tải xuống: ' + att.name" @click.stop.prevent="downloadCalendarAttachment(att, $event)">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
+                    </div>
+
+                    <!-- Differentiated Action Footer (Pending/Failed always visible; Done hover-reveal) -->
+                    <div class="bg-dcard-actions" @mousedown.stop @click.stop>
+                      <button type="button" class="bg-dcard-btn is-del" @click.stop="confirmDelete(report.id)">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        <span>Xoá</span>
+                      </button>
+                      <button
+                        v-if="report.trang_thai !== 'Hoàn thành' && report.isFailed !== true && report.isFailed !== 'TRUE' && report.trang_thai !== 'Failed'"
+                        type="button"
+                        class="bg-dcard-btn is-fail"
+                        @click.stop="markAsFailed(report)"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        <span>Fail</span>
+                      </button>
+                      <button
+                        v-if="report.trang_thai !== 'Hoàn thành'"
+                        type="button"
+                        class="bg-dcard-btn is-done"
+                        @click.stop="markAsCompleted(report)"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <span>Xong</span>
+                      </button>
                     </div>
                   </div>
-                  <button v-if="col.morningTotal > col.morningReports.length" type="button" class="lazy-subcol-more-btn" @click.stop="loadMoreReports">
+
+                  <button
+                    v-if="col.morningTotal > col.morningReports.length"
+                    type="button"
+                    class="lazy-subcol-more-btn bg-dsub-more-btn"
+                    @click.stop="loadMoreReports"
+                  >
                     +{{ col.morningTotal - col.morningReports.length }} công việc buổi sáng — Tải thêm
                   </button>
                 </template>
               </div>
             </div>
 
-            <!-- Cột Chiều -->
-            <div class="inner-col inner-col-afternoon"
-                 :class="{ 'kb-col-drag-over': dragOverColumn === col.status + '-Chiều' }"
-                 @dragover.prevent
-                 @dragenter.prevent="onDragEnterColumn(col.status, 'Chiều')"
-                 @dragleave="onDragLeaveColumn($event, $el)"
-                 @drop="onDropReport($event, col.status, 'Chiều')"
-                 style="display: flex; flex-direction: column; gap: 0.5rem; height: 100%; border-radius: 12px; padding: 0.5rem; background: rgba(168, 85, 247, 0.02); border: 1px dashed rgba(168, 85, 247, 0.1);">
-              <div class="inner-col-header" style="text-align: center; font-size: 1.1rem; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 0.05em; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">Buổi chiều</div>
-              <div class="kanban-list" style="padding: 0; min-height: 100px;">
+            <!-- CỘT CHIỀU -->
+            <div
+              class="inner-col inner-col-afternoon bg-dsub-col is-afternoon"
+              :class="{ 'kb-col-drag-over': dragOverColumn === col.status + '-Chiều' }"
+              @dragover.prevent
+              @dragenter.prevent="onDragEnterColumn(col.status, 'Chiều')"
+              @dragleave="onDragLeaveColumn($event, $event.currentTarget)"
+              @drop="onDropReport($event, col.status, 'Chiều')"
+            >
+              <div class="bg-dsub-head">
+                <div class="bg-dsub-head-center">
+                  <span class="bg-dsub-title">Buổi chiều</span>
+                  <span class="bg-dsub-count bg-tabular">{{ col.afternoonTotal }}</span>
+                </div>
+                <button
+                  type="button"
+                  class="bg-dsub-add-btn"
+                  @click.stop="openAddModalForPeriod('Chiều', col.status)"
+                  title="Thêm nhanh báo cáo Buổi chiều"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                </button>
+              </div>
+
+              <div class="kanban-list bg-dsub-list">
                 <div v-if="loading" class="loading-state">
                   <div class="spinner"></div>
                 </div>
-                <div v-else-if="col.afternoonTotal === 0" class="empty-state" style="padding: 2rem 1rem;">
-                  <div v-if="col.status === 'Chưa xử lý'" class="empty-add-btn-simple" @click="openAddModalForPeriod('Chiều')" title="Thêm công việc">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                  </div>
-                  <span v-else style="font-size: 0.75rem; opacity: 0.5;">Trống</span>
+                <div v-else-if="col.afternoonTotal === 0" class="bg-dsub-empty">
+                  <button
+                    v-if="col.status === 'Chưa xử lý'"
+                    type="button"
+                    class="bg-dsub-empty-add"
+                    @click="openAddModalForPeriod('Chiều', col.status)"
+                    title="Thêm công việc buổi chiều"
+                  >
+                    <span class="bg-dsub-empty-plus">+</span>
+                    <span>Thêm việc buổi chiều</span>
+                  </button>
+                  <span v-else class="bg-dsub-empty-txt">Chưa có việc buổi chiều</span>
                 </div>
                 <template v-else>
-                  <div v-for="(report, index) in col.afternoonReports" :key="'card-' + report.id" 
-                       class="report-card-timeline" :id="'report-card-' + report.id" :class="{ 'highlight-card': report.id === highlightedReportId, 'deleting-row': deletingIds.includes(report.id), 'dropped-success': report.id === droppedReportId, 'is-failed': report.isFailed === true || report.isFailed === 'TRUE' }" 
-                       :style="{ animationDelay: (Math.min(index % LAZY_BATCH_SIZE, 10) * 0.04) + 's' }"
-                       draggable="true"
-                       @dragstart="onDragStartReport($event, report)"
-                       @dragend="onDragEndReport"
-                       @click="openEditModal(report)">
-                    <!-- Hình tròn: STT + Thời gian -->
-                    <div class="tl-orb-wrap">
-                      <div class="tl-orb-ring" :class="formatDisplayTime(report.thoi_gian).period === 'Sáng' ? 'tl-ring--morning' : 'tl-ring--afternoon'"></div>
-                      <div class="tl-circle" :class="formatDisplayTime(report.thoi_gian).period === 'Sáng' ? 'tl-circle--morning' : 'tl-circle--afternoon'">
-                        <div class="tl-circle-inner">
-                          <span class="tl-thu-period">{{ formatDisplayTime(report.thoi_gian).thu }} <span class="tl-period" :class="formatDisplayTime(report.thoi_gian).period === 'Sáng' ? 'is-morning' : 'is-afternoon'">{{ formatDisplayTime(report.thoi_gian).period }}</span></span>
-                          <span class="tl-date">{{ formatDisplayTime(report.thoi_gian).date }}</span>
-                          <span class="tl-time">{{ formatDisplayTime(report.thoi_gian).time }}</span>
-                          <span class="tl-stt">#{{ index + 1 }}</span>
-                        </div>
+                  <div
+                    v-for="report in col.afternoonReports"
+                    :key="'card-' + report.id"
+                    :id="'report-card-' + report.id"
+                    class="bg-detail-card"
+                    :class="{
+                      'is-done': report.trang_thai === 'Hoàn thành',
+                      'is-failed': (report.isFailed === true || report.isFailed === 'TRUE' || report.trang_thai === 'Failed') && report.trang_thai !== 'Hoàn thành',
+                      'is-pending': report.trang_thai !== 'Hoàn thành' && report.isFailed !== true && report.isFailed !== 'TRUE' && report.trang_thai !== 'Failed',
+                      'is-priority': report.tag && splitTags(report.tag).includes('ƯU TIÊN'),
+                      'is-dragging': draggedReportId === report.id,
+                      'highlight-card': report.id === highlightedReportId,
+                      'deleting-row': deletingIds.includes(report.id),
+                      'dropped-success': report.id === droppedReportId
+                    }"
+                    :draggable="!isMobile"
+                    @dragstart="!isMobile && onDragStartReport($event, report)"
+                    @dragend="!isMobile && onDragEndReport($event)"
+                    @click="openEditModal(report)"
+                  >
+                    <!-- Top Meta (No STT) & Badges Row -->
+                    <div class="bg-dcard-top">
+                      <div class="bg-dcard-meta bg-tabular">
+                        <span class="bg-dcard-time">{{ formatDisplayTime(report.thoi_gian).thu }} · {{ formatDisplayTime(report.thoi_gian).date }} · {{ formatDisplayTime(report.thoi_gian).time }}</span>
                       </div>
-                      <div class="tl-orbit-trail"></div>
+                      <div class="bg-dcard-badges">
+                        <span class="bg-dcard-chip is-cat" :class="report.phan_loai === 'ĐỜI SỐNG' ? 'is-life' : 'is-work'">{{ report.phan_loai }}</span>
+                        <span v-if="report.trang_thai !== 'Hoàn thành' && (report.isFailed === true || report.isFailed === 'TRUE')" class="bg-dcard-chip is-failed-chip">FAILED</span>
+                        <template v-if="report.tag">
+                          <span
+                            v-for="t in splitTags(report.tag)"
+                            :key="'a-tg-' + report.id + '-' + t"
+                            v-show="t && t !== 'BÌNH THƯỜNG'"
+                            class="bg-dcard-chip is-prio-chip"
+                          >{{ t }}</span>
+                        </template>
+                        <span v-if="report.maKH" class="bg-dcard-chip is-cus-chip" :title="'Mã KH: ' + report.maKH">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                          <span class="bg-dcard-cus-txt">{{ getCustomerDisplayName(report.maKH) }}</span>
+                        </span>
+                      </div>
                     </div>
-                    <!-- Connector -->
-                    <div class="tl-connector" :class="formatDisplayTime(report.thoi_gian).period === 'Sáng' ? 'tl-conn--morning' : 'tl-conn--afternoon'">
-                      <div class="tl-conn-dot"></div>
-                      <div class="tl-beam-particle" :class="formatDisplayTime(report.thoi_gian).period === 'Sáng' ? 'tl-beam--morning' : 'tl-beam--afternoon'"></div>
+
+                    <!-- Main Title Row (with Circular Tick on Completed Tasks) -->
+                    <div class="bg-dcard-title-row">
+                      <span v-if="report.trang_thai === 'Hoàn thành'" class="bg-dcard-done-circle" title="Đã hoàn thành">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                      </span>
+                      <div class="bg-dcard-title">{{ report.noi_dung }}</div>
                     </div>
-                    <!-- Hình chữ nhật: Nội dung còn lại -->
-                    <div class="tl-rect" :class="[report.trang_thai === 'Hoàn thành' ? 'tl-rect--done' : 'tl-rect--pending', formatDisplayTime(report.thoi_gian).period === 'Sáng' ? 'tl-border--morning' : 'tl-border--afternoon']">
-                      <div class="tl-shimmer-border" :class="report.trang_thai === 'Hoàn thành' ? 'tl-shimmer--done' : 'tl-shimmer--pending'"></div>
-                      <div class="tl-rect-header">
-                        <div class="tl-rect-tags">
-                          <span class="tl-badge-cat" :class="getCategoryClass(report.phan_loai)">{{ report.phan_loai }}</span>
-                          <span v-if="report.isFailed === true || report.isFailed === 'TRUE'" class="is-failed-tag">Failed</span>
-                          <div class="tl-status-chip" :class="getStatusPillClass(report.trang_thai)">
-                            <svg v-if="report.trang_thai === 'Hoàn thành'" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                            <svg v-else xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                            {{ report.trang_thai }}
-                          </div>
-                          <span v-if="report.tag" v-for="t in splitTags(report.tag)" :key="t" v-show="t !== 'BÌNH THƯỜNG'" class="tl-badge-tag" :class="getTagClass(t)">{{ t }}</span>
-                          <span v-if="report.maKH" class="tl-badge-customer" :title="'Mã KH: ' + report.maKH">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 3px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                            {{ getCustomerDisplayName(report.maKH) }}
+
+                    <!-- Highlight Note -->
+                    <div v-if="report.ghi_chu" class="bg-dcard-note">
+                      <span class="bg-dcard-note-tag">NOTE</span>
+                      <span class="bg-dcard-note-txt">{{ report.ghi_chu }}</span>
+                    </div>
+
+                    <!-- Linked Pipelines -->
+                    <div v-if="getLinkedPipelines(report).length > 0" class="bg-dcard-pipelines" @mousedown.stop @click.stop>
+                      <div v-for="(pl, idx) in getLinkedPipelines(report)" :key="'apl-' + idx" class="bg-dcard-pl-item">
+                        <div class="bg-dcard-pl-main">
+                          <span class="bg-dcard-pl-lbl">Pipeline:</span>
+                          <span class="bg-dcard-pl-txt">{{ pl.content_of_contract_po || 'Không có nội dung' }}</span>
+                        </div>
+                        <button type="button" class="bg-dcard-pl-eye" @click.stop="goToPipeline(pl.Id_pipeline)" title="Xem chi tiết Pipeline">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- Attachments Toggle (Default OPEN in Detail View + Smooth Collapse/Expand) -->
+                    <div v-if="getCalendarTaskAttachments(report).length > 0 || report.id_quanlyfile" class="bg-dcard-files-wrap" @mousedown.stop @click.stop>
+                      <div class="bg-dcard-files-bar">
+                        <button
+                          v-if="getCalendarTaskAttachments(report).length > 0"
+                          type="button"
+                          class="bg-dcard-files-toggle"
+                          :class="{ 'is-open': isDetailTaskFilesOpen(report.id) }"
+                          @click.stop="toggleDetailTaskFiles(report.id)"
+                        >
+                          <span class="bg-dcard-files-toggle-left">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                            <span>Đính kèm ({{ getCalendarTaskAttachments(report).length }})</span>
                           </span>
-                        </div>
-                      </div>
-                      <div v-if="report.img_save" style="display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.5rem 0.5rem 0 0.5rem;">
-                        <a v-for="(link, i) in report.img_save.split('\n').filter(Boolean)" :key="'img'+i" href="#" @click.prevent.stop="selectedImage = link" style="width: 45px; height: 45px; border-radius: 6px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); display: block; box-shadow: 0 2px 4px rgba(0,0,0,0.2);" :title="`Ảnh ${i + 1}`">
-                           <img :src="link" loading="lazy" decoding="async" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'" />
-                        </a>
-                      </div>
-                      <div class="tl-rect-body">
-                        <div class="tl-body-text">{{ report.noi_dung }}</div>
-                      </div>
-                      <div class="tl-rect-note" v-if="report.ghi_chu">
-                        <div class="tl-note-accent"></div>
-                        <div class="tl-note-content">
-                          <div class="tl-note-icon">NOTE</div>
-                          <span>{{ report.ghi_chu }}</span>
-                        </div>
-                      </div>
-                      
-                      <div class="tl-rect-pipeline" v-if="getLinkedPipelines(report).length > 0" style="display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.4rem;">
-                        <div v-for="(pl, idx) in getLinkedPipelines(report)" :key="'pl-'+idx" style="display: flex; align-items: stretch; gap: 0; border-radius: 6px; overflow: hidden; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2);">
-  <div style="width: 3.5px; min-width: 3.5px; flex-shrink: 0; background: linear-gradient(180deg, #3b82f6, #2563eb); border-radius: 2px 0 0 2px;"></div>
-  <div style="padding: 0.4rem 0.6rem; font-size: 0.8rem; color: #cbd5e1; line-height: 1.3; flex: 1;">
-    <span style="font-weight: 800; color: #60a5fa;">pipeline</span> : <span>{{ pl.content_of_contract_po || 'Không có nội dung' }}</span>
-  </div>
-  <div @click.stop="goToPipeline(pl.Id_pipeline)" style="padding: 0 0.6rem; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #60a5fa; transition: color 0.2s;" onmouseover="this.style.color='#93c5fd'" onmouseout="this.style.color='#60a5fa'" title="Xem chi tiết">
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-  </div>
-</div>
-                      </div>
+                          <span class="bg-dcard-files-caret">{{ isDetailTaskFilesOpen(report.id) ? '▴' : '▾' }}</span>
+                        </button>
 
-                      <div class="tl-attachments" v-if="report.link_excel_bao_gia || report.link_excel_mua_hang" style="display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.5rem; padding: 0 0.5rem;">
-                        <div v-if="report.link_excel_bao_gia" style="display: flex; flex-wrap: wrap; gap: 0.3rem;">
-                          <a v-for="(link, i) in report.link_excel_bao_gia.split('\n').filter(Boolean)" :key="'bg'+i" href="#" @click.prevent.stop="downloadExcelFile(link, getExcelFileName(report, 'link_excel_bao_gia', i, 'Báo giá'))"  class="file-attach-badge" :title="getExcelFileName(report, 'link_excel_bao_gia', i, 'Báo giá')">
-                            <span v-html="getFileIconSvg(getExcelFileName(report, 'link_excel_bao_gia', i, 'Báo giá'))" style="display:flex;align-items:center;"></span>
-                            <span class="file-attach-text">{{ getExcelFileName(report, 'link_excel_bao_gia', i, 'Báo giá') }}</span>
-                          </a>
-                        </div>
-                        <div v-if="report.link_excel_mua_hang" style="display: flex; flex-wrap: wrap; gap: 0.3rem;">
-                          <a v-for="(link, i) in report.link_excel_mua_hang.split('\n').filter(Boolean)" :key="'mh'+i" href="#" @click.prevent.stop="downloadExcelFile(link, getExcelFileName(report, 'link_excel_mua_hang', i, 'Mua hàng'))"  class="file-attach-badge" :title="getExcelFileName(report, 'link_excel_mua_hang', i, 'Mua hàng')">
-                            <span v-html="getFileIconSvg(getExcelFileName(report, 'link_excel_mua_hang', i, 'Mua hàng'))" style="display:flex;align-items:center;"></span>
-                            <span class="file-attach-text">{{ getExcelFileName(report, 'link_excel_mua_hang', i, 'Mua hàng') }}</span>
-                          </a>
-                        </div>
-                      </div>
-
-                      <!-- FILE LIÊN KẾT (FULL WIDTH ROW) -->
-                      <div v-if="report.id_quanlyfile" style="margin-top: 0.6rem; padding: 0 0.5rem;">
-                        <button @click.stop="goToQuanLyFile(report.id_quanlyfile)" type="button" style="width: 100%; justify-content: center; background: rgba(59,130,246,0.1); color: #3b82f6; border: 1px solid rgba(59,130,246,0.2); padding: 8px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='#3b82f6'; this.style.color='white'" onmouseout="this.style.background='rgba(59,130,246,0.1)'; this.style.color='#3b82f6'">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-                          Xem các file đã liên kết
+                        <button
+                          v-if="report.id_quanlyfile"
+                          type="button"
+                          class="bg-dcard-qlf-btn"
+                          @click.stop="goToQuanLyFile(report.id_quanlyfile)"
+                          title="Xem hồ sơ Quản lý file đã liên kết"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                          <span>Hồ sơ file</span>
                         </button>
                       </div>
 
-                      <div class="tl-rect-actions">
-                        <button class="tl-action-btn tl-action-delete" @click.stop="confirmDelete(report.id)">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                          Xoá
-                        </button>
-                        <button v-if="report.trang_thai !== 'Hoàn thành'" class="tl-action-btn" @click.stop="markAsFailed(report)" style="background: linear-gradient(135deg, #f97316, #ea580c); color: white; box-shadow: 0 3px 10px -3px rgba(249, 115, 22, 0.45); border: none; padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 0.3rem; margin-right: 0.3rem;">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                          Fail
-                        </button>
-                        <button v-if="report.trang_thai !== 'Hoàn thành'" class="tl-action-btn tl-action-done" @click.stop="markAsCompleted(report)">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                          Xong
-                        </button>
+                      <div
+                        v-if="getCalendarTaskAttachments(report).length > 0"
+                        class="bg-dcard-att-collapse"
+                        :class="{ 'is-open': isDetailTaskFilesOpen(report.id) }"
+                      >
+                        <div class="bg-dcard-att-collapse-inner">
+                          <div class="tl-attachments tl-att-v5 bg-dcard-att-list">
+                            <div v-for="(att, aIdx) in getCalendarTaskAttachments(report)" :key="'datt-a-' + report.id + '-' + aIdx" class="tl-att-row">
+                              <span class="tl-att-ic" v-html="getCalendarAttIconSvg(att)"></span>
+                              <span class="tl-att-name" :title="att.name" @click.stop.prevent="openCalendarAttachmentView(att)">{{ formatCalendarFileName(att.name, 28) }}</span>
+                              <div class="tl-att-btns">
+                                <button type="button" class="tl-att-act is-view" :title="att.kind === 'image' ? 'Xem ảnh: ' + att.name : (att.kind === 'office' ? 'View Office: ' + att.name : 'Mở xem: ' + att.name)" @click.stop.prevent="openCalendarAttachmentView(att)">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </button>
+                                <button type="button" class="tl-att-act is-dl" :title="'Tải xuống: ' + att.name" @click.stop.prevent="downloadCalendarAttachment(att, $event)">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
+                    </div>
+
+                    <!-- Differentiated Action Footer (Pending/Failed always visible; Done hover-reveal) -->
+                    <div class="bg-dcard-actions" @mousedown.stop @click.stop>
+                      <button type="button" class="bg-dcard-btn is-del" @click.stop="confirmDelete(report.id)">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        <span>Xoá</span>
+                      </button>
+                      <button
+                        v-if="report.trang_thai !== 'Hoàn thành' && report.isFailed !== true && report.isFailed !== 'TRUE' && report.trang_thai !== 'Failed'"
+                        type="button"
+                        class="bg-dcard-btn is-fail"
+                        @click.stop="markAsFailed(report)"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        <span>Fail</span>
+                      </button>
+                      <button
+                        v-if="report.trang_thai !== 'Hoàn thành'"
+                        type="button"
+                        class="bg-dcard-btn is-done"
+                        @click.stop="markAsCompleted(report)"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <span>Xong</span>
+                      </button>
                     </div>
                   </div>
-                  <button v-if="col.afternoonTotal > col.afternoonReports.length" type="button" class="lazy-subcol-more-btn" @click.stop="loadMoreReports">
+
+                  <button
+                    v-if="col.afternoonTotal > col.afternoonReports.length"
+                    type="button"
+                    class="lazy-subcol-more-btn bg-dsub-more-btn"
+                    @click.stop="loadMoreReports"
+                  >
                     +{{ col.afternoonTotal - col.afternoonReports.length }} công việc buổi chiều — Tải thêm
                   </button>
                 </template>
@@ -603,405 +1095,171 @@
         </div>
       </div>
 
-      <!-- Daily View: 1 cột theo từng ngày -->
-      <div v-if="!isMobile && desktopViewMode === 'daily'" class="daily-view-container">
-        <div v-if="loading" class="loading-state" style="padding: 3rem;"><div class="spinner"></div></div>
-        <div v-else-if="dailyColumns.length === 0" class="empty-state" style="padding: 4rem 2rem; text-align: center;">
-          <p style="opacity: 0.5; font-size: 0.9rem;">Không có dữ liệu trong khoảng thời gian này.</p>
-        </div>
-        <div v-else v-for="day in visibleDailyColumns" :key="day.dateKey" class="daily-day-block">
-          <!-- Day Header Badge -->
-          <div class="daily-day-header">
-            <div class="daily-day-badge">
-              <span class="daily-badge-thu">{{ day.thuLabel }}</span>
-              <span class="daily-badge-date">{{ day.dateLabel }}</span>
-            </div>
-            <span class="daily-count-badge">{{ day.totalTasks }} việc</span>
-          </div>
-          <!-- Two Period Sections -->
-          <div class="daily-periods">
-            <!-- Buổi Sáng -->
-            <div class="daily-period-section daily-period-morning"
-                 :class="{ 'kb-col-drag-over': dragOverColumn === 'daily-' + day.dateKey + '-Sáng' }"
-                 @dragover.prevent
-                 @dragenter.prevent="onDragEnterColumn('daily-' + day.dateKey, 'Sáng')"
-                 @dragleave="onDragLeaveColumn($event, $el)"
-                 @drop="onDropReport($event, null, 'Sáng', day.dateKey)">
-              <div class="daily-period-label-v2">BUỔI SÁNG</div>
-              <div v-if="day.morningTotal === 0" class="daily-empty-slot">
-                <div class="empty-add-btn-simple" @click="openAddModalForPeriod('Sáng')" title="Thêm công việc buổi sáng">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                </div>
-              </div>
-              <div v-else class="daily-task-list">
-                <div v-for="(report, index) in day.morning" :key="'dm-'+report.id"
-                     class="report-card-timeline" :id="'report-card-' + report.id" :class="{ 'highlight-card': report.id === highlightedReportId, 'deleting-row': deletingIds.includes(report.id), 'dropped-success': report.id === droppedReportId, 'is-failed': report.isFailed === true || report.isFailed === 'TRUE' }"
-                     :style="{ animationDelay: (Math.min(index % LAZY_BATCH_SIZE, 10) * 0.04) + 's' }"
-                     draggable="true"
-                     @dragstart="onDragStartReport($event, report)"
-                     @dragend="onDragEndReport"
-                     @click="openEditModal(report)">
-                  <div class="tl-orb-wrap">
-                    <div class="tl-orb-ring tl-ring--morning"></div>
-                    <div class="tl-circle tl-circle--morning">
-                      <div class="tl-circle-inner">
-                        <span class="tl-thu-period">{{ formatDisplayTime(report.thoi_gian).thu }} <span class="tl-period is-morning">{{ formatDisplayTime(report.thoi_gian).period }}</span></span>
-                        <span class="tl-date">{{ formatDisplayTime(report.thoi_gian).date }}</span>
-                        <span class="tl-time">{{ formatDisplayTime(report.thoi_gian).time }}</span>
-                        <span class="tl-stt">#{{ index + 1 }}</span>
-                      </div>
-                    </div>
-                    <div class="tl-orbit-trail"></div>
-                  </div>
-                  <div class="tl-connector tl-conn--morning">
-                    <div class="tl-conn-dot"></div>
-                    <div class="tl-beam-particle tl-beam--morning"></div>
-                  </div>
-                  <div class="tl-rect" :class="[report.trang_thai === 'Hoàn thành' ? 'tl-rect--done' : 'tl-rect--pending', 'tl-border--morning']">
-                    <div class="tl-shimmer-border" :class="report.trang_thai === 'Hoàn thành' ? 'tl-shimmer--done' : 'tl-shimmer--pending'"></div>
-                    <div class="tl-rect-header">
-                      <div class="tl-rect-tags">
-                        <span class="tl-badge-cat" :class="getCategoryClass(report.phan_loai)">{{ report.phan_loai }}</span>
-                          <span v-if="report.isFailed === true || report.isFailed === 'TRUE'" class="is-failed-tag">Failed</span>
-                        <div class="tl-status-chip" :class="getStatusPillClass(report.trang_thai)">
-                          <svg v-if="report.trang_thai === 'Hoàn thành'" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                          <svg v-else xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                          {{ report.trang_thai }}
-                        </div>
-                        <span v-if="report.tag" v-for="t in splitTags(report.tag)" :key="t" v-show="t !== 'BÌNH THƯỜNG'" class="tl-badge-tag" :class="getTagClass(t)">{{ t }}</span>
-                          <span v-if="report.maKH" class="tl-badge-customer" :title="'Mã KH: ' + report.maKH">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 3px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                            {{ getCustomerDisplayName(report.maKH) }}
-                          </span>
-                      </div>
-                    </div>
-                    <div v-if="report.img_save" style="display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.5rem 0.5rem 0 0.5rem;">
-                      <a v-for="(link, i) in report.img_save.split('\n').filter(Boolean)" :key="'img'+i" href="#" @click.prevent.stop="selectedImage = link" style="width: 45px; height: 45px; border-radius: 6px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); display: block; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-                         <img :src="link" loading="lazy" decoding="async" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'" />
-                      </a>
-                    </div>
-                    <div class="tl-rect-body">
-                      <div class="tl-body-text">{{ report.noi_dung }}</div>
-                    </div>
-                    <div class="tl-rect-note" v-if="report.ghi_chu">
-                      <div class="tl-note-accent"></div>
-                      <div class="tl-note-content">
-                        <div class="tl-note-icon">NOTE</div>
-                        <span>{{ report.ghi_chu }}</span>
-                      </div>
-                    </div>
-                    
-                    <div class="tl-rect-pipeline" v-if="getLinkedPipelines(report).length > 0" style="display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.4rem;">
-                      <div v-for="(pl, idx) in getLinkedPipelines(report)" :key="'pl-'+idx" style="display: flex; align-items: stretch; gap: 0; border-radius: 6px; overflow: hidden; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2);">
-  <div style="width: 3.5px; min-width: 3.5px; flex-shrink: 0; background: linear-gradient(180deg, #3b82f6, #2563eb); border-radius: 2px 0 0 2px;"></div>
-  <div style="padding: 0.4rem 0.6rem; font-size: 0.8rem; color: #cbd5e1; line-height: 1.3; flex: 1;">
-    <span style="font-weight: 800; color: #60a5fa;">pipeline</span> : <span>{{ pl.content_of_contract_po || 'Không có nội dung' }}</span>
-  </div>
-  <div @click.stop="goToPipeline(pl.Id_pipeline)" style="padding: 0 0.6rem; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #60a5fa; transition: color 0.2s;" onmouseover="this.style.color='#93c5fd'" onmouseout="this.style.color='#60a5fa'" title="Xem chi tiết">
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-  </div>
-</div>
-                    </div>
-                    
-                    <div class="tl-attachments" v-if="report.link_excel_bao_gia || report.link_excel_mua_hang" style="display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.5rem; padding: 0 0.5rem;">
-                      <div v-if="report.link_excel_bao_gia" style="display: flex; flex-wrap: wrap; gap: 0.3rem;">
-                        <a v-for="(link, i) in report.link_excel_bao_gia.split('\n').filter(Boolean)" :key="'bg'+i" href="#" @click.prevent.stop="downloadExcelFile(link, getExcelFileName(report, 'link_excel_bao_gia', i, 'Báo giá'))"  class="file-attach-badge" :title="getExcelFileName(report, 'link_excel_bao_gia', i, 'Báo giá')">
-                          <span v-html="getFileIconSvg(getExcelFileName(report, 'link_excel_bao_gia', i, 'Báo giá'))" style="display:flex;align-items:center;"></span>
-                          <span class="file-attach-text">{{ getExcelFileName(report, 'link_excel_bao_gia', i, 'Báo giá') }}</span>
-                        </a>
-                      </div>
-                      <div v-if="report.link_excel_mua_hang" style="display: flex; flex-wrap: wrap; gap: 0.3rem;">
-                        <a v-for="(link, i) in report.link_excel_mua_hang.split('\n').filter(Boolean)" :key="'mh'+i" href="#" @click.prevent.stop="downloadExcelFile(link, getExcelFileName(report, 'link_excel_mua_hang', i, 'Mua hàng'))"  class="file-attach-badge" :title="getExcelFileName(report, 'link_excel_mua_hang', i, 'Mua hàng')">
-                          <span v-html="getFileIconSvg(getExcelFileName(report, 'link_excel_mua_hang', i, 'Mua hàng'))" style="display:flex;align-items:center;"></span>
-                          <span class="file-attach-text">{{ getExcelFileName(report, 'link_excel_mua_hang', i, 'Mua hàng') }}</span>
-                        </a>
-                      </div>
-                    </div>
-
-                    <!-- FILE LIÊN KẾT (FULL WIDTH ROW) -->
-                    <div v-if="report.id_quanlyfile" style="margin-top: 0.6rem; padding: 0 0.5rem;">
-                      <button @click.stop="goToQuanLyFile(report.id_quanlyfile)" type="button" style="width: 100%; justify-content: center; background: rgba(59,130,246,0.1); color: #3b82f6; border: 1px solid rgba(59,130,246,0.2); padding: 8px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='#3b82f6'; this.style.color='white'" onmouseout="this.style.background='rgba(59,130,246,0.1)'; this.style.color='#3b82f6'">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-                        Xem các file đã liên kết
-                      </button>
-                    </div>
-
-                    <div class="tl-rect-actions">
-                      <button class="tl-action-btn tl-action-delete" @click.stop="confirmDelete(report.id)">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                        Xoá
-                      </button>
-                      <button v-if="report.trang_thai !== 'Hoàn thành'" class="tl-action-btn" @click.stop="markAsFailed(report)" style="background: linear-gradient(135deg, #f97316, #ea580c); color: white; box-shadow: 0 3px 10px -3px rgba(249, 115, 22, 0.45); border: none; padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 0.3rem; margin-right: 0.3rem;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                        Fail
-                      </button>
-                      <button v-if="report.trang_thai !== 'Hoàn thành'" class="tl-action-btn tl-action-done" @click.stop="markAsCompleted(report)">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                        Xong
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <button v-if="day.morningTotal > day.morning.length" type="button" class="lazy-subcol-more-btn" @click.stop="loadMoreReports">
-                  +{{ day.morningTotal - day.morning.length }} công việc buổi sáng — Tải thêm
-                </button>
-              </div>
-            </div>
-            <!-- Buổi Chiều -->
-            <div class="daily-period-section daily-period-afternoon"
-                 :class="{ 'kb-col-drag-over': dragOverColumn === 'daily-' + day.dateKey + '-Chiều' }"
-                 @dragover.prevent
-                 @dragenter.prevent="onDragEnterColumn('daily-' + day.dateKey, 'Chiều')"
-                 @dragleave="onDragLeaveColumn($event, $el)"
-                 @drop="onDropReport($event, null, 'Chiều', day.dateKey)">
-              <div class="daily-period-label-v2">BUỔI CHIỀU</div>
-              <div v-if="day.afternoonTotal === 0" class="daily-empty-slot">
-                <div class="empty-add-btn-simple" @click="openAddModalForPeriod('Chiều')" title="Thêm công việc buổi chiều">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                </div>
-              </div>
-              <div v-else class="daily-task-list">
-                <div v-for="(report, index) in day.afternoon" :key="'da-'+report.id"
-                     class="report-card-timeline" :id="'report-card-' + report.id" :class="{ 'highlight-card': report.id === highlightedReportId, 'deleting-row': deletingIds.includes(report.id), 'dropped-success': report.id === droppedReportId, 'is-failed': report.isFailed === true || report.isFailed === 'TRUE' }"
-                     :style="{ animationDelay: (Math.min(index % LAZY_BATCH_SIZE, 10) * 0.04) + 's' }"
-                     draggable="true"
-                     @dragstart="onDragStartReport($event, report)"
-                     @dragend="onDragEndReport"
-                     @click="openEditModal(report)">
-                  <div class="tl-orb-wrap">
-                    <div class="tl-orb-ring tl-ring--afternoon"></div>
-                    <div class="tl-circle tl-circle--afternoon">
-                      <div class="tl-circle-inner">
-                        <span class="tl-thu-period">{{ formatDisplayTime(report.thoi_gian).thu }} <span class="tl-period is-afternoon">{{ formatDisplayTime(report.thoi_gian).period }}</span></span>
-                        <span class="tl-date">{{ formatDisplayTime(report.thoi_gian).date }}</span>
-                        <span class="tl-time">{{ formatDisplayTime(report.thoi_gian).time }}</span>
-                        <span class="tl-stt">#{{ index + 1 }}</span>
-                      </div>
-                    </div>
-                    <div class="tl-orbit-trail"></div>
-                  </div>
-                  <div class="tl-connector tl-conn--afternoon">
-                    <div class="tl-conn-dot"></div>
-                    <div class="tl-beam-particle tl-beam--afternoon"></div>
-                  </div>
-                  <div class="tl-rect" :class="[report.trang_thai === 'Hoàn thành' ? 'tl-rect--done' : 'tl-rect--pending', 'tl-border--afternoon']">
-                    <div class="tl-shimmer-border" :class="report.trang_thai === 'Hoàn thành' ? 'tl-shimmer--done' : 'tl-shimmer--pending'"></div>
-                    <div class="tl-rect-header">
-                      <div class="tl-rect-tags">
-                        <span class="tl-badge-cat" :class="getCategoryClass(report.phan_loai)">{{ report.phan_loai }}</span>
-                          <span v-if="report.isFailed === true || report.isFailed === 'TRUE'" class="is-failed-tag">Failed</span>
-                        <div class="tl-status-chip" :class="getStatusPillClass(report.trang_thai)">
-                          <svg v-if="report.trang_thai === 'Hoàn thành'" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                          <svg v-else xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                          {{ report.trang_thai }}
-                        </div>
-                        <span v-if="report.tag" v-for="t in splitTags(report.tag)" :key="t" v-show="t !== 'BÌNH THƯỜNG'" class="tl-badge-tag" :class="getTagClass(t)">{{ t }}</span>
-                          <span v-if="report.maKH" class="tl-badge-customer" :title="'Mã KH: ' + report.maKH">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 3px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                            {{ getCustomerDisplayName(report.maKH) }}
-                          </span>
-                      </div>
-                    </div>
-                    <div v-if="report.img_save" style="display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.5rem 0.5rem 0 0.5rem;">
-                      <a v-for="(link, i) in report.img_save.split('\n').filter(Boolean)" :key="'img'+i" href="#" @click.prevent.stop="selectedImage = link" style="width: 45px; height: 45px; border-radius: 6px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); display: block; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-                         <img :src="link" loading="lazy" decoding="async" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'" />
-                      </a>
-                    </div>
-                    <div class="tl-rect-body">
-                      <div class="tl-body-text">{{ report.noi_dung }}</div>
-                    </div>
-                    <div class="tl-rect-note" v-if="report.ghi_chu">
-                      <div class="tl-note-accent"></div>
-                      <div class="tl-note-content">
-                        <div class="tl-note-icon">NOTE</div>
-                        <span>{{ report.ghi_chu }}</span>
-                      </div>
-                    </div>
-                    
-                    <div class="tl-rect-pipeline" v-if="getLinkedPipelines(report).length > 0" style="display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.4rem;">
-                      <div v-for="(pl, idx) in getLinkedPipelines(report)" :key="'pl-'+idx" style="display: flex; align-items: stretch; gap: 0; border-radius: 6px; overflow: hidden; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2);">
-  <div style="width: 3.5px; min-width: 3.5px; flex-shrink: 0; background: linear-gradient(180deg, #3b82f6, #2563eb); border-radius: 2px 0 0 2px;"></div>
-  <div style="padding: 0.4rem 0.6rem; font-size: 0.8rem; color: #cbd5e1; line-height: 1.3; flex: 1;">
-    <span style="font-weight: 800; color: #60a5fa;">pipeline</span> : <span>{{ pl.content_of_contract_po || 'Không có nội dung' }}</span>
-  </div>
-  <div @click.stop="goToPipeline(pl.Id_pipeline)" style="padding: 0 0.6rem; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #60a5fa; transition: color 0.2s;" onmouseover="this.style.color='#93c5fd'" onmouseout="this.style.color='#60a5fa'" title="Xem chi tiết">
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-  </div>
-</div>
-                    </div>
-                    
-                    <div class="tl-attachments" v-if="report.link_excel_bao_gia || report.link_excel_mua_hang" style="display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.5rem; padding: 0 0.5rem;">
-                      <div v-if="report.link_excel_bao_gia" style="display: flex; flex-wrap: wrap; gap: 0.3rem;">
-                        <a v-for="(link, i) in report.link_excel_bao_gia.split('\n').filter(Boolean)" :key="'bg'+i" href="#" @click.prevent.stop="downloadExcelFile(link, getExcelFileName(report, 'link_excel_bao_gia', i, 'Báo giá'))"  class="file-attach-badge" :title="getExcelFileName(report, 'link_excel_bao_gia', i, 'Báo giá')">
-                          <span v-html="getFileIconSvg(getExcelFileName(report, 'link_excel_bao_gia', i, 'Báo giá'))" style="display:flex;align-items:center;"></span>
-                          <span class="file-attach-text">{{ getExcelFileName(report, 'link_excel_bao_gia', i, 'Báo giá') }}</span>
-                        </a>
-                      </div>
-                      <div v-if="report.link_excel_mua_hang" style="display: flex; flex-wrap: wrap; gap: 0.3rem;">
-                        <a v-for="(link, i) in report.link_excel_mua_hang.split('\n').filter(Boolean)" :key="'mh'+i" href="#" @click.prevent.stop="downloadExcelFile(link, getExcelFileName(report, 'link_excel_mua_hang', i, 'Mua hàng'))"  class="file-attach-badge" :title="getExcelFileName(report, 'link_excel_mua_hang', i, 'Mua hàng')">
-                          <span v-html="getFileIconSvg(getExcelFileName(report, 'link_excel_mua_hang', i, 'Mua hàng'))" style="display:flex;align-items:center;"></span>
-                          <span class="file-attach-text">{{ getExcelFileName(report, 'link_excel_mua_hang', i, 'Mua hàng') }}</span>
-                        </a>
-                      </div>
-                    </div>
-
-                    <!-- FILE LIÊN KẾT (FULL WIDTH ROW) -->
-                    <div v-if="report.id_quanlyfile" style="margin-top: 0.6rem; padding: 0 0.5rem;">
-                      <button @click.stop="goToQuanLyFile(report.id_quanlyfile)" type="button" style="width: 100%; justify-content: center; background: rgba(59,130,246,0.1); color: #3b82f6; border: 1px solid rgba(59,130,246,0.2); padding: 8px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='#3b82f6'; this.style.color='white'" onmouseout="this.style.background='rgba(59,130,246,0.1)'; this.style.color='#3b82f6'">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-                        Xem các file đã liên kết
-                      </button>
-                    </div>
-
-                    <div class="tl-rect-actions">
-                      <button class="tl-action-btn tl-action-delete" @click.stop="confirmDelete(report.id)">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                        Xoá
-                      </button>
-                      <button v-if="report.trang_thai !== 'Hoàn thành'" class="tl-action-btn" @click.stop="markAsFailed(report)" style="background: linear-gradient(135deg, #f97316, #ea580c); color: white; box-shadow: 0 3px 10px -3px rgba(249, 115, 22, 0.45); border: none; padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 0.3rem; margin-right: 0.3rem;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                        Fail
-                      </button>
-                      <button v-if="report.trang_thai !== 'Hoàn thành'" class="tl-action-btn tl-action-done" @click.stop="markAsCompleted(report)">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                        Xong
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <button v-if="day.afternoonTotal > day.afternoon.length" type="button" class="lazy-subcol-more-btn" @click.stop="loadMoreReports">
-                  +{{ day.afternoonTotal - day.afternoon.length }} công việc buổi chiều — Tải thêm
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Mobile: danh sách đơn, không phân cột -->
-      <div v-if="isMobile" class="mobile-card-list">
+      <!-- Mobile 1-Column Unified Detail Stream (Pending/Failed & Solid-Colored Completed Cards in 1 Clean Column, Zero Nested Wrapper Boxes) -->
+      <div v-else-if="isMobile && desktopViewMode === 'detail'" class="bg-m-detail-stream">
         <div v-if="loading" class="loading-state">
           <div class="spinner"></div>
-          <p>Đang tải dữ liệu báo cáo...</p>
         </div>
-        <div v-else-if="filteredReports.length === 0" class="empty-state" style="padding: 4rem 2rem;">
-          <div class="empty-add-btn-simple" @click="openAddModal" title="Thêm công việc">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-          </div>
-          <p style="opacity: 0.5; font-size: 0.85rem; margin-top: 1rem;">Trống</p>
-        </div>
-        <div v-else v-for="(report, index) in visibleMobileReports" :key="'mob-' + report.id"
-             class="report-card-timeline" :id="'report-card-' + report.id" :class="{ 'highlight-card': report.id === highlightedReportId, 'deleting-row': deletingIds.includes(report.id), 'dropped-success': report.id === droppedReportId, 'is-failed': report.isFailed === true || report.isFailed === 'TRUE' }"
-             :style="{ animationDelay: (Math.min(index % LAZY_BATCH_SIZE, 10) * 0.04) + 's' }"
-             @click="openEditModal(report)">
 
-          <!-- Hình tròn: STT + Thời gian -->
-          <div class="tl-orb-wrap">
-            <div class="tl-orb-ring" :class="formatDisplayTime(report.thoi_gian).period === 'Sáng' ? 'tl-ring--morning' : 'tl-ring--afternoon'"></div>
-            <div class="tl-circle" :class="formatDisplayTime(report.thoi_gian).period === 'Sáng' ? 'tl-circle--morning' : 'tl-circle--afternoon'">
-              <div class="tl-circle-inner">
-                <span class="tl-thu-period">{{ formatDisplayTime(report.thoi_gian).thu }} <span class="tl-period" :class="formatDisplayTime(report.thoi_gian).period === 'Sáng' ? 'is-morning' : 'is-afternoon'">{{ formatDisplayTime(report.thoi_gian).period }}</span></span>
-                <span class="tl-date">{{ formatDisplayTime(report.thoi_gian).date }}</span>
-                <span class="tl-time">{{ formatDisplayTime(report.thoi_gian).time }}</span>
-                <span class="tl-stt">#{{ index + 1 }}</span>
+        <div v-else-if="mobileUnifiedDetailReports.length === 0" class="bg-m-detail-empty">
+          <span class="bg-m-detail-empty-txt">Chưa có báo cáo công việc phù hợp bộ lọc</span>
+          <button type="button" class="bg-dsub-empty-add" @click="openAddModal">
+            <span class="bg-dsub-empty-plus">+</span>
+            <span>Thêm báo cáo mới</span>
+          </button>
+        </div>
+
+        <template v-else>
+          <div
+            v-for="report in mobileUnifiedDetailReports"
+            :key="'mcard-' + report.id"
+            :id="'report-card-' + report.id"
+            class="bg-detail-card is-m-single-col"
+            :class="{
+              'is-done': report.trang_thai === 'Hoàn thành',
+              'is-failed': (report.isFailed === true || report.isFailed === 'TRUE' || report.trang_thai === 'Failed') && report.trang_thai !== 'Hoàn thành',
+              'is-pending': report.trang_thai !== 'Hoàn thành' && report.isFailed !== true && report.isFailed !== 'TRUE' && report.trang_thai !== 'Failed',
+              'is-priority': report.tag && splitTags(report.tag).includes('ƯU TIÊN'),
+              'highlight-card': report.id === highlightedReportId,
+              'deleting-row': deletingIds.includes(report.id),
+              'dropped-success': report.id === droppedReportId
+            }"
+            @click="openEditModal(report)"
+          >
+            <!-- Top Meta (Day · Date · Time + Sáng/Chiều Pill) & Badges Row -->
+            <div class="bg-dcard-top">
+              <div class="bg-dcard-meta bg-tabular">
+                <span class="bg-dcard-time">{{ formatDisplayTime(report.thoi_gian).thu }} · {{ formatDisplayTime(report.thoi_gian).date }} · {{ formatDisplayTime(report.thoi_gian).time }}</span>
+                <span
+                  class="bg-dcard-period-chip"
+                  :class="formatDisplayTime(report.thoi_gian).period === 'Sáng' ? 'is-am' : 'is-pm'"
+                >{{ formatDisplayTime(report.thoi_gian).period === 'Sáng' ? 'SÁNG' : 'CHIỀU' }}</span>
+              </div>
+              <div class="bg-dcard-badges">
+                <span class="bg-dcard-chip is-cat" :class="report.phan_loai === 'ĐỜI SỐNG' ? 'is-life' : 'is-work'">{{ report.phan_loai }}</span>
+                <span v-if="report.trang_thai !== 'Hoàn thành' && (report.isFailed === true || report.isFailed === 'TRUE')" class="bg-dcard-chip is-failed-chip">FAILED</span>
+                <template v-if="report.tag">
+                  <span
+                    v-for="t in splitTags(report.tag)"
+                    :key="'mu-tg-' + report.id + '-' + t"
+                    v-show="t && t !== 'BÌNH THƯỜNG'"
+                    class="bg-dcard-chip is-prio-chip"
+                  >{{ t }}</span>
+                </template>
+                <span v-if="report.maKH" class="bg-dcard-chip is-cus-chip" :title="'Mã KH: ' + report.maKH">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                  <span class="bg-dcard-cus-txt">{{ getCustomerDisplayName(report.maKH) }}</span>
+                </span>
               </div>
             </div>
-            <div class="tl-orbit-trail"></div>
-          </div>
 
-          <!-- Connector -->
-          <div class="tl-connector" :class="formatDisplayTime(report.thoi_gian).period === 'Sáng' ? 'tl-conn--morning' : 'tl-conn--afternoon'">
-            <div class="tl-conn-dot"></div>
-            <div class="tl-beam-particle" :class="formatDisplayTime(report.thoi_gian).period === 'Sáng' ? 'tl-beam--morning' : 'tl-beam--afternoon'"></div>
-          </div>
+            <!-- Main Title Row (with Circular Tick on Completed Tasks) -->
+            <div class="bg-dcard-title-row">
+              <span v-if="report.trang_thai === 'Hoàn thành'" class="bg-dcard-done-circle" title="Đã hoàn thành">
+                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </span>
+              <div class="bg-dcard-title">{{ report.noi_dung }}</div>
+            </div>
 
-          <!-- Nội dung -->
-          <div class="tl-rect" :class="[report.trang_thai === 'Hoàn thành' ? 'tl-rect--done' : 'tl-rect--pending', formatDisplayTime(report.thoi_gian).period === 'Sáng' ? 'tl-border--morning' : 'tl-border--afternoon']">
-            <!-- Ánh kim chạy viền -->
-            <div class="tl-shimmer-border" :class="report.trang_thai === 'Hoàn thành' ? 'tl-shimmer--done' : 'tl-shimmer--pending'"></div>
-            <div class="tl-rect-header">
-              <div class="tl-rect-tags">
-                <span class="tl-badge-cat" :class="getCategoryClass(report.phan_loai)">{{ report.phan_loai }}</span>
-                          <span v-if="report.isFailed === true || report.isFailed === 'TRUE'" class="is-failed-tag">Failed</span>
-                <div class="tl-status-chip" :class="getStatusPillClass(report.trang_thai)">
-                  <svg v-if="report.trang_thai === 'Hoàn thành'" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                  <svg v-else xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                  {{ report.trang_thai }}
+            <!-- Highlight Note -->
+            <div v-if="report.ghi_chu" class="bg-dcard-note">
+              <span class="bg-dcard-note-tag">NOTE</span>
+              <span class="bg-dcard-note-txt">{{ report.ghi_chu }}</span>
+            </div>
+
+            <!-- Linked Pipelines -->
+            <div v-if="getLinkedPipelines(report).length > 0" class="bg-dcard-pipelines" @mousedown.stop @click.stop>
+              <div v-for="(pl, idx) in getLinkedPipelines(report)" :key="'mupl-' + idx" class="bg-dcard-pl-item">
+                <div class="bg-dcard-pl-main">
+                  <span class="bg-dcard-pl-lbl">Pipeline:</span>
+                  <span class="bg-dcard-pl-txt">{{ pl.content_of_contract_po || 'Không có nội dung' }}</span>
                 </div>
-                <span v-if="report.tag" v-for="t in splitTags(report.tag)" :key="t" v-show="t !== 'BÌNH THƯỜNG'" class="tl-badge-tag" :class="getTagClass(t)">{{ t }}</span>
-                          <span v-if="report.maKH" class="tl-badge-customer" :title="'Mã KH: ' + report.maKH">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 3px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                            {{ getCustomerDisplayName(report.maKH) }}
-                          </span>
-              </div>
-            </div>
-            <div v-if="report.img_save" style="display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.5rem 0.5rem 0 0.5rem;">
-              <a v-for="(link, i) in report.img_save.split('\n').filter(Boolean)" :key="'img'+i" href="#" @click.prevent.stop="selectedImage = link" style="width: 45px; height: 45px; border-radius: 6px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); display: block; box-shadow: 0 2px 4px rgba(0,0,0,0.2);" :title="`Ảnh ${i + 1}`">
-                 <img :src="link" loading="lazy" decoding="async" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'" />
-              </a>
-            </div>
-            <div class="tl-rect-body">
-              <div class="tl-body-text">{{ report.noi_dung }}</div>
-            </div>
-            <div class="tl-rect-note" v-if="report.ghi_chu">
-              <div class="tl-note-accent"></div>
-              <div class="tl-note-content">
-                <div class="tl-note-icon">NOTE</div>
-                <span>{{ report.ghi_chu }}</span>
-              </div>
-            </div>
-            
-            <div class="tl-rect-pipeline" v-if="getLinkedPipelines(report).length > 0" style="display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.4rem;">
-              <div v-for="(pl, idx) in getLinkedPipelines(report)" :key="'pl-'+idx" style="display: flex; align-items: stretch; gap: 0; border-radius: 6px; overflow: hidden; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2);">
-  <div style="width: 3.5px; min-width: 3.5px; flex-shrink: 0; background: linear-gradient(180deg, #3b82f6, #2563eb); border-radius: 2px 0 0 2px;"></div>
-  <div style="padding: 0.4rem 0.6rem; font-size: 0.8rem; color: #cbd5e1; line-height: 1.3; flex: 1;">
-    <span style="font-weight: 800; color: #60a5fa;">pipeline</span> : <span>{{ pl.content_of_contract_po || 'Không có nội dung' }}</span>
-  </div>
-  <div @click.stop="goToPipeline(pl.Id_pipeline)" style="padding: 0 0.6rem; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #60a5fa; transition: color 0.2s;" onmouseover="this.style.color='#93c5fd'" onmouseout="this.style.color='#60a5fa'" title="Xem chi tiết">
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-  </div>
-</div>
-            </div>
-
-            <div class="tl-attachments" v-if="report.link_excel_bao_gia || report.link_excel_mua_hang" style="display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.5rem; padding: 0 0.5rem;">
-              <div v-if="report.link_excel_bao_gia" style="display: flex; flex-wrap: wrap; gap: 0.3rem;">
-                <a v-for="(link, i) in report.link_excel_bao_gia.split('\n').filter(Boolean)" :key="'bg'+i" href="#" @click.prevent.stop="downloadExcelFile(link, getExcelFileName(report, 'link_excel_bao_gia', i, 'Báo giá'))"  class="file-attach-badge" :title="getExcelFileName(report, 'link_excel_bao_gia', i, 'Báo giá')">
-                  <span v-html="getFileIconSvg(getExcelFileName(report, 'link_excel_bao_gia', i, 'Báo giá'))" style="display:flex;align-items:center;"></span>
-                  <span class="file-attach-text">{{ getExcelFileName(report, 'link_excel_bao_gia', i, 'Báo giá') }}</span>
-                </a>
-              </div>
-              <div v-if="report.link_excel_mua_hang" style="display: flex; flex-wrap: wrap; gap: 0.3rem;">
-                <a v-for="(link, i) in report.link_excel_mua_hang.split('\n').filter(Boolean)" :key="'mh'+i" href="#" @click.prevent.stop="downloadExcelFile(link, getExcelFileName(report, 'link_excel_mua_hang', i, 'Mua hàng'))"  class="file-attach-badge" :title="getExcelFileName(report, 'link_excel_mua_hang', i, 'Mua hàng')">
-                  <span v-html="getFileIconSvg(getExcelFileName(report, 'link_excel_mua_hang', i, 'Mua hàng'))" style="display:flex;align-items:center;"></span>
-                  <span class="file-attach-text">{{ getExcelFileName(report, 'link_excel_mua_hang', i, 'Mua hàng') }}</span>
-                </a>
+                <button type="button" class="bg-dcard-pl-eye" @click.stop="goToPipeline(pl.Id_pipeline)" title="Xem chi tiết Pipeline">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                </button>
               </div>
             </div>
 
-            <!-- FILE LIÊN KẾT (FULL WIDTH ROW) -->
-            <div v-if="report.id_quanlyfile" style="margin-top: 0.6rem; padding: 0 0.5rem;">
-              <button @click.stop="goToQuanLyFile(report.id_quanlyfile)" type="button" style="width: 100%; justify-content: center; background: rgba(59,130,246,0.1); color: #3b82f6; border: 1px solid rgba(59,130,246,0.2); padding: 8px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='#3b82f6'; this.style.color='white'" onmouseout="this.style.background='rgba(59,130,246,0.1)'; this.style.color='#3b82f6'">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-                Xem các file đã liên kết
-              </button>
+            <!-- Attachments Toggle (Default OPEN in Detail View + Smooth Collapse/Expand) -->
+            <div v-if="getCalendarTaskAttachments(report).length > 0 || report.id_quanlyfile" class="bg-dcard-files-wrap" @mousedown.stop @click.stop>
+              <div class="bg-dcard-files-bar">
+                <button
+                  v-if="getCalendarTaskAttachments(report).length > 0"
+                  type="button"
+                  class="bg-dcard-files-toggle"
+                  :class="{ 'is-open': isDetailTaskFilesOpen(report.id) }"
+                  @click.stop="toggleDetailTaskFiles(report.id)"
+                >
+                  <span class="bg-dcard-files-toggle-left">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                    <span>Đính kèm ({{ getCalendarTaskAttachments(report).length }})</span>
+                  </span>
+                  <span class="bg-dcard-files-caret">{{ isDetailTaskFilesOpen(report.id) ? '▴' : '▾' }}</span>
+                </button>
+
+                <button
+                  v-if="report.id_quanlyfile"
+                  type="button"
+                  class="bg-dcard-qlf-btn"
+                  @click.stop="goToQuanLyFile(report.id_quanlyfile)"
+                  title="Xem hồ sơ Quản lý file đã liên kết"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                  <span>Hồ sơ file</span>
+                </button>
+              </div>
+
+              <div
+                v-if="getCalendarTaskAttachments(report).length > 0"
+                class="bg-dcard-att-collapse"
+                :class="{ 'is-open': isDetailTaskFilesOpen(report.id) }"
+              >
+                <div class="bg-dcard-att-collapse-inner">
+                  <div class="tl-attachments tl-att-v5 bg-dcard-att-list">
+                    <div v-for="(att, aIdx) in getCalendarTaskAttachments(report)" :key="'datt-mu-' + report.id + '-' + aIdx" class="tl-att-row">
+                      <span class="tl-att-ic" v-html="getCalendarAttIconSvg(att)"></span>
+                      <span class="tl-att-name" :title="att.name" @click.stop.prevent="openCalendarAttachmentView(att)">{{ formatCalendarFileName(att.name, 28) }}</span>
+                      <div class="tl-att-btns">
+                        <button type="button" class="tl-att-act is-view" :title="att.kind === 'image' ? 'Xem ảnh: ' + att.name : (att.kind === 'office' ? 'View Office: ' + att.name : 'Mở xem: ' + att.name)" @click.stop.prevent="openCalendarAttachmentView(att)">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                        <button type="button" class="tl-att-act is-dl" :title="'Tải xuống: ' + att.name" @click.stop.prevent="downloadCalendarAttachment(att, $event)">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div class="tl-rect-actions">
-              <button class="tl-action-btn tl-action-delete" @click.stop="confirmDelete(report.id)">
+            <!-- Action Footer -->
+            <div class="bg-dcard-actions" @mousedown.stop @click.stop>
+              <button type="button" class="bg-dcard-btn is-del" @click.stop="confirmDelete(report.id)">
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                Xoá
+                <span>Xoá</span>
               </button>
-              <button v-if="report.trang_thai !== 'Hoàn thành'" class="tl-action-btn" @click.stop="markAsFailed(report)" style="background: linear-gradient(135deg, #f97316, #ea580c); color: white; box-shadow: 0 3px 10px -3px rgba(249, 115, 22, 0.45); border: none; padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 0.3rem; margin-right: 0.3rem;">
+              <button
+                v-if="report.trang_thai !== 'Hoàn thành' && report.isFailed !== true && report.isFailed !== 'TRUE' && report.trang_thai !== 'Failed'"
+                type="button"
+                class="bg-dcard-btn is-fail"
+                @click.stop="markAsFailed(report)"
+              >
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                Fail
+                <span>Fail</span>
               </button>
-              <button v-if="report.trang_thai !== 'Hoàn thành'" class="tl-action-btn tl-action-done" @click.stop="markAsCompleted(report)">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                Xong
+              <button
+                v-if="report.trang_thai !== 'Hoàn thành'"
+                type="button"
+                class="bg-dcard-btn is-done"
+                @click.stop="markAsCompleted(report)"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span>Xong</span>
               </button>
             </div>
           </div>
-        </div>
+        </template>
       </div>
 
       <!-- Lazy Loading Sentinel & Footer (25 công việc mỗi đợt) -->
@@ -1035,571 +1293,2654 @@
       </div>
     </div><!-- end tableSection -->
 
-    <!-- Elite Modal Form -->
-    <div class="elite-modal-overlay" v-if="isModalOpen" @click.self="closeModal">
-      <div class="elite-modal report-form-modal" :class="{'dark-mode-modal': isAfternoon}">
-        <div class="elite-modal-header">
-          <div class="elite-modal-title-wrapper" style="display: flex; flex-direction: column; gap: 0.25rem;">
-            <div class="elite-modal-title">
-              <svg v-if="!isEditing" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-              <svg v-else xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-              <h2>{{ isEditing ? 'Chỉnh Sửa Báo Cáo' : 'Thêm Báo Cáo Mới' }}</h2>
-            </div>
-            <div v-if="isEditing && formData.created_time" class="mobile-only" style="font-size: 0.75rem; color: rgba(255,255,255,0.8); font-style: italic; margin-left: 1.8rem;">
-              Được tạo lúc: {{ formData.created_time }}
-            </div>
+    <!-- MODULE 1C: GOOGLE CALENDAR WEEK (SÁNG / CHIỀU + QUICK ADD '+') & MONTH WORKSPACE (PC & MOBILE ADAPTIVE) -->
+    <section
+      v-if="desktopViewMode === 'calendar'"
+      class="bg-gcal-workspace bg-tabular"
+      :class="{ 'is-fullscreen': isCalendarFullscreen }"
+      data-guide="report-calendar-view"
+    >
+      <div class="bg-filter-accent-bar" aria-hidden="true"></div>
+
+      <!-- Google Calendar Top Navigation Toolbar -->
+      <div class="bg-gcal-toolbar">
+        <div class="bg-gcal-nav-left">
+          <button type="button" class="bg-btn bg-btn-chip" @click="goCalendarToday">
+            <span class="bg-today-dot" aria-hidden="true"></span>
+            <span>Hôm nay</span>
+          </button>
+
+          <div class="bg-gcal-arrows">
+            <button
+              type="button"
+              class="bg-period-step-btn"
+              @click="shiftCalendarPeriod(-1)"
+              :title="calendarSubMode === 'week' ? 'Tuần trước' : 'Tháng trước'"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            </button>
+            <button
+              type="button"
+              class="bg-period-step-btn"
+              @click="shiftCalendarPeriod(1)"
+              :title="calendarSubMode === 'week' ? 'Tuần sau' : 'Tháng sau'"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
           </div>
-          <button class="elite-btn-close" @click="closeModal">
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+
+          <div class="bg-gcal-period-heading">
+            <h2 class="bg-gcal-title">{{ calendarHeaderTitle }}</h2>
+            <span v-if="calendarHeaderBadge" class="bg-gcal-badge">{{ calendarHeaderBadge }}</span>
+          </div>
+        </div>
+
+        <div class="bg-gcal-nav-right">
+          <div class="bg-gcal-legend">
+            <span class="bg-gcal-leg-item"><i class="is-amber"></i>Chưa xong</span>
+            <span class="bg-gcal-leg-item"><i class="is-theme-pri"></i>Hoàn thành</span>
+            <span class="bg-gcal-leg-item"><i class="is-rose"></i>Failed</span>
+            <span class="bg-gcal-leg-hint">· Kéo thả để dời buổi/ngày</span>
+          </div>
+
+          <!-- Week <-> Month Switcher (Only shown in Fullscreen mode since top page bar already has Lịch tuần / Lịch tháng) -->
+          <div v-if="isCalendarFullscreen" class="bg-seg-switch is-compact" role="tablist" aria-label="Chế độ lịch">
+            <button
+              type="button"
+              class="bg-seg-btn"
+              :class="{ 'is-active': calendarSubMode === 'week' }"
+              @click="setCalendarSubMode('week')"
+            >Lịch tuần</button>
+            <button
+              type="button"
+              class="bg-seg-btn"
+              :class="{ 'is-active': calendarSubMode === 'month' }"
+              @click="setCalendarSubMode('month')"
+            >Lịch tháng</button>
+          </div>
+
+          <button
+            type="button"
+            class="bg-btn bg-btn-slate is-gcal-fs-btn"
+            @click="isCalendarFullscreen = !isCalendarFullscreen"
+            :title="isCalendarFullscreen ? 'Thu gọn về trang' : 'Phóng rộng toàn màn hình'"
+          >
+            <svg v-if="!isCalendarFullscreen" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+            <svg v-else xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+            <span>{{ isCalendarFullscreen ? 'Thu gọn' : 'Toàn màn hình' }}</span>
           </button>
         </div>
-        
-        <form @submit.prevent="saveReport" class="elite-modal-body pc-grid-layout">
-          <div class="pc-col pc-col-1">
-          <div class="elite-form-row" style="flex-direction: column; gap: 1rem;">
-            <div class="elite-form-group">
-              <label>Phân Loại</label>
-              <div class="elite-status-toggle">
-                <button 
-                  type="button" 
-                  :class="['toggle-btn', formData.phan_loai === 'CÔNG VIỆC' ? 'active-success' : '']"
-                  @click="formData.phan_loai = 'CÔNG VIỆC'"
-                >
-                  CÔNG VIỆC
-                </button>
-                <button 
-                  type="button" 
-                  :class="['toggle-btn', formData.phan_loai === 'ĐỜI SỐNG' ? 'active-primary' : '']"
-                  @click="formData.phan_loai = 'ĐỜI SỐNG'"
-                >
-                  ĐỜI SỐNG
-                </button>
-              </div>
-            </div>
-            <div class="elite-form-group">
-              <label>Độ quan trọng</label>
-              <div class="elite-status-toggle">
-                <button 
-                  type="button" 
-                  :class="['toggle-btn', formData.tag === 'BÌNH THƯỜNG' ? 'active-success' : '']"
-                  @click="formData.tag = 'BÌNH THƯỜNG'"
-                >
-                  BÌNH THƯỜNG
-                </button>
-                <button 
-                  type="button" 
-                  :class="['toggle-btn', formData.tag === 'ƯU TIÊN' ? 'active-danger' : '']"
-                  @click="formData.tag = 'ƯU TIÊN'"
-                >
-                  ƯU TIÊN
-                </button>
-              </div>
-            </div>
+      </div>
 
+      <!-- =============================================================== -->
+      <!-- SUB-VIEW 1: GOOGLE CALENDAR WEEK GRID (PC 7 COLS | MOBILE 3A)   -->
+      <!-- =============================================================== -->
+      <template v-if="calendarSubMode === 'week'">
+      <div v-if="!isMobile" class="bg-gcal-week-wrap">
+        <!-- Sticky 7-Day Column Header Row -->
+        <div class="bg-gcal-week-head-grid">
+          <div class="bg-gcal-corner-cell">BUỔI</div>
+          <div
+            v-for="day in calendarWeekDays"
+            :key="'wkh-' + day.dateStr"
+            class="bg-gcal-day-head"
+            :class="{ 'is-today': day.isToday, 'is-sun': day.isSunday }"
+          >
+            <span class="bg-gcal-wd-name">{{ day.wdLabel }}</span>
+            <div class="bg-gcal-day-num-row">
+              <span class="bg-gcal-day-circle" :class="{ 'is-today': day.isToday }">{{ day.dayNum }}</span>
+              <span class="bg-gcal-month-sub">/{{ day.monthNum }}</span>
+            </div>
+            <span v-if="day.totalTasks > 0" class="bg-gcal-day-count">{{ day.totalTasks }} việc</span>
+          </div>
+        </div>
+
+        <!-- Optional All-Day Due Reminders Row (Google Calendar All-Day Strip) -->
+        <div v-if="calendarWeekHasReminders" class="bg-gcal-week-lane is-reminder-lane">
+          <div class="bg-gcal-axis-cell is-reminder">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+            <span>NHẮC HẸN</span>
+          </div>
+          <div
+            v-for="day in calendarWeekDays"
+            :key="'wkr-' + day.dateStr"
+            class="bg-gcal-slot is-reminder-slot"
+            :class="{ 'is-today': day.isToday }"
+          >
+            <button
+              v-for="rem in day.reminders"
+              :key="'rem-chip-' + rem.id"
+              type="button"
+              class="bg-gcal-rem-chip"
+              @click="openEditModal(rem)"
+              :title="rem.reminder_content || rem.noi_dung"
+            >
+              <span>🔔 {{ rem.reminder_content || rem.noi_dung }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- LANE 1: BUỔI SÁNG -->
+        <div class="bg-gcal-week-lane is-morning-lane">
+          <div class="bg-gcal-axis-cell is-morning">
+            <span class="bg-gcal-axis-icon is-sky">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+            </span>
+            <span class="bg-gcal-axis-lbl">BUỔI SÁNG</span>
           </div>
 
-          <div class="elite-form-group">
-            <label>Thời Gian</label>
-            <div class="elite-quick-times">
-              <button type="button" class="elite-quick-btn" :class="{ active: isMorning }" @click="setMorningTime">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-                SÁNG
-              </button>
-              <button type="button" class="elite-quick-btn" :class="{ active: isAfternoon }" @click="setAfternoonTime">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-                CHIỀU
-              </button>
-            </div>
-            
-            <div class="elite-time-picker">
-              <div class="time-part">
-                <div class="picker-item">
-                  <span>Giờ</span>
-                  <select v-model="timeInputs.hour" class="elite-select-mini">
-                    <option v-for="h in 24" :key="h" :value="String(h-1).padStart(2, '0')">{{ String(h-1).padStart(2, '0') }}</option>
-                  </select>
-                </div>
-                <span class="time-sep">:</span>
-                <div class="picker-item">
-                  <span>Phút</span>
-                  <select v-model="timeInputs.minute" class="elite-select-mini">
-                    <option v-for="m in 60" :key="m" :value="String(m-1).padStart(2, '0')">{{ String(m-1).padStart(2, '0') }}</option>
-                  </select>
-                </div>
-              </div>
-              
-              <div class="date-part">
-                <div class="picker-item">
-                  <span>Thứ</span>
-                  <select v-model="timeInputs.thu" class="elite-select-mini">
-                    <option value="2">Thứ 2</option>
-                    <option value="3">Thứ 3</option>
-                    <option value="4">Thứ 4</option>
-                    <option value="5">Thứ 5</option>
-                    <option value="6">Thứ 6</option>
-                    <option value="7">Thứ 7</option>
-                    <option value="8">CN</option>
-                  </select>
-                </div>
-                <div class="picker-item">
-                  <span>Ngày</span>
-                  <select v-model="timeInputs.day" class="elite-select-mini">
-                    <option v-for="d in daysInMonth" :key="d" :value="String(d).padStart(2, '0')">{{ String(d).padStart(2, '0') }}</option>
-                  </select>
-                </div>
-                <span class="date-sep">/</span>
-                <div class="picker-item">
-                  <span>Tháng</span>
-                  <select v-model="timeInputs.month" class="elite-select-mini">
-                    <option v-for="m in 12" :key="m" :value="String(m).padStart(2, '0')">{{ String(m).padStart(2, '0') }}</option>
-                  </select>
-                </div>
-                <span class="date-sep">/</span>
-                <div class="picker-item">
-                  <span>Năm</span>
-                  <select v-model="timeInputs.year" class="elite-select-mini">
-                    <option v-for="y in 20" :key="y" :value="String(2023 + y)">{{ 2023 + y }}</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          </div>
-          </div>
-          
-          <div class="pc-col pc-col-2">
-          <div class="elite-form-row" style="flex-direction: column; height: 100%;">
-            <!-- Chọn Khách Hàng (Field maKH liên kết db khach_hang) -->
-            <div class="elite-form-group" style="background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 1rem;">
-              <div style="display: flex; flex-direction: column; gap: 0.8rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                  <label style="color: #475569; margin: 0; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;">Khách Hàng *</label>
-                  <div style="display: flex; gap: 0.5rem;">
-                    <button v-if="formData.maKH" @click="formData.maKH = ''" type="button" style="background: #fee2e2; color: #ef4444; border: 1px solid #fecaca; padding: 0.4rem 0.6rem; border-radius: 6px; cursor: pointer; font-weight: 600; transition: background 0.2s; font-size: 0.85rem;" onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fee2e2'">
-                      Xóa
-                    </button>
-                    <button @click="customerSelectMode = 'form'; isCustomerSelectModalOpen = true; customerSearchQuery = '';" type="button" style="background: #eff6ff; color: #3b82f6; border: 1px solid #bfdbfe; padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; font-weight: 600; white-space: nowrap; transition: background 0.2s; font-size: 0.85rem;" onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#eff6ff'">
-                      {{ formData.maKH ? 'Thay đổi KH' : 'Chọn KH' }}
-                    </button>
+          <div
+            v-for="day in calendarWeekDays"
+            :key="'wkam-' + day.dateStr"
+            class="bg-gcal-slot is-morning"
+            :class="{ 'is-today': day.isToday, 'is-sun': day.isSunday, 'is-empty': day.morningTasks.length === 0 }"
+            @dragover.prevent="$event.currentTarget.classList.add('is-drag-over')"
+            @dragleave.prevent="$event.currentTarget.classList.remove('is-drag-over')"
+            @drop.prevent="$event.currentTarget.classList.remove('is-drag-over'); onMoveTaskDrop($event, day.dateStr, 'Sáng')"
+          >
+            <!-- Empty Slot: Prominent '+' Quick-Add Button -->
+            <button
+              v-if="day.morningTasks.length === 0"
+              type="button"
+              class="bg-gcal-empty-add is-morning"
+              @click="openQuickAddAtSlot(day.dateStr, 'Sáng')"
+              :title="`Thêm báo cáo Sáng ${day.wdLabel} (${day.dateStr})`"
+            >
+              <span class="bg-gcal-plus-circle">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              </span>
+              <span class="bg-gcal-plus-txt">Thêm Sáng</span>
+            </button>
+
+            <!-- Populated Slot: Google Calendar Event Cards + Subtle '+' Add Another -->
+            <template v-else>
+              <div
+                v-for="task in day.morningTasks"
+                :key="'wk-t-am-' + task.id"
+                draggable="true"
+                @dragstart="onMoveTaskDragStart($event, task)"
+                @dragend="draggedMoveTask = null"
+                @click="openEditModal(task)"
+                class="bg-gcal-event"
+                :class="[
+                  getCalendarTaskStatusClass(task),
+                  {
+                    'is-priority': task.tag === 'ƯU TIÊN',
+                    'is-files-open': isCalendarTaskFilesOpen(task.id),
+                    'dragging-task': draggedMoveTask && draggedMoveTask.id === task.id,
+                    'drop-success-pulse': successDropTaskId === task.id
+                  }
+                ]"
+              >
+                <div v-if="task.tag === 'ƯU TIÊN' || getCustomerShortName(task)" class="bg-gcal-event-top">
+                  <div class="bg-gcal-event-badges">
+                    <span v-if="task.tag === 'ƯU TIÊN'" class="bg-gcal-prio-tag">ƯU TIÊN</span>
+                    <span v-if="getCustomerShortName(task)" class="bg-gcal-cus-tag">{{ getCustomerShortName(task) }}</span>
                   </div>
                 </div>
-                <div style="min-width: 0;">
-                  <div v-if="!formData.maKH" style="color: #94a3b8; font-style: italic; font-size: 0.95rem;">Chưa chọn khách hàng</div>
-                  <div v-else style="display: flex; flex-direction: column; gap: 6px;">
-                    <div style="color: #0f172a; font-weight: 700; font-size: 1.05rem; white-space: pre-wrap; word-break: break-word;">
-                      {{ getSelectedCustomerDisplay() }}
-                    </div>
-                    <div style="display: flex; flex-wrap: wrap; gap: 0.4rem;">
-                      <span v-for="tag in getSelectedCustomerTags()" :key="tag" style="background: rgba(16, 185, 129, 0.15); color: #059669; border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 9999px; padding: 2px 8px; font-size: 0.75rem; font-weight: 700;">
-                        {{ tag }}
-                      </span>
-                      <span v-if="!getSelectedCustomerTags().length" style="color: #94a3b8; font-size: 0.75rem; font-style: italic;">Chưa phân loại nhóm</span>
-                    </div>
-                  </div>
+
+                <div class="bg-gcal-title-row">
+                  <span v-if="task.trang_thai === 'Hoàn thành'" class="bg-gcal-done-circle" title="Đã hoàn thành" aria-label="Đã hoàn thành">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="10.5" height="10.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  </span>
+                  <div class="bg-gcal-event-title">{{ task.noi_dung }}</div>
                 </div>
-              </div>
-            </div>
+                <div v-if="task.ghi_chu" class="bg-gcal-event-note">{{ task.ghi_chu }}</div>
 
-            <div class="elite-form-group" style="flex: 2; display: flex; flex-direction: column;">
-              <div class="form-group-header">
-                <label>Nội Dung <span class="required">*</span></label>
-                <div class="header-actions-group">
-                  <button type="button" class="elite-voice-btn" @click="startVoiceRecognition('noi_dung')" :class="{ 'is-recording': isRecordingVoice === 'noi_dung' }" title="Nhập liệu bằng giọng nói">
-                    <svg v-if="isRecordingVoice !== 'noi_dung'" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
-                    <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12"></rect></svg>
-                  </button>
-                  <!-- Ẩn nút Báo Giá theo yêu cầu -->
-                  <button v-if="false" type="button" class="elite-quote-btn" @click="openCustomerModal">
-                    BÁO GIÁ
-                  </button>
-                </div>
-              </div>
-              <textarea v-model="formData.noi_dung" @paste="handlePasteImage" required placeholder="Mô tả chi tiết nội dung báo cáo..." class="elite-input" style="flex: 1; resize: vertical; min-height: 120px;"></textarea>
-            </div>
-
-            <div class="elite-form-group" style="flex: 1; display: flex; flex-direction: column;">
-              <div class="form-group-header">
-                <label style="color: #ef4444 !important; font-weight: 700 !important;">Ghi Chú</label>
-                <button type="button" class="elite-voice-btn" @click="startVoiceRecognition('ghi_chu')" :class="{ 'is-recording': isRecordingVoice === 'ghi_chu' }" title="Nhập liệu bằng giọng nói">
-                  <svg v-if="isRecordingVoice !== 'ghi_chu'" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
-                  <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12"></rect></svg>
-                </button>
-              </div>
-              <textarea v-model="formData.ghi_chu" placeholder="Các ghi chú bổ sung nếu có..." class="elite-input" style="color: #ef4444 !important; font-weight: 700 !important; flex: 1; resize: vertical; min-height: 60px;"></textarea>
-            </div>
-          </div>
-          </div>
-
-          <div class="pc-col pc-col-3">
-            <div class="elite-form-group" style="margin-bottom: 1rem; display: flex; flex-direction: column; position: relative;">
-              <div class="form-group-header">
-                <label style="color: #f59e0b !important; font-weight: 700 !important;">Lịch Nhắc Nhở</label>
-              </div>
-              <input type="date" v-model="formData.reminder_time" class="elite-input" style="margin-bottom: 0.5rem;" @click="e => e.target.showPicker && e.target.showPicker()" />
-              <input type="text" v-model="formData.reminder_content" placeholder="Nội dung nhắc nhở..." class="elite-input" />
-            </div>
-
-            <!-- Ẩn phần ID Pipeline (Liên kết) theo yêu cầu -->
-            <div v-if="false" class="elite-form-group" style="margin-bottom: 1rem; display: flex; flex-direction: column; position: relative;">
-              <div class="form-group-header" style="display: flex; justify-content: space-between; align-items: center;">
-                <label style="color: #3b82f6 !important; font-weight: 700 !important; margin: 0;">ID Pipeline (Liên kết)</label>
-                <div style="display: flex; gap: 0.5rem;">
-                  <button type="button" class="elite-btn-primary" style="padding: 0.3rem 0.8rem; font-size: 0.75rem; border-radius: 4px; background: #10b981; border: none; color: white; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;" @click="createPipelineFromReport">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                    Tạo Pipeline
-                  </button>
-                  <button type="button" class="elite-btn-primary" style="padding: 0.3rem 0.8rem; font-size: 0.75rem; border-radius: 4px; background: #3b82f6; border: none; color: white; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;" @click="isPipelineModalOpen = true">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-                    Liên kết
-                  </button>
-                </div>
-              </div>
-              <div class="chip-input-container" style="display: flex; flex-direction: column; gap: 0.6rem; padding-top: 0.5rem;">
-                 <div v-if="!formData.id_pipeline" style="color: rgba(255,255,255,0.4); padding: 0.2rem 0; font-size: 0.85rem;">Chưa có liên kết nào...</div>
-                 <div v-else v-for="(pId, idx) in splitPipelines(formData.id_pipeline)" :key="idx" class="pipeline-chip">
-                    <span class="pipeline-chip-text" :title="getPipelineDetails(pId).content_of_contract_po || pId">
-                      <strong>{{ getPipelineDetails(pId).content_of_contract_po || pId }}</strong>
-                      <span v-if="getPipelineDetails(pId).ten_khach_hang || getPipelineDetails(pId).ten_cong_ty" class="pipeline-chip-sub">
-                        - {{ [getPipelineDetails(pId).ten_khach_hang, getPipelineDetails(pId).ten_cong_ty].filter(Boolean).join(' | ') }}
-                      </span>
+                <!-- Toggle Tệp Đính Kèm (Nằm bên trên 3 nút Xoá / Fail / Xong) -->
+                <div v-if="getCalendarTaskAttachments(task).length > 0" class="bg-gcal-files-box" @click.stop>
+                  <button
+                    type="button"
+                    class="bg-gcal-files-toggle"
+                    :class="{ 'is-open': isCalendarTaskFilesOpen(task.id) }"
+                    @click.stop="toggleCalendarTaskFiles(task.id)"
+                  >
+                    <span class="bg-gcal-files-toggle-left">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                      <span>Đính kèm ({{ getCalendarTaskAttachments(task).length }})</span>
                     </span>
-                    <div style="display: flex; align-items: center; gap: 8px; margin-left: 8px; flex-shrink: 0;">
-                      <a :href="'/pipeline-firebase?openId=' + pId" target="_blank" @click.stop title="Xem Pipeline" style="color: inherit; opacity: 0.7; transition: opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                      </a>
-                      <span class="pipeline-chip-remove" @click.stop="togglePipelineSelection(pId)" title="Xóa">&times;</span>
-                    </div>
-                 </div>
-              </div>
-            </div>
-
-          <!-- Liên kết File (100% giống QuanLyFile.vue) -->
-          <div class="elite-form-group" style="background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 1rem;">
-            <div style="display: flex; flex-direction: column; gap: 0.8rem;">
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <label style="color: #475569; margin: 0; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;">Liên kết File (Tùy chọn)</label>
-                <div style="display: flex; gap: 0.5rem;">
-                  <button v-if="formData.id_quanlyfile" @click="formData.id_quanlyfile = ''" type="button" style="background: #fee2e2; color: #ef4444; border: 1px solid #fecaca; padding: 0.4rem 0.6rem; border-radius: 6px; cursor: pointer; font-weight: 600; transition: background 0.2s; font-size: 0.85rem;" onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fee2e2'">
-                    Xóa
+                    <span class="bg-gcal-files-caret">{{ isCalendarTaskFilesOpen(task.id) ? '▴' : '▾' }}</span>
                   </button>
-                  <button @click="isFileSelectModalOpen = true; fileSearchQuery = '';" type="button" style="background: #eff6ff; color: #3b82f6; border: 1px solid #bfdbfe; padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; font-weight: 600; white-space: nowrap; transition: background 0.2s; font-size: 0.85rem;" onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#eff6ff'">
-                    {{ formData.id_quanlyfile ? 'Đổi File' : 'Chọn File' }}
-                  </button>
-                </div>
-              </div>
-              <div style="min-width: 0;">
-                <div v-if="!formData.id_quanlyfile" style="color: #94a3b8; font-style: italic; font-size: 0.95rem;">Chưa chọn file liên kết</div>
-                <div v-else-if="selectedLinkedFile" @click="handleLinkedFileClick(selectedLinkedFile)" style="display: flex; flex-direction: column; gap: 6px; cursor: pointer; padding: 4px; border-radius: 6px; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
-                  <div style="color: #0f172a; font-weight: 700; font-size: 0.95rem; white-space: pre-wrap; word-break: break-word;">
-                    {{ selectedLinkedFile.noiDung || 'Không có nội dung' }}
-                  </div>
-                  <div v-if="selectedLinkedFile.ghiChu" style="color: #ef4444; font-size: 0.85rem; font-style: italic; font-weight: 600; white-space: pre-wrap; word-break: break-word;">
-                    * Ghi chú: {{ selectedLinkedFile.ghiChu }}
-                  </div>
-                </div>
-                <div v-else style="color: #ef4444; font-style: italic; font-size: 0.95rem;">File liên kết không tồn tại</div>
-              </div>
-            </div>
-          </div>
 
-          <!-- Upload Files -->
-          <div class="elite-form-group">
-            <label style="display: flex; justify-content: space-between; align-items: center;">
-              <span>Đính Kèm (Ảnh / Excel)</span>
-              <!-- Ẩn nút Chọn từ kho -->
-              <button v-if="false" type="button" @click="openStorageModal" class="elite-btn-primary" style="display: none;">Chọn từ kho</button>
-            </label>
-            <div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
-              <!-- Image Upload Row -->
-              <div class="file-upload-wrapper" style="width: 100%;">
-                <button type="button" style="width: 100%; padding: 0.5rem; font-size: 0.85rem; background: #0f172a; color: #f8fafc; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: 600; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" @click="$refs.imgUploadInput.click()" :disabled="isUploadingFiles" onmouseover="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 8px rgba(59,130,246,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.2)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
-                  <svg v-if="isUploadingFiles !== 'img'" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                  <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" style="margin-right: 6px; animation: spin 0.8s linear infinite; transform-origin: center;"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" style="opacity: 0.25;"></circle><path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" style="opacity: 0.75;"></path></svg>
-                  {{ isUploadingFiles === 'img' ? 'Đang tải...' : 'Tải Ảnh' }}
-                </button>
-                <input type="file" accept="image/*" multiple ref="imgUploadInput" style="display: none;" @change="handleImgUpload" />
-                <div v-if="formData.img_save" class="upload-preview-gallery" style="margin-top: 0.8rem; display: flex; flex-wrap: wrap; gap: 0.8rem;">
-                  <div v-for="(link, i) in formData.img_save.split('\n').filter(Boolean)" :key="i" style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; width: 80px;">
-                    <a href="#" @click.prevent.stop="selectedImage = link" style="display: block; width: 80px; height: 80px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.1); overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.4); transition: transform 0.2s, border-color 0.2s;" onmouseover="this.style.transform='scale(1.05)'; this.style.borderColor='#3b82f6'" onmouseout="this.style.transform='scale(1)'; this.style.borderColor='rgba(255,255,255,0.1)'" :title="getImgFileName(formData, i)">
-                      <img :src="link" style="width: 100%; height: 100%; object-fit: cover;" />
-                    </a>
-                    <div style="font-size: 0.65rem; color: #cbd5e1; width: 100%; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 2px;" :title="getImgFileName(formData, i)">{{ getImgFileName(formData, i) }}</div>
-                    <button type="button" @click="removeLink('img_save', i)" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #ef4444; cursor: pointer; padding: 4px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; transition: background 0.2s; width: 100%; display: flex; align-items: center; justify-content: center; gap: 4px;" onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'">
-                      ✕ Xóa
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Excel Files Row -->
-              <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                <div class="file-upload-wrapper" style="flex: 1; min-width: 140px;">
-                  <button type="button" style="width: 100%; padding: 0.5rem; font-size: 0.85rem; background: #0f172a; color: #34d399; border: 1px solid rgba(16,185,129,0.3); border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: 600; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" @click="$refs.bgUploadInput.click()" :disabled="isUploadingFiles" onmouseover="this.style.borderColor='#10b981'; this.style.boxShadow='0 0 8px rgba(16,185,129,0.3)'" onmouseout="this.style.borderColor='rgba(16,185,129,0.3)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
-                    <svg v-if="isUploadingFiles !== 'bg'" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="16" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                    <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" style="margin-right: 6px; animation: spin 0.8s linear infinite; transform-origin: center;"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" style="opacity: 0.25;"></circle><path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" style="opacity: 0.75;"></path></svg>
-                    {{ isUploadingFiles === 'bg' ? 'Đang tải...' : 'File Báo Giá' }}
-                  </button>
-                  <input type="file" accept=".xlsx,.xls" multiple ref="bgUploadInput" style="display: none;" @change="e => handleExcelUpload(e, 'link_excel_bao_gia')" />
-                  <div v-if="formData.link_excel_bao_gia" class="upload-preview-list" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem;">
-                    <div v-for="(link, i) in formData.link_excel_bao_gia.split('\n').filter(Boolean)" :key="i" style="display: flex; justify-content: space-between; align-items: center; background: rgba(16,185,129,0.05); padding: 0.3rem 0.5rem; border-radius: 4px; border: 1px solid rgba(16,185,129,0.1);">
-                      <a href="#" @click.prevent.stop="downloadExcelFile(link, getExcelFileName(formData, 'link_excel_bao_gia', i, 'Báo giá'))" style="color: #34d399; font-size: 0.75rem; font-weight: 600; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80%;" :title="getExcelFileName(formData, 'link_excel_bao_gia', i, 'Báo giá')">{{ getExcelFileName(formData, 'link_excel_bao_gia', i, 'Báo giá') }}</a>
-                      <button type="button" @click="removeLink('link_excel_bao_gia', i)" style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 2px;">✕</button>
+                  <div v-if="isCalendarTaskFilesOpen(task.id)" class="bg-gcal-files-list">
+                    <div
+                      v-for="(att, ai) in getCalendarTaskAttachments(task)"
+                      :key="'wka-att-' + ai"
+                      class="bg-gcal-file-item"
+                    >
+                      <span class="bg-gcal-file-ic" v-html="getCalendarAttIconSvg(att)"></span>
+                      <span class="bg-gcal-file-name" :title="att.name">{{ formatCalendarFileName(att.name, 15) }}</span>
+                      <div class="bg-gcal-file-btns">
+                        <button
+                          type="button"
+                          class="bg-gcal-file-act is-view"
+                          :title="att.kind === 'office' ? 'Xem bằng View Office' : (att.kind === 'image' ? 'Xem ảnh phóng to' : 'Mở xem tệp')"
+                          @click.stop.prevent="openCalendarAttachmentView(att)"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        </button>
+                        <button
+                          type="button"
+                          class="bg-gcal-file-act is-dl"
+                          :title="'Tải xuống: ' + att.name"
+                          @click.stop.prevent="downloadCalendarAttachment(att, $event)"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div class="file-upload-wrapper" style="flex: 1; min-width: 140px;">
-                <button type="button" style="width: 100%; padding: 0.5rem; font-size: 0.85rem; background: #0f172a; color: #a78bfa; border: 1px solid rgba(139,92,246,0.3); border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: 600; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" @click="$refs.mhUploadInput.click()" :disabled="isUploadingFiles" onmouseover="this.style.borderColor='#8b5cf6'; this.style.boxShadow='0 0 8px rgba(139,92,246,0.3)'" onmouseout="this.style.borderColor='rgba(139,92,246,0.3)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
-                  <svg v-if="isUploadingFiles !== 'mh'" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="16" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                  <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" style="margin-right: 6px; animation: spin 0.8s linear infinite; transform-origin: center;"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" style="opacity: 0.25;"></circle><path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" style="opacity: 0.75;"></path></svg>
-                  {{ isUploadingFiles === 'mh' ? 'Đang tải...' : 'File Mua Hàng' }}
-                </button>
-                <input type="file" accept=".xlsx,.xls" multiple ref="mhUploadInput" style="display: none;" @change="e => handleExcelUpload(e, 'link_excel_mua_hang')" />
-                <div v-if="formData.link_excel_mua_hang" class="upload-preview-list" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem;">
-                  <div v-for="(link, i) in formData.link_excel_mua_hang.split('\n').filter(Boolean)" :key="i" style="display: flex; justify-content: space-between; align-items: center; background: rgba(139,92,246,0.05); padding: 0.3rem 0.5rem; border-radius: 4px; border: 1px solid rgba(139,92,246,0.1);">
-                    <a href="#" @click.prevent.stop="downloadExcelFile(link, getExcelFileName(formData, 'link_excel_mua_hang', i, 'Mua hàng'))" style="color: #a78bfa; font-size: 0.75rem; font-weight: 600; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80%;" :title="getExcelFileName(formData, 'link_excel_mua_hang', i, 'Mua hàng')">{{ getExcelFileName(formData, 'link_excel_mua_hang', i, 'Mua hàng') }}</a>
-                    <button type="button" @click="removeLink('link_excel_mua_hang', i)" style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 2px;">✕</button>
-                  </div>
-                </div>
+                <!-- 3 Nút Thao Tác Dưới Đáy Card: Xoá | Fail | Xong -->
+                <div class="bg-gcal-card-foot-acts" @click.stop>
+                  <button
+                    type="button"
+                    class="bg-gcal-foot-btn is-del"
+                    title="Xoá báo cáo"
+                    @click.stop="confirmDelete(task.id)"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    <span>Xoá</span>
+                  </button>
+                  <button
+                    v-if="task.trang_thai !== 'Hoàn thành' && task.isFailed !== true && task.isFailed !== 'TRUE' && task.trang_thai !== 'Failed'"
+                    type="button"
+                    class="bg-gcal-foot-btn is-fail"
+                    title="Đánh dấu Fail"
+                    @click.stop="markAsFailed(task)"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    <span>Fail</span>
+                  </button>
+                  <button
+                    v-if="task.trang_thai !== 'Hoàn thành'"
+                    type="button"
+                    class="bg-gcal-foot-btn is-done"
+                    title="Đánh dấu Hoàn thành"
+                    @click.stop="markAsCompleted(task)"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <span>Xong</span>
+                  </button>
                 </div>
               </div>
-            </div>
+
+              <button
+                type="button"
+                class="bg-gcal-slot-more-add"
+                @click="openQuickAddAtSlot(day.dateStr, 'Sáng')"
+                :title="`Thêm việc khác vào Sáng ${day.dateStr}`"
+              >+ Thêm</button>
+            </template>
           </div>
+        </div>
+
+        <!-- LANE 2: BUỔI CHIỀU -->
+        <div class="bg-gcal-week-lane is-afternoon-lane">
+          <div class="bg-gcal-axis-cell is-afternoon">
+            <span class="bg-gcal-axis-icon is-amber">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            </span>
+            <span class="bg-gcal-axis-lbl">BUỔI CHIỀU</span>
           </div>
 
-        <!-- Layout cho Edit Mode (Cùng 1 hàng) -->
-        <div v-if="isEditing" class="elite-modal-actions" style="display: flex; gap: 0.75rem; width: 100%; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 1.25rem; grid-column: 1 / -1;">
-          <button type="button" class="elite-btn-cancel" style="flex: 1; justify-content: center;" @click="closeModal" :disabled="saving">Huỷ Bỏ</button>
-          <button v-if="formData.trang_thai === 'Chưa xử lý'" type="button" class="elite-btn-primary" style="flex: 1; justify-content: center; background: #10b981; border-color: #10b981; box-shadow: 0 4px 15px -3px rgba(16,185,129,0.4);" @click="formData.trang_thai = 'Hoàn thành'; saveReport()" :disabled="saving">
-            HOÀN THÀNH
-          </button>
-          <button v-if="hasChanges" type="submit" class="elite-btn-primary btn-add-primary" style="flex: 1; justify-content: center;" :disabled="saving">
-            <span v-if="saving" class="spinner-small"></span>
-            {{ saving ? 'Đang Lưu...' : 'LƯU' }}
+          <div
+            v-for="day in calendarWeekDays"
+            :key="'wkpm-' + day.dateStr"
+            class="bg-gcal-slot is-afternoon"
+            :class="{ 'is-today': day.isToday, 'is-sun': day.isSunday, 'is-empty': day.afternoonTasks.length === 0 }"
+            @dragover.prevent="$event.currentTarget.classList.add('is-drag-over')"
+            @dragleave.prevent="$event.currentTarget.classList.remove('is-drag-over')"
+            @drop.prevent="$event.currentTarget.classList.remove('is-drag-over'); onMoveTaskDrop($event, day.dateStr, 'Chiều')"
+          >
+            <!-- Empty Slot: Prominent '+' Quick-Add Button -->
+            <button
+              v-if="day.afternoonTasks.length === 0"
+              type="button"
+              class="bg-gcal-empty-add is-afternoon"
+              @click="openQuickAddAtSlot(day.dateStr, 'Chiều')"
+              :title="`Thêm báo cáo Chiều ${day.wdLabel} (${day.dateStr})`"
+            >
+              <span class="bg-gcal-plus-circle">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              </span>
+              <span class="bg-gcal-plus-txt">Thêm Chiều</span>
+            </button>
+
+            <!-- Populated Slot: Google Calendar Event Cards + Subtle '+' Add Another -->
+            <template v-else>
+              <div
+                v-for="task in day.afternoonTasks"
+                :key="'wk-t-pm-' + task.id"
+                draggable="true"
+                @dragstart="onMoveTaskDragStart($event, task)"
+                @dragend="draggedMoveTask = null"
+                @click="openEditModal(task)"
+                class="bg-gcal-event"
+                :class="[
+                  getCalendarTaskStatusClass(task),
+                  {
+                    'is-priority': task.tag === 'ƯU TIÊN',
+                    'is-files-open': isCalendarTaskFilesOpen(task.id),
+                    'dragging-task': draggedMoveTask && draggedMoveTask.id === task.id,
+                    'drop-success-pulse': successDropTaskId === task.id
+                  }
+                ]"
+              >
+                <div v-if="task.tag === 'ƯU TIÊN' || getCustomerShortName(task)" class="bg-gcal-event-top">
+                  <div class="bg-gcal-event-badges">
+                    <span v-if="task.tag === 'ƯU TIÊN'" class="bg-gcal-prio-tag">ƯU TIÊN</span>
+                    <span v-if="getCustomerShortName(task)" class="bg-gcal-cus-tag">{{ getCustomerShortName(task) }}</span>
+                  </div>
+                </div>
+
+                <div class="bg-gcal-title-row">
+                  <span v-if="task.trang_thai === 'Hoàn thành'" class="bg-gcal-done-circle" title="Đã hoàn thành" aria-label="Đã hoàn thành">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="10.5" height="10.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  </span>
+                  <div class="bg-gcal-event-title">{{ task.noi_dung }}</div>
+                </div>
+                <div v-if="task.ghi_chu" class="bg-gcal-event-note">{{ task.ghi_chu }}</div>
+
+                <!-- Toggle Tệp Đính Kèm (Nằm bên trên 3 nút Xoá / Fail / Xong) -->
+                <div v-if="getCalendarTaskAttachments(task).length > 0" class="bg-gcal-files-box" @click.stop>
+                  <button
+                    type="button"
+                    class="bg-gcal-files-toggle"
+                    :class="{ 'is-open': isCalendarTaskFilesOpen(task.id) }"
+                    @click.stop="toggleCalendarTaskFiles(task.id)"
+                  >
+                    <span class="bg-gcal-files-toggle-left">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                      <span>Đính kèm ({{ getCalendarTaskAttachments(task).length }})</span>
+                    </span>
+                    <span class="bg-gcal-files-caret">{{ isCalendarTaskFilesOpen(task.id) ? '▴' : '▾' }}</span>
+                  </button>
+
+                  <div v-if="isCalendarTaskFilesOpen(task.id)" class="bg-gcal-files-list">
+                    <div
+                      v-for="(att, ai) in getCalendarTaskAttachments(task)"
+                      :key="'wkp-att-' + ai"
+                      class="bg-gcal-file-item"
+                    >
+                      <span class="bg-gcal-file-ic" v-html="getCalendarAttIconSvg(att)"></span>
+                      <span class="bg-gcal-file-name" :title="att.name">{{ formatCalendarFileName(att.name, 15) }}</span>
+                      <div class="bg-gcal-file-btns">
+                        <button
+                          type="button"
+                          class="bg-gcal-file-act is-view"
+                          :title="att.kind === 'office' ? 'Xem bằng View Office' : (att.kind === 'image' ? 'Xem ảnh phóng to' : 'Mở xem tệp')"
+                          @click.stop.prevent="openCalendarAttachmentView(att)"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        </button>
+                        <button
+                          type="button"
+                          class="bg-gcal-file-act is-dl"
+                          :title="'Tải xuống: ' + att.name"
+                          @click.stop.prevent="downloadCalendarAttachment(att, $event)"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 3 Nút Thao Tác Dưới Đáy Card: Xoá | Fail | Xong -->
+                <div class="bg-gcal-card-foot-acts" @click.stop>
+                  <button
+                    type="button"
+                    class="bg-gcal-foot-btn is-del"
+                    title="Xoá báo cáo"
+                    @click.stop="confirmDelete(task.id)"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    <span>Xoá</span>
+                  </button>
+                  <button
+                    v-if="task.trang_thai !== 'Hoàn thành' && task.isFailed !== true && task.isFailed !== 'TRUE' && task.trang_thai !== 'Failed'"
+                    type="button"
+                    class="bg-gcal-foot-btn is-fail"
+                    title="Đánh dấu Fail"
+                    @click.stop="markAsFailed(task)"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    <span>Fail</span>
+                  </button>
+                  <button
+                    v-if="task.trang_thai !== 'Hoàn thành'"
+                    type="button"
+                    class="bg-gcal-foot-btn is-done"
+                    title="Đánh dấu Hoàn thành"
+                    @click.stop="markAsCompleted(task)"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <span>Xong</span>
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                class="bg-gcal-slot-more-add"
+                @click="openQuickAddAtSlot(day.dateStr, 'Chiều')"
+                :title="`Thêm việc khác vào Chiều ${day.dateStr}`"
+              >+ Thêm</button>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- MOBILE 3A WEEK CALENDAR: 7-DAY HORIZONTAL STRIP + VERTICAL SÁNG / CHIỀU AGENDA -->
+      <div v-else class="bg-mcal-week-wrap">
+        <div class="bg-mcal-week-strip" role="tablist" aria-label="Chọn nhanh ngày trong tuần">
+          <button
+            v-for="day in calendarWeekDays"
+            :key="'mwk-tab-' + day.isoStr"
+            type="button"
+            class="bg-mcal-wtab"
+            :class="{
+              'is-today': day.isToday,
+              'is-selected': activeMobileWeekIso === day.isoStr,
+              'is-sun': day.isSunday,
+              'has-tasks': day.totalTasks > 0
+            }"
+            @click="scrollToMobileWeekDay(day.isoStr)"
+          >
+            <span class="bg-mcal-wtab-wd">{{ getShortWdLabel(day.wdLabel) }}</span>
+            <span class="bg-mcal-wtab-num">{{ day.dayNum }}</span>
+            <span v-if="day.totalTasks > 0" class="bg-mcal-wtab-cnt">{{ day.totalTasks }}</span>
+            <span v-else class="bg-mcal-wtab-dot-empty" aria-hidden="true"></span>
           </button>
         </div>
 
-        <!-- Layout cho Add Mode (Lưới 2 cột như cũ) -->
-        <div v-else class="elite-modal-actions form-actions-grid pc-actions-grid">
-            <div class="pc-action-col">
-              <button type="button" class="btn-add-continue" @click="saveReport({ continue: true })" :disabled="saving">
-                <span v-if="saving" class="spinner-small"></span>
-                THÊM & LÀM TIẾP
-              </button>
-              <button type="button" class="elite-btn-cancel" @click="closeModal" :disabled="saving">Huỷ Bỏ</button>
+        <div class="bg-mcal-week-agenda">
+          <div
+            v-for="day in calendarWeekDays"
+            :key="'mwk-day-' + day.isoStr"
+            :id="'mcal-wday-' + day.isoStr"
+            class="bg-mcal-day-card"
+            :class="{
+              'is-today': day.isToday,
+              'is-selected': activeMobileWeekIso === day.isoStr,
+              'is-sun': day.isSunday
+            }"
+          >
+            <div class="bg-mcal-day-head">
+              <div class="bg-mcal-day-title">
+                <span class="bg-mcal-day-wd">{{ day.wdLabel }}</span>
+                <span class="bg-mcal-day-date">{{ day.dayNum }}/{{ day.monthNum }}</span>
+                <span v-if="day.isToday" class="bg-mcal-today-pill">Hôm nay</span>
+              </div>
+              <span class="bg-mcal-day-total">{{ day.totalTasks }} việc</span>
             </div>
-            
-            <div class="pc-action-col">
-              <button type="button" class="btn-add-empty" @click="saveReport({ openEmpty: true })" :disabled="saving">
-                THÊM & LÀM TIẾP MỤC TRỐNG
-              </button>
-              <button type="submit" class="elite-btn-primary btn-add-primary" :disabled="saving">
-                <span v-if="saving" class="spinner-small"></span>
-                {{ saving ? 'Đang Thêm...' : 'THÊM & XONG' }}
+
+            <div v-if="day.reminders && day.reminders.length > 0" class="bg-mcal-day-rems">
+              <button
+                v-for="rem in day.reminders"
+                :key="'mwk-rem-' + rem.id"
+                type="button"
+                class="bg-gcal-rem-chip"
+                @click="openEditModal(rem)"
+              >
+                <span>🔔 {{ rem.reminder_content || rem.noi_dung }}</span>
               </button>
             </div>
+
+            <div class="bg-mcal-day-periods">
+              <div
+                v-for="pSlot in [
+                  { key: 'Sáng', label: 'Buổi sáng', cls: 'is-morning', tasks: day.morningTasks },
+                  { key: 'Chiều', label: 'Buổi chiều', cls: 'is-afternoon', tasks: day.afternoonTasks }
+                ]"
+                :key="'mwk-p-' + day.isoStr + '-' + pSlot.key"
+                class="bg-mcal-period-box"
+                :class="pSlot.cls"
+              >
+                <div class="bg-mcal-period-head">
+                  <div class="bg-mcal-period-left">
+                    <span class="bg-mcal-period-lbl">{{ pSlot.label }}</span>
+                    <span class="bg-mcal-period-cnt">{{ pSlot.tasks.length }}</span>
+                  </div>
+                  <button
+                    type="button"
+                    class="bg-mcal-period-add"
+                    @click.stop="openQuickAddAtSlot(day.dateStr, pSlot.key)"
+                    :title="`Thêm nhanh báo cáo ${pSlot.label} (${day.dateStr})`"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                  </button>
+                </div>
+
+                <button
+                  v-if="pSlot.tasks.length === 0"
+                  type="button"
+                  class="bg-mcal-empty-slot"
+                  @click="openQuickAddAtSlot(day.dateStr, pSlot.key)"
+                >
+                  <span>+ Thêm việc {{ pSlot.key.toLowerCase() }}</span>
+                </button>
+
+                <div v-else class="bg-mcal-card-stack">
+                  <div
+                    v-for="report in pSlot.tasks"
+                    :key="'mwk-c-' + report.id"
+                    class="bg-detail-card is-mcal-card"
+                    :class="{
+                      'is-done': report.trang_thai === 'Hoàn thành',
+                      'is-failed': (report.isFailed === true || report.isFailed === 'TRUE' || report.trang_thai === 'Failed') && report.trang_thai !== 'Hoàn thành',
+                      'is-pending': report.trang_thai !== 'Hoàn thành' && report.isFailed !== true && report.isFailed !== 'TRUE' && report.trang_thai !== 'Failed',
+                      'is-priority': report.tag && splitTags(report.tag).includes('ƯU TIÊN'),
+                      'deleting-row': deletingIds.includes(report.id)
+                    }"
+                    @click="openEditModal(report)"
+                  >
+                    <div class="bg-dcard-top">
+                      <div class="bg-dcard-meta bg-tabular">
+                        <span class="bg-dcard-time">{{ formatDisplayTime(report.thoi_gian).time }}</span>
+                      </div>
+                      <div class="bg-dcard-badges">
+                        <span class="bg-dcard-chip is-cat" :class="report.phan_loai === 'ĐỜI SỐNG' ? 'is-life' : 'is-work'">{{ report.phan_loai }}</span>
+                        <span v-if="report.trang_thai !== 'Hoàn thành' && (report.isFailed === true || report.isFailed === 'TRUE')" class="bg-dcard-chip is-failed-chip">FAILED</span>
+                        <template v-if="report.tag">
+                          <span
+                            v-for="t in splitTags(report.tag)"
+                            :key="'mwk-tg-' + report.id + '-' + t"
+                            v-show="t && t !== 'BÌNH THƯỜNG'"
+                            class="bg-dcard-chip is-prio-chip"
+                          >{{ t }}</span>
+                        </template>
+                        <span v-if="report.maKH" class="bg-dcard-chip is-cus-chip" :title="'Mã KH: ' + report.maKH">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                          <span class="bg-dcard-cus-txt">{{ getCustomerDisplayName(report.maKH) }}</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    <div class="bg-dcard-title-row">
+                      <span v-if="report.trang_thai === 'Hoàn thành'" class="bg-dcard-done-circle" title="Đã hoàn thành">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                      </span>
+                      <div class="bg-dcard-title">{{ report.noi_dung }}</div>
+                    </div>
+
+                    <div v-if="report.ghi_chu" class="bg-dcard-note">
+                      <span class="bg-dcard-note-tag">NOTE</span>
+                      <span class="bg-dcard-note-txt">{{ report.ghi_chu }}</span>
+                    </div>
+
+                    <div v-if="getCalendarTaskAttachments(report).length > 0 || report.id_quanlyfile" class="bg-dcard-files-wrap" @mousedown.stop @click.stop>
+                      <div class="bg-dcard-files-bar">
+                        <button
+                          v-if="getCalendarTaskAttachments(report).length > 0"
+                          type="button"
+                          class="bg-dcard-files-toggle"
+                          :class="{ 'is-open': isCalendarTaskFilesOpen(report.id) }"
+                          @click.stop="toggleCalendarTaskFiles(report.id)"
+                        >
+                          <span class="bg-dcard-files-toggle-left">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                            <span>Đính kèm ({{ getCalendarTaskAttachments(report).length }})</span>
+                          </span>
+                          <span class="bg-dcard-files-caret">{{ isCalendarTaskFilesOpen(report.id) ? '▴' : '▾' }}</span>
+                        </button>
+
+                        <button
+                          v-if="report.id_quanlyfile"
+                          type="button"
+                          class="bg-dcard-qlf-btn"
+                          @click.stop="goToQuanLyFile(report.id_quanlyfile)"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                          <span>Hồ sơ file</span>
+                        </button>
+                      </div>
+
+                      <div
+                        v-if="getCalendarTaskAttachments(report).length > 0"
+                        class="bg-dcard-att-collapse"
+                        :class="{ 'is-open': isCalendarTaskFilesOpen(report.id) }"
+                      >
+                        <div class="bg-dcard-att-collapse-inner">
+                          <div class="tl-attachments tl-att-v5 bg-dcard-att-list">
+                            <div v-for="(att, aIdx) in getCalendarTaskAttachments(report)" :key="'mwk-att-' + report.id + '-' + aIdx" class="tl-att-row">
+                              <span class="tl-att-ic" v-html="getCalendarAttIconSvg(att)"></span>
+                              <span class="tl-att-name" :title="att.name" @click.stop.prevent="openCalendarAttachmentView(att)">{{ formatCalendarFileName(att.name, 26) }}</span>
+                              <div class="tl-att-btns">
+                                <button type="button" class="tl-att-act is-view" @click.stop.prevent="openCalendarAttachmentView(att)">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </button>
+                                <button type="button" class="tl-att-act is-dl" @click.stop.prevent="downloadCalendarAttachment(att, $event)">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="bg-dcard-actions" @mousedown.stop @click.stop>
+                      <button type="button" class="bg-dcard-btn is-del" @click.stop="confirmDelete(report.id)">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        <span>Xoá</span>
+                      </button>
+                      <button
+                        v-if="report.trang_thai !== 'Hoàn thành' && report.isFailed !== true && report.isFailed !== 'TRUE' && report.trang_thai !== 'Failed'"
+                        type="button"
+                        class="bg-dcard-btn is-fail"
+                        @click.stop="markAsFailed(report)"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        <span>Fail</span>
+                      </button>
+                      <button
+                        v-if="report.trang_thai !== 'Hoàn thành'"
+                        type="button"
+                        class="bg-dcard-btn is-done"
+                        @click.stop="markAsCompleted(report)"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <span>Xong</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </template>
+
+      <!-- =============================================================== -->
+      <!-- SUB-VIEW 2: GOOGLE CALENDAR MONTH GRID (PC | MOBILE MATRIX+DAY) -->
+      <!-- =============================================================== -->
+      <template v-else>
+      <div v-if="!isMobile" class="bg-gcal-month-wrap">
+        <div v-for="month in calendarMonthGrid" :key="'gcm-' + month.year + '-' + month.month" class="bg-gcal-month-block">
+          <div v-if="calendarMonthGrid.length > 1" class="bg-cal-month-title">Tháng {{ month.month }} / {{ month.year }}</div>
+          <div class="bg-cal-weekdays">
+            <div v-for="dayName in ['THỨ 2', 'THỨ 3', 'THỨ 4', 'THỨ 5', 'THỨ 6', 'THỨ 7', 'CHỦ NHẬT']" :key="dayName" class="bg-cal-wd">{{ dayName }}</div>
+          </div>
+
+          <div class="bg-move-cal-grid">
+            <div
+              v-for="(day, idx) in month.days"
+              :key="'mcell-' + idx"
+              class="bg-move-day-cell"
+              :class="{ 'is-pad': !day, 'is-sun': day && day.isSunday, 'is-today': day && day.isToday }"
+            >
+              <template v-if="day">
+                <div class="bg-move-day-head">
+                  <span class="bg-gcal-day-circle is-sm" :class="{ 'is-today': day.isToday }">{{ day.dayNum }}</span>
+                  <span v-if="(day.morningTasks.length + day.afternoonTasks.length) > 0" class="bg-tag-pill is-slate">
+                    {{ day.morningTasks.length + day.afternoonTasks.length }} việc
+                  </span>
+                </div>
+
+                <div class="bg-move-zones">
+                  <!-- Sáng Zone -->
+                  <div
+                    class="bg-move-zone is-morning"
+                    @dragover.prevent="$event.currentTarget.classList.add('drag-over-sang')"
+                    @dragleave.prevent="$event.currentTarget.classList.remove('drag-over-sang')"
+                    @drop.prevent="$event.currentTarget.classList.remove('drag-over-sang'); onMoveTaskDrop($event, day.dateStr, 'Sáng')"
+                  >
+                    <div class="bg-move-zone-head">
+                      <span class="bg-move-zone-lbl is-sky">SÁNG</span>
+                      <button
+                        v-if="day.morningTasks.length > 0"
+                        type="button"
+                        class="bg-move-zone-plus"
+                        @click.stop="openQuickAddAtSlot(day.dateStr, 'Sáng')"
+                        :title="`Thêm việc Sáng ${day.dateStr}`"
+                      >+</button>
+                    </div>
+
+                    <button
+                      v-if="day.morningTasks.length === 0"
+                      type="button"
+                      class="bg-gcal-month-empty-add"
+                      @click="openQuickAddAtSlot(day.dateStr, 'Sáng')"
+                      :title="`Thêm báo cáo Sáng ${day.dateStr}`"
+                    >+</button>
+
+                    <div
+                      v-for="task in day.morningTasks"
+                      :key="'m-am-' + task.id"
+                      draggable="true"
+                      @dragstart="onMoveTaskDragStart($event, task)"
+                      @dragend="draggedMoveTask = null"
+                      @click="openEditModal(task)"
+                      class="bg-gcal-event is-compact"
+                      :class="[
+                        getCalendarTaskStatusClass(task),
+                        {
+                          'is-priority': task.tag === 'ƯU TIÊN',
+                          'is-files-open': isCalendarTaskFilesOpen(task.id),
+                          'dragging-task': draggedMoveTask && draggedMoveTask.id === task.id,
+                          'drop-success-pulse': successDropTaskId === task.id
+                        }
+                      ]"
+                    >
+                      <div v-if="task.tag === 'ƯU TIÊN' || getCustomerShortName(task)" class="bg-gcal-event-top">
+                        <div class="bg-gcal-event-badges">
+                          <span v-if="task.tag === 'ƯU TIÊN'" class="bg-gcal-prio-tag">ƯU TIÊN</span>
+                          <span v-if="getCustomerShortName(task)" class="bg-gcal-cus-tag">{{ getCustomerShortName(task) }}</span>
+                        </div>
+                      </div>
+                      <div class="bg-gcal-title-row">
+                  <span v-if="task.trang_thai === 'Hoàn thành'" class="bg-gcal-done-circle" title="Đã hoàn thành" aria-label="Đã hoàn thành">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="10.5" height="10.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  </span>
+                  <div class="bg-gcal-event-title">{{ task.noi_dung }}</div>
+                </div>
+
+                      <!-- Toggle Tệp Đính Kèm -->
+                      <div v-if="getCalendarTaskAttachments(task).length > 0" class="bg-gcal-files-box" @click.stop>
+                        <button
+                          type="button"
+                          class="bg-gcal-files-toggle is-compact"
+                          :class="{ 'is-open': isCalendarTaskFilesOpen(task.id) }"
+                          @click.stop="toggleCalendarTaskFiles(task.id)"
+                        >
+                          <span class="bg-gcal-files-toggle-left">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                            <span>Đính kèm ({{ getCalendarTaskAttachments(task).length }})</span>
+                          </span>
+                          <span class="bg-gcal-files-caret">{{ isCalendarTaskFilesOpen(task.id) ? '▴' : '▾' }}</span>
+                        </button>
+
+                        <div v-if="isCalendarTaskFilesOpen(task.id)" class="bg-gcal-files-list">
+                          <div
+                            v-for="(att, ai) in getCalendarTaskAttachments(task)"
+                            :key="'ma-att-' + ai"
+                            class="bg-gcal-file-item"
+                          >
+                            <span class="bg-gcal-file-ic" v-html="getCalendarAttIconSvg(att)"></span>
+                            <span class="bg-gcal-file-name" :title="att.name">{{ formatCalendarFileName(att.name, 13) }}</span>
+                            <div class="bg-gcal-file-btns">
+                              <button
+                                type="button"
+                                class="bg-gcal-file-act is-view"
+                                :title="att.kind === 'office' ? 'Xem bằng View Office' : (att.kind === 'image' ? 'Xem ảnh phóng to' : 'Mở xem tệp')"
+                                @click.stop.prevent="openCalendarAttachmentView(att)"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                              </button>
+                              <button
+                                type="button"
+                                class="bg-gcal-file-act is-dl"
+                                :title="'Tải xuống: ' + att.name"
+                                @click.stop.prevent="downloadCalendarAttachment(att, $event)"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- 3 Nút Thao Tác Dưới Đáy Card: Xoá | Fail | Xong -->
+                      <div class="bg-gcal-card-foot-acts" @click.stop>
+                        <button
+                          type="button"
+                          class="bg-gcal-foot-btn is-del"
+                          title="Xoá báo cáo"
+                          @click.stop="confirmDelete(task.id)"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="10.5" height="10.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                          <span>Xoá</span>
+                        </button>
+                        <button
+                          v-if="task.trang_thai !== 'Hoàn thành' && task.isFailed !== true && task.isFailed !== 'TRUE' && task.trang_thai !== 'Failed'"
+                          type="button"
+                          class="bg-gcal-foot-btn is-fail"
+                          title="Đánh dấu Fail"
+                          @click.stop="markAsFailed(task)"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="10.5" height="10.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                          <span>Fail</span>
+                        </button>
+                        <button
+                          v-if="task.trang_thai !== 'Hoàn thành'"
+                          type="button"
+                          class="bg-gcal-foot-btn is-done"
+                          title="Đánh dấu Hoàn thành"
+                          @click.stop="markAsCompleted(task)"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="10.5" height="10.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                          <span>Xong</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Chiều Zone -->
+                  <div
+                    class="bg-move-zone is-afternoon"
+                    @dragover.prevent="$event.currentTarget.classList.add('drag-over-chieu')"
+                    @dragleave.prevent="$event.currentTarget.classList.remove('drag-over-chieu')"
+                    @drop.prevent="$event.currentTarget.classList.remove('drag-over-chieu'); onMoveTaskDrop($event, day.dateStr, 'Chiều')"
+                  >
+                    <div class="bg-move-zone-head">
+                      <span class="bg-move-zone-lbl is-amber">CHIỀU</span>
+                      <button
+                        v-if="day.afternoonTasks.length > 0"
+                        type="button"
+                        class="bg-move-zone-plus"
+                        @click.stop="openQuickAddAtSlot(day.dateStr, 'Chiều')"
+                        :title="`Thêm việc Chiều ${day.dateStr}`"
+                      >+</button>
+                    </div>
+
+                    <button
+                      v-if="day.afternoonTasks.length === 0"
+                      type="button"
+                      class="bg-gcal-month-empty-add"
+                      @click="openQuickAddAtSlot(day.dateStr, 'Chiều')"
+                      :title="`Thêm báo cáo Chiều ${day.dateStr}`"
+                    >+</button>
+
+                    <div
+                      v-for="task in day.afternoonTasks"
+                      :key="'m-pm-' + task.id"
+                      draggable="true"
+                      @dragstart="onMoveTaskDragStart($event, task)"
+                      @dragend="draggedMoveTask = null"
+                      @click="openEditModal(task)"
+                      class="bg-gcal-event is-compact"
+                      :class="[
+                        getCalendarTaskStatusClass(task),
+                        {
+                          'is-priority': task.tag === 'ƯU TIÊN',
+                          'is-files-open': isCalendarTaskFilesOpen(task.id),
+                          'dragging-task': draggedMoveTask && draggedMoveTask.id === task.id,
+                          'drop-success-pulse': successDropTaskId === task.id
+                        }
+                      ]"
+                    >
+                      <div v-if="task.tag === 'ƯU TIÊN' || getCustomerShortName(task)" class="bg-gcal-event-top">
+                        <div class="bg-gcal-event-badges">
+                          <span v-if="task.tag === 'ƯU TIÊN'" class="bg-gcal-prio-tag">ƯU TIÊN</span>
+                          <span v-if="getCustomerShortName(task)" class="bg-gcal-cus-tag">{{ getCustomerShortName(task) }}</span>
+                        </div>
+                      </div>
+                      <div class="bg-gcal-title-row">
+                  <span v-if="task.trang_thai === 'Hoàn thành'" class="bg-gcal-done-circle" title="Đã hoàn thành" aria-label="Đã hoàn thành">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="10.5" height="10.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  </span>
+                  <div class="bg-gcal-event-title">{{ task.noi_dung }}</div>
+                </div>
+
+                      <!-- Toggle Tệp Đính Kèm -->
+                      <div v-if="getCalendarTaskAttachments(task).length > 0" class="bg-gcal-files-box" @click.stop>
+                        <button
+                          type="button"
+                          class="bg-gcal-files-toggle is-compact"
+                          :class="{ 'is-open': isCalendarTaskFilesOpen(task.id) }"
+                          @click.stop="toggleCalendarTaskFiles(task.id)"
+                        >
+                          <span class="bg-gcal-files-toggle-left">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                            <span>Đính kèm ({{ getCalendarTaskAttachments(task).length }})</span>
+                          </span>
+                          <span class="bg-gcal-files-caret">{{ isCalendarTaskFilesOpen(task.id) ? '▴' : '▾' }}</span>
+                        </button>
+
+                        <div v-if="isCalendarTaskFilesOpen(task.id)" class="bg-gcal-files-list">
+                          <div
+                            v-for="(att, ai) in getCalendarTaskAttachments(task)"
+                            :key="'mp-att-' + ai"
+                            class="bg-gcal-file-item"
+                          >
+                            <span class="bg-gcal-file-ic" v-html="getCalendarAttIconSvg(att)"></span>
+                            <span class="bg-gcal-file-name" :title="att.name">{{ formatCalendarFileName(att.name, 13) }}</span>
+                            <div class="bg-gcal-file-btns">
+                              <button
+                                type="button"
+                                class="bg-gcal-file-act is-view"
+                                :title="att.kind === 'office' ? 'Xem bằng View Office' : (att.kind === 'image' ? 'Xem ảnh phóng to' : 'Mở xem tệp')"
+                                @click.stop.prevent="openCalendarAttachmentView(att)"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                              </button>
+                              <button
+                                type="button"
+                                class="bg-gcal-file-act is-dl"
+                                :title="'Tải xuống: ' + att.name"
+                                @click.stop.prevent="downloadCalendarAttachment(att, $event)"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- 3 Nút Thao Tác Dưới Đáy Card: Xoá | Fail | Xong -->
+                      <div class="bg-gcal-card-foot-acts" @click.stop>
+                        <button
+                          type="button"
+                          class="bg-gcal-foot-btn is-del"
+                          title="Xoá báo cáo"
+                          @click.stop="confirmDelete(task.id)"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="10.5" height="10.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                          <span>Xoá</span>
+                        </button>
+                        <button
+                          v-if="task.trang_thai !== 'Hoàn thành' && task.isFailed !== true && task.isFailed !== 'TRUE' && task.trang_thai !== 'Failed'"
+                          type="button"
+                          class="bg-gcal-foot-btn is-fail"
+                          title="Đánh dấu Fail"
+                          @click.stop="markAsFailed(task)"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="10.5" height="10.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                          <span>Fail</span>
+                        </button>
+                        <button
+                          v-if="task.trang_thai !== 'Hoàn thành'"
+                          type="button"
+                          class="bg-gcal-foot-btn is-done"
+                          title="Đánh dấu Hoàn thành"
+                          @click.stop="markAsCompleted(task)"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="10.5" height="10.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                          <span>Xong</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MOBILE 4 MONTH CALENDAR: COMPACT 7-COL MONTH MATRIX + SELECTED DAY AGENDA -->
+      <div v-else class="bg-mcal-month-wrap">
+        <div
+          v-for="month in calendarMonthGrid"
+          :key="'mm-blk-' + month.year + '-' + month.month"
+          class="bg-mcal-month-block"
+        >
+          <div v-if="calendarMonthGrid.length > 1" class="bg-mcal-month-subtitle">Tháng {{ month.month }} / {{ month.year }}</div>
+
+          <div class="bg-mcal-month-weekdays">
+            <div v-for="wd in ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']" :key="'mm-wd-' + wd" class="bg-mcal-mwd">{{ wd }}</div>
+          </div>
+
+          <div class="bg-mcal-month-grid">
+            <template v-for="(day, idx) in month.days" :key="'mm-c-' + month.year + '-' + month.month + '-' + idx">
+              <div v-if="!day" class="bg-mcal-mcell is-pad" aria-hidden="true"></div>
+              <button
+                v-else
+                type="button"
+                class="bg-mcal-mcell"
+                :class="{
+                  'is-today': day.isToday,
+                  'is-selected': isMobileMonthDayModalOpen && activeMobileMonthDay && activeMobileMonthDay.dateStr === day.dateStr,
+                  'is-sun': day.isSunday,
+                  'has-tasks': (day.morningTasks.length + day.afternoonTasks.length) > 0
+                }"
+                @click="selectMobileMonthDay(day)"
+              >
+                <div class="bg-mcal-mcell-top">
+                  <span class="bg-mcal-mday-num">{{ day.dayNum }}</span>
+                  <span
+                    v-if="(day.morningTasks.length + day.afternoonTasks.length) > 0"
+                    class="bg-mcal-mday-cnt"
+                  >{{ day.morningTasks.length + day.afternoonTasks.length }}</span>
+                </div>
+                <div class="bg-mcal-mdots" aria-hidden="true">
+                  <span
+                    v-for="(dotCls, dIdx) in getDayTaskDots(day)"
+                    :key="'mdot-' + day.dateStr + '-' + dIdx"
+                    class="bg-mcal-mdot"
+                    :class="dotCls"
+                  ></span>
+                </div>
+              </button>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- MOBILE 100% FULLSCREEN DAY TASKS MODAL (Opens when tapping a Month Calendar cell that has tasks) -->
+      <div
+        v-if="isMobileMonthDayModalOpen && activeMobileMonthDay"
+        class="bg-modal-overlay is-fullscreen-modal bg-mcal-day-modal-overlay"
+        style="z-index: 100005;"
+        @click.self="closeMobileMonthDayModal"
+      >
+        <div
+          class="bg-modal-card is-fullscreen-card bg-mcal-day-modal-card"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div class="m-grab-head-stack is-solid-studio">
+            <div class="m-grab-pill"></div>
+            <div class="m-grab-bar">
+              <div class="m-grab-title-wrap">
+                <div class="bg-mcal-modal-title-row">
+                  <h2 class="m-grab-title">{{ getMobileMonthDayHeading(activeMobileMonthDay) }}</h2>
+                  <span v-if="activeMobileMonthDay.isToday" class="bg-mcal-today-pill">Hôm nay</span>
+                </div>
+                <span class="m-grab-sub bg-tabular">{{ mobileMonthModalReports.length }} công việc trong ngày</span>
+              </div>
+              <button type="button" class="bg-modal-close is-studio-close" @click="closeMobileMonthDayModal" title="Đóng">✕</button>
+            </div>
+          </div>
+
+          <div class="bg-modal-body bg-mcal-day-modal-body">
+            <div v-if="mobileMonthModalReports.length === 0" class="bg-m-detail-empty">
+              <span class="bg-m-detail-empty-txt">Không còn công việc nào trong ngày {{ activeMobileMonthDay.dateStr }}</span>
+            </div>
+
+            <div v-else class="bg-m-detail-stream">
+              <div
+                v-for="report in mobileMonthModalReports"
+                :key="'mm-modal-c-' + report.id"
+                class="bg-detail-card is-m-single-col"
+                :class="{
+                  'is-done': report.trang_thai === 'Hoàn thành',
+                  'is-failed': (report.isFailed === true || report.isFailed === 'TRUE' || report.trang_thai === 'Failed') && report.trang_thai !== 'Hoàn thành',
+                  'is-pending': report.trang_thai !== 'Hoàn thành' && report.isFailed !== true && report.isFailed !== 'TRUE' && report.trang_thai !== 'Failed',
+                  'is-priority': report.tag && splitTags(report.tag).includes('ƯU TIÊN'),
+                  'deleting-row': deletingIds.includes(report.id)
+                }"
+                @click="openEditModal(report)"
+              >
+                <div class="bg-dcard-top">
+                  <div class="bg-dcard-meta bg-tabular">
+                    <span class="bg-dcard-time">{{ formatDisplayTime(report.thoi_gian).time }}</span>
+                    <span
+                      class="bg-dcard-period-chip"
+                      :class="formatDisplayTime(report.thoi_gian).period === 'Sáng' ? 'is-am' : 'is-pm'"
+                    >{{ formatDisplayTime(report.thoi_gian).period === 'Sáng' ? 'SÁNG' : 'CHIỀU' }}</span>
+                  </div>
+                  <div class="bg-dcard-badges">
+                    <span class="bg-dcard-chip is-cat" :class="report.phan_loai === 'ĐỜI SỐNG' ? 'is-life' : 'is-work'">{{ report.phan_loai }}</span>
+                    <span v-if="report.trang_thai !== 'Hoàn thành' && (report.isFailed === true || report.isFailed === 'TRUE')" class="bg-dcard-chip is-failed-chip">FAILED</span>
+                    <template v-if="report.tag">
+                      <span
+                        v-for="t in splitTags(report.tag)"
+                        :key="'mm-tg-' + report.id + '-' + t"
+                        v-show="t && t !== 'BÌNH THƯỜNG'"
+                        class="bg-dcard-chip is-prio-chip"
+                      >{{ t }}</span>
+                    </template>
+                    <span v-if="report.maKH" class="bg-dcard-chip is-cus-chip" :title="'Mã KH: ' + report.maKH">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                      <span class="bg-dcard-cus-txt">{{ getCustomerDisplayName(report.maKH) }}</span>
+                    </span>
+                  </div>
+                </div>
+
+                <div class="bg-dcard-title-row">
+                  <span v-if="report.trang_thai === 'Hoàn thành'" class="bg-dcard-done-circle" title="Đã hoàn thành">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  </span>
+                  <div class="bg-dcard-title">{{ report.noi_dung }}</div>
+                </div>
+
+                <div v-if="report.ghi_chu" class="bg-dcard-note">
+                  <span class="bg-dcard-note-tag">NOTE</span>
+                  <span class="bg-dcard-note-txt">{{ report.ghi_chu }}</span>
+                </div>
+
+                <div v-if="getCalendarTaskAttachments(report).length > 0 || report.id_quanlyfile" class="bg-dcard-files-wrap" @mousedown.stop @click.stop>
+                  <div class="bg-dcard-files-bar">
+                    <button
+                      v-if="getCalendarTaskAttachments(report).length > 0"
+                      type="button"
+                      class="bg-dcard-files-toggle"
+                      :class="{ 'is-open': isDetailTaskFilesOpen(report.id) }"
+                      @click.stop="toggleDetailTaskFiles(report.id)"
+                    >
+                      <span class="bg-dcard-files-toggle-left">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                        <span>Đính kèm ({{ getCalendarTaskAttachments(report).length }})</span>
+                      </span>
+                      <span class="bg-dcard-files-caret">{{ isDetailTaskFilesOpen(report.id) ? '▴' : '▾' }}</span>
+                    </button>
+
+                    <button
+                      v-if="report.id_quanlyfile"
+                      type="button"
+                      class="bg-dcard-qlf-btn"
+                      @click.stop="goToQuanLyFile(report.id_quanlyfile)"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                      <span>Hồ sơ file</span>
+                    </button>
+                  </div>
+
+                  <div
+                    v-if="getCalendarTaskAttachments(report).length > 0"
+                    class="bg-dcard-att-collapse"
+                    :class="{ 'is-open': isDetailTaskFilesOpen(report.id) }"
+                  >
+                    <div class="bg-dcard-att-collapse-inner">
+                      <div class="tl-attachments tl-att-v5 bg-dcard-att-list">
+                        <div v-for="(att, aIdx) in getCalendarTaskAttachments(report)" :key="'mm-att-' + report.id + '-' + aIdx" class="tl-att-row">
+                          <span class="tl-att-ic" v-html="getCalendarAttIconSvg(att)"></span>
+                          <span class="tl-att-name" :title="att.name" @click.stop.prevent="openCalendarAttachmentView(att)">{{ formatCalendarFileName(att.name, 26) }}</span>
+                          <div class="tl-att-btns">
+                            <button type="button" class="tl-att-act is-view" @click.stop.prevent="openCalendarAttachmentView(att)">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            </button>
+                            <button type="button" class="tl-att-act is-dl" @click.stop.prevent="downloadCalendarAttachment(att, $event)">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="bg-dcard-actions" @mousedown.stop @click.stop>
+                  <button type="button" class="bg-dcard-btn is-del" @click.stop="confirmDelete(report.id)">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    <span>Xoá</span>
+                  </button>
+                  <button
+                    v-if="report.trang_thai !== 'Hoàn thành' && report.isFailed !== true && report.isFailed !== 'TRUE' && report.trang_thai !== 'Failed'"
+                    type="button"
+                    class="bg-dcard-btn is-fail"
+                    @click.stop="markAsFailed(report)"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    <span>Fail</span>
+                  </button>
+                  <button
+                    v-if="report.trang_thai !== 'Hoàn thành'"
+                    type="button"
+                    class="bg-dcard-btn is-done"
+                    @click.stop="markAsCompleted(report)"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <span>Xong</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-modal-foot bg-mcal-day-modal-foot">
+            <button
+              type="button"
+              class="bg-btn bg-btn-primary is-mcal-add-btn"
+              @click="openQuickAddAtSlot(activeMobileMonthDay.dateStr, 'Sáng')"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              <span>Thêm việc ngày này</span>
+            </button>
+            <button type="button" class="bg-btn bg-btn-slate is-mcal-close-btn" @click="closeMobileMonthDayModal">
+              <span>Đóng</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      </template>
+    </section>
+
+    <!-- MODULE 1B: MOBILE FLOATING GLASS BOTTOM PROCESS DOCK (<= 1100px, '+ Thêm mới' CENTERED) -->
+    <nav
+      class="bg-mobile-dock"
+      :class="{ 'is-modal-hidden': isAnyModalOrSheetOpen }"
+      aria-label="Thanh thao tác nhanh"
+    >
+      <button type="button" class="bg-dock-btn" data-guide="m-dock-pending" @click="isPendingModalOpen = true">
+        <span class="bg-dock-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2 2"></path><path d="M5 3 2 6"></path><path d="m22 6-3-3"></path></svg>
+          <span v-if="allPendingReports.length > 0" class="bg-dock-badge bg-tabular">{{ allPendingReports.length > 99 ? '99+' : allPendingReports.length }}</span>
+        </span>
+        <span class="bg-dock-lbl">Nhắc lại</span>
+      </button>
+
+      <button type="button" class="bg-dock-btn" data-guide="m-dock-empty-days" @click="showEmptyDays">
+        <span class="bg-dock-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+        </span>
+        <span class="bg-dock-lbl">Lịch trống</span>
+      </button>
+
+      <button type="button" class="bg-dock-btn is-primary is-center-cta" data-guide="m-dock-add-report" @click="openAddModal">
+        <span class="bg-dock-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        </span>
+        <span class="bg-dock-lbl">Thêm mới</span>
+      </button>
+
+      <button type="button" class="bg-dock-btn" data-guide="m-dock-distribute" @click="openDistributeModal">
+        <span class="bg-dock-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"></path><path d="M4 20L21 3"></path><path d="M21 16v5h-5"></path><path d="M15 15l6 6"></path><path d="M4 4l5 5"></path></svg>
+        </span>
+        <span class="bg-dock-lbl">Chia việc</span>
+      </button>
+
+      <button type="button" class="bg-dock-btn" data-guide="m-dock-export" @click="exportExcel">
+        <span class="bg-dock-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        </span>
+        <span class="bg-dock-lbl">Excel</span>
+      </button>
+    </nav>
+
+    <!-- MODULE 3: V7.5 3-COLUMN STUDIO ADD / EDIT REPORT MODAL (~23% LEFT RAIL | ~50% CENTER COMPOSER | ~27% RIGHT UPLOAD VAULT) -->
+    <div v-if="isModalOpen" class="bg-modal-overlay is-fullscreen-modal" style="z-index: 100010;" @click.self="requestCloseModal">
+      <div
+        class="bg-modal-card is-xl is-mobile-sheet is-fullscreen-card bg-report-studio-card"
+        :class="{ 'is-drag-over': isStudioDragOver }"
+        role="dialog"
+        aria-modal="true"
+        @paste="handlePasteImage"
+        @dragenter.prevent="onStudioDragEnter"
+        @dragover.prevent="onStudioDragOver"
+        @dragleave="onStudioDragLeave"
+        @drop.prevent="onStudioSmartDrop"
+      >
+        <!-- Smart Drag & Drop Full-Studio Overlay -->
+        <div v-if="isStudioDragOver" class="bg-studio-drop-overlay">
+          <div class="bg-studio-drop-box">
+            <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            <div class="bg-studio-drop-title">Thả Ảnh hoặc File Excel (.xlsx) vào đây để tải lên</div>
+            <div class="bg-studio-drop-sub">Tự động nhận diện Ảnh minh hoạ · File Báo Giá · File Mua Hàng</div>
+          </div>
+        </div>
+
+        <!-- PC Full-Bleed Solid Semantic Header (Dark = Emerald | Light = Ocean Blue, White Text) -->
+        <div class="bg-modal-head dt-only-head is-solid-studio">
+          <div class="bg-modal-title-row">
+            <div class="bg-modal-icon is-studio-glass">
+              <svg v-if="!isEditing" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              <svg v-else xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            </div>
+            <div>
+              <div class="bg-modal-title-inline">
+                <h2 class="bg-modal-title">{{ isEditing ? 'Chỉnh Sửa Báo Cáo' : 'Thêm Báo Cáo Mới' }}</h2>
+                <span
+                  v-if="isEditing"
+                  class="bg-studio-head-status"
+                  :class="getFormReportStatus() === 'Hoàn thành' ? 'is-done' : (getFormReportStatus() === 'Failed' ? 'is-failed' : 'is-pending')"
+                >
+                  {{ getFormReportStatus() }}
+                </span>
+              </div>
+              <p class="bg-modal-sub">
+                <span v-if="isEditing && formData.created_time" class="bg-tabular">Tạo lúc: {{ formData.created_time }}</span>
+                <span v-else>Bàn soạn thảo 3 cột · Chọn khách hàng nhanh, kéo-thả tệp thông minh &amp; Ctrl+V dán ảnh</span>
+              </p>
+            </div>
+          </div>
+
+          <div class="bg-studio-head-right">
+            <span class="bg-studio-kbd-pill bg-tabular">Ctrl+Enter: Lưu · Esc: Đóng</span>
+            <button type="button" class="bg-modal-close is-studio-close" @click="requestCloseModal" title="Đóng (Esc)">✕</button>
+          </div>
+        </div>
+
+        <!-- Mobile Solid App Bar Header -->
+        <div class="m-grab-head-stack is-solid-studio">
+          <div class="m-grab-pill"></div>
+          <div class="m-grab-bar">
+            <div class="m-grab-title-wrap">
+              <h2 class="m-grab-title">{{ isEditing ? 'Chỉnh Sửa Báo Cáo' : 'Thêm Báo Cáo Mới' }}</h2>
+              <span v-if="isEditing && formData.created_time" class="m-grab-sub bg-tabular">Tạo lúc: {{ formData.created_time }}</span>
+            </div>
+            <button type="button" class="bg-modal-close is-studio-close" @click="requestCloseModal" title="Đóng">✕</button>
+          </div>
+        </div>
+
+        <!-- Hidden Upload Inputs (Shared by Right Upload Column & Mobile Sheet 3A) -->
+        <input type="file" accept="image/*" multiple ref="imgUploadInput" style="display: none;" @change="handleImgUpload" />
+        <input type="file" accept=".xlsx,.xls,.csv" multiple ref="bgUploadInput" style="display: none;" @change="e => handleExcelUpload(e, 'link_excel_bao_gia')" />
+        <input type="file" accept=".xlsx,.xls,.csv" multiple ref="mhUploadInput" style="display: none;" @change="e => handleExcelUpload(e, 'link_excel_mua_hang')" />
+
+        <form @submit.prevent="saveReport" class="bg-modal-form">
+          <div class="bg-modal-body bg-studio-modal-body">
+            <div class="bg-studio-3col-grid">
+              <!-- ======================================================= -->
+              <!-- COLUMN 1 (~23%): PHÂN LOẠI · ĐỘ QUAN TRỌNG · THỜI GIAN  -->
+              <!-- ======================================================= -->
+              <aside class="modal-group bg-studio-left-rail" data-guide="studio-left-rail">
+                <div class="modal-banner-header is-sky">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                  <span>PHÂN LOẠI &amp; THỜI GIAN</span>
+                </div>
+
+                <div class="modal-group-body bg-studio-rail-body" data-guide="studio-left-field-group">
+                  <!-- Phân loại -->
+                  <div class="bg-field">
+                    <label class="bg-label">Phân loại báo cáo</label>
+                    <div class="bg-choice-grid">
+                      <button
+                        type="button"
+                        class="bg-choice-btn"
+                        :class="{ 'is-active-emerald': formData.phan_loai === 'CÔNG VIỆC' }"
+                        @click="formData.phan_loai = 'CÔNG VIỆC'"
+                      >
+                        CÔNG VIỆC
+                      </button>
+                      <button
+                        type="button"
+                        class="bg-choice-btn"
+                        :class="{ 'is-active-sky': formData.phan_loai === 'ĐỜI SỐNG' }"
+                        @click="formData.phan_loai = 'ĐỜI SỐNG'"
+                      >
+                        ĐỜI SỐNG
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Độ quan trọng -->
+                  <div class="bg-field">
+                    <label class="bg-label">Độ quan trọng</label>
+                    <div class="bg-choice-grid">
+                      <button
+                        type="button"
+                        class="bg-choice-btn"
+                        :class="{ 'is-active-slate-solid': formData.tag === 'BÌNH THƯỜNG' }"
+                        @click="formData.tag = 'BÌNH THƯỜNG'"
+                      >
+                        BÌNH THƯỜNG
+                      </button>
+                      <button
+                        type="button"
+                        class="bg-choice-btn"
+                        :class="{ 'is-active-rose': formData.tag === 'ƯU TIÊN' }"
+                        @click="formData.tag = 'ƯU TIÊN'"
+                      >
+                        ƯU TIÊN
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Thời gian thực hiện (Quick Day Chips + No-Icon SÁNG/CHIỀU + Matrix) -->
+                  <div class="bg-field">
+                    <div class="bg-label-row">
+                      <label class="bg-label">Thời gian thực hiện</label>
+                    </div>
+
+                    <!-- 1-Tap Quick Day Presets -->
+                    <div class="bg-studio-day-chips">
+                      <button
+                        type="button"
+                        class="bg-studio-day-chip"
+                        :class="{ 'is-active': isQuickDatePresetActive(-1) }"
+                        @click="applyQuickDatePreset(-1)"
+                      >Hôm qua</button>
+                      <button
+                        type="button"
+                        class="bg-studio-day-chip"
+                        :class="{ 'is-active': isQuickDatePresetActive(0) }"
+                        @click="applyQuickDatePreset(0)"
+                      >Hôm nay</button>
+                      <button
+                        type="button"
+                        class="bg-studio-day-chip"
+                        :class="{ 'is-active': isQuickDatePresetActive(1) }"
+                        @click="applyQuickDatePreset(1)"
+                      >Ngày mai</button>
+                    </div>
+
+                    <!-- SÁNG / CHIỀU (Zero Sun/Moon Icons) -->
+                    <div class="bg-choice-grid">
+                      <button
+                        type="button"
+                        class="bg-choice-btn"
+                        :class="{ 'is-active-emerald': isMorning }"
+                        @click="setMorningTime"
+                      >
+                        <span>SÁNG</span>
+                      </button>
+                      <button
+                        type="button"
+                        class="bg-choice-btn"
+                        :class="{ 'is-active-amber': isAfternoon }"
+                        @click="setAfternoonTime"
+                      >
+                        <span>CHIỀU</span>
+                      </button>
+                    </div>
+
+                    <!-- Custom Datetime Matrix -->
+                    <div class="bg-datetime-matrix bg-tabular">
+                      <div class="bg-dt-row-time">
+                        <!-- Custom Hour Picker (6x4 Matrix) -->
+                        <div class="bg-dt-cell bg-cselect-wrap">
+                          <span class="bg-dt-sub">Giờ</span>
+                          <button
+                            type="button"
+                            class="bg-cselect-btn"
+                            :class="{ 'is-open': openModalSelectKey === 'hour' }"
+                            @click="toggleModalSelect('hour')"
+                          >
+                            <span>{{ timeInputs.hour }}</span>
+                            <svg class="bg-cselect-caret" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                          </button>
+                          <div v-if="openModalSelectKey === 'hour'" class="bg-cselect-pop is-grid-6">
+                            <button
+                              v-for="h in 24"
+                              :key="'h-' + h"
+                              type="button"
+                              class="bg-cselect-cell"
+                              :class="{ 'is-selected': timeInputs.hour === String(h - 1).padStart(2, '0') }"
+                              @click="timeInputs.hour = String(h - 1).padStart(2, '0'); openModalSelectKey = null"
+                            >{{ String(h - 1).padStart(2, '0') }}</button>
+                          </div>
+                        </div>
+
+                        <span class="bg-dt-sep">:</span>
+
+                        <!-- Custom Minute Picker -->
+                        <div class="bg-dt-cell bg-cselect-wrap">
+                          <span class="bg-dt-sub">Phút</span>
+                          <button
+                            type="button"
+                            class="bg-cselect-btn"
+                            :class="{ 'is-open': openModalSelectKey === 'minute' }"
+                            @click="toggleModalSelect('minute')"
+                          >
+                            <span>{{ timeInputs.minute }}</span>
+                            <svg class="bg-cselect-caret" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                          </button>
+                          <div v-if="openModalSelectKey === 'minute'" class="bg-cselect-pop is-minute-pop">
+                            <div class="bg-cselect-presets">
+                              <button
+                                v-for="qm in ['00', '15', '30', '45']"
+                                :key="'qm-' + qm"
+                                type="button"
+                                class="bg-cselect-preset"
+                                :class="{ 'is-selected': timeInputs.minute === qm }"
+                                @click="timeInputs.minute = qm; openModalSelectKey = null"
+                              >:{{ qm }}</button>
+                            </div>
+                            <div class="bg-cselect-grid-inner is-cols-6">
+                              <button
+                                v-for="m in 60"
+                                :key="'m-' + m"
+                                type="button"
+                                class="bg-cselect-cell"
+                                :class="{ 'is-selected': timeInputs.minute === String(m - 1).padStart(2, '0') }"
+                                @click="timeInputs.minute = String(m - 1).padStart(2, '0'); openModalSelectKey = null"
+                              >{{ String(m - 1).padStart(2, '0') }}</button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Custom Weekday Picker -->
+                        <div class="bg-dt-cell bg-cselect-wrap" style="flex: 1.25;">
+                          <span class="bg-dt-sub">Thứ</span>
+                          <button
+                            type="button"
+                            class="bg-cselect-btn"
+                            :class="{ 'is-open': openModalSelectKey === 'thu' }"
+                            @click="toggleModalSelect('thu')"
+                          >
+                            <span>{{ getWeekdayLabel(timeInputs.thu) }}</span>
+                            <svg class="bg-cselect-caret" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                          </button>
+                          <div v-if="openModalSelectKey === 'thu'" class="bg-cselect-pop is-align-right is-grid-4">
+                            <button
+                              v-for="wd in ['2', '3', '4', '5', '6', '7', '8']"
+                              :key="'wd-' + wd"
+                              type="button"
+                              class="bg-cselect-cell"
+                              :class="{ 'is-selected': String(timeInputs.thu) === wd }"
+                              @click="timeInputs.thu = wd; openModalSelectKey = null"
+                            >{{ getWeekdayLabel(wd) }}</button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="bg-dt-row-date">
+                        <!-- Custom Day Picker -->
+                        <div class="bg-dt-cell bg-cselect-wrap">
+                          <span class="bg-dt-sub">Ngày</span>
+                          <button
+                            type="button"
+                            class="bg-cselect-btn"
+                            :class="{ 'is-open': openModalSelectKey === 'day' }"
+                            @click="toggleModalSelect('day')"
+                          >
+                            <span>{{ timeInputs.day }}</span>
+                            <svg class="bg-cselect-caret" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                          </button>
+                          <div v-if="openModalSelectKey === 'day'" class="bg-cselect-pop is-grid-7">
+                            <button
+                              v-for="d in daysInMonth"
+                              :key="'d-' + d"
+                              type="button"
+                              class="bg-cselect-cell"
+                              :class="{ 'is-selected': timeInputs.day === String(d).padStart(2, '0') }"
+                              @click="timeInputs.day = String(d).padStart(2, '0'); openModalSelectKey = null"
+                            >{{ String(d).padStart(2, '0') }}</button>
+                          </div>
+                        </div>
+
+                        <span class="bg-dt-sep">/</span>
+
+                        <!-- Custom Month Picker -->
+                        <div class="bg-dt-cell bg-cselect-wrap">
+                          <span class="bg-dt-sub">Tháng</span>
+                          <button
+                            type="button"
+                            class="bg-cselect-btn"
+                            :class="{ 'is-open': openModalSelectKey === 'month' }"
+                            @click="toggleModalSelect('month')"
+                          >
+                            <span>{{ timeInputs.month }}</span>
+                            <svg class="bg-cselect-caret" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                          </button>
+                          <div v-if="openModalSelectKey === 'month'" class="bg-cselect-pop is-grid-4">
+                            <button
+                              v-for="m in 12"
+                              :key="'mo-' + m"
+                              type="button"
+                              class="bg-cselect-cell"
+                              :class="{ 'is-selected': timeInputs.month === String(m).padStart(2, '0') }"
+                              @click="timeInputs.month = String(m).padStart(2, '0'); openModalSelectKey = null"
+                            >T{{ String(m).padStart(2, '0') }}</button>
+                          </div>
+                        </div>
+
+                        <span class="bg-dt-sep">/</span>
+
+                        <!-- Custom Year Picker -->
+                        <div class="bg-dt-cell bg-cselect-wrap" style="flex: 1.28;">
+                          <span class="bg-dt-sub">Năm</span>
+                          <button
+                            type="button"
+                            class="bg-cselect-btn"
+                            :class="{ 'is-open': openModalSelectKey === 'year' }"
+                            @click="toggleModalSelect('year')"
+                          >
+                            <span>{{ timeInputs.year }}</span>
+                            <svg class="bg-cselect-caret" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                          </button>
+                          <div v-if="openModalSelectKey === 'year'" class="bg-cselect-pop is-align-right is-grid-4">
+                            <button
+                              v-for="y in 16"
+                              :key="'yr-' + y"
+                              type="button"
+                              class="bg-cselect-cell"
+                              :class="{ 'is-selected': timeInputs.year === String(2023 + y) }"
+                              @click="timeInputs.year = String(2023 + y); openModalSelectKey = null"
+                            >{{ 2023 + y }}</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Trạng thái xử lý (Chỉ hiện khi Chỉnh sửa báo cáo) -->
+                  <div v-if="isEditing" class="bg-field">
+                    <label class="bg-label">Trạng thái xử lý</label>
+                    <div class="bg-choice-grid is-cols-3">
+                      <button
+                        type="button"
+                        class="bg-choice-btn"
+                        :class="{ 'is-active-amber': getFormReportStatus() === 'Chưa xử lý' }"
+                        @click="setFormReportStatus('Chưa xử lý')"
+                      >Chưa xong</button>
+                      <button
+                        type="button"
+                        class="bg-choice-btn"
+                        :class="{ 'is-active-emerald': getFormReportStatus() === 'Hoàn thành' }"
+                        @click="setFormReportStatus('Hoàn thành')"
+                      >Hoàn thành</button>
+                      <button
+                        type="button"
+                        class="bg-choice-btn"
+                        :class="{ 'is-active-rose': getFormReportStatus() === 'Failed' }"
+                        @click="setFormReportStatus('Failed')"
+                      >Failed</button>
+                    </div>
+                  </div>
+                </div>
+              </aside>
+
+              <!-- ================================================================================= -->
+              <!-- COLUMN 2 (~50%): KHÁCH HÀNG (EMBEDDED PICKER) -> NỘI DUNG -> 3 POPUP MODAL BUTTONS -->
+              <!-- ================================================================================= -->
+              <section class="modal-group bg-studio-composer">
+                <div class="modal-banner-header is-emerald">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                  <span>KHÁCH HÀNG &amp; NỘI DUNG CÔNG VIỆC</span>
+                </div>
+
+                <div class="modal-group-body bg-studio-composer-body">
+                  <!-- Auto-Draft Recovery Banner -->
+                  <div v-if="!isEditing && hasSavedAddDraft" class="bg-studio-draft-banner">
+                    <div class="bg-studio-draft-text">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"></path><circle cx="12" cy="12" r="9"></circle></svg>
+                      <span>Phát hiện bản nháp báo cáo chưa lưu trước đó.</span>
+                    </div>
+                    <div class="bg-studio-draft-acts">
+                      <button type="button" class="bg-btn-xs is-emerald" @click="restoreSavedAddDraft">Khôi phục nháp</button>
+                      <button type="button" class="bg-btn-xs is-rose" @click="discardSavedAddDraft">Bỏ qua</button>
+                    </div>
+                  </div>
+
+                  <!-- 1. CUSTOMER INPUT WITH EMBEDDED "Chọn khách hàng" BUTTON (NO RECENT CHIPS) -->
+                  <div class="bg-studio-customer-bar" data-guide="studio-customer-field">
+                    <!-- Selected Customer Inside Input Shell -->
+                    <div v-if="formData.maKH && !isInlineCusEditing" class="bg-studio-cus-combobox is-selected-shell">
+                      <div
+                        class="bg-studio-cus-info is-clickable-info"
+                        @click="startChangeInlineCustomer"
+                        title="Nhấn để gõ tìm đổi nhanh khách hàng khác"
+                      >
+                        <span class="bg-studio-cus-icon" aria-hidden="true">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                        </span>
+                        <span class="bg-tag-pill is-sky bg-tabular">{{ formData.maKH }}</span>
+                        <span class="bg-studio-cus-name">{{ getSelectedCustomerDisplay() }}</span>
+                        <span v-for="tag in getSelectedCustomerTags()" :key="tag" class="bg-tag-pill is-emerald">{{ tag }}</span>
+                      </div>
+                      <div class="bg-studio-cus-in-actions">
+                        <button
+                          type="button"
+                          class="bg-studio-cus-inbtn"
+                          @click.stop="openFullCustomerSelector"
+                          title="Mở bảng danh bạ Chọn khách hàng"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                          <span>Chọn khách hàng</span>
+                        </button>
+                        <button
+                          type="button"
+                          class="bg-studio-cus-remove-inbtn"
+                          @click.stop="clearFormCustomer"
+                          title="Bỏ chọn khách hàng"
+                        >✕</button>
+                      </div>
+                    </div>
+
+                    <!-- Search Input Shell with Embedded "Chọn khách hàng" Button -->
+                    <div v-else class="bg-studio-cus-combobox">
+                      <svg class="bg-studio-cus-search-ic" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                      <input
+                        ref="inlineCusInputRef"
+                        type="text"
+                        v-model="inlineCusQuery"
+                        class="bg-studio-cus-input"
+                        placeholder="Gõ tên, công ty hoặc mã khách hàng..."
+                        autocomplete="off"
+                        @focus="onInlineCusFocus"
+                        @blur="onInlineCusBlur"
+                        @keydown="onInlineCusKeydown"
+                      />
+                      <button
+                        v-if="inlineCusQuery"
+                        type="button"
+                        class="bg-studio-cus-clear"
+                        @mousedown.prevent="inlineCusQuery = ''"
+                        title="Xoá từ khoá"
+                      >✕</button>
+                      <button
+                        v-if="isInlineCusEditing && formData.maKH"
+                        type="button"
+                        class="bg-btn-xs is-slate"
+                        @mousedown.prevent="isInlineCusEditing = false; isInlineCusDropdownOpen = false"
+                      >Giữ KH cũ</button>
+                      <button
+                        type="button"
+                        class="bg-studio-cus-inbtn"
+                        @mousedown.prevent="openFullCustomerSelector"
+                        title="Mở bảng danh bạ Chọn khách hàng"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        <span>Chọn khách hàng</span>
+                      </button>
+
+                      <!-- Floating Inline Autocomplete Dropdown -->
+                      <div v-if="isInlineCusDropdownOpen" class="bg-studio-cus-dropdown">
+                        <div class="bg-studio-dd-head">
+                          <span>{{ inlineCusQuery.trim() ? `Kết quả khớp (${inlineFilteredCustomers.length})` : 'Danh sách khách hàng gợi ý' }}</span>
+                          <span class="bg-tabular">↑↓ Chọn · Enter Xác nhận</span>
+                        </div>
+
+                        <div v-if="inlineFilteredCustomers.length === 0" class="bg-studio-dd-empty">
+                          <span>Không tìm thấy khách hàng "{{ inlineCusQuery }}"</span>
+                          <button type="button" class="bg-btn-xs is-emerald" @mousedown.prevent="openCustomerModal">+ Tạo KH mới</button>
+                        </div>
+
+                        <div v-else class="bg-studio-dd-list">
+                          <button
+                            v-for="(cus, cIdx) in inlineFilteredCustomers"
+                            :key="cus.id || cus.ma_khach_hang || cIdx"
+                            type="button"
+                            class="bg-studio-dd-item"
+                            :class="{ 'is-highlighted': cIdx === inlineCusHighlightIdx }"
+                            @mouseenter="inlineCusHighlightIdx = cIdx"
+                            @mousedown.prevent="selectInlineCustomer(cus)"
+                          >
+                            <div class="bg-studio-dd-main">
+                              <span class="bg-tag-pill is-sky bg-tabular">{{ cus.ma_khach_hang }}</span>
+                              <span class="bg-studio-dd-title">{{ cus.ten_khach_hang || 'Chưa đặt tên' }}</span>
+                              <span v-if="cus.ten_cong_ty" class="bg-studio-dd-company">— {{ cus.ten_cong_ty }}</span>
+                            </div>
+                            <div v-if="cus.tagKH && cus.tagKH.length" class="bg-studio-dd-tags">
+                              <span v-for="t in cus.tagKH.slice(0, 2)" :key="t" class="bg-tag-pill is-emerald">{{ t }}</span>
+                            </div>
+                          </button>
+                        </div>
+
+                        <div class="bg-studio-dd-foot">
+                          <button type="button" class="bg-mini-link is-emerald" @mousedown.prevent="openCustomerModal">+ Thêm khách hàng mới</button>
+                          <button type="button" class="bg-mini-link is-sky" @mousedown.prevent="openFullCustomerSelector">Mở danh bạ đầy đủ →</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 2. MAIN WORK CONTENT COMPOSER (FIXED FULL HEIGHT IN CENTER) -->
+                  <div class="bg-field bg-studio-main-field" data-guide="studio-content-field">
+                    <div class="bg-label-row">
+                      <label class="bg-label bg-studio-main-label">
+                        <span>Nội dung công việc</span>
+                        <span class="bg-req">*</span>
+                      </label>
+                      <div class="bg-label-tools">
+                        <button
+                          type="button"
+                          class="bg-mic-btn"
+                          :class="{ 'is-recording': isRecordingVoice === 'noi_dung' }"
+                          @click="startVoiceRecognition('noi_dung')"
+                          title="Nhập nội dung bằng giọng nói"
+                        >
+                          <svg v-if="isRecordingVoice !== 'noi_dung'" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                          <svg v-else xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12"></rect></svg>
+                        </button>
+                      </div>
+                    </div>
+                    <textarea
+                      ref="reportContentTextareaRef"
+                      v-model="formData.noi_dung"
+                      required
+                      placeholder="Mô tả chi tiết nội dung báo cáo công việc..."
+                      class="bg-textarea is-main is-studio-textarea"
+                    ></textarea>
+                  </div>
+
+                  <!-- 3. THREE POPUP MODAL TRIGGER BUTTONS (B1: 44PX + TINTED SEMANTIC ICON BOXES) -->
+                  <div class="bg-studio-modal-triggers" data-guide="studio-extra-triggers">
+                    <button
+                      type="button"
+                      class="bg-studio-mtrigger is-note-trigger"
+                      :class="{ 'has-data': hasFormNote }"
+                      @click="openStudioNoteModal"
+                      title="Mở cửa sổ nhập Ghi chú nổi bật"
+                    >
+                      <span class="bg-studio-mtrig-ic" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.35" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                      </span>
+                      <span class="bg-studio-mtrig-lbl">{{ hasFormNote ? 'Ghi chú ✓' : 'Ghi chú' }}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      class="bg-studio-mtrigger is-rem-trigger"
+                      :class="{ 'has-data': hasFormReminder }"
+                      @click="openStudioReminderModal"
+                      title="Mở cửa sổ đặt Lịch nhắc hẹn"
+                    >
+                      <span class="bg-studio-mtrig-ic" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.35" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                      </span>
+                      <span class="bg-studio-mtrig-lbl">{{ hasFormReminder ? 'Nhắc hẹn ✓' : 'Nhắc hẹn' }}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      class="bg-studio-mtrigger is-file-trigger"
+                      :class="{ 'has-data': hasFormLinkedFile }"
+                      @click="openStudioLinkedFileModal"
+                      title="Mở cửa sổ chọn Hồ sơ Quản Lý File"
+                    >
+                      <span class="bg-studio-mtrig-ic" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.35" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                      </span>
+                      <span class="bg-studio-mtrig-lbl">{{ hasFormLinkedFile ? 'Hồ sơ File ✓' : 'Hồ sơ File' }}</span>
+                    </button>
+                  </div>
+
+                  <!-- 4. COMPACT FULL-DETAIL VERTICAL SUMMARY STACK (CHỈ HIỆN MỤC ĐÃ CÓ DỮ LIỆU) -->
+                  <div v-if="hasFormNote || hasFormReminder || hasFormLinkedFile" class="bg-studio-meta-stack">
+                    <!-- Ghi chú row -->
+                    <div
+                      v-if="hasFormNote"
+                      class="bg-studio-meta-row is-note"
+                      @click="openStudioNoteModal"
+                      title="Nhấn để chỉnh sửa ghi chú"
+                    >
+                      <span class="bg-studio-meta-tag is-rose">GHI CHÚ</span>
+                      <div class="bg-studio-meta-text is-rose-txt">{{ formData.ghi_chu }}</div>
+                      <button
+                        type="button"
+                        class="bg-studio-meta-clear"
+                        @click.stop="formData.ghi_chu = ''"
+                        title="Xoá ghi chú"
+                      >✕</button>
+                    </div>
+
+                    <!-- Nhắc hẹn row -->
+                    <div
+                      v-if="hasFormReminder"
+                      class="bg-studio-meta-row is-reminder"
+                      @click="openStudioReminderModal"
+                      title="Nhấn để chỉnh sửa lịch nhắc hẹn"
+                    >
+                      <span class="bg-studio-meta-tag is-amber">NHẮC HẸN</span>
+                      <div class="bg-studio-meta-text">
+                        <strong v-if="formData.reminder_time" class="bg-studio-meta-date bg-tabular">{{ formatDisplayDate(formData.reminder_time) }}</strong>
+                        <span v-if="formData.reminder_time && formData.reminder_content"> · </span>
+                        <span v-if="formData.reminder_content">{{ formData.reminder_content }}</span>
+                        <span v-else-if="!formData.reminder_time">Chưa chọn ngày nhắc</span>
+                      </div>
+                      <button
+                        type="button"
+                        class="bg-studio-meta-clear"
+                        @click.stop="formData.reminder_time = ''; formData.reminder_content = ''"
+                        title="Xoá lịch nhắc hẹn"
+                      >✕</button>
+                    </div>
+
+                    <!-- Hồ sơ File row -->
+                    <div
+                      v-if="hasFormLinkedFile"
+                      class="bg-studio-meta-row is-file"
+                      @click="openStudioLinkedFileModal"
+                      title="Nhấn để đổi Hồ sơ Quản Lý File"
+                    >
+                      <span class="bg-studio-meta-tag is-teal">HỒ SƠ</span>
+                      <div class="bg-studio-meta-text">
+                        <template v-if="selectedLinkedFile">
+                          <span v-if="selectedLinkedFile.maKH" class="bg-tag-pill is-sky bg-tabular" style="margin-right: 5px;">{{ selectedLinkedFile.maKH }}</span>
+                          <span>{{ selectedLinkedFile.noiDung || ('Hồ sơ #' + formData.id_quanlyfile) }}</span>
+                          <span v-if="selectedLinkedFile.ghiChu" class="bg-studio-meta-subnote"> — {{ selectedLinkedFile.ghiChu }}</span>
+                        </template>
+                        <span v-else>Hồ sơ #{{ formData.id_quanlyfile }}</span>
+                      </div>
+                      <div class="bg-studio-meta-acts">
+                        <button
+                          v-if="selectedLinkedFile"
+                          type="button"
+                          class="bg-studio-meta-open"
+                          @click.stop="handleLinkedFileClick(selectedLinkedFile)"
+                          title="Mở xem hồ sơ trong tab mới"
+                        >↗</button>
+                        <button
+                          type="button"
+                          class="bg-studio-meta-clear"
+                          @click.stop="formData.id_quanlyfile = ''"
+                          title="Gỡ liên kết hồ sơ"
+                        >✕</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- ========================================================================= -->
+              <!-- COLUMN 3 (~27%): TỆP ĐÍNH KÈM (1.1 UPLOAD STACK WITH CLEAR UPLOAD ⬆ ICONS) -->
+              <!-- ========================================================================= -->
+              <aside class="modal-group bg-studio-right-files" data-guide="studio-upload-vault">
+                <div class="modal-banner-header is-teal">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                  <span>TỆP ĐÍNH KÈM</span>
+                  <span v-if="getReportFormAttachmentCount > 0" class="bg-studio-head-cnt bg-tabular">{{ getReportFormAttachmentCount }} tệp</span>
+                </div>
+
+                <div class="modal-group-body bg-studio-files-body">
+                  <!-- Option 1.1: Full-width [⬆ Ảnh] on top + 2-column [⬆ Báo giá] | [⬆ Mua hàng] below -->
+                  <div class="bg-studio-upload-11" data-guide="studio-upload-buttons">
+                    <button
+                      type="button"
+                      class="bg-studio-upbtn is-upload-img"
+                      :class="{ 'has-items': formImgCount > 0 }"
+                      :disabled="!!isUploadingFiles"
+                      @click="triggerUploadInput('img')"
+                      title="Tải ảnh minh hoạ lên từ máy"
+                    >
+                      <span class="bg-studio-up-ic" aria-hidden="true">
+                        <span v-if="isUploadingFiles === 'img'" class="bg-spin-dot"></span>
+                        <svg v-else xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                      </span>
+                      <span class="bg-studio-up-lbl">{{ isUploadingFiles === 'img' ? 'Đang tải ảnh...' : 'Tải Ảnh minh hoạ' }}</span>
+                      <span v-if="formImgCount > 0" class="bg-studio-tool-badge bg-tabular">{{ formImgCount }}</span>
+                    </button>
+
+                    <div class="bg-studio-upload-row2">
+                      <button
+                        type="button"
+                        class="bg-studio-upbtn is-upload-bg"
+                        :class="{ 'has-items': formBgCount > 0 }"
+                        :disabled="!!isUploadingFiles"
+                        @click="triggerUploadInput('bg')"
+                        title="Tải file Excel Báo Giá lên"
+                      >
+                        <span class="bg-studio-up-ic" aria-hidden="true">
+                          <span v-if="isUploadingFiles === 'bg'" class="bg-spin-dot"></span>
+                          <svg v-else xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                        </span>
+                        <span class="bg-studio-up-lbl">{{ isUploadingFiles === 'bg' ? 'Đang tải...' : 'Báo giá' }}</span>
+                        <span v-if="formBgCount > 0" class="bg-studio-tool-badge bg-tabular">{{ formBgCount }}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        class="bg-studio-upbtn is-upload-mh"
+                        :class="{ 'has-items': formMhCount > 0 }"
+                        :disabled="!!isUploadingFiles"
+                        @click="triggerUploadInput('mh')"
+                        title="Tải file Excel Mua Hàng lên"
+                      >
+                        <span class="bg-studio-up-ic" aria-hidden="true">
+                          <span v-if="isUploadingFiles === 'mh'" class="bg-spin-dot"></span>
+                          <svg v-else xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                        </span>
+                        <span class="bg-studio-up-lbl">{{ isUploadingFiles === 'mh' ? 'Đang tải...' : 'Mua hàng' }}</span>
+                        <span v-if="formMhCount > 0" class="bg-studio-tool-badge bg-tabular">{{ formMhCount }}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Attachments Vault List or Dashed Smart Dropzone -->
+                  <div v-if="getReportFormAttachmentCount === 0" class="bg-studio-files-empty" @click="triggerUploadInput('img')">
+                    <div class="bg-studio-empty-upic">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    </div>
+                    <div class="bg-studio-empty-title">Chưa có ảnh hoặc file đính kèm</div>
+                    <div class="bg-studio-empty-sub">Bấm các nút tải lên ở trên, kéo-thả Ảnh / Excel vào đây hoặc nhấn <strong>Ctrl+V</strong> dán ảnh</div>
+                  </div>
+
+                  <div v-else class="bg-studio-files-vault">
+                    <!-- Image Thumbnails -->
+                    <div v-if="formData.img_save" class="bg-studio-vault-sec">
+                      <div class="bg-studio-vault-lbl bg-tabular">ẢNH MINH HOẠ ({{ formImgCount }})</div>
+                      <div class="bg-thumb-grid is-studio-thumbs">
+                        <div
+                          v-for="(link, i) in formData.img_save.split('\n').filter(Boolean)"
+                          :key="'st-img-' + i"
+                          class="bg-thumb-item"
+                        >
+                          <a href="#" @click.prevent.stop="selectedImage = link" class="bg-thumb-frame" :title="getImgFileName(formData, i)">
+                            <img :src="link" alt="Ảnh đính kèm" />
+                          </a>
+                          <span class="bg-thumb-name" :title="getImgFileName(formData, i)">{{ formatCalendarFileName(getImgFileName(formData, i), 15) }}</span>
+                          <div class="bg-thumb-acts">
+                            <button type="button" class="bg-file-pill-act is-view" title="Xem ảnh phóng to" @click.stop.prevent="selectedImage = link">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            </button>
+                            <button type="button" class="bg-file-pill-act is-dl" :title="'Tải xuống: ' + getImgFileName(formData, i)" @click.stop.prevent="downloadDirectAttachment(link, getImgFileName(formData, i), $event)">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            </button>
+                            <button type="button" class="bg-file-pill-act is-del" title="Xoá ảnh" @click.stop.prevent="removeLink('img_save', i)">✕</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Excel Pills (Báo Giá & Mua Hàng with 1-Click ⇄ Category Swap) -->
+                    <div v-if="formData.link_excel_bao_gia || formData.link_excel_mua_hang" class="bg-studio-vault-sec">
+                      <div class="bg-studio-vault-lbl bg-tabular">FILE BÁO GIÁ &amp; MUA HÀNG ({{ formBgCount + formMhCount }})</div>
+                      <div class="bg-studio-excel-stack">
+                        <div
+                          v-for="(link, i) in (formData.link_excel_bao_gia ? formData.link_excel_bao_gia.split('\n').filter(Boolean) : [])"
+                          :key="'st-bg-' + i"
+                          class="bg-file-pill is-emerald"
+                        >
+                          <span class="bg-studio-file-kind is-bg">BÁO GIÁ</span>
+                          <span class="bg-file-pill-ic" v-html="getFileIconSvg(getExcelFileName(formData, 'link_excel_bao_gia', i, 'Báo giá'))"></span>
+                          <a href="#" @click.prevent.stop="openDirectAttachmentView(link, getExcelFileName(formData, 'link_excel_bao_gia', i, 'Báo giá'), 'bao_gia')" class="bg-file-pill-link" :title="getExcelFileName(formData, 'link_excel_bao_gia', i, 'Báo giá')">
+                            {{ formatCalendarFileName(getExcelFileName(formData, 'link_excel_bao_gia', i, 'Báo giá'), 24) }}
+                          </a>
+                          <div class="bg-file-pill-acts">
+                            <button
+                              type="button"
+                              class="bg-file-pill-act is-swap"
+                              title="Chuyển tệp này sang nhóm File Mua Hàng"
+                              @click.stop.prevent="swapExcelAttachmentCategory('link_excel_bao_gia', i)"
+                            >⇄</button>
+                            <button type="button" class="bg-file-pill-act is-view" title="Xem bằng View Office" @click.stop.prevent="openDirectAttachmentView(link, getExcelFileName(formData, 'link_excel_bao_gia', i, 'Báo giá'), 'bao_gia')">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            </button>
+                            <button type="button" class="bg-file-pill-act is-dl" :title="'Tải xuống: ' + getExcelFileName(formData, 'link_excel_bao_gia', i, 'Báo giá')" @click.stop.prevent="downloadDirectAttachment(link, getExcelFileName(formData, 'link_excel_bao_gia', i, 'Báo giá'), $event)">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            </button>
+                            <button type="button" class="bg-file-pill-act is-del" @click.stop.prevent="removeLink('link_excel_bao_gia', i)" title="Xoá">✕</button>
+                          </div>
+                        </div>
+
+                        <div
+                          v-for="(link, i) in (formData.link_excel_mua_hang ? formData.link_excel_mua_hang.split('\n').filter(Boolean) : [])"
+                          :key="'st-mh-' + i"
+                          class="bg-file-pill is-amber"
+                        >
+                          <span class="bg-studio-file-kind is-mh">MUA HÀNG</span>
+                          <span class="bg-file-pill-ic" v-html="getFileIconSvg(getExcelFileName(formData, 'link_excel_mua_hang', i, 'Mua hàng'))"></span>
+                          <a href="#" @click.prevent.stop="openDirectAttachmentView(link, getExcelFileName(formData, 'link_excel_mua_hang', i, 'Mua hàng'), 'mua_hang')" class="bg-file-pill-link" :title="getExcelFileName(formData, 'link_excel_mua_hang', i, 'Mua hàng')">
+                            {{ formatCalendarFileName(getExcelFileName(formData, 'link_excel_mua_hang', i, 'Mua hàng'), 24) }}
+                          </a>
+                          <div class="bg-file-pill-acts">
+                            <button
+                              type="button"
+                              class="bg-file-pill-act is-swap"
+                              title="Chuyển tệp này sang nhóm File Báo Giá"
+                              @click.stop.prevent="swapExcelAttachmentCategory('link_excel_mua_hang', i)"
+                            >⇄</button>
+                            <button type="button" class="bg-file-pill-act is-view" title="Xem bằng View Office" @click.stop.prevent="openDirectAttachmentView(link, getExcelFileName(formData, 'link_excel_mua_hang', i, 'Mua hàng'), 'mua_hang')">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            </button>
+                            <button type="button" class="bg-file-pill-act is-dl" :title="'Tải xuống: ' + getExcelFileName(formData, 'link_excel_mua_hang', i, 'Mua hàng')" @click.stop.prevent="downloadDirectAttachment(link, getExcelFileName(formData, 'link_excel_mua_hang', i, 'Mua hàng'), $event)">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            </button>
+                            <button type="button" class="bg-file-pill-act is-del" @click.stop.prevent="removeLink('link_excel_mua_hang', i)" title="Xoá">✕</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </div>
+
+          <!-- Sticky Safe-Area Modal Footer (A1: 44px Secondary Bordered Buttons + 46px Prominent Primary CTA) -->
+          <div class="bg-modal-foot bg-studio-foot">
+            <template v-if="isEditing">
+              <button type="button" class="bg-btn bg-btn-slate" @click="requestCloseModal" :disabled="saving">Huỷ bỏ</button>
+              <div class="bg-foot-right is-edit-grid">
+                <button
+                  type="button"
+                  class="bg-btn bg-btn-sky-soft bg-studio-clone-btn"
+                  @click="cloneReportToToday"
+                  :disabled="saving"
+                  title="Tạo báo cáo mới cho hôm nay với sẵn Khách hàng, Nội dung & Tệp của báo cáo này"
+                >
+                  <svg class="dt-btn-ic" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.35" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                  <span>Nhân bản sang hôm nay</span>
+                </button>
+                <button
+                  v-if="getFormReportStatus() !== 'Hoàn thành'"
+                  type="button"
+                  class="bg-btn bg-btn-emerald is-studio-cta"
+                  @click="setFormReportStatus('Hoàn thành'); saveReport()"
+                  :disabled="saving"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  <span>Hoàn thành</span>
+                </button>
+                <button
+                  v-if="hasChanges"
+                  type="submit"
+                  class="bg-btn bg-btn-primary is-studio-cta"
+                  :disabled="saving"
+                >
+                  <span v-if="saving" class="bg-spin-dot"></span>
+                  <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                  <span>{{ saving ? 'Đang lưu...' : 'Lưu thay đổi' }}</span>
+                </button>
+              </div>
+            </template>
+
+            <template v-else>
+              <button type="button" class="bg-btn bg-btn-slate" @click="requestCloseModal" :disabled="saving">Huỷ bỏ</button>
+              <div class="bg-foot-right is-add-grid">
+                <button
+                  type="button"
+                  class="bg-btn bg-btn-slate bg-studio-subaction"
+                  @click="saveReport({ openEmpty: true })"
+                  :disabled="saving"
+                  title="Lưu báo cáo này và mở form mới hoàn toàn trống"
+                >
+                  <svg class="dt-btn-ic" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+                  <span>Thêm &amp; Mục trống</span>
+                </button>
+                <button
+                  type="button"
+                  class="bg-btn bg-btn-sky-soft bg-studio-subaction"
+                  @click="saveReport({ continue: true })"
+                  :disabled="saving"
+                  title="Phím tắt: Ctrl + Shift + Enter (Giữ nguyên Khách hàng & Thời gian để nhập nhanh mục tiếp theo)"
+                >
+                  <span v-if="saving" class="bg-spin-dot"></span>
+                  <svg v-else class="dt-btn-ic" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+                  <span>Thêm &amp; Làm tiếp</span>
+                </button>
+                <button
+                  type="submit"
+                  class="bg-btn bg-btn-emerald is-studio-cta"
+                  :disabled="saving"
+                  title="Phím tắt: Ctrl + Enter"
+                >
+                  <span v-if="saving" class="bg-spin-dot"></span>
+                  <svg v-else xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  <span>{{ saving ? 'Đang thêm...' : 'Thêm & Xong' }}</span>
+                </button>
+              </div>
+            </template>
           </div>
         </form>
       </div>
     </div>
 
-    <!-- Modal Chọn Tháng/Năm Tải Excel -->
-    <div class="elite-modal-overlay" v-if="isExportModalOpen" @click.self="isExportModalOpen = false">
-      <div class="elite-modal" style="max-width: 420px;">
-        <div class="elite-modal-header">
-          <div class="elite-modal-title">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-            <h2>Tải Báo Cáo Excel</h2>
+    <!-- MODULE 3B: SUB-MODAL NHẬP GHI CHÚ NỔI BẬT -->
+    <div v-if="isStudioNoteModalOpen" class="bg-modal-overlay is-studio-submodal-overlay" style="z-index: 100060;" @click.self="confirmStudioNoteModal">
+      <div class="bg-modal-card is-sm is-studio-submodal-card" role="dialog" aria-modal="true">
+        <div class="bg-modal-head">
+          <div class="bg-modal-title-row">
+            <div class="bg-modal-icon is-rose">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+            </div>
+            <div>
+              <h2 class="bg-modal-title">Ghi Chú Nổi Bật</h2>
+              <p class="bg-modal-sub">Hiển thị nổi bật trên thẻ báo cáo công việc</p>
+            </div>
           </div>
-          <button class="elite-btn-close" @click="isExportModalOpen = false">
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-          </button>
+          <button type="button" class="bg-modal-close" @click="cancelStudioNoteModal" title="Đóng (Esc)">✕</button>
         </div>
-        <div class="elite-modal-body">
-          <div class="elite-form-row" style="gap: 1rem;">
-            <div class="elite-form-group" style="flex: 1;">
-              <label>Tháng</label>
-              <select v-model="exportInputs.month" class="elite-select">
-                <option v-for="m in 12" :key="m" :value="String(m).padStart(2, '0')">Tháng {{ m }}</option>
-              </select>
+
+        <div class="bg-modal-body">
+          <div class="bg-field">
+            <div class="bg-label-row">
+              <label class="bg-label is-rose">Nội dung ghi chú</label>
+              <button
+                type="button"
+                class="bg-mic-btn"
+                :class="{ 'is-recording': isRecordingVoice === 'ghi_chu' }"
+                @click="startVoiceRecognition('ghi_chu')"
+                title="Nhập ghi chú bằng giọng nói"
+              >
+                <svg v-if="isRecordingVoice !== 'ghi_chu'" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12"></rect></svg>
+              </button>
             </div>
-            <div class="elite-form-group" style="flex: 1;">
-              <label>Năm</label>
-              <select v-model="exportInputs.year" class="elite-select">
-                <option v-for="y in 20" :key="y" :value="String(2023 + y)">{{ 2023 + y }}</option>
-              </select>
-            </div>
+            <textarea
+              ref="reportNoteTextareaRef"
+              v-model="formData.ghi_chu"
+              rows="4"
+              placeholder="Nhập ghi chú lưu ý quan trọng cho công việc này..."
+              class="bg-textarea is-note is-studio-note"
+            ></textarea>
           </div>
-          <div class="elite-modal-actions">
-            <button type="button" class="elite-btn-cancel" @click="isExportModalOpen = false">Huỷ Bỏ</button>
-            <button type="button" class="elite-btn-primary" @click="doExportExcel">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-              Tải Xuống
-            </button>
+        </div>
+
+        <div class="bg-modal-foot">
+          <div>
+            <button
+              v-if="hasFormNote"
+              type="button"
+              class="bg-btn-xs is-rose"
+              @click="clearAndCloseStudioNoteModal"
+            >Xoá ghi chú</button>
+          </div>
+          <div class="bg-foot-right">
+            <button type="button" class="bg-btn bg-btn-slate" @click="cancelStudioNoteModal">Huỷ bỏ</button>
+            <button type="button" class="bg-btn bg-btn-emerald" @click="confirmStudioNoteModal">Xác nhận</button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Modal Cảnh báo Khác Khách Hàng (Taste-Skill Precision & Double-Bezel Design) -->
-    <Teleport to="body">
-      <Transition name="taste-modal">
-        <div v-if="isWarningCustomerModalOpen" class="taste-modal-overlay" @click.self="isWarningCustomerModalOpen = false" role="dialog" aria-modal="true">
-          <div class="taste-modal-shell taste-variant-warning" style="width: 480px;">
-            <div class="taste-modal-glow" aria-hidden="true" style="background: #f59e0b;"></div>
-            <div class="taste-modal-core">
-              <button type="button" class="taste-modal-close" @click="isWarningCustomerModalOpen = false" title="Đóng (Esc)">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    <!-- MODULE 3C: SUB-MODAL ĐẶT LỊCH NHẮC HẸN -->
+    <div v-if="isStudioReminderModalOpen" class="bg-modal-overlay is-studio-submodal-overlay" style="z-index: 100060;" @click.self="confirmStudioReminderModal">
+      <div class="bg-modal-card is-sm is-studio-submodal-card" role="dialog" aria-modal="true">
+        <div class="bg-modal-head">
+          <div class="bg-modal-title-row">
+            <div class="bg-modal-icon is-amber">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+            </div>
+            <div>
+              <h2 class="bg-modal-title">Lịch Nhắc Nhở Công Việc</h2>
+              <p class="bg-modal-sub">Chọn ngày nhắc và nội dung thông báo khi đến hạn</p>
+            </div>
+          </div>
+          <button type="button" class="bg-modal-close" @click="cancelStudioReminderModal" title="Đóng (Esc)">✕</button>
+        </div>
+
+        <div class="bg-modal-body" style="display: flex; flex-direction: column; gap: 12px;">
+          <div class="bg-field">
+            <div class="bg-label-row">
+              <label class="bg-label is-amber">Ngày nhắc hẹn</label>
+              <div class="bg-studio-rem-presets">
+                <button
+                  type="button"
+                  class="bg-studio-rem-chip"
+                  :class="{ 'is-active': isQuickReminderOffsetActive(1) }"
+                  @click="applyQuickReminderOffset(1)"
+                >+1 ngày</button>
+                <button
+                  type="button"
+                  class="bg-studio-rem-chip"
+                  :class="{ 'is-active': isQuickReminderOffsetActive(3) }"
+                  @click="applyQuickReminderOffset(3)"
+                >+3 ngày</button>
+                <button
+                  type="button"
+                  class="bg-studio-rem-chip"
+                  :class="{ 'is-active': isQuickReminderOffsetActive(7) }"
+                  @click="applyQuickReminderOffset(7)"
+                >+1 tuần</button>
+              </div>
+            </div>
+            <div class="bg-reminder-date-wrap bg-studio-rem-date">
+              <button
+                type="button"
+                class="bg-reminder-date-btn bg-tabular"
+                :class="{ 'has-val': !!formData.reminder_time }"
+                @click="openReminderDatePicker"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                <span>{{ formData.reminder_time ? formatDisplayDate(formData.reminder_time) : 'Chọn ngày nhắc hẹn...' }}</span>
               </button>
+              <input
+                ref="reminderDateInputRef"
+                type="date"
+                v-model="formData.reminder_time"
+                class="bg-hidden-date-input"
+                tabindex="-1"
+              />
+            </div>
+          </div>
 
-              <div class="taste-modal-body">
-                <div class="taste-jewel-wrap">
-                  <div class="taste-jewel-box" style="background: radial-gradient(circle, rgba(245, 158, 11, 0.22) 0%, rgba(245, 158, 11, 0.05) 100%); border: 1px solid rgba(245, 158, 11, 0.4); box-shadow: 0 0 24px rgba(245, 158, 11, 0.25);">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                      <line x1="12" y1="9" x2="12" y2="13"></line>
-                      <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                    </svg>
-                  </div>
-                </div>
+          <div class="bg-field">
+            <label class="bg-label">Nội dung nhắc nhở</label>
+            <textarea
+              ref="reportReminderInputRef"
+              v-model="formData.reminder_content"
+              rows="3"
+              placeholder="Nhập lời nhắc khi đến hạn..."
+              class="bg-textarea bg-studio-rem-input"
+            ></textarea>
+          </div>
+        </div>
 
-                <div class="taste-modal-text">
-                  <div class="taste-eyebrow" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3);">
-                    <span class="taste-eyebrow-dot" style="background: #f59e0b;"></span>
-                    <span>CẢNH BÁO LIÊN KẾT KHÁCH HÀNG</span>
-                  </div>
-                  <h3 class="taste-title">Khác Khách Hàng Gốc</h3>
-                  <div class="taste-message">
-                    Bạn đang cố liên kết với một Hồ sơ thuộc về <strong style="color: #f8fafc;">Khách hàng khác</strong>:
-                    <div style="margin: 12px 0; padding: 12px 14px; border-radius: 12px; background: rgba(15,23,42,0.7); border: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 6px; font-size: 13px;">
-                      <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="color: #94a3b8;">Khách hàng thẻ gốc:</span>
-                        <span style="color: #f87171; font-weight: 700; font-family: 'JetBrains Mono', monospace; background: rgba(239,68,68,0.12); padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(239,68,68,0.3);">{{ pendingLinkedFile?.maKH }}</span>
-                      </div>
-                      <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="color: #94a3b8;">Khách hàng thẻ hiện tại:</span>
-                        <span style="color: #38bdf8; font-weight: 700; font-family: 'JetBrains Mono', monospace; background: rgba(56,189,248,0.12); padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(56,189,248,0.3);">{{ formData.maKH }}</span>
-                      </div>
-                    </div>
-                    Bạn có chắc chắn muốn tiếp tục thực hiện liên kết này không?
+        <div class="bg-modal-foot">
+          <div>
+            <button
+              v-if="hasFormReminder"
+              type="button"
+              class="bg-btn-xs is-rose"
+              @click="clearAndCloseStudioReminderModal"
+            >Xoá nhắc hẹn</button>
+          </div>
+          <div class="bg-foot-right">
+            <button type="button" class="bg-btn bg-btn-slate" @click="cancelStudioReminderModal">Huỷ bỏ</button>
+            <button type="button" class="bg-btn bg-btn-emerald" @click="confirmStudioReminderModal">Xác nhận</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Teleported Mobile Attachment Bottom Sheet 3A (<= 1100px) -->
+    <Teleport to="body">
+      <div
+        v-if="isModalOpen && isCompactShell && isMobileAttachSheetOpen"
+        class="bg-attach-sheet-overlay"
+        :class="{ 'theme-light-blue': uiTheme === 'light' }"
+        @click.self="isMobileAttachSheetOpen = false"
+      >
+        <div class="bg-attach-sheet-panel">
+          <div class="pl-sheet-grabber"></div>
+          <div class="pl-sheet-head">
+            <div class="pl-sheet-title bg-tabular">Tệp đính kèm ({{ getReportFormAttachmentCount }})</div>
+            <button type="button" class="pl-sheet-close" @click="isMobileAttachSheetOpen = false">✕</button>
+          </div>
+
+          <div class="bg-attach-sheet-body">
+            <div class="bg-upload-btn-stack">
+              <button
+                type="button"
+                class="bg-upload-btn is-sky"
+                :disabled="!!isUploadingFiles"
+                @click="triggerUploadInput('img')"
+              >
+                <span v-if="isUploadingFiles === 'img'" class="bg-spin-dot"></span>
+                <span>{{ isUploadingFiles === 'img' ? 'Đang tải ảnh...' : '+ Tải Ảnh Minh Hoạ' }}</span>
+              </button>
+              <div class="bg-upload-row-2">
+                <button
+                  type="button"
+                  class="bg-upload-btn is-emerald"
+                  :disabled="!!isUploadingFiles"
+                  @click="triggerUploadInput('bg')"
+                >
+                  <span v-if="isUploadingFiles === 'bg'" class="bg-spin-dot"></span>
+                  <span>{{ isUploadingFiles === 'bg' ? 'Đang tải...' : '+ File Báo Giá' }}</span>
+                </button>
+                <button
+                  type="button"
+                  class="bg-upload-btn is-amber"
+                  :disabled="!!isUploadingFiles"
+                  @click="triggerUploadInput('mh')"
+                >
+                  <span v-if="isUploadingFiles === 'mh'" class="bg-spin-dot"></span>
+                  <span>{{ isUploadingFiles === 'mh' ? 'Đang tải...' : '+ File Mua Hàng' }}</span>
+                </button>
+              </div>
+            </div>
+
+            <div v-if="getReportFormAttachmentCount === 0" class="bg-filebox-empty">
+              Chưa có tệp nào được đính kèm cho báo cáo này.
+            </div>
+
+            <div v-else class="bg-filebox-previews">
+              <div v-if="formData.img_save" class="bg-thumb-grid">
+                <div
+                  v-for="(link, i) in formData.img_save.split('\n').filter(Boolean)"
+                  :key="'mb-img-' + i"
+                  class="bg-thumb-item"
+                >
+                  <a href="#" @click.prevent.stop="selectedImage = link" class="bg-thumb-frame" :title="getImgFileName(formData, i)">
+                    <img :src="link" alt="Ảnh đính kèm" />
+                  </a>
+                  <span class="bg-thumb-name" :title="getImgFileName(formData, i)">{{ formatCalendarFileName(getImgFileName(formData, i), 13) }}</span>
+                  <div class="bg-thumb-acts">
+                    <button type="button" class="bg-file-pill-act is-view" title="Xem ảnh phóng to" @click.stop.prevent="selectedImage = link">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    </button>
+                    <button type="button" class="bg-file-pill-act is-dl" :title="'Tải xuống: ' + getImgFileName(formData, i)" @click.stop.prevent="downloadDirectAttachment(link, getImgFileName(formData, i), $event)">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    </button>
+                    <button type="button" class="bg-file-pill-act is-del" title="Xoá ảnh" @click.stop.prevent="removeLink('img_save', i)">✕</button>
                   </div>
                 </div>
               </div>
 
-              <div class="taste-modal-actions">
-                <button type="button" @click="isWarningCustomerModalOpen = false" class="taste-btn taste-btn-secondary">Hủy bỏ</button>
-                <button type="button" @click="confirmLinkedFile" class="taste-btn taste-btn-primary taste-btn-warning">
-                  <span>Vẫn Liên kết</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-                  </svg>
-                </button>
+              <div v-if="formData.link_excel_bao_gia" class="bg-file-pill-list">
+                <div
+                  v-for="(link, i) in formData.link_excel_bao_gia.split('\n').filter(Boolean)"
+                  :key="'mb-bg-' + i"
+                  class="bg-file-pill is-emerald"
+                >
+                  <span class="bg-studio-file-kind is-bg">BÁO GIÁ</span>
+                  <span class="bg-file-pill-ic" v-html="getFileIconSvg(getExcelFileName(formData, 'link_excel_bao_gia', i, 'Báo giá'))"></span>
+                  <a href="#" @click.prevent.stop="openDirectAttachmentView(link, getExcelFileName(formData, 'link_excel_bao_gia', i, 'Báo giá'), 'bao_gia')" class="bg-file-pill-link" :title="getExcelFileName(formData, 'link_excel_bao_gia', i, 'Báo giá')">
+                    {{ formatCalendarFileName(getExcelFileName(formData, 'link_excel_bao_gia', i, 'Báo giá'), 24) }}
+                  </a>
+                  <div class="bg-file-pill-acts">
+                    <button type="button" class="bg-file-pill-act is-swap" title="Chuyển sang File Mua Hàng" @click.stop.prevent="swapExcelAttachmentCategory('link_excel_bao_gia', i)">⇄</button>
+                    <button type="button" class="bg-file-pill-act is-view" title="Xem bằng View Office" @click.stop.prevent="openDirectAttachmentView(link, getExcelFileName(formData, 'link_excel_bao_gia', i, 'Báo giá'), 'bao_gia')">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    </button>
+                    <button type="button" class="bg-file-pill-act is-dl" :title="'Tải xuống: ' + getExcelFileName(formData, 'link_excel_bao_gia', i, 'Báo giá')" @click.stop.prevent="downloadDirectAttachment(link, getExcelFileName(formData, 'link_excel_bao_gia', i, 'Báo giá'), $event)">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    </button>
+                    <button type="button" class="bg-file-pill-act is-del" @click.stop.prevent="removeLink('link_excel_bao_gia', i)">✕</button>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="formData.link_excel_mua_hang" class="bg-file-pill-list">
+                <div
+                  v-for="(link, i) in formData.link_excel_mua_hang.split('\n').filter(Boolean)"
+                  :key="'mb-mh-' + i"
+                  class="bg-file-pill is-amber"
+                >
+                  <span class="bg-studio-file-kind is-mh">MUA HÀNG</span>
+                  <span class="bg-file-pill-ic" v-html="getFileIconSvg(getExcelFileName(formData, 'link_excel_mua_hang', i, 'Mua hàng'))"></span>
+                  <a href="#" @click.prevent.stop="openDirectAttachmentView(link, getExcelFileName(formData, 'link_excel_mua_hang', i, 'Mua hàng'), 'mua_hang')" class="bg-file-pill-link" :title="getExcelFileName(formData, 'link_excel_mua_hang', i, 'Mua hàng')">
+                    {{ formatCalendarFileName(getExcelFileName(formData, 'link_excel_mua_hang', i, 'Mua hàng'), 24) }}
+                  </a>
+                  <div class="bg-file-pill-acts">
+                    <button type="button" class="bg-file-pill-act is-swap" title="Chuyển sang File Báo Giá" @click.stop.prevent="swapExcelAttachmentCategory('link_excel_mua_hang', i)">⇄</button>
+                    <button type="button" class="bg-file-pill-act is-view" title="Xem bằng View Office" @click.stop.prevent="openDirectAttachmentView(link, getExcelFileName(formData, 'link_excel_mua_hang', i, 'Mua hàng'), 'mua_hang')">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    </button>
+                    <button type="button" class="bg-file-pill-act is-dl" :title="'Tải xuống: ' + getExcelFileName(formData, 'link_excel_mua_hang', i, 'Mua hàng')" @click.stop.prevent="downloadDirectAttachment(link, getExcelFileName(formData, 'link_excel_mua_hang', i, 'Mua hàng'), $event)">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    </button>
+                    <button type="button" class="bg-file-pill-act is-del" @click.stop.prevent="removeLink('link_excel_mua_hang', i)">✕</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-attach-sheet-foot">
+            <button type="button" class="bg-btn bg-btn-primary" style="width: 100%;" @click="isMobileAttachSheetOpen = false">
+              Hoàn tất đính kèm
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- MODULE 4A: MODAL XUẤT BÁO CÁO EXCEL -->
+    <div v-if="isExportModalOpen" class="bg-modal-overlay" style="z-index: 100030;" @click.self="isExportModalOpen = false; openModalSelectKey = null">
+      <div class="bg-modal-card is-sm is-export-modal-card" data-guide="export-modal-card" role="dialog" aria-modal="true" @click="openModalSelectKey = null">
+        <div class="bg-modal-head dt-only-head">
+          <div class="bg-modal-title-row">
+            <div class="bg-modal-icon is-sky">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            </div>
+            <div>
+              <h2 class="bg-modal-title">Tải Báo Cáo Excel</h2>
+              <p class="bg-modal-sub">Chọn kỳ tháng/năm cần kết xuất bảng theo dõi</p>
+            </div>
+          </div>
+          <button type="button" class="bg-modal-close" @click.stop="isExportModalOpen = false; openModalSelectKey = null">✕</button>
+        </div>
+
+        <div class="m-grab-head-stack">
+          <div class="m-grab-pill"></div>
+          <div class="m-grab-bar">
+            <h2 class="m-grab-title">Tải Báo Cáo Excel</h2>
+            <button type="button" class="bg-modal-close" @click.stop="isExportModalOpen = false; openModalSelectKey = null">✕</button>
+          </div>
+        </div>
+
+        <div class="bg-modal-body">
+          <div class="bg-grid-2 bg-tabular">
+            <div class="bg-field bg-cselect-wrap">
+              <label class="bg-label">Tháng</label>
+              <button
+                type="button"
+                class="bg-cselect-btn is-full"
+                :class="{ 'is-open': openModalSelectKey === 'exportMonth' }"
+                @click.stop="toggleModalSelect('exportMonth')"
+              >
+                <span>Tháng {{ exportInputs.month }}</span>
+                <svg class="bg-cselect-caret" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+              <div v-if="openModalSelectKey === 'exportMonth'" class="bg-cselect-pop is-grid-4" @click.stop>
+                <button
+                  v-for="m in 12"
+                  :key="'exm-' + m"
+                  type="button"
+                  class="bg-cselect-cell"
+                  :class="{ 'is-selected': exportInputs.month === String(m).padStart(2, '0') }"
+                  @click="exportInputs.month = String(m).padStart(2, '0'); openModalSelectKey = null"
+                >Thg {{ String(m).padStart(2, '0') }}</button>
+              </div>
+            </div>
+            <div class="bg-field bg-cselect-wrap">
+              <label class="bg-label">Năm</label>
+              <button
+                type="button"
+                class="bg-cselect-btn is-full"
+                :class="{ 'is-open': openModalSelectKey === 'exportYear' }"
+                @click.stop="toggleModalSelect('exportYear')"
+              >
+                <span>{{ exportInputs.year }}</span>
+                <svg class="bg-cselect-caret" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+              <div v-if="openModalSelectKey === 'exportYear'" class="bg-cselect-pop is-align-right is-grid-4" @click.stop>
+                <button
+                  v-for="y in 16"
+                  :key="'exy-' + y"
+                  type="button"
+                  class="bg-cselect-cell"
+                  :class="{ 'is-selected': exportInputs.year === String(2023 + y) }"
+                  @click="exportInputs.year = String(2023 + y); openModalSelectKey = null"
+                >{{ 2023 + y }}</button>
               </div>
             </div>
           </div>
         </div>
-      </Transition>
-    </Teleport>
 
-    <!-- Modal Chọn File Liên Kết (100% giống QuanLyFile.vue) -->
-    <div v-if="isFileSelectModalOpen" class="elite-modal-overlay" @click.self="isFileSelectModalOpen = false" style="position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 100060; background: rgba(0,0,0,0.6);">
-      <div class="elite-modal" style="width: 700px; max-width: 95%; background: #ffffff; border-radius: 12px; display: flex; flex-direction: column; max-height: 85vh; padding: 0;">
-        <div class="elite-modal-header" style="padding: 1rem 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
-          <h3 style="margin: 0; color: #0f172a; font-size: 1.1rem;">Chọn File Liên Kết</h3>
-          <button class="elite-btn-close" @click="isFileSelectModalOpen = false" style="background: transparent; border: none; cursor: pointer; color: #64748b;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        <div class="bg-modal-foot">
+          <button type="button" class="bg-btn bg-btn-slate" @click.stop="isExportModalOpen = false; openModalSelectKey = null">Huỷ bỏ</button>
+          <button type="button" class="bg-btn bg-btn-primary" @click.stop="openModalSelectKey = null; doExportExcel()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <span>Tải xuống (.xlsx)</span>
           </button>
         </div>
-        
-        <div style="padding: 1rem 1.5rem; border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
-          <input type="text" v-model="fileSearchQuery" placeholder="Nhập nội dung hoặc mã KH..." class="elite-input" style="width: 100%; padding: 0.6rem 1rem; border: 1px solid #cbd5e1; border-radius: 6px;" />
+      </div>
+    </div>
+
+    <!-- MODULE 4B: MODAL CHỌN FILE LIÊN KẾT (QUAN LY FILE) -->
+    <div v-if="isFileSelectModalOpen" class="bg-modal-overlay" style="z-index: 100060;" @click.self="isFileSelectModalOpen = false">
+      <div class="bg-modal-card is-md is-mobile-sheet" role="dialog" aria-modal="true">
+        <div class="bg-modal-head dt-only-head">
+          <div class="bg-modal-title-row">
+            <div class="bg-modal-icon is-emerald">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+            </div>
+            <div>
+              <h2 class="bg-modal-title">Chọn Hồ Sơ File Liên Kết</h2>
+              <p class="bg-modal-sub">Tìm theo nội dung, ghi chú hoặc mã khách hàng</p>
+            </div>
+          </div>
+          <button type="button" class="bg-modal-close" @click="isFileSelectModalOpen = false">✕</button>
         </div>
 
-        <div style="flex: 1; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; background: #0f172a; max-height: 60vh;">
-          <div v-if="filteredModalFiles.length === 0" style="text-align: center; color: #94a3b8; margin-top: 2rem;">Không tìm thấy file nào.</div>
-          
-          <div v-for="f in filteredModalFiles" :key="f.id" @click="selectLinkedFile(f)" style="cursor: pointer; box-sizing: border-box; align-self: stretch; border-radius: 12px; padding: 12px 16px; background: linear-gradient(180deg, rgba(15,23,34,0.95) 0%, rgba(15,23,34,0.85) 100%); border: 3px solid rgba(16,185,129,0.8); box-shadow: 0 0 15px rgba(16,185,129,0.4); position: relative; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-4px) scale(1.015)'; this.style.filter='brightness(1.1)';" onmouseout="this.style.transform='none'; this.style.filter='none';">
-            <div style="display: flex; flex-direction: column;">
-              <div style="display: flex; flex-wrap: wrap; gap: 0.4rem;">
-                <span style="padding: 2px 8px; border-radius: 9999px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; display: inline-flex; align-items: center; background: rgba(148,163,184,0.1); color: #94a3b8; border: 1px solid rgba(148,163,184,0.2);">
-                  {{ formatQuanLyFileTime(f.createdTime).time }} - {{ formatQuanLyFileTime(f.createdTime).date }}
+        <div class="m-grab-head-stack">
+          <div class="m-grab-pill"></div>
+          <div class="m-grab-bar">
+            <h2 class="m-grab-title">Chọn Hồ Sơ File Liên Kết</h2>
+            <button type="button" class="bg-modal-close" @click="isFileSelectModalOpen = false">✕</button>
+          </div>
+        </div>
+
+        <div class="bg-modal-subbar" style="display: flex; flex-direction: column; gap: 8px;">
+          <input
+            type="text"
+            v-model="fileSearchQuery"
+            placeholder="Nhập nội dung hồ sơ hoặc mã khách hàng..."
+            class="bg-input"
+          />
+          <div v-if="isModalOpen && formData.id_quanlyfile" class="bg-linked-current-bar">
+            <div class="bg-linked-current-txt">
+              <span class="bg-tag-pill is-emerald">Đang liên kết ✓</span>
+              <span>{{ selectedLinkedFile ? (selectedLinkedFile.noiDung || ('Hồ sơ #' + formData.id_quanlyfile)) : ('Hồ sơ #' + formData.id_quanlyfile) }}</span>
+            </div>
+            <button
+              type="button"
+              class="bg-btn-xs is-rose"
+              @click="formData.id_quanlyfile = ''; isFileSelectModalOpen = false"
+            >Gỡ liên kết</button>
+          </div>
+        </div>
+
+        <div class="bg-modal-body" style="max-height: 62vh;">
+          <div v-if="filteredModalFiles.length === 0" class="bg-empty-box">
+            Không tìm thấy hồ sơ file phù hợp.
+          </div>
+
+          <div class="bg-select-card-list" v-else>
+            <div
+              v-for="f in filteredModalFiles"
+              :key="f.id"
+              class="bg-linked-file-card"
+              :class="{ 'is-selected-file': isModalOpen && formData.id_quanlyfile === f.id }"
+              @click="selectLinkedFile(f)"
+            >
+              <div class="bg-linked-file-badges">
+                <span v-if="isModalOpen && formData.id_quanlyfile === f.id" class="bg-tag-pill is-emerald">Đang liên kết ✓</span>
+                <span v-if="isModalOpen && formData.maKH && f.maKH === formData.maKH" class="bg-tag-pill is-emerald">Cùng KH</span>
+                <span class="bg-tag-pill is-slate bg-tabular">
+                  {{ formatQuanLyFileTime(f.createdTime).time }} · {{ formatQuanLyFileTime(f.createdTime).date }}
                 </span>
-                <span v-if="f.mucDoUuTien" style="padding: 2px 8px; border-radius: 9999px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; display: inline-flex; align-items: center; background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2);">{{ f.mucDoUuTien }}</span>
-                <span v-if="f.trangThaiXuLy" style="padding: 2px 8px; border-radius: 9999px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; display: inline-flex; align-items: center; background: rgba(59, 130, 246, 0.1); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.2);">{{ f.trangThaiXuLy }}</span>
-                <span v-if="f.trangThaiBaoGia" style="padding: 2px 8px; border-radius: 9999px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; display: inline-flex; align-items: center;" :style="f.trangThaiBaoGia === 'Thành công' ? 'background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2);' : (f.trangThaiBaoGia === 'Thất bại' ? 'background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2);' : 'background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2);')">
+                <span v-if="f.mucDoUuTien" class="bg-tag-pill is-amber">{{ f.mucDoUuTien }}</span>
+                <span v-if="f.trangThaiXuLy" class="bg-tag-pill is-sky">{{ f.trangThaiXuLy }}</span>
+                <span
+                  v-if="f.trangThaiBaoGia"
+                  class="bg-tag-pill"
+                  :class="f.trangThaiBaoGia === 'Thành công' ? 'is-emerald' : (f.trangThaiBaoGia === 'Thất bại' ? 'is-rose' : 'is-amber')"
+                >
                   {{ f.trangThaiBaoGia }}
                 </span>
               </div>
-            </div>
-            <div style="margin-top: 0.5rem; padding-top: 0.8rem; border-top: 1px dashed rgba(255,255,255,0.1);">
-              <div v-if="f.maKH" style="color: #60a5fa; font-weight: 700; font-size: 0.9rem; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.3rem;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                {{ getCustomerNameInfo(f.maKH) }}
+
+              <div v-if="f.maKH" class="bg-linked-file-cus">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                <span class="bg-tag-pill is-sky bg-tabular">{{ f.maKH }}</span>
+                <span>{{ getCustomerNameInfo(f.maKH) }}</span>
               </div>
-              <div style="color: #f8fafc; font-size: 0.95rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word;">{{ f.noiDung }}</div>
-              <div v-if="f.ghiChu" style="margin-top: 0.4rem; font-size: 0.85rem; font-weight: 600; font-style: italic; color: #ef4444;">* Ghi chú: {{ f.ghiChu }}</div>
-              
-              <div class="tl-attachments" v-if="hasCardAttachments(f)" style="display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.8rem; padding-top: 0.5rem; border-top: 1px dashed rgba(255,255,255,0.05);">
-                <!-- Header vùng đính kèm + Nút Download All ZIP -->
-                <div class="tl-attachments-toolbar" style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 0.3rem; border-bottom: 1px dashed rgba(255,255,255,0.08); margin-bottom: 0.15rem;">
-                  <span style="font-size: 0.72rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.3px; display: inline-flex; align-items: center; gap: 4px;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
-                    Tệp &amp; Ảnh ({{ getCardAttachmentCount(f) }})
-                  </span>
-                  <button type="button"
-                          @click.stop.prevent="handleDownloadCardZip(f)"
-                          :disabled="downloadingZipMap[f.id]"
-                          class="btn-dl-all-zip"
-                          :title="'Tải về toàn bộ ' + getCardAttachmentCount(f) + ' file & ảnh (.zip)'">
+
+              <div class="bg-linked-file-content">{{ f.noiDung }}</div>
+              <div v-if="f.ghiChu" class="bg-linked-file-note">* Ghi chú: {{ f.ghiChu }}</div>
+
+              <div v-if="hasCardAttachments(f)" class="bg-linked-file-attach" @click.stop>
+                <div class="bg-linked-attach-bar">
+                  <span class="bg-linked-attach-count bg-tabular">Tệp &amp; Ảnh ({{ getCardAttachmentCount(f) }})</span>
+                  <button
+                    type="button"
+                    class="btn-dl-all-zip"
+                    :disabled="downloadingZipMap[f.id]"
+                    @click.stop.prevent="handleDownloadCardZip(f)"
+                  >
                     <template v-if="downloadingZipMap[f.id]">
                       <span class="zip-mini-spinner"></span>
                       <span>{{ zipProgressTextMap[f.id] || 'Đang nén...' }}</span>
                     </template>
                     <template v-else>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                      <span>Download all</span>
+                      <span>Tải tất cả (.zip)</span>
                     </template>
                   </button>
                 </div>
-                <div v-if="f.linkFileBaoGia && f.linkFileBaoGia.length > 0" style="display: flex; flex-direction: column; gap: 0.4rem;">
+
+                <div v-if="f.linkFileBaoGia && f.linkFileBaoGia.length > 0" class="bg-linked-attach-rows">
                   <template v-if="Array.isArray(f.linkFileBaoGia)">
-                    <div v-for="(link, i) in f.linkFileBaoGia" :key="'bg'+i" style="display: flex; align-items: center; justify-content: space-between; gap: 0.4rem;">
+                    <div v-for="(link, i) in f.linkFileBaoGia" :key="'bg'+i" class="bg-linked-attach-row">
                       <a :href="typeof link === 'string' ? link : link.url" target="_blank" @click.stop class="attach-badge" :class="getFileBadgeClass(link)" style="flex: 1; min-width: 0;">
                         <span v-html="getQuanLyFileIconSvg(link)" style="display: flex; align-items: center;"></span>
                         <span class="attach-text" :title="getFileName(link, 'File', i)">{{ truncateFileName(getFileName(link, 'File', i)) }}</span>
                       </a>
-                      <a :href="getOfficeViewUrl(link)" target="_blank" @click.stop title="Xem file (Office Online)" style="background: rgba(59,130,246,0.12); color: #38bdf8; border: 1px solid rgba(59,130,246,0.25); border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all 0.2s; text-decoration: none;" onmouseover="this.style.background='#3b82f6'; this.style.color='white'" onmouseout="this.style.background='rgba(59,130,246,0.12)'; this.style.color='#38bdf8'">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                      <a :href="getOfficeViewUrl(link)" target="_blank" @click.stop class="bg-icon-sq is-sky" title="Xem Office Online">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                       </a>
-                      <button type="button" @click.stop.prevent="handleDownloadClick($event, typeof link === 'string' ? link : link.url, getFileName(link, 'File', i))" title="Tải về" style="background: rgba(16,185,129,0.1); color: #10b981; border: 1px solid rgba(16,185,129,0.2); border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all 0.2s;" onmouseover="this.style.background='#10b981'; this.style.color='white'" onmouseout="this.style.background='rgba(16,185,129,0.1)'; this.style.color='#10b981'">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                      <button type="button" class="bg-icon-sq is-emerald" @click.stop.prevent="handleDownloadClick($event, typeof link === 'string' ? link : link.url, getFileName(link, 'File', i))" title="Tải về">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                       </button>
                     </div>
                   </template>
-                  <div v-else-if="typeof f.linkFileBaoGia === 'string' && f.linkFileBaoGia !== ''" style="display: flex; align-items: center; justify-content: space-between; gap: 0.4rem;">
+                  <div v-else-if="typeof f.linkFileBaoGia === 'string' && f.linkFileBaoGia !== ''" class="bg-linked-attach-row">
                     <a :href="f.linkFileBaoGia" target="_blank" @click.stop class="attach-badge" :class="getFileBadgeClass(f.linkFileBaoGia)" style="flex: 1; min-width: 0;">
-                       <span v-html="getQuanLyFileIconSvg(f.linkFileBaoGia)" style="display: flex; align-items: center;"></span>
-                       <span class="attach-text" :title="getFileName(f.linkFileBaoGia, 'File', 0)">{{ truncateFileName(getFileName(f.linkFileBaoGia, 'File', 0)) }}</span>
+                      <span v-html="getQuanLyFileIconSvg(f.linkFileBaoGia)" style="display: flex; align-items: center;"></span>
+                      <span class="attach-text" :title="getFileName(f.linkFileBaoGia, 'File', 0)">{{ truncateFileName(getFileName(f.linkFileBaoGia, 'File', 0)) }}</span>
                     </a>
-                    <a :href="getOfficeViewUrl(f.linkFileBaoGia)" target="_blank" @click.stop title="Xem file (Office Online)" style="background: rgba(59,130,246,0.12); color: #38bdf8; border: 1px solid rgba(59,130,246,0.25); border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all 0.2s; text-decoration: none;" onmouseover="this.style.background='#3b82f6'; this.style.color='white'" onmouseout="this.style.background='rgba(59,130,246,0.12)'; this.style.color='#38bdf8'">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    <a :href="getOfficeViewUrl(f.linkFileBaoGia)" target="_blank" @click.stop class="bg-icon-sq is-sky" title="Xem Office Online">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                     </a>
-                    <button type="button" @click.stop.prevent="handleDownloadClick($event, f.linkFileBaoGia, getFileName(f.linkFileBaoGia, 'File', 0))" title="Tải về" style="background: rgba(16,185,129,0.1); color: #10b981; border: 1px solid rgba(16,185,129,0.2); border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all 0.2s;" onmouseover="this.style.background='#10b981'; this.style.color='white'" onmouseout="this.style.background='rgba(16,185,129,0.1)'; this.style.color='#10b981'">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    <button type="button" class="bg-icon-sq is-emerald" @click.stop.prevent="handleDownloadClick($event, f.linkFileBaoGia, getFileName(f.linkFileBaoGia, 'File', 0))" title="Tải về">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                     </button>
                   </div>
                 </div>
-                
-                <div v-if="f.linkImgSave && f.linkImgSave.length > 0" style="display: flex; flex-wrap: wrap; gap: 0.4rem;">
+
+                <div v-if="f.linkImgSave && f.linkImgSave.length > 0" class="bg-linked-img-chips">
                   <template v-if="Array.isArray(f.linkImgSave)">
-                    <a v-for="(link, i) in f.linkImgSave" :key="'img'+i" :href="typeof link === 'string' ? link : link.url" target="_blank" @click.stop class="attach-badge badge-image" style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 0.4rem;">
-                      <img :src="typeof link === 'string' ? link : link.url" style="width: 24px; height: 24px; object-fit: cover; border-radius: 4px; flex-shrink: 0; background: rgba(0,0,0,0.2);" />
-                      <span class="attach-text" :title="getFileName(link, 'Hình ảnh', i)">{{ truncateFileName(getFileName(link, 'Hình ảnh', i)) }}</span>
+                    <a v-for="(link, i) in f.linkImgSave" :key="'img'+i" :href="typeof link === 'string' ? link : link.url" target="_blank" @click.stop class="attach-badge badge-image">
+                      <img :src="typeof link === 'string' ? link : link.url" style="width: 22px; height: 22px; object-fit: cover; border-radius: 4px; flex-shrink: 0;" />
+                      <span class="attach-text">{{ truncateFileName(getFileName(link, 'Hình ảnh', i)) }}</span>
                     </a>
                   </template>
-                  <a v-else-if="typeof f.linkImgSave === 'string' && f.linkImgSave !== ''" :href="f.linkImgSave" target="_blank" @click.stop class="attach-badge badge-image" style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 0.4rem;">
-                    <img :src="f.linkImgSave" style="width: 24px; height: 24px; object-fit: cover; border-radius: 4px; flex-shrink: 0; background: rgba(0,0,0,0.2);" />
-                    <span class="attach-text" :title="getFileName(f.linkImgSave, 'Hình ảnh', 0)">{{ truncateFileName(getFileName(f.linkImgSave, 'Hình ảnh', 0)) }}</span>
+                  <a v-else-if="typeof f.linkImgSave === 'string' && f.linkImgSave !== ''" :href="f.linkImgSave" target="_blank" @click.stop class="attach-badge badge-image">
+                    <img :src="f.linkImgSave" style="width: 22px; height: 22px; object-fit: cover; border-radius: 4px; flex-shrink: 0;" />
+                    <span class="attach-text">{{ truncateFileName(getFileName(f.linkImgSave, 'Hình ảnh', 0)) }}</span>
                   </a>
                 </div>
               </div>
@@ -1609,581 +3950,311 @@
       </div>
     </div>
 
-    <!-- Modal Quản lý Tag -->
-    <div v-if="isTagModalOpen" class="elite-modal-overlay" @click.self="isTagModalOpen = false" style="position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 100070;">
-      <div class="elite-modal report-form-modal" style="width: 95%; max-width: 500px;">
-        <div class="elite-modal-header">
-          <div class="elite-modal-title" style="display: flex; align-items: flex-start; gap: 0.6rem;"><h2>Quản lý Nhóm Khách Hàng</h2></div>
-          <button class="elite-btn-close" @click="isTagModalOpen = false">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-          </button>
-        </div>
-        
-        <div class="elite-modal-body" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem;">
-          <!-- Thêm tag mới -->
-          <div style="display: flex; gap: 0.5rem;">
-            <input type="text" v-model="tempTagKH" @keyup.enter="addNewTagFromInput" placeholder="Nhập tên nhóm mới..." class="elite-input" style="flex: 1;" />
-            <button type="button" @click="addNewTagFromInput" class="elite-btn-save" style="padding: 0 1rem; border-radius: 6px; font-weight: 600;">Thêm Mới</button>
-          </div>
-
-          <!-- Danh sách tag để sửa/xóa -->
-          <div>
-            <h4 style="margin: 0 0 0.8rem 0; color: #475569; font-size: 13px;">Tất cả nhóm hiện có</h4>
-            <div v-if="availableTags.length === 0" style="color: #94a3b8; font-size: 13px; font-style: italic;">Chưa có nhóm nào.</div>
-            <div style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 300px; overflow-y: auto; padding-right: 0.5rem;">
-              <div v-for="tag in availableTags" :key="tag.id" style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1px solid #e2e8f0; padding: 0.5rem 0.8rem; border-radius: 6px;">
-                
-                <div v-if="editingTagId === tag.name" style="display: flex; gap: 0.5rem; flex: 1; margin-right: 1rem;">
-                  <input type="text" v-model="editTagValue" class="elite-input" style="flex: 1; padding: 4px 8px; font-size: 13px;" />
-                  <button @click="saveTagEdit(tag.name)" class="elite-btn-save" style="padding: 4px 10px; font-size: 12px; border-radius: 4px;">Lưu</button>
-                  <button @click="editingTagId = null" class="elite-btn-cancel" style="padding: 4px 10px; font-size: 12px; border-radius: 4px;">Hủy</button>
-                </div>
-                
-                <span v-else style="font-weight: 600; color: #334155; font-size: 13px;">{{ tag.name }}</span>
-                
-                <div v-if="editingTagId !== tag.name" style="display: flex; gap: 0.4rem;">
-                  <button @click="startEditTag(tag.name)" type="button" style="background: transparent; border: none; color: #3b82f6; cursor: pointer; padding: 4px;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="16 3 21 8 8 21 3 21 3 16 16 3"></polygon></svg>
-                  </button>
-                  <button @click="deleteTagGlobal(tag.name)" type="button" style="background: transparent; border: none; color: #ef4444; cursor: pointer; padding: 4px;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal Chọn Khách Hàng -->
-    <div v-if="isCustomerSelectModalOpen" class="elite-modal-overlay" @click.self="isCustomerSelectModalOpen = false" style="position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 100060; background: rgba(0,0,0,0.6);">
-      <div class="elite-modal" style="width: 500px; max-width: 90%; background: #ffffff; border-radius: 12px; display: flex; flex-direction: column; max-height: 85vh; padding: 0;">
-        <div class="elite-modal-header" style="padding: 1rem 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
-          <h3 style="margin: 0; color: #0f172a; font-size: 1.1rem;">Chọn Khách Hàng</h3>
-          <button class="elite-btn-close" @click="isCustomerSelectModalOpen = false" style="background: transparent; border: none; cursor: pointer; color: #64748b;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-          </button>
-        </div>
-        
-        <div style="padding: 1rem 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; gap: 1rem; align-items: center; background: #f8fafc;">
-          <input type="text" v-model="customerSearchQuery" placeholder="Nhập tên, công ty hoặc mã KH..." class="elite-input" style="flex: 1; padding: 0.6rem 1rem; border: 1px solid #cbd5e1; border-radius: 6px;" />
-          <button @click="openCustomerModal(); isCustomerSelectModalOpen = false;" style="background: #10b981; color: #ffffff; border: none; padding: 0.6rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 600; white-space: nowrap; transition: background 0.2s;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
-            + Thêm Mới
-          </button>
-        </div>
-
-        <div style="flex: 1; overflow-y: auto; padding: 0.5rem 0; max-height: 380px;">
-          <!-- Nút chọn tất cả khách hàng khi ở chế độ filter -->
-          <div v-if="customerSelectMode === 'filter'" style="padding: 0.75rem 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s; cursor: pointer; background: #eff6ff;" @click="selectCustomer(null)" onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#eff6ff'">
-            <div style="font-weight: 700; color: #3b82f6; font-size: 1rem;">Tất cả khách hàng</div>
-            <div style="display: flex; gap: 8px;">
-              <button style="background: transparent; color: #3b82f6; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600;">
-                Chọn
-              </button>
-            </div>
-          </div>
-          
-          <div v-if="filteredCustomers.length === 0" style="text-align: center; color: #64748b; margin-top: 2rem;">Không tìm thấy khách hàng nào.</div>
-          <div v-for="cus in filteredCustomers" :key="cus.id" style="padding: 0.75rem 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
-            <div style="display: flex; flex-direction: column; gap: 4px;">
-              <div style="font-weight: 600; color: #0f172a; font-size: 1rem;">{{ cus.ten_khach_hang }} <span v-if="cus.ten_cong_ty" style="color: #64748b; font-weight: 400;">- {{ cus.ten_cong_ty }}</span></div>
-              <div style="font-size: 0.85rem; color: #64748b;">Mã KH: <span style="font-weight: 500; color: #3b82f6;">{{ cus.ma_khach_hang }}</span></div>
-            </div>
-            <div style="display: flex; gap: 8px;">
-              <button @click.stop="editCustomerInfo(cus)" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='#e2e8f0'; this.style.color='#0f172a'" onmouseout="this.style.background='#f1f5f9'; this.style.color='#475569'">
-                Sửa
-              </button>
-              <button @click.stop="selectCustomer(cus)" style="background: #eff6ff; color: #3b82f6; border: 1px solid #bfdbfe; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='#dbeafe'; this.style.color='#2563eb'" onmouseout="this.style.background='#eff6ff'; this.style.color='#3b82f6'">
-                Chọn
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Modal Thêm Khách Hàng Mới -->
-    <div v-if="isCustomerModalOpen" class="elite-modal-overlay" @click.self="isCustomerModalOpen = false" style="position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 100065;">
-      <div class="elite-modal report-form-modal customer-modal">
-        <div class="elite-modal-header">
-          <div class="elite-modal-title" style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-            <h2>{{ customerFormData.id ? 'Sửa Khách Hàng' : 'Tạo Khách Hàng Mới' }}</h2>
-            <span v-if="customerFormData.id && customerFormData.last_updated" style="font-size: 12px; color: #475569; background: #f1f5f9; border: 1px solid #cbd5e1; padding: 3px 10px; border-radius: 99px; font-weight: 500;">
-              🕒 Cập nhật cuối: <strong style="color: #0284c7;">{{ formatCustomerLastUpdated(customerFormData.last_updated) }}</strong>
-            </span>
-          </div>
-          <button class="elite-btn-close" @click="isCustomerModalOpen = false">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-          </button>
-        </div>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-          <!-- THÔNG TIN CÁ NHÂN -->
-          <div style="background: #f8fafc; padding: 1.5rem; border-radius: 8px; border: 1px solid #e2e8f0;">
-            <h3 style="margin-top: 0; color: #0f172a; font-size: 16px; margin-bottom: 1rem;">Thông tin Đại diện</h3>
-            
-            <div style="margin-bottom: 1rem;">
-              <label style="font-weight: 600; font-size: 13px; color: #475569;">Mã Khách Hàng *</label>
-              <input type="text" v-model="customerFormData.ma_khach_hang" class="elite-input" placeholder="VD: KH-001" :disabled="!!customerFormData.id" :style="customerFormData.id ? 'background: #f1f5f9; cursor: not-allowed; color: #64748b;' : ''" />
-            </div>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-              <div>
-                <label style="font-weight: 600; font-size: 13px; color: #475569; margin-bottom: 4px; display: block;">Tên Khách Hàng *</label>
-                <input type="text" v-model="customerFormData.ten_khach_hang" class="elite-input" placeholder="VD: Nguyễn Văn A" />
-              </div>
-              
-              <div>
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                  <label style="font-weight: 600; font-size: 13px; color: #475569;">Nhóm Khách Hàng</label>
-                  <button @click="isTagModalOpen = true" type="button" style="background: #e0e7ff; color: #4338ca; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 4px;">
-                    Quản lý Nhóm
-                  </button>
-                </div>
-                <div v-if="availableTags.length > 0" style="margin-top: 0.4rem;">
-                  <div style="display: flex; flex-wrap: wrap; gap: 0.4rem;">
-                    <button type="button" v-for="tag in availableTags" :key="tag.id" 
-                            @click="toggleTag(tag.name)"
-                            style="border: 1px solid #e2e8f0; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; transition: all 0.2s; font-weight: 600;"
-                            :style="{ 
-                              background: customerFormData.tagKH?.includes(tag.name) ? '#10b981' : 'transparent',
-                              color: customerFormData.tagKH?.includes(tag.name) ? 'white' : '#475569',
-                              borderColor: customerFormData.tagKH?.includes(tag.name) ? '#10b981' : '#e2e8f0'
-                            }">
-                      {{ tag.name }}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-              <div>
-                <label style="font-weight: 600; font-size: 13px; color: #475569;">SĐT Cá nhân</label>
-                <input type="text" v-model="customerFormData.so_dien_thoai_ca_nhan" class="elite-input" />
-              </div>
-              <div>
-                <label style="font-weight: 600; font-size: 13px; color: #475569;">Email Cá nhân</label>
-                <input type="email" v-model="customerFormData.email_ca_nhan" class="elite-input" />
-              </div>
-            </div>
-
-            <div style="margin-bottom: 1rem;">
-              <label style="font-weight: 600; font-size: 13px; color: #475569;">Tên Khách Hàng Phụ</label>
-              <input type="text" v-model="customerFormData.ten_khach_hang_phu" class="elite-input" />
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-              <div>
-                <label style="font-weight: 600; font-size: 13px; color: #475569;">SĐT Cá nhân Phụ</label>
-                <input type="text" v-model="customerFormData.so_dien_thoai_ca_nhan_phu" class="elite-input" />
-              </div>
-              <div>
-                <label style="font-weight: 600; font-size: 13px; color: #475569;">Email Cá nhân Phụ</label>
-                <input type="email" v-model="customerFormData.email_ca_nhan_phu" class="elite-input" />
-              </div>
-            </div>
-          </div>
-
-          <!-- THÔNG TIN CÔNG TY -->
-          <div style="background: #f8fafc; padding: 1.5rem; border-radius: 8px; border: 1px solid #e2e8f0;">
-            <h3 style="margin-top: 0; color: #0f172a; font-size: 16px; margin-bottom: 1rem;">Thông tin Công ty</h3>
-            
-            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1rem; margin-bottom: 1rem;">
-              <div>
-                <label style="font-weight: 600; font-size: 13px; color: #475569;">Mã Công Ty</label>
-                <input type="text" v-model="customerFormData.ma_cong_ty" class="elite-input" :disabled="!!customerFormData.id" :style="customerFormData.id ? 'background: #f1f5f9; cursor: not-allowed; color: #64748b;' : ''" />
-              </div>
-              <div>
-                <label style="font-weight: 600; font-size: 13px; color: #475569;">Tên Công Ty</label>
-                <input type="text" v-model="customerFormData.ten_cong_ty" class="elite-input" />
-              </div>
-            </div>
-
-            <div style="margin-bottom: 1rem;">
-              <label style="font-weight: 600; font-size: 13px; color: #475569;">Mã số thuế (MST)</label>
-              <input type="text" v-model="customerFormData.mst" class="elite-input" />
-            </div>
-
-            <div style="margin-bottom: 1rem;">
-              <label style="font-weight: 600; font-size: 13px; color: #475569;">Địa chỉ Công Ty</label>
-              <input type="text" v-model="customerFormData.dia_chi_cong_ty" class="elite-input" />
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-              <div>
-                <label style="font-weight: 600; font-size: 13px; color: #475569;">Email Công ty</label>
-                <input type="email" v-model="customerFormData.email_cong_ty" class="elite-input" />
-              </div>
-              <div>
-                <label style="font-weight: 600; font-size: 13px; color: #475569;">Website</label>
-                <input type="text" v-model="customerFormData.website_cong_ty" class="elite-input" />
-              </div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-              <div>
-                <label style="font-weight: 600; font-size: 13px; color: #475569;">SĐT Công ty</label>
-                <input type="text" v-model="customerFormData.so_dien_thoai_cong_ty" class="elite-input" />
-              </div>
-              <div>
-                <label style="font-weight: 600; font-size: 13px; color: #475569;">Số Fax</label>
-                <input type="text" v-model="customerFormData.so_fax_cong_ty" class="elite-input" />
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- THÔNG TIN BỔ SUNG -->
-        <div style="background: #f8fafc; padding: 1.5rem; border-radius: 8px; border: 1px solid #e2e8f0; margin-top: 1.5rem;">
-           <h3 style="margin-top: 0; color: #0f172a; font-size: 16px; margin-bottom: 1rem;">Thông tin khác</h3>
-           <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-             <div>
-               <label style="font-weight: 600; font-size: 13px; color: #475569;">Trạng thái</label>
-               <input type="text" v-model="customerFormData.trang_thai" class="elite-input" placeholder="Active / Tiềm năng" />
-             </div>
-             <div>
-               <label style="font-weight: 600; font-size: 13px; color: #475569;">Hoa hồng (%)</label>
-               <input type="text" v-model="customerFormData.hoa_hong" class="elite-input" />
-             </div>
-             <div>
-               <label style="font-weight: 600; font-size: 13px; color: #475569;">Ghi chú KH</label>
-               <input type="text" v-model="customerFormData.ghi_chu" class="elite-input" />
-             </div>
-           </div>
-        </div>
-
-        <div class="elite-modal-actions" style="margin-top: 1rem; padding: 1rem 1.5rem 1.5rem 1.5rem; display: flex; justify-content: flex-end; gap: 0.75rem; border-top: 1px solid #e2e8f0;">
-          <button class="elite-btn-cancel" @click="isCustomerModalOpen = false">Hủy bỏ</button>
-          <button v-if="!customerFormData.id" class="elite-btn-save" @click="saveNewCustomer" style="background: #3b82f6; border-color: #3b82f6; padding: 0.6rem 1.5rem;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">Tạo Khách Hàng</button>
-          <button v-else-if="isCustomerDataChanged" class="elite-btn-save" @click="saveNewCustomer" style="background: #10b981; border-color: #10b981; padding: 0.6rem 1.5rem;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">Lưu Thay Đổi</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Global Alert/Confirm Modal (Taste-Skill Precision & Double-Bezel Design) -->
-    <Teleport to="body">
-      <Transition name="taste-modal">
-        <div 
-          v-if="appDialog.isOpen" 
-          class="taste-modal-overlay" 
-          @click.self="closeAppDialog(false)"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div class="taste-modal-shell" :class="['taste-variant-' + getAppDialogVariant()]">
-            <!-- Double-Bezel Ambient Aura Glow -->
-            <div class="taste-modal-glow" aria-hidden="true"></div>
-
-            <div class="taste-modal-core">
-              <!-- Close cross button -->
-              <button 
-                type="button" 
-                class="taste-modal-close" 
-                @click="closeAppDialog(false)" 
-                title="Đóng (Esc)"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-              </button>
-
-              <div class="taste-modal-body">
-                <!-- Jewel Icon with ambient aura -->
-                <div class="taste-jewel-wrap">
-                  <div class="taste-jewel-box">
-                    <!-- Success Icon -->
-                    <svg v-if="getAppDialogVariant() === 'success'" xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                      <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                    </svg>
-                    <!-- Warning / Danger Icon -->
-                    <svg v-else-if="getAppDialogVariant() === 'danger'" xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                      <line x1="12" y1="9" x2="12" y2="13"></line>
-                      <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                    </svg>
-                    <!-- Confirm Icon -->
-                    <svg v-else-if="appDialog.type === 'confirm'" xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                      <circle cx="12" cy="12" r="10"></circle>
-                      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                      <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                    </svg>
-                    <!-- Default Info Icon -->
-                    <svg v-else xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                      <circle cx="12" cy="12" r="10"></circle>
-                      <line x1="12" y1="16" x2="12" y2="12"></line>
-                      <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                    </svg>
-                  </div>
-                </div>
-
-                <!-- Text Content -->
-                <div class="taste-modal-text">
-                  <div class="taste-eyebrow">
-                    <span class="taste-eyebrow-dot"></span>
-                    <span>{{ getAppDialogEyebrow() }}</span>
-                  </div>
-                  <h3 class="taste-title">{{ cleanDialogTitle(appDialog.title) }}</h3>
-                  <div class="taste-message">{{ cleanDialogMessage(appDialog.message) }}</div>
-                </div>
-              </div>
-
-              <!-- Action buttons with tactile physics -->
-              <div class="taste-modal-actions">
-                <button 
-                  v-if="appDialog.type === 'confirm'" 
-                  type="button"
-                  @click="closeAppDialog(false)" 
-                  class="taste-btn taste-btn-secondary"
-                >
-                  Hủy bỏ
-                </button>
-                <button 
-                  type="button"
-                  @click="closeAppDialog(true)" 
-                  class="taste-btn taste-btn-primary"
-                  :class="['taste-btn-' + getAppDialogVariant()]"
-                >
-                  <span>{{ appDialog.type === 'confirm' ? 'Xác nhận' : 'Đã hiểu' }}</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
-
-    <!-- Modal Lịch Trống (Empty Schedule) -->
-    <div class="elite-modal-overlay" v-if="isEmptyDaysModalOpen" @click.self="isEmptyDaysModalOpen = false" style="z-index: 999999; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);">
-      <div class="elite-modal dark-mode-modal" style="max-width: 900px; width: 95%; max-height: 95vh; display: flex; flex-direction: column; background: #0f172a !important; border: 1px solid rgba(255,255,255,0.1) !important; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-        <div class="elite-modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.05) !important; background: transparent !important;">
-          <div class="elite-modal-title" style="display: flex; align-items: flex-start; gap: 0.6rem;">
-            <div style="margin-top: 0.15rem; color: #3b82f6;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-            </div>
-            <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0.4rem; flex: 1;">
-              <h2 style="margin: 0; line-height: 1.3; color: #f8fafc !important;">DANH SÁCH NGÀY TRỐNG</h2>
-              <div style="display: flex; justify-content: space-between; width: 100%; align-items: center; gap: 1rem;">
-                <span v-if="emptyDays.length > 0" style="background: rgba(16,185,129,0.1); color: #34d399; padding: 0.2rem 0.6rem; border-radius: 8px; font-size: 0.75rem; font-weight: 700; border: 1px solid rgba(16,185,129,0.2); white-space: nowrap;">Có {{ emptyDays.length }} buổi</span>
-                <div style="display: flex; background: rgba(255,255,255,0.05); padding: 3px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1);">
-                  <button @click="emptyDaysViewMode = 'list'" :style="emptyDaysViewMode === 'list' ? 'background: #3b82f6; color: white; box-shadow: 0 1px 2px rgba(0,0,0,0.2);' : 'background: transparent; color: #94a3b8;'" style="padding: 4px 10px; border: none; font-size: 0.75rem; font-weight: 700; border-radius: 4px; cursor: pointer; transition: all 0.2s;">Danh Sách</button>
-                  <button @click="emptyDaysViewMode = 'calendar'" :style="emptyDaysViewMode === 'calendar' ? 'background: #3b82f6; color: white; box-shadow: 0 1px 2px rgba(0,0,0,0.2);' : 'background: transparent; color: #94a3b8;'" style="padding: 4px 10px; border: none; font-size: 0.75rem; font-weight: 700; border-radius: 4px; cursor: pointer; transition: all 0.2s;">Lịch</button>
-                </div>
-              </div>
-            </div>
-          </div>
-          <button class="elite-btn-close" @click="isEmptyDaysModalOpen = false" style="color: #94a3b8;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-          </button>
-        </div>
-        <div class="elite-modal-body" style="padding: 1.5rem;">
-          <div class="empty-days-filter" style="display: flex; gap: 1rem; margin-bottom: 1.5rem; background: linear-gradient(to right, #1e293b, #0f172a); padding: 1.2rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); align-items: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-            <div style="display: flex; flex-direction: column; flex: 1;">
-              <label style="font-size: 0.75rem; font-weight: 700; color: #f8fafc !important; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.05em;">Từ ngày</label>
-              <input type="date" v-model="emptyFilterDateFrom" @change="recalcEmptyDays" style="padding: 0.6rem 0.8rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); font-family: inherit; font-size: 0.95rem; color: #f8fafc; background: #0f172a; outline: none; transition: border-color 0.2s; color-scheme: dark;" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'" />
-            </div>
-            <div style="display: flex; flex-direction: column; flex: 1;">
-              <label style="font-size: 0.75rem; font-weight: 700; color: #f8fafc !important; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.05em;">Đến ngày</label>
-              <input type="date" v-model="emptyFilterDateTo" @change="recalcEmptyDays" style="padding: 0.6rem 0.8rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); font-family: inherit; font-size: 0.95rem; color: #f8fafc; background: #0f172a; outline: none; transition: border-color 0.2s; color-scheme: dark;" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'" />
-            </div>
-          </div>
-          <div v-if="emptyDaysViewMode === 'list'">
-            <div v-if="emptyDays.length === 0" class="empty-state" style="padding: 2rem; text-align: center; color: #94a3b8;">
-              <p>Không có buổi nào trống trong khoảng thời gian này.</p>
-            </div>
-            <div v-else class="empty-days-list" style="max-height: 400px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.8rem; padding: 0.2rem;">
-              <div v-for="(slot, idx) in emptyDays" :key="idx" class="empty-day-item" @click="openAddModalWithSlot(slot)" style="padding: 0.8rem; background: #1e293b; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; align-items: center; gap: 0.2rem; transition: all 0.2s; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" onmouseover="this.style.borderColor='#3b82f6'; this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.05)'; this.style.transform='none'">
-                <span style="font-size: 0.65rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;">{{ getThuText(slot.date) }}</span>
-                <span style="font-size: 0.95rem; font-weight: 700; color: #f8fafc;">{{ formatDateDMY(slot.date) }}</span>
-                <span :style="slot.period === 'Sáng' ? 'background: rgba(59,130,246,0.1); color: #60a5fa; border: 1px solid rgba(59,130,246,0.2);' : 'background: rgba(168,85,247,0.1); color: #c084fc; border: 1px solid rgba(168,85,247,0.2);'" style="margin-top: 0.4rem; padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">
-                  {{ slot.period === 'Sáng' ? 'Trống Sáng' : 'Trống Chiều' }}
-                </span>
-              </div>
-            </div>
-          </div>
-          <div v-else class="empty-calendar-view" style="max-height: 450px; overflow-y: auto; padding: 0.5rem;">
-            <div v-for="month in emptyDaysCalendar" :key="month.year + '-' + month.month" style="margin-bottom: 1.5rem;">
-              <h3 style="font-size: 1rem; color: #f8fafc; font-weight: 700; margin-bottom: 0.8rem; border-bottom: 2px solid rgba(255,255,255,0.05); padding-bottom: 0.6rem; display: flex; align-items: center; gap: 0.5rem;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                Tháng {{ month.month }} / {{ month.year }}
-              </h3>
-              <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; margin-bottom: 0.6rem;">
-                <div v-for="day in ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']" :key="day" style="font-size: 0.75rem; font-weight: 800; color: #94a3b8; padding: 0.4rem 0; background: rgba(255,255,255,0.05); border-radius: 6px;">{{ day }}</div>
-              </div>
-              <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;">
-                <div v-for="(day, idx) in month.days" :key="idx" 
-                     style="min-height: 75px; border-radius: 8px; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; padding: 6px 4px; position: relative; transition: all 0.2s;"
-                     :style="day ? (day.inRange ? 'background: #1e293b; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 1px 2px rgba(0,0,0,0.1);' : 'background: transparent; border: 1px dashed rgba(255,255,255,0.1); opacity: 0.4;') : 'background: transparent;'">
-                  <span v-if="day" style="font-size: 0.8rem; font-weight: 700; margin-bottom: 0.2rem;" :style="day.isSunday ? 'color: #f87171;' : 'color: #cbd5e1;'">{{ day.dayNum }}</span>
-                  <div v-if="day && !day.inRange" style="font-size: 0.55rem; color: #475569; font-weight: 700; text-align: center; margin-top: auto; text-transform: uppercase; line-height: 1.2;">Ngoài<br>khoảng</div>
-                  <div v-if="day && day.inRange" style="display: flex; flex-direction: column; gap: 3px; margin-top: auto; width: 100%;">
-                    <div v-if="!day.isSunday && day.emptyMorning" @click="openAddModalWithSlot({ date: day.date, period: 'Sáng' })" style="background: rgba(59,130,246,0.1); color: #60a5fa; border: 1px solid rgba(59,130,246,0.2); font-size: 0.65rem; font-weight: 700; border-radius: 6px; width: 100%; cursor: pointer; text-align: center; padding: 3px 0; transition: all 0.2s;" onmouseover="this.style.background='rgba(59,130,246,0.2)'; this.style.transform='scale(1.02)'" onmouseout="this.style.background='rgba(59,130,246,0.1)'; this.style.transform='none'">Sáng</div>
-                    <div v-if="!day.isSunday && !day.isSaturday && day.emptyAfternoon" @click="openAddModalWithSlot({ date: day.date, period: 'Chiều' })" style="background: rgba(168,85,247,0.1); color: #c084fc; border: 1px solid rgba(168,85,247,0.2); font-size: 0.65rem; font-weight: 700; border-radius: 6px; width: 100%; cursor: pointer; text-align: center; padding: 3px 0; transition: all 0.2s;" onmouseover="this.style.background='rgba(168,85,247,0.2)'; this.style.transform='scale(1.02)'" onmouseout="this.style.background='rgba(168,85,247,0.1)'; this.style.transform='none'">Chiều</div>
-                    <div v-if="!day.isSunday && !day.emptyMorning && (day.isSaturday || !day.emptyAfternoon)" style="font-size: 0.65rem; color: #10b981; font-weight: 800; text-align: center; padding: 3px 0; background: rgba(16,185,129,0.05); border: 1px solid rgba(16,185,129,0.1); border-radius: 6px; width: 100%;">ĐỦ</div>
-                    <div v-if="day.isSunday" style="font-size: 0.65rem; color: #ef4444; font-weight: 800; text-align: center; padding: 3px 0; background: rgba(239,68,68,0.05); border: 1px solid rgba(239,68,68,0.1); border-radius: 6px; width: 100%;">NGHỈ</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="elite-modal-actions" style="margin-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem;">
-            <button type="button" class="elite-btn-primary" @click="isEmptyDaysModalOpen = false" style="width: 100%; justify-content: center; background: #3b82f6; border-color: #3b82f6; border-radius: 10px; font-weight: 700; font-size: 0.95rem; padding: 0.8rem;">Đóng</button>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    
-    <!-- Modal Chuyển Việc (Move Tasks) -->
-    <div class="elite-modal-overlay" v-if="isMoveModalOpen" @click.self="isMoveModalOpen = false" style="z-index: 999999; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);">
-      <div class="elite-modal dark-mode-modal move-modal-pc" style="width: 96vw; height: 96vh; max-width: 1800px; display: flex; flex-direction: column; background: #0f172a !important; border: 1px solid rgba(255,255,255,0.08) !important; box-shadow: 0 25px 60px -12px rgba(0,0,0,0.7); border-radius: 12px; overflow: hidden;">
-        
-        <!-- Header -->
-        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06); flex-shrink: 0;">
-          <div style="display: flex; align-items: center; gap: 1rem;">
-            <div style="width: 42px; height: 42px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l4-4 4 4"/><path d="M9 5v14"/><path d="M19 15l-4 4-4-4"/><path d="M15 19V5"/></svg>
+    <!-- MODULE 4C: MODAL CHỌN KHÁCH HÀNG (DÙNG CHO CẢ FILTER & FORM) -->
+    <div v-if="isCustomerSelectModalOpen" class="bg-modal-overlay" style="z-index: 100060;" @click.self="isCustomerSelectModalOpen = false">
+      <div class="bg-modal-card is-md is-mobile-sheet" style="max-width: 580px;" role="dialog" aria-modal="true">
+        <div class="bg-modal-head dt-only-head">
+          <div class="bg-modal-title-row">
+            <div class="bg-modal-icon is-sky">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
             </div>
             <div>
-              <h2 style="color: #f8fafc; margin: 0; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em;">CHUYỂN VIỆC (KÉO THẢ)</h2>
-              <p style="color: #94a3b8; margin: 0.1rem 0 0 0; font-size: 0.8rem;">Kéo thẻ công việc từ ô này sang ô khác để đổi lịch làm việc. (Sáng = Xanh dương, Chiều = Xanh lá)</p>
+              <h2 class="bg-modal-title">{{ customerSelectMode === 'filter' ? 'Lọc Theo Khách Hàng' : 'Chọn Khách Hàng Liên Kết' }}</h2>
+              <p class="bg-modal-sub">Tìm nhanh theo tên đại diện, công ty hoặc mã khách hàng</p>
             </div>
           </div>
-          <button @click="isMoveModalOpen = false" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #94a3b8; font-size: 1.1rem; transition: all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.2)'; this.style.color='#f87171'" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='#94a3b8'">✕</button>
+          <button type="button" class="bg-modal-close" @click="isCustomerSelectModalOpen = false">✕</button>
         </div>
-        
-        <!-- Calendar Body -->
-        <div style="flex: 1; overflow-y: auto; padding: 1.5rem; background: #0b1118;">
-          <div v-for="month in moveDaysCalendar" :key="month.year + '-' + month.month" style="margin-bottom: 2rem;">
-            
-            <!-- Month Header -->
-            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
-              <div style="background: linear-gradient(135deg, #3b82f6, #2563eb); padding: 0.3rem 0.8rem; border-radius: 6px;">
-                <span style="color: white; font-weight: 800; font-size: 0.95rem;">Tháng {{ month.month }}</span>
-              </div>
-              <span style="color: #64748b; font-size: 0.9rem; font-weight: 600;">/ {{ month.year }}</span>
-              <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.05);"></div>
+
+        <div class="m-grab-head-stack">
+          <div class="m-grab-pill"></div>
+          <div class="m-grab-bar">
+            <h2 class="m-grab-title">{{ customerSelectMode === 'filter' ? 'Lọc Theo Khách Hàng' : 'Chọn Khách Hàng' }}</h2>
+            <button type="button" class="bg-modal-close" @click="isCustomerSelectModalOpen = false">✕</button>
+          </div>
+        </div>
+
+        <div class="bg-modal-subbar is-flex">
+          <input
+            type="text"
+            v-model="customerSearchQuery"
+            placeholder="Nhập tên, công ty hoặc mã KH..."
+            class="bg-input"
+            style="flex: 1;"
+          />
+          <button
+            type="button"
+            class="bg-btn bg-btn-emerald"
+            @click="openCustomerModal(); isCustomerSelectModalOpen = false;"
+          >
+            + Thêm KH
+          </button>
+        </div>
+
+        <div class="bg-modal-body" style="max-height: 55vh; padding: 8px 14px;">
+          <div
+            v-if="customerSelectMode === 'filter'"
+            class="bg-cus-row is-all-row"
+            @click="selectCustomer(null)"
+          >
+            <div class="bg-cus-meta">
+              <span class="bg-cus-name is-sky">Tất cả khách hàng (Bỏ lọc)</span>
             </div>
-            
-            <!-- Weekday Header Row -->
-            <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.5rem; margin-bottom: 0.5rem;">
-              <div v-for="dayName in ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN']" :key="dayName" 
-                   :style="dayName === 'CN' ? 'color: #f87171; background: rgba(239,68,68,0.05);' : 'color: #94a3b8; background: rgba(255,255,255,0.03);'"
-                   style="text-align: center; font-weight: 700; font-size: 0.8rem; padding: 0.4rem 0; border-radius: 6px; letter-spacing: 0.02em;">
-                {{ dayName }}
+            <span class="bg-btn-xs is-sky">Chọn</span>
+          </div>
+
+          <div v-if="filteredCustomers.length === 0" class="bg-empty-box">
+            Không tìm thấy khách hàng nào.
+          </div>
+
+          <div
+            v-for="cus in filteredCustomers"
+            :key="cus.id"
+            class="bg-cus-row"
+            @click="selectCustomer(cus)"
+          >
+            <div class="bg-cus-meta">
+              <div class="bg-cus-name">
+                {{ cus.ten_khach_hang }}
+                <span v-if="cus.ten_cong_ty" class="bg-cus-company">— {{ cus.ten_cong_ty }}</span>
+              </div>
+              <div class="bg-cus-code bg-tabular">Mã KH: <strong>{{ cus.ma_khach_hang }}</strong></div>
+            </div>
+            <div class="bg-cus-actions" @click.stop>
+              <button type="button" class="bg-btn-xs is-slate" @click.stop="editCustomerInfo(cus)">Sửa</button>
+              <button type="button" class="bg-btn-xs is-sky" @click.stop="selectCustomer(cus)">Chọn</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODULE 4D: MODAL THÊM / SỬA KHÁCH HÀNG (2-COL THEMED BANNER GROUPS) -->
+    <div v-if="isCustomerModalOpen" class="bg-modal-overlay" style="z-index: 100065;" @click.self="isCustomerModalOpen = false">
+      <div class="bg-modal-card is-lg is-mobile-sheet" role="dialog" aria-modal="true">
+        <div class="bg-modal-head dt-only-head">
+          <div class="bg-modal-title-row">
+            <div class="bg-modal-icon is-emerald">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+            </div>
+            <div>
+              <div class="bg-modal-title-inline">
+                <h2 class="bg-modal-title">{{ customerFormData.id ? 'Cập Nhật Khách Hàng' : 'Tạo Khách Hàng Mới' }}</h2>
+                <span v-if="customerFormData.id && customerFormData.last_updated" class="bg-count-pill bg-tabular">
+                  Cập nhật: {{ formatCustomerLastUpdated(customerFormData.last_updated) }}
+                </span>
+              </div>
+              <p class="bg-modal-sub">Đồng bộ trực tiếp với danh bạ Khách Hàng hệ thống</p>
+            </div>
+          </div>
+          <button type="button" class="bg-modal-close" @click="isCustomerModalOpen = false">✕</button>
+        </div>
+
+        <div class="m-grab-head-stack">
+          <div class="m-grab-pill"></div>
+          <div class="m-grab-bar">
+            <h2 class="m-grab-title">{{ customerFormData.id ? 'Cập Nhật Khách Hàng' : 'Tạo Khách Hàng Mới' }}</h2>
+            <button type="button" class="bg-modal-close" @click="isCustomerModalOpen = false">✕</button>
+          </div>
+        </div>
+
+        <div class="bg-modal-body">
+          <div class="bg-grid-2">
+            <!-- Group 1: Đại diện -->
+            <div class="modal-group is-sky">
+              <div class="modal-banner-header is-sky">
+                <span>THÔNG TIN ĐẠI DIỆN</span>
+              </div>
+              <div class="modal-group-body">
+                <div class="bg-field">
+                  <label class="bg-label">Mã khách hàng <span class="bg-req">*</span></label>
+                  <input type="text" v-model="customerFormData.ma_khach_hang" class="bg-input bg-tabular" placeholder="VD: KH-001" :disabled="!!customerFormData.id" />
+                </div>
+
+                <div class="bg-grid-2">
+                  <div class="bg-field">
+                    <label class="bg-label">Tên khách hàng <span class="bg-req">*</span></label>
+                    <input type="text" v-model="customerFormData.ten_khach_hang" class="bg-input" placeholder="VD: Nguyễn Văn A" />
+                  </div>
+                  <div class="bg-field">
+                    <div class="bg-label-row">
+                      <label class="bg-label">Nhóm KH</label>
+                      <button type="button" class="bg-mini-link is-sky" @click="isTagModalOpen = true">Quản lý nhóm</button>
+                    </div>
+                    <div v-if="availableTags.length > 0" class="bg-tag-selector">
+                      <button
+                        v-for="tag in availableTags"
+                        :key="tag.id"
+                        type="button"
+                        class="bg-tag-toggle"
+                        :class="{ 'is-selected': customerFormData.tagKH?.includes(tag.name) }"
+                        @click="toggleTag(tag.name)"
+                      >
+                        {{ tag.name }}
+                      </button>
+                    </div>
+                    <div v-else class="bg-target-muted">Chưa có nhóm</div>
+                  </div>
+                </div>
+
+                <div class="bg-grid-2">
+                  <div class="bg-field">
+                    <label class="bg-label">SĐT cá nhân</label>
+                    <input type="text" v-model="customerFormData.so_dien_thoai_ca_nhan" class="bg-input bg-tabular" />
+                  </div>
+                  <div class="bg-field">
+                    <label class="bg-label">Email cá nhân</label>
+                    <input type="email" v-model="customerFormData.email_ca_nhan" class="bg-input" />
+                  </div>
+                </div>
+
+                <div class="bg-field">
+                  <label class="bg-label">Tên khách hàng phụ</label>
+                  <input type="text" v-model="customerFormData.ten_khach_hang_phu" class="bg-input" />
+                </div>
+
+                <div class="bg-grid-2">
+                  <div class="bg-field">
+                    <label class="bg-label">SĐT phụ</label>
+                    <input type="text" v-model="customerFormData.so_dien_thoai_ca_nhan_phu" class="bg-input bg-tabular" />
+                  </div>
+                  <div class="bg-field">
+                    <label class="bg-label">Email phụ</label>
+                    <input type="email" v-model="customerFormData.email_ca_nhan_phu" class="bg-input" />
+                  </div>
+                </div>
               </div>
             </div>
-            
-            <!-- Calendar Grid -->
-            <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.5rem; grid-auto-rows: minmax(220px, auto);">
-              <div v-for="(day, idx) in month.days" :key="idx"
-                   :style="!day ? 'visibility: hidden;' : day.isSunday ? 'background: rgba(239,68,68,0.02); border-color: rgba(239,68,68,0.1);' : ''"
-                   style="background: #1e293b; border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; transition: border-color 0.2s; height: 100%;">
-                
-                <template v-if="day">
-                  <!-- Day Number Bar -->
-                  <div style="padding: 0.3rem 0.6rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.03); background: rgba(0,0,0,0.2);">
-                    <span style="font-weight: 800; font-size: 0.95rem;" :style="day.isSunday ? 'color: #f87171;' : 'color: #e2e8f0;'">{{ day.dayNum }}</span>
-                    <span v-if="!day.isSunday && (day.morningTasks.length + day.afternoonTasks.length) > 0" style="font-size: 0.75rem; color: #94a3b8; background: rgba(255,255,255,0.08); padding: 0.1rem 0.4rem; border-radius: 4px; font-weight: 700;">{{ day.morningTasks.length + day.afternoonTasks.length }} việc</span>
+
+            <!-- Group 2: Công ty -->
+            <div class="modal-group is-emerald">
+              <div class="modal-banner-header is-emerald">
+                <span>THÔNG TIN CÔNG TY</span>
+              </div>
+              <div class="modal-group-body">
+                <div class="bg-grid-2">
+                  <div class="bg-field">
+                    <label class="bg-label">Mã công ty</label>
+                    <input type="text" v-model="customerFormData.ma_cong_ty" class="bg-input bg-tabular" :disabled="!!customerFormData.id" />
                   </div>
-                  
-                  <!-- Drop Zones Container -->
-                  <div v-if="!day.isSunday" style="flex: 1; display: flex; flex-direction: column; padding: 0.4rem; gap: 0.5rem; overflow-y: auto;" class="custom-scrollbar">
-                    
-                    <!-- Sáng Zone -->
-                    <div style="display: flex; flex-direction: column; flex-shrink: 0; border-radius: 6px; padding: 0.4rem; background: rgba(59,130,246,0.05); border: 1px dashed rgba(59,130,246,0.3); transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1); min-height: 80px;"
-                         @dragover.prevent="$event.currentTarget.classList.add('drag-over-sang')"
-                         @dragleave.prevent="$event.currentTarget.classList.remove('drag-over-sang')"
-                         @drop.prevent="$event.currentTarget.classList.remove('drag-over-sang'); onMoveTaskDrop($event, day.dateStr, 'Sáng')">
-                      
-                      <div style="font-size: 0.75rem; color: #60a5fa; font-weight: 800; margin-bottom: 0.4rem; text-transform: uppercase; display: flex; justify-content: space-between;">
-                        <span>SÁNG</span>
-                      </div>
-                      
-                      <div v-for="task in day.morningTasks" :key="task.id" draggable="true" 
-                           @dragstart="onMoveTaskDragStart($event, task)" @dragend="draggedMoveTask = null"
-                           :class="{ 'dragging-task': draggedMoveTask && draggedMoveTask.id === task.id, 'drop-success-pulse': successDropTaskId === task.id }"
-                           style="background: linear-gradient(135deg, #1e3a8a, #1d4ed8); border-left: 4px solid #60a5fa; color: white; padding: 0.6rem 0.75rem; border-radius: 6px; font-size: 0.9rem; margin-bottom: 0.65rem; cursor: grab; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: all 0.15s;"
-                           onmouseover="if(!this.classList.contains('dragging-task')){this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(37,99,235,0.3)'}" 
-                           onmouseout="if(!this.classList.contains('dragging-task')){this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.2)'}">
-                        <div style="font-weight: 700; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">{{ task.noi_dung }}</div>
-                        <div v-if="task.ghi_chu" style="font-size: 0.8rem; color: #bfdbfe; line-height: 1.35; margin-top: 4px; padding-top: 4px; border-top: 1px dotted rgba(191,219,254,0.3); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
-                          {{ task.ghi_chu }}
-                        </div>
-                        <div v-if="task.img_save || task.link_excel_bao_gia || task.link_excel_mua_hang" style="display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 6px; padding-top: 6px; border-top: 1px dotted rgba(255,255,255,0.2);">
-                          <template v-if="task.img_save">
-                            <a v-for="(link, i) in task.img_save.split('\n').filter(Boolean)" :key="'m-img'+i" href="#" @click.prevent.stop="selectedImage = link" style="width: 24px; height: 24px; border-radius: 4px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); display: block;" :title="`Ảnh ${i + 1}`">
-                              <img :src="link" style="width: 100%; height: 100%; object-fit: cover;" />
-                            </a>
-                          </template>
-                          <template v-if="task.link_excel_bao_gia">
-                            <a v-for="(link, i) in task.link_excel_bao_gia.split('\n').filter(Boolean)" :key="'m-bg'+i" href="#" @click.prevent.stop="downloadExcelFile(link, getExcelFileName(task, 'link_excel_bao_gia', i, 'Báo giá'))"  style="background: rgba(16,185,129,0.2); color: #a7f3d0; padding: 2px 4px; border-radius: 4px; font-size: 0.65rem; text-decoration: none; display: flex; align-items: center; gap: 2px; border: 1px solid rgba(16,185,129,0.3);" :title="getExcelFileName(task, 'link_excel_bao_gia', i, 'Báo giá')">
-                              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="16" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                              {{ getExcelFileName(task, 'link_excel_bao_gia', i, 'Báo giá') }}
-                            </a>
-                          </template>
-                          <template v-if="task.link_excel_mua_hang">
-                            <a v-for="(link, i) in task.link_excel_mua_hang.split('\n').filter(Boolean)" :key="'m-mh'+i" href="#" @click.prevent.stop="downloadExcelFile(link, getExcelFileName(task, 'link_excel_mua_hang', i, 'Mua hàng'))"  style="background: rgba(139,92,246,0.2); color: #ddd6fe; padding: 2px 4px; border-radius: 4px; font-size: 0.65rem; text-decoration: none; display: flex; align-items: center; gap: 2px; border: 1px solid rgba(139,92,246,0.3);" :title="getExcelFileName(task, 'link_excel_mua_hang', i, 'Mua hàng')">
-                              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="16" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                              {{ getExcelFileName(task, 'link_excel_mua_hang', i, 'Mua hàng') }}
-                            </a>
-                          </template>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <!-- Chiều Zone -->
-                    <div style="display: flex; flex-direction: column; flex-shrink: 0; border-radius: 6px; padding: 0.4rem; background: rgba(16,185,129,0.05); border: 1px dashed rgba(16,185,129,0.3); transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1); min-height: 80px;"
-                         @dragover.prevent="$event.currentTarget.classList.add('drag-over-chieu')"
-                         @dragleave.prevent="$event.currentTarget.classList.remove('drag-over-chieu')"
-                         @drop.prevent="$event.currentTarget.classList.remove('drag-over-chieu'); onMoveTaskDrop($event, day.dateStr, 'Chiều')">
-                      
-                      <div style="font-size: 0.75rem; color: #34d399; font-weight: 800; margin-bottom: 0.4rem; text-transform: uppercase; display: flex; justify-content: space-between;">
-                        <span>CHIỀU</span>
-                      </div>
-                      
-                      <div v-for="task in day.afternoonTasks" :key="task.id" draggable="true" 
-                           @dragstart="onMoveTaskDragStart($event, task)" @dragend="draggedMoveTask = null"
-                           :class="{ 'dragging-task': draggedMoveTask && draggedMoveTask.id === task.id, 'drop-success-pulse': successDropTaskId === task.id }"
-                           style="background: linear-gradient(135deg, #064e3b, #047857); border-left: 4px solid #34d399; color: white; padding: 0.6rem 0.75rem; border-radius: 6px; font-size: 0.9rem; margin-bottom: 0.65rem; cursor: grab; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: all 0.15s;"
-                           onmouseover="if(!this.classList.contains('dragging-task')){this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(16,185,129,0.3)'}" 
-                           onmouseout="if(!this.classList.contains('dragging-task')){this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.2)'}">
-                        <div style="font-weight: 700; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">{{ task.noi_dung }}</div>
-                        <div v-if="task.ghi_chu" style="font-size: 0.8rem; color: #a7f3d0; line-height: 1.35; margin-top: 4px; padding-top: 4px; border-top: 1px dotted rgba(167,243,208,0.3); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
-                          {{ task.ghi_chu }}
-                        </div>
-                        <div v-if="task.img_save || task.link_excel_bao_gia || task.link_excel_mua_hang" style="display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 6px; padding-top: 6px; border-top: 1px dotted rgba(255,255,255,0.2);">
-                          <template v-if="task.img_save">
-                            <a v-for="(link, i) in task.img_save.split('\n').filter(Boolean)" :key="'a-img'+i" href="#" @click.prevent.stop="selectedImage = link" style="width: 24px; height: 24px; border-radius: 4px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); display: block;" :title="`Ảnh ${i + 1}`">
-                              <img :src="link" style="width: 100%; height: 100%; object-fit: cover;" />
-                            </a>
-                          </template>
-                          <template v-if="task.link_excel_bao_gia">
-                            <a v-for="(link, i) in task.link_excel_bao_gia.split('\n').filter(Boolean)" :key="'a-bg'+i" href="#" @click.prevent.stop="downloadExcelFile(link, getExcelFileName(task, 'link_excel_bao_gia', i, 'Báo giá'))"  style="background: rgba(16,185,129,0.2); color: #a7f3d0; padding: 2px 4px; border-radius: 4px; font-size: 0.65rem; text-decoration: none; display: flex; align-items: center; gap: 2px; border: 1px solid rgba(16,185,129,0.3);" :title="getExcelFileName(task, 'link_excel_bao_gia', i, 'Báo giá')">
-                              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="16" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                              {{ getExcelFileName(task, 'link_excel_bao_gia', i, 'Báo giá') }}
-                            </a>
-                          </template>
-                          <template v-if="task.link_excel_mua_hang">
-                            <a v-for="(link, i) in task.link_excel_mua_hang.split('\n').filter(Boolean)" :key="'a-mh'+i" href="#" @click.prevent.stop="downloadExcelFile(link, getExcelFileName(task, 'link_excel_mua_hang', i, 'Mua hàng'))"  style="background: rgba(139,92,246,0.2); color: #ddd6fe; padding: 2px 4px; border-radius: 4px; font-size: 0.65rem; text-decoration: none; display: flex; align-items: center; gap: 2px; border: 1px solid rgba(139,92,246,0.3);" :title="getExcelFileName(task, 'link_excel_mua_hang', i, 'Mua hàng')">
-                              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="16" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                              {{ getExcelFileName(task, 'link_excel_mua_hang', i, 'Mua hàng') }}
-                            </a>
-                          </template>
-                        </div>
-                      </div>
-                    </div>
-                    
+                  <div class="bg-field">
+                    <label class="bg-label">Tên công ty</label>
+                    <input type="text" v-model="customerFormData.ten_cong_ty" class="bg-input" />
                   </div>
-                  
-                  <!-- Sunday empty state -->
-                  <div v-else style="flex: 1; display: flex; align-items: center; justify-content: center; color: #475569; font-size: 0.75rem; font-style: italic; background: rgba(0,0,0,0.1);">Nghỉ</div>
+                </div>
+
+                <div class="bg-field">
+                  <label class="bg-label">Mã số thuế (MST)</label>
+                  <input type="text" v-model="customerFormData.mst" class="bg-input bg-tabular" />
+                </div>
+
+                <div class="bg-field">
+                  <label class="bg-label">Địa chỉ công ty</label>
+                  <input type="text" v-model="customerFormData.dia_chi_cong_ty" class="bg-input" />
+                </div>
+
+                <div class="bg-grid-2">
+                  <div class="bg-field">
+                    <label class="bg-label">Email công ty</label>
+                    <input type="email" v-model="customerFormData.email_cong_ty" class="bg-input" />
+                  </div>
+                  <div class="bg-field">
+                    <label class="bg-label">Website</label>
+                    <input type="text" v-model="customerFormData.website_cong_ty" class="bg-input" />
+                  </div>
+                </div>
+
+                <div class="bg-grid-2">
+                  <div class="bg-field">
+                    <label class="bg-label">SĐT công ty</label>
+                    <input type="text" v-model="customerFormData.so_dien_thoai_cong_ty" class="bg-input bg-tabular" />
+                  </div>
+                  <div class="bg-field">
+                    <label class="bg-label">Số Fax</label>
+                    <input type="text" v-model="customerFormData.so_fax_cong_ty" class="bg-input bg-tabular" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Group 3: Thông tin khác -->
+          <div class="modal-group is-teal" style="margin-top: 14px;">
+            <div class="modal-banner-header is-teal">
+              <span>THÔNG TIN BỔ SUNG</span>
+            </div>
+            <div class="modal-group-body">
+              <div class="bg-grid-3">
+                <div class="bg-field">
+                  <label class="bg-label">Trạng thái</label>
+                  <input type="text" v-model="customerFormData.trang_thai" class="bg-input" placeholder="Active / Tiềm năng" />
+                </div>
+                <div class="bg-field">
+                  <label class="bg-label">Hoa hồng (%)</label>
+                  <input type="text" v-model="customerFormData.hoa_hong" class="bg-input bg-tabular" />
+                </div>
+                <div class="bg-field">
+                  <label class="bg-label">Ghi chú KH</label>
+                  <input type="text" v-model="customerFormData.ghi_chu" class="bg-input" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-modal-foot">
+          <button type="button" class="bg-btn bg-btn-slate" @click="isCustomerModalOpen = false">Huỷ bỏ</button>
+          <div class="bg-foot-right">
+            <button v-if="!customerFormData.id" type="button" class="bg-btn bg-btn-primary" @click="saveNewCustomer">Tạo Khách Hàng</button>
+            <button v-else-if="isCustomerDataChanged" type="button" class="bg-btn bg-btn-emerald" @click="saveNewCustomer">Lưu Thay Đổi</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODULE 4E: MODAL QUẢN LÝ NHÓM KHÁCH HÀNG -->
+    <div v-if="isTagModalOpen" class="bg-modal-overlay" style="z-index: 100070;" @click.self="isTagModalOpen = false">
+      <div class="bg-modal-card is-sm" style="max-width: 480px;" role="dialog" aria-modal="true">
+        <div class="bg-modal-head dt-only-head">
+          <div class="bg-modal-title-row">
+            <div class="bg-modal-icon is-teal">
+              <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+            </div>
+            <h2 class="bg-modal-title">Quản Lý Nhóm Khách Hàng</h2>
+          </div>
+          <button type="button" class="bg-modal-close" @click="isTagModalOpen = false">✕</button>
+        </div>
+
+        <div class="m-grab-head-stack">
+          <div class="m-grab-pill"></div>
+          <div class="m-grab-bar">
+            <h2 class="m-grab-title">Quản Lý Nhóm Khách Hàng</h2>
+            <button type="button" class="bg-modal-close" @click="isTagModalOpen = false">✕</button>
+          </div>
+        </div>
+
+        <div class="bg-modal-body">
+          <div class="bg-inline-add-row">
+            <input type="text" v-model="tempTagKH" @keyup.enter="addNewTagFromInput" placeholder="Nhập tên nhóm mới..." class="bg-input" style="flex: 1;" />
+            <button type="button" class="bg-btn bg-btn-emerald" @click="addNewTagFromInput">Thêm mới</button>
+          </div>
+
+          <div style="margin-top: 14px;">
+            <div class="bg-label" style="margin-bottom: 8px;">Danh sách nhóm hiện có</div>
+            <div v-if="availableTags.length === 0" class="bg-empty-box">Chưa có nhóm nào.</div>
+            <div v-else class="bg-tag-manage-list">
+              <div v-for="tag in availableTags" :key="tag.id" class="bg-tag-manage-row">
+                <template v-if="editingTagId === tag.name">
+                  <input type="text" v-model="editTagValue" class="bg-input" style="flex: 1; height: 32px;" />
+                  <button type="button" class="bg-btn-xs is-emerald" @click="saveTagEdit(tag.name)">Lưu</button>
+                  <button type="button" class="bg-btn-xs is-slate" @click="editingTagId = null">Huỷ</button>
+                </template>
+                <template v-else>
+                  <span class="bg-tag-manage-name">{{ tag.name }}</span>
+                  <div class="bg-cus-actions">
+                    <button type="button" class="bg-btn-xs is-sky" @click="startEditTag(tag.name)">Sửa</button>
+                    <button type="button" class="bg-btn-xs is-rose" @click="deleteTagGlobal(tag.name)">Xoá</button>
+                  </div>
                 </template>
               </div>
             </div>
@@ -2191,740 +4262,1001 @@
         </div>
       </div>
     </div>
-    
-    <!-- Modal Chia Việc (Distribute Tasks) -->
-    <div class="elite-modal-overlay" v-if="isDistributeModalOpen" @click.self="isDistributeModalOpen = false" style="z-index: 999999; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);">
-      <div class="elite-modal dark-mode-modal" :style="{ maxWidth: distributeStep === 2 ? '1400px' : '900px', height: distributeStep === 2 ? '95vh' : 'auto' }" style="width: 95%; max-height: 95vh; display: flex; flex-direction: column; transition: all 0.3s ease; background: #0f172a !important; border: 1px solid rgba(255,255,255,0.1) !important; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-        <div class="elite-modal-header" style="flex-shrink: 0; border-bottom: 1px solid rgba(255,255,255,0.05) !important; background: transparent !important;">
-          <div class="elite-modal-title" style="display: flex; align-items: flex-start; gap: 0.6rem;">
-            <div style="margin-top: 0.15rem; color: #10b981;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"></path><path d="M4 20L21 3"></path><path d="M21 16v5h-5"></path><path d="M15 15l6 6"></path><path d="M4 4l5 5"></path></svg>
-            </div>
-            <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0.4rem; flex: 1;">
-              <h2 style="margin: 0; line-height: 1.3; color: #f8fafc !important;">CHIA ĐỀU VIỆC</h2>
-              <div style="font-size: 0.85rem; color: #94a3b8; font-weight: 500;">
-                {{ distributeStep === 1 ? 'Bước 1: Chọn các việc từ những buổi đang bị quá tải.' : 'Bước 2: Chọn các buổi trống để phân bổ việc.' }}
-              </div>
-            </div>
-          </div>
-          <button class="elite-btn-close" @click="isDistributeModalOpen = false" style="color: #94a3b8;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-          </button>
-        </div>
-        
-        <div class="elite-modal-body" style="flex: 1; overflow-y: hidden; display: flex; flex-direction: column; padding: 1.5rem;">
-          
-          <div class="empty-days-filter" style="display: flex; gap: 1rem; margin-bottom: 1.5rem; background: linear-gradient(to right, #1e293b, #0f172a); padding: 1.2rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); align-items: center; flex-shrink: 0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-            <div style="display: flex; flex-direction: column; flex: 1;">
-              <label style="font-size: 0.75rem; font-weight: 700; color: #f8fafc !important; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.05em;">Từ ngày</label>
-              <input type="date" v-model="distributeFilterDateFrom" @change="recalcDistributeTasks" style="padding: 0.6rem 0.8rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); font-family: inherit; font-size: 0.95rem; color: #f8fafc; background: #0f172a; outline: none; transition: border-color 0.2s; color-scheme: dark;" onfocus="this.style.borderColor='#10b981'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'" />
-            </div>
-            <div style="display: flex; flex-direction: column; flex: 1;">
-              <label style="font-size: 0.75rem; font-weight: 700; color: #f8fafc !important; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.05em;">Đến ngày</label>
-              <input type="date" v-model="distributeFilterDateTo" @change="recalcDistributeTasks" style="padding: 0.6rem 0.8rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); font-family: inherit; font-size: 0.95rem; color: #f8fafc; background: #0f172a; outline: none; transition: border-color 0.2s; color-scheme: dark;" onfocus="this.style.borderColor='#10b981'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'" />
-            </div>
-          </div>
-          <!-- BƯỚC 1 -->
-          <div v-if="distributeStep === 1" style="flex: 1; overflow-y: auto; padding-right: 0.5rem;" class="distribute-step-1">
-            <div v-if="overloadedPeriods.length === 0" class="empty-state" style="padding: 3rem; text-align: center;">
-              <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(16,185,129,0.1); display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem auto; border: 1px solid rgba(16,185,129,0.2);">
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-              </div>
-              <h3 style="color: #f8fafc; margin-bottom: 0.5rem; font-size: 1.2rem; font-weight: 700;">Tất cả đều ổn!</h3>
-              <p style="color: #94a3b8; font-size: 0.95rem;">Không có buổi nào bị quá tải (dư việc) trong khoảng thời gian này.</p>
-            </div>
-            
-            <div v-else>
-              <div style="margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 0.8rem;">
-                <p style="color: #94a3b8; font-size: 0.9rem; margin: 0;">Vui lòng tick chọn các việc bạn muốn san sẻ sang buổi khác:</p>
-                <div style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
-                  <!-- Số buổi có từ 2 việc -->
-                  <div style="background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); color: #fca5a5; padding: 0.6rem 1rem; border-radius: 8px; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                    Số buổi có từ 2 việc: <span style="font-weight: 800; color: #f87171; font-size: 1rem;">{{ overloadedPeriods.length }}</span>
-                  </div>
-                  
-                  <!-- Số buổi trống -->
-                  <div style="background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.2); color: #93c5fd; padding: 0.6rem 1rem; border-radius: 8px; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
-                    Số buổi trống: <span style="font-weight: 800; color: #60a5fa; font-size: 1rem;">{{ emptyPeriodsForDistribute.length }}</span>
-                  </div>
 
-                  <!-- Đã chọn -->
-                  <div :style="isTaskSelectionFull ? 'color: #fca5a5; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2);' : 'color: #34d399; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2);'" style="padding: 0.6rem 1rem; border-radius: 8px; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; transition: all 0.3s;">
-                    <svg v-if="!isTaskSelectionFull" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                    <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                    Đã chọn: <span style="font-weight: 800; font-size: 1rem;" :style="isTaskSelectionFull ? 'color: #f87171;' : 'color: #10b981;'">{{ selectedTasksToDistribute.length }} / {{ maxTasksToDistribute }}</span> việc
-                  </div>
-                </div>
-              </div>
-              
-              <div v-for="(period, idx) in overloadedPeriods" :key="idx" style="margin-bottom: 1.5rem; background: #1e293b; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2), 0 2px 4px -1px rgba(0,0,0,0.1);">
-                <div style="background: linear-gradient(to right, #1e293b, #0f172a); padding: 0.85rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center;">
-                  <div style="display: flex; align-items: center; gap: 0.6rem;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                    <span style="font-weight: 700; color: #f8fafc; font-size: 0.95rem;">{{ getThuText(period.date) }}, {{ formatDateDMY(period.date) }} <span style="color: #475569; margin: 0 0.2rem;">|</span> <span :style="period.period === 'Sáng' ? 'color: #fb923c;' : 'color: #a78bfa;'">{{ period.period }}</span></span>
-                  </div>
-                  <span style="font-size: 0.75rem; font-weight: 700; background: rgba(239,68,68,0.15); color: #f87171; padding: 0.25rem 0.7rem; border-radius: 999px; box-shadow: inset 0 0 0 1px rgba(239,68,68,0.2);">{{ period.tasks.length }} việc</span>
-                </div>
-                
-                <div style="padding: 0.75rem;">
-                  <div v-for="task in period.tasks" :key="task.id" 
-                       @click="!isTaskDisabled(task, period) && toggleTaskDistribute(task, period)"
-                       class="distribute-task-item"
-                       style="display: flex; align-items: flex-start; gap: 0.8rem; padding: 0.8rem 1rem; border-radius: 10px; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); margin-bottom: 0.4rem;"
-                       :style="selectedTasksToDistribute.some(t => t.id === task.id) ? 'background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15); cursor: pointer;' : (isTaskDisabled(task, period) ? 'background: rgba(15,23,42,0.5); border: 1px dashed rgba(255,255,255,0.1); opacity: 0.5; cursor: not-allowed;' : 'background: #0f172a; border: 1px solid rgba(255,255,255,0.05); cursor: pointer;')"
-                       onmouseover="if(this.style.cursor === 'pointer' && !this.style.transform) this.style.backgroundColor='#1e293b'" onmouseout="if(!this.style.transform && this.style.cursor === 'pointer') this.style.backgroundColor='#0f172a'">
-                    <div style="margin-top: 0.15rem;">
-                      <div style="width: 20px; height: 20px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: all 0.2s;"
-                           :style="selectedTasksToDistribute.some(t => t.id === task.id) ? 'background: #10b981; border: 1px solid #10b981; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);' : 'border: 2px solid #475569; background: transparent;'">
-                        <svg v-if="selectedTasksToDistribute.some(t => t.id === task.id)" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0f172a" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                      </div>
-                    </div>
-                    <div style="flex: 1;">
-                      <div style="font-weight: 600; font-size: 0.95rem; line-height: 1.4; transition: color 0.2s;" :style="selectedTasksToDistribute.some(t => t.id === task.id) ? 'color: #34d399;' : 'color: #f8fafc;'">{{ task.noi_dung }}</div>
-                      <div v-if="task.ghi_chu" style="font-size: 0.8rem; margin-top: 0.35rem; display: flex; align-items: center; gap: 0.4rem;" :style="selectedTasksToDistribute.some(t => t.id === task.id) ? 'color: #6ee7b7;' : 'color: #94a3b8;'">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                        {{ task.ghi_chu }}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- BƯỚC 2 -->
-          <div v-if="distributeStep === 2" style="flex: 1; display: flex; gap: 1.5rem; overflow: hidden;" class="distribute-step-2">
-            <!-- Left panel: Selected tasks -->
-            <div class="distribute-left-panel" style="width: 35%; display: flex; flex-direction: column; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; background: #0f172a; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2), 0 2px 4px -1px rgba(0,0,0,0.1);">
-              <div style="background: linear-gradient(to right, #1e293b, #0f172a); padding: 0.85rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 0.5rem;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
-                <span style="font-weight: 700; color: #f8fafc; font-size: 0.95rem;">{{ selectedTasksToDistribute.length }} việc sẽ chia</span>
-              </div>
-              <div style="flex: 1; overflow-y: auto; padding: 0.85rem; background: #0f172a;">
-                <div v-for="task in selectedTasksToDistribute" :key="task.id" 
-                     draggable="true" 
-                     @dragstart="onTaskDragStart(task, $event)"
-                     @dragend="onTaskDragEnd($event)"
-                     style="padding: 0.8rem; background: #1e293b; border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 0.6rem; font-size: 0.85rem; font-weight: 600; color: #cbd5e1; line-height: 1.5; box-shadow: 0 1px 2px rgba(0,0,0,0.1); border-left: 3px solid #10b981; cursor: grab; transition: all 0.2s;"
-                     :style="assignedTaskIds.includes(task.id) ? 'opacity: 0.5; pointer-events: none; border-left-color: #64748b; background: rgba(30,41,59,0.5); transform: scale(0.98);' : ''">
-                  {{ task.noi_dung }}
-                  <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.4rem; font-weight: 500; display: flex; align-items: center; gap: 0.3rem;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                    Lịch cũ: <span :style="assignedTaskIds.includes(task.id) ? 'text-decoration: line-through; opacity: 0.7;' : 'color: #94a3b8;'">{{ task.old_thoi_gian || task.thoi_gian }}</span>
-                  </div>
-                  <div v-if="assignedTaskIds.includes(task.id)" style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed rgba(255,255,255,0.1); font-size: 0.75rem; font-weight: 700; color: #10b981; display: flex; align-items: center; gap: 0.4rem;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                    Lịch mới: {{ task.thoi_gian }}
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Right panel: Empty periods -->
-            <div class="distribute-right-panel" style="width: 65%; display: flex; flex-direction: column; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; overflow: hidden; background: #0f172a; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2), 0 2px 4px -1px rgba(0,0,0,0.1);">
-              <div style="background: linear-gradient(to right, #1e293b, #0f172a); padding: 0.85rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center;">
-                <div style="display: flex; align-items: center; gap: 0.75rem;">
-                  <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(16,185,129,0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(16,185,129,0.2);">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                  </div>
-                  <div style="display: flex; flex-direction: column; gap: 0.15rem;">
-                    <span style="font-weight: 700; color: #f8fafc; font-size: 0.95rem;">Chọn buổi nhận việc</span>
-                    <span style="font-size: 0.75rem; font-weight: 700;" :style="isEmptySlotFull ? 'color: #34d399;' : 'color: #94a3b8;'">
-                      Đã chọn {{ selectedEmptyPeriodsForDistribute.length }}/{{ maxEmptySlots }} buổi
-                    </span>
-                  </div>
-                </div>
-                <div style="display: flex; gap: 0.6rem; align-items: center;">
-                  <div style="display: flex; background: rgba(255,255,255,0.05); padding: 3px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1);">
-                    <button @click="distributeStep2ViewMode = 'calendar'" :style="distributeStep2ViewMode === 'calendar' ? 'background: #3b82f6; color: white; box-shadow: 0 1px 2px rgba(0,0,0,0.2);' : 'background: transparent; color: #94a3b8;'" style="padding: 4px 10px; border: none; font-size: 0.75rem; font-weight: 700; border-radius: 4px; cursor: pointer; transition: all 0.2s;">Lịch</button>
-                    <button @click="distributeStep2ViewMode = 'list'" :style="distributeStep2ViewMode === 'list' ? 'background: #3b82f6; color: white; box-shadow: 0 1px 2px rgba(0,0,0,0.2);' : 'background: transparent; color: #94a3b8;'" style="padding: 4px 10px; border: none; font-size: 0.75rem; font-weight: 700; border-radius: 4px; cursor: pointer; transition: all 0.2s;">Danh Sách</button>
-                  </div>
-                  <button @click="selectAllEmptyPeriods" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700; color: #e2e8f0; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.1); transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
-                    {{ selectedEmptyPeriodsForDistribute.length > 0 ? 'Bỏ chọn' : 'Chọn tất cả' }}
-                  </button>
-                </div>
-              </div>
-              
-              <div v-if="distributeStep2ViewMode === 'list'" style="flex: 1; overflow-y: auto; padding: 1rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.8rem; align-content: flex-start;">
-                <div v-if="emptyPeriodsForDistribute.length === 0" style="grid-column: 1 / -1; padding: 2rem; text-align: center; color: #64748b;">
-                  Không có buổi nào trống trong khoảng thời gian này.
-                </div>
-                
-                <div v-else v-for="period in emptyPeriodsForDistribute" :key="period.id" 
-                     @click="toggleEmptyPeriodDistribute(period.id)"
-                     @dragover.prevent
-                     @dragenter.prevent="$event.currentTarget.style.transform='scale(1.08)'; $event.currentTarget.style.boxShadow='0 0 15px rgba(16,185,129,0.4)'"
-                     @dragleave.prevent="$event.currentTarget.style.transform='scale(1)'; $event.currentTarget.style.boxShadow='none'"
-                     @drop="onTaskDropToPeriod(period.id, $event); $event.currentTarget.style.transform='scale(1)'; $event.currentTarget.style.boxShadow='none'"
-                     style="padding: 0.8rem; border-radius: 12px; border: 2px solid transparent; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 0.2rem; position: relative;"
-                     :style="successDropPeriods.includes(period.id) ? 'background: #10b981; border-color: #10b981; transform: scale(0.9); opacity: 0; pointer-events: none;' : (selectedEmptyPeriodsForDistribute.includes(period.id) ? 'background: rgba(16,185,129,0.1); border-color: #10b981; cursor: pointer;' : (isEmptySlotFull ? 'background: rgba(15,23,42,0.5); border-color: rgba(255,255,255,0.05); opacity: 0.4; cursor: not-allowed;' : 'background: #1e293b; border-color: rgba(255,255,255,0.1); cursor: pointer;'))">
-                  
-                  <div v-if="selectedEmptyPeriodsForDistribute.includes(period.id)" style="position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; background: #10b981; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(16,185,129,0.3); pointer-events: none;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#0f172a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                  </div>
-                  
-                  <span style="font-size: 0.65rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; pointer-events: none;">{{ getThuText(period.date) }}</span>
-                  <span style="font-size: 0.95rem; font-weight: 700; color: #f8fafc; pointer-events: none;">{{ formatDateDMY(period.date) }}</span>
-                  <span :style="period.period === 'Sáng' ? 'background: rgba(59,130,246,0.1); color: #60a5fa; border: 1px solid rgba(59,130,246,0.2);' : 'background: rgba(168,85,247,0.1); color: #c084fc; border: 1px solid rgba(168,85,247,0.2);'" style="margin-top: 0.4rem; padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700; pointer-events: none;">
-                    {{ period.period === 'Sáng' ? 'Trống Sáng' : 'Trống Chiều' }}
-                  </span>
-                </div>
-              </div>
-              
-              <div v-else class="empty-calendar-view" style="flex: 1; overflow-y: auto; padding: 1rem;">
-                <div v-for="month in distributeDaysCalendar" :key="month.year + '-' + month.month" style="margin-bottom: 1.5rem;">
-                  <h3 style="font-size: 1rem; color: #f8fafc; font-weight: 700; margin-bottom: 0.8rem; border-bottom: 2px solid rgba(255,255,255,0.05); padding-bottom: 0.6rem; display: flex; align-items: center; gap: 0.5rem;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                    Tháng {{ month.month }} / {{ month.year }}
-                  </h3>
-                  <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; margin-bottom: 0.6rem;">
-                    <div v-for="day in ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']" :key="day" style="font-size: 0.75rem; font-weight: 800; color: #94a3b8; padding: 0.4rem 0; background: rgba(255,255,255,0.05); border-radius: 6px;">{{ day }}</div>
-                  </div>
-                  <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;">
-                    <div v-for="(day, idx) in month.days" :key="idx" 
-                         style="min-height: 75px; border-radius: 8px; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; padding: 6px 4px; position: relative; transition: all 0.2s;"
-                         :style="day ? (day.inRange ? 'background: #1e293b; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 1px 2px rgba(0,0,0,0.1);' : 'background: transparent; border: 1px dashed rgba(255,255,255,0.1); opacity: 0.4;') : 'background: transparent;'">
-                      <span v-if="day" style="font-size: 0.8rem; font-weight: 700; margin-bottom: 0.2rem;" :style="day.isSunday ? 'color: #f87171;' : 'color: #cbd5e1;'">{{ day.dayNum }}</span>
-                      <div v-if="day && !day.inRange" style="font-size: 0.55rem; color: #475569; font-weight: 700; text-align: center; margin-top: auto; text-transform: uppercase; line-height: 1.2;">Ngoài<br>khoảng</div>
-                      <div v-if="day && day.inRange" style="display: flex; flex-direction: column; gap: 3px; margin-top: auto; width: 100%;">
-                        <div v-if="!day.isSunday && day.emptyMorning" 
-                             @click="toggleEmptyPeriodDistribute(day.emptyMorning.id)" 
-                             @dragover.prevent
-                             @dragenter.prevent="$event.currentTarget.style.transform='scale(1.15)'; $event.currentTarget.style.boxShadow='0 0 12px rgba(59,130,246,0.6)'"
-                             @dragleave.prevent="$event.currentTarget.style.transform='scale(1)'; $event.currentTarget.style.boxShadow='none'"
-                             @drop="onTaskDropToPeriod(day.emptyMorning.id, $event); $event.currentTarget.style.transform='scale(1)'; $event.currentTarget.style.boxShadow='none'"
-                             style="font-size: 0.65rem; font-weight: 700; border-radius: 6px; width: 100%; text-align: center; padding: 3px 0; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); user-select: none;"
-                             :style="successDropPeriods.includes(day.emptyMorning.id) ? 'background: #10b981; color: white; transform: scale(0.9); opacity: 0; pointer-events: none;' : (selectedEmptyPeriodsForDistribute.includes(day.emptyMorning.id) ? 'background: #10b981; color: #0f172a; border: 1px solid #10b981; box-shadow: 0 2px 4px rgba(16,185,129,0.3); transform: scale(1.02); cursor: pointer;' : (isEmptySlotFull ? 'background: rgba(15,23,42,0.5); color: #64748b; border: 1px solid rgba(255,255,255,0.1); opacity: 0.5; cursor: not-allowed;' : 'background: rgba(59,130,246,0.1); color: #60a5fa; border: 1px solid rgba(59,130,246,0.2); cursor: pointer;'))"
-                             onmouseover="if(!this.style.opacity && this.style.backgroundColor !== 'rgb(16, 185, 129)') this.style.filter='brightness(1.2)'" onmouseout="this.style.filter='none'">{{ successDropPeriods.includes(day.emptyMorning.id) ? '✓' : 'Sáng' }}</div>
-                        <div v-if="!day.isSunday && !day.isSaturday && day.emptyAfternoon" 
-                             @click="toggleEmptyPeriodDistribute(day.emptyAfternoon.id)" 
-                             @dragover.prevent
-                             @dragenter.prevent="$event.currentTarget.style.transform='scale(1.15)'; $event.currentTarget.style.boxShadow='0 0 12px rgba(168,85,247,0.6)'"
-                             @dragleave.prevent="$event.currentTarget.style.transform='scale(1)'; $event.currentTarget.style.boxShadow='none'"
-                             @drop="onTaskDropToPeriod(day.emptyAfternoon.id, $event); $event.currentTarget.style.transform='scale(1)'; $event.currentTarget.style.boxShadow='none'"
-                             style="font-size: 0.65rem; font-weight: 700; border-radius: 6px; width: 100%; text-align: center; padding: 3px 0; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); user-select: none;"
-                             :style="successDropPeriods.includes(day.emptyAfternoon.id) ? 'background: #10b981; color: white; transform: scale(0.9); opacity: 0; pointer-events: none;' : (selectedEmptyPeriodsForDistribute.includes(day.emptyAfternoon.id) ? 'background: #10b981; color: #0f172a; border: 1px solid #10b981; box-shadow: 0 2px 4px rgba(16,185,129,0.3); transform: scale(1.02); cursor: pointer;' : (isEmptySlotFull ? 'background: rgba(15,23,42,0.5); color: #64748b; border: 1px solid rgba(255,255,255,0.1); opacity: 0.5; cursor: not-allowed;' : 'background: rgba(168,85,247,0.1); color: #c084fc; border: 1px solid rgba(168,85,247,0.2); cursor: pointer;'))"
-                             onmouseover="if(!this.style.opacity && this.style.backgroundColor !== 'rgb(16, 185, 129)') this.style.filter='brightness(1.2)'" onmouseout="this.style.filter='none'">{{ successDropPeriods.includes(day.emptyAfternoon.id) ? '✓' : 'Chiều' }}</div>
-                        <div v-if="!day.isSunday && !day.emptyMorning && (day.isSaturday || !day.emptyAfternoon)" style="font-size: 0.65rem; color: #10b981; font-weight: 800; text-align: center; padding: 3px 0; background: rgba(16,185,129,0.05); border: 1px solid rgba(16,185,129,0.1); border-radius: 6px; width: 100%;">ĐỦ</div>
-                        <div v-if="day.isSunday" style="font-size: 0.65rem; color: #ef4444; font-weight: 800; text-align: center; padding: 3px 0; background: rgba(239,68,68,0.05); border: 1px solid rgba(239,68,68,0.1); border-radius: 6px; width: 100%;">NGHỈ</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <div class="elite-modal-actions" style="margin-top: 1.5rem; flex-shrink: 0; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between;">
-            <div style="display: flex; gap: 0.8rem;">
-              <button v-if="distributeStep === 2" type="button" class="elite-btn-cancel" style="background: rgba(255,255,255,0.05); color: #cbd5e1; border-color: rgba(255,255,255,0.1);" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'" @click="distributeStep = 1">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.3rem;"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                Quay Lại
-              </button>
-            </div>
-            
-            <div style="display: flex; gap: 0.8rem;">
-              <button type="button" class="elite-btn-cancel" style="background: rgba(255,255,255,0.05); color: #cbd5e1; border-color: rgba(255,255,255,0.1);" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'" @click="isDistributeModalOpen = false" :disabled="distributeLoading">Huỷ</button>
-              
-              <button v-if="distributeStep === 1" type="button" class="elite-btn-primary" style="background: #10b981; border-color: #10b981;" @click="nextDistributeStep" :disabled="selectedTasksToDistribute.length === 0">
-                Tiếp Tục ({{ selectedTasksToDistribute.length }} việc)
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 0.3rem;"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-              </button>
-              
-              <button v-else type="button" class="elite-btn-primary" style="background: #3b82f6; border-color: #3b82f6;" @click="executeDistribute" :disabled="!isEmptySlotFull || distributeLoading">
-                <span v-if="distributeLoading" class="spinner-small" style="margin-right: 0.5rem;"></span>
-                <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.3rem;"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                Chia Đều Việc
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Modal Xác Nhận Xóa -->
-    <div class="elite-modal-overlay" v-if="isDeleteModalOpen" @click.self="isDeleteModalOpen = false" style="z-index: 999999;">
-      <div class="elite-modal" style="max-width: 400px;">
-        <div class="elite-modal-header">
-          <div class="elite-modal-title" style="display: flex; align-items: flex-start; gap: 0.6rem;">
-            <div style="margin-top: 0.15rem; color: #ef4444;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-            </div>
-            <h2 style="margin: 0; line-height: 1.3;">Xóa báo cáo?</h2>
-          </div>
-          <button class="elite-btn-close" @click="isDeleteModalOpen = false">
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-          </button>
-        </div>
-        <div class="elite-modal-body">
-          <p style="color: #475569; font-size: 0.95rem; margin-bottom: 1.5rem; line-height: 1.5;">Bạn có chắc chắn muốn xóa báo cáo này không? Hành động này không thể hoàn tác.</p>
-          <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
-            <button class="btn-secondary" @click="isDeleteModalOpen = false" style="padding: 0.6rem 1.25rem;">Hủy</button>
-            <button class="btn-primary" @click="executeDelete" style="background: #ef4444; padding: 0.6rem 1.25rem; display: flex; align-items: center; gap: 0.5rem; border: none; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-              Xóa ngay
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-    <!-- Modal Xác Nhận Fail -->
-    <div class="elite-modal-overlay" v-if="isFailModalOpen" @click.self="isFailModalOpen = false" style="z-index: 9999999;">
-      <div class="elite-modal" style="max-width: 400px;">
-        <div class="elite-modal-header">
-          <div class="elite-modal-title" style="display: flex; align-items: flex-start; gap: 0.6rem;">
-            <div style="margin-top: 0.15rem; color: #f97316;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </div>
-            <h2 style="margin: 0; line-height: 1.3;">Đánh dấu FAIL?</h2>
-          </div>
-          <button class="elite-btn-close" @click="isFailModalOpen = false">
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-          </button>
-        </div>
-        <div class="elite-modal-body">
-          <p style="color: #475569; font-size: 0.95rem; margin-bottom: 1.5rem; line-height: 1.5;">Bạn có chắc chắn muốn đánh dấu việc này là FAIL?</p>
-          <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
-            <button class="btn-secondary" @click="isFailModalOpen = false" style="padding: 0.6rem 1.25rem;">Hủy</button>
-            <button class="btn-primary" @click="executeFail" style="background: #f97316; padding: 0.6rem 1.25rem; display: flex; align-items: center; gap: 0.5rem; border: none; box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-              Đồng ý
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal Xác Nhận Hoàn Thành -->
-    <div class="elite-modal-overlay" v-if="isDoneModalOpen" @click.self="isDoneModalOpen = false" style="z-index: 999999;">
-      <div class="elite-modal" style="max-width: 400px;">
-        <div class="elite-modal-header">
-          <div class="elite-modal-title" style="display: flex; align-items: flex-start; gap: 0.6rem;">
-            <div style="margin-top: 0.15rem; color: #10b981;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-            </div>
-            <h2 style="margin: 0; line-height: 1.3;">Xác nhận hoàn thành?</h2>
-          </div>
-          <button class="elite-btn-close" @click="isDoneModalOpen = false">
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-          </button>
-        </div>
-        <div class="elite-modal-body">
-          <p style="color: #475569; font-size: 0.95rem; margin-bottom: 1.5rem; line-height: 1.5;">Đánh dấu báo cáo này là đã hoàn thành? Hệ thống sẽ tự động cập nhật trạng thái.</p>
-          <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
-            <button class="btn-secondary" @click="isDoneModalOpen = false" style="padding: 0.6rem 1.25rem;">Hủy</button>
-            <button class="btn-primary" @click="executeMarkAsCompleted" style="background: linear-gradient(135deg, #047857, #10b981); padding: 0.6rem 1.25rem; display: flex; align-items: center; gap: 0.5rem; border: none; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-              Hoàn thành
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal Ghi Âm Giọng Nói -->
-    <div class="elite-modal-overlay" v-if="isVoiceModalOpen" @click.self="cancelVoiceRecording" style="z-index: 999999;">
-      <div class="elite-modal" style="max-width: 420px;">
-        <div class="elite-modal-header" style="justify-content: center; padding-bottom: 0; border-bottom: none;">
-          <div class="elite-modal-title" style="flex-direction: column; align-items: center; gap: 0.8rem; margin: 0 auto;">
-            <div class="voice-recording-indicator" :class="{ 'is-listening': isListening }">
-              <svg v-if="isListening" xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
-              <svg v-else xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2" ry="2"></rect></svg>
-            </div>
-            <h2 style="font-size: 1.25rem;">{{ isListening ? 'Đang nghe...' : 'Đã tạm dừng' }}</h2>
-          </div>
-        </div>
-        <div class="elite-modal-body" style="padding-top: 1rem;">
-          <div class="voice-transcript-box">
-            <span v-if="voiceTranscript">{{ voiceTranscript }}</span>
-            <span v-else class="voice-placeholder">Hãy nói nội dung bạn muốn nhập...</span>
-          </div>
-          <div class="elite-modal-actions" style="justify-content: center; gap: 0.8rem; margin-top: 1.5rem;">
-            <button type="button" class="elite-btn-cancel" @click="cancelVoiceRecording">Huỷ</button>
-            <button type="button" class="elite-btn-secondary" @click="retryVoiceRecording" style="background: rgba(245, 158, 11, 0.1); color: #d97706; border-color: rgba(245, 158, 11, 0.2);">Nói lại</button>
-            <button type="button" class="elite-btn-primary" @click="confirmVoiceRecording">Xong</button>
-          </div>
-        </div>
-      </div>
-    </div>
-    <!-- Custom Alert Modal -->
-    <div class="elite-modal-overlay" v-if="customAlertState.isOpen" @click.self="closeAlert" style="z-index: 9999999; background: rgba(15,23,42,0.8); backdrop-filter: blur(8px);">
-      <div class="elite-modal dark-mode-modal" style="width: 400px; max-width: 90vw; background: #1e293b !important; border: 1px solid rgba(255,255,255,0.1) !important; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); border-radius: 16px; overflow: hidden; transform: scale(1); animation: modalPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);">
-        <div style="padding: 1.5rem; text-align: center;">
-          <div style="margin-bottom: 1rem; display: flex; justify-content: center;">
-            <div v-if="customAlertState.type === 'error'" style="width: 56px; height: 56px; border-radius: 50%; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); display: flex; align-items: center; justify-content: center; color: #ef4444;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
-            </div>
-            <div v-else-if="customAlertState.type === 'success'" style="width: 56px; height: 56px; border-radius: 50%; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2); display: flex; align-items: center; justify-content: center; color: #10b981;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-            </div>
-            <div v-else style="width: 56px; height: 56px; border-radius: 50%; background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.2); display: flex; align-items: center; justify-content: center; color: #3b82f6;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-            </div>
-          </div>
-          <h3 style="font-size: 1.15rem; font-weight: 800; color: #f8fafc; margin-bottom: 0.6rem;">Thông báo</h3>
-          <p style="font-size: 0.95rem; color: #cbd5e1; line-height: 1.6; margin-bottom: 1.5rem;">{{ customAlertState.message }}</p>
-          <button @click="closeAlert" style="width: 100%; padding: 0.8rem; background: #3b82f6; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.95rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(59,130,246,0.3);" onmouseover="this.style.background='#2563eb'; this.style.transform='translateY(-1px)'" onmouseout="this.style.background='#3b82f6'; this.style.transform='none'">
-            Xác nhận
-          </button>
-        </div>
-      </div>
-    </div>
-    <!-- Image Preview Modal -->
-    <div v-if="selectedImage" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; align-items: center; z-index: 999999; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px);" @click="selectedImage = null">
-      <div style="position: relative; max-width: 90vw; max-height: 90vh; display: flex; justify-content: center; align-items: center;" @click.stop>
-        <button @click="selectedImage = null" style="position: absolute; top: -40px; right: 0; background: rgba(255,255,255,0.2); border: none; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.4)'; this.style.transform='scale(1.1)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'; this.style.transform='scale(1)'">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-        </button>
-        <img :src="selectedImage" style="max-width: 100%; max-height: 90vh; border-radius: 8px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); object-fit: contain;" />
-      </div>
-    </div>
-    <!-- Modal Nhắc Lại -->
-    <div class="elite-modal-overlay" v-if="isPendingModalOpen" @click.self="isPendingModalOpen = false" style="z-index: 999999; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);">
-      <div class="elite-modal dark-mode-modal" style="max-width: 1400px; width: 95%; max-height: 90vh; display: flex; flex-direction: column; background: #0f172a !important; border: 1px solid rgba(255,255,255,0.08) !important; box-shadow: 0 25px 60px -12px rgba(0,0,0,0.7); border-radius: 12px; overflow: hidden;">
-        
-        <!-- Header -->
-        <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); flex-shrink: 0;">
-          <div style="display: flex; align-items: center; gap: 1rem;">
-            <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.2); border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);">
-              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+    <!-- MODULE 4F: MODAL DANH SÁCH NGÀY TRỐNG -->
+    <div v-if="isEmptyDaysModalOpen" class="bg-modal-overlay is-fullscreen-modal" style="z-index: 100030;" @click.self="isEmptyDaysModalOpen = false">
+      <div class="bg-modal-card is-lg is-mobile-sheet is-fullscreen-card" role="dialog" aria-modal="true">
+        <div class="bg-modal-head dt-only-head">
+          <div class="bg-modal-title-row">
+            <div class="bg-modal-icon is-sky">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
             </div>
             <div>
-              <h2 style="color: #ffffff; margin: 0; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.01em; text-transform: uppercase;">
-                Việc chưa hoàn thành 
-                <span v-if="!loading">({{ filteredPendingReports.length }})</span>
-                <span v-else style="font-size: 1rem; opacity: 0.7; letter-spacing: 2px;">(...)</span>
-              </h2>
+              <div class="bg-modal-title-inline">
+                <h2 class="bg-modal-title">Danh Sách Buổi Trống</h2>
+                <span v-if="emptyDays.length > 0" class="bg-status-chip is-emerald bg-tabular">{{ emptyDays.length }} buổi trống</span>
+              </div>
+              <p class="bg-modal-sub">Chọn một buổi trống bất kỳ để tạo báo cáo công việc ngay</p>
             </div>
           </div>
-          <button @click="isPendingModalOpen = false" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #ffffff; font-size: 1.1rem; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">✕</button>
+          <div class="bg-head-tools">
+            <div class="bg-seg-switch is-compact">
+              <button type="button" class="bg-seg-btn" :class="{ 'is-active': emptyDaysViewMode === 'list' }" @click="emptyDaysViewMode = 'list'">Danh sách</button>
+              <button type="button" class="bg-seg-btn" :class="{ 'is-active': emptyDaysViewMode === 'calendar' }" @click="emptyDaysViewMode = 'calendar'">Lịch tháng</button>
+            </div>
+            <button type="button" class="bg-modal-close" @click="isEmptyDaysModalOpen = false">✕</button>
+          </div>
         </div>
 
-        <!-- Body -->
-        <div class="elite-modal-body custom-scrollbar" style="padding: 1.5rem; overflow-y: auto; background: #0b1118; display: flex; flex-direction: column; gap: 1rem;">
-          
-          <!-- Bộ lọc trong modal -->
-          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem; background: #1e293b; padding: 0.8rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); align-items: center;">
-            <span style="color: #94a3b8; font-weight: 700; font-size: 0.85rem; margin-right: 0.5rem;">BỘ LỌC:</span>
-            <button @click="pendingFilterMode = 'all'" :style="pendingFilterMode === 'all' ? 'background: #ef4444; color: white;' : 'background: rgba(255,255,255,0.05); color: #94a3b8;'" style="padding: 0.4rem 1rem; border-radius: 8px; font-size: 0.85rem; font-weight: 700; border: none; cursor: pointer; transition: all 0.2s;">Tất cả</button>
-            <button @click="pendingFilterMode = 'recent'" :style="pendingFilterMode === 'recent' ? 'background: #ef4444; color: white;' : 'background: rgba(255,255,255,0.05); color: #94a3b8;'" style="padding: 0.4rem 1rem; border-radius: 8px; font-size: 0.85rem; font-weight: 700; border: none; cursor: pointer; transition: all 0.2s;">Gần đây</button>
-            <button @click="pendingFilterMode = 'old'" :style="pendingFilterMode === 'old' ? 'background: #ef4444; color: white;' : 'background: rgba(255,255,255,0.05); color: #94a3b8;'" style="padding: 0.4rem 1rem; border-radius: 8px; font-size: 0.85rem; font-weight: 700; border: none; cursor: pointer; transition: all 0.2s;">Quá lâu</button>
-            <button @click="pendingFilterMode = 'week'" :style="pendingFilterMode === 'week' ? 'background: #ef4444; color: white;' : 'background: rgba(255,255,255,0.05); color: #94a3b8;'" style="padding: 0.4rem 1rem; border-radius: 8px; font-size: 0.85rem; font-weight: 700; border: none; cursor: pointer; transition: all 0.2s;">Tuần này</button>
-            <button @click="pendingFilterMode = 'month'" :style="pendingFilterMode === 'month' ? 'background: #ef4444; color: white;' : 'background: rgba(255,255,255,0.05); color: #94a3b8;'" style="padding: 0.4rem 1rem; border-radius: 8px; font-size: 0.85rem; font-weight: 700; border: none; cursor: pointer; transition: all 0.2s;">Tháng này</button>
-            <button @click="pendingFilterMode = 'year'" :style="pendingFilterMode === 'year' ? 'background: #ef4444; color: white;' : 'background: rgba(255,255,255,0.05); color: #94a3b8;'" style="padding: 0.4rem 1rem; border-radius: 8px; font-size: 0.85rem; font-weight: 700; border: none; cursor: pointer; transition: all 0.2s;">Năm nay</button>
+        <div class="m-grab-head-stack">
+          <div class="m-grab-pill"></div>
+          <div class="m-grab-bar">
+            <div class="m-grab-title-wrap">
+              <h2 class="m-grab-title">Danh Sách Buổi Trống</h2>
+              <span class="m-grab-sub bg-tabular">Có {{ emptyDays.length }} buổi trống</span>
+            </div>
+            <button type="button" class="bg-modal-close" @click="isEmptyDaysModalOpen = false">✕</button>
           </div>
+        </div>
 
-          <div v-if="loading" style="display: flex; flex-direction: column; gap: 1.25rem;">
-            <div v-for="i in 3" :key="i" class="animate-pulse" style="background: #1e293b; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem;">
-              <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div style="height: 22px; width: 90px; background: rgba(59,130,246,0.2); border-radius: 999px;"></div>
-                <div style="height: 24px; width: 110px; background: rgba(16,185,129,0.2); border-radius: 6px;"></div>
-              </div>
-              <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
-                <div style="height: 14px; width: 100%; background: rgba(255,255,255,0.05); border-radius: 4px;"></div>
-                <div style="height: 14px; width: 85%; background: rgba(255,255,255,0.05); border-radius: 4px;"></div>
-                <div style="height: 14px; width: 40%; background: rgba(255,255,255,0.05); border-radius: 4px;"></div>
-              </div>
+        <div class="bg-modal-subbar is-empty-days-subbar" data-guide="empty-days-subbar">
+          <div class="bg-empty-date-row bg-tabular">
+            <div class="bg-field is-empty-date-field">
+              <label class="bg-label">Từ ngày</label>
+              <input
+                type="date"
+                v-model="emptyFilterDateFrom"
+                @change="recalcEmptyDays"
+                @click="e => e.target.showPicker && e.target.showPicker()"
+                class="bg-input is-empty-date-input"
+              />
+            </div>
+            <span class="bg-empty-date-arrow" aria-hidden="true">→</span>
+            <div class="bg-field is-empty-date-field">
+              <label class="bg-label">Đến ngày</label>
+              <input
+                type="date"
+                v-model="emptyFilterDateTo"
+                @change="recalcEmptyDays"
+                @click="e => e.target.showPicker && e.target.showPicker()"
+                class="bg-input is-empty-date-input"
+              />
             </div>
           </div>
-
-          <div v-else-if="filteredPendingReports.length === 0" style="text-align: center; color: #94a3b8; padding: 4rem 2rem; display: flex; flex-direction: column; align-items: center; gap: 1rem;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.2;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-            <p style="font-size: 1.1rem; font-weight: 600;">Tuyệt vời! Không còn việc nào tồn đọng.</p>
+          <div v-if="isCompactShell" class="bg-seg-switch is-compact is-empty-view-track">
+            <button type="button" class="bg-seg-btn" :class="{ 'is-active': emptyDaysViewMode === 'list' }" @click="emptyDaysViewMode = 'list'">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+              <span>Danh sách</span>
+            </button>
+            <button type="button" class="bg-seg-btn" :class="{ 'is-active': emptyDaysViewMode === 'calendar' }" @click="emptyDaysViewMode = 'calendar'">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="9" x2="21" y2="9"></line></svg>
+              <span>Lịch tháng</span>
+            </button>
           </div>
-          <div v-else :style="!isMobile ? 'display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;' : 'display: flex; flex-direction: column; gap: 1.25rem;'">
-            <!-- Cột Việc chưa xử lý -->
-            <div :style="!isMobile ? 'display: flex; flex-direction: column; gap: 1.25rem; background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 12px; border: 1px dashed rgba(255,255,255,0.1);' : 'display: contents;'">
-              <h3 v-if="!isMobile" style="color: #94a3b8; font-size: 1rem; text-align: center; margin: 0 0 0.5rem 0; text-transform: uppercase; letter-spacing: 0.05em;">Việc Chưa Xử Lý ({{ pendingOtherReports.length }})</h3>
-              <div v-for="(report, idx) in (!isMobile ? visiblePendingOtherReports : visiblePendingMobileReports)" :key="report.id" 
-                   @click="navigateToReportDate(report)" 
-                   :draggable="!isMobile"
-                   @dragstart="!isMobile && onDragStartReport($event, report)"
-                   @dragend="!isMobile && onDragEndReport($event)"
-                   :style="['background: #1e293b; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 1.25rem; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; gap: 0.8rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);', draggedReportId === report.id ? 'opacity: 0.9; transform: scale(1.04) rotate(-2deg); border-color: rgba(16, 185, 129, 0.8); box-shadow: 0 25px 35px -5px rgba(0,0,0,0.4), 0 0 20px rgba(16, 185, 129, 0.4); z-index: 100;' : '', (report.isFailed === true || report.isFailed === 'TRUE') ? 'opacity: 0.65; filter: grayscale(80%);' : '']"
-                   onmouseover="this.style.transform='translateY(-3px)'; this.style.borderColor='#ef4444'; this.style.boxShadow='0 10px 20px -5px rgba(0,0,0,0.3)'" 
-                   onmouseout="this.style.transform='none'; this.style.borderColor='rgba(255,255,255,0.06)'; this.style.boxShadow='0 4px 6px -1px rgba(0,0,0,0.1)'">
-                
-                <!-- Header của card -->
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
-                  <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    <span style="font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 999px; font-weight: 800; background: rgba(59,130,246,0.1); color: #60a5fa; border: 1px solid rgba(59,130,246,0.2); letter-spacing: 0.05em;">{{ report.phan_loai }}</span>
-                    <span v-if="report.isFailed === true || report.isFailed === 'TRUE'" class="is-failed-tag">Failed</span>
-                    <span v-if="report.tag === 'ƯU TIÊN'" style="font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 999px; font-weight: 800; background: rgba(239,68,68,0.1); color: #f87171; border: 1px solid rgba(239,68,68,0.2); letter-spacing: 0.05em;">ƯU TIÊN</span>
-                  </div>
-                  <div style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.75rem; color: #10b981; font-weight: 800; background: rgba(16,185,129,0.1); padding: 0.25rem 0.6rem; border-radius: 6px; border: 1px solid #10b981; white-space: nowrap; box-shadow: 0 2px 4px rgba(16,185,129,0.15);">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                    {{ getRelativeDateText(report.thoi_gian) }}
-                  </div>
-                </div>
-                
-                <!-- Nội dung -->
-                <div style="color: #f8fafc; font-size: 0.95rem; line-height: 1.6; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; flex: 1;">
-                  {{ report.noi_dung }}
-                </div>
-                
-                <!-- Ghi chú nếu có -->
-                <div v-if="report.ghi_chu" style="margin-top: 0.2rem; font-size: 0.8rem; color: #fca5a5; background: rgba(239,68,68,0.05); padding: 0.6rem 0.8rem; border-radius: 8px; border-left: 3px solid #ef4444; display: flex; gap: 0.5rem; align-items: flex-start;">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 0.1rem;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                  <span style="line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ report.ghi_chu }}</span>
-                </div>
-                
-                <!-- Đính kèm -->
-                <div v-if="report.img_save || report.link_excel_bao_gia || report.link_excel_mua_hang" style="display: flex; gap: 0.8rem; margin-top: 0.2rem; border-top: 1px dashed rgba(255,255,255,0.08); padding-top: 0.8rem;">
-                  <span v-if="report.img_save" style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: #94a3b8; font-weight: 600;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> Có ảnh</span>
-                  <span v-if="report.link_excel_bao_gia || report.link_excel_mua_hang" style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: #10b981; font-weight: 600;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="16" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg> Excel</span>
-                </div>
-                
-                <!-- Actions -->
-                <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; justify-content: flex-end; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.05);">
-                  <button v-if="report.trang_thai !== 'Hoàn thành'" class="tl-action-btn" @click.stop="markAsFailed(report)" style="color: white; background: linear-gradient(135deg, #f97316, #ea580c); border:none; padding: 6px 12px; border-radius: 6px; display:flex; align-items:center; gap:4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px -2px rgba(249, 115, 22, 0.5);">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                    Fail
-                  </button>
-                  <button v-if="report.trang_thai !== 'Hoàn thành'" class="tl-action-btn tl-action-today" @click.stop="moveToToday(report)" style="color: white; background: linear-gradient(135deg, #3b82f6, #2563eb); border:none; padding: 6px 12px; border-radius: 6px; display:flex; align-items:center; gap:4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px -2px rgba(59,130,246,0.5);">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                    Làm hôm nay
-                  </button>
-                </div>
-              </div>
-              <button v-if="!isMobile && visiblePendingOtherReports.length < pendingOtherReports.length"
-                      type="button"
-                      class="lazy-subcol-more-btn"
-                      @click="loadMorePendingModalReports">
-                <span>+{{ Math.min(LAZY_BATCH_SIZE, pendingOtherReports.length - visiblePendingOtherReports.length) }} việc nữa ({{ visiblePendingOtherReports.length }}/{{ pendingOtherReports.length }})</span>
-              </button>
+        </div>
+
+        <div class="bg-modal-body">
+          <div v-if="emptyDaysViewMode === 'list'">
+            <div v-if="emptyDays.length === 0" class="bg-empty-box">
+              Không có buổi làm việc nào trống trong khoảng thời gian này.
             </div>
-
-            <!-- Cột Việc làm hôm nay -->
-            <div v-if="!isMobile" 
-                 @dragover.prevent="dragOverColumn = 'modal-today'"
-                 @dragleave="dragOverColumn = null"
-                 @drop="onDropToToday($event); dragOverColumn = null"
-                 :class="{ 'modal-today-dropzone-highlight': draggedReportId !== null, 'modal-today-dropzone-active': dragOverColumn === 'modal-today' }"
-                 style="display: flex; flex-direction: column; gap: 1.25rem; background: rgba(16, 185, 129, 0.05); padding: 1rem; border-radius: 12px; border: 1px dashed rgba(16, 185, 129, 0.2); min-height: 200px; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);">
-              <h3 style="color: #10b981; font-size: 1rem; text-align: center; margin: 0 0 0.5rem 0; text-transform: uppercase; letter-spacing: 0.05em;">Việc Làm Hôm Nay ({{ pendingTodayReports.length }})</h3>
-              
-              <div v-if="pendingTodayReports.length === 0" style="text-align: center; color: #94a3b8; padding: 2rem 1rem; font-style: italic; font-size: 0.9rem;">
-                Kéo việc chưa xử lý thả vào đây để làm hôm nay
-              </div>
-
-              <div v-for="(report, idx) in visiblePendingTodayReports" :key="'today-'+report.id" 
-                   @click="navigateToReportDate(report)" 
-                   :draggable="true"
-                   @dragstart="onDragStartReport($event, report)"
-                   @dragend="onDragEndReport($event)"
-                   :class="{ 'modal-card-dropped': report.id === droppedReportId }"
-                   :style="['background: #1e293b; border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; padding: 1.25rem; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; gap: 0.8rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);', draggedReportId === report.id ? 'opacity: 0.9; transform: scale(1.04) rotate(-2deg); border-color: rgba(16, 185, 129, 0.8); box-shadow: 0 25px 35px -5px rgba(0,0,0,0.4), 0 0 20px rgba(16, 185, 129, 0.4); z-index: 100;' : '', (report.isFailed === true || report.isFailed === 'TRUE') ? 'opacity: 0.65; filter: grayscale(80%);' : '']"
-                   onmouseover="if(this.className.indexOf('modal-card-dropped') === -1) { this.style.transform='translateY(-3px)'; this.style.borderColor='#10b981'; this.style.boxShadow='0 10px 20px -5px rgba(16, 185, 129, 0.2)' }" 
-                   onmouseout="if(this.className.indexOf('modal-card-dropped') === -1) { this.style.transform='none'; this.style.borderColor='rgba(16, 185, 129, 0.3)'; this.style.boxShadow='0 4px 6px -1px rgba(0,0,0,0.1)' }">
-                <!-- Header của card -->
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
-                  <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    <span style="font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 999px; font-weight: 800; background: rgba(59,130,246,0.1); color: #60a5fa; border: 1px solid rgba(59,130,246,0.2); letter-spacing: 0.05em;">{{ report.phan_loai }}</span>
-                    <span v-if="report.isFailed === true || report.isFailed === 'TRUE'" class="is-failed-tag">Failed</span>
-                    <span v-if="report.tag === 'ƯU TIÊN'" style="font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 999px; font-weight: 800; background: rgba(239,68,68,0.1); color: #f87171; border: 1px solid rgba(239,68,68,0.2); letter-spacing: 0.05em;">ƯU TIÊN</span>
-                  </div>
-                  <div style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.75rem; color: #10b981; font-weight: 800; background: rgba(16,185,129,0.1); padding: 0.25rem 0.6rem; border-radius: 6px; border: 1px solid #10b981; white-space: nowrap; box-shadow: 0 2px 4px rgba(16,185,129,0.15);">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                    {{ getRelativeDateText(report.thoi_gian) }}
-                  </div>
-                </div>
-                
-                <!-- Nội dung -->
-                <div style="color: #f8fafc; font-size: 0.95rem; line-height: 1.6; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; flex: 1;">
-                  {{ report.noi_dung }}
-                </div>
-                
-                <!-- Ghi chú nếu có -->
-                <div v-if="report.ghi_chu" style="margin-top: 0.2rem; font-size: 0.8rem; color: #fca5a5; background: rgba(239,68,68,0.05); padding: 0.6rem 0.8rem; border-radius: 8px; border-left: 3px solid #ef4444; display: flex; gap: 0.5rem; align-items: flex-start;">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 0.1rem;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                  <span style="line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ report.ghi_chu }}</span>
-                </div>
-                
-                <!-- Đính kèm -->
-                <div v-if="report.img_save || report.link_excel_bao_gia || report.link_excel_mua_hang" style="display: flex; gap: 0.8rem; margin-top: 0.2rem; border-top: 1px dashed rgba(255,255,255,0.08); padding-top: 0.8rem;">
-                  <span v-if="report.img_save" style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: #94a3b8; font-weight: 600;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> Có ảnh</span>
-                  <span v-if="report.link_excel_bao_gia || report.link_excel_mua_hang" style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: #10b981; font-weight: 600;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="16" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg> Excel</span>
-                </div>
-                
-                <!-- Actions -->
-                <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; justify-content: flex-end; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.05);">
-                  <button v-if="report.trang_thai !== 'Hoàn thành'" class="tl-action-btn" @click.stop="markAsFailed(report)" style="color: white; background: linear-gradient(135deg, #f97316, #ea580c); border:none; padding: 6px 12px; border-radius: 6px; display:flex; align-items:center; gap:4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px -2px rgba(249, 115, 22, 0.5);">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                    Fail
-                  </button>
-                  <button v-if="report.trang_thai !== 'Hoàn thành'" class="tl-action-btn tl-action-done" @click.stop="markAsCompleted(report)" style="color: white; background: linear-gradient(135deg, #059669, #10b981); border:none; padding: 6px 12px; border-radius: 6px; display:flex; align-items:center; gap:4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px -2px rgba(16,185,129,0.5);">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                    Xong
-                  </button>
-                </div>
-              </div>
-              <button v-if="visiblePendingTodayReports.length < pendingTodayReports.length"
-                      type="button"
-                      class="lazy-subcol-more-btn"
-                      @click="loadMorePendingModalReports">
-                <span>+{{ Math.min(LAZY_BATCH_SIZE, pendingTodayReports.length - visiblePendingTodayReports.length) }} việc nữa ({{ visiblePendingTodayReports.length }}/{{ pendingTodayReports.length }})</span>
+            <div v-else class="bg-slot-grid bg-tabular">
+              <button
+                v-for="(slot, idx) in emptyDays"
+                :key="idx"
+                type="button"
+                class="bg-slot-card"
+                @click="openAddModalWithSlot(slot)"
+              >
+                <span class="bg-slot-thu">{{ getThuText(slot.date) }}</span>
+                <span class="bg-slot-date">{{ formatDateDMY(slot.date) }}</span>
+                <span class="bg-tag-pill" :class="slot.period === 'Sáng' ? 'is-sky' : 'is-amber'">
+                  {{ slot.period === 'Sáng' ? 'Trống Sáng' : 'Trống Chiều' }}
+                </span>
               </button>
             </div>
           </div>
 
-          <!-- Lazy Load Footer trong Modal Việc chưa hoàn thành -->
-          <div v-if="!loading && filteredPendingReports.length > LAZY_BATCH_SIZE"
-               ref="pendingModalSentinel"
-               class="lazy-load-footer"
-               style="margin-top: 0.5rem;">
+          <div v-else class="bg-cal-months bg-tabular">
+            <div v-for="month in emptyDaysCalendar" :key="month.year + '-' + month.month" class="bg-cal-month-block">
+              <div class="bg-cal-month-title">Tháng {{ month.month }} / {{ month.year }}</div>
+              <div class="bg-cal-weekdays">
+                <div v-for="day in ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']" :key="day" class="bg-cal-wd">{{ day }}</div>
+              </div>
+              <div class="bg-cal-grid">
+                <div
+                  v-for="(day, idx) in month.days"
+                  :key="idx"
+                  class="bg-cal-cell"
+                  :class="{ 'is-pad': !day, 'is-out': day && !day.inRange, 'is-sun': day && day.isSunday }"
+                >
+                  <template v-if="day">
+                    <span class="bg-cal-daynum">{{ day.dayNum }}</span>
+                    <span v-if="!day.inRange" class="bg-cal-outlbl">Ngoài khoảng</span>
+                    <div v-else class="bg-cal-pills">
+                      <button
+                        v-if="!day.isSunday && day.emptyMorning"
+                        type="button"
+                        class="bg-cal-slot-btn is-sky"
+                        @click="openAddModalWithSlot({ date: day.date, period: 'Sáng' })"
+                      >Sáng</button>
+                      <button
+                        v-if="!day.isSunday && !day.isSaturday && day.emptyAfternoon"
+                        type="button"
+                        class="bg-cal-slot-btn is-amber"
+                        @click="openAddModalWithSlot({ date: day.date, period: 'Chiều' })"
+                      >Chiều</button>
+                      <span v-if="!day.isSunday && !day.emptyMorning && (day.isSaturday || !day.emptyAfternoon)" class="bg-cal-status is-emerald">ĐỦ</span>
+                      <span v-if="day.isSunday" class="bg-cal-status is-rose">NGHỈ</span>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-modal-foot">
+          <div></div>
+          <button type="button" class="bg-btn bg-btn-primary" @click="isEmptyDaysModalOpen = false">Đóng</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODULE 4G: MODAL CHUYỂN VIỆC KÉO THẢ (PC CALENDAR) -->
+    <div v-if="isMoveModalOpen" class="bg-modal-overlay" style="z-index: 100030;" @click.self="isMoveModalOpen = false">
+      <div class="bg-modal-card" style="width: 96vw; max-width: 1760px; height: 94vh;" role="dialog" aria-modal="true">
+        <div class="bg-modal-head">
+          <div class="bg-modal-title-row">
+            <div class="bg-modal-icon is-emerald">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l4-4 4 4"/><path d="M9 5v14"/><path d="M19 15l-4 4-4-4"/><path d="M15 19V5"/></svg>
+            </div>
+            <div>
+              <h2 class="bg-modal-title">Chuyển Việc Trực Quan (Kéo Thả Lịch)</h2>
+              <p class="bg-modal-sub">Kéo thẻ công việc từ buổi này sang buổi khác để dời lịch tức thì</p>
+            </div>
+          </div>
+          <button type="button" class="bg-modal-close" @click="isMoveModalOpen = false">✕</button>
+        </div>
+
+        <div class="bg-modal-body bg-tabular" style="flex: 1;">
+          <div v-for="month in moveDaysCalendar" :key="month.year + '-' + month.month" style="margin-bottom: 24px;">
+            <div class="bg-cal-month-title">Tháng {{ month.month }} / {{ month.year }}</div>
+            <div class="bg-cal-weekdays">
+              <div v-for="dayName in ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN']" :key="dayName" class="bg-cal-wd">{{ dayName }}</div>
+            </div>
+
+            <div class="bg-move-cal-grid">
+              <div
+                v-for="(day, idx) in month.days"
+                :key="idx"
+                class="bg-move-day-cell"
+                :class="{ 'is-pad': !day, 'is-sun': day && day.isSunday }"
+              >
+                <template v-if="day">
+                  <div class="bg-move-day-head">
+                    <span class="bg-move-day-num">{{ day.dayNum }}</span>
+                    <span v-if="!day.isSunday && (day.morningTasks.length + day.afternoonTasks.length) > 0" class="bg-tag-pill is-slate">
+                      {{ day.morningTasks.length + day.afternoonTasks.length }} việc
+                    </span>
+                  </div>
+
+                  <div v-if="!day.isSunday" class="bg-move-zones">
+                    <!-- Sáng Zone -->
+                    <div
+                      class="bg-move-zone is-morning"
+                      @dragover.prevent="$event.currentTarget.classList.add('drag-over-sang')"
+                      @dragleave.prevent="$event.currentTarget.classList.remove('drag-over-sang')"
+                      @drop.prevent="$event.currentTarget.classList.remove('drag-over-sang'); onMoveTaskDrop($event, day.dateStr, 'Sáng')"
+                    >
+                      <div class="bg-move-zone-lbl is-sky">SÁNG</div>
+                      <div
+                        v-for="task in day.morningTasks"
+                        :key="task.id"
+                        draggable="true"
+                        @dragstart="onMoveTaskDragStart($event, task)"
+                        @dragend="draggedMoveTask = null"
+                        class="bg-move-task is-sky"
+                        :class="{ 'dragging-task': draggedMoveTask && draggedMoveTask.id === task.id, 'drop-success-pulse': successDropTaskId === task.id }"
+                      >
+                        <div class="bg-move-task-text">{{ task.noi_dung }}</div>
+                        <div v-if="task.ghi_chu" class="bg-move-task-note">{{ task.ghi_chu }}</div>
+                        <div v-if="task.img_save || task.link_excel_bao_gia || task.link_excel_mua_hang" class="bg-move-task-files">
+                          <template v-if="task.img_save">
+                            <a v-for="(link, i) in task.img_save.split('\n').filter(Boolean)" :key="'m-img'+i" href="#" @click.prevent.stop="selectedImage = link" class="bg-move-mini-img">
+                              <img :src="link" alt="" />
+                            </a>
+                          </template>
+                          <template v-if="task.link_excel_bao_gia">
+                            <a v-for="(link, i) in task.link_excel_bao_gia.split('\n').filter(Boolean)" :key="'m-bg'+i" href="#" @click.prevent.stop="downloadExcelFile(link, getExcelFileName(task, 'link_excel_bao_gia', i, 'Báo giá'))" class="bg-tag-pill is-emerald">
+                              {{ getExcelFileName(task, 'link_excel_bao_gia', i, 'Báo giá') }}
+                            </a>
+                          </template>
+                          <template v-if="task.link_excel_mua_hang">
+                            <a v-for="(link, i) in task.link_excel_mua_hang.split('\n').filter(Boolean)" :key="'m-mh'+i" href="#" @click.prevent.stop="downloadExcelFile(link, getExcelFileName(task, 'link_excel_mua_hang', i, 'Mua hàng'))" class="bg-tag-pill is-amber">
+                              {{ getExcelFileName(task, 'link_excel_mua_hang', i, 'Mua hàng') }}
+                            </a>
+                          </template>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Chiều Zone -->
+                    <div
+                      class="bg-move-zone is-afternoon"
+                      @dragover.prevent="$event.currentTarget.classList.add('drag-over-chieu')"
+                      @dragleave.prevent="$event.currentTarget.classList.remove('drag-over-chieu')"
+                      @drop.prevent="$event.currentTarget.classList.remove('drag-over-chieu'); onMoveTaskDrop($event, day.dateStr, 'Chiều')"
+                    >
+                      <div class="bg-move-zone-lbl is-emerald">CHIỀU</div>
+                      <div
+                        v-for="task in day.afternoonTasks"
+                        :key="task.id"
+                        draggable="true"
+                        @dragstart="onMoveTaskDragStart($event, task)"
+                        @dragend="draggedMoveTask = null"
+                        class="bg-move-task is-emerald"
+                        :class="{ 'dragging-task': draggedMoveTask && draggedMoveTask.id === task.id, 'drop-success-pulse': successDropTaskId === task.id }"
+                      >
+                        <div class="bg-move-task-text">{{ task.noi_dung }}</div>
+                        <div v-if="task.ghi_chu" class="bg-move-task-note">{{ task.ghi_chu }}</div>
+                        <div v-if="task.img_save || task.link_excel_bao_gia || task.link_excel_mua_hang" class="bg-move-task-files">
+                          <template v-if="task.img_save">
+                            <a v-for="(link, i) in task.img_save.split('\n').filter(Boolean)" :key="'a-img'+i" href="#" @click.prevent.stop="selectedImage = link" class="bg-move-mini-img">
+                              <img :src="link" alt="" />
+                            </a>
+                          </template>
+                          <template v-if="task.link_excel_bao_gia">
+                            <a v-for="(link, i) in task.link_excel_bao_gia.split('\n').filter(Boolean)" :key="'a-bg'+i" href="#" @click.prevent.stop="downloadExcelFile(link, getExcelFileName(task, 'link_excel_bao_gia', i, 'Báo giá'))" class="bg-tag-pill is-emerald">
+                              {{ getExcelFileName(task, 'link_excel_bao_gia', i, 'Báo giá') }}
+                            </a>
+                          </template>
+                          <template v-if="task.link_excel_mua_hang">
+                            <a v-for="(link, i) in task.link_excel_mua_hang.split('\n').filter(Boolean)" :key="'a-mh'+i" href="#" @click.prevent.stop="downloadExcelFile(link, getExcelFileName(task, 'link_excel_mua_hang', i, 'Mua hàng'))" class="bg-tag-pill is-amber">
+                              {{ getExcelFileName(task, 'link_excel_mua_hang', i, 'Mua hàng') }}
+                            </a>
+                          </template>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div v-else class="bg-move-sun-rest">Nghỉ Chủ Nhật</div>
+                </template>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODULE 4H: MODAL CHIA ĐỀU VIỆC (2 BƯỚC) -->
+    <div v-if="isDistributeModalOpen" class="bg-modal-overlay is-fullscreen-modal" style="z-index: 100030;" @click.self="isDistributeModalOpen = false">
+      <div
+        class="bg-modal-card is-mobile-sheet is-fullscreen-card"
+        role="dialog"
+        aria-modal="true"
+      >
+        <div class="bg-modal-head dt-only-head">
+          <div class="bg-modal-title-row">
+            <div class="bg-modal-icon is-emerald">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"></path><path d="M4 20L21 3"></path><path d="M21 16v5h-5"></path><path d="M15 15l6 6"></path><path d="M4 4l5 5"></path></svg>
+            </div>
+            <div>
+              <h2 class="bg-modal-title">Chia Đều Công Việc</h2>
+              <p class="bg-modal-sub">
+                {{ distributeStep === 1 ? 'Bước 1/2: Chọn công việc từ các buổi đang quá tải (>= 2 việc)' : 'Bước 2/2: Chọn hoặc kéo thả vào các buổi trống để phân bổ' }}
+              </p>
+            </div>
+          </div>
+          <button type="button" class="bg-modal-close" @click="isDistributeModalOpen = false">✕</button>
+        </div>
+
+        <div class="m-grab-head-stack">
+          <div class="m-grab-pill"></div>
+          <div class="m-grab-bar">
+            <div class="m-grab-title-wrap">
+              <h2 class="m-grab-title">Chia Đều Công Việc (Bước {{ distributeStep }}/2)</h2>
+            </div>
+            <button type="button" class="bg-modal-close" @click="isDistributeModalOpen = false">✕</button>
+          </div>
+        </div>
+
+        <div class="bg-modal-subbar" data-guide="distribute-subbar">
+          <div class="bg-grid-2 bg-tabular">
+            <div class="bg-field">
+              <label class="bg-label">Từ ngày</label>
+              <input type="date" v-model="distributeFilterDateFrom" @change="recalcDistributeTasks" class="bg-input" />
+            </div>
+            <div class="bg-field">
+              <label class="bg-label">Đến ngày</label>
+              <input type="date" v-model="distributeFilterDateTo" @change="recalcDistributeTasks" class="bg-input" />
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-modal-body">
+          <!-- BƯỚC 1 -->
+          <div v-if="distributeStep === 1">
+            <div v-if="overloadedPeriods.length === 0" class="bg-empty-box">
+              Lịch làm việc cân đối! Không có buổi nào bị quá tải trong khoảng thời gian này.
+            </div>
+            <div v-else>
+              <div class="bg-dist-summary-row bg-tabular">
+                <span class="bg-status-chip is-rose">Buổi từ 2 việc: {{ overloadedPeriods.length }}</span>
+                <span class="bg-status-chip is-sky">Buổi trống: {{ emptyPeriodsForDistribute.length }}</span>
+                <span class="bg-status-chip" :class="isTaskSelectionFull ? 'is-amber' : 'is-emerald'">
+                  Đã chọn: {{ selectedTasksToDistribute.length }} / {{ maxTasksToDistribute }} việc
+                </span>
+              </div>
+
+              <div v-for="(period, idx) in overloadedPeriods" :key="idx" class="modal-group is-slate" style="margin-bottom: 12px;">
+                <div class="modal-banner-header is-slate" style="justify-content: space-between;">
+                  <span class="bg-tabular">{{ getThuText(period.date) }}, {{ formatDateDMY(period.date) }} · {{ period.period }}</span>
+                  <span class="bg-tag-pill is-rose bg-tabular">{{ period.tasks.length }} việc</span>
+                </div>
+                <div class="modal-group-body" style="gap: 8px;">
+                  <div
+                    v-for="task in period.tasks"
+                    :key="task.id"
+                    class="bg-dist-task-row"
+                    :class="{
+                      'is-selected': selectedTasksToDistribute.some(t => t.id === task.id),
+                      'is-disabled': isTaskDisabled(task, period)
+                    }"
+                    @click="!isTaskDisabled(task, period) && toggleTaskDistribute(task, period)"
+                  >
+                    <div class="bg-check-box" :class="{ 'is-checked': selectedTasksToDistribute.some(t => t.id === task.id) }">
+                      <svg v-if="selectedTasksToDistribute.some(t => t.id === task.id)" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                      <div class="bg-dist-task-title">{{ task.noi_dung }}</div>
+                      <div v-if="task.ghi_chu" class="bg-dist-task-note">{{ task.ghi_chu }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- BƯỚC 2 -->
+          <div v-else class="bg-dist-step2-grid">
+            <div class="modal-group is-emerald">
+              <div class="modal-banner-header is-emerald">
+                <span class="bg-tabular">{{ selectedTasksToDistribute.length }} VIỆC SẼ PHÂN BỔ</span>
+              </div>
+              <div class="modal-group-body" style="overflow-y: auto;">
+                <div
+                  v-for="task in selectedTasksToDistribute"
+                  :key="task.id"
+                  draggable="true"
+                  @dragstart="onTaskDragStart(task, $event)"
+                  @dragend="onTaskDragEnd($event)"
+                  class="bg-dist-drag-card"
+                  :class="{ 'is-assigned': assignedTaskIds.includes(task.id) }"
+                >
+                  <div class="bg-dist-task-title">{{ task.noi_dung }}</div>
+                  <div class="bg-dist-time-meta bg-tabular">
+                    Lịch cũ: <span>{{ task.old_thoi_gian || task.thoi_gian }}</span>
+                  </div>
+                  <div v-if="assignedTaskIds.includes(task.id)" class="bg-dist-new-time bg-tabular">
+                    ✓ Lịch mới: {{ task.thoi_gian }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="modal-group is-sky">
+              <div class="modal-banner-header is-sky" style="justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                <span class="bg-tabular">CHỌN BUỔI NHẬN ({{ selectedEmptyPeriodsForDistribute.length }}/{{ maxEmptySlots }})</span>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <div class="bg-seg-switch is-compact">
+                    <button type="button" class="bg-seg-btn" :class="{ 'is-active': distributeStep2ViewMode === 'calendar' }" @click="distributeStep2ViewMode = 'calendar'">Lịch</button>
+                    <button type="button" class="bg-seg-btn" :class="{ 'is-active': distributeStep2ViewMode === 'list' }" @click="distributeStep2ViewMode = 'list'">Danh sách</button>
+                  </div>
+                  <button type="button" class="bg-btn-xs is-slate" @click="selectAllEmptyPeriods">
+                    {{ selectedEmptyPeriodsForDistribute.length > 0 ? 'Bỏ chọn' : 'Chọn đủ' }}
+                  </button>
+                </div>
+              </div>
+
+              <div class="modal-group-body bg-tabular" style="overflow-y: auto;">
+                <div v-if="distributeStep2ViewMode === 'list'">
+                  <div v-if="emptyPeriodsForDistribute.length === 0" class="bg-empty-box">Không có buổi trống trong khoảng này.</div>
+                  <div v-else class="bg-slot-grid">
+                    <div
+                      v-for="period in emptyPeriodsForDistribute"
+                      :key="period.id"
+                      class="bg-slot-card"
+                      :class="{
+                        'is-selected': selectedEmptyPeriodsForDistribute.includes(period.id),
+                        'is-disabled': isEmptySlotFull && !selectedEmptyPeriodsForDistribute.includes(period.id)
+                      }"
+                      @click="toggleEmptyPeriodDistribute(period.id)"
+                      @dragover.prevent
+                      @drop="onTaskDropToPeriod(period.id, $event)"
+                    >
+                      <span class="bg-slot-thu">{{ getThuText(period.date) }}</span>
+                      <span class="bg-slot-date">{{ formatDateDMY(period.date) }}</span>
+                      <span class="bg-tag-pill" :class="period.period === 'Sáng' ? 'is-sky' : 'is-amber'">
+                        {{ period.period === 'Sáng' ? 'Trống Sáng' : 'Trống Chiều' }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-else class="bg-cal-months">
+                  <div v-for="month in distributeDaysCalendar" :key="month.year + '-' + month.month" class="bg-cal-month-block">
+                    <div class="bg-cal-month-title">Tháng {{ month.month }} / {{ month.year }}</div>
+                    <div class="bg-cal-weekdays">
+                      <div v-for="day in ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']" :key="day" class="bg-cal-wd">{{ day }}</div>
+                    </div>
+                    <div class="bg-cal-grid">
+                      <div
+                        v-for="(day, idx) in month.days"
+                        :key="idx"
+                        class="bg-cal-cell"
+                        :class="{ 'is-pad': !day, 'is-out': day && !day.inRange, 'is-sun': day && day.isSunday }"
+                      >
+                        <template v-if="day">
+                          <span class="bg-cal-daynum">{{ day.dayNum }}</span>
+                          <span v-if="!day.inRange" class="bg-cal-outlbl">Ngoài</span>
+                          <div v-else class="bg-cal-pills">
+                            <button
+                              v-if="!day.isSunday && day.emptyMorning"
+                              type="button"
+                              class="bg-cal-slot-btn"
+                              :class="selectedEmptyPeriodsForDistribute.includes(day.emptyMorning.id) ? 'is-emerald-solid' : 'is-sky'"
+                              @click="toggleEmptyPeriodDistribute(day.emptyMorning.id)"
+                              @dragover.prevent
+                              @drop="onTaskDropToPeriod(day.emptyMorning.id, $event)"
+                            >{{ successDropPeriods.includes(day.emptyMorning.id) ? '✓' : 'Sáng' }}</button>
+                            <button
+                              v-if="!day.isSunday && !day.isSaturday && day.emptyAfternoon"
+                              type="button"
+                              class="bg-cal-slot-btn"
+                              :class="selectedEmptyPeriodsForDistribute.includes(day.emptyAfternoon.id) ? 'is-emerald-solid' : 'is-amber'"
+                              @click="toggleEmptyPeriodDistribute(day.emptyAfternoon.id)"
+                              @dragover.prevent
+                              @drop="onTaskDropToPeriod(day.emptyAfternoon.id, $event)"
+                            >{{ successDropPeriods.includes(day.emptyAfternoon.id) ? '✓' : 'Chiều' }}</button>
+                            <span v-if="!day.isSunday && !day.emptyMorning && (day.isSaturday || !day.emptyAfternoon)" class="bg-cal-status is-emerald">ĐỦ</span>
+                            <span v-if="day.isSunday" class="bg-cal-status is-rose">NGHỈ</span>
+                          </div>
+                        </template>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-modal-foot">
+          <div>
+            <button v-if="distributeStep === 2" type="button" class="bg-btn bg-btn-slate" @click="distributeStep = 1">
+              ← Quay lại
+            </button>
+          </div>
+          <div class="bg-foot-right">
+            <button type="button" class="bg-btn bg-btn-slate" @click="isDistributeModalOpen = false" :disabled="distributeLoading">Huỷ bỏ</button>
+            <button
+              v-if="distributeStep === 1"
+              type="button"
+              class="bg-btn bg-btn-emerald bg-tabular"
+              @click="nextDistributeStep"
+              :disabled="selectedTasksToDistribute.length === 0"
+            >
+              Tiếp tục ({{ selectedTasksToDistribute.length }} việc) →
+            </button>
+            <button
+              v-else
+              type="button"
+              class="bg-btn bg-btn-primary"
+              @click="executeDistribute"
+              :disabled="!isEmptySlotFull || distributeLoading"
+            >
+              <span v-if="distributeLoading" class="bg-spin-dot"></span>
+              <span>Chia đều việc</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODULE 4I: MODAL GHI ÂM GIỌNG NÓI -->
+    <div v-if="isVoiceModalOpen" class="bg-modal-overlay" style="z-index: 100080;" @click.self="cancelVoiceRecording">
+      <div class="bg-modal-card is-sm" style="max-width: 420px;" role="dialog" aria-modal="true">
+        <div class="bg-modal-body" style="text-align: center; padding-top: 24px;">
+          <div class="voice-recording-indicator" :class="{ 'is-listening': isListening }" style="margin: 0 auto 12px;">
+            <svg v-if="isListening" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+            <svg v-else xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2" ry="2"></rect></svg>
+          </div>
+          <h3 class="bg-modal-title" style="justify-content: center; margin-bottom: 12px;">
+            {{ isListening ? 'Đang nghe giọng nói...' : 'Đã tạm dừng ghi âm' }}
+          </h3>
+          <div class="bg-voice-box">
+            <span v-if="voiceTranscript">{{ voiceTranscript }}</span>
+            <span v-else class="bg-target-muted">Hãy nói nội dung tiếng Việt bạn muốn nhập...</span>
+          </div>
+        </div>
+        <div class="bg-modal-foot" style="justify-content: center;">
+          <button type="button" class="bg-btn bg-btn-slate" @click="cancelVoiceRecording">Huỷ</button>
+          <button type="button" class="bg-btn bg-btn-amber" @click="retryVoiceRecording">Nói lại</button>
+          <button type="button" class="bg-btn bg-btn-emerald" @click="confirmVoiceRecording">Chèn văn bản</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODULE 4J: MODAL NHẮC LẠI — VIỆC CHƯA HOÀN THÀNH (KANBAN + LAZY LOAD) -->
+    <div v-if="isPendingModalOpen" class="bg-modal-overlay is-fullscreen-modal" style="z-index: 100025;" @click.self="isPendingModalOpen = false">
+      <div class="bg-modal-card is-xl is-mobile-sheet is-fullscreen-card" role="dialog" aria-modal="true">
+        <div class="bg-modal-head dt-only-head">
+          <div class="bg-modal-title-row">
+            <div class="bg-modal-icon is-amber">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            </div>
+            <div>
+              <div class="bg-modal-title-inline">
+                <h2 class="bg-modal-title">Việc Chưa Hoàn Thành</h2>
+                <span v-if="!loading" class="bg-status-chip is-amber bg-tabular">{{ filteredPendingReports.length }} việc</span>
+              </div>
+              <p class="bg-modal-sub">Kéo thả sang cột Hôm nay hoặc bấm vào thẻ để mở ngày tương ứng</p>
+            </div>
+          </div>
+          <button type="button" class="bg-modal-close" @click="isPendingModalOpen = false">✕</button>
+        </div>
+
+        <div class="m-grab-head-stack">
+          <div class="m-grab-pill"></div>
+          <div class="m-grab-bar">
+            <div class="m-grab-title-wrap">
+              <h2 class="m-grab-title">Việc Chưa Hoàn Thành ({{ filteredPendingReports.length }})</h2>
+            </div>
+            <button type="button" class="bg-modal-close" @click="isPendingModalOpen = false">✕</button>
+          </div>
+        </div>
+
+        <div class="bg-modal-subbar is-flex" data-guide="pending-subbar" style="flex-wrap: wrap;">
+          <button type="button" class="bg-btn bg-btn-chip" :class="{ 'is-active': pendingFilterMode === 'all' }" @click="pendingFilterMode = 'all'">Tất cả</button>
+          <button type="button" class="bg-btn bg-btn-chip" :class="{ 'is-active': pendingFilterMode === 'recent' }" @click="pendingFilterMode = 'recent'">Gần đây</button>
+          <button type="button" class="bg-btn bg-btn-chip" :class="{ 'is-active': pendingFilterMode === 'old' }" @click="pendingFilterMode = 'old'">Quá lâu</button>
+          <button type="button" class="bg-btn bg-btn-chip" :class="{ 'is-active': pendingFilterMode === 'week' }" @click="pendingFilterMode = 'week'">Tuần này</button>
+          <button type="button" class="bg-btn bg-btn-chip" :class="{ 'is-active': pendingFilterMode === 'month' }" @click="pendingFilterMode = 'month'">Tháng này</button>
+          <button type="button" class="bg-btn bg-btn-chip" :class="{ 'is-active': pendingFilterMode === 'year' }" @click="pendingFilterMode = 'year'">Năm nay</button>
+        </div>
+
+        <div class="bg-modal-body custom-scrollbar">
+          <div v-if="filteredPendingReports.length === 0" class="bg-empty-box">
+            Tuyệt vời! Không còn công việc nào tồn đọng.
+          </div>
+
+          <div v-else :class="!isMobile ? 'bg-pending-2col' : 'bg-pending-1col'">
+            <!-- Cột 1: Việc chưa xử lý -->
+            <div class="bg-pending-col">
+              <div v-if="!isMobile" class="bg-pending-col-head bg-tabular">
+                <span>VIỆC TỒN ĐỌNG KHÁC ({{ pendingOtherReports.length }})</span>
+              </div>
+
+              <div
+                v-for="report in (!isMobile ? visiblePendingOtherReports : visiblePendingMobileReports)"
+                :key="report.id"
+                class="bg-pending-card"
+                :class="{ 'is-failed': report.isFailed === true || report.isFailed === 'TRUE' }"
+                :draggable="!isMobile"
+                @click="navigateToReportDate(report)"
+                @dragstart="!isMobile && onDragStartReport($event, report)"
+                @dragend="!isMobile && onDragEndReport($event)"
+              >
+                <div class="bg-pending-card-top">
+                  <div class="bg-pending-tags">
+                    <span class="bg-tag-pill is-sky">{{ report.phan_loai }}</span>
+                    <span v-if="report.isFailed === true || report.isFailed === 'TRUE'" class="bg-tag-pill is-rose">Failed</span>
+                    <span v-if="report.tag === 'ƯU TIÊN'" class="bg-tag-pill is-rose">ƯU TIÊN</span>
+                  </div>
+                  <span class="bg-tag-pill is-emerald bg-tabular">{{ getRelativeDateText(report.thoi_gian) }}</span>
+                </div>
+
+                <div class="bg-pending-content">{{ report.noi_dung }}</div>
+                <div v-if="report.ghi_chu" class="bg-pending-note">{{ report.ghi_chu }}</div>
+
+                <div class="bg-pending-foot">
+                  <div class="bg-pending-files">
+                    <span v-if="report.img_save" class="bg-target-muted">Có ảnh</span>
+                    <span v-if="report.link_excel_bao_gia || report.link_excel_mua_hang" class="bg-target-muted">Có Excel</span>
+                  </div>
+                  <div class="bg-cus-actions">
+                    <button v-if="report.trang_thai !== 'Hoàn thành'" type="button" class="bg-btn-xs is-amber" @click.stop="markAsFailed(report)">Fail</button>
+                    <button v-if="report.trang_thai !== 'Hoàn thành'" type="button" class="bg-btn-xs is-sky" @click.stop="moveToToday(report)">Làm hôm nay</button>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                v-if="!isMobile && visiblePendingOtherReports.length < pendingOtherReports.length"
+                type="button"
+                class="lazy-subcol-more-btn bg-tabular"
+                @click="loadMorePendingModalReports"
+              >
+                +{{ Math.min(LAZY_BATCH_SIZE, pendingOtherReports.length - visiblePendingOtherReports.length) }} việc nữa ({{ visiblePendingOtherReports.length }}/{{ pendingOtherReports.length }})
+              </button>
+            </div>
+
+            <!-- Cột 2: Việc làm hôm nay (Dropzone) -->
+            <div
+              v-if="!isMobile"
+              class="bg-pending-col is-today-zone"
+              :class="{ 'is-drop-ready': draggedReportId !== null, 'is-drop-over': dragOverColumn === 'modal-today' }"
+              @dragover.prevent="dragOverColumn = 'modal-today'"
+              @dragleave="dragOverColumn = null"
+              @drop="onDropToToday($event); dragOverColumn = null"
+            >
+              <div class="bg-pending-col-head is-emerald bg-tabular">
+                <span>VIỆC LÀM HÔM NAY ({{ pendingTodayReports.length }})</span>
+              </div>
+
+              <div v-if="pendingTodayReports.length === 0" class="bg-empty-box">
+                Kéo công việc tồn đọng thả vào đây để chuyển sang làm hôm nay
+              </div>
+
+              <div
+                v-for="report in visiblePendingTodayReports"
+                :key="'today-' + report.id"
+                class="bg-pending-card is-today"
+                :class="{ 'is-failed': report.isFailed === true || report.isFailed === 'TRUE' }"
+                draggable="true"
+                @click="navigateToReportDate(report)"
+                @dragstart="onDragStartReport($event, report)"
+                @dragend="onDragEndReport($event)"
+              >
+                <div class="bg-pending-card-top">
+                  <div class="bg-pending-tags">
+                    <span class="bg-tag-pill is-sky">{{ report.phan_loai }}</span>
+                    <span v-if="report.isFailed === true || report.isFailed === 'TRUE'" class="bg-tag-pill is-rose">Failed</span>
+                    <span v-if="report.tag === 'ƯU TIÊN'" class="bg-tag-pill is-rose">ƯU TIÊN</span>
+                  </div>
+                  <span class="bg-tag-pill is-emerald bg-tabular">{{ getRelativeDateText(report.thoi_gian) }}</span>
+                </div>
+
+                <div class="bg-pending-content">{{ report.noi_dung }}</div>
+                <div v-if="report.ghi_chu" class="bg-pending-note">{{ report.ghi_chu }}</div>
+
+                <div class="bg-pending-foot">
+                  <div class="bg-pending-files">
+                    <span v-if="report.img_save" class="bg-target-muted">Có ảnh</span>
+                    <span v-if="report.link_excel_bao_gia || report.link_excel_mua_hang" class="bg-target-muted">Có Excel</span>
+                  </div>
+                  <div class="bg-cus-actions">
+                    <button v-if="report.trang_thai !== 'Hoàn thành'" type="button" class="bg-btn-xs is-amber" @click.stop="markAsFailed(report)">Fail</button>
+                    <button v-if="report.trang_thai !== 'Hoàn thành'" type="button" class="bg-btn-xs is-emerald" @click.stop="markAsCompleted(report)">Xong</button>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                v-if="visiblePendingTodayReports.length < pendingTodayReports.length"
+                type="button"
+                class="lazy-subcol-more-btn bg-tabular"
+                @click="loadMorePendingModalReports"
+              >
+                +{{ Math.min(LAZY_BATCH_SIZE, pendingTodayReports.length - visiblePendingTodayReports.length) }} việc nữa ({{ visiblePendingTodayReports.length }}/{{ pendingTodayReports.length }})
+              </button>
+            </div>
+          </div>
+
+          <!-- Lazy Load Sentinel -->
+          <div
+            v-if="!loading && filteredPendingReports.length > LAZY_BATCH_SIZE"
+            ref="pendingModalSentinel"
+            class="lazy-load-footer bg-tabular"
+            style="margin-top: 12px;"
+          >
             <div class="lazy-load-status">
               <span class="lazy-load-dot"></span>
-              <span>Đang hiển thị <strong>{{ currentlyRenderedPendingCount }}</strong> / <strong>{{ filteredPendingReports.length }}</strong> công việc tồn đọng</span>
+              <span>Đang hiển thị <strong>{{ currentlyRenderedPendingCount }}</strong> / <strong>{{ filteredPendingReports.length }}</strong> việc tồn đọng</span>
             </div>
             <div v-if="hasMorePendingModalReports" class="lazy-load-actions">
               <button type="button" class="lazy-load-btn primary" @click="loadMorePendingModalReports">
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                 Tải thêm {{ Math.min(LAZY_BATCH_SIZE, filteredPendingReports.length - currentlyRenderedPendingCount) }} việc
               </button>
-              <button v-if="filteredPendingReports.length - currentlyRenderedPendingCount > LAZY_BATCH_SIZE"
-                      type="button"
-                      class="lazy-load-btn secondary"
-                      @click="showAllPendingModalReports">
+              <button
+                v-if="filteredPendingReports.length - currentlyRenderedPendingCount > LAZY_BATCH_SIZE"
+                type="button"
+                class="lazy-load-btn secondary"
+                @click="showAllPendingModalReports"
+              >
                 Hiển thị tất cả ({{ filteredPendingReports.length }})
               </button>
             </div>
-            <div v-else class="lazy-load-complete">
-              ✓ Đã hiển thị toàn bộ {{ filteredPendingReports.length }} công việc tồn đọng
-            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
-    <!-- Pipeline Link Modal -->
-    <div v-if="isPipelineModalOpen" class="elite-modal-overlay" @click.self="isPipelineModalOpen = false" style="z-index: 9999999; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);">
-      <div class="elite-modal dark-mode-modal" style="max-width: 700px; width: 95%; max-height: 85vh; display: flex; flex-direction: column; background: #0f172a !important; border: 1px solid rgba(255,255,255,0.08) !important; box-shadow: 0 25px 60px -12px rgba(0,0,0,0.7); border-radius: 12px; overflow: hidden;">
-        
-        <div class="elite-modal-header" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06); flex-shrink: 0;">
-          <div style="display: flex; align-items: center; gap: 1rem;">
-            <div style="width: 42px; height: 42px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+
+    <!-- MODULE 4K: MODAL LIÊN KẾT PIPELINE -->
+    <div v-if="isPipelineModalOpen" class="bg-modal-overlay" style="z-index: 100060;" @click.self="isPipelineModalOpen = false">
+      <div class="bg-modal-card is-md is-mobile-sheet" style="max-width: 720px;" role="dialog" aria-modal="true">
+        <div class="bg-modal-head dt-only-head">
+          <div class="bg-modal-title-row">
+            <div class="bg-modal-icon is-sky">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
             </div>
             <div>
-              <h2 style="color: #f8fafc; margin: 0; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em;">LIÊN KẾT PIPELINE</h2>
-              <p style="color: #94a3b8; margin: 0.1rem 0 0 0; font-size: 0.8rem;">Chọn một hoặc nhiều Pipeline để đính kèm vào báo cáo.</p>
+              <h2 class="bg-modal-title">Liên Kết Pipeline</h2>
+              <p class="bg-modal-sub">Chọn một hoặc nhiều Pipeline để gắn vào báo cáo</p>
             </div>
           </div>
-          <button @click="isPipelineModalOpen = false" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #94a3b8; font-size: 1.1rem; transition: all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.2)'; this.style.color='#f87171'" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='#94a3b8'">✕</button>
+          <button type="button" class="bg-modal-close" @click="isPipelineModalOpen = false">✕</button>
         </div>
 
-        <div style="flex: 1; overflow-y: auto; padding: 1.5rem; background: #0b1118; display: flex; flex-direction: column; gap: 0.8rem;">
-          <div v-if="pipelineData.length === 0" style="color: rgba(255,255,255,0.5); padding: 2rem; text-align: center; font-size: 0.95rem; font-style: italic;">Đang tải dữ liệu Pipeline...</div>
-          <div v-for="p in pipelineData" :key="'modal-pl-'+p.Id_pipeline" @click.stop="togglePipelineSelection(p.Id_pipeline)" style="padding: 1rem 1.25rem; border-radius: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 4px 6px rgba(0,0,0,0.1);" :style="isPipelineSelected(p.Id_pipeline) ? 'background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.4); transform: translateY(-1px); box-shadow: 0 6px 12px rgba(59,130,246,0.15);' : 'background: #1e293b;'" onmouseover="if(!this.style.background.includes('59')){this.style.background='rgba(255,255,255,0.03)'; this.style.borderColor='rgba(255,255,255,0.1)'}" onmouseout="if(!this.style.background.includes('59')){this.style.background='#1e293b'; this.style.borderColor='rgba(255,255,255,0.05)'}">
-             <div style="display: flex; flex-direction: column; max-width: 85%; gap: 0.35rem;">
-                <div v-if="p.ten_khach_hang || p.ten_cong_ty || p.name_workflow" style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
-                  <span v-if="p.ten_khach_hang" style="background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600;">{{ p.ten_khach_hang }}</span>
-                  <span v-if="p.ten_cong_ty" style="background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600;">{{ p.ten_cong_ty }}</span>
-                  <span v-if="p.name_workflow" style="background: #3b82f6; color: white; border: none; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 2px 4px rgba(59,130,246,0.3);" :title="p.name_workflow">{{ p.name_workflow }}</span>
-                </div>
-                <div v-if="p.content_of_contract_po" style="color: #f8fafc; font-size: 1.05rem; font-weight: 700; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4;">{{ p.content_of_contract_po }}</div>
-                <div v-if="p.ghi_chu_hop_dong" style="color: #94a3b8; font-size: 0.8rem; font-style: italic; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.35;">{{ p.ghi_chu_hop_dong }}</div>
-                <div v-if="p.finish_time" style="display: flex; align-items: center; gap: 0.3rem; color: #f43f5e; font-size: 0.75rem; font-weight: 600; margin-top: 0.15rem;">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                  Hạn: {{ p.finish_time }}
-                </div>
-             </div>
-             <div style="display: flex; align-items: center; gap: 12px; flex-shrink: 0;">
-                <div @click.stop="goToPipeline(p.Id_pipeline)" style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: rgba(96, 165, 250, 0.1); color: #60a5fa; transition: all 0.2s;" onmouseover="this.style.background='rgba(96, 165, 250, 0.2)'; this.style.color='#93c5fd'" onmouseout="this.style.background='rgba(96, 165, 250, 0.1)'; this.style.color='#60a5fa'" title="Xem chi tiết Pipeline">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                </div>
-                <div style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 6px; transition: all 0.2s;" :style="isPipelineSelected(p.Id_pipeline) ? 'background: #3b82f6;' : 'border: 2px solid rgba(255,255,255,0.2); background: transparent;'">
-                   <svg v-if="isPipelineSelected(p.Id_pipeline)" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-             </div>
+        <div class="m-grab-head-stack">
+          <div class="m-grab-pill"></div>
+          <div class="m-grab-bar">
+            <h2 class="m-grab-title">Liên Kết Pipeline</h2>
+            <button type="button" class="bg-modal-close" @click="isPipelineModalOpen = false">✕</button>
           </div>
         </div>
 
-        <div style="padding: 1.25rem 1.5rem; border-top: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: flex-end; background: #0f172a;">
-          <button type="button" @click="isPipelineModalOpen = false" class="elite-btn-primary" style="padding: 0.75rem 2rem; font-weight: 700; border-radius: 8px; background: #3b82f6; border: none; color: white; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 10px rgba(59,130,246,0.3);" onmouseover="this.style.background='#2563eb'; this.style.transform='translateY(-1px)'" onmouseout="this.style.background='#3b82f6'; this.style.transform='none'">Xác nhận liên kết</button>
+        <div class="bg-modal-body" style="max-height: 60vh;">
+          <div v-if="pipelineData.length === 0" class="bg-empty-box">Chưa có dữ liệu Pipeline...</div>
+          <div v-else class="bg-select-card-list">
+            <div
+              v-for="p in pipelineData"
+              :key="'modal-pl-' + p.Id_pipeline"
+              class="bg-dist-task-row"
+              :class="{ 'is-selected': isPipelineSelected(p.Id_pipeline) }"
+              @click.stop="togglePipelineSelection(p.Id_pipeline)"
+            >
+              <div style="flex: 1; min-width: 0;">
+                <div class="bg-linked-file-badges" style="margin-bottom: 6px;">
+                  <span v-if="p.ten_khach_hang" class="bg-tag-pill is-emerald">{{ p.ten_khach_hang }}</span>
+                  <span v-if="p.ten_cong_ty" class="bg-tag-pill is-slate">{{ p.ten_cong_ty }}</span>
+                  <span v-if="p.name_workflow" class="bg-tag-pill is-sky">{{ p.name_workflow }}</span>
+                </div>
+                <div v-if="p.content_of_contract_po" class="bg-dist-task-title">{{ p.content_of_contract_po }}</div>
+                <div v-if="p.ghi_chu_hop_dong" class="bg-dist-task-note">{{ p.ghi_chu_hop_dong }}</div>
+                <div v-if="p.finish_time" class="bg-linked-file-note bg-tabular">Hạn: {{ p.finish_time }}</div>
+              </div>
+              <div class="bg-cus-actions">
+                <button type="button" class="bg-btn-xs is-sky" @click.stop="goToPipeline(p.Id_pipeline)">Mở</button>
+                <div class="bg-check-box" :class="{ 'is-checked': isPipelineSelected(p.Id_pipeline) }">
+                  <svg v-if="isPipelineSelected(p.Id_pipeline)" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-modal-foot">
+          <div></div>
+          <button type="button" class="bg-btn bg-btn-primary" @click="isPipelineModalOpen = false">Xác nhận liên kết</button>
         </div>
       </div>
     </div>
 
-    <!-- Storage Prompt Modal (Ẩn hoàn toàn) -->
-    <div v-if="false" class="elite-modal-overlay" @click.self="closeStoragePromptModal" style="z-index: 9999999; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);">
-      <div class="elite-modal-content" style="max-width: 450px; background: #0f172a; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); overflow: hidden; animation: slideDown 0.3s ease-out;">
-        <div style="padding: 1.5rem; text-align: center;">
-          <div style="width: 60px; height: 60px; border-radius: 50%; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2); display: flex; align-items: center; justify-content: center; color: #10b981; margin: 0 auto 1.5rem;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-          </div>
-          <h3 style="color: #f8fafc; font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem;">Thêm vào Kho lưu trữ?</h3>
-          <p style="color: #cbd5e1; font-size: 0.95rem; margin-bottom: 1.5rem;">Bạn có muốn thêm <strong style="color: white;">{{ pendingStorageFiles.length }}</strong> file vừa tải lên vào Kho lưu trữ chung để có thể tái sử dụng không?</p>
-          <div style="display: flex; gap: 1rem; justify-content: center;">
-            <button type="button" @click="closeStoragePromptModal" :disabled="isAddingToStorage" style="padding: 0.6rem 1.5rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #cbd5e1; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
-              Không, bỏ qua
-            </button>
-            <button type="button" @click="addPendingFilesToStorage" :disabled="isAddingToStorage" style="padding: 0.6rem 1.5rem; background: #10b981; border: none; color: white; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s; display: flex; align-items: center; gap: 0.5rem;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
-              <svg v-if="isAddingToStorage" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" style="animation: spin 0.8s linear infinite; transform-origin: center;"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" style="opacity: 0.25;"></circle><path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" style="opacity: 0.75;"></path></svg>
-              <span v-else>Có, thêm ngay</span>
-              <span v-if="isAddingToStorage">Đang lưu...</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Storage Selection Modal -->
-    <div v-if="showStorageModal" class="elite-modal-overlay" @click.self="showStorageModal = false" style="z-index: 9999999; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);">
-      <div class="elite-modal dark-mode-modal" style="max-width: 800px; width: 95%; max-height: 85vh; display: flex; flex-direction: column; background: #0f172a !important; border: 1px solid rgba(255,255,255,0.08) !important; box-shadow: 0 25px 60px -12px rgba(0,0,0,0.7); border-radius: 12px; overflow: hidden;">
-        
-        <div class="elite-modal-header" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06); flex-shrink: 0;">
-          <div style="display: flex; align-items: center; gap: 1rem;">
-            <div style="width: 42px; height: 42px; background: linear-gradient(135deg, #8b5cf6, #7c3aed); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+    <!-- MODULE 4L: MODAL CHỌN TỪ KHO LƯU TRỮ -->
+    <div v-if="showStorageModal" class="bg-modal-overlay" style="z-index: 100060;" @click.self="showStorageModal = false">
+      <div class="bg-modal-card is-lg is-mobile-sheet" style="max-width: 820px;" role="dialog" aria-modal="true">
+        <div class="bg-modal-head dt-only-head">
+          <div class="bg-modal-title-row">
+            <div class="bg-modal-icon is-teal">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
             </div>
             <div>
-              <h2 style="color: #f8fafc; margin: 0; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em;">CHỌN TỪ KHO</h2>
-              <p style="color: #94a3b8; margin: 0.1rem 0 0 0; font-size: 0.8rem;">Tick chọn các file bạn muốn đính kèm vào báo cáo.</p>
+              <h2 class="bg-modal-title">Chọn Tệp Từ Kho Lưu Trữ</h2>
+              <p class="bg-modal-sub">Chọn nhanh các file có sẵn để đính kèm vào báo cáo</p>
             </div>
           </div>
-          <button @click="showStorageModal = false" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #94a3b8; font-size: 1.1rem; transition: all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.2)'; this.style.color='#f87171'" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='#94a3b8'">✕</button>
+          <button type="button" class="bg-modal-close" @click="showStorageModal = false">✕</button>
         </div>
 
-        <div style="padding: 1rem 1.5rem; background: #1e293b; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; gap: 1rem; flex-wrap: wrap;">
-          <input type="text" v-model="storageSearchQuery" placeholder="Tìm kiếm tên file..." style="flex: 1; min-width: 200px; padding: 0.6rem 1rem; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #f8fafc; font-size: 0.9rem;" />
-          <select v-model="storageCustomerFilter" style="flex: 1; min-width: 200px; max-width: 100%; padding: 0.6rem 1rem; background: #0f172a; border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; color: #10b981; font-weight: 600; font-size: 0.9rem; outline: none; transition: all 0.2s; white-space: normal; word-wrap: break-word; text-overflow: ellipsis;" onmouseover="this.style.borderColor='rgba(16, 185, 129, 0.6)'" onmouseout="this.style.borderColor='rgba(16, 185, 129, 0.3)'">
-            <option value="">-- Lọc theo Công ty/Khách hàng --</option>
-            <option v-for="opt in uniqueStorageCustomers" :key="opt.key" :value="opt.key" style="white-space: normal; word-wrap: break-word; max-width: 100%;">{{ opt.label }}</option>
-          </select>
-        </div>
-
-        <div style="flex: 1; overflow-y: auto; padding: 1.5rem; background: #0b1118; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem;">
-          <div v-if="isFetchingStorage" style="grid-column: 1 / -1; color: rgba(255,255,255,0.5); padding: 2rem; text-align: center; font-size: 0.95rem; font-style: italic;">Đang tải dữ liệu từ Kho lưu trữ...</div>
-          <div v-else-if="filteredStorageFiles.length === 0" style="grid-column: 1 / -1; color: rgba(255,255,255,0.5); padding: 2rem; text-align: center; font-size: 0.95rem; font-style: italic;">Không tìm thấy file nào</div>
-          
-          <div v-for="f in filteredStorageFiles" :key="f.id" @click="toggleStorageFile(f.id)" style="background: #1e293b; border: 1px solid rgba(255,255,255,0.05); border-radius: 10px; padding: 1rem; cursor: pointer; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all 0.2s; position: relative;" :style="selectedStorageFiles.has(f.id) ? 'background: rgba(139,92,246,0.15); border-color: rgba(139,92,246,0.4); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(139,92,246,0.2);' : ''">
-             <div style="position: absolute; top: 10px; right: 10px; width: 20px; height: 20px; border-radius: 4px; border: 2px solid rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; transition: all 0.2s;" :style="selectedStorageFiles.has(f.id) ? 'background: #8b5cf6; border-color: #8b5cf6;' : ''">
-               <svg v-if="selectedStorageFiles.has(f.id)" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-             </div>
-             
-             <div style="height: 60px; display: flex; align-items: center; justify-content: center; margin-bottom: 0.5rem; width: 100%;">
-               <img v-if="f.link_file.match(/\.(jpeg|jpg|gif|png|webp|svg|bmp)$/i)" :src="f.link_file" style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 4px;" />
-               <svg v-else xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-             </div>
-             <div style="font-size: 0.85rem; color: #f8fafc; font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; margin-bottom: 0.3rem;">{{ f.name }}</div>
-             <div v-if="f.Ten_khach_hang || f.Ten_cong_ty" style="font-size: 0.7rem; color: #94a3b8; font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">{{ [f.Ten_cong_ty, f.Ten_khach_hang].filter(Boolean).join(' - ') }}</div>
+        <div class="m-grab-head-stack">
+          <div class="m-grab-pill"></div>
+          <div class="m-grab-bar">
+            <h2 class="m-grab-title">Chọn Tệp Từ Kho Lưu Trữ</h2>
+            <button type="button" class="bg-modal-close" @click="showStorageModal = false">✕</button>
           </div>
         </div>
 
-        <div style="padding: 1.25rem 1.5rem; border-top: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center; background: #0f172a;">
-          <div style="color: #94a3b8; font-size: 0.9rem;">
-            Đã chọn: <strong style="color: #f8fafc;">{{ selectedStorageFiles.size }}</strong> file
+        <div class="bg-modal-subbar is-flex" style="flex-wrap: wrap;">
+          <input type="text" v-model="storageSearchQuery" placeholder="Tìm kiếm tên file..." class="bg-input" style="flex: 1; min-width: 180px;" />
+          <div class="bg-cselect-wrap" style="flex: 1; min-width: 200px;">
+            <button
+              type="button"
+              class="bg-cselect-btn is-full"
+              :class="{ 'is-open': openModalSelectKey === 'storageCust' }"
+              @click="toggleModalSelect('storageCust')"
+            >
+              <span class="is-trunc-text">{{ getStorageCustomerLabel(storageCustomerFilter) }}</span>
+              <svg class="bg-cselect-caret" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+            <div v-if="openModalSelectKey === 'storageCust'" class="bg-cselect-pop is-list">
+              <button
+                type="button"
+                class="bg-cselect-row"
+                :class="{ 'is-selected': !storageCustomerFilter }"
+                @click="storageCustomerFilter = ''; openModalSelectKey = null"
+              >Tất cả Công ty / Khách hàng</button>
+              <button
+                v-for="opt in uniqueStorageCustomers"
+                :key="'stc-' + opt.key"
+                type="button"
+                class="bg-cselect-row"
+                :class="{ 'is-selected': storageCustomerFilter === opt.key }"
+                @click="storageCustomerFilter = opt.key; openModalSelectKey = null"
+              >{{ opt.label }}</button>
+            </div>
           </div>
-          <button type="button" @click="confirmStorageSelection" class="elite-btn-primary" style="padding: 0.75rem 2rem; font-weight: 700; border-radius: 8px; background: #10b981; border: none; color: white; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 10px rgba(16,185,129,0.3);" onmouseover="this.style.background='#059669'; this.style.transform='translateY(-1px)'" onmouseout="this.style.background='#10b981'; this.style.transform='none'">Xác nhận thêm</button>
+        </div>
+
+        <div class="bg-modal-body" style="max-height: 55vh;">
+          <div v-if="isFetchingStorage" class="bg-empty-box">Đang tải dữ liệu từ Kho lưu trữ...</div>
+          <div v-else-if="filteredStorageFiles.length === 0" class="bg-empty-box">Không tìm thấy file nào.</div>
+          <div v-else class="bg-storage-grid">
+            <div
+              v-for="f in filteredStorageFiles"
+              :key="f.id"
+              class="bg-storage-card"
+              :class="{ 'is-selected': selectedStorageFiles.has(f.id) }"
+              @click="toggleStorageFile(f.id)"
+            >
+              <div class="bg-storage-preview">
+                <img v-if="f.link_file && f.link_file.match(/\.(jpeg|jpg|gif|png|webp|svg|bmp)$/i)" :src="f.link_file" alt="" />
+                <svg v-else xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+              </div>
+              <div class="bg-storage-name">{{ f.name }}</div>
+              <div v-if="f.Ten_khach_hang || f.Ten_cong_ty" class="bg-target-muted">{{ [f.Ten_cong_ty, f.Ten_khach_hang].filter(Boolean).join(' - ') }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-modal-foot">
+          <span class="bg-target-muted bg-tabular">Đã chọn: <strong>{{ selectedStorageFiles.size }}</strong> file</span>
+          <button type="button" class="bg-btn bg-btn-emerald" @click="confirmStorageSelection">Xác nhận thêm</button>
         </div>
       </div>
     </div>
+  </div><!-- end .report-container.page -->
+
+  <!-- TELEPORTED LIGHTBOX IMAGE PREVIEW (z-index: 1000001) -->
+  <Teleport to="body">
+    <div
+      v-if="selectedImage"
+      class="bg-lightbox-overlay"
+      :class="{ 'theme-light-blue': uiTheme === 'light' }"
+      @click="selectedImage = null"
+    >
+      <div class="bg-lightbox-inner" @click.stop>
+        <button type="button" class="bg-lightbox-close" @click="selectedImage = null" title="Đóng">✕</button>
+        <img :src="selectedImage" alt="Xem ảnh phóng to" class="bg-lightbox-img" />
+      </div>
+    </div>
+  </Teleport>
+
+  <!-- MODULE 5A: UNIFIED FIFO QUEUED PROMISE DIALOG — baogiaDialog (z-index: 1000085) -->
+  <Teleport to="body">
+    <div
+      v-if="baogiaDialog.open"
+      class="baogia-dialog-overlay"
+      :class="{ 'theme-light-blue': uiTheme === 'light' }"
+      role="dialog"
+      aria-modal="true"
+      @click.self="onBaogiaDialogBackdrop"
+    >
+      <div class="baogia-dialog-card" :class="'is-' + baogiaDialog.variant">
+        <!-- PC Header -->
+        <div class="baogia-dialog-head dt-only-head">
+          <div class="baogia-dialog-head-left">
+            <div class="baogia-dialog-icon" :class="'is-' + baogiaDialog.variant">
+              <svg v-if="baogiaDialog.variant === 'danger'" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              <svg v-else-if="baogiaDialog.variant === 'warning'" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+              <svg v-else-if="baogiaDialog.variant === 'success'" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+              <svg v-else xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            </div>
+            <div>
+              <h3 class="baogia-dialog-title">{{ baogiaDialog.title }}</h3>
+              <span class="baogia-dialog-eyebrow">{{ baogiaDialog.eyebrow }}</span>
+            </div>
+          </div>
+          <button type="button" class="bg-modal-close" @click="resolveBaogiaDialog(false)" title="Đóng (Esc)">✕</button>
+        </div>
+
+        <!-- Mobile Centered Card Grab Header -->
+        <div class="m-grab-head-stack">
+          <div class="m-grab-pill"></div>
+          <div class="m-grab-bar">
+            <div class="baogia-dialog-head-left">
+              <div class="baogia-dialog-icon" :class="'is-' + baogiaDialog.variant">
+                <svg v-if="baogiaDialog.variant === 'danger'" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                <svg v-else-if="baogiaDialog.variant === 'warning'" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                <svg v-else-if="baogiaDialog.variant === 'success'" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+              </div>
+              <h3 class="baogia-dialog-title">{{ baogiaDialog.title }}</h3>
+            </div>
+            <button type="button" class="bg-modal-close" @click="resolveBaogiaDialog(false)">✕</button>
+          </div>
+        </div>
+
+        <div class="baogia-dialog-body">
+          <!-- Target Micro-Card -->
+          <div v-if="baogiaDialog.targetLabel || baogiaDialog.targetMeta" class="baogia-dialog-target-card">
+            <div v-if="baogiaDialog.targetLabel" class="baogia-dialog-target-main">{{ baogiaDialog.targetLabel }}</div>
+            <div v-if="baogiaDialog.targetMeta" class="baogia-dialog-target-meta bg-tabular">{{ baogiaDialog.targetMeta }}</div>
+          </div>
+
+          <div class="baogia-dialog-msg-box">{{ baogiaDialog.message }}</div>
+          <div v-if="baogiaDialog.subnote" class="baogia-dialog-subnote">{{ baogiaDialog.subnote }}</div>
+        </div>
+
+        <div class="baogia-dialog-foot">
+          <button
+            v-if="baogiaDialog.mode === 'confirm'"
+            ref="baogiaDialogCancelBtnRef"
+            type="button"
+            class="bg-btn bg-btn-slate"
+            @click="resolveBaogiaDialog(false)"
+          >
+            {{ baogiaDialog.cancelText }}
+          </button>
+          <button
+            ref="baogiaDialogConfirmBtnRef"
+            type="button"
+            class="bg-btn"
+            :class="{
+              'bg-btn-rose': baogiaDialog.variant === 'danger',
+              'bg-btn-amber': baogiaDialog.variant === 'warning',
+              'bg-btn-emerald': baogiaDialog.variant === 'success',
+              'bg-btn-primary': baogiaDialog.variant === 'info'
+            }"
+            @click="resolveBaogiaDialog(true)"
+          >
+            {{ baogiaDialog.confirmText }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+
+  <!-- MODULE 5B: SINGLE-MERGED SMART TOAST (PC-A TOP CENTER / MB-A CAPSULE, z-index: 2000000) -->
+  <Teleport to="body">
+    <Transition name="smart-toast-fade">
+      <div
+        v-if="smartToast.visible"
+        class="smart-toast-wrap"
+        :class="['is-' + smartToast.type, { 'theme-light-blue': uiTheme === 'light' }]"
+        role="status"
+        aria-live="polite"
+        @mouseenter="pauseSmartToast"
+        @mouseleave="resumeSmartToast"
+        @click="dismissSmartToast"
+        @touchstart.passive="onToastTouchStart"
+        @touchend.passive="onToastTouchEnd"
+      >
+        <span class="smart-toast-icon">
+          <svg v-if="smartToast.type === 'success'" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <svg v-else-if="smartToast.type === 'error'" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          <svg v-else-if="smartToast.type === 'warning'" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+          <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+        </span>
+        <span class="smart-toast-msg">{{ smartToast.message }}</span>
+        <span v-if="smartToast.count > 1" class="smart-toast-count bg-tabular">×{{ smartToast.count }}</span>
+        <button type="button" class="smart-toast-close" @click.stop="dismissSmartToast" aria-label="Đóng thông báo">✕</button>
+      </div>
+    </Transition>
+  </Teleport>
+
+  <!-- MODULE 5C: INTERACTIVE 3-LEVEL MINDMAP & LIVE SVG CUTOUT SPOTLIGHT GUIDE -->
+  <ReportGuideTutorial
+    ref="reportGuideRef"
+    v-model="showReportGuideModal"
+    :theme-mode="uiTheme"
+    :is-mobile="isCompactShell"
+    :prepare-step="prepareReportGuideStep"
+    :cleanup-auto-opened="cleanupReportGuideAutoOpened"
+    @spotlight-change="(stepId) => { activeReportGuideStepId = stepId }"
+  />
 </template>
-
 <script setup>
 defineOptions({ name: 'Report' })
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
@@ -2933,6 +5265,7 @@ import * as XLSX from 'xlsx-js-style'
 import { downloadCardFilesAsZip } from '../../utils/cardZipHelper'
 
 import CustomSelect from '../CustomSelect.vue'
+import ReportGuideTutorial from './ReportGuideTutorial.vue'
 
 // --- FIREBASE IMPORT ---
 import { initializeApp, getApps, getApp } from "firebase/app";
@@ -3171,7 +5504,15 @@ const reloadPage = () => {
 let autoOpenedId = false
 
 const isMobile = ref(window.innerWidth <= 768)
-const onResize = () => { isMobile.value = window.innerWidth <= 768 }
+const isCompactShell = ref(window.innerWidth <= 1100)
+const onResize = () => {
+  isMobile.value = window.innerWidth <= 768
+  const nextCompact = window.innerWidth <= 1100
+  if (nextCompact !== isCompactShell.value) {
+    isCompactShell.value = nextCompact
+    if (openPickerKey.value) openPickerKey.value = null
+  }
+}
 const selectedImage = ref(null)
 
 // --- Storage Modal Feature ---
@@ -3301,16 +5642,17 @@ const confirmStorageSelection = () => {
   showStorageModal.value = false
 }
 
-// Custom Alert System
+// Custom Alert System -> Routed to BaoGia Single-Merged Smart Toast
 const customAlertState = ref({ isOpen: false, message: '', type: 'info' })
 const closeAlert = () => { customAlertState.value.isOpen = false }
 const alert = (message) => {
-  const msgLower = String(message).toLowerCase()
+  const clean = String(message ?? '').replace(/^[✅🎉🔥⚠️❗❌ℹ️\s]+/, '').trim()
+  const msgLower = clean.toLowerCase()
   let type = 'info'
-  if (msgLower.includes('lỗi') || msgLower.includes('không thể') || msgLower.includes('vui lòng') || msgLower.includes('chặn')) type = 'error'
+  if (msgLower.includes('lỗi') || msgLower.includes('không thể') || msgLower.includes('chặn')) type = 'error'
+  else if (msgLower.includes('vui lòng') || msgLower.includes('cảnh báo') || msgLower.includes('đợi')) type = 'warning'
   else if (msgLower.includes('thành công') || msgLower.includes('xong')) type = 'success'
-  
-  customAlertState.value = { isOpen: true, message, type }
+  showToast(clean || String(message), type, type === 'error' ? 4200 : 3000)
 }
 
 // Storage Prompt Feature
@@ -3394,7 +5736,8 @@ const typeOptions = [
 const statusOptions = [
   { value: '', label: 'Tất cả' },
   { value: 'Chưa xử lý', label: 'Chưa xử lý' },
-  { value: 'Hoàn thành', label: 'Hoàn thành' }
+  { value: 'Hoàn thành', label: 'Hoàn thành' },
+  { value: 'Failed', label: 'Thất bại (Failed)' }
 ]
 
 // ==========================================
@@ -3456,7 +5799,9 @@ const filters = ref({
   yearFrom: getThisYearStr(),
   yearTo: getThisYearStr(),
   sortOrder: 'desc',
-  period: ''
+  period: '',
+  searchQuery: '',
+  maKH: ''
 })
 
 const isRecordingVoice = ref(null);
@@ -3560,8 +5905,11 @@ const scrollToTable = () => {
 }
 
 const onCardClick = (status) => {
-  filters.value.trang_thai = status;
-  scrollToTable();
+  if (status !== 'Tất cả' && filters.value.trang_thai === status) {
+    filters.value.trang_thai = 'Tất cả';
+  } else {
+    filters.value.trang_thai = status;
+  }
 }
 
 // Parse ngày từ chuỗi thời gian backend: "HH:MM /thu /DD/MM/YYYY"
@@ -3738,13 +6086,42 @@ const formatDisplayTime = (thoi_gian) => {
   return { time: thoi_gian, thu: '', date: '', period: periodText };
 }
 
+const normalizeReportSearch = (str) => {
+  if (!str) return '';
+  return String(str)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .trim();
+};
+
 const baseFilteredReports = computed(() => {
+  const normQuery = normalizeReportSearch(filters.value.searchQuery);
   let result = reports.value.filter(r => {
+    if (r._isGuideDemo) return true;
     if (filters.value.tag && r.tag !== filters.value.tag) return false;
     if (filters.value.phan_loai && r.phan_loai !== filters.value.phan_loai) return false;
     if (filters.value.period) {
       const displayTime = formatDisplayTime(r.thoi_gian);
       if (displayTime.period !== filters.value.period) return false;
+    }
+    const rMaKH = r.maKH || r.MAKH || r.ma_khach_hang || '';
+    if (filters.value.maKH && rMaKH !== filters.value.maKH) return false;
+    if (normQuery) {
+      const cus = rMaKH
+        ? customersList.value.find(c => c.ma_khach_hang === rMaKH || c.id === rMaKH)
+        : null;
+      const haystack = normalizeReportSearch([
+        r.noi_dung,
+        r.ghi_chu,
+        r.reminder_content,
+        rMaKH,
+        cus?.ten_khach_hang,
+        cus?.ten_cong_ty
+      ].filter(Boolean).join(' '));
+      if (!haystack.includes(normQuery)) return false;
     }
     
     if (filters.value.filterMode === 'week' && (filters.value.weekFrom || filters.value.weekTo)) {
@@ -4125,28 +6502,29 @@ const kanbanColumns = computed(() => {
     visibleReportCount.value
   );
 
-  return [
-    {
-      status: 'Chưa xử lý',
-      title: 'CHƯA XỬ LÝ',
-      dotClass: 'bg-amber-500 shadow-amber-500/50',
-      reports: pendingReports.value,
-      morningReports: pMorning.slice(0, bPM),
-      morningTotal: pMorning.length,
-      afternoonReports: pAfternoon.slice(0, bPA),
-      afternoonTotal: pAfternoon.length
-    },
-    {
-      status: 'Hoàn thành',
-      title: 'HOÀN THÀNH',
-      dotClass: 'bg-emerald-500 shadow-emerald-500/50',
-      reports: completedReports.value,
-      morningReports: cMorning.slice(0, bCM),
-      morningTotal: cMorning.length,
-      afternoonReports: cAfternoon.slice(0, bCA),
-      afternoonTotal: cAfternoon.length
-    }
-  ];
+  const pendingCol = {
+    status: 'Chưa xử lý',
+    title: filters.value.trang_thai === 'Failed' ? 'THẤT BẠI (FAILED)' : 'CHƯA XỬ LÝ',
+    dotClass: filters.value.trang_thai === 'Failed' ? 'bg-rose-500 shadow-rose-500/50' : 'bg-amber-500 shadow-amber-500/50',
+    reports: pendingReports.value,
+    morningReports: pMorning.slice(0, bPM),
+    morningTotal: pMorning.length,
+    afternoonReports: pAfternoon.slice(0, bPA),
+    afternoonTotal: pAfternoon.length
+  };
+  const doneCol = {
+    status: 'Hoàn thành',
+    title: 'HOÀN THÀNH',
+    dotClass: 'bg-emerald-500 shadow-emerald-500/50',
+    reports: completedReports.value,
+    morningReports: cMorning.slice(0, bCM),
+    morningTotal: cMorning.length,
+    afternoonReports: cAfternoon.slice(0, bCA),
+    afternoonTotal: cAfternoon.length
+  };
+  if (filters.value.trang_thai === 'Hoàn thành') return [doneCol];
+  if (filters.value.trang_thai === 'Chưa xử lý' || filters.value.trang_thai === 'Failed') return [pendingCol];
+  return [pendingCol, doneCol];
 });
 
 const dailyColumns = computed(() => {
@@ -4339,10 +6717,18 @@ const droppedReportId = ref(null);
 const dragOverColumn = ref(null); // track cột đang hover khi kéo
 
 const onDragStartReport = (e, report) => {
-  draggedReminderId.value = null; // tránh trạng thái kéo nhắc nhở còn sót lại
+  if (e?.target?.closest && e.target.closest('button, a, input, textarea, select, .bg-dcard-files-wrap, .bg-dcard-actions, .bg-dcard-pipelines')) {
+    e.preventDefault();
+    return;
+  }
+  draggedReminderId.value = null;
+  droppedReportId.value = null;
+  highlightedReportId.value = null;
   draggedReportId.value = report.id;
-  e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/plain', report.id);
+  if (e?.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', report.id);
+  }
 };
 
 const onDragStartReminder = (e, reminder) => {
@@ -4380,10 +6766,15 @@ const buildThoiGian = (dateObj, period) => {
 
 // targetDateKey (YYYY-MM-DD): ngày của cột được thả vào (Daily view). Nếu không có thì giữ ngày cũ.
 const onDropReport = async (e, newStatus, newPeriod, targetDateKey = null) => {
-  if (draggedReminderId.value) {
-    const remId = draggedReminderId.value;
-    draggedReminderId.value = null;
-    dragOverColumn.value = null;
+  const pendingRemId = draggedReminderId.value;
+  const pendingReportId = draggedReportId.value;
+  draggedReportId.value = null;
+  draggedReminderId.value = null;
+  dragOverColumn.value = null;
+  highlightedReportId.value = null;
+
+  if (pendingRemId) {
+    const remId = pendingRemId;
     
     const sourceReminder = dueReminders.value.find(r => r.id === remId);
     if (!sourceReminder) return;
@@ -4415,6 +6806,7 @@ const onDropReport = async (e, newStatus, newPeriod, targetDateKey = null) => {
     sourceReminder.reminder_time = '';
 
     hideReminder(sourceReminder);
+    triggerDroppedSuccess(sourceReminder.id);
 
     try {
       const response = await firebaseFetch(API_URL, {
@@ -4441,7 +6833,7 @@ const onDropReport = async (e, newStatus, newPeriod, targetDateKey = null) => {
     return;
   }
 
-  const id = draggedReportId.value;
+  const id = pendingReportId;
   if (!id) return;
   const report = reports.value.find(r => r.id === id);
   if (report) {
@@ -4472,10 +6864,7 @@ const onDropReport = async (e, newStatus, newPeriod, targetDateKey = null) => {
       report.thoi_gian = newThoiGian;
       report.isFailed = '';
 
-      droppedReportId.value = report.id;
-      setTimeout(() => {
-        if (droppedReportId.value === report.id) droppedReportId.value = null;
-      }, 800);
+      triggerDroppedSuccess(report.id);
       
       try {
         const response = await firebaseFetch(API_URL, {
@@ -4495,10 +6884,10 @@ const onDropReport = async (e, newStatus, newPeriod, targetDateKey = null) => {
         report.thoi_gian = originalTime;
         report.isFailed = originalIsFailed;
       }
+    } else {
+      triggerDroppedSuccess(report.id);
     }
   }
-  draggedReportId.value = null;
-  dragOverColumn.value = null;
 };
 
 watch(() => filters.value.dateFrom, (newVal) => {
@@ -4804,19 +7193,54 @@ const fetchReports = async () => {
 }
 
 // Mở Modal
+const deriveContextTimeInputs = () => {
+  const base = getNowTimeInputs();
+  if (
+    filters.value.filterMode === 'day' &&
+    filters.value.dateFrom &&
+    (!filters.value.dateTo || filters.value.dateTo === filters.value.dateFrom)
+  ) {
+    const parts = String(filters.value.dateFrom).split('-').map(Number);
+    if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
+      const dObj = new Date(parts[0], parts[1] - 1, parts[2]);
+      if (!isNaN(dObj.getTime())) {
+        const jsDay = dObj.getDay();
+        base.day = String(dObj.getDate()).padStart(2, '0');
+        base.month = String(dObj.getMonth() + 1).padStart(2, '0');
+        base.year = String(dObj.getFullYear());
+        base.thu = String(jsDay === 0 ? 8 : jsDay + 1);
+      }
+    }
+  }
+  if (filters.value.period === 'Sáng' && Number(base.hour) >= 12) {
+    base.hour = '08';
+    base.minute = '00';
+  } else if (filters.value.period === 'Chiều' && Number(base.hour) < 12) {
+    base.hour = '14';
+    base.minute = '00';
+  }
+  return base;
+};
+
 const openAddModal = () => {
-  isEditing.value = false
+  isEditing.value = false;
   if (customersList.value.length === 0) fetchCustomersForQuote();
+  const preStatus =
+    filters.value.trang_thai === 'Hoàn thành'
+      ? 'Hoàn thành'
+      : (filters.value.trang_thai === 'Failed' ? 'Failed' : 'Chưa xử lý');
   formData.value = {
     id: '',
-    maKH: '',
+    maKH: filters.value.maKH || '',
     id_quanlyfile: '',
-    phan_loai: 'CÔNG VIỆC',
+    phan_loai: filters.value.phan_loai || 'CÔNG VIỆC',
     noi_dung: '',
     ghi_chu: '',
-    tag: 'BÌNH THƯỜNG',
-    trang_thai: 'Chưa xử lý',
+    tag: filters.value.tag || 'BÌNH THƯỜNG',
+    trang_thai: preStatus,
+    isFailed: preStatus === 'Failed' ? true : '',
     img_save: '',
+    ten_file_img: '',
     link_excel_bao_gia: '',
     link_excel_mua_hang: '',
     ten_file_bao_gia: '',
@@ -4824,12 +7248,12 @@ const openAddModal = () => {
     id_pipeline: '',
     reminder_time: '',
     reminder_content: ''
-  }
-  timeInputs.value = getNowTimeInputs();
-  isModalOpen.value = true
-}
+  };
+  timeInputs.value = deriveContextTimeInputs();
+  isModalOpen.value = true;
+};
 
-const openAddModalForPeriod = (period) => {
+const openAddModalForPeriod = (period, targetStatus = '') => {
   openAddModal();
   if (period === 'Sáng') {
     timeInputs.value.hour = '08';
@@ -4837,6 +7261,16 @@ const openAddModalForPeriod = (period) => {
   } else if (period === 'Chiều') {
     timeInputs.value.hour = '14';
     timeInputs.value.minute = '00';
+  }
+  if (targetStatus === 'Hoàn thành') {
+    formData.value.trang_thai = 'Hoàn thành';
+    formData.value.isFailed = '';
+  } else if (filters.value.trang_thai === 'Failed') {
+    formData.value.trang_thai = 'Failed';
+    formData.value.isFailed = true;
+  } else if (targetStatus === 'Chưa xử lý') {
+    formData.value.trang_thai = 'Chưa xử lý';
+    formData.value.isFailed = '';
   }
 };
 
@@ -4883,7 +7317,7 @@ const hasChanges = computed(() => {
   if (!isEditing.value) return true;
   if (!originalData.value || !originalTimeInputs.value) return false;
   
-  const formKeys = ['maKH', 'id_quanlyfile', 'phan_loai', 'noi_dung', 'ghi_chu', 'tag', 'trang_thai', 'img_save', 'link_excel_bao_gia', 'link_excel_mua_hang', 'ten_file_bao_gia', 'ten_file_mua_hang', 'id_pipeline', 'reminder_time', 'reminder_content'];
+  const formKeys = ['maKH', 'id_quanlyfile', 'phan_loai', 'noi_dung', 'ghi_chu', 'tag', 'trang_thai', 'isFailed', 'img_save', 'ten_file_img', 'link_excel_bao_gia', 'link_excel_mua_hang', 'ten_file_bao_gia', 'ten_file_mua_hang', 'id_pipeline', 'reminder_time', 'reminder_content'];
   for (const k of formKeys) {
     if (formData.value[k] !== originalData.value[k]) return true;
   }
@@ -4897,6 +7331,10 @@ const hasChanges = computed(() => {
 });
 
 const openEditModal = (report) => {
+  if (report && report._isGuideDemo) {
+    showToast('Thẻ mẫu minh hoạ trong chế độ hướng dẫn', 'info', 2000);
+    return;
+  }
   isEditing.value = true
   if (customersList.value.length === 0) fetchCustomersForQuote();
   formData.value = { ...report }
@@ -4916,7 +7354,18 @@ const openEditModal = (report) => {
       formData.value.reminder_time = `${parts[2]}-${parts[1]}-${parts[0]}`;
     }
   }
+  if (!formData.value.ten_file_img) formData.value.ten_file_img = ''
   if (!formData.value.reminder_content) formData.value.reminder_content = ''
+  const rawIsFailed = report.isFailed === true || report.isFailed === 'TRUE' || report.trang_thai === 'Failed';
+  if (formData.value.trang_thai === 'Hoàn thành') {
+    formData.value.isFailed = '';
+  } else if (rawIsFailed) {
+    formData.value.trang_thai = 'Failed';
+    formData.value.isFailed = true;
+  } else {
+    formData.value.trang_thai = 'Chưa xử lý';
+    formData.value.isFailed = '';
+  }
   originalData.value = { ...formData.value }
   timeInputs.value = parseTimeString(report.thoi_gian);
   originalTimeInputs.value = { ...timeInputs.value }
@@ -4926,83 +7375,2441 @@ const openEditModal = (report) => {
 const closeModal = () => {
   if (saving.value) return; // Không đóng khi đang lưu
   isModalOpen.value = false;
+  isMobileAttachSheetOpen.value = false;
+  openModalSelectKey.value = null;
   activeReminderForNewReport.value = null;
 }
 
-// --- GLOBAL ALERT / CONFIRM DIALOG (Taste-Skill Precision) ---
-const appDialog = ref({
-  isOpen: false,
-  type: 'alert',
-  title: 'Thông báo',
-  message: '',
-  resolvePromise: null,
+// =========================================================================
+// BAO GIA UI SYSTEM RUNTIME (V2 DUAL-THEME, CUSTOM MATRIX SELECTS, DIALOG QUEUE, TOAST)
+// =========================================================================
+const openModalSelectKey = ref(null);
+const toggleModalSelect = (key) => {
+  openModalSelectKey.value = openModalSelectKey.value === key ? null : key;
+};
+const getWeekdayLabel = (v) => (String(v) === '8' ? 'CN' : 'Thứ ' + v);
+const formatDisplayDate = (isoStr) => {
+  if (!isoStr) return '';
+  const parts = String(isoStr).split('-');
+  return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : String(isoStr);
+};
+const reminderDateInputRef = ref(null);
+const openReminderDatePicker = () => {
+  const el = reminderDateInputRef.value;
+  if (!el) return;
+  if (typeof el.showPicker === 'function') {
+    try {
+      el.showPicker();
+      return;
+    } catch (e) {}
+  }
+  el.focus();
+  el.click();
+};
+const getStorageCustomerLabel = (val) => {
+  if (!val) return 'Tất cả Công ty / Khách hàng';
+  const found = uniqueStorageCustomers.value.find(o => o.key === val);
+  return found ? found.label : val;
+};
+const REPORT_THEME_STORAGE_KEY = 'sonai_report_fb_theme';
+const REPORT_RECENT_SEARCH_KEY = 'sonai_report_recent_searches';
+
+const uiTheme = ref(
+  (typeof window !== 'undefined' && localStorage.getItem(REPORT_THEME_STORAGE_KEY) === 'light')
+    ? 'light'
+    : 'dark'
+);
+
+const toggleUiTheme = () => {
+  uiTheme.value = uiTheme.value === 'light' ? 'dark' : 'light';
+  try {
+    localStorage.setItem(REPORT_THEME_STORAGE_KEY, uiTheme.value);
+  } catch (e) {}
+  showToast(
+    uiTheme.value === 'light'
+      ? 'Đã chuyển giao diện Enterprise Light Blue'
+      : 'Đã chuyển giao diện Dark Navy',
+    'info',
+    2200
+  );
+};
+
+// --- Split Search & Recent Search Chips (max 8) ---
+const filterPickersBarRef = ref(null);
+const isSearchFocused = ref(false);
+const loadRecentSearches = () => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const parsed = JSON.parse(localStorage.getItem(REPORT_RECENT_SEARCH_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed.filter(x => typeof x === 'string' && x.trim()).slice(0, 8) : [];
+  } catch (e) {
+    return [];
+  }
+};
+const recentSearches = ref(loadRecentSearches());
+
+const persistRecentSearches = () => {
+  try {
+    localStorage.setItem(REPORT_RECENT_SEARCH_KEY, JSON.stringify(recentSearches.value));
+  } catch (e) {}
+};
+
+const commitRecentSearch = (term) => {
+  const clean = String(term || '').trim();
+  if (clean.length < 2) return;
+  recentSearches.value = [clean, ...recentSearches.value.filter(item => item.toLowerCase() !== clean.toLowerCase())].slice(0, 8);
+  persistRecentSearches();
+  isSearchFocused.value = false;
+};
+
+let searchBlurTimer = null;
+const onSearchFocus = () => {
+  if (searchBlurTimer) clearTimeout(searchBlurTimer);
+  isSearchFocused.value = true;
+};
+
+const onSearchBlur = () => {
+  if (searchBlurTimer) clearTimeout(searchBlurTimer);
+  searchBlurTimer = setTimeout(() => {
+    isSearchFocused.value = false;
+    const clean = String(filters.value.searchQuery || '').trim();
+    if (clean.length >= 2) {
+      recentSearches.value = [clean, ...recentSearches.value.filter(item => item.toLowerCase() !== clean.toLowerCase())].slice(0, 8);
+      persistRecentSearches();
+    }
+  }, 150);
+};
+
+const clearSearchQuery = () => {
+  filters.value.searchQuery = '';
+};
+
+const selectRecentChip = (chip) => {
+  filters.value.searchQuery = chip;
+  commitRecentSearch(chip);
+};
+
+const removeRecentChip = (chip) => {
+  recentSearches.value = recentSearches.value.filter(item => item !== chip);
+  persistRecentSearches();
+};
+
+const clearAllRecentChips = () => {
+  recentSearches.value = [];
+  persistRecentSearches();
+};
+
+// --- Asymmetric Status Bento Percentages (1 Tall Hero Total + 3 Stacked Status Cards) ---
+const completedPercent = computed(() =>
+  totalCount.value > 0 ? Math.round((completedCount.value / totalCount.value) * 100) : 0
+);
+const pendingPercent = computed(() =>
+  totalCount.value > 0 ? Math.round((pendingCount.value / totalCount.value) * 100) : 0
+);
+const failedPercent = computed(() =>
+  totalCount.value > 0 ? Math.round((failedCount.value / totalCount.value) * 100) : 0
+);
+const pendingSegPercent = computed(() =>
+  totalCount.value > 0
+    ? Math.max(0, Math.min(pendingPercent.value, 100 - completedPercent.value - failedPercent.value))
+    : 0
+);
+
+// --- Date Helpers & Two-Way Period Stepper / Google Calendar Sync ---
+const toIsoDateStr = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+const toIsoMonthStr = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+const parseIsoLocal = (isoStr) => {
+  if (!isoStr) return new Date();
+  const parts = String(isoStr).split('-').map(Number);
+  if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
+    return new Date(parts[0], parts[1] - 1, parts[2]);
+  }
+  if (parts.length === 2 && parts[0] && parts[1]) {
+    return new Date(parts[0], parts[1] - 1, 1);
+  }
+  return new Date();
+};
+
+const getMondayOfDate = (d) => {
+  const copy = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const day = copy.getDay(); // 0 = Sun, 1 = Mon..6 = Sat
+  const diff = day === 0 ? -6 : 1 - day;
+  copy.setDate(copy.getDate() + diff);
+  copy.setHours(0, 0, 0, 0);
+  return copy;
+};
+
+const calendarSubMode = ref('week'); // 'week' | 'month'
+const isCalendarFullscreen = ref(false);
+const calendarAnchorDate = ref(new Date());
+
+const deriveAnchorFromCurrentFilters = () => {
+  const now = new Date();
+  const todayIso = toIsoDateStr(now);
+  const mode = filters.value.filterMode;
+  if (mode === 'day' && filters.value.dateFrom) {
+    const toStr = filters.value.dateTo || filters.value.dateFrom;
+    if (todayIso >= filters.value.dateFrom && todayIso <= toStr) return now;
+    return parseIsoLocal(toStr);
+  }
+  if (mode === 'week' && filters.value.weekFrom) {
+    const curWk = getWeekString(now);
+    const toWk = filters.value.weekTo || filters.value.weekFrom;
+    if (curWk >= filters.value.weekFrom && curWk <= toWk) return now;
+    return getWeekDateRange(toWk).from;
+  }
+  if (mode === 'month' && filters.value.monthFrom) {
+    const curYm = toIsoMonthStr(now);
+    const toYm = filters.value.monthTo || filters.value.monthFrom;
+    if (curYm >= filters.value.monthFrom && curYm <= toYm) return now;
+    return parseIsoLocal(toYm);
+  }
+  if (mode === 'year' && filters.value.yearFrom) {
+    const yf = Number(filters.value.yearFrom) || now.getFullYear();
+    const yt = Number(filters.value.yearTo) || yf;
+    if (now.getFullYear() >= yf && now.getFullYear() <= yt) return now;
+    return new Date(yt, 11, 1);
+  }
+  return now;
+};
+
+const syncFilterToCalendarAnchor = () => {
+  if (calendarSubMode.value === 'week') {
+    const wk = getWeekString(calendarAnchorDate.value);
+    filters.value.filterMode = 'week';
+    filters.value.weekFrom = wk;
+    filters.value.weekTo = wk;
+  } else {
+    const ym = toIsoMonthStr(calendarAnchorDate.value);
+    filters.value.filterMode = 'month';
+    filters.value.monthFrom = ym;
+    filters.value.monthTo = ym;
+  }
+};
+
+const activateCalendarView = (preferredSubMode) => {
+  if (preferredSubMode === 'week' || preferredSubMode === 'month') {
+    calendarSubMode.value = preferredSubMode;
+  } else if (filters.value.filterMode === 'month') {
+    calendarSubMode.value = 'month';
+  }
+  calendarAnchorDate.value = deriveAnchorFromCurrentFilters();
+  desktopViewMode.value = 'calendar';
+  syncFilterToCalendarAnchor();
+};
+
+const setCalendarSubMode = (mode) => {
+  if (mode !== 'week' && mode !== 'month') return;
+  calendarSubMode.value = mode;
+  syncFilterToCalendarAnchor();
+};
+
+const shiftCalendarPeriod = (dir) => {
+  const d = new Date(calendarAnchorDate.value);
+  if (calendarSubMode.value === 'week') {
+    d.setDate(d.getDate() + dir * 7);
+  } else {
+    d.setMonth(d.getMonth() + dir, 1);
+  }
+  calendarAnchorDate.value = d;
+  syncFilterToCalendarAnchor();
+};
+
+const goCalendarToday = () => {
+  calendarAnchorDate.value = new Date();
+  mobileSelectedWeekIso.value = '';
+  mobileSelectedMonthDateStr.value = '';
+  syncFilterToCalendarAnchor();
+};
+
+const setFilterModeAndSync = (mode) => {
+  filters.value.filterMode = mode;
+  if (desktopViewMode.value === 'calendar') {
+    if (mode === 'week') {
+      calendarSubMode.value = 'week';
+      calendarAnchorDate.value = getWeekDateRange(filters.value.weekFrom).from;
+    } else if (mode === 'month') {
+      calendarSubMode.value = 'month';
+      calendarAnchorDate.value = parseIsoLocal(filters.value.monthFrom);
+    } else {
+      calendarAnchorDate.value = deriveAnchorFromCurrentFilters();
+    }
+  }
+};
+
+const onManualDateFilterChange = () => {
+  calendarAnchorDate.value = deriveAnchorFromCurrentFilters();
+};
+
+const shiftFilterPeriod = (dir) => {
+  const mode = filters.value.filterMode;
+  if (mode === 'day') {
+    const from = parseIsoLocal(filters.value.dateFrom);
+    const to = parseIsoLocal(filters.value.dateTo || filters.value.dateFrom);
+    const spanDays = Math.max(1, Math.round((to.getTime() - from.getTime()) / 86400000) + 1);
+    from.setDate(from.getDate() + dir * spanDays);
+    to.setDate(to.getDate() + dir * spanDays);
+    filters.value.dateFrom = toIsoDateStr(from);
+    filters.value.dateTo = toIsoDateStr(to);
+    calendarAnchorDate.value = new Date(from);
+  } else if (mode === 'week') {
+    const rFrom = getWeekDateRange(filters.value.weekFrom).from;
+    const rTo = getWeekDateRange(filters.value.weekTo || filters.value.weekFrom).from;
+    const spanWeeks = Math.max(1, Math.round((rTo.getTime() - rFrom.getTime()) / (7 * 86400000)) + 1);
+    rFrom.setDate(rFrom.getDate() + dir * spanWeeks * 7);
+    rTo.setDate(rTo.getDate() + dir * spanWeeks * 7);
+    filters.value.weekFrom = getWeekString(rFrom);
+    filters.value.weekTo = getWeekString(rTo);
+    calendarAnchorDate.value = new Date(rFrom);
+  } else if (mode === 'month') {
+    const [yf, mf] = String(filters.value.monthFrom || getThisMonthStr()).split('-').map(Number);
+    const [yt, mt] = String(filters.value.monthTo || filters.value.monthFrom || getThisMonthStr()).split('-').map(Number);
+    const spanMonths = Math.max(1, (yt - yf) * 12 + (mt - mf) + 1);
+    const dFrom = new Date(yf, mf - 1 + dir * spanMonths, 1);
+    const dTo = new Date(yt, mt - 1 + dir * spanMonths, 1);
+    filters.value.monthFrom = toIsoMonthStr(dFrom);
+    filters.value.monthTo = toIsoMonthStr(dTo);
+    calendarAnchorDate.value = new Date(dFrom);
+  } else {
+    const yf = Number(filters.value.yearFrom) || new Date().getFullYear();
+    const yt = Number(filters.value.yearTo) || yf;
+    const spanYears = Math.max(1, yt - yf + 1);
+    filters.value.yearFrom = String(yf + dir * spanYears);
+    filters.value.yearTo = String(yt + dir * spanYears);
+    calendarAnchorDate.value = new Date(yf + dir * spanYears, 0, 1);
+  }
+};
+
+// --- Quick Today Preset ---
+const isTodayFilterActive = computed(() => {
+  const today = getTodayStr();
+  if (desktopViewMode.value === 'calendar') {
+    if (calendarSubMode.value === 'week') {
+      const curWk = getWeekString(new Date());
+      return filters.value.filterMode === 'week' && filters.value.weekFrom === curWk && filters.value.weekTo === curWk;
+    }
+    const curYm = getThisMonthStr();
+    return filters.value.filterMode === 'month' && filters.value.monthFrom === curYm && filters.value.monthTo === curYm;
+  }
+  return filters.value.filterMode === 'day' && filters.value.dateFrom === today && filters.value.dateTo === today;
 });
 
-const showAlert = (message, title = 'Thông báo') => {
-  return new Promise((resolve) => {
-    appDialog.value = { isOpen: true, type: 'alert', title, message, resolvePromise: resolve };
+const setTodayFilter = () => {
+  calendarAnchorDate.value = new Date();
+  mobileSelectedWeekIso.value = '';
+  mobileSelectedMonthDateStr.value = '';
+  if (desktopViewMode.value === 'calendar') {
+    syncFilterToCalendarAnchor();
+    fetchReports();
+    return;
+  }
+  const today = getTodayStr();
+  filters.value.filterMode = 'day';
+  filters.value.dateFrom = today;
+  filters.value.dateTo = today;
+  fetchReports();
+};
+
+// --- Mobile Collapsible Filter, Unified 1-Col Detail Stream & Mobile Calendar (Week 3A + Month 4) Helpers ---
+const isMobileFilterExpanded = ref(false);
+const mobileSelectedWeekIso = ref('');
+const mobileSelectedMonthDateStr = ref('');
+const isMobileMonthDayModalOpen = ref(false);
+
+const mobileUnifiedDetailReports = computed(() => {
+  const ordered = [...pendingReports.value, ...completedReports.value];
+  let limit = visibleReportCount.value;
+  if (highlightedReportId.value) {
+    const hIdx = ordered.findIndex((r) => String(r.id) === String(highlightedReportId.value));
+    if (hIdx >= limit) limit = hIdx + 1;
+  }
+  return ordered.slice(0, limit);
+});
+
+const activeMobileWeekIso = computed(() => {
+  const days = calendarWeekDays.value || [];
+  if (!days.length) return '';
+  if (mobileSelectedWeekIso.value && days.some((d) => d.isoStr === mobileSelectedWeekIso.value)) {
+    return mobileSelectedWeekIso.value;
+  }
+  const todayObj = days.find((d) => d.isToday);
+  if (todayObj) return todayObj.isoStr;
+  const withTasks = days.find((d) => d.totalTasks > 0);
+  return withTasks ? withTasks.isoStr : days[0].isoStr;
+});
+
+const getShortWdLabel = (wdLabel) => {
+  const raw = String(wdLabel || '').trim().toUpperCase();
+  if (raw.includes('NHẬT') || raw === 'CN') return 'CN';
+  const m = raw.match(/(\d)/);
+  return m ? `T${m[1]}` : raw;
+};
+
+const scrollToMobileWeekDay = (isoStr) => {
+  if (!isoStr) return;
+  mobileSelectedWeekIso.value = isoStr;
+  nextTick(() => {
+    const el = document.getElementById('mcal-wday-' + isoStr);
+    if (el && typeof el.scrollIntoView === 'function') {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   });
 };
 
-const showConfirm = (message, title = 'Xác nhận') => {
-  return new Promise((resolve) => {
-    appDialog.value = { isOpen: true, type: 'confirm', title, message, resolvePromise: resolve };
+const activeMobileMonthDay = computed(() => {
+  const realDays = [];
+  (calendarMonthGrid.value || []).forEach((m) => {
+    (m.days || []).forEach((d) => {
+      if (d) realDays.push(d);
+    });
+  });
+  if (!realDays.length) return null;
+  if (mobileSelectedMonthDateStr.value) {
+    const matched = realDays.find((d) => d.dateStr === mobileSelectedMonthDateStr.value);
+    if (matched) return matched;
+  }
+  const todayCell = realDays.find((d) => d.isToday);
+  if (todayCell) return todayCell;
+  const firstPopulated = realDays.find((d) => (d.morningTasks.length + d.afternoonTasks.length) > 0);
+  return firstPopulated || realDays[0];
+});
+
+const selectMobileMonthDay = (day) => {
+  if (!day || !day.dateStr) return;
+  const totalTasks = (day.morningTasks?.length || 0) + (day.afternoonTasks?.length || 0);
+  if (totalTasks <= 0) return;
+  mobileSelectedMonthDateStr.value = day.dateStr;
+  isMobileMonthDayModalOpen.value = true;
+};
+
+const closeMobileMonthDayModal = () => {
+  isMobileMonthDayModalOpen.value = false;
+};
+
+const mobileMonthModalReports = computed(() => {
+  const day = activeMobileMonthDay.value;
+  if (!day) return [];
+  const all = [...(day.morningTasks || []), ...(day.afternoonTasks || [])];
+  const pending = all.filter((r) => r.trang_thai !== 'Hoàn thành');
+  const done = all.filter((r) => r.trang_thai === 'Hoàn thành');
+  return [...pending, ...done];
+});
+
+const getMobileMonthDayHeading = (day) => {
+  if (!day || !day.date) return day?.dateStr || '';
+  const dow = day.date.getDay();
+  const wd = dow === 0 ? 'CHỦ NHẬT' : `THỨ ${dow + 1}`;
+  return `${wd} · ${day.dateStr}`;
+};
+
+const getDayTaskDots = (day) => {
+  if (!day) return [];
+  const all = [...(day.morningTasks || []), ...(day.afternoonTasks || [])];
+  if (!all.length) return [];
+  return all.slice(0, 4).map((t) => getCalendarTaskStatusClass(t));
+};
+
+// --- Google Calendar Week (SÁNG / CHIỀU + '+') & Month Computed Engine ---
+const calendarHeaderTitle = computed(() => {
+  if (calendarSubMode.value === 'week') {
+    const mon = getMondayOfDate(calendarAnchorDate.value);
+    const sun = new Date(mon);
+    sun.setDate(mon.getDate() + 6);
+    if (mon.getMonth() === sun.getMonth() && mon.getFullYear() === sun.getFullYear()) {
+      return `Tháng ${mon.getMonth() + 1}, ${mon.getFullYear()}`;
+    }
+    if (mon.getFullYear() === sun.getFullYear()) {
+      return `Tháng ${mon.getMonth() + 1} – Tháng ${sun.getMonth() + 1}, ${sun.getFullYear()}`;
+    }
+    return `Tháng ${mon.getMonth() + 1}/${mon.getFullYear()} – Tháng ${sun.getMonth() + 1}/${sun.getFullYear()}`;
+  }
+  if (filters.value.filterMode === 'month' && filters.value.monthFrom && filters.value.monthTo && filters.value.monthFrom !== filters.value.monthTo) {
+    return `Tháng ${filters.value.monthFrom} → ${filters.value.monthTo}`;
+  }
+  return `Tháng ${calendarAnchorDate.value.getMonth() + 1}, ${calendarAnchorDate.value.getFullYear()}`;
+});
+
+const calendarHeaderBadge = computed(() => {
+  if (calendarSubMode.value === 'week') {
+    const mon = getMondayOfDate(calendarAnchorDate.value);
+    const sun = new Date(mon);
+    sun.setDate(mon.getDate() + 6);
+    const wkCode = getWeekString(mon).split('-W')[1] || '';
+    const fmt = (d) => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+    return `Tuần ${wkCode} · ${fmt(mon)} – ${fmt(sun)}`;
+  }
+  return `${filteredReports.value.length} việc trong kỳ`;
+});
+
+const parseReminderToDDMMYYYY = (remTime) => {
+  if (!remTime) return '';
+  const raw = String(remTime).trim();
+  if (raw.includes('/')) {
+    const parts = raw.split('/');
+    if (parts.length === 3) {
+      return `${String(parts[0]).padStart(2, '0')}/${String(parts[1]).padStart(2, '0')}/${parts[2]}`;
+    }
+  } else if (raw.includes('-')) {
+    const parts = raw.split('-');
+    if (parts.length === 3) {
+      return `${String(parts[2]).padStart(2, '0')}/${String(parts[1]).padStart(2, '0')}/${parts[0]}`;
+    }
+  }
+  return '';
+};
+
+const calendarWeekDays = computed(() => {
+  const mon = getMondayOfDate(calendarAnchorDate.value);
+  const todayIso = getTodayStr();
+  const wdNames = ['THỨ 2', 'THỨ 3', 'THỨ 4', 'THỨ 5', 'THỨ 6', 'THỨ 7', 'CHỦ NHẬT'];
+
+  // Group filteredReports by DD/MM/YYYY
+  const byDate = new Map();
+  filteredReports.value.forEach((r) => {
+    const rd = parseDateFromReport(r.thoi_gian);
+    if (!rd) return;
+    const key = `${String(rd.getDate()).padStart(2, '0')}/${String(rd.getMonth() + 1).padStart(2, '0')}/${rd.getFullYear()}`;
+    if (!byDate.has(key)) byDate.set(key, []);
+    byDate.get(key).push({ task: r, rd });
+  });
+
+  // Group visible reminders by DD/MM/YYYY
+  const remByDate = new Map();
+  reports.value.forEach((r) => {
+    if (!r.reminder_time || r.reminder_visible === false || String(r.reminder_visible).toUpperCase() === 'FALSE') return;
+    const key = parseReminderToDDMMYYYY(r.reminder_time);
+    if (!key) return;
+    if (!remByDate.has(key)) remByDate.set(key, []);
+    remByDate.get(key).push(r);
+  });
+
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const dObj = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + i);
+    const dayNum = String(dObj.getDate()).padStart(2, '0');
+    const monthNum = String(dObj.getMonth() + 1).padStart(2, '0');
+    const dateStr = `${dayNum}/${monthNum}/${dObj.getFullYear()}`;
+    const isoStr = toIsoDateStr(dObj);
+
+    const entries = (byDate.get(dateStr) || []).slice().sort((a, b) => a.rd.getTime() - b.rd.getTime());
+    const morningTasks = entries.filter((e) => e.rd.getHours() < 12).map((e) => e.task);
+    const afternoonTasks = entries.filter((e) => e.rd.getHours() >= 12).map((e) => e.task);
+    const reminders = remByDate.get(dateStr) || [];
+
+    days.push({
+      date: dObj,
+      dateStr,
+      isoStr,
+      dayNum,
+      monthNum,
+      wdLabel: wdNames[i],
+      isToday: isoStr === todayIso,
+      isSunday: i === 6,
+      morningTasks,
+      afternoonTasks,
+      totalTasks: morningTasks.length + afternoonTasks.length,
+      reminders
+    });
+  }
+  return days;
+});
+
+const calendarWeekHasReminders = computed(() =>
+  calendarWeekDays.value.some((d) => d.reminders && d.reminders.length > 0)
+);
+
+const calendarMonthGrid = computed(() => {
+  const todayIso = getTodayStr();
+  let startMonthDate;
+  let endMonthDate;
+
+  if (filters.value.filterMode === 'month' && filters.value.monthFrom && filters.value.monthTo) {
+    const [yf, mf] = filters.value.monthFrom.split('-').map(Number);
+    const [yt, mt] = filters.value.monthTo.split('-').map(Number);
+    startMonthDate = new Date(yf, mf - 1, 1);
+    endMonthDate = new Date(yt, mt - 1, 1);
+  } else {
+    const a = calendarAnchorDate.value;
+    startMonthDate = new Date(a.getFullYear(), a.getMonth(), 1);
+    endMonthDate = new Date(a.getFullYear(), a.getMonth(), 1);
+  }
+
+  const byDate = new Map();
+  filteredReports.value.forEach((r) => {
+    const rd = parseDateFromReport(r.thoi_gian);
+    if (!rd) return;
+    const key = `${String(rd.getDate()).padStart(2, '0')}/${String(rd.getMonth() + 1).padStart(2, '0')}/${rd.getFullYear()}`;
+    if (!byDate.has(key)) byDate.set(key, []);
+    byDate.get(key).push({ task: r, rd });
+  });
+
+  const result = [];
+  const curr = new Date(startMonthDate.getFullYear(), startMonthDate.getMonth(), 1);
+  let guard = 0;
+  while (curr <= endMonthDate && guard < 24) {
+    guard++;
+    const year = curr.getFullYear();
+    const month = curr.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDow = new Date(year, month, 1).getDay();
+    const startOffset = firstDow === 0 ? 6 : firstDow - 1;
+
+    const days = [];
+    for (let i = 0; i < startOffset; i++) days.push(null);
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateObj = new Date(year, month, d);
+      const isoStr = toIsoDateStr(dateObj);
+      const isSunday = dateObj.getDay() === 0;
+      const dateStr = `${String(d).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}/${year}`;
+      const entries = (byDate.get(dateStr) || []).slice().sort((a, b) => a.rd.getTime() - b.rd.getTime());
+      const morningTasks = entries.filter((e) => e.rd.getHours() < 12).map((e) => e.task);
+      const afternoonTasks = entries.filter((e) => e.rd.getHours() >= 12).map((e) => e.task);
+
+      days.push({
+        date: dateObj,
+        dayNum: d,
+        dateStr,
+        isToday: isoStr === todayIso,
+        isSunday,
+        morningTasks,
+        afternoonTasks
+      });
+    }
+
+    result.push({ year, month: month + 1, days });
+    curr.setMonth(curr.getMonth() + 1);
+  }
+  return result;
+});
+
+const openQuickAddAtSlot = (dateStr, period) => {
+  if (!dateStr) return;
+  const [d, m, y] = String(dateStr).split('/').map(Number);
+  if (!d || !m || !y) return;
+  const slotDate = new Date(y, m - 1, d);
+  openAddModalWithSlot({
+    date: slotDate,
+    period: period === 'Chiều' ? 'Chiều' : 'Sáng'
   });
 };
 
-const closeAppDialog = (result = false) => {
-  if (appDialog.value.resolvePromise) {
-    appDialog.value.resolvePromise(result);
-  }
-  appDialog.value.isOpen = false;
+const getCalendarTaskStatusClass = (task) => {
+  if (!task) return 'is-pending';
+  if (task.trang_thai === 'Hoàn thành') return 'is-done';
+  if (task.isFailed === true || task.isFailed === 'TRUE' || task.trang_thai === 'Failed') return 'is-failed';
+  return 'is-pending';
 };
 
-const getAppDialogVariant = () => {
-  const t = (appDialog.value.title || '').toLowerCase();
-  const m = (appDialog.value.message || '').toLowerCase();
-  if (t.includes('thành công') || m.includes('thành công') || m.includes('lưu tạm') || m.includes('chốt deal thành công') || t.includes('✅') || m.includes('✅') || m.includes('🎉')) {
-    return 'success';
+const getCustomerShortName = (task) => {
+  const code = task?.maKH || task?.MAKH || task?.ma_khach_hang || '';
+  if (!code) return '';
+  const cus = customersList.value.find((c) => c.ma_khach_hang === code || c.id === code);
+  if (!cus) return code;
+  return cus.ten_khach_hang || cus.ten_cong_ty || code;
+};
+
+// --- Calendar Card Collapsible Attachments (Toggle + View Office + Download + Truncate) ---
+const expandedCalFileMap = ref({});
+
+const toggleCalendarTaskFiles = (taskId) => {
+  if (!taskId) return;
+  expandedCalFileMap.value = {
+    ...expandedCalFileMap.value,
+    [taskId]: !expandedCalFileMap.value[taskId]
+  };
+};
+
+const isCalendarTaskFilesOpen = (taskId) => {
+  return Boolean(taskId && expandedCalFileMap.value[taskId]);
+};
+
+// --- Detail View Card Attachments: OPEN by default, smooth toggle collapse/expand ---
+const collapsedDetailFileMap = ref({});
+
+const toggleDetailTaskFiles = (taskId) => {
+  if (!taskId) return;
+  collapsedDetailFileMap.value = {
+    ...collapsedDetailFileMap.value,
+    [taskId]: !collapsedDetailFileMap.value[taskId]
+  };
+};
+
+const isDetailTaskFilesOpen = (taskId) => {
+  if (!taskId) return true;
+  return !collapsedDetailFileMap.value[taskId];
+};
+
+// --- Smooth Drag & Drop Settle + Anti-Stuck Highlight Guards ---
+let autoClearHighlightTimer = null;
+let autoClearDroppedTimer = null;
+
+const triggerDroppedSuccess = (reportId) => {
+  if (!reportId) return;
+  if (autoClearDroppedTimer) {
+    clearTimeout(autoClearDroppedTimer);
+    autoClearDroppedTimer = null;
   }
-  if (t.includes('lỗi') || m.includes('lỗi') || t.includes('cảnh báo') || m.includes('cảnh báo') || m.includes('xóa') || t.includes('xóa') || m.includes('chốt deal?') || m.includes('🔥') || m.includes('nhân bản')) {
+  highlightedReportId.value = null;
+  if (droppedReportId.value === reportId) {
+    droppedReportId.value = null;
+    nextTick(() => {
+      droppedReportId.value = reportId;
+    });
+  } else {
+    droppedReportId.value = reportId;
+  }
+  autoClearDroppedTimer = setTimeout(() => {
+    droppedReportId.value = null;
+    autoClearDroppedTimer = null;
+  }, 600);
+};
+
+const onGlobalKanbanDragCleanup = () => {
+  draggedReportId.value = null;
+  draggedReminderId.value = null;
+  dragOverColumn.value = null;
+};
+
+const extractCleanExt = (raw) => {
+  if (!raw || typeof raw !== 'string') return '';
+  const clean = raw.split('?')[0].split('#')[0].trim();
+  const lastSeg = clean.split('/').pop() || '';
+  const dot = lastSeg.lastIndexOf('.');
+  if (dot <= 0 || dot === lastSeg.length - 1) return '';
+  return lastSeg.slice(dot + 1).toLowerCase();
+};
+
+const detectCalendarAttachmentKind = (url, name, source, forceKind) => {
+  if (forceKind === 'image') return 'image';
+  const ext = extractCleanExt(name) || extractCleanExt(url);
+  if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'].includes(ext)) return 'image';
+  if (ext === 'pdf') return 'pdf';
+  if (['xls', 'xlsx', 'csv', 'doc', 'docx', 'ppt', 'pptx'].includes(ext)) return 'office';
+  if (source === 'bao_gia' || source === 'mua_hang') return 'office';
+  return 'other';
+};
+
+const getLinkedRecordAttachments = (linked) => {
+  if (!linked) return [];
+  const items = [];
+  const seenUrls = new Set();
+
+  const pushAtt = (rawUrl, rawName, source, forceKind) => {
+    const url = typeof rawUrl === 'string' ? rawUrl.trim() : '';
+    if (!url || seenUrls.has(url)) return;
+    seenUrls.add(url);
+    const name = (rawName && String(rawName).trim()) ? String(rawName).trim() : 'Tệp liên kết';
+    const kind = detectCalendarAttachmentKind(url, name, source, forceKind);
+    items.push({ url, name, source, kind });
+  };
+
+  const linkedFiles = Array.isArray(linked.linkFileBaoGia)
+    ? linked.linkFileBaoGia
+    : (typeof linked.linkFileBaoGia === 'string' && linked.linkFileBaoGia.trim() ? [linked.linkFileBaoGia] : []);
+  linkedFiles.forEach((fObj, idx) => {
+    const u = typeof fObj === 'string' ? fObj : (fObj?.url || '');
+    pushAtt(u, getFileName(fObj, 'File liên kết', idx), 'linked_file');
+  });
+
+  const linkedImgs = Array.isArray(linked.linkImgSave)
+    ? linked.linkImgSave
+    : (typeof linked.linkImgSave === 'string' && linked.linkImgSave.trim() ? [linked.linkImgSave] : []);
+  linkedImgs.forEach((imgObj, idx) => {
+    const u = typeof imgObj === 'string' ? imgObj : (imgObj?.url || '');
+    pushAtt(u, getFileName(imgObj, 'Ảnh liên kết', idx), 'linked_img', 'image');
+  });
+
+  return items;
+};
+
+const getCalendarTaskAttachments = (task) => {
+  if (!task) return [];
+  const items = [];
+  const seenUrls = new Set();
+
+  const pushAtt = (rawUrl, rawName, source, forceKind) => {
+    const url = typeof rawUrl === 'string' ? rawUrl.trim() : '';
+    if (!url || seenUrls.has(url)) return;
+    seenUrls.add(url);
+    const name = (rawName && String(rawName).trim()) ? String(rawName).trim() : 'Tệp đính kèm';
+    const kind = detectCalendarAttachmentKind(url, name, source, forceKind);
+    items.push({ url, name, source, kind });
+  };
+
+  if (task.link_excel_bao_gia) {
+    String(task.link_excel_bao_gia)
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .forEach((link, idx) => {
+        pushAtt(link, getExcelFileName(task, 'link_excel_bao_gia', idx, 'Báo giá'), 'bao_gia');
+      });
+  }
+
+  if (task.link_excel_mua_hang) {
+    String(task.link_excel_mua_hang)
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .forEach((link, idx) => {
+        pushAtt(link, getExcelFileName(task, 'link_excel_mua_hang', idx, 'Mua hàng'), 'mua_hang');
+      });
+  }
+
+  if (task.img_save) {
+    String(task.img_save)
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .forEach((link, idx) => {
+        pushAtt(link, getImgFileName(task, idx), 'image', 'image');
+      });
+  }
+
+  if (task.id_quanlyfile && Array.isArray(quanLyFilesList.value)) {
+    const linked = quanLyFilesList.value.find((f) => f.id === task.id_quanlyfile);
+    if (linked) {
+      getLinkedRecordAttachments(linked).forEach((att) => {
+        pushAtt(att.url, att.name, att.source, att.kind === 'image' ? 'image' : '');
+      });
+    }
+  }
+
+  return items;
+};
+
+const formatCalendarFileName = (name, maxLen = 15) => {
+  if (!name) return 'Tệp đính kèm';
+  const str = String(name).trim();
+  if (str.length <= maxLen) return str;
+  const dotIdx = str.lastIndexOf('.');
+  if (dotIdx > 0 && str.length - dotIdx <= 6) {
+    const tail = str.slice(Math.max(0, dotIdx - 1));
+    const headLen = Math.max(4, maxLen - tail.length - 3);
+    return str.slice(0, headLen) + '...' + tail;
+  }
+  const tailLen = Math.min(4, Math.floor(maxLen / 3));
+  const headLen = Math.max(4, maxLen - tailLen - 3);
+  return str.slice(0, headLen) + '...' + str.slice(-tailLen);
+};
+
+const getCalendarAttIconSvg = (att) => {
+  if (att && att.kind === 'image') {
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>';
+  }
+  return getFileIconSvg((att && (att.name || att.url)) || '');
+};
+
+const openCalendarAttachmentView = (att) => {
+  if (!att || !att.url) return;
+  if (att.kind === 'image') {
+    selectedImage.value = att.url;
+    return;
+  }
+  if (att.kind === 'office') {
+    window.open(getOfficeViewUrl(att.url), '_blank', 'noopener,noreferrer');
+    return;
+  }
+  window.open(att.url, '_blank', 'noopener,noreferrer');
+};
+
+const downloadCalendarAttachment = (att, event) => {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  if (!att || !att.url) return;
+  let finalName = att.name || 'file';
+  const urlExt = extractCleanExt(att.url);
+  if (urlExt && !extractCleanExt(finalName)) {
+    finalName = finalName + '.' + urlExt;
+  }
+  downloadExcelFile(att.url, finalName);
+};
+
+const openDirectAttachmentView = (url, name, source = 'other', forceKind = '') => {
+  const cleanUrl = typeof url === 'string' ? url.trim() : '';
+  if (!cleanUrl) return;
+  const cleanName = (name && String(name).trim()) ? String(name).trim() : 'Tệp đính kèm';
+  const kind = detectCalendarAttachmentKind(cleanUrl, cleanName, source, forceKind);
+  openCalendarAttachmentView({ url: cleanUrl, name: cleanName, source, kind });
+};
+
+const downloadDirectAttachment = (url, name, event) => {
+  const cleanUrl = typeof url === 'string' ? url.trim() : '';
+  if (!cleanUrl) return;
+  const cleanName = (name && String(name).trim()) ? String(name).trim() : 'Tệp đính kèm';
+  downloadCalendarAttachment({ url: cleanUrl, name: cleanName }, event);
+};
+
+const editReport = openEditModal;
+
+// --- Adaptive Pickers (5 Attribute Pickers — Trạng thái moved to Bento Status Cards) ---
+const openPickerKey = ref(null);
+
+const pickerMetaMap = computed(() => ({
+  period: { title: 'Chọn buổi làm việc', options: periodOptions, defaultVal: '' },
+  tag: { title: 'Lọc độ quan trọng', options: priorityOptions, defaultVal: '' },
+  phan_loai: { title: 'Lọc phân loại báo cáo', options: typeOptions, defaultVal: '' },
+  sortOrder: { title: 'Thứ tự thời gian', options: sortOptions, defaultVal: 'desc' }
+}));
+
+const togglePicker = (key) => {
+  openPickerKey.value = openPickerKey.value === key ? null : key;
+};
+
+const closePicker = () => {
+  openPickerKey.value = null;
+};
+
+const selectPickerOption = (key, value) => {
+  if (!key) return;
+  filters.value[key] = value;
+  openPickerKey.value = null;
+};
+
+const getPickerDisplayLabel = (key) => {
+  const meta = pickerMetaMap.value[key];
+  if (!meta) return '';
+  let currentVal = filters.value[key];
+  if (key === 'trang_thai' && currentVal === 'Tất cả') currentVal = '';
+  const found = meta.options.find(opt => opt.value === currentVal);
+  return found ? found.label : meta.options[0]?.label || '';
+};
+
+const isPickerCustomActive = (key) => {
+  if (key === 'maKH') return !!filters.value.maKH;
+  if (key === 'sortOrder') return filters.value.sortOrder !== 'desc';
+  if (key === 'trang_thai') return !!filters.value.trang_thai && filters.value.trang_thai !== 'Tất cả';
+  return !!filters.value[key];
+};
+
+const resetSingleFilter = (key) => {
+  if (key === 'sortOrder') filters.value.sortOrder = 'desc';
+  else filters.value[key] = '';
+  if (openPickerKey.value === key) openPickerKey.value = null;
+};
+
+const openCustomerFilterPicker = () => {
+  openPickerKey.value = null;
+  customerSelectMode.value = 'filter';
+  customerSearchQuery.value = '';
+  isCustomerSelectModalOpen.value = true;
+};
+
+const getActiveCustomerFilterLabel = () => {
+  if (!filters.value.maKH) return 'Tất cả';
+  const cus = customersList.value.find(c => c.ma_khach_hang === filters.value.maKH || c.id === filters.value.maKH);
+  if (!cus) return filters.value.maKH;
+  return cus.ten_khach_hang || cus.ten_cong_ty || filters.value.maKH;
+};
+
+const activeCustomFilterCount = computed(() => {
+  let count = 0;
+  if (filters.value.searchQuery && filters.value.searchQuery.trim()) count++;
+  if (isPickerCustomActive('period')) count++;
+  if (isPickerCustomActive('trang_thai')) count++;
+  if (isPickerCustomActive('tag')) count++;
+  if (isPickerCustomActive('phan_loai')) count++;
+  if (isPickerCustomActive('maKH')) count++;
+  if (isPickerCustomActive('sortOrder')) count++;
+  return count;
+});
+
+const resetAllFilters = () => {
+  filters.value.searchQuery = '';
+  filters.value.period = '';
+  filters.value.trang_thai = '';
+  filters.value.tag = '';
+  filters.value.phan_loai = '';
+  filters.value.maKH = '';
+  filters.value.sortOrder = 'desc';
+  openPickerKey.value = null;
+  showToast('Đã đặt lại bộ lọc tìm kiếm', 'info', 2000);
+};
+
+// --- Upload Input Refs, V7 Studio Composer Toggles, Inline Search, Smart Drop, Auto-Draft & Unsaved Guard ---
+const imgUploadInput = ref(null);
+const bgUploadInput = ref(null);
+const mhUploadInput = ref(null);
+const isMobileAttachSheetOpen = ref(false);
+
+const reportContentTextareaRef = ref(null);
+const reportNoteTextareaRef = ref(null);
+const reportReminderInputRef = ref(null);
+const inlineCusInputRef = ref(null);
+const inlineFileInputRef = ref(null);
+
+const isNotePanelOpen = ref(false);
+const isReminderPanelOpen = ref(false);
+const isLinkedFilePanelOpen = ref(false);
+
+const isStudioNoteModalOpen = ref(false);
+const isStudioReminderModalOpen = ref(false);
+let noteModalBackup = '';
+let reminderModalBackup = { time: '', content: '' };
+
+const inlineCusQuery = ref('');
+const isInlineCusDropdownOpen = ref(false);
+const isInlineCusEditing = ref(false);
+const inlineCusHighlightIdx = ref(0);
+let inlineCusBlurTimer = null;
+
+const inlineFileQuery = ref('');
+
+const isStudioDragOver = ref(false);
+let studioDragDepth = 0;
+
+const REPORT_ADD_DRAFT_KEY = 'sonai_report_add_draft_v7';
+const REPORT_RECENT_CUS_KEY = 'sonai_report_recent_cus_v7';
+const hasSavedAddDraft = ref(false);
+let suppressDraftPersist = false;
+let draftSaveTimer = null;
+
+const loadRecentCusCodes = () => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const parsed = JSON.parse(localStorage.getItem(REPORT_RECENT_CUS_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed.filter((x) => typeof x === 'string' && x.trim()).slice(0, 8) : [];
+  } catch (e) {
+    return [];
+  }
+};
+const recentCusCodes = ref(loadRecentCusCodes());
+
+const recordRecentCustomerCode = (code) => {
+  const clean = String(code || '').trim();
+  if (!clean) return;
+  recentCusCodes.value = [clean, ...recentCusCodes.value.filter((c) => c !== clean)].slice(0, 8);
+  try {
+    localStorage.setItem(REPORT_RECENT_CUS_KEY, JSON.stringify(recentCusCodes.value));
+  } catch (e) {}
+};
+
+const readSavedAddDraftRaw = () => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(REPORT_ADD_DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+    const hasMeaningful = Boolean(
+      (parsed.noi_dung && String(parsed.noi_dung).trim()) ||
+      (parsed.ghi_chu && String(parsed.ghi_chu).trim()) ||
+      (parsed.img_save && String(parsed.img_save).trim()) ||
+      (parsed.link_excel_bao_gia && String(parsed.link_excel_bao_gia).trim()) ||
+      (parsed.link_excel_mua_hang && String(parsed.link_excel_mua_hang).trim())
+    );
+    return hasMeaningful ? parsed : null;
+  } catch (e) {
+    return null;
+  }
+};
+
+const refreshSavedAddDraftFlag = () => {
+  if (isEditing.value) {
+    hasSavedAddDraft.value = false;
+    return;
+  }
+  const saved = readSavedAddDraftRaw();
+  const currentHasText = Boolean(formData.value.noi_dung && String(formData.value.noi_dung).trim());
+  hasSavedAddDraft.value = Boolean(saved && !currentHasText);
+};
+
+const clearSavedAddDraft = () => {
+  hasSavedAddDraft.value = false;
+  if (draftSaveTimer) {
+    clearTimeout(draftSaveTimer);
+    draftSaveTimer = null;
+  }
+  try {
+    localStorage.removeItem(REPORT_ADD_DRAFT_KEY);
+  } catch (e) {}
+};
+
+const discardSavedAddDraft = () => {
+  clearSavedAddDraft();
+  showToast('Đã xoá bản nháp cũ', 'info', 1800);
+};
+
+const restoreSavedAddDraft = () => {
+  const saved = readSavedAddDraftRaw();
+  if (!saved) {
+    hasSavedAddDraft.value = false;
+    return;
+  }
+  suppressDraftPersist = true;
+  const draftKeys = [
+    'maKH', 'id_quanlyfile', 'phan_loai', 'tag', 'noi_dung', 'ghi_chu',
+    'img_save', 'ten_file_img', 'link_excel_bao_gia', 'ten_file_bao_gia',
+    'link_excel_mua_hang', 'ten_file_mua_hang', 'reminder_time', 'reminder_content'
+  ];
+  draftKeys.forEach((k) => {
+    if (saved[k] !== undefined) {
+      formData.value[k] = saved[k];
+    }
+  });
+  isNotePanelOpen.value = Boolean(formData.value.ghi_chu && String(formData.value.ghi_chu).trim());
+  isReminderPanelOpen.value = Boolean(formData.value.reminder_time || (formData.value.reminder_content && String(formData.value.reminder_content).trim()));
+  isLinkedFilePanelOpen.value = Boolean(formData.value.id_quanlyfile);
+  hasSavedAddDraft.value = false;
+  setTimeout(() => { suppressDraftPersist = false; }, 40);
+  nextTick(() => {
+    reportContentTextareaRef.value?.focus?.();
+  });
+  showToast('Đã khôi phục bản nháp báo cáo', 'success', 2200);
+};
+
+watch(
+  () => [
+    isModalOpen.value,
+    isEditing.value,
+    formData.value.maKH,
+    formData.value.id_quanlyfile,
+    formData.value.phan_loai,
+    formData.value.tag,
+    formData.value.noi_dung,
+    formData.value.ghi_chu,
+    formData.value.img_save,
+    formData.value.link_excel_bao_gia,
+    formData.value.link_excel_mua_hang,
+    formData.value.reminder_time,
+    formData.value.reminder_content
+  ],
+  () => {
+    if (!isModalOpen.value || isEditing.value || suppressDraftPersist) return;
+    if (draftSaveTimer) clearTimeout(draftSaveTimer);
+    draftSaveTimer = setTimeout(() => {
+      const hasMeaningful = Boolean(
+        (formData.value.noi_dung && String(formData.value.noi_dung).trim()) ||
+        (formData.value.ghi_chu && String(formData.value.ghi_chu).trim()) ||
+        getReportFormAttachmentCount.value > 0
+      );
+      if (!hasMeaningful) return;
+      try {
+        localStorage.setItem(REPORT_ADD_DRAFT_KEY, JSON.stringify({
+          maKH: formData.value.maKH || '',
+          id_quanlyfile: formData.value.id_quanlyfile || '',
+          phan_loai: formData.value.phan_loai || 'CÔNG VIỆC',
+          tag: formData.value.tag || 'BÌNH THƯỜNG',
+          noi_dung: formData.value.noi_dung || '',
+          ghi_chu: formData.value.ghi_chu || '',
+          img_save: formData.value.img_save || '',
+          ten_file_img: formData.value.ten_file_img || '',
+          link_excel_bao_gia: formData.value.link_excel_bao_gia || '',
+          ten_file_bao_gia: formData.value.ten_file_bao_gia || '',
+          link_excel_mua_hang: formData.value.link_excel_mua_hang || '',
+          ten_file_mua_hang: formData.value.ten_file_mua_hang || '',
+          reminder_time: formData.value.reminder_time || '',
+          reminder_content: formData.value.reminder_content || '',
+          savedAt: Date.now()
+        }));
+        hasSavedAddDraft.value = false;
+      } catch (e) {}
+    }, 320);
+  }
+);
+
+const hasFormNote = computed(() => Boolean(formData.value.ghi_chu && String(formData.value.ghi_chu).trim()));
+const hasFormReminder = computed(() => Boolean(
+  formData.value.reminder_time ||
+  (formData.value.reminder_content && String(formData.value.reminder_content).trim())
+));
+const hasFormLinkedFile = computed(() => Boolean(formData.value.id_quanlyfile));
+
+const formImgCount = computed(() =>
+  formData.value.img_save ? formData.value.img_save.split('\n').filter(Boolean).length : 0
+);
+const formBgCount = computed(() =>
+  formData.value.link_excel_bao_gia ? formData.value.link_excel_bao_gia.split('\n').filter(Boolean).length : 0
+);
+const formMhCount = computed(() =>
+  formData.value.link_excel_mua_hang ? formData.value.link_excel_mua_hang.split('\n').filter(Boolean).length : 0
+);
+
+const openStudioNoteModal = () => {
+  noteModalBackup = formData.value.ghi_chu || '';
+  isStudioNoteModalOpen.value = true;
+  nextTick(() => {
+    reportNoteTextareaRef.value?.focus?.();
+  });
+};
+
+const confirmStudioNoteModal = () => {
+  if (formData.value.ghi_chu) {
+    formData.value.ghi_chu = String(formData.value.ghi_chu).trim();
+  }
+  isStudioNoteModalOpen.value = false;
+};
+
+const cancelStudioNoteModal = () => {
+  formData.value.ghi_chu = noteModalBackup;
+  isStudioNoteModalOpen.value = false;
+};
+
+const clearAndCloseStudioNoteModal = () => {
+  formData.value.ghi_chu = '';
+  isStudioNoteModalOpen.value = false;
+};
+
+const openStudioReminderModal = () => {
+  reminderModalBackup = {
+    time: formData.value.reminder_time || '',
+    content: formData.value.reminder_content || ''
+  };
+  isStudioReminderModalOpen.value = true;
+  nextTick(() => {
+    reportReminderInputRef.value?.focus?.();
+  });
+};
+
+const confirmStudioReminderModal = () => {
+  if (formData.value.reminder_content) {
+    formData.value.reminder_content = String(formData.value.reminder_content).trim();
+  }
+  isStudioReminderModalOpen.value = false;
+};
+
+const cancelStudioReminderModal = () => {
+  formData.value.reminder_time = reminderModalBackup.time;
+  formData.value.reminder_content = reminderModalBackup.content;
+  isStudioReminderModalOpen.value = false;
+};
+
+const clearAndCloseStudioReminderModal = () => {
+  formData.value.reminder_time = '';
+  formData.value.reminder_content = '';
+  isStudioReminderModalOpen.value = false;
+};
+
+const openStudioLinkedFileModal = () => {
+  fileSearchQuery.value = '';
+  isFileSelectModalOpen.value = true;
+};
+
+const toggleStudioPanel = (panelKey) => {
+  if (panelKey === 'note') {
+    openStudioNoteModal();
+  } else if (panelKey === 'reminder') {
+    openStudioReminderModal();
+  } else if (panelKey === 'file') {
+    openStudioLinkedFileModal();
+  }
+};
+
+// Auto-expand Note / Linked File panel if populated externally (e.g. selecting a linked QuanLyFile record)
+watch(() => formData.value.ghi_chu, (val) => {
+  if (isModalOpen.value && val && String(val).trim()) {
+    isNotePanelOpen.value = true;
+  }
+});
+watch(() => formData.value.id_quanlyfile, (val) => {
+  if (isModalOpen.value && val) {
+    isLinkedFilePanelOpen.value = true;
+    if (formData.value.maKH) recordRecentCustomerCode(formData.value.maKH);
+  }
+});
+watch(() => formData.value.maKH, (val) => {
+  if (val) recordRecentCustomerCode(val);
+});
+
+watch(isModalOpen, (open) => {
+  if (!open) {
+    isMobileAttachSheetOpen.value = false;
+    isStudioNoteModalOpen.value = false;
+    isStudioReminderModalOpen.value = false;
+    openModalSelectKey.value = null;
+    isInlineCusDropdownOpen.value = false;
+    isInlineCusEditing.value = false;
+    inlineCusQuery.value = '';
+    inlineFileQuery.value = '';
+    isStudioDragOver.value = false;
+    studioDragDepth = 0;
+  } else {
+    isStudioNoteModalOpen.value = false;
+    isStudioReminderModalOpen.value = false;
+    isInlineCusDropdownOpen.value = false;
+    isInlineCusEditing.value = false;
+    inlineCusQuery.value = '';
+    inlineFileQuery.value = '';
+    isStudioDragOver.value = false;
+    studioDragDepth = 0;
+    isNotePanelOpen.value = Boolean(formData.value.ghi_chu && String(formData.value.ghi_chu).trim());
+    isReminderPanelOpen.value = Boolean(
+      formData.value.reminder_time ||
+      (formData.value.reminder_content && String(formData.value.reminder_content).trim())
+    );
+    isLinkedFilePanelOpen.value = Boolean(formData.value.id_quanlyfile);
+    refreshSavedAddDraftFlag();
+    nextTick(() => {
+      const bodyEl = document.querySelector('.bg-studio-modal-body');
+      if (bodyEl) bodyEl.scrollTop = 0;
+      if (!isCompactShell.value) {
+        reportContentTextareaRef.value?.focus?.();
+      }
+    });
+  }
+});
+
+watch(showStorageModal, (open) => {
+  if (!open) openModalSelectKey.value = null;
+});
+
+// --- Edit Mode Status Helper (Chưa xử lý | Hoàn thành | Failed) ---
+const getFormReportStatus = () => {
+  if (formData.value.trang_thai === 'Hoàn thành') return 'Hoàn thành';
+  if (
+    formData.value.isFailed === true ||
+    formData.value.isFailed === 'TRUE' ||
+    formData.value.trang_thai === 'Failed'
+  ) {
+    return 'Failed';
+  }
+  return 'Chưa xử lý';
+};
+
+const setFormReportStatus = (status) => {
+  if (status === 'Hoàn thành') {
+    formData.value.trang_thai = 'Hoàn thành';
+    formData.value.isFailed = '';
+  } else if (status === 'Failed') {
+    formData.value.trang_thai = 'Failed';
+    formData.value.isFailed = true;
+  } else {
+    formData.value.trang_thai = 'Chưa xử lý';
+    formData.value.isFailed = '';
+  }
+};
+
+// --- Quick Date Presets (Hôm qua | Hôm nay | Ngày mai) & Quick Reminder Offsets (+1d, +3d, +7d) ---
+const getOffsetDateParts = (offsetDays) => {
+  const base = new Date();
+  base.setHours(0, 0, 0, 0);
+  base.setDate(base.getDate() + offsetDays);
+  const jsDay = base.getDay();
+  return {
+    day: String(base.getDate()).padStart(2, '0'),
+    month: String(base.getMonth() + 1).padStart(2, '0'),
+    year: String(base.getFullYear()),
+    thu: String(jsDay === 0 ? 8 : jsDay + 1)
+  };
+};
+
+const isQuickDatePresetActive = (offsetDays) => {
+  const p = getOffsetDateParts(offsetDays);
+  return (
+    timeInputs.value.day === p.day &&
+    timeInputs.value.month === p.month &&
+    timeInputs.value.year === p.year
+  );
+};
+
+const applyQuickDatePreset = (offsetDays) => {
+  const p = getOffsetDateParts(offsetDays);
+  timeInputs.value.day = p.day;
+  timeInputs.value.month = p.month;
+  timeInputs.value.year = p.year;
+  timeInputs.value.thu = p.thu;
+};
+
+const computeReminderIsoFromFormDate = (offsetDays) => {
+  const y = Number(timeInputs.value.year);
+  const m = Number(timeInputs.value.month);
+  const d = Number(timeInputs.value.day);
+  const base = (!isNaN(y) && !isNaN(m) && !isNaN(d) && y > 2000)
+    ? new Date(y, m - 1, d)
+    : new Date();
+  base.setHours(0, 0, 0, 0);
+  base.setDate(base.getDate() + offsetDays);
+  return toIsoDateStr(base);
+};
+
+const isQuickReminderOffsetActive = (offsetDays) => {
+  if (!formData.value.reminder_time) return false;
+  return formData.value.reminder_time === computeReminderIsoFromFormDate(offsetDays);
+};
+
+const applyQuickReminderOffset = (offsetDays) => {
+  formData.value.reminder_time = computeReminderIsoFromFormDate(offsetDays);
+  nextTick(() => {
+    if (!formData.value.reminder_content) {
+      reportReminderInputRef.value?.focus?.();
+    }
+  });
+};
+
+// --- Inline Customer Autocomplete & Recent Customers ---
+const recentStudioCustomers = computed(() => {
+  if (!Array.isArray(customersList.value) || customersList.value.length === 0) return [];
+  const seen = new Set();
+  const result = [];
+  const currentMa = formData.value.maKH || '';
+
+  const tryPushByCode = (code) => {
+    const clean = String(code || '').trim();
+    if (!clean || clean === currentMa || seen.has(clean)) return;
+    const found = customersList.value.find((c) => c.ma_khach_hang === clean || c.id === clean);
+    if (found && found.ma_khach_hang) {
+      seen.add(found.ma_khach_hang);
+      result.push(found);
+    }
+  };
+
+  recentCusCodes.value.forEach(tryPushByCode);
+  for (let i = 0; i < reports.value.length && result.length < 4; i++) {
+    const r = reports.value[i];
+    const code = r?.maKH || r?.MAKH || r?.ma_khach_hang || '';
+    if (code) tryPushByCode(code);
+  }
+  return result.slice(0, 3);
+});
+
+const inlineFilteredCustomers = computed(() => {
+  const list = Array.isArray(customersList.value) ? customersList.value : [];
+  const q = normalizeReportSearch(inlineCusQuery.value);
+  if (!q) {
+    // Prioritize recent customers first, then remaining customers
+    const prioritized = [];
+    const seen = new Set();
+    recentCusCodes.value.forEach((code) => {
+      const found = list.find((c) => c.ma_khach_hang === code);
+      if (found && !seen.has(found.ma_khach_hang)) {
+        seen.add(found.ma_khach_hang);
+        prioritized.push(found);
+      }
+    });
+    for (const r of reports.value) {
+      if (prioritized.length >= 6) break;
+      const code = r?.maKH || r?.MAKH || r?.ma_khach_hang || '';
+      if (code && !seen.has(code)) {
+        const found = list.find((c) => c.ma_khach_hang === code);
+        if (found) {
+          seen.add(code);
+          prioritized.push(found);
+        }
+      }
+    }
+    for (const c of list) {
+      if (prioritized.length >= 10) break;
+      if (c.ma_khach_hang && !seen.has(c.ma_khach_hang)) {
+        seen.add(c.ma_khach_hang);
+        prioritized.push(c);
+      }
+    }
+    return prioritized.slice(0, 10);
+  }
+
+  return list
+    .filter((c) => {
+      const hay = normalizeReportSearch([
+        c.ma_khach_hang,
+        c.ten_khach_hang,
+        c.ten_cong_ty,
+        Array.isArray(c.tagKH) ? c.tagKH.join(' ') : ''
+      ].filter(Boolean).join(' '));
+      return hay.includes(q);
+    })
+    .slice(0, 10);
+});
+
+watch(inlineCusQuery, () => {
+  inlineCusHighlightIdx.value = 0;
+  if (!isInlineCusDropdownOpen.value && document.activeElement === inlineCusInputRef.value) {
+    isInlineCusDropdownOpen.value = true;
+  }
+});
+
+const onInlineCusFocus = () => {
+  if (inlineCusBlurTimer) clearTimeout(inlineCusBlurTimer);
+  if (customersList.value.length === 0) fetchCustomersForQuote();
+  inlineCusHighlightIdx.value = 0;
+  isInlineCusDropdownOpen.value = true;
+};
+
+const onInlineCusBlur = () => {
+  if (inlineCusBlurTimer) clearTimeout(inlineCusBlurTimer);
+  inlineCusBlurTimer = setTimeout(() => {
+    isInlineCusDropdownOpen.value = false;
+    if (formData.value.maKH) {
+      isInlineCusEditing.value = false;
+    }
+  }, 150);
+};
+
+const selectInlineCustomer = (cus) => {
+  if (!cus || !cus.ma_khach_hang) return;
+  formData.value.maKH = cus.ma_khach_hang;
+  recordRecentCustomerCode(cus.ma_khach_hang);
+  inlineCusQuery.value = '';
+  isInlineCusDropdownOpen.value = false;
+  isInlineCusEditing.value = false;
+  nextTick(() => {
+    if (!formData.value.noi_dung) {
+      reportContentTextareaRef.value?.focus?.();
+    }
+  });
+};
+
+const onInlineCusKeydown = (e) => {
+  const items = inlineFilteredCustomers.value;
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (!isInlineCusDropdownOpen.value) {
+      isInlineCusDropdownOpen.value = true;
+      inlineCusHighlightIdx.value = 0;
+    } else if (items.length > 0) {
+      inlineCusHighlightIdx.value = (inlineCusHighlightIdx.value + 1) % items.length;
+    }
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (items.length > 0) {
+      inlineCusHighlightIdx.value = (inlineCusHighlightIdx.value - 1 + items.length) % items.length;
+    }
+  } else if (e.key === 'Enter') {
+    if (isInlineCusDropdownOpen.value && items.length > 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      const target = items[inlineCusHighlightIdx.value] || items[0];
+      if (target) selectInlineCustomer(target);
+    }
+  } else if (e.key === 'Escape') {
+    if (isInlineCusDropdownOpen.value || isInlineCusEditing.value) {
+      e.preventDefault();
+      e.stopPropagation();
+      isInlineCusDropdownOpen.value = false;
+      isInlineCusEditing.value = false;
+      inlineCusQuery.value = '';
+    }
+  }
+};
+
+const startChangeInlineCustomer = () => {
+  isInlineCusEditing.value = true;
+  inlineCusQuery.value = '';
+  isInlineCusDropdownOpen.value = true;
+  inlineCusHighlightIdx.value = 0;
+  nextTick(() => {
+    inlineCusInputRef.value?.focus?.();
+  });
+};
+
+const clearFormCustomer = () => {
+  formData.value.maKH = '';
+  isInlineCusEditing.value = false;
+  inlineCusQuery.value = '';
+};
+
+const openFullCustomerSelector = () => {
+  isInlineCusDropdownOpen.value = false;
+  isInlineCusEditing.value = false;
+  customerSelectMode.value = 'form';
+  customerSearchQuery.value = inlineCusQuery.value || '';
+  isCustomerSelectModalOpen.value = true;
+};
+
+// --- Inline QuanLyFile Search (Prioritizes Current Customer!) ---
+const inlineFilteredQuanLyFiles = computed(() => {
+  const list = Array.isArray(quanLyFilesList.value) ? [...quanLyFilesList.value] : [];
+  const q = normalizeReportSearch(inlineFileQuery.value);
+  const currentMa = formData.value.maKH || '';
+  const filtered = q
+    ? list.filter((f) => {
+        const hay = normalizeReportSearch([f.noiDung, f.maKH, f.ghiChu].filter(Boolean).join(' '));
+        return hay.includes(q);
+      })
+    : list;
+
+  return filtered
+    .sort((a, b) => {
+      const aMatch = currentMa && a.maKH === currentMa ? 1 : 0;
+      const bMatch = currentMa && b.maKH === currentMa ? 1 : 0;
+      if (aMatch !== bMatch) return bMatch - aMatch;
+      return (b.createdTime || 0) - (a.createdTime || 0);
+    })
+    .slice(0, 6);
+});
+
+// --- Smart Drag-and-Drop Auto-Classifier & 1-Click ⇄ Excel Category Swap ---
+const classifyDroppedExcelField = (fileName) => {
+  const norm = normalizeReportSearch(fileName || '').replace(/[_\-.]+/g, ' ');
+  if (/\b(mua|mh|po|order|ncc|dathang|muahang)\b/.test(norm) || norm.includes('mua hang') || norm.includes('dat hang')) {
+    return 'link_excel_mua_hang';
+  }
+  return 'link_excel_bao_gia';
+};
+
+const onStudioDragEnter = (e) => {
+  if (!e.dataTransfer?.types?.includes?.('Files')) return;
+  studioDragDepth += 1;
+  isStudioDragOver.value = true;
+};
+
+const onStudioDragOver = (e) => {
+  if (!e.dataTransfer?.types?.includes?.('Files')) return;
+  e.dataTransfer.dropEffect = 'copy';
+  isStudioDragOver.value = true;
+};
+
+const onStudioDragLeave = () => {
+  studioDragDepth = Math.max(0, studioDragDepth - 1);
+  if (studioDragDepth === 0) {
+    isStudioDragOver.value = false;
+  }
+};
+
+const onStudioSmartDrop = async (e) => {
+  studioDragDepth = 0;
+  isStudioDragOver.value = false;
+  const droppedFiles = Array.from(e.dataTransfer?.files || []);
+  if (droppedFiles.length === 0) return;
+
+  if (isUploadingFiles.value) {
+    showToast('Đang tải tệp trước đó, vui lòng đợi giây lát...', 'warning');
+    return;
+  }
+
+  const imgFiles = [];
+  const bgFiles = [];
+  const mhFiles = [];
+
+  droppedFiles.forEach((file) => {
+    const ext = extractCleanExt(file.name || '');
+    if ((file.type && file.type.startsWith('image/')) || ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'].includes(ext)) {
+      imgFiles.push(file);
+    } else {
+      const targetField = classifyDroppedExcelField(file.name);
+      if (targetField === 'link_excel_mua_hang') mhFiles.push(file);
+      else bgFiles.push(file);
+    }
+  });
+
+  let okImg = 0;
+  let okBg = 0;
+  let okMh = 0;
+
+  try {
+    if (imgFiles.length > 0) {
+      isUploadingFiles.value = 'img';
+      for (const file of imgFiles) {
+        const fd = new FormData();
+        fd.append('key', 'b202a4bdc79bf1dc72f6f6ded6b74501');
+        fd.append('image', file);
+        const res = await firebaseFetch('https://api.imgbb.com/1/upload', { method: 'POST', body: fd }).then((r) => r.json());
+        if (res.success) {
+          formData.value.img_save = formData.value.img_save ? formData.value.img_save + '\n' + res.data.url : res.data.url;
+          formData.value.ten_file_img = formData.value.ten_file_img ? formData.value.ten_file_img + '\n' + file.name : file.name;
+          okImg++;
+        }
+      }
+    }
+
+    if (bgFiles.length > 0) {
+      isUploadingFiles.value = 'bg';
+      for (const file of bgFiles) {
+        const fd = new FormData();
+        fd.append('upload_preset', 'upload_file');
+        fd.append('file', file);
+        const res = await firebaseFetch('https://api.cloudinary.com/v1_1/db6fzs3rh/auto/upload', { method: 'POST', body: fd }).then((r) => r.json());
+        if (res.secure_url) {
+          formData.value.link_excel_bao_gia = formData.value.link_excel_bao_gia ? formData.value.link_excel_bao_gia + '\n' + res.secure_url : res.secure_url;
+          formData.value.ten_file_bao_gia = formData.value.ten_file_bao_gia ? formData.value.ten_file_bao_gia + '\n' + file.name : file.name;
+          okBg++;
+        }
+      }
+    }
+
+    if (mhFiles.length > 0) {
+      isUploadingFiles.value = 'mh';
+      for (const file of mhFiles) {
+        const fd = new FormData();
+        fd.append('upload_preset', 'upload_file');
+        fd.append('file', file);
+        const res = await firebaseFetch('https://api.cloudinary.com/v1_1/db6fzs3rh/auto/upload', { method: 'POST', body: fd }).then((r) => r.json());
+        if (res.secure_url) {
+          formData.value.link_excel_mua_hang = formData.value.link_excel_mua_hang ? formData.value.link_excel_mua_hang + '\n' + res.secure_url : res.secure_url;
+          formData.value.ten_file_mua_hang = formData.value.ten_file_mua_hang ? formData.value.ten_file_mua_hang + '\n' + file.name : file.name;
+          okMh++;
+        }
+      }
+    }
+
+    const summary = [];
+    if (okImg) summary.push(`${okImg} ảnh`);
+    if (okBg) summary.push(`${okBg} báo giá`);
+    if (okMh) summary.push(`${okMh} mua hàng`);
+    if (summary.length > 0) {
+      showToast(`Đã tải & tự phân loại: ${summary.join(' · ')}`, 'success', 3200);
+    } else {
+      showToast('Không thể tải tệp kéo-thả lên, vui lòng kiểm tra định dạng tệp', 'warning');
+    }
+  } catch (err) {
+    console.error('Smart Drop Upload Error:', err);
+    showToast('Lỗi mạng khi tải tệp kéo-thả lên', 'error');
+  } finally {
+    isUploadingFiles.value = false;
+  }
+};
+
+const swapExcelAttachmentCategory = (fromField, index) => {
+  const toField = fromField === 'link_excel_bao_gia' ? 'link_excel_mua_hang' : 'link_excel_bao_gia';
+  const toNameField = toField.replace('link_excel_', 'ten_file_');
+  const fallbackLabel = fromField === 'link_excel_bao_gia' ? 'Báo giá' : 'Mua hàng';
+
+  const fromLinks = (formData.value[fromField] || '').split('\n').filter(Boolean);
+  if (index < 0 || index >= fromLinks.length) return;
+  const movedUrl = fromLinks[index];
+  const movedName = getExcelFileName(formData.value, fromField, index, fallbackLabel);
+
+  removeLink(fromField, index);
+
+  const destLinks = (formData.value[toField] || '').split('\n').filter(Boolean);
+  const destNames = formData.value[toNameField] ? formData.value[toNameField].split('\n') : [];
+  while (destNames.length < destLinks.length) {
+    destNames.push('');
+  }
+  destLinks.push(movedUrl);
+  destNames.push(movedName);
+
+  formData.value[toField] = destLinks.join('\n');
+  formData.value[toNameField] = destNames.join('\n');
+
+  showToast(
+    toField === 'link_excel_mua_hang'
+      ? `Đã chuyển "${formatCalendarFileName(movedName, 24)}" sang File Mua Hàng`
+      : `Đã chuyển "${formatCalendarFileName(movedName, 24)}" sang File Báo Giá`,
+    'info',
+    2400
+  );
+};
+
+// --- Unsaved Changes Guard (requestCloseModal) & Quick Clone to Today ---
+const isReportModalDirty = computed(() => {
+  if (!isModalOpen.value) return false;
+  if (isEditing.value) return Boolean(hasChanges.value);
+  return Boolean(
+    (formData.value.noi_dung && String(formData.value.noi_dung).trim()) ||
+    (formData.value.ghi_chu && String(formData.value.ghi_chu).trim()) ||
+    getReportFormAttachmentCount.value > 0 ||
+    formData.value.reminder_time ||
+    (formData.value.reminder_content && String(formData.value.reminder_content).trim())
+  );
+});
+
+const requestCloseModal = async () => {
+  if (saving.value) return;
+  if (!isReportModalDirty.value) {
+    closeModal();
+    return;
+  }
+  const ok = await enqueueBaogiaDialog({
+    mode: 'confirm',
+    variant: 'warning',
+    title: isEditing.value ? 'Bỏ các thay đổi chưa lưu?' : 'Đóng báo cáo đang soạn dở?',
+    eyebrow: 'CHỐNG MẤT DỮ LIỆU ĐANG GÕ',
+    targetLabel: (formData.value.noi_dung && String(formData.value.noi_dung).trim().slice(0, 64)) || 'Báo cáo đang nhập dữ liệu / tệp đính kèm',
+    message: isEditing.value
+      ? 'Bạn có thay đổi chưa lưu trong báo cáo này. Đóng bây giờ sẽ huỷ các chỉnh sửa vừa nhập.'
+      : 'Bạn đang nhập dở nội dung hoặc đã tải tệp đính kèm lên. Bạn có chắc muốn đóng mà không lưu?',
+    confirmText: 'Đóng & Bỏ lưu',
+    cancelText: 'Tiếp tục soạn'
+  });
+  if (ok) {
+    if (!isEditing.value) clearSavedAddDraft();
+    closeModal();
+  }
+};
+
+const cloneReportToToday = () => {
+  if (saving.value) return;
+  suppressDraftPersist = true;
+  const cloned = {
+    id: '',
+    maKH: formData.value.maKH || '',
+    id_quanlyfile: formData.value.id_quanlyfile || '',
+    phan_loai: formData.value.phan_loai || 'CÔNG VIỆC',
+    noi_dung: formData.value.noi_dung || '',
+    ghi_chu: formData.value.ghi_chu || '',
+    tag: formData.value.tag || 'BÌNH THƯỜNG',
+    trang_thai: 'Chưa xử lý',
+    isFailed: '',
+    img_save: formData.value.img_save || '',
+    ten_file_img: formData.value.ten_file_img || '',
+    link_excel_bao_gia: formData.value.link_excel_bao_gia || '',
+    ten_file_bao_gia: formData.value.ten_file_bao_gia || '',
+    link_excel_mua_hang: formData.value.link_excel_mua_hang || '',
+    ten_file_mua_hang: formData.value.ten_file_mua_hang || '',
+    id_pipeline: formData.value.id_pipeline || '',
+    reminder_time: '',
+    reminder_content: ''
+  };
+  isEditing.value = false;
+  formData.value = cloned;
+  timeInputs.value = getNowTimeInputs();
+  hasSavedAddDraft.value = false;
+  isNotePanelOpen.value = Boolean(cloned.ghi_chu && String(cloned.ghi_chu).trim());
+  isReminderPanelOpen.value = false;
+  isLinkedFilePanelOpen.value = Boolean(cloned.id_quanlyfile);
+  setTimeout(() => { suppressDraftPersist = false; }, 40);
+  nextTick(() => {
+    reportContentTextareaRef.value?.focus?.();
+  });
+  showToast('Đã nhân bản sang báo cáo mới hôm nay — chỉnh sửa và nhấn Lưu', 'success', 3000);
+};
+
+const triggerUploadInput = (kind) => {
+  if (kind === 'img' && imgUploadInput.value) imgUploadInput.value.click();
+  else if (kind === 'bg' && bgUploadInput.value) bgUploadInput.value.click();
+  else if (kind === 'mh' && mhUploadInput.value) mhUploadInput.value.click();
+};
+
+const getReportFormAttachmentCount = computed(() => {
+  const imgs = formData.value.img_save ? formData.value.img_save.split('\n').filter(Boolean).length : 0;
+  const bgs = formData.value.link_excel_bao_gia ? formData.value.link_excel_bao_gia.split('\n').filter(Boolean).length : 0;
+  const mhs = formData.value.link_excel_mua_hang ? formData.value.link_excel_mua_hang.split('\n').filter(Boolean).length : 0;
+  return imgs + bgs + mhs;
+});
+
+const getReportFormAttachmentSummary = computed(() => {
+  const imgs = formData.value.img_save ? formData.value.img_save.split('\n').filter(Boolean).length : 0;
+  const bgs = formData.value.link_excel_bao_gia ? formData.value.link_excel_bao_gia.split('\n').filter(Boolean).length : 0;
+  const mhs = formData.value.link_excel_mua_hang ? formData.value.link_excel_mua_hang.split('\n').filter(Boolean).length : 0;
+  if (imgs + bgs + mhs === 0) return 'Chưa có ảnh hoặc file Excel';
+  const parts = [];
+  if (imgs > 0) parts.push(`${imgs} ảnh`);
+  if (bgs > 0) parts.push(`${bgs} báo giá`);
+  if (mhs > 0) parts.push(`${mhs} mua hàng`);
+  return parts.join(' · ');
+});
+
+// --- Single-Merged Smart Toast (PC-A Top Center / MB-A Mobile Capsule) ---
+const smartToast = ref({
+  visible: false,
+  message: '',
+  type: 'info',
+  count: 1,
+  duration: 2800
+});
+let smartToastTimer = null;
+let toastTouchStartY = 0;
+
+const scheduleSmartToastHide = (ms) => {
+  if (smartToastTimer) clearTimeout(smartToastTimer);
+  smartToastTimer = setTimeout(() => {
+    smartToast.value.visible = false;
+  }, ms);
+};
+
+const showToast = (message, type = 'info', duration = 2800) => {
+  const cleanMsg = String(message ?? '').replace(/^[✅🎉🔥⚠️❗❌ℹ️\s]+/, '').trim();
+  if (!cleanMsg) return;
+  if (smartToast.value.visible && smartToast.value.message === cleanMsg && smartToast.value.type === type) {
+    smartToast.value.count += 1;
+  } else {
+    smartToast.value = {
+      visible: true,
+      message: cleanMsg,
+      type,
+      count: 1,
+      duration
+    };
+  }
+  scheduleSmartToastHide(duration);
+};
+
+const pauseSmartToast = () => {
+  if (smartToastTimer) {
+    clearTimeout(smartToastTimer);
+    smartToastTimer = null;
+  }
+};
+
+const resumeSmartToast = () => {
+  if (smartToast.value.visible) {
+    scheduleSmartToastHide(1600);
+  }
+};
+
+const dismissSmartToast = () => {
+  if (smartToastTimer) {
+    clearTimeout(smartToastTimer);
+    smartToastTimer = null;
+  }
+  smartToast.value.visible = false;
+};
+
+const onToastTouchStart = (e) => {
+  toastTouchStartY = e.touches?.[0]?.clientY || 0;
+};
+
+const onToastTouchEnd = (e) => {
+  const endY = e.changedTouches?.[0]?.clientY || 0;
+  if (endY - toastTouchStartY < -18) {
+    dismissSmartToast();
+  }
+};
+
+// --- FIFO Queued Promise Dialog (baogiaDialog) ---
+const baogiaDialog = ref({
+  open: false,
+  mode: 'alert', // 'alert' | 'confirm'
+  variant: 'info', // 'info' | 'warning' | 'danger' | 'success'
+  title: 'Thông báo',
+  eyebrow: 'THÔNG BÁO HỆ THỐNG',
+  targetLabel: '',
+  targetMeta: '',
+  message: '',
+  subnote: '',
+  confirmText: 'Đồng ý',
+  cancelText: 'Huỷ bỏ',
+  resolver: null
+});
+const baogiaDialogQueue = [];
+const baogiaDialogCancelBtnRef = ref(null);
+const baogiaDialogConfirmBtnRef = ref(null);
+
+const cleanDialogText = (txt, fallback = '') => {
+  if (!txt) return fallback;
+  return String(txt).replace(/^[✅🎉🔥⚠️❗❌ℹ️\s]+/, '').trim() || fallback;
+};
+
+const inferDialogVariant = (mode, title, message, explicitVariant) => {
+  if (explicitVariant) return explicitVariant;
+  const combined = `${title || ''} ${message || ''}`.toLowerCase();
+  if (combined.includes('xoá') || combined.includes('xóa') || combined.includes('vĩnh viễn') || combined.includes('lỗi')) {
     return 'danger';
   }
-  if (appDialog.value.type === 'confirm') {
-    return 'confirm';
+  if (combined.includes('cảnh báo') || combined.includes('khác khách hàng') || combined.includes('vui lòng')) {
+    return 'warning';
   }
-  return 'info';
+  if (combined.includes('thành công') || combined.includes('hoàn thành')) {
+    return 'success';
+  }
+  return mode === 'confirm' ? 'warning' : 'info';
 };
 
-const getAppDialogEyebrow = () => {
-  const v = getAppDialogVariant();
-  if (v === 'success') return 'THÀNH CÔNG';
-  if (v === 'danger') return appDialog.value.type === 'confirm' ? 'XÁC NHẬN CẦN CHÚ Ý' : 'CẢNH BÁO';
-  if (v === 'confirm') return 'XÁC NHẬN HÀNH ĐỘNG';
+const defaultEyebrowForVariant = (mode, variant) => {
+  if (variant === 'danger') return mode === 'confirm' ? 'HÀNH ĐỘNG KHÔNG THỂ HOÀN TÁC' : 'CẢNH BÁO LỖI';
+  if (variant === 'warning') return mode === 'confirm' ? 'XÁC NHẬN HÀNH ĐỘNG' : 'LƯU Ý HỆ THỐNG';
+  if (variant === 'success') return 'HOÀN TẤT THAO TÁC';
   return 'THÔNG BÁO HỆ THỐNG';
 };
 
-const cleanDialogTitle = (title) => {
-  if (!title) return 'Thông báo';
-  return title.replace(/^[✅🎉🔥⚠️❗❌ℹ️\s]+/, '').trim() || 'Thông báo';
-};
-
-const cleanDialogMessage = (message) => {
-  if (!message) return '';
-  return message.replace(/^[✅🎉🔥⚠️❗❌ℹ️\s]+/, '').trim();
-};
-
-if (typeof window !== 'undefined') {
-  window.addEventListener('keydown', (e) => {
-    if (appDialog.value && appDialog.value.isOpen) {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        closeAppDialog(false);
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        closeAppDialog(true);
-      }
+const pumpBaogiaDialogQueue = () => {
+  if (baogiaDialog.value.open || baogiaDialogQueue.length === 0) return;
+  const nextItem = baogiaDialogQueue.shift();
+  baogiaDialog.value = {
+    ...nextItem,
+    open: true
+  };
+  nextTick(() => {
+    if (baogiaDialog.value.mode === 'confirm' && baogiaDialog.value.variant === 'danger') {
+      // Safety First: Auto-focus Cancel on destructive confirms
+      baogiaDialogCancelBtnRef.value?.focus?.();
+    } else {
+      baogiaDialogConfirmBtnRef.value?.focus?.();
     }
   });
-}
+};
+
+const enqueueBaogiaDialog = (opts = {}) => {
+  return new Promise((resolve) => {
+    const mode = opts.mode === 'confirm' ? 'confirm' : 'alert';
+    const title = cleanDialogText(opts.title, mode === 'confirm' ? 'Xác nhận thao tác' : 'Thông báo');
+    const message = cleanDialogText(opts.message, '');
+    const variant = inferDialogVariant(mode, title, message, opts.variant);
+    baogiaDialogQueue.push({
+      mode,
+      variant,
+      title,
+      eyebrow: opts.eyebrow || defaultEyebrowForVariant(mode, variant),
+      targetLabel: opts.targetLabel || '',
+      targetMeta: opts.targetMeta || '',
+      message,
+      subnote: opts.subnote || '',
+      confirmText: opts.confirmText || (mode === 'confirm' ? 'Xác nhận' : 'Đã hiểu'),
+      cancelText: opts.cancelText || 'Huỷ bỏ',
+      resolver: resolve
+    });
+    pumpBaogiaDialogQueue();
+  });
+};
+
+const resolveBaogiaDialog = (result = false) => {
+  const resolver = baogiaDialog.value.resolver;
+  baogiaDialog.value.open = false;
+  baogiaDialog.value.resolver = null;
+  if (typeof resolver === 'function') {
+    resolver(!!result);
+  }
+  setTimeout(() => {
+    pumpBaogiaDialogQueue();
+  }, 40);
+};
+
+const onBaogiaDialogBackdrop = () => {
+  resolveBaogiaDialog(false);
+};
+
+const showAlert = (message, title = 'Thông báo', extra = {}) => {
+  return enqueueBaogiaDialog({
+    mode: 'alert',
+    title,
+    message,
+    ...extra
+  });
+};
+
+const showConfirm = (message, title = 'Xác nhận', extra = {}) => {
+  return enqueueBaogiaDialog({
+    mode: 'confirm',
+    title,
+    message,
+    ...extra
+  });
+};
+
+// --- Interactive 3-Level Mindmap & Live SVG Cutout Spotlight Guide Runtime ---
+const showReportGuideModal = ref(false);
+const activeReportGuideStepId = ref(null);
+const reportGuideRef = ref(null);
+
+const openReportGuideModal = () => {
+  openPickerKey.value = null;
+  openModalSelectKey.value = null;
+  showReportGuideModal.value = true;
+};
+
+const GUIDE_STUDIO_STEP_IDS = new Set([
+  'studio-left-rail',
+  'studio-customer',
+  'studio-content',
+  'studio-extra-tools',
+  'studio-attachments'
+]);
+const GUIDE_MOBILE_FILTER_STEP_IDS = new Set([
+  'filter-time-range',
+  'filter-attributes'
+]);
+const GUIDE_VIEW_SWITCH_STEP_IDS = new Set([
+  'view-detail-board',
+  'view-task-card',
+  'view-week-calendar',
+  'view-month-calendar'
+]);
+
+const guideAutoState = {
+  expandedMobileFilter: false,
+  switchedViewFrom: null,
+  openedStudio: false,
+  openedPending: false,
+  openedEmptyDays: false,
+  openedDistribute: false,
+  openedExport: false,
+  injectedDemoReportId: null
+};
+
+const removeGuideDemoReport = () => {
+  if (!reports.value.some((r) => r && r._isGuideDemo)) {
+    guideAutoState.injectedDemoReportId = null;
+    return;
+  }
+  reports.value = reports.value.filter((r) => !r || !r._isGuideDemo);
+  guideAutoState.injectedDemoReportId = null;
+};
+
+const ensureGuideDemoReportIfEmpty = () => {
+  if (filteredReports.value.length > 0) return;
+  const now = new Date();
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const jsDay = now.getDay();
+  const thuStr = String(jsDay === 0 ? 8 : jsDay + 1);
+  const hourStr = filters.value.period === 'Chiều' ? '14' : '08';
+  const demoStatus =
+    filters.value.trang_thai === 'Hoàn thành'
+      ? 'Hoàn thành'
+      : (filters.value.trang_thai === 'Failed' ? 'Failed' : 'Chưa xử lý');
+  const demoId = '__guide_demo_report__';
+  const demoReport = {
+    id: demoId,
+    _isGuideDemo: true,
+    maKH: filters.value.maKH || 'KH-DEMO',
+    id_quanlyfile: '',
+    phan_loai: filters.value.phan_loai || 'CÔNG VIỆC',
+    tag: 'ƯU TIÊN',
+    trang_thai: demoStatus,
+    isFailed: demoStatus === 'Failed' ? true : '',
+    thoi_gian: `${hourStr}:30 /${thuStr} /${pad2(now.getDate())}/${pad2(now.getMonth() + 1)}/${now.getFullYear()}`,
+    noi_dung: '[Thẻ mẫu Hướng dẫn] Gửi báo giá & xác nhận lịch giao thiết bị dự án với khách hàng',
+    ghi_chu: 'Kiểm tra kỹ danh mục vật tư đính kèm trước khi chốt đơn',
+    img_save: '',
+    link_excel_bao_gia: '',
+    link_excel_mua_hang: ''
+  };
+  reports.value.unshift(demoReport);
+  guideAutoState.injectedDemoReportId = demoId;
+};
+
+const captureCurrentViewSnapshot = () => {
+  if (guideAutoState.switchedViewFrom) return;
+  guideAutoState.switchedViewFrom = {
+    viewMode: desktopViewMode.value,
+    calSubMode: calendarSubMode.value,
+    filterSnapshot: {
+      filterMode: filters.value.filterMode,
+      dateFrom: filters.value.dateFrom,
+      dateTo: filters.value.dateTo,
+      weekFrom: filters.value.weekFrom,
+      weekTo: filters.value.weekTo,
+      monthFrom: filters.value.monthFrom,
+      monthTo: filters.value.monthTo,
+      yearFrom: filters.value.yearFrom,
+      yearTo: filters.value.yearTo
+    }
+  };
+};
+
+const prepareReportGuideStep = async (step) => {
+  const stepId = step?.id || '';
+  if (!stepId) return;
+
+  openPickerKey.value = null;
+  openModalSelectKey.value = null;
+  if (isMobileMonthDayModalOpen.value) {
+    isMobileMonthDayModalOpen.value = false;
+  }
+
+  // Close unrelated blocking modals before focusing main page or another modal
+  if (!GUIDE_STUDIO_STEP_IDS.has(stepId) && isModalOpen.value && !isReportModalDirty.value) {
+    isModalOpen.value = false;
+    guideAutoState.openedStudio = false;
+  }
+  if (stepId !== 'pending-modal-filter' && isPendingModalOpen.value) {
+    isPendingModalOpen.value = false;
+    guideAutoState.openedPending = false;
+  }
+  if (stepId !== 'empty-modal-subbar' && isEmptyDaysModalOpen.value) {
+    isEmptyDaysModalOpen.value = false;
+    guideAutoState.openedEmptyDays = false;
+  }
+  if (stepId !== 'distribute-modal-subbar' && isDistributeModalOpen.value) {
+    isDistributeModalOpen.value = false;
+    guideAutoState.openedDistribute = false;
+  }
+  if (stepId !== 'export-modal-card' && isExportModalOpen.value) {
+    isExportModalOpen.value = false;
+    guideAutoState.openedExport = false;
+  }
+
+  // 01.2 / 01.3: Expand collapsible filter panel on Mobile
+  if (GUIDE_MOBILE_FILTER_STEP_IDS.has(stepId) && isMobile.value && !isMobileFilterExpanded.value) {
+    isMobileFilterExpanded.value = true;
+    guideAutoState.expandedMobileFilter = true;
+  }
+
+  // 02.2 / 02.3: Detail View & Task Card
+  if (stepId === 'view-detail-board' || stepId === 'view-task-card') {
+    if (desktopViewMode.value !== 'detail') {
+      captureCurrentViewSnapshot();
+      desktopViewMode.value = 'detail';
+      isCalendarFullscreen.value = false;
+    }
+    if (stepId === 'view-task-card') {
+      ensureGuideDemoReportIfEmpty();
+    }
+  }
+
+  // 02.4: Week Calendar
+  if (stepId === 'view-week-calendar') {
+    if (!(desktopViewMode.value === 'calendar' && calendarSubMode.value === 'week')) {
+      captureCurrentViewSnapshot();
+      activateCalendarView('week');
+    }
+  }
+
+  // 02.5: Month Calendar
+  if (stepId === 'view-month-calendar') {
+    if (!(desktopViewMode.value === 'calendar' && calendarSubMode.value === 'month')) {
+      captureCurrentViewSnapshot();
+      activateCalendarView('month');
+    }
+  }
+
+  // 03.2 .. 03.6: 3-Column Report Studio Modal
+  if (GUIDE_STUDIO_STEP_IDS.has(stepId)) {
+    if (!isModalOpen.value) {
+      openAddModal();
+      guideAutoState.openedStudio = true;
+    }
+  }
+
+  // 04.2: Pending Tasks Modal
+  if (stepId === 'pending-modal-filter') {
+    if (!isPendingModalOpen.value) {
+      isPendingModalOpen.value = true;
+      guideAutoState.openedPending = true;
+    }
+  }
+
+  // 05.2: Empty Days Modal
+  if (stepId === 'empty-modal-subbar') {
+    if (!isEmptyDaysModalOpen.value) {
+      showEmptyDays();
+      guideAutoState.openedEmptyDays = true;
+    }
+  }
+
+  // 05.4: Distribute Tasks Modal
+  if (stepId === 'distribute-modal-subbar') {
+    if (!isDistributeModalOpen.value) {
+      openDistributeModal();
+      guideAutoState.openedDistribute = true;
+    }
+  }
+
+  // 06.2: Export Excel Modal
+  if (stepId === 'export-modal-card') {
+    if (!isExportModalOpen.value) {
+      exportExcel();
+      guideAutoState.openedExport = true;
+    }
+  }
+
+  await nextTick();
+};
+
+const cleanupReportGuideAutoOpened = (keepContextOpen = false, nextStepId = null) => {
+  if (nextStepId !== 'view-task-card') {
+    removeGuideDemoReport();
+  }
+
+  if (keepContextOpen) {
+    guideAutoState.expandedMobileFilter = false;
+    guideAutoState.switchedViewFrom = null;
+    guideAutoState.openedStudio = false;
+    guideAutoState.openedPending = false;
+    guideAutoState.openedEmptyDays = false;
+    guideAutoState.openedDistribute = false;
+    guideAutoState.openedExport = false;
+    return;
+  }
+
+  if (guideAutoState.openedStudio && !GUIDE_STUDIO_STEP_IDS.has(nextStepId || '')) {
+    if (!isReportModalDirty.value) {
+      isModalOpen.value = false;
+    }
+    guideAutoState.openedStudio = false;
+  }
+
+  if (guideAutoState.openedPending && nextStepId !== 'pending-modal-filter') {
+    isPendingModalOpen.value = false;
+    guideAutoState.openedPending = false;
+  }
+
+  if (guideAutoState.openedEmptyDays && nextStepId !== 'empty-modal-subbar') {
+    isEmptyDaysModalOpen.value = false;
+    guideAutoState.openedEmptyDays = false;
+  }
+
+  if (guideAutoState.openedDistribute && nextStepId !== 'distribute-modal-subbar') {
+    isDistributeModalOpen.value = false;
+    guideAutoState.openedDistribute = false;
+  }
+
+  if (guideAutoState.openedExport && nextStepId !== 'export-modal-card') {
+    isExportModalOpen.value = false;
+    openModalSelectKey.value = null;
+    guideAutoState.openedExport = false;
+  }
+
+  if (guideAutoState.expandedMobileFilter && !GUIDE_MOBILE_FILTER_STEP_IDS.has(nextStepId || '')) {
+    isMobileFilterExpanded.value = false;
+    guideAutoState.expandedMobileFilter = false;
+  }
+
+  if (guideAutoState.switchedViewFrom && !GUIDE_VIEW_SWITCH_STEP_IDS.has(nextStepId || '')) {
+    const prev = guideAutoState.switchedViewFrom;
+    guideAutoState.switchedViewFrom = null;
+    if (prev.viewMode === 'detail') {
+      desktopViewMode.value = 'detail';
+      isCalendarFullscreen.value = false;
+      if (prev.filterSnapshot) {
+        Object.assign(filters.value, prev.filterSnapshot);
+      }
+    } else if (prev.viewMode === 'calendar') {
+      activateCalendarView(prev.calSubMode || 'week');
+    }
+  }
+};
+
+// --- Mobile Dock Auto-Hide Detector (Hides whenever ANY modal/sheet/dialog is open) ---
+const isAnyModalOrSheetOpen = computed(() => Boolean(
+  isModalOpen.value ||
+  isMobileMonthDayModalOpen.value ||
+  isStudioNoteModalOpen.value ||
+  isStudioReminderModalOpen.value ||
+  isMobileAttachSheetOpen.value ||
+  openPickerKey.value ||
+  isCalendarFullscreen.value ||
+  isExportModalOpen.value ||
+  isFileSelectModalOpen.value ||
+  isCustomerSelectModalOpen.value ||
+  isCustomerModalOpen.value ||
+  isTagModalOpen.value ||
+  isEmptyDaysModalOpen.value ||
+  isMoveModalOpen.value ||
+  isDistributeModalOpen.value ||
+  isVoiceModalOpen.value ||
+  isPendingModalOpen.value ||
+  isPipelineModalOpen.value ||
+  showStorageModal.value ||
+  selectedImage.value ||
+  baogiaDialog.value.open
+));
+
+// --- Unified Outside-Click & Keyboard Safety Listeners ---
+const onBaogiaDocPointerDown = (e) => {
+  if (isInlineCusDropdownOpen.value && !e.target?.closest?.('.bg-studio-cus-combobox')) {
+    isInlineCusDropdownOpen.value = false;
+    if (formData.value.maKH) {
+      isInlineCusEditing.value = false;
+    }
+  }
+  if (openModalSelectKey.value && !e.target?.closest?.('.bg-cselect-wrap')) {
+    openModalSelectKey.value = null;
+  }
+  if (!isCompactShell.value && openPickerKey.value && filterPickersBarRef.value) {
+    if (!filterPickersBarRef.value.contains(e.target)) {
+      openPickerKey.value = null;
+    }
+  }
+};
+
+const onBaogiaGlobalKeydown = (e) => {
+  if (baogiaDialog.value.open) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      resolveBaogiaDialog(false);
+    } else if (e.key === 'Enter') {
+      // Safety Rule: Block automatic Enter confirmation on destructive confirm dialogs
+      // unless user explicitly tabbed to focus the danger confirm button
+      if (baogiaDialog.value.mode === 'confirm' && baogiaDialog.value.variant === 'danger') {
+        if (document.activeElement === baogiaDialogConfirmBtnRef.value) {
+          e.preventDefault();
+          resolveBaogiaDialog(true);
+        } else {
+          e.preventDefault();
+        }
+      } else {
+        e.preventDefault();
+        resolveBaogiaDialog(true);
+      }
+    }
+    return;
+  }
+
+  // Defer keyboard handling to ReportGuideTutorial whenever Guide Mindmap or Spotlight Tour is active
+  if (showReportGuideModal.value || activeReportGuideStepId.value) {
+    return;
+  }
+
+  // Sub-modals Ctrl/Cmd + Enter quick confirm
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    if (isStudioNoteModalOpen.value) {
+      e.preventDefault();
+      confirmStudioNoteModal();
+      return;
+    }
+    if (isStudioReminderModalOpen.value) {
+      e.preventDefault();
+      confirmStudioReminderModal();
+      return;
+    }
+  }
+
+  // V7.5 Studio Keyboard Shortcuts: Ctrl/Cmd + Enter (Save) & Ctrl/Cmd + Shift + Enter (Save & Continue)
+  if (
+    isModalOpen.value &&
+    !isStudioNoteModalOpen.value &&
+    !isStudioReminderModalOpen.value &&
+    !isCustomerSelectModalOpen.value &&
+    !isCustomerModalOpen.value &&
+    !isFileSelectModalOpen.value &&
+    !isTagModalOpen.value &&
+    !isMobileAttachSheetOpen.value &&
+    !selectedImage.value &&
+    (e.ctrlKey || e.metaKey) &&
+    e.key === 'Enter'
+  ) {
+    e.preventDefault();
+    if (saving.value) return;
+    if (!isEditing.value) {
+      if (!String(formData.value.noi_dung || '').trim()) {
+        showToast('Vui lòng nhập nội dung công việc trước khi lưu', 'warning');
+        reportContentTextareaRef.value?.focus?.();
+        return;
+      }
+      if (e.shiftKey) {
+        saveReport({ continue: true });
+      } else {
+        saveReport();
+      }
+    } else if (hasChanges.value) {
+      saveReport();
+    } else {
+      showToast('Chưa có thay đổi nào cần lưu', 'info', 1800);
+    }
+    return;
+  }
+
+  if (e.key === 'Escape') {
+    if (isInlineCusDropdownOpen.value) {
+      isInlineCusDropdownOpen.value = false;
+      if (formData.value.maKH) isInlineCusEditing.value = false;
+    } else if (openModalSelectKey.value) {
+      openModalSelectKey.value = null;
+    } else if (selectedImage.value) {
+      selectedImage.value = null;
+    } else if (isMobileAttachSheetOpen.value) {
+      isMobileAttachSheetOpen.value = false;
+    } else if (isStudioNoteModalOpen.value) {
+      e.preventDefault();
+      cancelStudioNoteModal();
+    } else if (isStudioReminderModalOpen.value) {
+      e.preventDefault();
+      cancelStudioReminderModal();
+    } else if (isCustomerModalOpen.value) {
+      isCustomerModalOpen.value = false;
+    } else if (isTagModalOpen.value) {
+      isTagModalOpen.value = false;
+    } else if (isCustomerSelectModalOpen.value) {
+      isCustomerSelectModalOpen.value = false;
+    } else if (isFileSelectModalOpen.value) {
+      isFileSelectModalOpen.value = false;
+    } else if (isModalOpen.value) {
+      e.preventDefault();
+      requestCloseModal();
+    } else if (isMobileMonthDayModalOpen.value) {
+      isMobileMonthDayModalOpen.value = false;
+    } else if (openPickerKey.value) {
+      openPickerKey.value = null;
+    } else if (
+      isCalendarFullscreen.value &&
+      !isExportModalOpen.value &&
+      !isEmptyDaysModalOpen.value &&
+      !isDistributeModalOpen.value &&
+      !isPendingModalOpen.value &&
+      !isPipelineModalOpen.value &&
+      !showStorageModal.value
+    ) {
+      isCalendarFullscreen.value = false;
+    }
+  }
+};
 
 // --- QUẢN LÝ KHÁCH HÀNG & NHÓM KHÁCH HÀNG (100% GIỐNG QUANLYFILE) ---
 const customersList = ref([])
@@ -5063,7 +9870,11 @@ const filteredCustomers = computed(() => {
 });
 
 const selectCustomer = (cus) => {
-  formData.value.maKH = cus ? cus.ma_khach_hang : '';
+  if (customerSelectMode.value === 'filter') {
+    filters.value.maKH = cus ? cus.ma_khach_hang : '';
+  } else {
+    formData.value.maKH = cus ? cus.ma_khach_hang : '';
+  }
   isCustomerSelectModalOpen.value = false;
 };
 
@@ -5129,7 +9940,18 @@ const saveTagEdit = async (oldTagName) => {
 }
 
 const deleteTagGlobal = async (tagName) => {
-  const confirmDel = await showConfirm(`Bạn có chắc muốn xóa vĩnh viễn nhóm "${tagName}" khỏi TẤT CẢ khách hàng không?`)
+  const confirmDel = await enqueueBaogiaDialog({
+    mode: 'confirm',
+    variant: 'danger',
+    title: 'Xoá nhóm khách hàng?',
+    eyebrow: 'HÀNH ĐỘNG KHÔNG THỂ HOÀN TÁC',
+    targetLabel: tagName,
+    targetMeta: 'Áp dụng trên toàn bộ danh bạ Khách Hàng',
+    message: `Bạn có chắc chắn muốn xoá vĩnh viễn nhóm "${tagName}" khỏi tất cả khách hàng không?`,
+    subnote: 'Thao tác này chỉ gỡ nhãn nhóm, không xoá hồ sơ khách hàng.',
+    confirmText: 'Xoá vĩnh viễn',
+    cancelText: 'Huỷ bỏ'
+  })
   if (!confirmDel) return
   
   const updates = {}
@@ -5152,6 +9974,7 @@ const deleteTagGlobal = async (tagName) => {
   if (formData.value.tagKH) {
     formData.value.tagKH = formData.value.tagKH.filter(t => t !== tagName)
   }
+  showToast(`Đã xoá nhóm "${tagName}"`, 'success')
 }
 
 const defaultCustomerForm = {
@@ -5234,7 +10057,7 @@ const openCustomerModal = () => {
 
 const saveNewCustomer = async () => {
   if (!customerFormData.value.ma_khach_hang || !customerFormData.value.ten_khach_hang) {
-    await showAlert('Vui lòng nhập Mã Khách Hàng và Tên Khách Hàng!')
+    showToast('Vui lòng nhập Mã Khách Hàng và Tên Khách Hàng', 'warning')
     return
   }
   try {
@@ -5247,7 +10070,7 @@ const saveNewCustomer = async () => {
       };
       delete dataToSave.id;
       await update(cusRef, dataToSave);
-      await showAlert('Cập nhật thông tin khách hàng thành công!');
+      showToast('Đã cập nhật thông tin khách hàng', 'success');
     } else {
       const newCusRef = push(dbRef(database, 'khach_hang'));
       await set(newCusRef, {
@@ -5255,14 +10078,14 @@ const saveNewCustomer = async () => {
         created_time: Date.now(),
         last_updated: nowIso
       });
-      await showAlert('Tạo khách hàng mới thành công!');
+      showToast('Đã tạo khách hàng mới', 'success');
     }
     
     formData.value.maKH = customerFormData.value.ma_khach_hang;
     isCustomerModalOpen.value = false;
   } catch (error) {
     console.error("Lỗi khi thêm/sửa KH:", error);
-    await showAlert('Lỗi: ' + error.message);
+    await showAlert('Lỗi: ' + error.message, 'Không thể lưu khách hàng', { variant: 'danger' });
   }
 }
 
@@ -5325,7 +10148,14 @@ const handlePasteImage = async (e) => {
       const res = await firebaseFetch('https://api.imgbb.com/1/upload', { method: 'POST', body: fd }).then(r => r.json());
       
       if (res.success) {
+        const nowP = new Date();
+        const padP = (n) => String(n).padStart(2, '0');
+        const pastedName = file.name && file.name !== 'image.png'
+          ? file.name
+          : `Screenshot_${padP(nowP.getHours())}${padP(nowP.getMinutes())}${padP(nowP.getSeconds())}.png`;
         formData.value.img_save = formData.value.img_save ? formData.value.img_save + '\n' + res.data.url : res.data.url;
+        formData.value.ten_file_img = formData.value.ten_file_img ? formData.value.ten_file_img + '\n' + pastedName : pastedName;
+        showToast('Đã tải ảnh dán lên thành công', 'success');
       } else {
         alert('Lỗi tải ảnh: ' + (res.error?.message || 'Không rõ'));
       }
@@ -5354,6 +10184,7 @@ const handleImgUpload = async (e) => {
         formData.value.img_save = formData.value.img_save ? formData.value.img_save + '\n' + res.data.url : res.data.url
         formData.value.ten_file_img = formData.value.ten_file_img ? formData.value.ten_file_img + '\n' + file.name : file.name
         pendingStorageFiles.value.push({ name: file.name, url: res.data.url })
+        showToast('Đã tải ảnh đính kèm lên', 'success')
       } else {
         alert('Lỗi tải ảnh: ' + (res.error?.message || 'Không rõ'))
       }
@@ -5385,6 +10216,7 @@ const handleExcelUpload = async (e, field) => {
         const nameField = field.replace('link_excel_', 'ten_file_')
         formData.value[nameField] = formData.value[nameField] ? formData.value[nameField] + '\n' + file.name : file.name
         pendingStorageFiles.value.push({ name: file.name, url: res.secure_url })
+        showToast('Đã tải file Excel đính kèm lên', 'success')
       } else {
         alert('Lỗi tải file: ' + (res.error?.message || 'Không rõ'))
       }
@@ -5448,7 +10280,9 @@ const saveReport = async (options = {}) => {
   }
 
   formData.value.thoi_gian = formatTimeString();
-  if (formData.value.trang_thai !== 'Hoàn thành') {
+  if (formData.value.trang_thai === 'Failed') {
+    formData.value.isFailed = true;
+  } else {
     formData.value.isFailed = '';
   }
 
@@ -5500,6 +10334,14 @@ const saveReport = async (options = {}) => {
     }
   }
 
+  // Clear Auto-Draft on successful save
+  if (action === 'add') {
+    clearSavedAddDraft();
+  }
+  if (formData.value.maKH) {
+    recordRecentCustomerCode(formData.value.maKH);
+  }
+
   // Tắt loading và xử lý đóng modal/reset
   if (!isContinue && !isOpenEmpty) {
     isModalOpen.value = false;
@@ -5507,9 +10349,26 @@ const saveReport = async (options = {}) => {
     isModalOpen.value = false;
     showEmptyDays();
   } else {
+    suppressDraftPersist = true;
     formData.value.noi_dung = '';
+    formData.value.ghi_chu = '';
+    formData.value.img_save = '';
+    formData.value.ten_file_img = '';
+    formData.value.link_excel_bao_gia = '';
+    formData.value.ten_file_bao_gia = '';
+    formData.value.link_excel_mua_hang = '';
+    formData.value.ten_file_mua_hang = '';
+    formData.value.reminder_time = '';
+    formData.value.reminder_content = '';
+    isNotePanelOpen.value = false;
+    isReminderPanelOpen.value = false;
+    setTimeout(() => { suppressDraftPersist = false; }, 40);
+    nextTick(() => {
+      reportContentTextareaRef.value?.focus?.();
+    });
   }
   saving.value = false;
+  showToast(action === 'add' ? 'Đã thêm báo cáo công việc mới' : 'Đã lưu cập nhật báo cáo', 'success');
 
   // Highlight dòng vừa tác động
   highlightedReportId.value = tempId;
@@ -5568,7 +10427,18 @@ const isAllSelected = computed(() => {
 
 const bulkMarkCompleted = async () => {
   if (selectedReports.value.length === 0) return;
-  if (!confirm(`Xác nhận đánh dấu hoàn thành ${selectedReports.value.length} công việc đã chọn?`)) return;
+  const count = selectedReports.value.length;
+  const ok = await enqueueBaogiaDialog({
+    mode: 'confirm',
+    variant: 'success',
+    title: 'Đánh dấu hoàn thành hàng loạt',
+    eyebrow: 'XÁC NHẬN CẬP NHẬT',
+    targetLabel: `${count} báo cáo công việc đang chọn`,
+    message: `Xác nhận đánh dấu Hoàn thành cho ${count} công việc đã chọn?`,
+    confirmText: 'Hoàn thành tất cả',
+    cancelText: 'Huỷ bỏ'
+  });
+  if (!ok) return;
   
   saving.value = true;
   try {
@@ -5584,6 +10454,7 @@ const bulkMarkCompleted = async () => {
     });
     await Promise.all(promises);
     selectedReports.value = [];
+    showToast(`Đã hoàn thành ${count} công việc`, 'success');
   } catch (error) {
     console.error('Lỗi bulk update', error);
     alert('Có lỗi xảy ra khi cập nhật hàng loạt.');
@@ -5593,7 +10464,19 @@ const bulkMarkCompleted = async () => {
 
 const bulkDelete = async () => {
   if (selectedReports.value.length === 0) return;
-  if (!confirm(`Bạn có chắc chắn muốn xóa ${selectedReports.value.length} công việc đã chọn? Hành động này không thể hoàn tác.`)) return;
+  const count = selectedReports.value.length;
+  const ok = await enqueueBaogiaDialog({
+    mode: 'confirm',
+    variant: 'danger',
+    title: 'Xoá hàng loạt báo cáo?',
+    eyebrow: 'HÀNH ĐỘNG KHÔNG THỂ HOÀN TÁC',
+    targetLabel: `${count} báo cáo công việc đang chọn`,
+    message: `Bạn có chắc chắn muốn xoá vĩnh viễn ${count} công việc đã chọn?`,
+    subnote: 'Dữ liệu sau khi xoá sẽ không thể khôi phục.',
+    confirmText: 'Xoá vĩnh viễn',
+    cancelText: 'Huỷ bỏ'
+  });
+  if (!ok) return;
   
   saving.value = true;
   try {
@@ -5601,6 +10484,7 @@ const bulkDelete = async () => {
     await Promise.all(promises);
     reports.value = reports.value.filter(r => !selectedReports.value.includes(r.id));
     selectedReports.value = [];
+    showToast(`Đã xoá ${count} báo cáo công việc`, 'success');
   } catch (error) {
     console.error('Lỗi bulk delete', error);
     alert('Có lỗi xảy ra khi xóa hàng loạt.');
@@ -5613,11 +10497,16 @@ const isDoneModalOpen = ref(false)
 const doneTarget = ref(null)
 
 const markAsCompleted = async (report) => {
+  if (report && report._isGuideDemo) {
+    showToast('Thẻ mẫu minh hoạ trong chế độ hướng dẫn', 'info', 2000);
+    return;
+  }
   const originalStatus = report.trang_thai;
   report.trang_thai = 'Hoàn thành';
   
   try {
     await update(dbRef(database, `REPORT/${report.id}`), { trang_thai: 'Hoàn thành' });
+    showToast('Đã đánh dấu Hoàn thành', 'success');
   } catch (error) {
     report.trang_thai = originalStatus;
     alert('Lỗi cập nhật: ' + error.message);
@@ -5625,6 +10514,10 @@ const markAsCompleted = async (report) => {
 }
 
 const markAsFailed = async (report) => {
+  if (report && report._isGuideDemo) {
+    showToast('Thẻ mẫu minh hoạ trong chế độ hướng dẫn', 'info', 2000);
+    return;
+  }
   const originalStatus = report.trang_thai;
   const originalIsFailed = report.isFailed;
   
@@ -5633,27 +10526,53 @@ const markAsFailed = async (report) => {
   
   try {
     await update(dbRef(database, `REPORT/${report.id}`), { trang_thai: 'Failed', isFailed: true });
+    showToast('Đã đánh dấu công việc Failed', 'warning');
   } catch (error) {
     report.trang_thai = originalStatus;
     report.isFailed = originalIsFailed;
     alert('Lỗi cập nhật: ' + error.message);
   }
-  failTarget.value = null;
 }
 
-// Xoá
+// Xoá (Unified FIFO Queued baogiaDialog)
 const isDeleteModalOpen = ref(false)
 const deleteTarget = ref(null)
 const isDeleting = ref(false)
 const deletingIds = ref([])
 
-const confirmDelete = (id) => {
-  if (API_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL') {
-      alert("Tính năng xoá cần cấu hình API_URL");
-      return;
+const confirmDelete = async (id) => {
+  if (id === '__guide_demo_report__') {
+    showToast('Thẻ mẫu minh hoạ trong chế độ hướng dẫn', 'info', 2000);
+    return;
   }
+  if (API_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL') {
+    alert("Tính năng xoá cần cấu hình API_URL");
+    return;
+  }
+  const target = reports.value.find(r => r.id === id);
+  const dtInfo = target ? formatDisplayTime(target.thoi_gian) : null;
+  const metaParts = [];
+  if (dtInfo?.time) metaParts.push(dtInfo.time);
+  if (dtInfo?.thu) metaParts.push(dtInfo.thu);
+  if (dtInfo?.date) metaParts.push(dtInfo.date);
+  if (target?.phan_loai) metaParts.push(target.phan_loai);
+
+  const ok = await enqueueBaogiaDialog({
+    mode: 'confirm',
+    variant: 'danger',
+    title: 'Xoá báo cáo công việc?',
+    eyebrow: 'HÀNH ĐỘNG KHÔNG THỂ HOÀN TÁC',
+    targetLabel: target?.noi_dung || `Báo cáo #${id}`,
+    targetMeta: metaParts.join(' · '),
+    message: 'Bạn có chắc chắn muốn xoá báo cáo công việc này khỏi hệ thống?',
+    subnote: 'Dữ liệu sau khi xoá sẽ không thể khôi phục lại.',
+    confirmText: 'Xoá báo cáo',
+    cancelText: 'Huỷ bỏ'
+  });
+  if (!ok) return;
   deleteTarget.value = id;
-  isDeleteModalOpen.value = true;
+  await executeDelete();
+  showToast('Đã xoá báo cáo công việc', 'success');
 }
 
 const executeDelete = async () => {
@@ -5748,7 +10667,7 @@ const getFileIconSvg = (fileName) => {
   } else if (isPdf) {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" fill="#ef4444"/><path d="M14 2v6h6" fill="#b91c1c" opacity="0.3"/><path d="M8.5 16v-4h2a1.5 1.5 0 0 1 0 3h-1v1h-1zm1-2h1a.5.5 0 0 0 0-1h-1v1zm3 2v-4h2a1.5 1.5 0 0 1 0 3h-1v1h-1zm1-1.5h1a.5.5 0 0 0 0-1h-1v1zm2 1.5v-4h2.5v1h-1.5v.5h1v1h-1v1.5h-1z" fill="#ffffff"/></svg>`;
   } else if (isImage) {
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" fill="#8b5cf6"/><path d="M14 2v6h6" fill="#6d28d9" opacity="0.3"/><circle cx="10" cy="12" r="1.5" fill="#ffffff"/><path d="M7 18l3.5-4.5 2 2.5 3-4L17 18H7z" fill="#ffffff"/></svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" fill="#0ea5e9"/><path d="M14 2v6h6" fill="#0369a1" opacity="0.3"/><circle cx="10" cy="12" r="1.5" fill="#ffffff"/><path d="M7 18l3.5-4.5 2 2.5 3-4L17 18H7z" fill="#ffffff"/></svg>`;
   } else if (isArchive) {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" fill="#f59e0b"/><path d="M14 2v6h6" fill="#d97706" opacity="0.3"/><path d="M10 12h4v1h-4v-1zm0 2h4v1h-4v-1zm0 2h4v1h-4v-1z" fill="#ffffff"/></svg>`;
   }
@@ -6334,6 +11253,7 @@ const onMoveTaskDrop = async (e, dateStr, period) => {
     
     // Add success animation
     successDropTaskId.value = task.id;
+    showToast(`Đã chuyển việc sang ${period} ${dateStr}`, 'success', 2200);
     setTimeout(() => {
       if (successDropTaskId.value === task.id) {
         successDropTaskId.value = null;
@@ -6678,6 +11598,7 @@ const doExportExcel = () => {
   XLSX.utils.book_append_sheet(wb, ws, "Báo Cáo");
   
   XLSX.writeFile(wb, `Bao_Cao_Cong_Viec_${exportMonth}_${exportYear}.xlsx`);
+  showToast(`Đã xuất Excel tháng ${exportMonth}/${exportYear}`, 'success');
 }
 
 const pipelineData = ref([]);
@@ -6819,7 +11740,19 @@ const filteredModalFiles = computed(() => {
       (f.ghiChu && f.ghiChu.toLowerCase().includes(q))
     );
   }
-  return res.sort((a, b) => (b.createdTime || 0) - (a.createdTime || 0)).slice(0, 50);
+  const currentMa = isModalOpen.value ? (formData.value.maKH || '') : '';
+  const currentFileId = isModalOpen.value ? (formData.value.id_quanlyfile || '') : '';
+  return res
+    .sort((a, b) => {
+      const aLinked = currentFileId && a.id === currentFileId ? 1 : 0;
+      const bLinked = currentFileId && b.id === currentFileId ? 1 : 0;
+      if (aLinked !== bLinked) return bLinked - aLinked;
+      const aSameCus = currentMa && a.maKH === currentMa ? 1 : 0;
+      const bSameCus = currentMa && b.maKH === currentMa ? 1 : 0;
+      if (aSameCus !== bSameCus) return bSameCus - aSameCus;
+      return (b.createdTime || 0) - (a.createdTime || 0);
+    })
+    .slice(0, 50);
 });
 
 const applyLinkedFileToForm = (f) => {
@@ -6840,13 +11773,30 @@ const applyLinkedFileToForm = (f) => {
   }
 };
 
-const selectLinkedFile = (f) => {
+const selectLinkedFile = async (f) => {
   if (isEditing.value && f.maKH && formData.value.maKH && f.maKH !== formData.value.maKH) {
     pendingLinkedFile.value = f;
-    isWarningCustomerModalOpen.value = true;
+    const ok = await enqueueBaogiaDialog({
+      mode: 'confirm',
+      variant: 'warning',
+      title: 'Khác khách hàng gốc',
+      eyebrow: 'CẢNH BÁO LIÊN KẾT HỒ SƠ',
+      targetLabel: f.noiDung || `Hồ sơ #${f.id}`,
+      targetMeta: `KH Hồ sơ: ${f.maKH} ↔ KH Báo cáo: ${formData.value.maKH}`,
+      message: 'Hồ sơ file bạn đang chọn thuộc về một khách hàng khác với báo cáo hiện tại. Bạn vẫn muốn tiếp tục liên kết?',
+      confirmText: 'Vẫn liên kết',
+      cancelText: 'Huỷ bỏ'
+    });
+    if (ok) {
+      applyLinkedFileToForm(f);
+      isFileSelectModalOpen.value = false;
+      showToast('Đã liên kết hồ sơ file', 'success');
+    }
+    pendingLinkedFile.value = null;
   } else {
     applyLinkedFileToForm(f);
     isFileSelectModalOpen.value = false;
+    showToast('Đã liên kết hồ sơ file', 'success');
   }
 };
 
@@ -7034,7 +11984,7 @@ const getQuanLyFileIconSvg = (fileObj) => {
   if (type === 'pdf') return `<img src="https://i.ibb.co/3YdHRTFs/unnamed.webp" style="${imgStyle}" />`;
   if (type === 'word') return `<img src="https://i.ibb.co/d0Y6v4yD/images-7.jpg" style="${imgStyle}" />`;
   if (type === 'excel') return `<img src="https://i.ibb.co/b5yq09VP/images-8.jpg" style="${imgStyle}" />`;
-  if (type === 'image') return `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>`;
+  if (type === 'image') return `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#14b8a6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>`;
 };
 
@@ -7103,7 +12053,7 @@ const setupPendingModalObserver = () => {
   if (typeof window === 'undefined' || !('IntersectionObserver' in window)) return;
   const el = pendingModalSentinel.value;
   if (!el) return;
-  const scrollRoot = el.closest('.elite-modal-body') || null;
+  const scrollRoot = el.closest('.bg-modal-body, .elite-modal-body') || null;
 
   pendingModalObserver = new IntersectionObserver(
     (entries) => {
@@ -7137,6 +12087,8 @@ watch(
     () => filters.value.trang_thai,
     () => filters.value.period,
     () => filters.value.sortOrder,
+    () => filters.value.searchQuery,
+    () => filters.value.maKH,
     () => desktopViewMode.value
   ],
   () => {
@@ -7181,6 +12133,37 @@ onMounted(() => {
   }
   fetchReports()
   window.addEventListener('resize', onResize)
+  window.addEventListener('keydown', onBaogiaGlobalKeydown)
+  window.addEventListener('dragend', onGlobalKanbanDragCleanup)
+  window.addEventListener('drop', onGlobalKanbanDragCleanup)
+  document.addEventListener('mousedown', onBaogiaDocPointerDown)
+  watch(isExportModalOpen, (open) => {
+    if (!open) openModalSelectKey.value = null
+  })
+  watch(highlightedReportId, (val) => {
+    if (autoClearHighlightTimer) {
+      clearTimeout(autoClearHighlightTimer)
+      autoClearHighlightTimer = null
+    }
+    if (val) {
+      autoClearHighlightTimer = setTimeout(() => {
+        highlightedReportId.value = null
+        autoClearHighlightTimer = null
+      }, 1700)
+    }
+  })
+  watch(droppedReportId, (val) => {
+    if (autoClearDroppedTimer) {
+      clearTimeout(autoClearDroppedTimer)
+      autoClearDroppedTimer = null
+    }
+    if (val) {
+      autoClearDroppedTimer = setTimeout(() => {
+        droppedReportId.value = null
+        autoClearDroppedTimer = null
+      }, 600)
+    }
+  })
   nextTick(() => {
     setupLazyLoadObserver();
   });
@@ -7188,6 +12171,16 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', onResize)
+  window.removeEventListener('keydown', onBaogiaGlobalKeydown)
+  window.removeEventListener('dragend', onGlobalKanbanDragCleanup)
+  window.removeEventListener('drop', onGlobalKanbanDragCleanup)
+  document.removeEventListener('mousedown', onBaogiaDocPointerDown)
+  if (smartToastTimer) clearTimeout(smartToastTimer)
+  if (searchBlurTimer) clearTimeout(searchBlurTimer)
+  if (inlineCusBlurTimer) clearTimeout(inlineCusBlurTimer)
+  if (draftSaveTimer) clearTimeout(draftSaveTimer)
+  if (autoClearHighlightTimer) clearTimeout(autoClearHighlightTimer)
+  if (autoClearDroppedTimer) clearTimeout(autoClearDroppedTimer)
   if (lazyLoadObserver) {
     lazyLoadObserver.disconnect();
     lazyLoadObserver = null;
@@ -7528,7 +12521,7 @@ onUnmounted(() => {
   position: absolute;
   top: 0; left: 0; right: 0;
   height: 5px;
-  background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+  background: linear-gradient(90deg, #3b82f6, #0ea5e9);
   z-index: 2;
 }
 @keyframes dailyFadeIn {
@@ -7660,9 +12653,9 @@ onUnmounted(() => {
 }
 
 .elite-voice-btn {
-  background: rgba(99, 102, 241, 0.08);
-  color: #4f46e5;
-  border: 1px solid rgba(99, 102, 241, 0.2);
+  background: rgba(14, 165, 233, 0.08);
+  color: #0284c7;
+  border: 1px solid rgba(14, 165, 233, 0.2);
   border-radius: 8px;
   width: 32px;
   height: 32px;
@@ -7675,7 +12668,7 @@ onUnmounted(() => {
 }
 
 .elite-voice-btn:hover {
-  background: rgba(99, 102, 241, 0.15);
+  background: rgba(14, 165, 233, 0.15);
   transform: translateY(-1px);
 }
 
@@ -7785,15 +12778,15 @@ button {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+  background: linear-gradient(135deg, #0284c7 0%, #3b82f6 100%);
   color: white;
   padding: 0.8rem 1.5rem;
-  box-shadow: 0 4px 12px -2px rgba(79, 70, 229, 0.3);
+  box-shadow: 0 4px 12px -2px rgba(2, 132, 199, 0.3);
 }
 
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 16px -2px rgba(79, 70, 229, 0.4);
+  box-shadow: 0 8px 16px -2px rgba(2, 132, 199, 0.4);
 }
 
 .btn-primary:active:not(:disabled) {
@@ -7882,9 +12875,9 @@ button {
 }
 
 .filters input:focus, .filters select:focus {
-  border-color: #6366f1;
+  border-color: #0ea5e9;
   background-color: white;
-  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+  box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.1);
 }
 
 /* --- TABLE --- */
@@ -8369,7 +13362,7 @@ button {
 
 .elite-select-mini:hover, .elite-select-mini:focus {
   background: white;
-  box-shadow: 0 0 0 2px rgba(99,102,241,0.2);
+  box-shadow: 0 0 0 2px rgba(14, 165, 233,0.2);
 }
 
 /* Status Toggle inside Modal */
@@ -8463,9 +13456,9 @@ button {
   font-weight: 700;
   font-size: 0.95rem;
   color: white;
-  background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+  background: linear-gradient(135deg, #0284c7 0%, #3b82f6 100%);
   border: none;
-  box-shadow: 0 4px 12px -2px rgba(79, 70, 229, 0.3);
+  box-shadow: 0 4px 12px -2px rgba(2, 132, 199, 0.3);
   transition: all 0.2s;
   cursor: pointer;
   display: flex;
@@ -8475,7 +13468,7 @@ button {
 
 .elite-btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 16px -2px rgba(79, 70, 229, 0.4);
+  box-shadow: 0 8px 16px -2px rgba(2, 132, 199, 0.4);
 }
 
 .elite-btn-secondary {
@@ -8483,9 +13476,9 @@ button {
   border-radius: 10px;
   font-weight: 600;
   font-size: 0.95rem;
-  color: #4f46e5;
-  background: rgba(79, 70, 229, 0.1);
-  border: 1.5px solid rgba(79, 70, 229, 0.2);
+  color: #0284c7;
+  background: rgba(2, 132, 199, 0.1);
+  border: 1.5px solid rgba(2, 132, 199, 0.2);
   transition: all 0.2s;
   cursor: pointer;
   display: flex;
@@ -8494,7 +13487,7 @@ button {
 }
 
 .elite-btn-secondary:hover {
-  background: rgba(79, 70, 229, 0.15);
+  background: rgba(2, 132, 199, 0.15);
 }
 
 .btn-add-continue {
@@ -8615,8 +13608,8 @@ button {
 
 
 .elite-btn-secondary:hover:not(:disabled) {
-  background: rgba(79, 70, 229, 0.15);
-  border-color: rgba(79, 70, 229, 0.3);
+  background: rgba(2, 132, 199, 0.15);
+  border-color: rgba(2, 132, 199, 0.3);
   transform: translateY(-1px);
 }
 
@@ -8644,7 +13637,7 @@ button {
   width: 40px;
   height: 40px;
   border: 3px solid #f3f4f6;
-  border-top: 3px solid #4f46e5;
+  border-top: 3px solid #0284c7;
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -8712,9 +13705,9 @@ button {
   border: 1px solid #cbd5e1;
 }
 .time-box:focus-within {
-  border-color: #6366f1;
+  border-color: #0ea5e9;
   background-color: white;
-  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+  box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.1);
 }
 .small-select select {
   padding: 0.3rem 1.25rem 0.3rem 0.4rem;
@@ -8752,13 +13745,13 @@ button {
   transition: all 0.2s;
 }
 .date-input:focus {
-  border-color: #6366f1;
+  border-color: #0ea5e9;
   background-color: white;
-  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+  box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.1);
 }
 .day-badge {
-  background-color: #e0e7ff;
-  color: #4338ca;
+  background-color: #e0f2fe;
+  color: #0369a1;
   padding: 0.5rem 1rem;
   border-radius: 8px;
   font-weight: 600;
@@ -8922,14 +13915,14 @@ button {
   box-shadow: 0 6px 16px -2px rgba(16, 185, 129, 0.5), inset 0 1px 2px rgba(255,255,255,0.2);
 }
 .mobile-action-btn.empty-days {
-  background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+  background: linear-gradient(135deg, #0ea5e9, #0369a1);
   color: white;
-  box-shadow: 0 4px 12px -2px rgba(139, 92, 246, 0.4), inset 0 1px 2px rgba(255,255,255,0.2);
+  box-shadow: 0 4px 12px -2px rgba(14, 165, 233, 0.4), inset 0 1px 2px rgba(255,255,255,0.2);
 }
 .mobile-action-btn.empty-days:hover {
-  background: linear-gradient(135deg, #7c3aed, #5b21b6);
+  background: linear-gradient(135deg, #0284c7, #075985);
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px -2px rgba(139, 92, 246, 0.5), inset 0 1px 2px rgba(255,255,255,0.2);
+  box-shadow: 0 6px 16px -2px rgba(14, 165, 233, 0.5), inset 0 1px 2px rgba(255,255,255,0.2);
 }
 .mobile-action-btn.distribute-tasks {
   background: linear-gradient(135deg, #f97316, #ea580c);
@@ -9106,9 +14099,9 @@ button {
   font-family: inherit;
 }
 .date-filter input[type="date"]:focus {
-  border-color: #6366f1;
+  border-color: #0ea5e9;
   background-color: white;
-  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+  box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.1);
 }
 
 /* --- MOBILE CARD VIEW --- */
@@ -9201,9 +14194,9 @@ button {
     transform: scale(0.96);
   }
   .mobile-action-btn.empty-days {
-    background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+    background: linear-gradient(135deg, #0ea5e9, #0369a1);
     color: white;
-    box-shadow: 0 4px 12px -2px rgba(124, 58, 237, 0.5), inset 0 2px 4px rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 12px -2px rgba(2, 132, 199, 0.5), inset 0 2px 4px rgba(255, 255, 255, 0.3);
   }
   .mobile-action-btn.empty-days:active {
     transform: scale(0.96);
@@ -9369,8 +14362,8 @@ button {
 
 /* ===== DRAG-OVER ANIMATION ===== */
 @keyframes kb-pulse-border {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4), 0 10px 30px -10px rgba(99, 102, 241, 0.3); }
-  50% { box-shadow: 0 0 0 8px rgba(99, 102, 241, 0.0), 0 10px 30px -10px rgba(99, 102, 241, 0.5); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.4), 0 10px 30px -10px rgba(14, 165, 233, 0.3); }
+  50% { box-shadow: 0 0 0 8px rgba(14, 165, 233, 0.0), 0 10px 30px -10px rgba(14, 165, 233, 0.5); }
 }
 
 @keyframes kb-shimmer {
@@ -9380,7 +14373,7 @@ button {
 
 .kb-col-drag-over {
   transform: translateY(-4px) scale(1.01) !important;
-  border: 2px dashed rgba(99, 102, 241, 0.7) !important;
+  border: 2px dashed rgba(14, 165, 233, 0.7) !important;
   animation: kb-pulse-border 1s ease-in-out infinite !important;
   z-index: 2;
 }
@@ -9393,7 +14386,7 @@ button {
   background: linear-gradient(
     105deg,
     transparent 40%,
-    rgba(99, 102, 241, 0.08) 50%,
+    rgba(14, 165, 233, 0.08) 50%,
     transparent 60%
   );
   background-size: 200% auto;
@@ -9403,7 +14396,7 @@ button {
 }
 
 .kb-col-drag-over .kanban-header {
-  border-bottom-color: rgba(99, 102, 241, 0.4) !important;
+  border-bottom-color: rgba(14, 165, 233, 0.4) !important;
 }
 
 .kanban-header {
@@ -11105,11 +16098,11 @@ textarea.elite-input {
   box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.25) !important;
 }
 .elite-modal.dark-mode-modal .elite-btn-save {
-  background: linear-gradient(135deg, #a855f7, #7e22ce) !important;
-  box-shadow: 0 4px 15px -3px rgba(168, 85, 247, 0.5) !important;
+  background: linear-gradient(135deg, #14b8a6, #0f766e) !important;
+  box-shadow: 0 4px 15px -3px rgba(20, 184, 166, 0.5) !important;
 }
 .elite-modal.dark-mode-modal .elite-btn-save:hover {
-  background: linear-gradient(135deg, #9333ea, #6b21a8) !important;
+  background: linear-gradient(135deg, #0d9488, #115e59) !important;
 }
 .elite-modal.dark-mode-modal .upload-zone {
   background: rgba(255, 255, 255, 0.03) !important;
@@ -11117,7 +16110,7 @@ textarea.elite-input {
 }
 .elite-modal.dark-mode-modal .upload-zone:hover {
   background: rgba(255, 255, 255, 0.05) !important;
-  border-color: #a855f7 !important;
+  border-color: #14b8a6 !important;
 }
 .elite-modal.dark-mode-modal .elite-modal-title svg {
   color: #ffffff !important;
@@ -11339,27 +16332,7 @@ textarea.elite-input {
   box-shadow: 0 4px 12px -2px rgba(16, 163, 74, 0.35) !important;
 }
 
-/* Fix inline styles on empty days calendar */
-div[style*="background: white"], 
-div[style*="background: #f8fafc"], 
-div[style*="background: #f1f5f9"],
-div[style*="background: rgba(248, 250, 252"] {
-  background: rgba(15, 23, 34, 0.6) !important;
-  border-color: rgba(255, 255, 255, 0.05) !important;
-  color: #e2e8f0 !important;
-}
-
-div[style*="background: #fff7ed"] {
-  background: rgba(245, 158, 11, 0.15) !important;
-  color: #fbbf24 !important;
-  border-color: rgba(245, 158, 11, 0.2) !important;
-}
-
-div[style*="background: #fdf4ff"] {
-  background: rgba(168, 85, 247, 0.15) !important;
-  color: #e879f9 !important;
-  border-color: rgba(168, 85, 247, 0.2) !important;
-}
+/* Removed legacy wildcard div[style*="background: ..."] rules (superseded by baogia-ui-system Dual-Theme tokens) */
 
 /* =========================================================
    DEEP DARK THEME — Report Page: Text & Background Fixes
@@ -11899,7 +16872,7 @@ span[style*="color: #334155"] {
 .taste-variant-danger .taste-modal-glow { background: #ef4444; }
 .taste-variant-warning .taste-modal-glow { background: #f59e0b; }
 .taste-variant-confirm .taste-modal-glow { background: #38bdf8; }
-.taste-variant-info .taste-modal-glow { background: #6366f1; }
+.taste-variant-info .taste-modal-glow { background: #0ea5e9; }
 
 .taste-modal-core {
   position: relative;
@@ -12173,8 +17146,8 @@ span[style*="color: #334155"] {
 .badge-excel:hover { background: rgba(16, 185, 129, 0.15); }
 .badge-default { background: rgba(148, 163, 184, 0.4); color: #ffffff !important; border: 1px solid rgba(148, 163, 184, 0.6); }
 .badge-default:hover { background: rgba(148, 163, 184, 0.15); }
-.badge-image { background: rgba(168, 85, 247, 0.4); color: #ffffff !important; border: 1px solid rgba(168, 85, 247, 0.6); }
-.badge-image:hover { background: rgba(168, 85, 247, 0.15); }
+.badge-image { background: rgba(20, 184, 166, 0.4); color: #ffffff !important; border: 1px solid rgba(20, 184, 166, 0.6); }
+.badge-image:hover { background: rgba(20, 184, 166, 0.15); }
 
 .btn-dl-all-zip {
   display: inline-flex;
@@ -12213,5 +17186,9799 @@ span[style*="color: #334155"] {
 }
 @keyframes zipSpin {
   to { transform: rotate(360deg); }
+}
+
+/* ============================================================================
+   BAO GIA UI SYSTEM (V2 REFINED GLASS & TACTILE DEPTH) — REPORT FIREBASE
+   Modules:
+   1. Dual-Theme Tokens (Dark Navy Ambient Glass + Enterprise Light Blue)
+   2. Module 1: Unboxed Single-Row Command Header + Inline Mini Stat Pills + Mobile Glass Dock
+   3. Module 2: Elite Glass Filter Panel (Top Accent Glow + Recessed Wells + Ghost Chip Sub-Bar)
+   4. Module 3 & 4: Luxury Modal Shell, Vibrant Gradient Banners, Segmented Tracks, Custom Matrix Pickers
+   5. Module 5: Unified Queued Promise baogiaDialog + Single-Merged Smart Toast
+   6. Light-Blue Contrast Adaptation for Protected Task Cards (.bg-board-anchor)
+============================================================================ */
+
+.report-container.page,
+.pl-sheet-overlay,
+.bg-attach-sheet-overlay,
+.bg-lightbox-overlay,
+.baogia-dialog-overlay,
+.smart-toast-wrap {
+  --bg-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --bg-page: #070d19;
+  --bg-page-canvas:
+    radial-gradient(ellipse 75% 42% at 14% -4%, rgba(16, 185, 129, 0.16) 0%, transparent 58%),
+    radial-gradient(ellipse 58% 38% at 88% 8%, rgba(5, 150, 105, 0.11) 0%, transparent 55%),
+    #070d19;
+  --bg-panel: #0d1628;
+  --bg-panel-elev: #131f36;
+  --bg-glass-panel: linear-gradient(180deg, rgba(19, 31, 54, 0.88) 0%, rgba(11, 19, 35, 0.94) 100%);
+  --bg-glass-border: rgba(148, 163, 184, 0.17);
+  --bg-modal-surface: linear-gradient(180deg, #111c32 0%, #0a1222 100%);
+  --bg-group-surface: rgba(15, 24, 42, 0.62);
+  --bg-group-border: rgba(148, 163, 184, 0.13);
+  --bg-soft-pad: rgba(2, 6, 23, 0.38);
+  --bg-soft-pad-bd: rgba(148, 163, 184, 0.12);
+  --bg-well: rgba(3, 7, 18, 0.56);
+  --bg-well-border: rgba(148, 163, 184, 0.16);
+  --bg-well-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(0, 0, 0, 0.25);
+  --bg-island: rgba(15, 24, 42, 0.72);
+  --bg-subbar: rgba(3, 7, 18, 0.32);
+  --bg-subbar-sep: rgba(148, 163, 184, 0.1);
+  --bg-chip-rest: rgba(255, 255, 255, 0.035);
+  --bg-chip-rest-bd: rgba(148, 163, 184, 0.13);
+  --bg-cselect-bg: rgba(15, 24, 42, 0.82);
+  --bg-cselect-bd: rgba(148, 163, 184, 0.2);
+  --bg-specular: rgba(255, 255, 255, 0.08);
+  --bg-specular-strong: rgba(255, 255, 255, 0.15);
+
+  --bg-card: #101a2e;
+  --bg-subtle: #17243d;
+  --bg-input: rgba(4, 9, 22, 0.62);
+  --bg-hover: rgba(16, 185, 129, 0.1);
+  --bg-border: rgba(148, 163, 184, 0.14);
+  --bg-border-strong: rgba(148, 163, 184, 0.24);
+  --bg-text: #f8fafc;
+  --bg-text-sec: #cbd5e1;
+  --bg-text-muted: #94a3b8;
+  --bg-shadow-panel: 0 16px 36px -12px rgba(0, 0, 0, 0.62);
+  --bg-shadow-pop: 0 26px 60px -12px rgba(0, 0, 0, 0.8);
+  --bg-overlay: rgba(2, 6, 18, 0.76);
+  --bg-dock-glass: rgba(12, 20, 36, 0.88);
+  --bg-scheme: dark;
+
+  /* Theme Priority Tokens (Dark Mode = Emerald Green Priority) */
+  --theme-pri: #059669;
+  --theme-pri-bright: #34d399;
+  --theme-pri-bg: rgba(16, 185, 129, 0.16);
+  --theme-pri-bd: rgba(52, 211, 153, 0.44);
+  --theme-pri-grad: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  --theme-pri-header-grad: linear-gradient(135deg, #059669 0%, #047857 100%);
+  --theme-pri-shadow: rgba(16, 185, 129, 0.48);
+  --theme-pri-ring: rgba(16, 185, 129, 0.18);
+
+  /* Semantic Roles (Emerald / Ocean Blue / Teal / Amber / Rose) */
+  --sem-sky: #0284c7;
+  --sem-sky-bright: #38bdf8;
+  --sem-sky-bg: rgba(14, 165, 233, 0.14);
+  --sem-sky-bd: rgba(56, 189, 248, 0.34);
+
+  --sem-emerald: #059669;
+  --sem-emerald-bright: #34d399;
+  --sem-emerald-bg: rgba(16, 185, 129, 0.14);
+  --sem-emerald-bd: rgba(52, 211, 153, 0.34);
+
+  --sem-amber: #d97706;
+  --sem-amber-bright: #fbbf24;
+  --sem-amber-bg: rgba(245, 158, 11, 0.14);
+  --sem-amber-bd: rgba(251, 191, 36, 0.36);
+
+  --sem-rose: #e11d48;
+  --sem-rose-bright: #fb7185;
+  --sem-rose-bg: rgba(244, 63, 94, 0.14);
+  --sem-rose-bd: rgba(251, 113, 133, 0.36);
+
+  --sem-teal: #0d9488;
+  --sem-teal-bright: #2dd4bf;
+  --sem-teal-bg: rgba(13, 148, 136, 0.15);
+  --sem-teal-bd: rgba(45, 212, 191, 0.36);
+}
+
+.report-container.page.theme-light-blue,
+.pl-sheet-overlay.theme-light-blue,
+.bg-attach-sheet-overlay.theme-light-blue,
+.bg-lightbox-overlay.theme-light-blue,
+.baogia-dialog-overlay.theme-light-blue,
+.smart-toast-wrap.theme-light-blue {
+  --bg-page: #edf4fc;
+  --bg-page-canvas: linear-gradient(180deg, #eff5fc 0%, #e3edf9 100%);
+  --bg-panel: #ffffff;
+  --bg-panel-elev: #ffffff;
+  --bg-glass-panel: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  --bg-glass-border: #cfdceb;
+  --bg-modal-surface: #f4f8fd;
+  --bg-group-surface: #ffffff;
+  --bg-group-border: #d8e3f0;
+  --bg-soft-pad: #f1f6fc;
+  --bg-soft-pad-bd: #dbe6f3;
+  --bg-well: #eef3f9;
+  --bg-well-border: #cfdceb;
+  --bg-well-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06);
+  --bg-island: #ffffff;
+  --bg-subbar: #f3f7fc;
+  --bg-subbar-sep: #e2eaf4;
+  --bg-chip-rest: #ffffff;
+  --bg-chip-rest-bd: #d5e0ee;
+  --bg-cselect-bg: #ffffff;
+  --bg-cselect-bd: #cbd8e8;
+  --bg-specular: rgba(255, 255, 255, 0.9);
+  --bg-specular-strong: rgba(255, 255, 255, 0.98);
+
+  --bg-card: #ffffff;
+  --bg-subtle: #eff6ff;
+  --bg-input: #ffffff;
+  --bg-hover: rgba(2, 132, 199, 0.08);
+  --bg-border: #dce6f2;
+  --bg-border-strong: #c8d6e6;
+  --bg-text: #0f172a;
+  --bg-text-sec: #334155;
+  --bg-text-muted: #64748b;
+  --bg-shadow-panel: 0 10px 26px -8px rgba(15, 23, 42, 0.08);
+  --bg-shadow-pop: 0 24px 52px -12px rgba(15, 23, 42, 0.22);
+  --bg-overlay: rgba(15, 23, 42, 0.45);
+  --bg-dock-glass: rgba(255, 255, 255, 0.92);
+  --bg-scheme: light;
+
+  /* Theme Priority Tokens (Light Mode = Ocean Blue Priority) */
+  --theme-pri: #0284c7;
+  --theme-pri-bright: #0284c7;
+  --theme-pri-bg: #e0f2fe;
+  --theme-pri-bd: #38bdf8;
+  --theme-pri-grad: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  --theme-pri-header-grad: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  --theme-pri-shadow: rgba(2, 132, 199, 0.44);
+  --theme-pri-ring: rgba(2, 132, 199, 0.18);
+
+  --sem-sky: #0284c7;
+  --sem-sky-bright: #0369a1;
+  --sem-sky-bg: #e0f2fe;
+  --sem-sky-bd: #7dd3fc;
+
+  --sem-emerald: #059669;
+  --sem-emerald-bright: #047857;
+  --sem-emerald-bg: #d1fae5;
+  --sem-emerald-bd: #6ee7b7;
+
+  --sem-amber: #d97706;
+  --sem-amber-bright: #b45309;
+  --sem-amber-bg: #fef3c7;
+  --sem-amber-bd: #fcd34d;
+
+  --sem-rose: #e11d48;
+  --sem-rose-bright: #be123c;
+  --sem-rose-bg: #ffe4e6;
+  --sem-rose-bd: #fda4af;
+
+  --sem-teal: #0d9488;
+  --sem-teal-bright: #0f766e;
+  --sem-teal-bg: #ccfbf1;
+  --sem-teal-bd: #5eead4;
+}
+
+:global(.app-layout:has(.report-container.page) .main-content) {
+  background: #070d19 !important;
+}
+
+:global(.app-layout:has(.report-container.page.theme-light-blue) .main-content) {
+  background: #e3edf9 !important;
+}
+
+.report-container.page {
+  background: var(--bg-page-canvas) !important;
+  color: var(--bg-text);
+  color-scheme: var(--bg-scheme);
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 22px 24px;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: clip;
+  transition: background 0.25s ease, color 0.2s ease;
+}
+
+.bg-board-anchor:not(.is-calendar-mode) {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.bg-tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes bgModalPop {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0) scale(0.982);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes bgPopDrop {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -6px, 0) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+/* ============================================================================
+   MODULE 1A & 1B: MINIMAL IDENTITY HEADER, BENTO COMMAND DECK & BOARD TOOLBAR
+============================================================================ */
+.bg-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: transparent;
+  border: none;
+  padding: 2px 2px 10px;
+  margin-bottom: 2px;
+}
+
+.bg-brand-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+
+.bg-brand-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: var(--theme-pri-bg);
+  border: 1px solid var(--theme-pri-bd);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 6px 16px -4px var(--theme-pri-shadow);
+  color: var(--theme-pri-bright);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.bg-title-stack {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.bg-page-title {
+  margin: 0 !important;
+  font-size: 1.24rem !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.025em;
+  color: var(--bg-text) !important;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.bg-page-subtitle {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--bg-text-muted);
+  white-space: nowrap;
+}
+
+/* 2-Column Asymmetric Bento Command Deck */
+.bg-bento-deck {
+  display: grid;
+  grid-template-columns: minmax(0, 1.56fr) minmax(345px, 1fr);
+  gap: 14px;
+  align-items: stretch;
+  margin-bottom: 14px;
+}
+
+/* Right Bento: Asymmetric Status Cards (Col 1: Tall Hero Total | Col 2: 3 Stacked Rows) */
+.bg-kpi-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(146px, 0.92fr) minmax(0, 1.26fr);
+  gap: 10px;
+  padding: 12px;
+  border-radius: 18px;
+  background: var(--bg-glass-panel);
+  border: 1px solid var(--bg-glass-border);
+  box-shadow:
+    inset 0 1px 0 var(--bg-specular-strong),
+    var(--bg-shadow-panel);
+}
+
+.bg-kpi-grid::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 22px;
+  right: 22px;
+  height: 2.5px;
+  border-radius: 0 0 4px 4px;
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.08) 0%, #10b981 48%, #34d399 100%);
+  box-shadow: 0 2px 12px rgba(16, 185, 129, 0.36);
+  pointer-events: none;
+}
+
+.report-container.page.theme-light-blue .bg-kpi-grid::before {
+  background: linear-gradient(90deg, rgba(14, 165, 233, 0.08) 0%, #0ea5e9 48%, #0284c7 100%);
+  box-shadow: 0 2px 12px rgba(2, 132, 199, 0.28);
+}
+
+.bg-kpi-card {
+  width: 100% !important;
+  margin: 0 !important;
+  cursor: pointer;
+  transition: transform 0.2s var(--bg-ease), background 0.2s var(--bg-ease), border-color 0.2s var(--bg-ease), box-shadow 0.2s var(--bg-ease);
+}
+
+.bg-kpi-card:active {
+  transform: scale(0.985) !important;
+}
+
+/* Col 1: Hero Tall Total Card */
+.bg-kpi-card.is-total-hero {
+  height: 100%;
+  min-height: 128px;
+  padding: 13px 14px;
+  border-radius: 14px;
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-soft-pad-bd);
+  color: var(--bg-text);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: stretch;
+  text-align: left;
+  position: relative;
+  overflow: hidden;
+}
+
+.bg-kpi-card.is-total-hero:hover {
+  transform: translateY(-1.5px);
+  border-color: var(--theme-pri-bd);
+}
+
+.bg-kpi-card.is-total-hero.is-active {
+  background: linear-gradient(145deg, #059669 0%, #047857 100%) !important;
+  border-color: rgba(110, 231, 183, 0.62) !important;
+  color: #ffffff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 10px 24px -6px rgba(5, 150, 105, 0.45);
+}
+
+.report-container.page.theme-light-blue .bg-kpi-card.is-total-hero.is-active {
+  background: linear-gradient(145deg, #0284c7 0%, #0369a1 100%) !important;
+  border-color: rgba(125, 211, 252, 0.68) !important;
+  color: #ffffff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 10px 24px -6px rgba(2, 132, 199, 0.38);
+}
+
+.bg-kpi-card.is-total-hero.is-active .bg-kpi-hero-icon {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.42);
+  color: #ffffff !important;
+}
+
+.bg-kpi-card.is-total-hero.is-active .bg-kpi-hero-lbl,
+.bg-kpi-card.is-total-hero.is-active .bg-kpi-hero-num,
+.bg-kpi-card.is-total-hero.is-active .bg-kpi-hero-unit,
+.bg-kpi-card.is-total-hero.is-active .bg-kpi-hero-rate .is-rate-num,
+.bg-kpi-card.is-total-hero.is-active .bg-kpi-hero-rate .is-rate-txt {
+  color: #ffffff !important;
+}
+
+.bg-kpi-card.is-total-hero.is-active .bg-kpi-seg-bar {
+  background: rgba(0, 0, 0, 0.24);
+}
+.bg-kpi-card.is-total-hero.is-active .bg-kpi-seg-bar .is-seg-emerald {
+  background: linear-gradient(90deg, #ffffff, #d1fae5);
+}
+.report-container.page.theme-light-blue .bg-kpi-card.is-total-hero.is-active .bg-kpi-seg-bar .is-seg-emerald {
+  background: linear-gradient(90deg, #ffffff, #e0f2fe);
+}
+
+.bg-kpi-hero-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bg-kpi-hero-icon {
+  width: 27px;
+  height: 27px;
+  border-radius: 8px;
+  background: var(--theme-pri-bg);
+  border: 1px solid var(--theme-pri-bd);
+  color: var(--theme-pri-bright);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.bg-kpi-hero-lbl {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--bg-text-sec);
+  white-space: nowrap;
+}
+
+.bg-kpi-hero-mid {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  margin: 6px 0 4px;
+}
+
+.bg-kpi-hero-num {
+  font-size: 1.92rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--bg-text);
+}
+
+.bg-kpi-card.is-total-hero.is-active .bg-kpi-hero-num {
+  color: var(--theme-pri-bright);
+}
+
+.bg-kpi-hero-unit {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--bg-text-muted);
+}
+
+.bg-kpi-hero-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bg-kpi-hero-rate {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.bg-kpi-hero-rate .is-rate-num {
+  color: var(--theme-pri-bright);
+  font-weight: 800;
+}
+
+.bg-kpi-hero-rate .is-rate-txt {
+  color: var(--bg-text-muted);
+}
+
+.bg-kpi-seg-bar {
+  height: 5.5px;
+  border-radius: 999px;
+  background: var(--bg-well);
+  display: flex;
+  overflow: hidden;
+  gap: 1.5px;
+}
+
+.bg-kpi-seg-bar .is-seg-emerald {
+  background: var(--theme-pri-grad);
+  border-radius: 999px;
+  transition: width 0.35s var(--bg-ease);
+}
+.bg-kpi-seg-bar .is-seg-amber {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+  border-radius: 999px;
+  transition: width 0.35s var(--bg-ease);
+}
+.bg-kpi-seg-bar .is-seg-rose {
+  background: linear-gradient(90deg, #e11d48, #fb7185);
+  border-radius: 999px;
+  transition: width 0.35s var(--bg-ease);
+}
+
+/* Col 2: 3 Stacked Status Filter Cards */
+.bg-kpi-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  justify-content: space-between;
+}
+
+.bg-kpi-card.is-stack-row {
+  flex: 1 1 0;
+  min-height: 39px;
+  padding: 0 12px;
+  border-radius: 11.5px;
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-soft-pad-bd);
+  color: var(--bg-text-sec);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.bg-kpi-card.is-stack-row:hover {
+  transform: translateX(2px);
+  color: var(--bg-text);
+  border-color: var(--bg-border-strong);
+}
+
+.bg-kpi-card.is-zero {
+  opacity: 0.72;
+}
+.bg-kpi-card.is-zero:hover {
+  opacity: 1;
+}
+
+/* Subtle proportional background fill bar inside each stacked card */
+.bg-kpi-row-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+  transition: width 0.38s var(--bg-ease);
+}
+.bg-kpi-card.is-amber .bg-kpi-row-fill {
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.13) 0%, rgba(245, 158, 11, 0.03) 100%);
+}
+.bg-kpi-card.is-emerald .bg-kpi-row-fill {
+  background: linear-gradient(90deg, var(--theme-pri-bg) 0%, transparent 100%);
+}
+.bg-kpi-card.is-rose .bg-kpi-row-fill {
+  background: linear-gradient(90deg, rgba(244, 63, 94, 0.14) 0%, rgba(244, 63, 94, 0.03) 100%);
+}
+
+.bg-kpi-row-left {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bg-kpi-row-right {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.bg-kpi-dot {
+  width: 7.5px;
+  height: 7.5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.bg-kpi-card.is-amber .bg-kpi-dot {
+  background: #fbbf24;
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.7);
+}
+.bg-kpi-card.is-emerald .bg-kpi-dot {
+  background: var(--theme-pri-bright);
+  box-shadow: 0 0 8px var(--theme-pri-glow);
+}
+.bg-kpi-card.is-rose .bg-kpi-dot {
+  background: #fb7185;
+  box-shadow: 0 0 8px rgba(251, 113, 133, 0.65);
+}
+
+.bg-kpi-label {
+  font-size: 0.79rem;
+  font-weight: 700;
+  color: var(--bg-text-sec);
+}
+
+.bg-kpi-pct {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--bg-text-muted);
+}
+
+.bg-kpi-val {
+  font-size: 0.96rem;
+  font-weight: 900;
+  color: var(--bg-text);
+  min-width: 24px;
+  text-align: right;
+}
+
+.bg-kpi-card.is-stack-row.is-amber.is-active {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+  border-color: #fcd34d !important;
+  color: #ffffff !important;
+  opacity: 1 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    0 8px 18px -6px rgba(217, 119, 6, 0.45);
+}
+.bg-kpi-card.is-stack-row.is-emerald.is-active {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  border-color: #6ee7b7 !important;
+  color: #ffffff !important;
+  opacity: 1 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    0 8px 18px -6px rgba(5, 150, 105, 0.45);
+}
+.report-container.page.theme-light-blue .bg-kpi-card.is-stack-row.is-emerald.is-active {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
+  border-color: #7dd3fc !important;
+  color: #ffffff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 8px 18px -6px rgba(2, 132, 199, 0.38);
+}
+.bg-kpi-card.is-stack-row.is-rose.is-active {
+  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%) !important;
+  border-color: #fda4af !important;
+  color: #ffffff !important;
+  opacity: 1 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    0 8px 18px -6px rgba(225, 29, 72, 0.45);
+}
+.bg-kpi-card.is-stack-row.is-active .bg-kpi-row-fill {
+  opacity: 0 !important;
+}
+.bg-kpi-card.is-stack-row.is-active .bg-kpi-dot {
+  background: #ffffff !important;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.85) !important;
+}
+.bg-kpi-card.is-stack-row.is-active .bg-kpi-label,
+.bg-kpi-card.is-stack-row.is-active .bg-kpi-pct,
+.bg-kpi-card.is-stack-row.is-active .bg-kpi-val {
+  color: #ffffff !important;
+}
+
+.bg-kpi-card.is-stack-row.is-active .bg-kpi-label,
+.bg-kpi-card.is-stack-row.is-active .bg-kpi-val,
+.bg-kpi-card.is-stack-row.is-active .bg-kpi-pct {
+  color: inherit;
+}
+
+/* Board Action & View Bar (Sitting right above Kanban / Daily / Calendar) */
+.bg-board-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.bg-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bg-board-view-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.bg-board-view-cluster .bg-btn-theme {
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 11px;
+  background: var(--bg-island);
+  border: 1px solid var(--bg-glass-border);
+  box-shadow: inset 0 1px 0 var(--bg-specular);
+  color: var(--bg-text);
+}
+
+.bg-board-view-cluster .bg-btn-theme svg {
+  color: var(--sem-amber-bright);
+  flex-shrink: 0;
+}
+
+.report-container.page.theme-light-blue .bg-board-view-cluster .bg-btn-theme {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: var(--bg-text);
+}
+
+.report-container.page.theme-light-blue .bg-board-view-cluster .bg-btn-theme svg {
+  color: var(--theme-pri-bright);
+}
+
+.bg-board-view-cluster .bg-btn-theme:hover:not(:disabled) {
+  border-color: var(--theme-pri-bd);
+  background: var(--bg-hover);
+}
+
+.bg-board-view-cluster .bg-btn-guide {
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 11px;
+  background: var(--bg-island);
+  border: 1px solid var(--bg-glass-border);
+  box-shadow: inset 0 1px 0 var(--bg-specular);
+  color: var(--bg-text);
+  gap: 6.5px;
+  font-weight: 700;
+}
+
+.bg-board-view-cluster .bg-btn-guide .bg-guide-btn-ic {
+  color: var(--theme-pri-bright);
+  flex-shrink: 0;
+}
+
+.report-container.page.theme-light-blue .bg-board-view-cluster .bg-btn-guide {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: var(--bg-text);
+}
+
+.report-container.page.theme-light-blue .bg-board-view-cluster .bg-btn-guide .bg-guide-btn-ic {
+  color: var(--theme-pri-bright);
+}
+
+.bg-board-view-cluster .bg-btn-guide:hover:not(:disabled) {
+  border-color: var(--theme-pri-bd);
+  background: var(--bg-hover);
+  color: var(--theme-pri-bright);
+}
+
+/* Recessed Sliding Segmented Track */
+.bg-seg-switch {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-well);
+  border: 1px solid var(--bg-well-border);
+  box-shadow: var(--bg-well-shadow);
+  border-radius: 11px;
+  padding: 3.5px;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.bg-seg-switch.is-compact {
+  border-radius: 10px;
+  padding: 3px;
+}
+
+.bg-seg-switch.is-compact .bg-seg-btn {
+  height: 29px;
+  padding: 0 8px;
+  font-size: 0.74rem;
+}
+
+.bg-seg-btn {
+  width: auto !important;
+  margin: 0 !important;
+  height: 31px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--bg-text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s var(--bg-ease);
+}
+
+.bg-seg-btn:hover:not(.is-active) {
+  color: var(--bg-text);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.bg-seg-btn.is-active,
+.bg-seg-btn.is-active.is-emerald-pill {
+  background: var(--theme-pri-grad);
+  color: #ffffff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    0 4px 12px -2px var(--theme-pri-shadow);
+}
+
+/* Tactile Semantic Buttons (Dual-Theme Priority: Dark = Emerald, Light = Blue) */
+.bg-btn {
+  width: auto;
+  margin: 0;
+  height: 37px;
+  padding: 0 14px;
+  border-radius: 11px;
+  font-size: 0.81rem;
+  font-weight: 700;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: transform 0.18s var(--bg-ease), background 0.2s var(--bg-ease), border-color 0.2s var(--bg-ease), box-shadow 0.2s var(--bg-ease), color 0.18s ease;
+}
+
+.bg-btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.975) !important;
+}
+
+.bg-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.bg-btn-primary {
+  background: var(--theme-pri-grad);
+  border-color: var(--theme-pri-bd);
+  color: #ffffff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    0 6px 16px -4px var(--theme-pri-shadow);
+}
+.bg-btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.06);
+}
+
+.bg-btn-sky-soft {
+  background: var(--theme-pri-bg);
+  border-color: var(--theme-pri-bd);
+  color: var(--theme-pri-bright);
+  box-shadow: inset 0 1px 0 var(--bg-specular);
+}
+.bg-btn-sky-soft:hover:not(:disabled) {
+  background: var(--theme-pri-grad);
+  border-color: transparent;
+  color: #ffffff;
+}
+
+.bg-btn-emerald {
+  background: var(--theme-pri-grad);
+  border-color: var(--theme-pri-bd);
+  color: #ffffff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    0 6px 18px -4px var(--theme-pri-shadow);
+}
+.bg-btn-emerald:hover:not(:disabled) {
+  transform: translateY(-1.5px);
+  filter: brightness(1.05);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 10px 22px -4px var(--theme-pri-shadow);
+}
+
+/* Hero CTA Button-in-Button Architecture */
+.bg-btn-emerald.is-hero {
+  height: 38px;
+  padding: 0 15px 0 7px;
+  border-radius: 999px;
+  gap: 8px;
+}
+
+.bg-hero-plus-ring {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.22s var(--bg-ease), background 0.22s ease;
+}
+
+.bg-btn-emerald.is-hero:hover .bg-hero-plus-ring {
+  transform: scale(1.08) rotate(90deg);
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.bg-btn-amber {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(217, 119, 6, 0.12) 100%);
+  border-color: var(--sem-amber-bd);
+  color: var(--sem-amber-bright);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+.bg-btn-amber.is-tactile {
+  height: 38px;
+  border-radius: 999px;
+  padding: 0 12px 0 13px;
+}
+.bg-btn-amber:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 6px 16px -4px rgba(217, 119, 6, 0.5);
+}
+
+.bg-btn-rose {
+  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+  border-color: rgba(251, 113, 133, 0.36);
+  color: #ffffff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 6px 16px -4px rgba(225, 29, 72, 0.48);
+}
+.bg-btn-rose:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.06);
+}
+
+.bg-btn-slate {
+  background: var(--bg-soft-pad);
+  border-color: var(--bg-border-strong);
+  color: var(--bg-text-sec);
+}
+.bg-btn-slate:hover:not(:disabled) {
+  background: var(--bg-subtle);
+  color: var(--bg-text);
+  border-color: var(--theme-pri-bd);
+}
+
+/* Unified Recessed Glass Tool Island */
+.bg-tool-island {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3.5px;
+  border-radius: 12px;
+  background: var(--bg-island);
+  border: 1px solid var(--bg-glass-border);
+  box-shadow:
+    inset 0 1px 0 var(--bg-specular),
+    0 6px 18px -8px rgba(0, 0, 0, 0.45);
+}
+
+.bg-tool-island .is-island-item {
+  height: 31px;
+  padding: 0 10.5px;
+  border-radius: 8.5px;
+  border: none !important;
+  background: transparent;
+  box-shadow: none;
+  font-size: 0.78rem;
+}
+
+.bg-tool-island .is-island-item:hover:not(:disabled) {
+  transform: none;
+  background: var(--bg-hover);
+  color: var(--bg-text);
+}
+
+.bg-tool-island .bg-btn-sky-soft.is-island-item {
+  color: var(--theme-pri-bright);
+}
+.bg-tool-island .bg-btn-sky-soft.is-island-item:hover:not(:disabled) {
+  background: var(--theme-pri-bg);
+  color: var(--theme-pri-bright);
+}
+
+.bg-tool-island .bg-btn-theme.is-island-item {
+  color: var(--sem-amber-bright);
+}
+.report-container.page.theme-light-blue .bg-tool-island .bg-btn-theme.is-island-item {
+  color: var(--theme-pri-bright);
+}
+
+.bg-btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--bg-text-muted);
+  height: 35px;
+  padding: 0 11px;
+}
+.bg-btn-ghost:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--bg-text);
+}
+.bg-btn-ghost.is-refresh-btn svg {
+  transition: transform 0.38s var(--bg-ease);
+}
+.bg-btn-ghost.is-refresh-btn:hover svg {
+  transform: rotate(180deg);
+}
+
+.bg-btn-chip {
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  background: var(--bg-chip-rest);
+  border-color: var(--bg-chip-rest-bd);
+  color: var(--bg-text-sec);
+}
+.bg-btn-chip:hover {
+  border-color: var(--theme-pri-bd);
+  color: var(--bg-text);
+}
+.bg-today-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--bg-text-muted);
+  transition: all 0.2s ease;
+}
+.bg-btn-chip.is-active {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  border-color: rgba(110, 231, 183, 0.68) !important;
+  color: #ffffff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 4px 12px -3px rgba(5, 150, 105, 0.45) !important;
+}
+.report-container.page.theme-light-blue .bg-btn-chip.is-active {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
+  border-color: rgba(125, 211, 252, 0.72) !important;
+  color: #ffffff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 4px 12px -3px rgba(2, 132, 199, 0.4) !important;
+}
+.bg-btn-chip.is-active .bg-today-dot {
+  background: #ffffff !important;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.85) !important;
+}
+
+.bg-btn-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 21px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(217, 119, 6, 0.45);
+}
+
+/* ============================================================================
+   MODULE 2: LEFT BENTO — SYNCHRONIZED FILTER WORKSPACE (2A: SOLID HEADER + 5-COL PICKERS)
+============================================================================ */
+.bg-filter-strip {
+  position: relative;
+  background: var(--bg-glass-panel);
+  border: 1px solid var(--bg-glass-border);
+  border-radius: 18px;
+  padding: 0;
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  overflow: visible;
+  box-shadow:
+    inset 0 1px 0 var(--bg-specular),
+    var(--bg-shadow-panel);
+}
+
+.report-container.page.theme-light-blue .bg-filter-strip {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 10px 26px -10px rgba(2, 132, 199, 0.14);
+}
+
+/* 2A: Full-Bleed Solid Colored Header Bar (Emerald Dark / Ocean Blue Light + White Text) */
+.bg-filter-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 13px;
+  border-radius: 17px 17px 0 0;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.report-container.page.theme-light-blue .bg-filter-head {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  border-bottom-color: rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+.bg-filter-head-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.bg-filter-head-ic {
+  width: 24px;
+  height: 24px;
+  border-radius: 7.5px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Sub-row 1: 100% Full-Width Search Well */
+.bg-filter-row-top {
+  display: flex;
+  align-items: center;
+  padding: 10px 13px 5px;
+}
+
+.bg-filter-collapsible {
+  display: contents;
+}
+
+.bg-filter-top-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.is-refresh-btn {
+  height: 29px;
+  padding: 0 10px;
+  border-radius: 8.5px;
+  background: rgba(255, 255, 255, 0.16) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  color: #ffffff !important;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.is-refresh-btn:hover {
+  border-color: rgba(255, 255, 255, 0.54) !important;
+  background: rgba(255, 255, 255, 0.28) !important;
+  color: #ffffff !important;
+}
+
+/* Sub-row 2: Time Granularity Track + ‹ Date Range › + Hôm nay */
+.bg-filter-row-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 5px 10px 9px;
+}
+
+.bg-date-stepper-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.bg-period-step-btn {
+  width: 31px !important;
+  height: 34px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 10px;
+  background: var(--bg-chip-rest);
+  border: 1px solid var(--bg-chip-rest-bd);
+  color: var(--bg-text-sec);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.16s var(--bg-ease);
+}
+.bg-period-step-btn:hover {
+  border-color: var(--theme-pri-bd);
+  background: var(--bg-hover);
+  color: var(--theme-pri-bright);
+  transform: translateY(-1px);
+}
+.bg-period-step-btn:active {
+  transform: scale(0.95);
+}
+
+/* Recessed Split Search Well */
+.bg-search-shell {
+  position: relative;
+  flex: 1 1 100%;
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  background: var(--bg-well);
+  border: 1px solid var(--bg-well-border);
+  box-shadow: var(--bg-well-shadow);
+  border-radius: 11px;
+  padding: 0 12px;
+  gap: 9px;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.report-container.page.theme-light-blue .bg-search-shell,
+.report-container.page.theme-light-blue .bg-date-range-capsule,
+.report-container.page.theme-light-blue .bg-seg-switch.is-compact {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.bg-search-shell.is-focused {
+  border-color: var(--theme-pri-bright);
+  box-shadow:
+    var(--bg-well-shadow),
+    0 0 0 3px var(--theme-pri-ring);
+}
+
+.bg-search-icon {
+  color: var(--theme-pri-bright);
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+
+.bg-search-input {
+  flex: 1;
+  min-width: 0;
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  color: var(--bg-text) !important;
+  font-size: 0.83rem;
+  font-weight: 500;
+  padding: 0 !important;
+}
+
+.bg-search-input::placeholder {
+  color: var(--bg-text-muted);
+}
+
+.bg-search-clear {
+  width: 20px !important;
+  height: 20px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 999px;
+  background: var(--bg-subtle);
+  color: var(--bg-text-muted);
+  font-size: 0.7rem;
+  flex-shrink: 0;
+}
+.bg-search-clear:hover {
+  color: var(--sem-rose-bright);
+}
+
+/* Recent Search Chips Dropdown */
+.bg-recent-dropdown {
+  position: absolute;
+  top: calc(100% + 7px);
+  left: 0;
+  right: 0;
+  z-index: 1250;
+  background: var(--bg-panel-elev);
+  border: 1px solid var(--bg-border-strong);
+  border-radius: 14px;
+  padding: 10px 12px;
+  box-shadow:
+    inset 0 1px 0 var(--bg-specular-strong),
+    var(--bg-shadow-pop);
+  animation: bgPopDrop 0.16s var(--bg-ease);
+}
+
+.bg-recent-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--bg-text-muted);
+  margin-bottom: 8px;
+}
+
+.bg-recent-clear-all {
+  width: auto !important;
+  margin: 0 !important;
+  padding: 2px 6px !important;
+  height: auto !important;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: transparent;
+  color: var(--sem-rose-bright);
+}
+
+.bg-recent-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.bg-recent-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3.5px 8px 3.5px 10px;
+  border-radius: 999px;
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-border);
+  color: var(--bg-text-sec);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.bg-recent-chip:hover {
+  border-color: var(--theme-pri-bd);
+  color: var(--theme-pri-bright);
+}
+
+.bg-recent-chip-del {
+  width: 16px !important;
+  height: 16px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--bg-text-muted);
+  font-size: 0.82rem;
+  line-height: 1;
+}
+.bg-recent-chip-del:hover {
+  color: var(--sem-rose-bright);
+}
+
+/* Seamless Recessed Date Range Capsule */
+.bg-date-range-capsule {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--bg-well);
+  border: 1px solid var(--bg-well-border);
+  box-shadow: var(--bg-well-shadow);
+  border-radius: 10px;
+  padding: 0 8.5px;
+  height: 34px;
+  flex-wrap: nowrap;
+}
+
+.bg-date-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.bg-date-mini-lbl {
+  font-size: 0.66rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--bg-text-muted);
+  white-space: nowrap;
+}
+
+.bg-date-input {
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  color: var(--bg-text) !important;
+  font-size: 0.75rem;
+  font-weight: 800;
+  font-family: inherit;
+  padding: 2px 0 !important;
+  cursor: pointer;
+  color-scheme: var(--bg-scheme);
+}
+
+.bg-date-input.is-week {
+  max-width: 122px;
+}
+
+.bg-date-input.is-month {
+  max-width: 118px;
+}
+
+.bg-date-input.is-year {
+  width: 54px;
+}
+
+.bg-date-arrow {
+  color: var(--theme-pri-bright);
+  opacity: 0.78;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.bg-filter-quick-btns {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+/* Tier 2: Balanced 5-Column Single-Row Sub-Bar for Attribute Pickers (2A) */
+.bg-filter-row-pickers {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 0.82fr)
+    minmax(0, 0.96fr)
+    minmax(0, 1.02fr)
+    minmax(0, 1.10fr)
+    minmax(0, 1.10fr);
+  align-items: center;
+  gap: 5px;
+  margin-top: auto;
+  padding: 8px 10px 10px;
+  background: var(--bg-subbar);
+  border-top: 1px solid var(--bg-subbar-sep);
+  border-radius: 0 0 17px 17px;
+}
+
+.report-container.page.theme-light-blue .bg-filter-row-pickers {
+  background: #f8fafc;
+  border-top-color: #e2e8f0;
+}
+
+@media (max-width: 880px) {
+  .bg-filter-row-pickers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .bg-filter-row-pickers .pl-picker-wrap {
+    flex: 1 1 calc(50% - 4px);
+  }
+}
+
+.bg-picker-bar-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--theme-pri-bright);
+  opacity: 0.92;
+  margin-right: 4px;
+  white-space: nowrap;
+}
+
+.pl-picker-wrap {
+  position: relative;
+  min-width: 0;
+}
+
+.pl-picker-trigger {
+  width: 100% !important;
+  min-width: 0;
+  margin: 0 !important;
+  height: 31px;
+  padding: 0 7px;
+  border-radius: 8.5px;
+  background: var(--bg-chip-rest);
+  border: 1px solid var(--bg-chip-rest-bd);
+  color: var(--bg-text-sec);
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  transition: all 0.18s var(--bg-ease);
+}
+
+.report-container.page.theme-light-blue .pl-picker-trigger:not(.is-custom) {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+.pl-picker-trigger:hover:not(.is-custom),
+.pl-picker-trigger.is-open:not(.is-custom) {
+  border-color: var(--theme-pri-bd);
+  background: var(--bg-hover);
+  color: var(--bg-text);
+}
+
+.pl-picker-trigger.is-open {
+  box-shadow: 0 0 0 2.5px var(--theme-pri-ring);
+}
+
+/* 2A: Solid Colored + White Text Active Filter Pills */
+.pl-picker-trigger.is-custom {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  border-color: rgba(110, 231, 183, 0.72) !important;
+  color: #ffffff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 4px 11px -3px rgba(5, 150, 105, 0.45);
+}
+
+.report-container.page.theme-light-blue .pl-picker-trigger.is-custom {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
+  border-color: rgba(125, 211, 252, 0.75) !important;
+  color: #ffffff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 4px 11px -3px rgba(2, 132, 199, 0.4);
+}
+
+/* Priority Active = Solid Rose Red + White Text in both Dark & Light Mode */
+.pl-picker-trigger.is-custom.is-prio-active,
+.report-container.page.theme-light-blue .pl-picker-trigger.is-custom.is-prio-active {
+  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%) !important;
+  border-color: rgba(253, 164, 175, 0.78) !important;
+  color: #ffffff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    0 4px 11px -3px rgba(225, 29, 72, 0.45);
+}
+
+.pl-picker-prefix {
+  color: var(--bg-text-muted);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.pl-picker-trigger.is-custom .pl-picker-prefix {
+  color: rgba(255, 255, 255, 0.88) !important;
+  opacity: 1;
+}
+
+.pl-picker-val {
+  font-weight: 700;
+  color: var(--bg-text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.pl-picker-trigger.is-custom .pl-picker-val {
+  color: #ffffff !important;
+  font-weight: 800;
+}
+
+.pl-picker-val.is-trunc {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pl-picker-caret {
+  opacity: 0.65;
+  flex-shrink: 0;
+  margin-left: auto;
+  transition: transform 0.2s var(--bg-ease);
+}
+.pl-picker-trigger.is-open .pl-picker-caret {
+  transform: rotate(180deg);
+}
+
+.pl-picker-reset {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.24);
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-left: auto;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+.pl-picker-reset:hover {
+  background: rgba(0, 0, 0, 0.28);
+  color: #ffffff;
+}
+
+/* PC Floating Popover (> 1100px) */
+.pl-popover {
+  position: absolute;
+  top: calc(100% + 7px);
+  left: 0;
+  min-width: 210px;
+  z-index: 1250;
+  background: var(--bg-panel-elev);
+  border: 1px solid var(--bg-border-strong);
+  border-radius: 14px;
+  padding: 6px;
+  box-shadow:
+    inset 0 1px 0 var(--bg-specular-strong),
+    var(--bg-shadow-pop);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: bgPopDrop 0.16s var(--bg-ease);
+}
+
+.pl-popover.is-align-right {
+  left: auto;
+  right: 0;
+}
+
+.pl-popover-head {
+  padding: 6px 10px 5px;
+  font-size: 0.69rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--bg-text-muted);
+  border-bottom: 1px solid var(--bg-border);
+  margin-bottom: 3px;
+}
+
+.pl-option-item {
+  width: 100% !important;
+  margin: 0 !important;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--bg-text-sec);
+  font-size: 0.81rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  white-space: nowrap;
+  transition: all 0.14s ease;
+}
+.pl-option-item:hover {
+  background: var(--bg-hover);
+  color: var(--bg-text);
+}
+.pl-option-item.is-selected {
+  background: var(--theme-pri-bg);
+  color: var(--theme-pri-bright);
+  font-weight: 700;
+}
+
+.bg-filter-reset-all {
+  width: auto !important;
+  margin: 0 !important;
+  height: 29px;
+  padding: 0 10px;
+  border-radius: 8.5px;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+  border: 1px solid rgba(254, 243, 199, 0.65) !important;
+  color: #ffffff !important;
+  font-size: 0.74rem;
+  font-weight: 800;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  box-shadow: 0 3px 10px -2px rgba(0, 0, 0, 0.26);
+  transition: all 0.18s var(--bg-ease);
+}
+.bg-filter-reset-all:not(:disabled):hover {
+  background: linear-gradient(135deg, #fbbf24 0%, #ea580c 100%) !important;
+  border-color: #ffffff !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+}
+.bg-filter-reset-all.is-idle,
+.bg-filter-reset-all:disabled {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.24) !important;
+  color: rgba(255, 255, 255, 0.78) !important;
+  box-shadow: none !important;
+  opacity: 0.86;
+  cursor: default;
+  transform: none;
+}
+
+/* Mobile Adaptive Picker Bottom Sheet (<= 1100px) */
+.pl-sheet-overlay,
+.bg-attach-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100040;
+  background: var(--bg-overlay);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.pl-sheet-panel,
+.bg-attach-sheet-panel {
+  width: 100%;
+  max-width: 640px;
+  max-height: 82dvh;
+  background: var(--bg-panel);
+  color: var(--bg-text);
+  border-top: 1px solid var(--bg-border-strong);
+  border-radius: 22px 22px 0 0;
+  padding: 8px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  box-shadow:
+    inset 0 1px 0 var(--bg-specular-strong),
+    var(--bg-shadow-pop);
+  display: flex;
+  flex-direction: column;
+}
+
+.pl-sheet-grabber {
+  width: 40px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--bg-border-strong);
+  margin: 2px auto 10px;
+  flex-shrink: 0;
+}
+
+.pl-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--bg-border);
+  margin-bottom: 10px;
+}
+
+.pl-sheet-title {
+  font-size: 0.96rem;
+  font-weight: 800;
+  color: var(--bg-text);
+}
+
+.pl-sheet-close {
+  width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 9px;
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-border);
+  color: var(--bg-text-muted);
+}
+
+.pl-sheet-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+}
+
+.pl-sheet-option {
+  width: 100% !important;
+  margin: 0 !important;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 12px;
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-border);
+  color: var(--bg-text-sec);
+  font-size: 0.88rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pl-sheet-option.is-selected {
+  background: var(--theme-pri-bg);
+  border-color: var(--theme-pri-bd);
+  color: var(--theme-pri-bright);
+}
+
+/* ============================================================================
+   MODULE 1B: MOBILE FLOATING GLASS BOTTOM DOCK (.bg-mobile-dock)
+============================================================================ */
+.bg-mobile-dock {
+  display: none;
+}
+
+/* ============================================================================
+   MODULE 3 & 4: LUXURY MODAL SHELL + VIBRANT GRADIENT BANNERS + CUSTOM PICKERS
+============================================================================ */
+.bg-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-overlay);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.bg-modal-overlay.is-fullscreen-modal {
+  padding: 0 !important;
+  align-items: stretch !important;
+  justify-content: stretch !important;
+}
+
+.bg-modal-card {
+  width: 100%;
+  max-height: 92vh;
+  background: var(--bg-modal-surface);
+  color: var(--bg-text);
+  border: 1px solid var(--bg-glass-border);
+  border-radius: 22px;
+  box-shadow:
+    inset 0 1px 0 var(--bg-specular-strong),
+    var(--bg-shadow-pop);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color-scheme: var(--bg-scheme);
+  animation: bgModalPop 0.22s var(--bg-ease);
+}
+
+.bg-modal-card.is-sm { max-width: 440px; }
+.bg-modal-card.is-md { max-width: 740px; }
+.bg-modal-card.is-lg { max-width: 980px; }
+.bg-modal-card.is-xl { max-width: 1260px; }
+
+/* Prevent compact modals (e.g. Export Excel Month/Year picker & Storage Customer picker) from clipping .bg-cselect-pop */
+.bg-modal-card.is-export-modal-card,
+.bg-modal-card:not(.is-fullscreen-card):has(.bg-cselect-pop) {
+  overflow: visible !important;
+}
+
+.bg-modal-card.is-export-modal-card > .bg-modal-head,
+.bg-modal-card.is-export-modal-card > .m-grab-head-stack {
+  border-radius: 21px 21px 0 0;
+}
+
+.bg-modal-card.is-export-modal-card > .bg-modal-body {
+  overflow: visible !important;
+  position: relative;
+  z-index: 40;
+}
+
+.bg-modal-card.is-export-modal-card > .bg-modal-foot {
+  border-radius: 0 0 21px 21px;
+  position: relative;
+  z-index: 1;
+}
+
+.bg-modal-subbar:has(.bg-cselect-pop) {
+  position: relative;
+  z-index: 40;
+}
+
+.bg-modal-card.is-fullscreen-card {
+  width: 100vw !important;
+  max-width: 100vw !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  border-radius: 0 !important;
+  border: none !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+}
+
+@media (min-width: 1101px) {
+  .bg-modal-card.is-fullscreen-card .bg-report-3col-grid {
+    grid-template-columns: minmax(300px, 0.92fr) minmax(380px, 1.44fr) minmax(320px, 1fr);
+    min-height: 100%;
+  }
+
+  .bg-modal-card.is-fullscreen-card .bg-dist-step2-grid {
+    grid-template-columns: minmax(340px, 0.42fr) minmax(0, 1fr);
+    min-height: 100%;
+  }
+
+  .bg-modal-card.is-fullscreen-card .bg-pending-2col {
+    min-height: 100%;
+  }
+}
+
+.m-grab-head-stack {
+  display: none;
+}
+
+.bg-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 15px 20px;
+  border-bottom: 1px solid var(--bg-border);
+  background: rgba(255, 255, 255, 0.02);
+  flex-shrink: 0;
+}
+
+.bg-modal-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.bg-modal-title-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bg-modal-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+.bg-modal-icon.is-sky,
+.bg-modal-icon.is-emerald {
+  background: var(--theme-pri-bg);
+  border: 1px solid var(--theme-pri-bd);
+  color: var(--theme-pri-bright);
+}
+.bg-modal-icon.is-amber { background: var(--sem-amber-bg); border: 1px solid var(--sem-amber-bd); color: var(--sem-amber-bright); }
+.bg-modal-icon.is-rose { background: var(--sem-rose-bg); border: 1px solid var(--sem-rose-bd); color: var(--sem-rose-bright); }
+.bg-modal-icon.is-teal { background: var(--sem-teal-bg); border: 1px solid var(--sem-teal-bd); color: var(--sem-teal-bright); }
+
+.bg-modal-title {
+  margin: 0 !important;
+  font-size: 1.08rem !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.015em;
+  color: var(--bg-text) !important;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bg-modal-sub {
+  margin: 2px 0 0 !important;
+  font-size: 0.77rem;
+  color: var(--bg-text-muted);
+}
+
+.bg-head-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bg-modal-close {
+  width: 34px !important;
+  height: 34px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 10px;
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-border);
+  color: var(--bg-text-muted);
+  font-size: 0.95rem;
+  flex-shrink: 0;
+  transition: all 0.16s ease;
+}
+.bg-modal-close:hover {
+  background: var(--sem-rose-bg);
+  border-color: var(--sem-rose-bd);
+  color: var(--sem-rose-bright);
+}
+
+.bg-modal-subbar {
+  padding: 10px 20px;
+  background: var(--bg-subbar);
+  border-bottom: 1px solid var(--bg-border);
+  flex-shrink: 0;
+}
+.bg-modal-subbar.is-flex {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bg-modal-subbar.is-empty-days-subbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: nowrap;
+}
+
+.bg-empty-date-row {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 540px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  gap: 10px;
+}
+
+.is-empty-date-field {
+  min-width: 0;
+}
+
+.bg-input.is-empty-date-input {
+  margin: 0 !important;
+}
+
+.bg-empty-date-arrow {
+  height: 37px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--bg-text-muted);
+  font-size: 0.9rem;
+  font-weight: 800;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.bg-seg-switch.is-empty-view-track {
+  flex-shrink: 0;
+  height: 37px;
+  box-sizing: border-box;
+}
+
+.bg-seg-switch.is-empty-view-track .bg-seg-btn {
+  height: 29px;
+}
+
+.bg-modal-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.bg-modal-body {
+  padding: 16px 20px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.bg-modal-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 13px 20px;
+  border-top: 1px solid var(--bg-border);
+  background: rgba(255, 255, 255, 0.02);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.bg-foot-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+/* 3-Column Vibrant Banner Groups Grid */
+.bg-report-3col-grid {
+  display: grid;
+  grid-template-columns: 308px minmax(330px, 1.3fr) 326px;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.modal-group {
+  background: var(--bg-group-surface);
+  border: 1px solid var(--bg-group-border);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+  box-shadow:
+    inset 0 1px 0 var(--bg-specular),
+    0 8px 22px -12px rgba(0, 0, 0, 0.35);
+}
+
+/* Vibrant Gradient Banner Headers (Dark Mode = Emerald/Teal Greens | Light Mode = Ocean/Royal Blues) */
+.modal-banner-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-radius: 15px 15px 0 0;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+}
+
+.modal-banner-header.is-sky {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 4px 14px -4px rgba(5, 150, 105, 0.44);
+}
+.modal-banner-header.is-emerald {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    0 4px 14px -4px rgba(16, 185, 129, 0.44);
+}
+.modal-banner-header.is-teal {
+  background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 4px 14px -4px rgba(13, 148, 136, 0.42);
+}
+.report-container.page.theme-light-blue .modal-banner-header.is-sky {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    0 4px 14px -4px rgba(2, 132, 199, 0.42);
+}
+.report-container.page.theme-light-blue .modal-banner-header.is-emerald {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    0 4px 14px -4px rgba(14, 165, 233, 0.42);
+}
+.report-container.page.theme-light-blue .modal-banner-header.is-teal {
+  background: linear-gradient(135deg, #0284c7 0%, #075985 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    0 4px 14px -4px rgba(3, 105, 161, 0.42);
+}
+.modal-banner-header.is-slate {
+  background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+  color: #f8fafc;
+}
+
+.modal-group-body {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  flex: 1;
+}
+
+.bg-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.bg-field.is-grow-2 { flex: 2; }
+.bg-field.is-grow-1 { flex: 1; }
+
+.bg-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.bg-label {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--bg-text-sec);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.bg-label.is-amber { color: var(--sem-amber-bright); }
+.bg-label.is-rose { color: var(--sem-rose-bright); }
+
+.bg-req {
+  color: var(--sem-rose-bright);
+}
+
+.bg-label-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bg-paste-hint {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--bg-text-muted);
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-soft-pad-bd);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+/* Soft Recessed Inputs & Textareas (No Wireframe Harshness) */
+.bg-input,
+.bg-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--bg-well) !important;
+  color: var(--bg-text) !important;
+  border: 1px solid var(--bg-well-border) !important;
+  box-shadow: var(--bg-well-shadow);
+  border-radius: 11px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  color-scheme: var(--bg-scheme);
+}
+
+.bg-input {
+  height: 37px;
+  padding: 0 12px;
+}
+
+.bg-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.bg-input:focus,
+.bg-textarea:focus {
+  outline: none !important;
+  border-color: var(--theme-pri-bright) !important;
+  box-shadow:
+    var(--bg-well-shadow),
+    0 0 0 3px var(--theme-pri-ring);
+}
+
+.bg-textarea {
+  padding: 11px 13px;
+  resize: vertical;
+  line-height: 1.55;
+}
+.bg-textarea.is-main {
+  min-height: 136px;
+  flex: 1;
+}
+.bg-textarea.is-note {
+  min-height: 68px;
+  color: var(--sem-rose-bright) !important;
+  font-weight: 600;
+}
+
+/* Sliding Segmented Choice Track inside Modal (Replaces Hollow Wireframe Boxes) */
+.bg-choice-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 3.5px;
+  border-radius: 11px;
+  background: var(--bg-well);
+  border: 1px solid var(--bg-well-border);
+  box-shadow: var(--bg-well-shadow);
+}
+
+.bg-choice-btn {
+  width: 100% !important;
+  margin: 0 !important;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: var(--bg-text-muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: all 0.2s var(--bg-ease);
+}
+.bg-choice-btn:hover {
+  color: var(--bg-text);
+}
+.bg-choice-btn.is-active-emerald {
+  background: var(--theme-pri-grad);
+  color: #ffffff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    0 3px 10px -2px var(--theme-pri-shadow);
+}
+.bg-choice-btn.is-active-sky {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  color: #ffffff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    0 3px 10px -2px rgba(2, 132, 199, 0.48);
+}
+.bg-choice-btn.is-active-amber {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #ffffff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    0 3px 10px -2px rgba(217, 119, 6, 0.48);
+}
+.bg-choice-btn.is-active-rose {
+  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+  color: #ffffff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    0 3px 10px -2px rgba(225, 29, 72, 0.48);
+}
+.bg-choice-btn.is-active-slate {
+  background: var(--bg-cselect-bg);
+  color: var(--bg-text);
+  box-shadow:
+    inset 0 1px 0 var(--bg-specular-strong),
+    0 2px 6px rgba(0, 0, 0, 0.22);
+}
+
+/* Machined Digital Datetime Matrix + Custom Popover Pickers (Zero Native <select>!) */
+.bg-datetime-matrix {
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-soft-pad-bd);
+  border-radius: 13px;
+  padding: 10px 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.bg-dt-row-time,
+.bg-dt-row-date {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.bg-dt-cell {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3.5px;
+}
+
+.bg-dt-sub {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--bg-text-muted);
+  text-transform: uppercase;
+}
+
+.bg-dt-sep {
+  padding-bottom: 7px;
+  font-weight: 800;
+  color: var(--bg-text-muted);
+  opacity: 0.7;
+}
+
+.bg-cselect-wrap {
+  position: relative;
+}
+
+.bg-cselect-btn {
+  width: 100% !important;
+  margin: 0 !important;
+  height: 34px;
+  padding: 0 9px;
+  border-radius: 9px;
+  background: var(--bg-cselect-bg);
+  border: 1px solid var(--bg-cselect-bd);
+  color: var(--bg-text);
+  font-size: 0.82rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 var(--bg-specular);
+  transition: all 0.16s var(--bg-ease);
+}
+
+.bg-cselect-btn.is-full {
+  height: 37px;
+  padding: 0 12px;
+  border-radius: 11px;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.bg-cselect-btn:hover,
+.bg-cselect-btn.is-open {
+  border-color: var(--theme-pri-bright);
+}
+
+.bg-cselect-btn.is-open {
+  box-shadow: 0 0 0 2.5px var(--theme-pri-ring);
+}
+
+.bg-cselect-caret {
+  color: var(--theme-pri-bright);
+  opacity: 0.85;
+  flex-shrink: 0;
+  transition: transform 0.2s var(--bg-ease);
+}
+
+.bg-cselect-btn.is-open .bg-cselect-caret {
+  transform: rotate(180deg);
+}
+
+.is-trunc-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bg-cselect-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 1600;
+  background: var(--bg-panel-elev);
+  border: 1px solid var(--bg-border-strong);
+  border-radius: 13px;
+  padding: 7px;
+  box-shadow:
+    inset 0 1px 0 var(--bg-specular-strong),
+    var(--bg-shadow-pop);
+  animation: bgPopDrop 0.15s var(--bg-ease);
+}
+
+.bg-cselect-pop.is-align-right {
+  left: auto;
+  right: 0;
+}
+
+.bg-cselect-pop.is-grid-6 {
+  width: 224px;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.bg-cselect-pop.is-grid-7 {
+  width: 248px;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.bg-cselect-pop.is-grid-4 {
+  width: 214px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.bg-cselect-pop.is-minute-pop {
+  width: 236px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bg-cselect-presets {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--bg-border);
+}
+
+.bg-cselect-preset {
+  width: 100% !important;
+  margin: 0 !important;
+  height: 27px;
+  padding: 0 4px;
+  border-radius: 7px;
+  background: var(--theme-pri-bg);
+  border: 1px solid var(--theme-pri-bd);
+  color: var(--theme-pri-bright);
+  font-size: 0.74rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.bg-cselect-preset.is-selected,
+.bg-cselect-preset:hover {
+  background: var(--theme-pri-grad);
+  border-color: transparent;
+  color: #ffffff;
+}
+
+.bg-cselect-grid-inner.is-cols-6 {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 3px;
+  max-height: 170px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.bg-cselect-cell {
+  width: 100% !important;
+  margin: 0 !important;
+  height: 29px;
+  padding: 0 2px;
+  border-radius: 7px;
+  background: transparent;
+  border: none;
+  color: var(--bg-text-sec);
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.12s ease;
+}
+
+.bg-cselect-cell:hover {
+  background: var(--bg-hover);
+  color: var(--bg-text);
+}
+
+.bg-cselect-cell.is-selected {
+  background: var(--theme-pri-grad);
+  color: #ffffff;
+  font-weight: 800;
+  box-shadow: 0 2px 8px -2px var(--theme-pri-shadow);
+}
+
+.bg-cselect-pop.is-list {
+  width: 100%;
+  min-width: 230px;
+  max-height: 230px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bg-cselect-row {
+  width: 100% !important;
+  margin: 0 !important;
+  min-height: 34px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: var(--bg-text-sec);
+  font-size: 0.81rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.bg-cselect-row:hover {
+  background: var(--bg-hover);
+  color: var(--bg-text);
+}
+.bg-cselect-row.is-selected {
+  background: var(--theme-pri-bg);
+  color: var(--theme-pri-bright);
+  font-weight: 700;
+}
+
+/* Soft Reminder Subbox & Custom Reminder Date Capsule */
+.bg-reminder-subbox {
+  background: linear-gradient(145deg, rgba(245, 158, 11, 0.09) 0%, rgba(217, 119, 6, 0.04) 100%);
+  border: 1px solid rgba(251, 191, 36, 0.24);
+  border-radius: 13px;
+  padding: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bg-reminder-date-wrap {
+  position: relative;
+}
+
+.bg-reminder-date-btn {
+  width: 100% !important;
+  margin: 0 !important;
+  height: 36px;
+  padding: 0 11px;
+  border-radius: 10px;
+  background: var(--bg-well);
+  border: 1px solid var(--bg-well-border);
+  box-shadow: var(--bg-well-shadow);
+  color: var(--bg-text-muted);
+  font-size: 0.81rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  cursor: pointer;
+  transition: border-color 0.16s ease, color 0.16s ease;
+}
+
+.bg-reminder-date-btn:hover {
+  border-color: var(--sem-amber-bd);
+  color: var(--bg-text);
+}
+
+.bg-reminder-date-btn.has-val {
+  color: var(--sem-amber-bright);
+  border-color: var(--sem-amber-bd);
+  font-weight: 800;
+}
+
+.bg-hidden-date-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  width: 100%;
+  height: 100%;
+}
+
+/* Soft Recessed Target Micro-Cards (Customer & Linked File — No Double Wireframes) */
+.bg-target-box {
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-soft-pad-bd);
+  border-radius: 13px;
+  padding: 11px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.bg-target-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.bg-target-eyebrow {
+  font-size: 0.71rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--bg-text-muted);
+}
+
+.bg-target-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bg-target-empty {
+  font-size: 0.81rem;
+  color: var(--bg-text-muted);
+}
+
+.bg-target-content {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.bg-target-content.is-clickable {
+  cursor: pointer;
+  padding: 5px 7px;
+  margin: -5px -7px;
+  border-radius: 8px;
+}
+.bg-target-content.is-clickable:hover {
+  background: var(--bg-hover);
+}
+
+.bg-target-main {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--bg-text);
+  line-height: 1.38;
+  word-break: break-word;
+}
+
+.bg-target-note {
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-style: italic;
+  color: var(--sem-rose-bright);
+}
+
+.bg-target-muted {
+  font-size: 0.76rem;
+  color: var(--bg-text-muted);
+}
+
+.bg-target-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+}
+
+/* Mini Buttons & Tag Pills */
+.bg-btn-xs {
+  width: auto !important;
+  margin: 0 !important;
+  height: 27px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.16s var(--bg-ease);
+}
+.bg-btn-xs.is-sky,
+.bg-btn-xs.is-emerald {
+  background: var(--theme-pri-bg);
+  border-color: var(--theme-pri-bd);
+  color: var(--theme-pri-bright);
+}
+.bg-btn-xs.is-sky:hover,
+.bg-btn-xs.is-emerald:hover {
+  background: var(--theme-pri-grad);
+  border-color: transparent;
+  color: #ffffff;
+}
+.bg-btn-xs.is-amber { background: var(--sem-amber-bg); border-color: var(--sem-amber-bd); color: var(--sem-amber-bright); }
+.bg-btn-xs.is-amber:hover { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-color: transparent; color: #ffffff; }
+.bg-btn-xs.is-rose { background: var(--sem-rose-bg); border-color: var(--sem-rose-bd); color: var(--sem-rose-bright); }
+.bg-btn-xs.is-rose:hover { background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%); border-color: transparent; color: #ffffff; }
+.bg-btn-xs.is-slate { background: var(--bg-subtle); border-color: var(--bg-border-strong); color: var(--bg-text-sec); }
+.bg-btn-xs.is-slate:hover { color: var(--bg-text); border-color: var(--theme-pri-bd); }
+
+.bg-mini-link {
+  width: auto !important;
+  margin: 0 !important;
+  height: auto !important;
+  padding: 2px 7px !important;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 6px;
+  background: transparent;
+}
+.bg-mini-link.is-sky { color: var(--theme-pri-bright); background: var(--theme-pri-bg); }
+.bg-mini-link.is-rose { color: var(--sem-rose-bright); background: var(--sem-rose-bg); }
+
+.bg-tag-pill,
+.bg-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8.5px;
+  border-radius: 999px;
+  font-size: 0.71rem;
+  font-weight: 700;
+  white-space: nowrap;
+  text-decoration: none;
+  border: 1px solid transparent;
+}
+.bg-tag-pill.is-sky, .bg-status-chip.is-sky { background: var(--sem-sky-bg); border-color: var(--sem-sky-bd); color: var(--sem-sky-bright); }
+.bg-tag-pill.is-emerald, .bg-status-chip.is-emerald { background: var(--theme-pri-bg); border-color: var(--theme-pri-bd); color: var(--theme-pri-bright); }
+.bg-tag-pill.is-amber, .bg-status-chip.is-amber { background: var(--sem-amber-bg); border-color: var(--sem-amber-bd); color: var(--sem-amber-bright); }
+.bg-tag-pill.is-rose, .bg-status-chip.is-rose { background: var(--sem-rose-bg); border-color: var(--sem-rose-bd); color: var(--sem-rose-bright); }
+.bg-tag-pill.is-teal, .bg-status-chip.is-teal { background: var(--sem-teal-bg); border-color: var(--sem-teal-bd); color: var(--sem-teal-bright); }
+.bg-tag-pill.is-slate, .bg-status-chip.is-slate { background: var(--bg-soft-pad); border-color: var(--bg-border); color: var(--bg-text-sec); }
+
+.bg-mic-btn {
+  width: 28px !important;
+  height: 28px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 8px;
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-border);
+  color: var(--bg-text-sec);
+  transition: all 0.16s ease;
+}
+.bg-mic-btn:hover {
+  border-color: var(--theme-pri-bd);
+  color: var(--theme-pri-bright);
+}
+.bg-mic-btn.is-recording {
+  background: #e11d48;
+  border-color: #e11d48;
+  color: #ffffff;
+}
+
+/* PC File Attachment Box & Mobile 3A Trigger */
+.modal-file-history-box {
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-soft-pad-bd);
+  border-radius: 13px;
+  padding: 12px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.bg-filebox-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.bg-filebox-title {
+  font-size: 0.73rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--bg-text-sec);
+}
+
+.bg-upload-btn-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.bg-upload-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+
+.bg-upload-btn {
+  width: 100% !important;
+  margin: 0 !important;
+  height: 35px;
+  padding: 0 10px;
+  border-radius: 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: all 0.18s var(--bg-ease);
+}
+.bg-upload-btn.is-sky { background: var(--sem-sky-bg); border-color: var(--sem-sky-bd); color: var(--sem-sky-bright); }
+.bg-upload-btn.is-sky:hover:not(:disabled) { background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); border-color: transparent; color: #ffffff; }
+.bg-upload-btn.is-emerald { background: var(--theme-pri-bg); border-color: var(--theme-pri-bd); color: var(--theme-pri-bright); }
+.bg-upload-btn.is-emerald:hover:not(:disabled) { background: var(--theme-pri-grad); border-color: transparent; color: #ffffff; }
+.bg-upload-btn.is-amber { background: var(--sem-amber-bg); border-color: var(--sem-amber-bd); color: var(--sem-amber-bright); }
+.bg-upload-btn.is-amber:hover:not(:disabled) { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-color: transparent; color: #ffffff; }
+.bg-upload-btn.is-teal { background: var(--sem-teal-bg); border-color: var(--sem-teal-bd); color: var(--sem-teal-bright); }
+.bg-upload-btn.is-teal:hover:not(:disabled) { background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); border-color: transparent; color: #ffffff; }
+
+.bg-filebox-empty {
+  padding: 18px 10px;
+  text-align: center;
+  font-size: 0.77rem;
+  color: var(--bg-text-muted);
+  background: var(--bg-well);
+  border: 1px dashed var(--bg-border);
+  border-radius: 10px;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bg-filebox-previews {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  max-height: 290px;
+  overflow-y: auto;
+}
+
+.bg-thumb-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bg-thumb-item {
+  width: 82px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.bg-thumb-frame {
+  width: 82px;
+  height: 76px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--bg-border-strong);
+  display: block;
+}
+.bg-thumb-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bg-thumb-name {
+  font-size: 0.67rem;
+  color: var(--bg-text-muted);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bg-thumb-acts {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.bg-thumb-del {
+  width: 100% !important;
+  margin: 0 !important;
+  height: 22px;
+  padding: 0 4px;
+  border-radius: 6px;
+  background: var(--sem-rose-bg);
+  border: 1px solid var(--sem-rose-bd);
+  color: var(--sem-rose-bright);
+  font-size: 0.69rem;
+  font-weight: 700;
+}
+
+.bg-file-pill-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.bg-file-pill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--bg-border);
+  min-width: 0;
+}
+.bg-file-pill.is-emerald { background: var(--theme-pri-bg); border-color: var(--theme-pri-bd); }
+.bg-file-pill.is-amber { background: var(--sem-amber-bg); border-color: var(--sem-amber-bd); }
+.bg-file-pill.is-teal { background: var(--sem-teal-bg); border-color: var(--sem-teal-bd); }
+.bg-file-pill.is-sky { background: var(--sem-sky-bg); border-color: var(--sem-sky-bd); }
+
+.bg-file-pill-ic {
+  width: 15px;
+  height: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.bg-file-pill-ic svg {
+  width: 15px;
+  height: 15px;
+}
+
+.bg-file-pill-link {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--bg-text);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1 1 0;
+  min-width: 0;
+  cursor: pointer;
+}
+.bg-file-pill-link:hover {
+  color: var(--theme-pri-bright);
+}
+
+.bg-file-pill-acts {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.bg-file-pill-act {
+  width: 24px !important;
+  height: 22px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  transition: all 0.14s ease;
+}
+
+.bg-file-pill-act.is-view {
+  background: var(--sem-sky-bg);
+  border: 1px solid var(--sem-sky-bd);
+  color: var(--sem-sky-bright);
+}
+.bg-file-pill-act.is-view:hover {
+  background: #0284c7;
+  border-color: #0284c7;
+  color: #ffffff;
+}
+
+.bg-file-pill-act.is-dl {
+  background: var(--theme-pri-bg);
+  border: 1px solid var(--theme-pri-bd);
+  color: var(--theme-pri-bright);
+}
+.bg-file-pill-act.is-dl:hover {
+  background: var(--theme-pri);
+  border-color: var(--theme-pri);
+  color: #ffffff;
+}
+
+.bg-file-pill-act.is-del {
+  background: var(--sem-rose-bg);
+  border: 1px solid var(--sem-rose-bd);
+  color: var(--sem-rose-bright);
+}
+.bg-file-pill-act.is-del:hover {
+  background: #e11d48;
+  border-color: #e11d48;
+  color: #ffffff;
+}
+
+.bg-file-pill-del {
+  width: 20px !important;
+  height: 20px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--sem-rose-bright);
+  font-size: 0.78rem;
+}
+
+/* Mobile 3A Attachment Trigger Card */
+.bg-attach-3a-trigger {
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 12px;
+  border-radius: 13px;
+  background: var(--bg-soft-pad);
+  border: 1px dashed var(--theme-pri-bd);
+  color: var(--bg-text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+}
+
+.bg-attach-3a-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--theme-pri-bg);
+  color: var(--theme-pri-bright);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.bg-attach-3a-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.bg-attach-3a-title {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--bg-text);
+}
+
+.bg-attach-3a-sub {
+  font-size: 0.75rem;
+  color: var(--bg-text-muted);
+}
+
+.bg-attach-3a-cta {
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: var(--theme-pri-grad);
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.bg-attach-sheet-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  padding: 4px 0 12px;
+}
+
+.bg-attach-sheet-foot {
+  padding-top: 10px;
+  border-top: 1px solid var(--bg-border);
+}
+
+.bg-spin-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  display: inline-block;
+  animation: zipSpin 0.7s linear infinite;
+}
+
+/* ============================================================================
+   MODULE 4: SECONDARY MODALS SHARED GRIDS, LISTS & CALENDARS
+============================================================================ */
+.bg-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.bg-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.bg-empty-box {
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--bg-text-muted);
+  font-size: 0.88rem;
+  background: var(--bg-soft-pad);
+  border: 1px dashed var(--bg-border-strong);
+  border-radius: 13px;
+}
+
+.bg-select-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bg-linked-file-card {
+  background: var(--bg-group-surface);
+  border: 1px solid var(--bg-group-border);
+  border-left: 4px solid var(--theme-pri);
+  border-radius: 13px;
+  padding: 12px 14px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  transition: transform 0.16s var(--bg-ease), border-color 0.16s ease;
+}
+.bg-linked-file-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--theme-pri);
+}
+
+.bg-linked-file-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.bg-linked-file-cus {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--sem-sky-bright);
+}
+
+.bg-linked-file-content {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--bg-text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.bg-linked-file-note {
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-style: italic;
+  color: var(--sem-rose-bright);
+}
+
+.bg-linked-file-attach {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--bg-border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bg-linked-attach-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.bg-linked-attach-count {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--bg-text-muted);
+}
+
+.bg-linked-attach-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.bg-linked-attach-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bg-linked-img-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.bg-icon-sq {
+  width: 28px !important;
+  height: 28px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  text-decoration: none;
+  border: 1px solid transparent;
+}
+.bg-icon-sq.is-sky { background: var(--sem-sky-bg); border-color: var(--sem-sky-bd); color: var(--sem-sky-bright); }
+.bg-icon-sq.is-emerald { background: var(--sem-emerald-bg); border-color: var(--sem-emerald-bd); color: var(--sem-emerald-bright); }
+
+/* Customer Selector List */
+.bg-cus-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border-bottom: 1px solid var(--bg-border);
+  cursor: pointer;
+  transition: background 0.14s ease;
+}
+.bg-cus-row:hover {
+  background: var(--bg-hover);
+}
+.bg-cus-row.is-all-row {
+  background: var(--sem-sky-bg);
+  border: 1px solid var(--sem-sky-bd);
+  margin-bottom: 6px;
+}
+
+.bg-cus-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.bg-cus-name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--bg-text);
+}
+.bg-cus-name.is-sky { color: var(--sem-sky-bright); }
+
+.bg-cus-company {
+  font-weight: 500;
+  color: var(--bg-text-muted);
+}
+
+.bg-cus-code {
+  font-size: 0.77rem;
+  color: var(--bg-text-muted);
+}
+.bg-cus-code strong {
+  color: var(--sem-sky-bright);
+}
+
+.bg-cus-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Tag Selector & Manager */
+.bg-tag-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.bg-tag-toggle {
+  width: auto !important;
+  margin: 0 !important;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 7px;
+  font-size: 0.73rem;
+  font-weight: 700;
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-border-strong);
+  color: var(--bg-text-muted);
+}
+.bg-tag-toggle.is-selected {
+  background: var(--theme-pri-grad);
+  border-color: transparent;
+  color: #ffffff;
+}
+
+.bg-inline-add-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bg-tag-manage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.bg-tag-manage-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 11px;
+  border-radius: 10px;
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-border);
+}
+
+.bg-tag-manage-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--bg-text);
+}
+
+/* Empty Slots & Calendars */
+.bg-slot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+  gap: 10px;
+}
+
+.bg-slot-card {
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 12px 10px;
+  border-radius: 13px;
+  background: var(--bg-group-surface);
+  border: 1px solid var(--bg-group-border);
+  color: var(--bg-text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.16s var(--bg-ease);
+}
+.bg-slot-card:hover {
+  border-color: var(--theme-pri-bright);
+  transform: translateY(-2px);
+}
+.bg-slot-card.is-selected {
+  background: var(--theme-pri-bg);
+  border-color: var(--theme-pri);
+}
+.bg-slot-card.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.bg-slot-thu {
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--bg-text-muted);
+}
+
+.bg-slot-date {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--bg-text);
+}
+
+.bg-cal-month-block {
+  margin-bottom: 18px;
+}
+
+.bg-cal-month-title {
+  font-size: 0.94rem;
+  font-weight: 800;
+  color: var(--bg-text);
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--bg-border);
+}
+
+.bg-cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.bg-cal-wd {
+  text-align: center;
+  font-size: 0.74rem;
+  font-weight: 800;
+  padding: 5px 0;
+  border-radius: 8px;
+  background: var(--bg-soft-pad);
+  color: var(--bg-text-muted);
+}
+
+.bg-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.bg-cal-cell {
+  min-height: 76px;
+  border-radius: 11px;
+  background: var(--bg-group-surface);
+  border: 1px solid var(--bg-group-border);
+  padding: 6px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.bg-cal-cell.is-pad {
+  background: transparent;
+  border-color: transparent;
+}
+.bg-cal-cell.is-out {
+  opacity: 0.42;
+  border-style: dashed;
+}
+.bg-cal-cell.is-sun .bg-cal-daynum {
+  color: var(--sem-rose-bright);
+}
+
+.bg-cal-daynum {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--bg-text-sec);
+}
+
+.bg-cal-outlbl {
+  font-size: 0.6rem;
+  color: var(--bg-text-muted);
+  margin-top: auto;
+}
+
+.bg-cal-pills {
+  width: 100%;
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.bg-cal-slot-btn {
+  width: 100% !important;
+  margin: 0 !important;
+  height: 22px;
+  padding: 0 4px;
+  border-radius: 6px;
+  font-size: 0.67rem;
+  font-weight: 800;
+}
+.bg-cal-slot-btn.is-sky { background: var(--sem-sky-bg); border: 1px solid var(--sem-sky-bd); color: var(--sem-sky-bright); }
+.bg-cal-slot-btn.is-amber { background: var(--sem-amber-bg); border: 1px solid var(--sem-amber-bd); color: var(--sem-amber-bright); }
+.bg-cal-slot-btn.is-teal { background: var(--sem-teal-bg); border: 1px solid var(--sem-teal-bd); color: var(--sem-teal-bright); }
+.bg-cal-slot-btn.is-emerald-solid { background: var(--theme-pri); color: #ffffff; }
+
+.bg-cal-status {
+  display: block;
+  text-align: center;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 0;
+  border-radius: 6px;
+}
+.bg-cal-status.is-emerald { background: var(--theme-pri-bg); color: var(--theme-pri-bright); }
+.bg-cal-status.is-rose { background: var(--sem-rose-bg); color: var(--sem-rose-bright); }
+
+/* Move Modal Calendar */
+.bg-move-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  grid-auto-rows: minmax(210px, auto);
+}
+
+.bg-move-day-cell {
+  background: var(--bg-group-surface);
+  border: 1px solid var(--bg-group-border);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.bg-move-day-cell.is-pad {
+  visibility: hidden;
+}
+
+.bg-move-day-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 9px;
+  border-bottom: 1px solid var(--bg-border);
+  background: var(--bg-soft-pad);
+}
+
+.bg-move-day-num {
+  font-weight: 800;
+  font-size: 0.88rem;
+}
+
+.bg-move-zones {
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.bg-move-zone {
+  padding: 6px;
+  border-radius: 9px;
+  min-height: 76px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.bg-move-zone.is-morning {
+  background: var(--sem-sky-bg);
+  border: 1px dashed var(--sem-sky-bd);
+}
+.bg-move-zone.is-afternoon {
+  background: var(--sem-emerald-bg);
+  border: 1px dashed var(--sem-emerald-bd);
+}
+
+.bg-move-zone-lbl {
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+.bg-move-zone-lbl.is-sky { color: var(--sem-sky-bright); }
+.bg-move-zone-lbl.is-emerald { color: var(--sem-emerald-bright); }
+
+.bg-move-task {
+  padding: 8px 9px;
+  border-radius: 9px;
+  background: var(--bg-panel);
+  border: 1px solid var(--bg-border-strong);
+  cursor: grab;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.bg-move-task.is-sky { border-left: 3px solid var(--sem-sky); }
+.bg-move-task.is-emerald { border-left: 3px solid var(--sem-emerald); }
+
+.bg-move-task-text {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--bg-text);
+  line-height: 1.4;
+}
+
+.bg-move-task-note {
+  font-size: 0.74rem;
+  color: var(--sem-rose-bright);
+}
+
+.bg-move-task-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.bg-move-mini-img {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  overflow: hidden;
+  display: block;
+}
+.bg-move-mini-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bg-move-sun-rest {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.76rem;
+  font-style: italic;
+  color: var(--bg-text-muted);
+}
+
+/* Distribute Modal */
+.bg-dist-summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.bg-dist-task-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 11px;
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-border);
+  cursor: pointer;
+}
+.bg-dist-task-row.is-selected {
+  background: var(--theme-pri-bg);
+  border-color: var(--theme-pri);
+}
+.bg-dist-task-row.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.bg-check-box {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 2px solid var(--bg-border-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.bg-check-box.is-checked {
+  background: var(--theme-pri);
+  border-color: var(--theme-pri);
+  color: #ffffff;
+}
+
+.bg-dist-task-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--bg-text);
+  line-height: 1.45;
+}
+
+.bg-dist-task-note {
+  font-size: 0.78rem;
+  color: var(--bg-text-muted);
+  margin-top: 3px;
+}
+
+.bg-dist-step2-grid {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: 14px;
+}
+
+.bg-dist-drag-card {
+  padding: 10px 12px;
+  border-radius: 11px;
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-border-strong);
+  border-left: 3px solid var(--theme-pri);
+  cursor: grab;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.bg-dist-drag-card.is-assigned {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.bg-dist-time-meta {
+  font-size: 0.74rem;
+  color: var(--bg-text-muted);
+}
+
+.bg-dist-new-time {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--theme-pri-bright);
+}
+
+/* Voice Modal */
+.bg-voice-box {
+  min-height: 76px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--bg-well);
+  border: 1px solid var(--bg-well-border);
+  color: var(--bg-text);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* Pending Tasks Modal */
+.bg-pending-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.bg-pending-1col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bg-pending-col {
+  background: var(--bg-soft-pad);
+  border: 1px dashed var(--bg-border-strong);
+  border-radius: 15px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.bg-pending-col.is-today-zone {
+  background: var(--theme-pri-bg);
+  border-color: var(--theme-pri-bd);
+}
+.bg-pending-col.is-drop-over {
+  border-color: var(--theme-pri);
+  box-shadow: 0 0 0 3px var(--theme-pri-ring);
+}
+
+.bg-pending-col-head {
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--bg-text-muted);
+  text-align: center;
+  padding-bottom: 4px;
+}
+.bg-pending-col-head.is-emerald {
+  color: var(--theme-pri-bright);
+}
+
+.bg-pending-card {
+  background: var(--bg-group-surface);
+  border: 1px solid var(--bg-group-border);
+  border-radius: 13px;
+  padding: 12px 14px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: transform 0.16s var(--bg-ease), border-color 0.16s ease;
+}
+.bg-pending-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--theme-pri-bright);
+}
+.bg-pending-card.is-today {
+  border-color: var(--theme-pri-bd);
+}
+.bg-pending-card.is-failed {
+  opacity: 0.68;
+}
+
+.bg-pending-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.bg-pending-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.bg-pending-content {
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--bg-text);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.bg-pending-note {
+  font-size: 0.79rem;
+  color: var(--sem-rose-bright);
+  background: var(--sem-rose-bg);
+  border-left: 3px solid var(--sem-rose);
+  padding: 6px 9px;
+  border-radius: 8px;
+}
+
+.bg-pending-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--bg-border);
+}
+
+.bg-pending-files {
+  display: inline-flex;
+  gap: 8px;
+}
+
+/* Storage Grid */
+.bg-storage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+  gap: 10px;
+}
+
+.bg-storage-card {
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--bg-group-surface);
+  border: 1px solid var(--bg-group-border);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+}
+.bg-storage-card.is-selected {
+  background: var(--theme-pri-bg);
+  border-color: var(--theme-pri);
+}
+
+.bg-storage-preview {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--bg-text-muted);
+}
+.bg-storage-preview img {
+  max-height: 56px;
+  max-width: 100%;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.bg-storage-name {
+  font-size: 0.81rem;
+  font-weight: 700;
+  color: var(--bg-text);
+  word-break: break-word;
+}
+
+/* Lightbox (z-index: 1000001) */
+.bg-lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000001;
+  background: rgba(2, 6, 23, 0.88);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.bg-lightbox-inner {
+  position: relative;
+  max-width: 92vw;
+  max-height: 90vh;
+}
+
+.bg-lightbox-close {
+  position: absolute;
+  top: -40px;
+  right: 0;
+  width: 34px !important;
+  height: 34px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+}
+
+.bg-lightbox-img {
+  max-width: 92vw;
+  max-height: 88vh;
+  object-fit: contain;
+  border-radius: 12px;
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.65);
+}
+
+/* ============================================================================
+   MODULE 5A: UNIFIED FIFO QUEUED PROMISE DIALOG — baogiaDialog (z-index: 1000085)
+   Centered Non-Fullscreen Rounded Card on BOTH PC & Mobile
+============================================================================ */
+.baogia-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000085;
+  background: var(--bg-overlay);
+  backdrop-filter: blur(7px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.baogia-dialog-card {
+  width: min(440px, calc(100vw - 28px));
+  max-height: 86dvh;
+  background: var(--bg-modal-surface);
+  color: var(--bg-text);
+  border: 1px solid var(--bg-glass-border);
+  border-radius: 20px;
+  box-shadow:
+    inset 0 1px 0 var(--bg-specular-strong),
+    var(--bg-shadow-pop);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: bgModalPop 0.2s var(--bg-ease);
+}
+
+.baogia-dialog-card.is-danger { border-top: 3px solid #f43f5e; }
+.baogia-dialog-card.is-warning { border-top: 3px solid #f59e0b; }
+.baogia-dialog-card.is-success { border-top: 3px solid var(--theme-pri); }
+.baogia-dialog-card.is-info { border-top: 3px solid #0ea5e9; }
+
+.baogia-dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--bg-border);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.baogia-dialog-head-left {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+
+.baogia-dialog-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+.baogia-dialog-icon.is-danger { background: var(--sem-rose-bg); border: 1px solid var(--sem-rose-bd); color: var(--sem-rose-bright); }
+.baogia-dialog-icon.is-warning { background: var(--sem-amber-bg); border: 1px solid var(--sem-amber-bd); color: var(--sem-amber-bright); }
+.baogia-dialog-icon.is-success { background: var(--theme-pri-bg); border: 1px solid var(--theme-pri-bd); color: var(--theme-pri-bright); }
+.baogia-dialog-icon.is-info { background: var(--sem-sky-bg); border: 1px solid var(--sem-sky-bd); color: var(--sem-sky-bright); }
+
+.baogia-dialog-title {
+  margin: 0 !important;
+  font-size: 1rem !important;
+  font-weight: 800 !important;
+  color: var(--bg-text) !important;
+}
+
+.baogia-dialog-eyebrow {
+  display: block;
+  font-size: 0.67rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--bg-text-muted);
+}
+
+.baogia-dialog-body {
+  padding: 15px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  overflow-y: auto;
+}
+
+.baogia-dialog-target-card {
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-soft-pad-bd);
+  border-radius: 12px;
+  padding: 10px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.baogia-dialog-target-main {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--bg-text);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.baogia-dialog-target-meta {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--theme-pri-bright);
+}
+
+.baogia-dialog-msg-box {
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--bg-text-sec);
+  white-space: pre-line;
+}
+
+.baogia-dialog-subnote {
+  font-size: 0.77rem;
+  padding: 8px 11px;
+  border-radius: 10px;
+  background: var(--sem-amber-bg);
+  border: 1px solid var(--sem-amber-bd);
+  color: var(--sem-amber-bright);
+  font-weight: 600;
+}
+
+.baogia-dialog-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--bg-border);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* ============================================================================
+   MODULE 5B: SINGLE-MERGED SMART TOAST (PC-A & MB-A, z-index: 2000000)
+============================================================================ */
+.smart-toast-wrap {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  transform: translate3d(-50%, 0, 0);
+  z-index: 2000000;
+  max-width: min(520px, calc(100vw - 28px));
+  background: var(--bg-panel-elev);
+  color: var(--bg-text);
+  border: 1px solid var(--bg-border-strong);
+  border-radius: 14px;
+  padding: 10px 14px;
+  box-shadow:
+    inset 0 1px 0 var(--bg-specular-strong),
+    var(--bg-shadow-pop);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.smart-toast-wrap.is-success { border-color: var(--theme-pri-bd); }
+.smart-toast-wrap.is-error { border-color: var(--sem-rose-bd); }
+.smart-toast-wrap.is-warning { border-color: var(--sem-amber-bd); }
+.smart-toast-wrap.is-info { border-color: var(--sem-sky-bd); }
+
+.smart-toast-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.smart-toast-wrap.is-success .smart-toast-icon { background: var(--theme-pri-bg); color: var(--theme-pri-bright); }
+.smart-toast-wrap.is-error .smart-toast-icon { background: var(--sem-rose-bg); color: var(--sem-rose-bright); }
+.smart-toast-wrap.is-warning .smart-toast-icon { background: var(--sem-amber-bg); color: var(--sem-amber-bright); }
+.smart-toast-wrap.is-info .smart-toast-icon { background: var(--sem-sky-bg); color: var(--sem-sky-bright); }
+
+.smart-toast-msg {
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.38;
+  color: var(--bg-text);
+}
+
+.smart-toast-count {
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  background: var(--theme-pri-bg);
+  color: var(--theme-pri-bright);
+  flex-shrink: 0;
+}
+
+.smart-toast-close {
+  width: 22px !important;
+  height: 22px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--bg-text-muted);
+  font-size: 0.78rem;
+  flex-shrink: 0;
+}
+
+.smart-toast-fade-enter-active,
+.smart-toast-fade-leave-active {
+  transition: opacity 0.2s var(--bg-ease), transform 0.2s var(--bg-ease);
+}
+.smart-toast-fade-enter-from,
+.smart-toast-fade-leave-to {
+  opacity: 0;
+  transform: translate3d(-50%, -14px, 0);
+}
+
+/* ============================================================================
+   TASK CARDS V5: VIEW OFFICE (👁) + DOWNLOAD (⬇) + TRUNCATED FILENAMES
+   & DUAL-THEME PRIORITY (DARK = EMERALD GREEN | LIGHT = OCEAN BLUE)
+============================================================================ */
+.tl-att-v5 {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 5px !important;
+  width: 100% !important;
+  min-width: 0;
+  margin-top: 6px;
+}
+
+.tl-att-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 4.5px 7px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  transition: border-color 0.16s ease, background 0.16s ease;
+}
+
+.tl-att-row:hover {
+  border-color: var(--theme-pri-bd);
+  background: rgba(15, 23, 42, 0.78);
+}
+
+.tl-att-ic {
+  width: 15px;
+  height: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tl-att-ic svg {
+  width: 15px;
+  height: 15px;
+}
+
+.tl-att-name {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  line-height: 1.3;
+}
+
+.tl-att-name:hover {
+  color: #38bdf8;
+}
+
+.tl-att-btns {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.tl-att-act {
+  width: 24px !important;
+  height: 22px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.tl-att-act.is-view {
+  background: rgba(56, 189, 248, 0.16);
+  border: 1px solid rgba(56, 189, 248, 0.36);
+  color: #38bdf8;
+}
+.tl-att-act.is-view:hover {
+  background: #0284c7;
+  border-color: #0284c7;
+  color: #ffffff;
+}
+
+.tl-att-act.is-dl {
+  background: rgba(16, 185, 129, 0.16);
+  border: 1px solid rgba(16, 185, 129, 0.38);
+  color: #34d399;
+}
+.tl-att-act.is-dl:hover {
+  background: #059669;
+  border-color: #059669;
+  color: #ffffff;
+}
+
+.report-container.page.theme-light-blue .tl-att-act.is-dl {
+  background: rgba(14, 165, 233, 0.18);
+  border: 1px solid rgba(56, 189, 248, 0.42);
+  color: #38bdf8;
+}
+.report-container.page.theme-light-blue .tl-att-act.is-dl:hover {
+  background: #0284c7;
+  border-color: #0284c7;
+  color: #ffffff;
+}
+
+.report-container.page .lazy-load-btn.primary {
+  background: var(--theme-pri-grad) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+  box-shadow: 0 6px 16px -4px var(--theme-pri-shadow) !important;
+}
+
+.report-container.page.theme-light-blue .tl-action-done {
+  background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%) !important;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.38) !important;
+}
+.report-container.page.theme-light-blue .tl-action-done:hover {
+  background: linear-gradient(135deg, #0369a1 0%, #0284c7 100%) !important;
+}
+
+.report-container.page.theme-light-blue .tl-rect--done {
+  border-color: rgba(14, 165, 233, 0.55) !important;
+  border-left-color: #0ea5e9 !important;
+}
+
+.report-container.page.theme-light-blue .tl-status-chip.status-completed,
+.report-container.page.theme-light-blue .tl-status-chip.pill-completed {
+  background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%) !important;
+  color: #ffffff !important;
+  border-color: rgba(56, 189, 248, 0.45) !important;
+}
+
+.report-container.page.theme-light-blue .kb-col-done .status-dot,
+.report-container.page.theme-light-blue .kanban-col-done .col-dot {
+  background: #0ea5e9 !important;
+  box-shadow: 0 0 8px rgba(14, 165, 233, 0.6) !important;
+}
+
+.report-container.page.theme-light-blue .kanban-col-done .col-count {
+  color: #38bdf8 !important;
+  background: rgba(14, 165, 233, 0.16) !important;
+}
+
+.report-container.page.theme-light-blue .daily-badge-thu,
+.report-container.page.theme-light-blue .daily-day-badge {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+  border-color: rgba(56, 189, 248, 0.45) !important;
+  color: #ffffff !important;
+}
+
+.report-container.page.theme-light-blue .daily-period-label-v2 {
+  color: #0f172a !important;
+  text-shadow: none !important;
+}
+
+.report-container.page.theme-light-blue .daily-view-container::before {
+  background: #cbd5e1 !important;
+}
+
+.report-container.page.theme-light-blue .lazy-load-footer {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+  box-shadow: 0 4px 14px -4px rgba(15, 23, 42, 0.06) !important;
+}
+
+.report-container.page.theme-light-blue .lazy-load-status,
+.report-container.page.theme-light-blue .lazy-load-complete {
+  color: #334155 !important;
+}
+
+.report-container.page.theme-light-blue .lazy-load-status strong {
+  color: #0284c7 !important;
+}
+
+/* Light Mode Adaptation for Daily / Mobile Timeline Cards */
+.report-container.page.theme-light-blue .tl-rect {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 8px 22px -8px rgba(15, 23, 42, 0.1) !important;
+}
+.report-container.page.theme-light-blue .tl-rect .tl-body-text {
+  color: #0f172a !important;
+}
+.report-container.page.theme-light-blue .tl-rect .tl-rect-note {
+  background: #fff1f2 !important;
+  border-color: #fecdd3 !important;
+}
+.report-container.page.theme-light-blue .tl-rect .tl-note-content {
+  color: #be123c !important;
+}
+.report-container.page.theme-light-blue .tl-att-v5 .tl-att-row {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+.report-container.page.theme-light-blue .tl-att-v5 .tl-att-row:hover {
+  background: #f0f9ff;
+  border-color: #7dd3fc;
+}
+.report-container.page.theme-light-blue .tl-att-v5 .tl-att-name {
+  color: #0f172a;
+}
+.report-container.page.theme-light-blue .tl-att-v5 .tl-att-name:hover {
+  color: #0284c7;
+}
+.report-container.page.theme-light-blue .tl-att-act.is-view {
+  background: rgba(14, 165, 233, 0.12);
+  border-color: rgba(2, 132, 199, 0.32);
+  color: #0284c7;
+}
+.report-container.page.theme-light-blue .tl-att-act.is-view:hover {
+  background: #0284c7;
+  border-color: #0284c7;
+  color: #ffffff;
+}
+.report-container.page.theme-light-blue .tl-att-act.is-dl {
+  background: rgba(2, 132, 199, 0.12);
+  border-color: rgba(2, 132, 199, 0.32);
+  color: #0369a1;
+}
+.report-container.page.theme-light-blue .tl-att-act.is-dl:hover {
+  background: #0284c7;
+  border-color: #0284c7;
+  color: #ffffff;
+}
+
+/* ============================================================================
+   V6 SLEEK BENTO DETAIL VIEW (1 + 2A + 3 + 4 + 5)
+============================================================================ */
+.bg-detail-board {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(calc(100vh - 36px), auto);
+  grid-auto-rows: minmax(calc(100dvh - 36px), auto);
+  gap: 14px;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-height: calc(100vh - 36px);
+  min-height: calc(100dvh - 36px);
+}
+
+@media (max-width: 1180px) {
+  .bg-detail-board {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+.bg-detail-col.kanban-column {
+  background: var(--bg-glass-panel) !important;
+  border: 1px solid var(--bg-glass-border) !important;
+  border-radius: 18px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  box-shadow:
+    inset 0 1px 0 var(--bg-specular),
+    var(--bg-shadow-panel) !important;
+  display: flex;
+  flex-direction: column;
+  gap: 0 !important;
+  min-width: 0;
+  min-height: calc(100vh - 36px) !important;
+  min-height: calc(100dvh - 36px) !important;
+}
+
+.bg-detail-col.kanban-column::before {
+  display: none !important;
+  content: none !important;
+}
+
+.bg-detail-col.kanban-column:hover {
+  transform: none !important;
+}
+
+.bg-detail-col.kb-col-pending {
+  border: 1px solid rgba(245, 158, 11, 0.36) !important;
+}
+
+.bg-detail-col.kb-col-failed {
+  border: 1px solid rgba(244, 63, 94, 0.4) !important;
+}
+
+.bg-detail-col.kb-col-done {
+  border: 1px solid rgba(16, 185, 129, 0.38) !important;
+}
+
+.report-container.page.theme-light-blue .bg-detail-col.kanban-column {
+  background: #ffffff !important;
+}
+.report-container.page.theme-light-blue .bg-detail-col.kb-col-pending {
+  border-color: rgba(217, 119, 6, 0.34) !important;
+}
+.report-container.page.theme-light-blue .bg-detail-col.kb-col-failed {
+  border-color: rgba(225, 29, 72, 0.34) !important;
+}
+.report-container.page.theme-light-blue .bg-detail-col.kb-col-done {
+  border-color: rgba(2, 132, 199, 0.34) !important;
+}
+
+/* 1A: Outer Table Header — Full-Bleed Solid Semantic Color + White Text + Centered */
+.bg-dcol-head.kanban-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  gap: 10px !important;
+  padding: 11px 16px !important;
+  margin: 0 !important;
+  border-radius: 17px 17px 0 0 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+  position: relative;
+}
+
+.bg-detail-col.kb-col-pending .bg-dcol-head.kanban-header {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 4px 12px -4px rgba(217, 119, 6, 0.38) !important;
+}
+
+.bg-detail-col.kb-col-failed .bg-dcol-head.kanban-header {
+  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 4px 12px -4px rgba(225, 29, 72, 0.38) !important;
+}
+
+.bg-detail-col.kb-col-done .bg-dcol-head.kanban-header {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    0 4px 12px -4px rgba(5, 150, 105, 0.42) !important;
+}
+
+.report-container.page.theme-light-blue .bg-detail-col.kb-col-done .bg-dcol-head.kanban-header {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 4px 12px -4px rgba(2, 132, 199, 0.38) !important;
+}
+
+.bg-dcol-title-wrap {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 9px !important;
+  min-width: 0;
+}
+
+.bg-dcol-title-wrap h3 {
+  margin: 0 !important;
+  font-size: 0.94rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.045em;
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.16) !important;
+  text-transform: uppercase;
+}
+
+.bg-dcol-head .status-dot {
+  width: 9px !important;
+  height: 9px !important;
+  border-radius: 50% !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.28) !important;
+  flex-shrink: 0;
+}
+
+.bg-dcol-check-ic {
+  width: 21px;
+  height: 21px;
+  border-radius: 999px;
+  background: #ffffff !important;
+  color: #059669 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18) !important;
+}
+
+.report-container.page.theme-light-blue .bg-dcol-check-ic {
+  color: #0284c7 !important;
+}
+
+.bg-dcol-badge.kanban-badge,
+.bg-detail-col.kb-col-done .bg-dcol-badge.kanban-badge,
+.bg-detail-col.kb-col-pending .bg-dcol-badge.kanban-badge,
+.bg-detail-col.kb-col-failed .bg-dcol-badge.kanban-badge {
+  background: rgba(255, 255, 255, 0.22) !important;
+  border: 1px solid rgba(255, 255, 255, 0.42) !important;
+  color: #ffffff !important;
+  padding: 2.5px 10px !important;
+  border-radius: 999px !important;
+  font-size: 0.74rem !important;
+  font-weight: 800 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+/* 1A + 2A: Inner 2-Column Split (Buổi sáng | Buổi chiều) */
+.bg-dcol-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  grid-template-rows: minmax(0, 1fr);
+  align-items: stretch !important;
+  gap: 10px !important;
+  padding: 12px !important;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+
+@media (max-width: 768px) {
+  .bg-dcol-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto;
+    padding: 9px !important;
+    gap: 9px !important;
+  }
+}
+
+.bg-dsub-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+  min-height: 100%;
+  height: 100%;
+  border-radius: 13px;
+  padding: 0;
+  overflow: hidden;
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-soft-pad-bd);
+  transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.report-container.page.theme-light-blue .bg-dsub-col {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.bg-dsub-col.kb-col-drag-over {
+  transform: none !important;
+  animation: none !important;
+  border: 1.5px solid var(--theme-pri-bright) !important;
+  box-shadow: inset 0 0 0 1px var(--theme-pri-bd), 0 0 22px -6px var(--theme-pri-glow) !important;
+}
+.bg-dsub-col.kb-col-drag-over::after {
+  display: none !important;
+}
+
+/* 1A Refined: Sub-column Period Header — No Colored Background, Colored Text + Solid Colored '+' Button */
+.bg-dsub-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 38px;
+  padding: 7px 38px;
+  border-radius: 12px 12px 0 0;
+  background: transparent !important;
+  border: none;
+  border-bottom: 1px solid var(--bg-border);
+  box-shadow: none !important;
+}
+
+.report-container.page.theme-light-blue .bg-dsub-head {
+  border-bottom-color: #e2e8f0;
+}
+
+.bg-dsub-head-center {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.bg-dsub-title {
+  font-size: 0.77rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.045em;
+  white-space: nowrap;
+}
+
+.bg-dsub-count {
+  padding: 1.5px 7.5px;
+  border-radius: 999px;
+  font-size: 0.69rem;
+  font-weight: 800;
+}
+
+/* Pending Table -> Amber Text & Count Pill */
+.bg-detail-col.kb-col-pending .bg-dsub-title {
+  color: #fbbf24 !important;
+}
+.bg-detail-col.kb-col-pending .bg-dsub-count {
+  background: rgba(245, 158, 11, 0.16) !important;
+  border: 1px solid rgba(245, 158, 11, 0.36) !important;
+  color: #fcd34d !important;
+}
+.report-container.page.theme-light-blue .bg-detail-col.kb-col-pending .bg-dsub-title {
+  color: #d97706 !important;
+}
+.report-container.page.theme-light-blue .bg-detail-col.kb-col-pending .bg-dsub-count {
+  background: rgba(245, 158, 11, 0.13) !important;
+  border-color: rgba(217, 119, 6, 0.32) !important;
+  color: #b45309 !important;
+}
+
+/* Failed Table -> Rose Red Text & Count Pill */
+.bg-detail-col.kb-col-failed .bg-dsub-title {
+  color: #fb7185 !important;
+}
+.bg-detail-col.kb-col-failed .bg-dsub-count {
+  background: rgba(244, 63, 94, 0.16) !important;
+  border: 1px solid rgba(244, 63, 94, 0.36) !important;
+  color: #fda4af !important;
+}
+.report-container.page.theme-light-blue .bg-detail-col.kb-col-failed .bg-dsub-title {
+  color: #e11d48 !important;
+}
+.report-container.page.theme-light-blue .bg-detail-col.kb-col-failed .bg-dsub-count {
+  background: rgba(244, 63, 94, 0.12) !important;
+  border-color: rgba(225, 29, 72, 0.32) !important;
+  color: #be123c !important;
+}
+
+/* Completed Table -> Emerald Text (Dark) | Ocean Blue Text (Light) */
+.bg-detail-col.kb-col-done .bg-dsub-title {
+  color: #34d399 !important;
+}
+.bg-detail-col.kb-col-done .bg-dsub-count {
+  background: rgba(16, 185, 129, 0.16) !important;
+  border: 1px solid rgba(16, 185, 129, 0.36) !important;
+  color: #6ee7b7 !important;
+}
+.report-container.page.theme-light-blue .bg-detail-col.kb-col-done .bg-dsub-title {
+  color: #0284c7 !important;
+}
+.report-container.page.theme-light-blue .bg-detail-col.kb-col-done .bg-dsub-count {
+  background: rgba(14, 165, 233, 0.13) !important;
+  border-color: rgba(2, 132, 199, 0.32) !important;
+  color: #0369a1 !important;
+}
+
+/* '+' Quick-Add Button in Solid Semantic Background + White Icon */
+.bg-dsub-add-btn {
+  position: absolute !important;
+  right: 7px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 25px !important;
+  height: 25px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 7.5px;
+  color: #ffffff !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: filter 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
+}
+
+.bg-detail-col.kb-col-pending .bg-dsub-add-btn {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+  border: 1px solid rgba(252, 211, 77, 0.5) !important;
+  box-shadow: 0 3px 9px -2px rgba(217, 119, 6, 0.45) !important;
+}
+
+.bg-detail-col.kb-col-failed .bg-dsub-add-btn {
+  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%) !important;
+  border: 1px solid rgba(253, 164, 175, 0.5) !important;
+  box-shadow: 0 3px 9px -2px rgba(225, 29, 72, 0.45) !important;
+}
+
+.bg-detail-col.kb-col-done .bg-dsub-add-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  border: 1px solid rgba(110, 231, 183, 0.5) !important;
+  box-shadow: 0 3px 9px -2px rgba(5, 150, 105, 0.48) !important;
+}
+
+.report-container.page.theme-light-blue .bg-detail-col.kb-col-done .bg-dsub-add-btn {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
+  border: 1px solid rgba(125, 211, 252, 0.55) !important;
+  box-shadow: 0 3px 9px -2px rgba(2, 132, 199, 0.42) !important;
+}
+
+.bg-dsub-add-btn:hover {
+  filter: brightness(1.08);
+  color: #ffffff !important;
+  transform: translateY(-50%) scale(1.08) !important;
+}
+
+.bg-dsub-list.kanban-list {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 11px !important;
+  flex: 1 1 auto;
+  min-height: 115px;
+}
+
+.bg-dsub-empty {
+  flex: 1 1 auto;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 2px;
+}
+
+.bg-dsub-empty-add {
+  width: 100%;
+  min-height: 98px;
+  border-radius: 13px;
+  border: 1.5px dashed var(--bg-border-strong);
+  background: transparent;
+  color: var(--bg-text-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: all 0.16s ease;
+}
+
+.bg-dsub-empty > .bg-dsub-empty-add {
+  flex: 1 1 auto;
+  justify-content: flex-start;
+  padding: clamp(56px, 11vh, 128px) 12px 24px;
+}
+
+.bg-dsub-empty-add:hover {
+  border-color: var(--theme-pri-bright);
+  background: var(--theme-pri-bg);
+  color: var(--theme-pri-bright);
+}
+.bg-dsub-empty-plus {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: var(--bg-card);
+  border: 1px solid var(--bg-border-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.bg-dsub-empty-txt {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--bg-text-muted);
+  opacity: 0.75;
+}
+
+.bg-dsub-empty > .bg-dsub-empty-txt {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 120px;
+  border-radius: 13px;
+  border: 1.5px dashed var(--bg-border);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: clamp(72px, 12.5vh, 144px) 12px 24px;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+/* --- Bento Detail Task Card (Scaled Up Roomy Edition — 100% Width Content!) --- */
+.bg-detail-card {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 15px;
+  padding: 14px 15px;
+  min-height: 114px;
+  background: var(--bg-card);
+  border: 1px solid var(--bg-border-strong);
+  border-left: 4.5px solid #f59e0b;
+  color: var(--bg-text);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  cursor: pointer;
+  position: relative;
+  min-width: 0;
+  box-shadow: 0 5px 15px -4px rgba(0, 0, 0, 0.26);
+  transition:
+    transform 0.18s var(--bg-ease),
+    box-shadow 0.18s var(--bg-ease),
+    border-color 0.18s ease,
+    background 0.18s ease;
+}
+
+.report-container.page.theme-light-blue .bg-detail-card {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 13px -3px rgba(15, 23, 42, 0.08);
+}
+
+.bg-detail-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px -10px rgba(0, 0, 0, 0.44);
+}
+.report-container.page.theme-light-blue .bg-detail-card:hover {
+  box-shadow: 0 12px 24px -8px rgba(15, 23, 42, 0.15);
+}
+
+.bg-detail-card.is-pending.is-priority {
+  border-left-color: #f43f5e;
+}
+
+/* Proposal 4: Failed Card Hierarchy */
+.bg-detail-card.is-failed {
+  opacity: 1 !important;
+  filter: none !important;
+  border-color: rgba(244, 63, 94, 0.38);
+  border-left: 4.5px solid #e11d48;
+  background: linear-gradient(140deg, rgba(225, 29, 72, 0.14) 0%, var(--bg-card) 68%);
+}
+.report-container.page.theme-light-blue .bg-detail-card.is-failed {
+  opacity: 1 !important;
+  filter: none !important;
+  border-color: #fecdd3;
+  border-left: 4.5px solid #e11d48;
+  background: linear-gradient(140deg, #fff1f2 0%, #ffffff 72%);
+}
+
+/* Proposal 4: Completed Card Hierarchy — Solid Emerald Green (Dark) / Solid Ocean Blue (Light) + White Text */
+.bg-detail-card.is-done {
+  opacity: 1 !important;
+  filter: none !important;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+  border: 1px solid rgba(110, 231, 183, 0.42) !important;
+  border-left: 4.5px solid #a7f3d0 !important;
+  color: #ffffff !important;
+  box-shadow: 0 7px 18px -4px rgba(5, 150, 105, 0.42);
+}
+.report-container.page.theme-light-blue .bg-detail-card.is-done {
+  opacity: 1 !important;
+  filter: none !important;
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+  border: 1px solid rgba(125, 211, 252, 0.52) !important;
+  border-left: 4.5px solid #e0f2fe !important;
+  color: #ffffff !important;
+  box-shadow: 0 7px 18px -4px rgba(2, 132, 199, 0.34);
+}
+.bg-detail-card.is-done:hover {
+  box-shadow: 0 12px 24px -6px rgba(5, 150, 105, 0.52);
+}
+.report-container.page.theme-light-blue .bg-detail-card.is-done:hover {
+  box-shadow: 0 12px 24px -6px rgba(2, 132, 199, 0.44);
+}
+
+/* Smooth Dragging, Post-Drop Settle & Non-Hanging Focus Pulse */
+.bg-detail-card.is-dragging {
+  opacity: 0.42 !important;
+  transform: scale(0.985) !important;
+  box-shadow: none !important;
+}
+
+@keyframes bgDetailCardDropSmoothDark {
+  0% {
+    opacity: 0.72;
+    transform: translate3d(0, -8px, 0) scale(0.974);
+    box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.82), 0 18px 34px -8px rgba(16, 185, 129, 0.46);
+  }
+  58% {
+    opacity: 1;
+    transform: translate3d(0, 1.5px, 0) scale(1.007);
+    box-shadow: 0 0 0 5px rgba(52, 211, 153, 0.16), 0 10px 22px -6px rgba(0, 0, 0, 0.32);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes bgDetailCardDropSmoothLight {
+  0% {
+    opacity: 0.74;
+    transform: translate3d(0, -8px, 0) scale(0.974);
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.8), 0 18px 34px -8px rgba(2, 132, 199, 0.36);
+  }
+  58% {
+    opacity: 1;
+    transform: translate3d(0, 1.5px, 0) scale(1.007);
+    box-shadow: 0 0 0 5px rgba(14, 165, 233, 0.16), 0 10px 22px -6px rgba(15, 23, 42, 0.14);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+.bg-detail-card.dropped-success {
+  z-index: 30 !important;
+  animation: bgDetailCardDropSmoothDark 0.52s cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+.report-container.page.theme-light-blue .bg-detail-card.dropped-success {
+  animation: bgDetailCardDropSmoothLight 0.52s cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+
+@keyframes bgDetailCardFocusPulse {
+  0% {
+    box-shadow: 0 0 0 0 var(--theme-pri-bright);
+  }
+  35% {
+    box-shadow: 0 0 0 3.5px var(--theme-pri-bright), 0 10px 24px -6px var(--theme-pri-shadow);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+/* Override legacy .highlight-card red !important lock on Detail Cards so it never hangs */
+.bg-detail-card.highlight-card {
+  background: var(--bg-card) !important;
+  border-color: var(--bg-border-strong) !important;
+  box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.24) !important;
+  animation: bgDetailCardFocusPulse 1.55s cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+.report-container.page.theme-light-blue .bg-detail-card.highlight-card {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 3px 10px -3px rgba(15, 23, 42, 0.07) !important;
+}
+.bg-detail-card.is-done.highlight-card {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+  border-color: rgba(110, 231, 183, 0.42) !important;
+}
+.report-container.page.theme-light-blue .bg-detail-card.is-done.highlight-card {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+  border-color: rgba(125, 211, 252, 0.52) !important;
+}
+
+/* Inner Elements Contrast Overrides on Solid Colored Completed Cards (.bg-detail-card.is-done) */
+.bg-detail-card.is-done .bg-dcard-time,
+.bg-detail-card.is-done .bg-dcard-title,
+.bg-detail-card.is-done .bg-dcard-note-txt,
+.bg-detail-card.is-done .bg-dcard-pl-main,
+.bg-detail-card.is-done .bg-dcard-pl-lbl,
+.bg-detail-card.is-done .bg-dcard-pl-txt {
+  color: #ffffff !important;
+}
+
+.bg-detail-card.is-done .bg-dcard-time {
+  opacity: 0.92;
+}
+
+.bg-detail-card.is-done .bg-dcard-done-circle {
+  background: #ffffff !important;
+  color: #047857 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18) !important;
+}
+.report-container.page.theme-light-blue .bg-detail-card.is-done .bg-dcard-done-circle {
+  background: #ffffff !important;
+  color: #0284c7 !important;
+}
+
+.bg-detail-card.is-done .bg-dcard-chip.is-work,
+.bg-detail-card.is-done .bg-dcard-chip.is-life,
+.bg-detail-card.is-done .bg-dcard-chip.is-cus-chip {
+  background: rgba(255, 255, 255, 0.18) !important;
+  border-color: rgba(255, 255, 255, 0.34) !important;
+  color: #ffffff !important;
+}
+
+.bg-detail-card.is-done .bg-dcard-chip.is-prio-chip {
+  background: rgba(225, 29, 72, 0.92) !important;
+  border-color: rgba(255, 255, 255, 0.48) !important;
+  color: #ffffff !important;
+}
+
+.bg-detail-card.is-done .bg-dcard-note {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  border-left: 3px solid #ffffff !important;
+}
+.bg-detail-card.is-done .bg-dcard-note-tag {
+  background: rgba(255, 255, 255, 0.24) !important;
+  color: #ffffff !important;
+}
+
+.bg-detail-card.is-done .bg-dcard-pl-item {
+  background: rgba(255, 255, 255, 0.14) !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  border-left: 3px solid #ffffff !important;
+}
+.bg-detail-card.is-done .bg-dcard-pl-eye {
+  color: #ffffff !important;
+}
+.bg-detail-card.is-done .bg-dcard-pl-eye:hover {
+  background: rgba(255, 255, 255, 0.24) !important;
+}
+
+.bg-detail-card.is-done .bg-dcard-files-toggle,
+.bg-detail-card.is-done .bg-dcard-qlf-btn {
+  background: rgba(255, 255, 255, 0.16) !important;
+  border-color: rgba(255, 255, 255, 0.32) !important;
+  color: #ffffff !important;
+}
+.bg-detail-card.is-done .bg-dcard-files-toggle:hover,
+.bg-detail-card.is-done .bg-dcard-files-toggle.is-open,
+.bg-detail-card.is-done .bg-dcard-qlf-btn:hover {
+  background: rgba(255, 255, 255, 0.24) !important;
+  border-color: rgba(255, 255, 255, 0.48) !important;
+  color: #ffffff !important;
+}
+
+.bg-detail-card.is-done .tl-att-v5 .tl-att-row {
+  background: rgba(0, 0, 0, 0.18) !important;
+  border-color: rgba(255, 255, 255, 0.26) !important;
+  color: #ffffff !important;
+}
+.bg-detail-card.is-done .tl-att-v5 .tl-att-name,
+.bg-detail-card.is-done .tl-att-v5 .tl-att-ic {
+  color: #ffffff !important;
+}
+.bg-detail-card.is-done .tl-att-v5 .tl-att-act {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-color: rgba(255, 255, 255, 0.36) !important;
+  color: #ffffff !important;
+}
+.bg-detail-card.is-done .tl-att-v5 .tl-att-act:hover {
+  background: #ffffff !important;
+  border-color: #ffffff !important;
+  color: #047857 !important;
+}
+.report-container.page.theme-light-blue .bg-detail-card.is-done .tl-att-v5 .tl-att-act:hover {
+  color: #0284c7 !important;
+}
+
+.bg-detail-card.is-done:hover .bg-dcard-actions,
+.bg-detail-card.is-done:focus-within .bg-dcard-actions {
+  border-top-color: rgba(255, 255, 255, 0.26) !important;
+}
+.bg-detail-card.is-done .bg-dcard-btn.is-del {
+  background: rgba(255, 255, 255, 0.16) !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+  color: #ffffff !important;
+}
+.bg-detail-card.is-done .bg-dcard-btn.is-del:hover {
+  background: #e11d48 !important;
+  border-color: #fda4af !important;
+  color: #ffffff !important;
+}
+
+/* Top Meta & Badges Row */
+.bg-dcard-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  min-width: 0;
+}
+
+.bg-dcard-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.bg-dcard-stt {
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-border);
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--theme-pri-bright);
+  line-height: 1.25;
+}
+
+.bg-dcard-time {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--bg-text-muted);
+  white-space: nowrap;
+}
+
+.bg-dcard-badges {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+}
+
+.bg-dcard-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6.5px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.bg-dcard-chip.is-work {
+  background: var(--sem-sky-bg);
+  border: 1px solid var(--sem-sky-bd);
+  color: var(--sem-sky-bright);
+}
+
+.bg-dcard-chip.is-life {
+  background: var(--sem-teal-bg);
+  border: 1px solid var(--sem-teal-bd);
+  color: var(--sem-teal-bright);
+}
+
+.bg-dcard-chip.is-failed-chip {
+  background: #e11d48;
+  border: 1px solid #fb7185;
+  color: #ffffff;
+}
+
+.bg-dcard-chip.is-prio-chip {
+  background: var(--sem-rose-bg);
+  border: 1px solid var(--sem-rose-bd);
+  color: var(--sem-rose-bright);
+}
+
+.bg-dcard-chip.is-cus-chip {
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-border-strong);
+  color: var(--bg-text-sec);
+  max-width: 175px;
+}
+
+.bg-dcard-cus-txt {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Card Main Title Row + Circular Checkmark Icon */
+.bg-dcard-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  min-width: 0;
+}
+
+.bg-dcard-done-circle {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--theme-pri-grad);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+  box-shadow: 0 2px 7px -1px var(--theme-pri-shadow);
+}
+
+.bg-dcard-title {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 0.96rem;
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--bg-text);
+  word-break: break-word;
+  white-space: pre-line;
+}
+
+/* Highlight Note Callout */
+.bg-dcard-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 8px 11px;
+  border-radius: 10px;
+  background: var(--sem-rose-bg);
+  border: 1px solid var(--sem-rose-bd);
+  border-left: 3.5px solid #f43f5e;
+  min-width: 0;
+}
+
+.bg-dcard-note-tag {
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: rgba(244, 63, 94, 0.22);
+  color: var(--sem-rose-bright);
+  font-size: 0.64rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.bg-dcard-note-txt {
+  font-size: 0.81rem;
+  font-weight: 600;
+  line-height: 1.44;
+  color: var(--sem-rose-bright);
+  word-break: break-word;
+}
+
+/* Linked Pipelines */
+.bg-dcard-pipelines {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.bg-dcard-pl-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+  padding: 7px 10px;
+  border-radius: 9px;
+  background: var(--sem-sky-bg);
+  border: 1px solid var(--sem-sky-bd);
+  border-left: 3.5px solid #0ea5e9;
+  min-width: 0;
+}
+
+.bg-dcard-pl-main {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 0.78rem;
+  line-height: 1.36;
+  color: var(--bg-text-sec);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bg-dcard-pl-lbl {
+  font-weight: 800;
+  color: var(--sem-sky-bright);
+  margin-right: 4px;
+}
+
+.bg-dcard-pl-eye {
+  width: 25px !important;
+  height: 25px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 7px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--sem-sky-bright);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+.bg-dcard-pl-eye:hover {
+  background: #0284c7;
+  color: #ffffff;
+}
+
+/* Proposal 5: Collapsible Attachments Toggle + Linked File Shortcut */
+.bg-dcard-files-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6.5px;
+  min-width: 0;
+}
+
+.bg-dcard-files-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.bg-dcard-files-toggle {
+  flex: 1 1 135px;
+  min-width: 0;
+  height: 31px !important;
+  margin: 0 !important;
+  padding: 0 11px !important;
+  border-radius: 9px;
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-border-strong);
+  color: var(--theme-pri-bright);
+  font-size: 0.76rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.bg-dcard-files-toggle:hover,
+.bg-dcard-files-toggle.is-open {
+  background: var(--theme-pri-bg);
+  border-color: var(--theme-pri-bd);
+}
+
+.bg-dcard-files-toggle-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 5.5px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.bg-dcard-files-caret {
+  font-size: 0.74rem;
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+
+.bg-dcard-qlf-btn {
+  flex: 0 0 auto;
+  height: 31px !important;
+  margin: 0 !important;
+  padding: 0 11px !important;
+  border-radius: 9px;
+  background: var(--sem-sky-bg);
+  border: 1px solid var(--sem-sky-bd);
+  color: var(--sem-sky-bright);
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.bg-dcard-qlf-btn:hover {
+  background: #0284c7;
+  border-color: #0284c7;
+  color: #ffffff;
+}
+
+.bg-dcard-att-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  margin-top: 0;
+  pointer-events: none;
+  transition:
+    grid-template-rows 0.22s var(--bg-ease),
+    opacity 0.18s ease,
+    margin-top 0.18s ease;
+}
+
+.bg-dcard-att-collapse.is-open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  margin-top: 2px;
+  pointer-events: auto;
+}
+
+.bg-dcard-att-collapse-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.bg-dcard-att-list.tl-att-v5 {
+  margin-top: 0 !important;
+  padding: 0 !important;
+  gap: 6px !important;
+}
+
+.bg-dcard-att-list.tl-att-v5 .tl-att-row {
+  padding: 6.5px 9px;
+  border-radius: 9px;
+}
+
+.bg-dcard-att-list.tl-att-v5 .tl-att-name {
+  font-size: 0.78rem;
+}
+
+.bg-dcard-att-list.tl-att-v5 .tl-att-act {
+  width: 26px !important;
+  height: 24px !important;
+}
+
+/* Proposal 4: Differentiated Action Footer */
+.bg-dcard-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  padding-top: 10px;
+  margin-top: auto;
+  border-top: 1px solid var(--bg-border);
+  transition:
+    max-height 0.2s var(--bg-ease),
+    opacity 0.16s ease,
+    padding-top 0.16s ease,
+    margin-top 0.16s ease,
+    border-color 0.16s ease;
+}
+
+/* Done cards hide actions at rest and reveal smoothly on hover */
+.bg-detail-card.is-done .bg-dcard-actions {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  padding-top: 0;
+  margin-top: -3px;
+  border-top: 0 solid transparent;
+  pointer-events: none;
+}
+
+.bg-detail-card.is-done:hover .bg-dcard-actions,
+.bg-detail-card.is-done:focus-within .bg-dcard-actions {
+  max-height: 46px;
+  opacity: 1;
+  padding-top: 10px;
+  margin-top: auto;
+  border-top: 1px solid var(--bg-border);
+  pointer-events: auto;
+}
+
+.bg-dcard-btn {
+  flex: 1 1 auto;
+  height: 32px !important;
+  padding: 0 11px !important;
+  margin: 0 !important;
+  border-radius: 8.5px;
+  font-size: 0.77rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
+}
+
+.bg-dcard-btn:active {
+  transform: scale(0.97);
+}
+
+.bg-dcard-btn.is-del {
+  background: transparent;
+  border: 1.5px solid rgba(248, 113, 113, 0.38);
+  color: #f87171;
+}
+.report-container.page.theme-light-blue .bg-dcard-btn.is-del {
+  border-color: rgba(225, 29, 72, 0.36);
+  color: #e11d48;
+}
+.bg-dcard-btn.is-del:hover {
+  background: #e11d48;
+  border-color: #e11d48;
+  color: #ffffff;
+  box-shadow: 0 4px 10px -2px rgba(225, 29, 72, 0.42);
+}
+
+.bg-dcard-btn.is-fail {
+  background: var(--bg-soft-pad);
+  border: 1.5px solid var(--bg-border-strong);
+  color: var(--bg-text-sec);
+}
+.bg-dcard-btn.is-fail:hover {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: 0 4px 10px -2px rgba(249, 115, 22, 0.45);
+}
+
+.bg-dcard-btn.is-done {
+  background: var(--theme-pri-grad);
+  border: none;
+  color: #ffffff;
+  box-shadow: 0 4px 11px -2px var(--theme-pri-shadow);
+}
+.bg-dcard-btn.is-done:hover {
+  background: var(--theme-pri-grad-h);
+  color: #ffffff;
+  box-shadow: 0 6px 14px -2px var(--theme-pri-shadow);
+}
+
+.bg-dsub-more-btn.lazy-subcol-more-btn {
+  background: var(--bg-card) !important;
+  border: 1px dashed var(--bg-border-strong) !important;
+  color: var(--theme-pri-bright) !important;
+  border-radius: 10px !important;
+  padding: 8px 10px !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+}
+.bg-dsub-more-btn.lazy-subcol-more-btn:hover {
+  background: var(--theme-pri-bg) !important;
+  border-color: var(--theme-pri-bd) !important;
+}
+
+/* ============================================================================
+   BOARD MODE ADAPTATIONS (SINGLE-STATUS FULL-WIDTH KANBAN & CALENDAR MODE)
+============================================================================ */
+.bg-board-anchor.is-single-status .kanban-board {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.bg-board-anchor.is-calendar-mode .lazy-load-footer {
+  display: none !important;
+}
+
+/* ============================================================================
+   MODULE 1C: GOOGLE CALENDAR WEEK (SÁNG / CHIỀU + QUICK ADD '+') & MONTH VIEW
+============================================================================ */
+.bg-gcal-workspace {
+  position: relative;
+  background: var(--bg-glass-panel);
+  border: 1px solid var(--bg-glass-border);
+  border-radius: 18px;
+  overflow: hidden;
+  margin-bottom: 18px;
+  box-shadow:
+    inset 0 1px 0 var(--bg-specular),
+    var(--bg-shadow-panel);
+  display: flex;
+  flex-direction: column;
+}
+
+.bg-gcal-workspace.is-fullscreen {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  max-width: 100vw !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  z-index: 100005;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  background: var(--bg-panel);
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.bg-gcal-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 13px 16px;
+  background: var(--bg-subbar);
+  border-bottom: 1px solid var(--bg-border);
+  flex-shrink: 0;
+}
+
+.bg-gcal-nav-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.bg-gcal-arrows {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.bg-gcal-period-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.bg-gcal-title {
+  margin: 0 !important;
+  font-size: 1.06rem !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.015em;
+  color: var(--bg-text) !important;
+  white-space: nowrap;
+}
+
+.bg-gcal-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--theme-pri-bg);
+  border: 1px solid var(--theme-pri-bd);
+  color: var(--theme-pri-bright);
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.bg-gcal-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.bg-gcal-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--bg-text-sec);
+}
+
+.bg-gcal-leg-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.bg-gcal-leg-item i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.bg-gcal-leg-item i.is-amber {
+  background: #f59e0b;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.55);
+}
+.bg-gcal-leg-item i.is-emerald {
+  background: #10b981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.55);
+}
+.bg-gcal-leg-item i.is-theme-pri {
+  background: var(--theme-pri-bright);
+  box-shadow: 0 0 6px var(--theme-pri-shadow);
+}
+.bg-gcal-leg-item i.is-rose {
+  background: #f43f5e;
+  box-shadow: 0 0 6px rgba(244, 63, 94, 0.55);
+}
+
+.bg-gcal-leg-hint {
+  color: var(--bg-text-muted);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.is-gcal-fs-btn {
+  height: 36px;
+  padding: 0 11px;
+  border-radius: 10px;
+}
+
+/* --- SUB-VIEW 1: GOOGLE CALENDAR WEEK GRID (7 COLS x SÁNG / CHIỀU) --- */
+.bg-gcal-week-wrap {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.bg-gcal-week-head-grid,
+.bg-gcal-week-lane {
+  display: grid;
+  grid-template-columns: 98px repeat(7, minmax(0, 1fr));
+  min-width: 860px;
+}
+
+/* Week Header: Emerald Green + White Text (Dark) | Ocean Blue + White Text (Light) */
+.bg-gcal-week-head-grid {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: #ffffff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 4px 12px -4px rgba(4, 120, 87, 0.45);
+}
+
+.report-container.page.theme-light-blue .bg-gcal-week-head-grid {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.24);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 4px 12px -4px rgba(2, 132, 199, 0.35);
+}
+
+.bg-gcal-corner-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 8px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #ffffff;
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.bg-gcal-day-head {
+  padding: 10px 8px 9px;
+  border-right: 1px solid rgba(255, 255, 255, 0.18);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  position: relative;
+  color: #ffffff;
+  transition: background 0.16s ease;
+}
+.bg-gcal-day-head:last-child {
+  border-right: none;
+}
+
+.bg-gcal-day-head.is-today {
+  background: rgba(255, 255, 255, 0.14);
+}
+.bg-gcal-day-head.is-today::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 12px;
+  right: 12px;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: #ffffff;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.65);
+}
+
+.bg-gcal-wd-name,
+.bg-gcal-day-head.is-today .bg-gcal-wd-name,
+.bg-gcal-day-head.is-sun .bg-gcal-wd-name {
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #ffffff;
+}
+
+.bg-gcal-day-num-row {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.bg-gcal-day-circle {
+  min-width: 30px;
+  height: 30px;
+  padding: 0 5px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.04rem;
+  font-weight: 800;
+  color: var(--bg-text);
+  line-height: 1;
+}
+.bg-gcal-day-circle.is-sm {
+  min-width: 26px;
+  height: 26px;
+  font-size: 0.86rem;
+}
+.bg-gcal-day-circle.is-today {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff !important;
+  box-shadow: 0 3px 10px rgba(5, 150, 105, 0.42);
+}
+.report-container.page.theme-light-blue .bg-gcal-day-circle.is-today {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  color: #ffffff !important;
+  box-shadow: 0 3px 10px rgba(2, 132, 199, 0.38);
+}
+
+/* Inside Week Header Bar: Keep ALL text crisp white (#ffffff) */
+.bg-gcal-week-head-grid .bg-gcal-day-circle,
+.bg-gcal-week-head-grid .bg-gcal-day-head.is-sun .bg-gcal-day-circle {
+  color: #ffffff;
+}
+.bg-gcal-week-head-grid .bg-gcal-day-circle.is-today,
+.report-container.page.theme-light-blue .bg-gcal-week-head-grid .bg-gcal-day-circle.is-today {
+  background: rgba(255, 255, 255, 0.24);
+  border: 2px solid #ffffff;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+.bg-gcal-month-sub {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.bg-gcal-day-count {
+  margin-top: 1px;
+  padding: 1.5px 8px;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+/* Week Lanes: Optional Reminder Strip + BUỔI SÁNG + BUỔI CHIỀU */
+.bg-gcal-week-lane {
+  border-bottom: 1px solid var(--bg-border);
+  flex: 1 0 auto;
+}
+.bg-gcal-week-lane:last-child {
+  border-bottom: none;
+}
+
+.bg-gcal-week-lane.is-morning-lane,
+.bg-gcal-week-lane.is-afternoon-lane {
+  min-height: 158px;
+}
+.bg-gcal-workspace.is-fullscreen .bg-gcal-week-lane.is-morning-lane,
+.bg-gcal-workspace.is-fullscreen .bg-gcal-week-lane.is-afternoon-lane {
+  min-height: calc((100dvh - 180px) / 2);
+}
+
+.bg-gcal-axis-cell {
+  border-right: 1px solid var(--bg-border);
+  padding: 14px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  text-align: center;
+  background: var(--bg-soft-pad);
+  user-select: none;
+}
+.bg-gcal-axis-cell.is-morning {
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.08) 0%, transparent 100%);
+}
+.bg-gcal-axis-cell.is-afternoon {
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.08) 0%, transparent 100%);
+}
+.bg-gcal-axis-cell.is-reminder {
+  padding: 8px 6px;
+  flex-direction: row;
+  gap: 4px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--sem-rose-bright);
+  background: var(--sem-rose-bg);
+}
+
+.bg-gcal-axis-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.bg-gcal-axis-icon.is-sky {
+  background: var(--sem-sky-bg);
+  border: 1px solid var(--sem-sky-bd);
+  color: var(--sem-sky-bright);
+}
+.bg-gcal-axis-icon.is-amber {
+  background: var(--sem-amber-bg);
+  border: 1px solid var(--sem-amber-bd);
+  color: var(--sem-amber-bright);
+}
+
+.bg-gcal-axis-lbl {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--bg-text-sec);
+  line-height: 1.25;
+}
+
+/* Week Day × Period Cell */
+.bg-gcal-slot {
+  border-right: 1px solid var(--bg-border);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+  position: relative;
+  transition: background 0.16s ease, box-shadow 0.16s ease;
+}
+.bg-gcal-slot:last-child {
+  border-right: none;
+}
+.bg-gcal-slot.is-today {
+  background: rgba(56, 189, 248, 0.035);
+}
+.bg-gcal-slot.is-sun:not(.is-today) {
+  background: rgba(244, 63, 94, 0.018);
+}
+.bg-gcal-slot.is-reminder-slot {
+  padding: 6px;
+  gap: 4px;
+  min-height: 38px;
+  justify-content: center;
+}
+.bg-gcal-slot.is-drag-over {
+  background: rgba(16, 185, 129, 0.12) !important;
+  box-shadow: inset 0 0 0 2px var(--sem-emerald-bright);
+}
+
+.bg-gcal-rem-chip {
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 4px 7px;
+  border-radius: 7px;
+  background: var(--sem-rose-bg);
+  border: 1px solid var(--sem-rose-bd);
+  color: var(--sem-rose-bright);
+  font-size: 0.71rem;
+  font-weight: 700;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.bg-gcal-rem-chip:hover {
+  background: rgba(244, 63, 94, 0.22);
+}
+
+/* Empty Slot Prominent '+' Quick-Add Button */
+.bg-gcal-empty-add {
+  width: 100% !important;
+  height: 100%;
+  min-height: 116px;
+  margin: 0 !important;
+  padding: 12px 8px;
+  border-radius: 12px;
+  background: transparent;
+  border: 1.5px dashed var(--bg-border-strong);
+  color: var(--bg-text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.18s var(--bg-ease);
+}
+
+.bg-gcal-plus-circle {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-border-strong);
+  color: var(--bg-text-sec);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.18s var(--bg-ease);
+}
+
+.bg-gcal-plus-txt {
+  font-size: 0.73rem;
+  font-weight: 700;
+  opacity: 0.75;
+  white-space: nowrap;
+  transition: all 0.18s var(--bg-ease);
+}
+
+.bg-gcal-empty-add.is-morning:hover {
+  background: var(--sem-sky-bg);
+  border-color: var(--sem-sky-bright);
+  color: var(--sem-sky-bright);
+}
+.bg-gcal-empty-add.is-morning:hover .bg-gcal-plus-circle {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  border-color: transparent;
+  color: #ffffff;
+  transform: scale(1.08);
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.38);
+}
+
+.bg-gcal-empty-add.is-afternoon:hover {
+  background: var(--sem-amber-bg);
+  border-color: var(--sem-amber-bright);
+  color: var(--sem-amber-bright);
+}
+.bg-gcal-empty-add.is-afternoon:hover .bg-gcal-plus-circle {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border-color: transparent;
+  color: #ffffff;
+  transform: scale(1.08);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.38);
+}
+
+.bg-gcal-empty-add:hover .bg-gcal-plus-txt {
+  opacity: 1;
+}
+
+/* Elevate hovered slot/day cell so scaled card never slips under sibling column */
+.bg-gcal-slot:hover,
+.bg-gcal-slot:focus-within {
+  z-index: 5;
+}
+
+/* Google Calendar Event Card (Hover Scale + Toggle Files + Bottom 3 Action Buttons) */
+.bg-gcal-event {
+  position: relative;
+  min-width: 0;
+  max-width: 100%;
+  padding: 8px 9px;
+  border-radius: 10px;
+  background: var(--bg-group-surface);
+  border: 1px solid var(--bg-group-border);
+  border-left: 3.5px solid var(--sem-amber);
+  box-shadow: 0 3px 10px -4px rgba(2, 6, 23, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  cursor: pointer;
+  transform-origin: center center;
+  transition:
+    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.18s ease,
+    box-shadow 0.2s ease;
+}
+
+.bg-gcal-event:hover,
+.bg-gcal-event.is-files-open {
+  z-index: 8;
+  border-color: var(--theme-pri-bd);
+  box-shadow:
+    0 12px 26px -6px rgba(2, 6, 23, 0.48),
+    0 0 0 1px var(--theme-pri-ring);
+}
+
+.bg-gcal-event:hover {
+  transform: translateY(-2px) scale(1.026);
+}
+
+.report-container.page.theme-light-blue .bg-gcal-event:hover,
+.report-container.page.theme-light-blue .bg-gcal-event.is-files-open {
+  border-color: rgba(2, 132, 199, 0.44);
+  box-shadow:
+    0 12px 24px -6px rgba(15, 23, 42, 0.16),
+    0 0 0 1px rgba(2, 132, 199, 0.2);
+}
+
+.bg-gcal-event.is-pending {
+  border-left-color: #f59e0b;
+}
+
+/* Completed Calendar Card: Solid Emerald Green + White Text (Dark) | Solid Ocean Blue + White Text (Light) */
+.bg-gcal-event.is-done {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  border-color: rgba(52, 211, 153, 0.46);
+  border-left: 3.5px solid #6ee7b7;
+  color: #ffffff;
+  box-shadow: 0 6px 16px -6px rgba(5, 150, 105, 0.52);
+}
+
+.report-container.page.theme-light-blue .bg-gcal-event.is-done {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  border-color: rgba(56, 189, 248, 0.52);
+  border-left: 3.5px solid #bae6fd;
+  color: #ffffff;
+  box-shadow: 0 6px 16px -6px rgba(2, 132, 199, 0.44);
+}
+
+.bg-gcal-event.is-done:hover,
+.bg-gcal-event.is-done.is-files-open {
+  border-color: rgba(255, 255, 255, 0.65);
+}
+
+.bg-gcal-event.is-failed {
+  opacity: 1 !important;
+  filter: none !important;
+  border-color: rgba(244, 63, 94, 0.34);
+  border-left-color: #f43f5e;
+  background: linear-gradient(135deg, rgba(244, 63, 94, 0.14) 0%, var(--bg-group-surface) 78%);
+}
+.report-container.page.theme-light-blue .bg-gcal-event.is-failed {
+  border-color: #fecdd3;
+  border-left-color: #e11d48;
+  background: linear-gradient(135deg, #fff1f2 0%, #ffffff 78%);
+}
+.bg-gcal-event.is-compact {
+  padding: 5px 6px;
+  border-radius: 8px;
+  gap: 4px;
+}
+
+.bg-gcal-event.dragging-task {
+  opacity: 0.45;
+  transform: scale(0.97) !important;
+}
+.bg-gcal-event.drop-success-pulse {
+  box-shadow: 0 0 0 2px var(--theme-pri-bright), 0 8px 18px var(--theme-pri-shadow);
+}
+
+.bg-gcal-event-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  min-width: 0;
+}
+
+.bg-gcal-event-badges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+
+.bg-gcal-prio-tag {
+  padding: 1.5px 5px;
+  border-radius: 5px;
+  background: var(--sem-rose-bg);
+  border: 1px solid var(--sem-rose-bd);
+  color: var(--sem-rose-bright);
+  font-size: 0.61rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.bg-gcal-cus-tag {
+  padding: 1.5px 6px;
+  border-radius: 5px;
+  background: var(--theme-pri-bg);
+  border: 1px solid var(--theme-pri-bd);
+  color: var(--theme-pri-bright);
+  font-size: 0.63rem;
+  font-weight: 700;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bg-gcal-event.is-done .bg-gcal-prio-tag {
+  background: rgba(225, 29, 72, 0.88);
+  border-color: rgba(255, 255, 255, 0.38);
+  color: #ffffff;
+}
+
+.bg-gcal-event.is-done .bg-gcal-cus-tag {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.36);
+  color: #ffffff;
+}
+
+.bg-gcal-event-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--bg-text);
+  line-height: 1.36;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+/* Circular Checkmark Icon on Completed Calendar Tasks */
+.bg-gcal-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.bg-gcal-title-row .bg-gcal-event-title {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.bg-gcal-done-circle {
+  width: 17px;
+  height: 17px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #047857;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.22);
+}
+
+.report-container.page.theme-light-blue .bg-gcal-done-circle {
+  background: #ffffff;
+  color: #0284c7;
+}
+
+.bg-gcal-event.is-compact .bg-gcal-done-circle {
+  width: 15px;
+  height: 15px;
+}
+
+.bg-gcal-event.is-compact .bg-gcal-done-circle svg {
+  width: 9.5px;
+  height: 9.5px;
+}
+
+.bg-gcal-event.is-compact .bg-gcal-event-title {
+  font-size: 0.74rem;
+  -webkit-line-clamp: 2;
+}
+.bg-gcal-event.is-done .bg-gcal-event-title {
+  color: #ffffff !important;
+  opacity: 1;
+}
+
+.bg-gcal-event-note {
+  font-size: 0.72rem;
+  color: var(--bg-text-muted);
+  line-height: 1.32;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+.bg-gcal-event.is-done .bg-gcal-event-note {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+
+/* --- Collapsible Attachment Section (Above Bottom 3 Action Buttons) --- */
+.bg-gcal-files-box {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  max-width: 100%;
+  margin-top: 2px;
+}
+
+.bg-gcal-files-toggle {
+  width: 100% !important;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0 !important;
+  padding: 3.5px 7px !important;
+  border-radius: 7px;
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-border-strong);
+  color: var(--theme-pri-bright);
+  font-size: 0.68rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.bg-gcal-files-toggle.is-compact {
+  padding: 2.5px 6px !important;
+  font-size: 0.65rem;
+}
+
+.bg-gcal-files-toggle:hover,
+.bg-gcal-files-toggle.is-open {
+  background: var(--theme-pri-bg);
+  border-color: var(--theme-pri-bd);
+}
+
+.bg-gcal-event.is-done .bg-gcal-files-toggle {
+  background: rgba(0, 0, 0, 0.18);
+  border-color: rgba(255, 255, 255, 0.34);
+  color: #ffffff;
+}
+.bg-gcal-event.is-done .bg-gcal-files-toggle:hover,
+.bg-gcal-event.is-done .bg-gcal-files-toggle.is-open {
+  background: rgba(0, 0, 0, 0.28);
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+.bg-gcal-files-toggle-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.bg-gcal-files-toggle-left svg {
+  flex-shrink: 0;
+}
+
+.bg-gcal-files-toggle-left span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bg-gcal-files-caret {
+  font-size: 0.68rem;
+  line-height: 1;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.bg-gcal-files-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0;
+}
+
+.bg-gcal-file-item {
+  display: flex;
+  align-items: center;
+  gap: 3.5px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 2.5px 4px;
+  border-radius: 6px;
+  background: var(--bg-well);
+  border: 1px solid var(--bg-border);
+}
+
+.bg-gcal-event.is-done .bg-gcal-file-item {
+  background: rgba(0, 0, 0, 0.22);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.bg-gcal-file-ic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+
+.bg-gcal-file-ic svg {
+  width: 13px;
+  height: 13px;
+}
+
+.bg-gcal-file-name {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--bg-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.25;
+}
+
+.bg-gcal-event.is-done .bg-gcal-file-name {
+  color: #ffffff;
+}
+
+.bg-gcal-file-btns {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.bg-gcal-file-act {
+  width: 18px !important;
+  height: 18px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 4.5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.14s ease, color 0.14s ease, border-color 0.14s ease;
+}
+
+.bg-gcal-file-act.is-view {
+  background: var(--sem-sky-bg);
+  border: 1px solid var(--sem-sky-bd);
+  color: var(--sem-sky-bright);
+}
+.bg-gcal-file-act.is-view:hover {
+  background: #0284c7;
+  border-color: #0284c7;
+  color: #ffffff;
+}
+
+.bg-gcal-file-act.is-dl {
+  background: var(--theme-pri-bg);
+  border: 1px solid var(--theme-pri-bd);
+  color: var(--theme-pri-bright);
+}
+.bg-gcal-file-act.is-dl:hover {
+  background: var(--theme-pri);
+  border-color: var(--theme-pri);
+  color: #ffffff;
+}
+
+.bg-gcal-event.is-done .bg-gcal-file-act.is-view,
+.bg-gcal-event.is-done .bg-gcal-file-act.is-dl {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.38);
+  color: #ffffff;
+}
+.bg-gcal-event.is-done .bg-gcal-file-act.is-view:hover,
+.bg-gcal-event.is-done .bg-gcal-file-act.is-dl:hover {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: #0f172a;
+}
+
+/* --- Bottom 3 Action Buttons: [Xoá | Fail | Xong] ---
+   - Pending (.is-pending): Permanently visible without hover!
+   - Done (.is-done) & Failed (.is-failed): Hidden at rest, revealed on hover.
+   - Styled identically to Detail Card (.tl-rect-actions)! */
+.bg-gcal-card-foot-acts {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0 solid transparent;
+  pointer-events: none;
+  transition:
+    max-height 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.16s ease,
+    margin-top 0.16s ease,
+    padding-top 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.bg-gcal-event.is-pending .bg-gcal-card-foot-acts {
+  max-height: none;
+  opacity: 1;
+  overflow: visible;
+  margin-top: 5px;
+  padding-top: 6px;
+  border-top: 1px solid var(--bg-border);
+  pointer-events: auto;
+}
+
+.bg-gcal-event.is-done:hover .bg-gcal-card-foot-acts,
+.bg-gcal-event.is-done:focus-within .bg-gcal-card-foot-acts {
+  max-height: 38px;
+  opacity: 1;
+  margin-top: 5px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.26);
+  pointer-events: auto;
+}
+
+.bg-gcal-event.is-failed:hover .bg-gcal-card-foot-acts,
+.bg-gcal-event.is-failed:focus-within .bg-gcal-card-foot-acts {
+  max-height: 38px;
+  opacity: 1;
+  margin-top: 5px;
+  padding-top: 6px;
+  border-top: 1px solid var(--bg-border);
+  pointer-events: auto;
+}
+
+.bg-gcal-foot-btn {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto !important;
+  height: 24px !important;
+  margin: 0 !important;
+  padding: 0 3px !important;
+  border-radius: 6px;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
+}
+
+.bg-gcal-event.is-compact .bg-gcal-foot-btn {
+  height: 22px !important;
+  padding: 0 2.5px !important;
+  font-size: 0.61rem;
+  gap: 1.5px;
+}
+
+.bg-gcal-foot-btn svg {
+  width: 9px;
+  height: 9px;
+  flex-shrink: 0;
+}
+
+.bg-gcal-foot-btn:active {
+  transform: scale(0.96);
+}
+
+/* Xoá — Ghost Red Outline + Red Text (Exact Detail Card .tl-action-delete match) */
+.bg-gcal-foot-btn.is-del {
+  background: transparent;
+  border: 1.5px solid rgba(248, 113, 113, 0.38);
+  color: #f87171;
+}
+.report-container.page.theme-light-blue .bg-gcal-foot-btn.is-del {
+  background: transparent;
+  border: 1.5px solid rgba(225, 29, 72, 0.38);
+  color: #e11d48;
+}
+.bg-gcal-foot-btn.is-del:hover {
+  background: #e11d48 !important;
+  border-color: #e11d48 !important;
+  color: #ffffff !important;
+  box-shadow: 0 3px 10px -2px rgba(225, 29, 72, 0.42);
+}
+
+/* Inside Solid Green/Blue Completed Card: Frosted White-Border Xoá Pill */
+.bg-gcal-event.is-done .bg-gcal-foot-btn.is-del {
+  background: rgba(0, 0, 0, 0.22);
+  border: 1.5px solid rgba(255, 255, 255, 0.45);
+  color: #ffffff;
+}
+.bg-gcal-event.is-done .bg-gcal-foot-btn.is-del:hover {
+  background: #e11d48 !important;
+  border-color: #ffffff !important;
+  color: #ffffff !important;
+}
+
+/* Fail — Frosted Neutral Slate Glass Pill turning Orange on Hover (Exact Detail Card .tl-action-fail match) */
+.bg-gcal-foot-btn.is-fail {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #cbd5e1;
+}
+.report-container.page.theme-light-blue .bg-gcal-foot-btn.is-fail {
+  background: rgba(15, 23, 42, 0.06);
+  border: 1px solid #cbd5e1;
+  color: #334155;
+}
+.bg-gcal-foot-btn.is-fail:hover {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+  box-shadow: 0 3px 10px -2px rgba(249, 115, 22, 0.42);
+}
+
+/* Xong — Solid Theme-Priority Gradient + White Bold Text (Dark = Emerald Green | Light = Ocean Blue) */
+.bg-gcal-foot-btn.is-done {
+  background: var(--theme-pri-grad);
+  border: 1px solid transparent;
+  color: #ffffff;
+  box-shadow: 0 3px 10px -2px var(--theme-pri-shadow);
+}
+.bg-gcal-foot-btn.is-done:hover {
+  filter: brightness(1.07);
+  transform: translateY(-1px);
+}
+
+/* Subtle '+ Thêm' button below populated slot */
+.bg-gcal-slot-more-add {
+  width: 100% !important;
+  margin: auto 0 0 0 !important;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px dashed var(--bg-border-strong);
+  color: var(--bg-text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.16s var(--bg-ease);
+}
+.bg-gcal-slot-more-add:hover {
+  background: var(--theme-pri-bg);
+  border-color: var(--theme-pri-bd);
+  color: var(--theme-pri-bright);
+}
+
+/* --- SUB-VIEW 2: GOOGLE CALENDAR MONTH GRID AUGMENTATIONS --- */
+.bg-gcal-month-wrap {
+  padding: 14px 16px 16px;
+  overflow-x: auto;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.bg-gcal-month-block {
+  min-width: 860px;
+}
+
+/* Month Header: Emerald Green + White Text (Dark) | Ocean Blue + White Text (Light) */
+.bg-gcal-month-wrap .bg-cal-month-title {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 14px;
+  margin-bottom: 10px;
+  border-radius: 10px;
+  border-bottom: none;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: #ffffff;
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 3px 10px -3px rgba(4, 120, 87, 0.45);
+}
+
+.report-container.page.theme-light-blue .bg-gcal-month-wrap .bg-cal-month-title {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 3px 10px -3px rgba(2, 132, 199, 0.35);
+}
+
+.bg-gcal-month-wrap .bg-cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0;
+  margin-bottom: 10px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  border: 1px solid rgba(16, 185, 129, 0.36);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 4px 12px -4px rgba(4, 120, 87, 0.45);
+}
+
+.report-container.page.theme-light-blue .bg-gcal-month-wrap .bg-cal-weekdays {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  border: 1px solid rgba(2, 132, 199, 0.38);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 4px 12px -4px rgba(2, 132, 199, 0.35);
+}
+
+.bg-gcal-month-wrap .bg-cal-wd {
+  text-align: center;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 10px 6px;
+  border-radius: 0;
+  background: transparent;
+  color: #ffffff;
+  border-right: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.bg-gcal-month-wrap .bg-cal-wd:last-child {
+  border-right: none;
+}
+
+.bg-gcal-month-wrap .bg-move-day-cell {
+  overflow: visible;
+  min-width: 0;
+  position: relative;
+}
+
+.bg-gcal-month-wrap .bg-move-day-cell:hover,
+.bg-gcal-month-wrap .bg-move-day-cell:focus-within {
+  z-index: 5;
+}
+
+.bg-gcal-month-wrap .bg-move-day-head {
+  background: transparent;
+  border-radius: 11px 11px 0 0;
+}
+
+.bg-gcal-month-wrap .bg-move-zones {
+  min-width: 0;
+  padding: 5px;
+  gap: 5px;
+}
+
+.bg-gcal-month-wrap .bg-move-day-cell.is-today {
+  border-color: var(--sem-emerald-bd);
+  box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.28);
+}
+
+.report-container.page.theme-light-blue .bg-gcal-month-wrap .bg-move-day-cell.is-today {
+  border-color: var(--sem-sky-bd);
+  box-shadow: inset 0 0 0 1px rgba(2, 132, 199, 0.25);
+}
+
+/* Month Sáng & Chiều Zones: NO colored background fill — ONLY colored text labels */
+.bg-gcal-month-wrap .bg-move-zone.is-morning,
+.bg-gcal-month-wrap .bg-move-zone.is-afternoon {
+  background: transparent;
+  border: 1px dashed var(--bg-border);
+  min-width: 0;
+  padding: 5px;
+  gap: 5px;
+}
+
+.bg-gcal-month-wrap .bg-move-zone.drag-over-sang {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: var(--sem-sky-bright);
+}
+
+.bg-gcal-month-wrap .bg-move-zone.drag-over-chieu {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: var(--sem-amber-bright);
+}
+
+.bg-move-zone-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.bg-move-zone-lbl.is-amber {
+  color: var(--sem-amber-bright);
+}
+
+.bg-move-zone-plus {
+  width: 20px !important;
+  height: 20px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 6px;
+  background: var(--bg-panel);
+  border: 1px solid var(--bg-border-strong);
+  color: var(--bg-text-sec);
+  font-size: 0.84rem;
+  font-weight: 800;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.bg-move-zone-plus:hover {
+  background: var(--theme-pri);
+  border-color: transparent;
+  color: #ffffff;
+}
+
+.bg-gcal-month-empty-add {
+  width: 100% !important;
+  flex: 1;
+  min-height: 44px;
+  margin: 0 !important;
+  padding: 0;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px dashed var(--bg-border-strong);
+  color: var(--bg-text-muted);
+  font-size: 1.05rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.16s var(--bg-ease);
+}
+.bg-gcal-month-empty-add:hover {
+  background: var(--bg-soft-pad);
+  border-color: var(--theme-pri-bright);
+  color: var(--theme-pri-bright);
+  transform: scale(1.01);
+}
+
+/* ============================================================================
+   RESPONSIVE BREAKPOINTS (<= 1100px COMPACT SHELL & <= 768px MOBILE)
+============================================================================ */
+@media (max-width: 1100px) {
+  .report-container.page {
+    padding: 12px 12px 98px;
+  }
+
+  .bg-hide-compact {
+    display: none !important;
+  }
+
+  .bg-bento-deck {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .bg-board-toolbar {
+    justify-content: flex-end;
+  }
+
+  .bg-board-view-cluster {
+    margin-left: auto;
+  }
+
+  .bg-report-3col-grid,
+  .bg-dist-step2-grid,
+  .bg-grid-3 {
+    grid-template-columns: 1fr;
+  }
+
+  /* Mobile Floating Glass Bottom Process Dock */
+  .bg-mobile-dock {
+    position: fixed;
+    left: 50%;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    transform: translate3d(-50%, 0, 0);
+    width: min(520px, calc(100vw - 20px));
+    z-index: 955;
+    background: var(--bg-dock-glass);
+    backdrop-filter: blur(20px) saturate(185%);
+    -webkit-backdrop-filter: blur(20px) saturate(185%);
+    border: 1px solid var(--bg-glass-border);
+    border-top: 1px solid var(--theme-pri-bd);
+    border-radius: 20px;
+    padding: 6px 8px;
+    box-shadow:
+      inset 0 1px 0 var(--bg-specular-strong),
+      var(--bg-shadow-pop);
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
+    transition: bottom 0.34s var(--bg-ease), transform 0.24s var(--bg-ease), opacity 0.18s ease;
+  }
+
+  .bg-mobile-dock.is-modal-hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translate3d(-50%, calc(100% + 96px + env(safe-area-inset-bottom, 0px)), 0);
+  }
+
+  .bg-dock-btn {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 6px 2px;
+    border-radius: 13px;
+    background: transparent;
+    color: var(--bg-text-sec);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+  }
+
+  .bg-dock-btn.is-primary {
+    background: var(--theme-pri-bg);
+    border: 1px solid var(--theme-pri-bd);
+    color: var(--theme-pri-bright);
+  }
+
+  .bg-dock-btn.is-primary.is-center-cta {
+    background: var(--theme-pri-grad) !important;
+    border: 1px solid rgba(255, 255, 255, 0.34) !important;
+    color: #ffffff !important;
+    transform: translateY(-4px);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.36),
+      0 8px 18px -4px var(--theme-pri-shadow);
+  }
+
+  .bg-dock-btn.is-primary.is-center-cta:active {
+    transform: translateY(-2px) scale(0.96);
+  }
+
+  .bg-dock-btn.is-primary.is-center-cta .bg-dock-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.22);
+    color: #ffffff;
+  }
+
+  .bg-dock-btn.is-primary.is-center-cta .bg-dock-lbl {
+    color: #ffffff !important;
+    font-weight: 800;
+  }
+
+  .bg-dock-icon {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .bg-dock-badge {
+    position: absolute;
+    top: -6px;
+    right: -13px;
+    min-width: 17px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #ffffff;
+    font-size: 0.64rem;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .bg-dock-lbl {
+    font-size: 0.68rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  /* Fullscreen Mobile Sheet for Work Modals (.is-mobile-sheet) */
+  .bg-modal-overlay:has(.bg-modal-card.is-mobile-sheet) {
+    padding: 0;
+    align-items: stretch;
+  }
+
+  .bg-modal-card.is-mobile-sheet {
+    max-width: 100% !important;
+    width: 100% !important;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    border: none;
+  }
+
+  .dt-only-head {
+    display: none !important;
+  }
+
+  .m-grab-head-stack {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-panel-elev);
+    border-bottom: 1px solid var(--bg-border);
+    padding: 6px 14px 10px;
+    flex-shrink: 0;
+  }
+
+  .m-grab-pill {
+    width: 36px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--bg-border-strong);
+    margin: 0 auto 8px;
+  }
+
+  .m-grab-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .m-grab-title-wrap {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .m-grab-title {
+    margin: 0 !important;
+    font-size: 0.98rem !important;
+    font-weight: 800 !important;
+    color: var(--bg-text) !important;
+  }
+
+  .m-grab-sub {
+    font-size: 0.72rem;
+    color: var(--bg-text-muted);
+  }
+
+  .bg-modal-foot {
+    padding: 10px 14px calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* CRITICAL: baogiaDialog stays Centered Non-Fullscreen Rounded Card on Mobile! */
+  .baogia-dialog-overlay {
+    padding: 16px !important;
+    align-items: center !important;
+  }
+
+  .baogia-dialog-card {
+    width: min(420px, calc(100vw - 24px)) !important;
+    height: auto !important;
+    max-height: 86dvh !important;
+    border-radius: 20px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  :global(.app-layout:has(.report-container.page) .main-content) {
+    padding-bottom: 0 !important;
+  }
+
+  .report-container.page {
+    min-height: calc(100vh - env(safe-area-inset-top, 0px));
+    min-height: calc(100dvh - env(safe-area-inset-top, 0px));
+    padding: 12px 10px calc(144px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .bg-mobile-dock {
+    bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+    width: calc(100vw - 20px);
+    max-width: 500px;
+  }
+
+  :global(.app-layout.mobile-nav-hidden .report-container.page .bg-mobile-dock) {
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .bg-hide-sm {
+    display: none !important;
+  }
+
+  /* =========================================================================
+     V7.8 MOBILE OVERHAUL (<= 768px):
+     1. Compact 1-Row Search + Collapsible Filter Panel + 1-Row 4-Pill Status Bar
+     2. Centered '+ Thêm mới' in Mobile Bottom Dock
+     3. Full-Width 3-Tab View Switcher & Unified PC Detail Cards on Mobile
+     4. Mobile Week Calendar (3A) & Mobile Month Matrix + Day Agenda (4)
+     ========================================================================= */
+  .bg-topbar {
+    padding: 0 2px 6px;
+    margin-bottom: 2px;
+  }
+
+  .bg-brand-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+  }
+
+  .bg-page-title {
+    font-size: 1.08rem !important;
+  }
+
+  .bg-bento-deck {
+    gap: 7px !important;
+    margin-bottom: 8px !important;
+  }
+
+  /* 1A: Hide desktop solid filter header & collapse filters into 1-row Search + [Lọc] + [↻] */
+  .bg-filter-head {
+    display: none !important;
+  }
+
+  .bg-filter-strip {
+    padding: 7px 8px !important;
+    border-radius: 14px !important;
+  }
+
+  .bg-filter-row-top {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 !important;
+  }
+
+  .bg-search-shell,
+  .bg-search-shell.is-focused {
+    flex: 1 1 0 !important;
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0;
+    height: 38px !important;
+    padding: 0 10px !important;
+    border-radius: 10.5px !important;
+    gap: 7px;
+  }
+
+  .bg-search-input {
+    font-size: 0.8rem !important;
+  }
+
+  .bg-m-filter-toggle {
+    width: auto !important;
+    margin: 0 !important;
+    height: 38px !important;
+    padding: 0 10px !important;
+    border-radius: 10.5px;
+    background: var(--bg-soft-pad);
+    border: 1px solid var(--bg-border-strong);
+    color: var(--bg-text);
+    font-size: 0.76rem;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    flex-shrink: 0;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.16s var(--bg-ease);
+  }
+
+  .bg-m-filter-toggle.is-open,
+  .bg-m-filter-toggle.has-active {
+    background: var(--theme-pri-grad) !important;
+    border-color: transparent !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 12px -3px var(--theme-pri-shadow);
+  }
+
+  .bg-m-filter-badge {
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4.5px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.24);
+    color: #ffffff;
+    font-size: 0.67rem;
+    font-weight: 900;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .bg-m-filter-caret {
+    font-size: 0.68rem;
+    opacity: 0.88;
+  }
+
+  .bg-m-refresh-btn {
+    width: 38px !important;
+    height: 38px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 10.5px;
+    background: var(--bg-soft-pad);
+    border: 1px solid var(--bg-border-strong);
+    color: var(--bg-text-sec);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: all 0.16s var(--bg-ease);
+  }
+
+  .bg-m-refresh-btn:active {
+    transform: scale(0.94);
+  }
+
+  .bg-filter-collapsible {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--bg-border);
+  }
+
+  .bg-filter-collapsible.is-m-collapsed {
+    display: none !important;
+  }
+
+  .bg-filter-row-main {
+    padding: 0 !important;
+    gap: 6px;
+  }
+
+  .bg-filter-row-main .bg-seg-switch.is-compact {
+    flex: 1 1 auto;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .bg-filter-row-main .bg-seg-switch.is-compact .bg-seg-btn {
+    justify-content: center;
+    padding: 0 4px;
+  }
+
+  .bg-filter-row-pickers {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+    margin-top: 0 !important;
+    padding: 7px 0 0 !important;
+    background: transparent !important;
+    border-top: 1px dashed var(--bg-border) !important;
+    border-radius: 0 !important;
+  }
+
+  .bg-filter-row-pickers .pl-picker-wrap:nth-child(5) {
+    grid-column: 1 / -1;
+  }
+
+  .bg-m-filter-reset-bar {
+    display: flex;
+    width: 100%;
+  }
+
+  .bg-m-reset-inline-btn {
+    width: 100% !important;
+    margin: 0 !important;
+    height: 33px !important;
+    padding: 0 10px !important;
+    border-radius: 9.5px;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+    border: 1px solid rgba(254, 243, 199, 0.55) !important;
+    color: #ffffff !important;
+    font-size: 0.74rem;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+  }
+
+  /* Asymmetric Bento KPI Deck on Mobile (Col 1: Tall Hero Total | Col 2: 3 Stacked Status Cards) */
+  .bg-kpi-grid {
+    grid-template-columns: minmax(124px, 0.88fr) minmax(0, 1.18fr);
+    gap: 8px;
+    padding: 9px;
+    border-radius: 15px;
+  }
+
+  .bg-kpi-card.is-total-hero {
+    min-height: 112px;
+    padding: 10px 11px;
+    border-radius: 12px;
+  }
+
+  .bg-kpi-hero-top {
+    gap: 6px;
+  }
+
+  .bg-kpi-hero-icon {
+    width: 23px;
+    height: 23px;
+    border-radius: 7px;
+  }
+
+  .bg-kpi-hero-icon svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .bg-kpi-hero-lbl {
+    font-size: 0.64rem;
+    letter-spacing: 0.03em;
+  }
+
+  .bg-kpi-hero-mid {
+    margin: 4px 0 3px;
+    gap: 4px;
+  }
+
+  .bg-kpi-hero-num {
+    font-size: 1.66rem;
+  }
+
+  .bg-kpi-hero-unit {
+    font-size: 0.72rem;
+  }
+
+  .bg-kpi-hero-foot {
+    gap: 4.5px;
+  }
+
+  .bg-kpi-hero-rate {
+    font-size: 0.67rem;
+  }
+
+  .bg-kpi-seg-bar {
+    height: 5px;
+  }
+
+  .bg-kpi-stack {
+    gap: 5.5px;
+  }
+
+  .bg-kpi-card.is-stack-row {
+    min-height: 33.5px;
+    padding: 0 9.5px;
+    border-radius: 10px;
+    gap: 6px;
+  }
+
+  .bg-kpi-row-left {
+    gap: 6px;
+  }
+
+  .bg-kpi-dot {
+    width: 6.5px;
+    height: 6.5px;
+  }
+
+  .bg-kpi-label {
+    font-size: 0.74rem;
+  }
+
+  .bg-kpi-row-right {
+    gap: 6px;
+  }
+
+  .bg-kpi-pct {
+    font-size: 0.66rem;
+  }
+
+  .bg-kpi-val {
+    font-size: 0.88rem;
+    min-width: 18px;
+  }
+
+  /* 3-Tab View Switcher + Inline Theme Button + "?" Guide Button on Mobile ([Chi tiết | Lịch tuần | Lịch tháng] [☀/🌙] [?]) */
+  .bg-board-toolbar {
+    margin-bottom: 9px !important;
+  }
+
+  .bg-board-view-cluster {
+    width: 100%;
+    margin-left: 0 !important;
+    display: flex;
+    align-items: center;
+    gap: 5.5px;
+  }
+
+  .bg-board-view-cluster .bg-seg-switch.is-view-track {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    padding: 3.5px;
+    gap: 2px;
+    border-radius: 12px;
+    box-sizing: border-box;
+  }
+
+  .bg-board-view-cluster .bg-seg-switch.is-view-track .bg-seg-btn {
+    width: 100% !important;
+    height: 33px;
+    padding: 0 3.5px;
+    justify-content: center;
+    font-size: 0.725rem;
+    gap: 3.5px;
+  }
+
+  .bg-board-view-cluster .bg-seg-switch.is-view-track .bg-seg-btn svg {
+    width: 12.5px;
+    height: 12.5px;
+    flex-shrink: 0;
+  }
+
+  .bg-board-view-cluster .bg-btn-theme,
+  .bg-board-view-cluster .bg-btn-guide {
+    width: 42px !important;
+    height: 42px !important;
+    padding: 0 !important;
+    border-radius: 12px;
+    flex-shrink: 0;
+    justify-content: center;
+    box-sizing: border-box;
+  }
+
+  .bg-board-view-cluster .bg-btn-guide .bg-guide-btn-ic {
+    width: 17px;
+    height: 17px;
+  }
+
+  .bg-board-view-cluster .bg-btn-theme .bg-theme-btn-lbl,
+  .bg-board-view-cluster .bg-btn-guide .bg-guide-btn-lbl {
+    display: none !important;
+  }
+
+  /* Mobile Empty Days Modal: Clean 2-Row Filter Subbar (Row 1: Từ ngày → Đến ngày | Row 2: 50/50 Danh sách | Lịch tháng) */
+  .bg-modal-subbar.is-empty-days-subbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .bg-empty-date-row {
+    flex: 0 0 auto;
+    max-width: none;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .is-empty-date-field {
+    gap: 3.5px;
+    min-width: 0;
+  }
+
+  .is-empty-date-field .bg-label {
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: var(--bg-text-muted);
+    letter-spacing: 0.01em;
+  }
+
+  .bg-input.is-empty-date-input {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 36px !important;
+    padding: 0 8px !important;
+    margin: 0 !important;
+    font-size: 0.78rem !important;
+    border-radius: 10px !important;
+  }
+
+  .bg-empty-date-arrow {
+    height: 36px;
+    font-size: 0.82rem;
+    padding: 0 1px;
+  }
+
+  .bg-seg-switch.is-empty-view-track {
+    width: 100%;
+    height: auto;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 3px;
+    border-radius: 10.5px;
+    box-sizing: border-box;
+  }
+
+  .bg-seg-switch.is-empty-view-track .bg-seg-btn {
+    width: 100% !important;
+    height: 31px;
+    padding: 0 8px;
+    justify-content: center;
+    font-size: 0.76rem;
+    gap: 6px;
+  }
+
+  /* Mobile 1-Column Unified Detail Stream (Zero Outer Wrapper Boxes, Color-Differentiated Cards) */
+  .bg-m-detail-stream {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 11px;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .bg-m-detail-empty {
+    flex: 1 1 auto;
+    min-height: max(175px, calc(100vh - 452px));
+    min-height: max(175px, calc(100dvh - 452px));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 26px 16px;
+    border-radius: 15px;
+    background: var(--bg-panel);
+    border: 1px dashed var(--bg-border-strong);
+    text-align: center;
+    box-sizing: border-box;
+  }
+
+  .report-container.page:has(.bg-m-filter-toggle.is-open) .bg-m-detail-empty {
+    min-height: 175px;
+  }
+
+  .bg-m-detail-empty > .bg-dsub-empty-add {
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: 240px;
+    min-height: 88px;
+    padding: 14px 18px;
+    justify-content: center;
+  }
+
+  .bg-m-detail-empty-txt {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--bg-text-muted);
+  }
+
+  .bg-dcard-period-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 1.5px 6.5px;
+    border-radius: 6px;
+    font-size: 0.63rem;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    line-height: 1.3;
+    border: 1px solid transparent;
+  }
+
+  .bg-dcard-period-chip.is-am {
+    background: var(--sem-sky-bg);
+    border-color: var(--sem-sky-bd);
+    color: var(--sem-sky-bright);
+  }
+
+  .bg-dcard-period-chip.is-pm {
+    background: var(--sem-amber-bg);
+    border-color: var(--sem-amber-bd);
+    color: var(--sem-amber-bright);
+  }
+
+  .bg-detail-card.is-done .bg-dcard-period-chip {
+    background: rgba(255, 255, 255, 0.2) !important;
+    border-color: rgba(255, 255, 255, 0.38) !important;
+    color: #ffffff !important;
+  }
+
+  /* Touch-friendly Detail Cards on Mobile: Always reveal Xoá on Completed cards */
+  .bg-detail-card.is-done .bg-dcard-actions {
+    max-height: 46px;
+    opacity: 1;
+    padding-top: 9px;
+    margin-top: auto;
+    border-top: 1px solid rgba(255, 255, 255, 0.24);
+    pointer-events: auto;
+  }
+
+  /* Mobile Calendar Top Toolbar Compaction */
+  .bg-gcal-toolbar {
+    padding: 8px 10px !important;
+    gap: 7px !important;
+  }
+
+  .bg-gcal-nav-left {
+    width: 100%;
+    gap: 6px !important;
+    justify-content: flex-start;
+  }
+
+  .bg-gcal-nav-left > .bg-btn-chip {
+    height: 32px !important;
+    padding: 0 10px !important;
+    font-size: 0.75rem !important;
+  }
+
+  .bg-gcal-period-heading {
+    gap: 6px;
+    margin-left: auto;
+    justify-content: flex-end;
+  }
+
+  .bg-gcal-title {
+    font-size: 0.88rem !important;
+  }
+
+  .bg-gcal-badge {
+    font-size: 0.66rem !important;
+    padding: 2px 7px !important;
+  }
+
+  .bg-gcal-nav-right,
+  .bg-gcal-legend,
+  .is-gcal-fs-btn {
+    display: none !important;
+  }
+
+  .bg-date-stepper-group {
+    flex: 1 1 100%;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .bg-period-step-btn {
+    width: 30px !important;
+    height: 34px !important;
+  }
+
+  .bg-date-range-capsule {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 34px;
+    box-sizing: border-box;
+    justify-content: space-between;
+    padding: 0 7px;
+    gap: 4px;
+    overflow: hidden;
+  }
+
+  .bg-date-field {
+    gap: 3px;
+    min-width: 0;
+    flex: 1 1 0;
+  }
+
+  .bg-date-input:not(.is-year) {
+    font-size: 0.74rem !important;
+    min-width: 0;
+    width: 100%;
+    max-width: 112px;
+  }
+
+  .bg-grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .bg-foot-right.is-add-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+  .bg-foot-right.is-add-grid .bg-btn-emerald {
+    grid-column: 1 / -1;
+  }
+
+  /* MB-A Compact Top Capsule for Smart Toast */
+  .smart-toast-wrap {
+    top: calc(10px + env(safe-area-inset-top, 0px));
+    border-radius: 999px;
+    padding: 8px 14px;
+    max-width: calc(100vw - 20px);
+  }
+
+  .smart-toast-close {
+    display: none !important;
+  }
+}
+
+
+/* =========================================================================
+   V7.5 3-COLUMN STUDIO ADD / EDIT REPORT MODAL (~23% | ~50% | ~27%)
+   ========================================================================= */
+
+/* Full-Bleed Solid Semantic Studio Header (Dark = Emerald | Light = Ocean Blue) */
+.bg-modal-head.is-solid-studio {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
+  padding: 12px 20px !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 6px 18px -8px rgba(5, 150, 105, 0.45);
+}
+
+.report-container.page.theme-light-blue .bg-modal-head.is-solid-studio {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    0 6px 18px -8px rgba(2, 132, 199, 0.42);
+}
+
+.bg-modal-head.is-solid-studio .bg-modal-title {
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+
+.bg-modal-head.is-solid-studio .bg-modal-sub {
+  color: rgba(255, 255, 255, 0.88) !important;
+}
+
+.bg-modal-icon.is-studio-glass {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.34) !important;
+  color: #ffffff !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.bg-studio-head-status {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 0.71rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+}
+.bg-studio-head-status.is-pending {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+.bg-studio-head-status.is-done {
+  background: rgba(255, 255, 255, 0.24);
+}
+.bg-studio-head-status.is-failed {
+  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+}
+
+.bg-studio-head-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bg-studio-kbd-pill {
+  font-size: 0.71rem;
+  font-weight: 700;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.bg-modal-close.is-studio-close {
+  background: rgba(255, 255, 255, 0.18) !important;
+  border: 1px solid rgba(255, 255, 255, 0.32) !important;
+  color: #ffffff !important;
+  font-weight: 800;
+}
+.bg-modal-close.is-studio-close:hover {
+  background: #f43f5e !important;
+  border-color: #fda4af !important;
+  color: #ffffff !important;
+}
+
+/* 3-Column Studio Grid (Left Rail ~23% : Center Composer ~50% : Right Upload Vault ~27%) */
+.bg-studio-modal-body {
+  display: flex;
+  flex-direction: column;
+  padding: 14px 18px !important;
+}
+
+.bg-studio-3col-grid {
+  display: grid;
+  grid-template-columns: minmax(264px, 0.92fr) minmax(420px, 2.04fr) minmax(292px, 1.08fr);
+  gap: 14px;
+  flex: 1;
+  min-height: 100%;
+  align-items: stretch;
+}
+
+.bg-studio-left-rail {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.bg-studio-rail-body {
+  gap: 12px;
+  flex: 1;
+}
+
+.bg-choice-grid.is-cols-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.bg-choice-btn.is-active-slate-solid {
+  background: linear-gradient(135deg, #475569 0%, #334155 100%);
+  color: #ffffff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 3px 9px -2px rgba(15, 23, 42, 0.38);
+}
+
+/* 1-Tap Quick Day Presets (Hôm qua | Hôm nay | Ngày mai) */
+.bg-studio-day-chips {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin-bottom: 2px;
+}
+
+.bg-studio-day-chip {
+  width: 100% !important;
+  margin: 0 !important;
+  height: 29px;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-soft-pad-bd);
+  color: var(--bg-text-sec);
+  font-size: 0.73rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.16s var(--bg-ease);
+}
+.bg-studio-day-chip:hover {
+  border-color: var(--theme-pri-bd);
+  color: var(--bg-text);
+}
+.bg-studio-day-chip.is-active {
+  background: var(--theme-pri-grad);
+  border-color: transparent;
+  color: #ffffff !important;
+  font-weight: 800;
+  box-shadow: 0 3px 10px -3px var(--theme-pri-shadow);
+}
+
+/* Center Studio Composer (~50%) & Smart Drag-and-Drop Overlay */
+.bg-report-studio-card {
+  position: relative;
+}
+
+.bg-report-studio-card.is-drag-over {
+  border-color: var(--theme-pri-bright) !important;
+  box-shadow:
+    0 0 0 3px var(--theme-pri-ring),
+    0 12px 30px -10px var(--theme-pri-shadow) !important;
+}
+
+.bg-studio-composer {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.bg-studio-drop-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  border-radius: 16px;
+  background: rgba(6, 20, 32, 0.84);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  pointer-events: none;
+}
+
+.report-container.page.theme-light-blue .bg-studio-drop-overlay {
+  background: rgba(240, 249, 255, 0.92);
+}
+
+.bg-studio-drop-box {
+  border: 2px dashed var(--theme-pri-bright);
+  border-radius: 16px;
+  padding: 26px 34px;
+  text-align: center;
+  color: var(--theme-pri-bright);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: var(--theme-pri-bg);
+}
+
+.bg-studio-drop-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--bg-text);
+}
+
+.bg-studio-drop-sub {
+  font-size: 0.79rem;
+  font-weight: 600;
+  color: var(--bg-text-sec);
+}
+
+.bg-studio-composer-body {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Auto-Draft Recovery Strip */
+.bg-studio-draft-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  border-radius: 11px;
+  background: var(--sem-amber-bg);
+  border: 1px solid var(--sem-amber-bd);
+}
+
+.bg-studio-draft-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.79rem;
+  font-weight: 700;
+  color: var(--sem-amber-bright);
+}
+
+.bg-studio-draft-acts {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 1. Customer Input Shell with Embedded "Chọn khách hàng" Button (Zero Recent Chips) */
+.bg-studio-customer-bar {
+  position: relative;
+  z-index: 25;
+}
+
+.bg-studio-cus-combobox {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 4px 5px 4px 12px;
+  border-radius: 12px;
+  background: var(--bg-well);
+  border: 1px solid var(--bg-well-border);
+  box-shadow: var(--bg-well-shadow);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+
+.bg-studio-cus-combobox:focus-within {
+  border-color: var(--theme-pri-bright);
+  box-shadow:
+    var(--bg-well-shadow),
+    0 0 0 3px var(--theme-pri-ring);
+}
+
+.bg-studio-cus-combobox.is-selected-shell {
+  padding: 5px 5px 5px 8px;
+  background: var(--bg-soft-pad);
+  border-color: var(--theme-pri-bd);
+  justify-content: space-between;
+}
+
+.bg-studio-cus-info {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  min-width: 0;
+  flex: 1 1 0;
+}
+
+.bg-studio-cus-info.is-clickable-info {
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 2px 4px;
+  transition: background 0.14s ease;
+}
+.bg-studio-cus-info.is-clickable-info:hover {
+  background: var(--bg-hover);
+}
+
+.bg-studio-cus-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--theme-pri-grad);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.bg-studio-cus-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--bg-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bg-studio-cus-info .bg-tag-pill {
+  flex-shrink: 0;
+}
+
+.bg-studio-cus-in-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.bg-studio-cus-inbtn {
+  width: auto !important;
+  margin: 0 !important;
+  height: 33px !important;
+  padding: 0 12px !important;
+  border-radius: 9px;
+  background: var(--theme-pri-grad);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  color: #ffffff !important;
+  font-size: 0.76rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  box-shadow: 0 3px 9px -2px var(--theme-pri-shadow);
+  transition: filter 0.15s ease, transform 0.12s ease;
+}
+.bg-studio-cus-inbtn:hover {
+  filter: brightness(1.07);
+}
+.bg-studio-cus-inbtn:active {
+  transform: scale(0.97);
+}
+
+.bg-studio-cus-remove-inbtn {
+  width: 31px !important;
+  height: 33px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 9px;
+  background: var(--sem-rose-bg);
+  border: 1px solid var(--sem-rose-bd);
+  color: var(--sem-rose-bright);
+  font-size: 0.78rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.14s ease;
+}
+.bg-studio-cus-remove-inbtn:hover {
+  background: #e11d48;
+  border-color: #e11d48;
+  color: #ffffff;
+}
+
+.bg-studio-cus-search-ic {
+  color: var(--theme-pri-bright);
+  flex-shrink: 0;
+}
+
+.bg-studio-cus-input {
+  flex: 1;
+  min-width: 0;
+  height: 34px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--bg-text) !important;
+  font-size: 0.84rem;
+  font-weight: 600;
+  outline: none !important;
+}
+
+.bg-studio-cus-input::placeholder {
+  color: var(--bg-text-muted);
+  font-weight: 500;
+}
+
+.bg-studio-cus-clear {
+  width: 24px !important;
+  height: 24px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 6px;
+  border: none;
+  background: var(--bg-soft-pad);
+  color: var(--bg-text-muted);
+  font-size: 0.72rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.bg-studio-cus-clear:hover {
+  background: var(--sem-rose-bg);
+  color: var(--sem-rose-bright);
+}
+
+/* Inline Customer Autocomplete Dropdown */
+.bg-studio-cus-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 1850;
+  background: var(--bg-panel-elev);
+  border: 1px solid var(--bg-border-strong);
+  border-radius: 13px;
+  box-shadow:
+    inset 0 1px 0 var(--bg-specular-strong),
+    var(--bg-shadow-pop);
+  overflow: hidden;
+  animation: bgPopDrop 0.14s var(--bg-ease);
+}
+
+.bg-studio-dd-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 12px;
+  font-size: 0.69rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--bg-text-muted);
+  background: var(--bg-soft-pad);
+  border-bottom: 1px solid var(--bg-border);
+}
+
+.bg-studio-dd-list {
+  max-height: 242px;
+  overflow-y: auto;
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bg-studio-dd-item {
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 7px 10px !important;
+  border-radius: 9px;
+  border: none;
+  background: transparent;
+  color: var(--bg-text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.bg-studio-dd-item.is-highlighted,
+.bg-studio-dd-item:hover {
+  background: var(--theme-pri-bg);
+}
+
+.bg-studio-dd-main {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.bg-studio-dd-title {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--bg-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bg-studio-dd-company {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--bg-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bg-studio-dd-tags {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.bg-studio-dd-empty {
+  padding: 14px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.8rem;
+  color: var(--bg-text-muted);
+}
+
+.bg-studio-dd-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 11px;
+  background: var(--bg-soft-pad);
+  border-top: 1px solid var(--bg-border);
+}
+
+.bg-mini-link.is-emerald {
+  color: var(--theme-pri-bright);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+.bg-mini-link.is-emerald:hover {
+  background: var(--theme-pri-bg);
+}
+.bg-mini-link.is-sky {
+  color: var(--sem-sky-bright);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+.bg-mini-link.is-sky:hover {
+  background: var(--sem-sky-bg);
+}
+.bg-mini-link.is-slate {
+  color: var(--bg-text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+.bg-mini-link.is-slate:hover {
+  color: var(--bg-text);
+  background: var(--bg-hover);
+}
+
+/* 2. Fixed Full-Height Center Work Content Composer */
+.bg-studio-main-field {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 195px;
+}
+
+.bg-studio-main-label {
+  font-size: 0.81rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--bg-text);
+}
+
+.bg-textarea.is-studio-textarea {
+  flex: 1 1 auto;
+  min-height: 185px;
+  font-size: 0.93rem;
+  line-height: 1.6;
+  padding: 13px 15px;
+  border-radius: 13px;
+}
+
+/* 3. Three Popup Modal Trigger Buttons (B1: 44px + 26x26 Semantic Tinted Icon Boxes) */
+.bg-studio-modal-triggers {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.bg-studio-mtrigger {
+  width: 100% !important;
+  margin: 0 !important;
+  height: 44px;
+  padding: 0 13px;
+  border-radius: 12px;
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-border-strong);
+  color: var(--bg-text);
+  font-size: 0.86rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8.5px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.16s var(--bg-ease);
+}
+
+.bg-studio-mtrig-ic {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+}
+
+.bg-studio-mtrigger.is-note-trigger {
+  border-color: rgba(244, 63, 94, 0.28);
+}
+.bg-studio-mtrigger.is-note-trigger .bg-studio-mtrig-ic {
+  background: var(--sem-rose-bg);
+  border: 1px solid var(--sem-rose-bd);
+  color: var(--sem-rose-bright);
+}
+.bg-studio-mtrigger.is-note-trigger:hover {
+  border-color: #f43f5e;
+  background: var(--sem-rose-bg);
+  color: var(--sem-rose-bright);
+  transform: translateY(-1px);
+}
+.bg-studio-mtrigger.is-note-trigger.has-data {
+  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+  border-color: transparent;
+  color: #ffffff !important;
+  box-shadow: 0 4px 13px -3px rgba(225, 29, 72, 0.48);
+}
+.bg-studio-mtrigger.is-note-trigger.has-data .bg-studio-mtrig-ic {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.34);
+  color: #ffffff;
+}
+
+.bg-studio-mtrigger.is-rem-trigger {
+  border-color: rgba(245, 158, 11, 0.3);
+}
+.bg-studio-mtrigger.is-rem-trigger .bg-studio-mtrig-ic {
+  background: var(--sem-amber-bg);
+  border: 1px solid var(--sem-amber-bd);
+  color: var(--sem-amber-bright);
+}
+.bg-studio-mtrigger.is-rem-trigger:hover {
+  border-color: #f59e0b;
+  background: var(--sem-amber-bg);
+  color: var(--sem-amber-bright);
+  transform: translateY(-1px);
+}
+.bg-studio-mtrigger.is-rem-trigger.has-data {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border-color: transparent;
+  color: #ffffff !important;
+  box-shadow: 0 4px 13px -3px rgba(217, 119, 6, 0.48);
+}
+.bg-studio-mtrigger.is-rem-trigger.has-data .bg-studio-mtrig-ic {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.34);
+  color: #ffffff;
+}
+
+.bg-studio-mtrigger.is-file-trigger {
+  border-color: var(--theme-pri-bd);
+}
+.bg-studio-mtrigger.is-file-trigger .bg-studio-mtrig-ic {
+  background: var(--theme-pri-bg);
+  border: 1px solid var(--theme-pri-bd);
+  color: var(--theme-pri-bright);
+}
+.bg-studio-mtrigger.is-file-trigger:hover {
+  border-color: var(--theme-pri-bright);
+  background: var(--theme-pri-bg);
+  color: var(--theme-pri-bright);
+  transform: translateY(-1px);
+}
+.bg-studio-mtrigger.is-file-trigger.has-data {
+  background: var(--theme-pri-grad);
+  border-color: transparent;
+  color: #ffffff !important;
+  box-shadow: 0 4px 13px -3px var(--theme-pri-shadow);
+}
+.bg-studio-mtrigger.is-file-trigger.has-data .bg-studio-mtrig-ic {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.34);
+  color: #ffffff;
+}
+
+/* 4. Compact Full-Detail Vertical Summary Stack (Option 2: hiện đủ theo hàng dọc và gọn) */
+@keyframes studioMetaRowFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.bg-studio-meta-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bg-studio-meta-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7.5px 10px;
+  border-radius: 10px;
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-soft-pad-bd);
+  cursor: pointer;
+  min-width: 0;
+  animation: studioMetaRowFadeIn 0.15s var(--bg-ease);
+  transition: border-color 0.14s ease, background 0.14s ease;
+}
+
+.bg-studio-meta-row.is-note {
+  border-left: 3.5px solid #f43f5e;
+  background: linear-gradient(145deg, rgba(244, 63, 94, 0.08) 0%, rgba(244, 63, 94, 0.02) 100%);
+  border-color: rgba(244, 63, 94, 0.25);
+}
+.bg-studio-meta-row.is-note:hover {
+  border-color: rgba(244, 63, 94, 0.45);
+}
+
+.bg-studio-meta-row.is-reminder {
+  border-left: 3.5px solid #f59e0b;
+  background: linear-gradient(145deg, rgba(245, 158, 11, 0.09) 0%, rgba(217, 119, 6, 0.02) 100%);
+  border-color: rgba(245, 158, 11, 0.28);
+}
+.bg-studio-meta-row.is-reminder:hover {
+  border-color: rgba(245, 158, 11, 0.48);
+}
+
+.bg-studio-meta-row.is-file {
+  border-left: 3.5px solid var(--theme-pri-bright);
+  border-color: var(--theme-pri-bd);
+}
+.bg-studio-meta-row.is-file:hover {
+  background: var(--theme-pri-bg);
+}
+
+.bg-studio-meta-tag {
+  padding: 2px 6px;
+  border-radius: 5px;
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  line-height: 1.25;
+  flex-shrink: 0;
+  margin-top: 1px;
+  white-space: nowrap;
+}
+.bg-studio-meta-tag.is-rose {
+  background: rgba(244, 63, 94, 0.2);
+  color: var(--sem-rose-bright);
+}
+.bg-studio-meta-tag.is-amber {
+  background: rgba(245, 158, 11, 0.2);
+  color: var(--sem-amber-bright);
+}
+.bg-studio-meta-tag.is-teal {
+  background: var(--theme-pri-bg);
+  color: var(--theme-pri-bright);
+  border: 1px solid var(--theme-pri-bd);
+}
+
+.bg-studio-meta-text {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.44;
+  color: var(--bg-text);
+  white-space: pre-line;
+  word-break: break-word;
+}
+.bg-studio-meta-text.is-rose-txt {
+  color: var(--sem-rose-bright);
+}
+
+.bg-studio-meta-date {
+  color: var(--sem-amber-bright);
+  font-weight: 800;
+}
+
+.bg-studio-meta-subnote {
+  color: var(--bg-text-muted);
+  font-size: 0.76rem;
+}
+
+.bg-studio-meta-acts {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.bg-studio-meta-open,
+.bg-studio-meta-clear {
+  width: 23px !important;
+  height: 23px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 6px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.14s ease;
+}
+
+.bg-studio-meta-open {
+  background: var(--sem-sky-bg);
+  border: 1px solid var(--sem-sky-bd);
+  color: var(--sem-sky-bright);
+}
+.bg-studio-meta-open:hover {
+  background: #0284c7;
+  border-color: #0284c7;
+  color: #ffffff;
+}
+
+.bg-studio-meta-clear {
+  background: var(--bg-well);
+  border: 1px solid var(--bg-well-border);
+  color: var(--bg-text-muted);
+}
+.bg-studio-meta-clear:hover {
+  background: #e11d48;
+  border-color: #e11d48;
+  color: #ffffff;
+}
+
+/* =========================================================================
+   COLUMN 3 (~27%): TỆP ĐÍNH KÈM (OPTION 1.1 UPLOAD STACK WITH CLEAR ⬆ ICONS)
+   ========================================================================= */
+.bg-studio-right-files {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.bg-studio-head-cnt {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  color: #ffffff;
+  font-size: 0.69rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.bg-studio-files-body {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  flex: 1;
+  min-height: 0;
+}
+
+.bg-studio-upload-11 {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bg-studio-upload-row2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.bg-studio-upbtn {
+  width: 100% !important;
+  margin: 0 !important;
+  height: 40px;
+  padding: 0 11px;
+  border-radius: 10.5px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.16s var(--bg-ease);
+}
+
+.bg-studio-up-ic {
+  width: 23px;
+  height: 23px;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.16s ease, color 0.16s ease;
+}
+
+.bg-studio-upbtn.is-upload-img {
+  background: var(--sem-sky-bg);
+  border: 1px solid var(--sem-sky-bd);
+  color: var(--sem-sky-bright);
+}
+.bg-studio-upbtn.is-upload-img .bg-studio-up-ic {
+  background: rgba(14, 165, 233, 0.18);
+}
+.bg-studio-upbtn.is-upload-img:hover,
+.bg-studio-upbtn.is-upload-img.has-items {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: 0 4px 12px -3px rgba(2, 132, 199, 0.42);
+}
+.bg-studio-upbtn.is-upload-img:hover .bg-studio-up-ic,
+.bg-studio-upbtn.is-upload-img.has-items .bg-studio-up-ic {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}
+
+.bg-studio-upbtn.is-upload-bg {
+  background: var(--sem-emerald-bg);
+  border: 1px solid var(--sem-emerald-bd);
+  color: var(--sem-emerald-bright);
+}
+.bg-studio-upbtn.is-upload-bg .bg-studio-up-ic {
+  background: rgba(16, 185, 129, 0.18);
+}
+.bg-studio-upbtn.is-upload-bg:hover,
+.bg-studio-upbtn.is-upload-bg.has-items {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: 0 4px 12px -3px rgba(5, 150, 105, 0.44);
+}
+.bg-studio-upbtn.is-upload-bg:hover .bg-studio-up-ic,
+.bg-studio-upbtn.is-upload-bg.has-items .bg-studio-up-ic {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}
+
+.bg-studio-upbtn.is-upload-mh {
+  background: var(--sem-amber-bg);
+  border: 1px solid var(--sem-amber-bd);
+  color: var(--sem-amber-bright);
+}
+.bg-studio-upbtn.is-upload-mh .bg-studio-up-ic {
+  background: rgba(245, 158, 11, 0.18);
+}
+.bg-studio-upbtn.is-upload-mh:hover,
+.bg-studio-upbtn.is-upload-mh.has-items {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: 0 4px 12px -3px rgba(217, 119, 6, 0.44);
+}
+.bg-studio-upbtn.is-upload-mh:hover .bg-studio-up-ic,
+.bg-studio-upbtn.is-upload-mh.has-items .bg-studio-up-ic {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}
+
+.bg-studio-tool-badge {
+  min-width: 19px;
+  height: 19px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.26);
+  color: #ffffff;
+  font-size: 0.69rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Dashed Dropzone Empty State & Populated Attachment Vault */
+.bg-studio-files-empty {
+  flex: 1 1 auto;
+  min-height: 185px;
+  border: 1.5px dashed var(--bg-border-strong);
+  border-radius: 13px;
+  background: var(--bg-soft-pad);
+  padding: 18px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+.bg-studio-files-empty:hover {
+  border-color: var(--theme-pri-bright);
+  background: var(--theme-pri-bg);
+}
+
+.bg-studio-empty-upic {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--theme-pri-bg);
+  border: 1px solid var(--theme-pri-bd);
+  color: var(--theme-pri-bright);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bg-studio-empty-title {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--bg-text);
+}
+
+.bg-studio-empty-sub {
+  font-size: 0.74rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--bg-text-muted);
+  max-width: 265px;
+}
+
+.bg-studio-files-vault {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.bg-studio-vault-sec {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bg-studio-vault-lbl {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--bg-text-muted);
+  text-transform: uppercase;
+}
+
+.bg-thumb-grid.is-studio-thumbs {
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+}
+
+.bg-studio-excel-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bg-studio-file-kind {
+  font-size: 0.61rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 2px 5px;
+  border-radius: 5px;
+  flex-shrink: 0;
+  color: #ffffff;
+}
+.bg-studio-file-kind.is-bg {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+.bg-studio-file-kind.is-mh {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+.bg-file-pill-act.is-swap {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--theme-pri-bright);
+  background: var(--theme-pri-bg);
+  border: 1px solid var(--theme-pri-bd);
+}
+.bg-file-pill-act.is-swap:hover {
+  background: var(--theme-pri-grad);
+  border-color: transparent;
+  color: #ffffff;
+}
+
+/* Centered Sub-Modals (MODULE 3B Ghi Chú · MODULE 3C Nhắc Hẹn) & MODULE 4B Current Linked Bar */
+.bg-modal-overlay.is-studio-submodal-overlay {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 16px !important;
+}
+
+.bg-modal-card.is-studio-submodal-card {
+  width: min(520px, calc(100vw - 24px)) !important;
+  max-width: 520px !important;
+  height: auto !important;
+  max-height: 88dvh !important;
+  border-radius: 20px !important;
+}
+
+.bg-textarea.is-studio-note {
+  min-height: 92px !important;
+  padding: 10px 13px;
+}
+
+.bg-studio-rem-presets {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.bg-studio-rem-chip {
+  width: auto !important;
+  margin: 0 !important;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  background: var(--bg-well);
+  border: 1px solid var(--sem-amber-bd);
+  color: var(--sem-amber-bright);
+  cursor: pointer;
+  transition: all 0.14s ease;
+}
+.bg-studio-rem-chip:hover,
+.bg-studio-rem-chip.is-active {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border-color: transparent;
+  color: #ffffff !important;
+}
+
+.bg-linked-current-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 11px;
+  border-radius: 10px;
+  background: var(--theme-pri-bg);
+  border: 1px solid var(--theme-pri-bd);
+}
+
+.bg-linked-current-txt {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  font-size: 0.79rem;
+  font-weight: 700;
+  color: var(--bg-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bg-linked-file-card.is-selected-file {
+  border-color: var(--theme-pri-bright) !important;
+  box-shadow: 0 0 0 2px var(--theme-pri-ring);
+}
+
+/* Studio Footer & Clone Button (A1: 44px Secondary Bordered + 46px Prominent Primary CTA) */
+.bg-modal-foot.bg-studio-foot {
+  padding: 14px 22px;
+  gap: 12px;
+  background: var(--bg-panel-elev);
+  border-top: 1px solid var(--bg-border-strong);
+}
+
+.bg-studio-foot-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.bg-modal-foot.bg-studio-foot .bg-foot-right {
+  gap: 10px;
+}
+
+.bg-modal-foot.bg-studio-foot .bg-btn {
+  height: 44px;
+  padding: 0 20px;
+  border-radius: 12px;
+  font-size: 0.88rem;
+  font-weight: 800;
+  gap: 7.5px;
+}
+
+.bg-modal-foot.bg-studio-foot .bg-btn.is-studio-cta {
+  height: 46px;
+  min-width: 178px;
+  padding: 0 26px;
+  border-radius: 12.5px;
+  font-size: 0.94rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  box-shadow: 0 6px 18px -4px var(--theme-pri-shadow);
+}
+
+.bg-studio-clone-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7.5px;
+}
+
+/* Responsive V7.5 Studio Modal (<= 1100px & <= 768px) */
+@media (max-width: 1100px) {
+  /* Beat global unscoped #app .page .m-grab-head-stack { flex: 1 1 auto !important } from baogiaFirebase.vue */
+  :global(#app .report-container.page .m-grab-head-stack) {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    align-items: stretch !important;
+    flex: 0 0 auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    gap: 0 !important;
+    padding: 6px 14px 10px !important;
+    background: var(--bg-panel-elev);
+    border-bottom: 1px solid var(--bg-border);
+  }
+
+  :global(#app .report-container.page .m-grab-title) {
+    color: var(--bg-text) !important;
+    -webkit-text-fill-color: var(--bg-text) !important;
+  }
+
+  :global(#app .report-container.page .m-grab-head-stack.is-solid-studio) {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.18) !important;
+    color: #ffffff !important;
+  }
+
+  :global(#app .report-container.page.theme-light-blue .m-grab-head-stack.is-solid-studio) {
+    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
+  }
+
+  :global(#app .report-container.page .m-grab-head-stack.is-solid-studio .m-grab-pill) {
+    background: rgba(255, 255, 255, 0.45) !important;
+  }
+
+  :global(#app .report-container.page .m-grab-head-stack.is-solid-studio .m-grab-title) {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+  }
+
+  :global(#app .report-container.page .m-grab-head-stack.is-solid-studio .m-grab-sub) {
+    color: rgba(255, 255, 255, 0.86) !important;
+    -webkit-text-fill-color: rgba(255, 255, 255, 0.86) !important;
+  }
+
+  .bg-studio-3col-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    min-height: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .bg-studio-modal-body {
+    padding: 10px 10px !important;
+  }
+
+  .bg-studio-rail-body,
+  .bg-studio-composer-body,
+  .bg-studio-files-body {
+    padding: 10px 11px !important;
+    gap: 9px !important;
+  }
+
+  .bg-report-studio-card .bg-textarea.is-studio-textarea {
+    min-height: 120px !important;
+  }
+
+  .bg-studio-cus-name {
+    max-width: 170px;
+  }
+
+  .bg-studio-cus-inbtn {
+    padding: 0 9px !important;
+    font-size: 0.72rem;
+  }
+
+  .bg-studio-files-empty {
+    min-height: 118px;
+    padding: 14px 12px;
+  }
+
+  .bg-studio-modal-triggers {
+    gap: 6px;
+  }
+
+  .bg-studio-mtrigger {
+    height: 40px;
+    padding: 0 7px;
+    gap: 5.5px;
+    font-size: 0.77rem;
+    border-radius: 10px;
+  }
+
+  .bg-studio-mtrig-ic {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+  }
+
+  /* Compact 2-Row Mobile Studio Footer (Add Mode & Edit Mode) */
+  .bg-modal-foot.bg-studio-foot {
+    padding: 9px 12px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+    gap: 7px !important;
+  }
+
+  .bg-modal-foot.bg-studio-foot .dt-btn-ic {
+    display: none;
+  }
+
+  .bg-modal-foot.bg-studio-foot:has(.is-add-grid) {
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .bg-modal-foot.bg-studio-foot .bg-foot-right.is-add-grid {
+    display: contents !important;
+  }
+
+  .bg-modal-foot.bg-studio-foot:has(.is-add-grid) .bg-btn {
+    height: 38px !important;
+    min-width: 0 !important;
+    padding: 0 9px !important;
+    font-size: 0.76rem !important;
+    white-space: nowrap;
+    justify-content: center;
+  }
+
+  .bg-modal-foot.bg-studio-foot:has(.is-add-grid) .bg-btn.is-studio-cta {
+    grid-column: 1 / -1;
+    height: 42px !important;
+    font-size: 0.86rem !important;
+  }
+
+  .bg-modal-foot.bg-studio-foot:has(.is-edit-grid) {
+    display: grid !important;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    align-items: center;
+  }
+
+  .bg-modal-foot.bg-studio-foot .bg-foot-right.is-edit-grid {
+    display: contents !important;
+  }
+
+  .bg-modal-foot.bg-studio-foot:has(.is-edit-grid) > .bg-btn {
+    grid-column: span 2;
+  }
+
+  .bg-modal-foot.bg-studio-foot:has(.is-edit-grid) .bg-studio-clone-btn {
+    grid-column: span 4;
+  }
+
+  .bg-modal-foot.bg-studio-foot:has(.is-edit-grid) .bg-btn {
+    height: 38px !important;
+    min-width: 0 !important;
+    padding: 0 10px !important;
+    font-size: 0.77rem !important;
+    white-space: nowrap;
+    justify-content: center;
+  }
+
+  .bg-modal-foot.bg-studio-foot:has(.is-edit-grid) .bg-btn.is-studio-cta {
+    grid-column: 1 / -1;
+    height: 42px !important;
+    font-size: 0.86rem !important;
+  }
+
+  .bg-modal-foot.bg-studio-foot:has(.is-edit-grid):has(.is-studio-cta + .is-studio-cta) .bg-btn.is-studio-cta {
+    grid-column: span 3;
+  }
+}
+
+/* ============================================================================
+   V7.8 MOBILE WEEK CALENDAR (3A) & MOBILE MONTH CALENDAR (4) — DUAL-THEME
+============================================================================ */
+.bg-mcal-week-wrap {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+}
+
+.bg-mcal-week-strip {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  padding: 8px 9px;
+  background: var(--bg-subbar);
+  border-bottom: 1px solid var(--bg-border);
+  box-sizing: border-box;
+}
+
+.bg-mcal-wtab {
+  width: 100% !important;
+  min-width: 0;
+  margin: 0 !important;
+  padding: 5px 2px !important;
+  border-radius: 10px;
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-soft-pad-bd);
+  color: var(--bg-text-sec);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  transition: all 0.16s var(--bg-ease);
+}
+
+.report-container.page.theme-light-blue .bg-mcal-wtab {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+.bg-mcal-wtab.is-today {
+  border-color: var(--theme-pri-bright);
+  box-shadow: inset 0 0 0 1px var(--theme-pri-bd);
+}
+
+.bg-mcal-wtab.is-selected {
+  background: var(--theme-pri-grad) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px -3px var(--theme-pri-shadow);
+}
+
+.bg-mcal-wtab-wd {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+}
+
+.bg-mcal-wtab.is-sun:not(.is-selected) .bg-mcal-wtab-wd {
+  color: var(--sem-rose-bright);
+}
+
+.bg-mcal-wtab-num {
+  font-size: 0.86rem;
+  font-weight: 900;
+  color: var(--bg-text);
+  line-height: 1.15;
+}
+
+.bg-mcal-wtab.is-selected .bg-mcal-wtab-wd,
+.bg-mcal-wtab.is-selected .bg-mcal-wtab-num {
+  color: #ffffff !important;
+}
+
+.bg-mcal-wtab-cnt {
+  min-width: 16px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--theme-pri-bg);
+  color: var(--theme-pri-bright);
+  font-size: 0.6rem;
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bg-mcal-wtab.is-selected .bg-mcal-wtab-cnt {
+  background: rgba(255, 255, 255, 0.24);
+  color: #ffffff;
+}
+
+.bg-mcal-wtab-dot-empty {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--bg-border-strong);
+  margin: 5.5px 0;
+}
+
+.bg-mcal-wtab.is-selected .bg-mcal-wtab-dot-empty {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.bg-mcal-week-agenda {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+}
+
+.bg-mcal-day-card,
+.bg-mcal-month-agenda {
+  border-radius: 14px;
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-border-strong);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  scroll-margin-top: 14px;
+}
+
+.report-container.page.theme-light-blue .bg-mcal-day-card,
+.report-container.page.theme-light-blue .bg-mcal-month-agenda {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.bg-mcal-day-card.is-today,
+.bg-mcal-month-agenda {
+  border-color: var(--theme-pri-bd);
+}
+
+.bg-mcal-day-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8.5px 12px;
+  background: var(--bg-panel-elev);
+  border-bottom: 1px solid var(--bg-border);
+}
+
+.bg-mcal-day-card.is-today .bg-mcal-day-head,
+.bg-mcal-day-head.is-month-agenda-head {
+  background: var(--theme-pri-header-grad);
+  border-bottom-color: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+
+.bg-mcal-day-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.bg-mcal-day-wd {
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  color: var(--bg-text);
+}
+
+.bg-mcal-day-date {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--theme-pri-bright);
+}
+
+.bg-mcal-day-card.is-today .bg-mcal-day-wd,
+.bg-mcal-day-card.is-today .bg-mcal-day-date,
+.bg-mcal-day-head.is-month-agenda-head .bg-mcal-day-wd {
+  color: #ffffff !important;
+}
+
+.bg-mcal-today-pill {
+  padding: 1.5px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  color: #ffffff;
+  font-size: 0.64rem;
+  font-weight: 800;
+}
+
+.bg-mcal-day-total {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-border-strong);
+  color: var(--bg-text-sec);
+  font-size: 0.69rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.bg-mcal-day-card.is-today .bg-mcal-day-total,
+.bg-mcal-day-head.is-month-agenda-head .bg-mcal-day-total {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.36);
+  color: #ffffff;
+}
+
+.bg-mcal-day-rems {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px 9px 0;
+}
+
+.bg-mcal-day-periods {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 9px;
+}
+
+.bg-mcal-period-box {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 8.5px;
+  border-radius: 12px;
+  background: var(--bg-panel);
+  border: 1px solid var(--bg-border);
+}
+
+.report-container.page.theme-light-blue .bg-mcal-period-box {
+  background: #ffffff;
+  border-color: #dbe6f3;
+}
+
+.bg-mcal-period-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.bg-mcal-period-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bg-mcal-period-lbl {
+  font-size: 0.73rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.bg-mcal-period-box.is-morning .bg-mcal-period-lbl {
+  color: var(--sem-sky-bright);
+}
+
+.bg-mcal-period-box.is-afternoon .bg-mcal-period-lbl {
+  color: var(--sem-amber-bright);
+}
+
+.bg-mcal-period-cnt {
+  padding: 1px 6.5px;
+  border-radius: 999px;
+  font-size: 0.67rem;
+  font-weight: 800;
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-border-strong);
+  color: var(--bg-text-sec);
+}
+
+.bg-mcal-period-add {
+  width: 25px !important;
+  height: 25px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-radius: 7.5px;
+  color: #ffffff !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.bg-mcal-period-box.is-morning .bg-mcal-period-add {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  border: 1px solid rgba(125, 211, 252, 0.5);
+}
+
+.bg-mcal-period-box.is-afternoon .bg-mcal-period-add {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border: 1px solid rgba(252, 211, 77, 0.5);
+}
+
+.bg-mcal-empty-slot {
+  width: 100% !important;
+  margin: 0 !important;
+  height: 34px !important;
+  padding: 0 10px !important;
+  border-radius: 9px;
+  background: transparent;
+  border: 1px dashed var(--bg-border-strong);
+  color: var(--bg-text-muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.bg-mcal-empty-slot:active {
+  background: var(--theme-pri-bg);
+  border-color: var(--theme-pri-bd);
+  color: var(--theme-pri-bright);
+}
+
+.bg-mcal-card-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bg-detail-card.is-mcal-card {
+  padding: 12px 13px;
+  min-height: 98px;
+  gap: 8.5px;
+}
+
+/* --- Mobile Month Matrix + Selected Day Agenda (4) --- */
+.bg-mcal-month-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  padding: 10px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.bg-mcal-month-block {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.bg-mcal-month-subtitle {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--theme-pri-header-grad);
+  color: #ffffff;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.bg-mcal-month-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--theme-pri-header-grad);
+}
+
+.bg-mcal-mwd {
+  padding: 6.5px 2px;
+  text-align: center;
+  font-size: 0.67rem;
+  font-weight: 800;
+  color: #ffffff;
+  border-right: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.bg-mcal-mwd:last-child {
+  border-right: none;
+}
+
+.bg-mcal-month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+}
+
+.bg-mcal-mcell {
+  width: 100% !important;
+  min-width: 0;
+  margin: 0 !important;
+  min-height: 48px;
+  padding: 5px 2px !important;
+  border-radius: 9.5px;
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-border);
+  color: var(--bg-text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3px;
+  cursor: default;
+  box-sizing: border-box;
+  transition: all 0.15s var(--bg-ease);
+}
+
+.bg-mcal-mcell.has-tasks {
+  cursor: pointer;
+  background: var(--bg-panel-elev);
+  border-color: var(--theme-pri-bd);
+  box-shadow: inset 0 1px 0 var(--bg-specular);
+}
+
+.bg-mcal-mcell.has-tasks:active {
+  transform: scale(0.96);
+}
+
+.report-container.page.theme-light-blue .bg-mcal-mcell:not(.is-pad) {
+  background: #ffffff;
+  border-color: #d5e0ee;
+}
+
+.report-container.page.theme-light-blue .bg-mcal-mcell.has-tasks {
+  background: #f0f9ff;
+  border-color: #7dd3fc;
+}
+
+.bg-mcal-day-modal-card {
+  width: 100vw !important;
+  max-width: 100vw !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  border-radius: 0 !important;
+  border: none !important;
+  display: flex;
+  flex-direction: column;
+}
+
+.bg-mcal-modal-title-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bg-mcal-day-modal-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 12px !important;
+}
+
+.bg-mcal-day-modal-foot {
+  display: grid !important;
+  grid-template-columns: 1.45fr 0.85fr;
+  gap: 10px !important;
+  padding: 11px 12px calc(11px + env(safe-area-inset-bottom, 0px)) !important;
+  border-top: 1px solid var(--bg-border-strong);
+  background: var(--bg-panel-elev);
+}
+
+.bg-mcal-day-modal-foot .bg-btn {
+  width: 100% !important;
+  margin: 0 !important;
+  height: 42px !important;
+  justify-content: center;
+  border-radius: 11.5px;
+}
+
+.bg-mcal-mcell.is-pad {
+  background: transparent !important;
+  border-color: transparent !important;
+  pointer-events: none;
+}
+
+.bg-mcal-mcell.is-today {
+  border-color: var(--theme-pri-bright);
+  box-shadow: inset 0 0 0 1px var(--theme-pri-bd);
+}
+
+.bg-mcal-mcell.is-sun:not(.is-selected) .bg-mcal-mday-num {
+  color: var(--sem-rose-bright);
+}
+
+.bg-mcal-mcell.is-selected {
+  background: var(--theme-pri-grad) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px -3px var(--theme-pri-shadow);
+}
+
+.bg-mcal-mcell-top {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  max-width: 100%;
+}
+
+.bg-mcal-mday-num {
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.bg-mcal-mcell.is-selected .bg-mcal-mday-num {
+  color: #ffffff !important;
+}
+
+.bg-mcal-mday-cnt {
+  padding: 0 3.5px;
+  border-radius: 999px;
+  background: var(--theme-pri-bg);
+  color: var(--theme-pri-bright);
+  font-size: 0.57rem;
+  font-weight: 900;
+  line-height: 1.3;
+}
+
+.bg-mcal-mcell.is-selected .bg-mcal-mday-cnt {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.bg-mcal-mdots {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2.5px;
+  min-height: 6px;
+}
+
+.bg-mcal-mdot {
+  width: 5.5px;
+  height: 5.5px;
+  border-radius: 50%;
+}
+
+.bg-mcal-mdot.is-pending {
+  background: #fbbf24;
+}
+
+.bg-mcal-mdot.is-done {
+  background: var(--theme-pri-bright);
+}
+
+.bg-mcal-mdot.is-failed {
+  background: #fb7185;
+}
+
+.bg-mcal-mcell.is-selected .bg-mcal-mdot.is-done {
+  background: #ffffff;
 }
 </style>

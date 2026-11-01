@@ -1,5 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app'
 import { getDatabase, ref as dbRef, get, set, update, push } from 'firebase/database'
+import { getSystemConfigSync, hasAuthSession, isMockDbActive } from '../services/systemConfig'
 
 const firebaseConfig = {
   apiKey: "AIzaSyB3fHD_sOqyqVygCxP2gZtvaipr-35a1s8",
@@ -25,11 +26,13 @@ export const DEFAULT_BOT_TOKEN =
 
 export const DEFAULT_INVITE_URL = 'https://bot.zaloplatforms.com/groups/invite/bot.QkJpMNVs'
 
-export const getDefaultZaloBotConfig = () => ({
-  botToken: DEFAULT_BOT_TOKEN,
-  botName: 'Bot SONAI SI',
-  botAccount: 'bot.QkJpMNVs',
-  inviteGroupUrl: DEFAULT_INVITE_URL,
+export const getDefaultZaloBotConfig = () => {
+  const sysZalo = getSystemConfigSync().zaloBot
+  return {
+    botToken: (sysZalo.defaultBotToken || DEFAULT_BOT_TOKEN).trim(),
+    botName: 'Bot SONAI SI',
+    botAccount: 'bot.QkJpMNVs',
+    inviteGroupUrl: (sysZalo.defaultInviteUrl || DEFAULT_INVITE_URL).trim(),
   enabled: true,
   commandListenerEnabled: true,
   recipients: [
@@ -169,8 +172,9 @@ export const getDefaultZaloBotConfig = () => ({
         '- Địa chỉ: {dia_chi}\n' +
         '- Thời gian tạo: {thoi_gian}'
     }
+    }
   }
-})
+}
 
 export const normalizeBotConfig = (raw) => {
   const def = getDefaultZaloBotConfig()
@@ -524,7 +528,14 @@ export const executeBotCommand = async (cmdObj, argStr = '', allCommands = []) =
   })
 }
 
+const shouldPauseZaloBotNow = () => {
+  if (!hasAuthSession()) return true
+  if (isMockDbActive() && getSystemConfigSync().zaloBot.pauseInMockMode) return true
+  return false
+}
+
 export const triggerZaloEventNotification = async (eventKey, vars = {}) => {
+  if (shouldPauseZaloBotNow()) return
   try {
     const config = await fetchZaloBotConfig()
     if (!config.enabled) return
@@ -570,6 +581,7 @@ let isPollingInFlight = false
 const processedMessageIds = new Set()
 
 export const checkAndRunScheduledBotTasks = async () => {
+  if (shouldPauseZaloBotNow()) return
   try {
     const config = await fetchZaloBotConfig()
     if (!config.enabled) return
@@ -719,10 +731,19 @@ export const pollZaloBotCommandsOnce = async (customTimeout = 8) => {
 }
 
 export const initZaloBotBackgroundService = () => {
+  if (shouldPauseZaloBotNow()) return
   if (bgIntervalId) return
   checkAndRunScheduledBotTasks()
   bgIntervalId = setInterval(() => {
+    if (shouldPauseZaloBotNow()) return
     checkAndRunScheduledBotTasks()
     pollZaloBotCommandsOnce(6)
   }, 25000)
+}
+
+export const stopZaloBotBackgroundService = () => {
+  if (bgIntervalId) {
+    clearInterval(bgIntervalId)
+    bgIntervalId = null
+  }
 }

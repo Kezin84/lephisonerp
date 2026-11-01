@@ -1,3 +1,6 @@
+import { installFetchInterceptor } from './services/fetchInterceptor'
+installFetchInterceptor()
+
 import { createApp } from 'vue'
 import './style.css'
 import App from './App.vue'

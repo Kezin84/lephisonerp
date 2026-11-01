@@ -4,7 +4,7 @@ import Tesseract from 'tesseract.js'
 import * as pdfjsLib from 'pdfjs-dist/build/pdf.js'
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.js?url'
 import { callDeepSeek } from '../services/deepseek'
-import { callDolaVision, DOLA_API_KEY, DOLA_MODEL } from '../services/dolaApi'
+import { callDolaVision, getDolaRuntimeConfig } from '../services/dolaApi'
 import {
   applySummaryVatAndComputeAfterTaxCost,
   extractMetadataFromBulletLines,
@@ -912,6 +912,8 @@ async function callVisionAiMultiImages(prompt: string, base64Images: string[]): 
     }
   }
 
+  const { apiUrl: dolaRuntimeUrl, apiKey: dolaRuntimeKey, model: dolaRuntimeModel } = getDolaRuntimeConfig()
+
   // Lần thử 2: Gọi /byteplus-api/api/v3/responses với chuẩn input_image cho 1 hoặc nhiều ảnh
   try {
     const contentItems: any[] = [{ type: 'input_text', text: prompt }]
@@ -921,14 +923,14 @@ async function callVisionAiMultiImages(prompt: string, base64Images: string[]): 
         image_url: imgUrl
       })
     }
-    const resp = await fetch('/byteplus-api/api/v3/responses', {
+    const resp = await fetch(dolaRuntimeUrl || '/byteplus-api/api/v3/responses', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${DOLA_API_KEY}`,
+        Authorization: `Bearer ${dolaRuntimeKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: DOLA_MODEL,
+        model: dolaRuntimeModel,
         stream: false,
         input: [{ role: 'user', content: contentItems }]
       })
@@ -950,14 +952,18 @@ async function callVisionAiMultiImages(prompt: string, base64Images: string[]): 
       image_url: { url: imgUrl }
     })
   }
-  const chatResp = await fetch('/byteplus-api/api/v3/chat/completions', {
+  const fallbackChatUrl = (dolaRuntimeUrl || '/byteplus-api/api/v3/responses').replace(
+    /\/responses\/?$/,
+    '/chat/completions'
+  )
+  const chatResp = await fetch(fallbackChatUrl, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${DOLA_API_KEY}`,
+      Authorization: `Bearer ${dolaRuntimeKey}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      model: DOLA_MODEL,
+      model: dolaRuntimeModel,
       stream: false,
       messages: [{ role: 'user', content: chatContent }]
     })

@@ -372,8 +372,8 @@ code {
   .app-layout.has-open-modal .sidebar,
   body.has-open-modal .app-layout .sidebar,
   body.app-has-open-modal .app-layout .sidebar,
-  body:has(.modal, .modal-overlay, .vip-modal-overlay, .load-invoice-modal-overlay, .pipeline-modal-overlay, .pl-mobile-sheet-overlay, .qtabs-mobile-sheet-overlay, .quote-col-setting-backdrop, .async-overlay, .sr-modal-overlay, .elite-modal-overlay, .quote-guide-modal-overlay, .quote-guide-spotlight-root) .app-layout .sidebar,
-  .app-layout:has(.modal, .modal-overlay, .vip-modal-overlay, .load-invoice-modal-overlay, .pipeline-modal-overlay, .pl-mobile-sheet-overlay, .qtabs-mobile-sheet-overlay, .quote-col-setting-backdrop, .async-overlay, .sr-modal-overlay, .elite-modal-overlay, .quote-guide-modal-overlay, .quote-guide-spotlight-root) .sidebar {
+  body:has(.modal, .modal-overlay, .vip-modal-overlay, .load-invoice-modal-overlay, .pipeline-modal-overlay, .pl-mobile-sheet-overlay, .qtabs-mobile-sheet-overlay, .quote-col-setting-backdrop, .async-overlay, .sr-modal-overlay, .elite-modal-overlay, .quote-guide-modal-overlay, .quote-guide-spotlight-root, .report-guide-modal-overlay, .report-guide-spotlight-root, .bg-modal-overlay, .pl-sheet-overlay, .bg-attach-sheet-overlay, .bg-lightbox-overlay, .baogia-dialog-overlay) .app-layout .sidebar,
+  .app-layout:has(.modal, .modal-overlay, .vip-modal-overlay, .load-invoice-modal-overlay, .pipeline-modal-overlay, .pl-mobile-sheet-overlay, .qtabs-mobile-sheet-overlay, .quote-col-setting-backdrop, .async-overlay, .sr-modal-overlay, .elite-modal-overlay, .quote-guide-modal-overlay, .quote-guide-spotlight-root, .report-guide-modal-overlay, .report-guide-spotlight-root, .bg-modal-overlay, .pl-sheet-overlay, .bg-attach-sheet-overlay, .bg-lightbox-overlay, .baogia-dialog-overlay) .sidebar {
     transform: translateX(-50%) translateY(calc(100% + 26px + env(safe-area-inset-bottom, 0px))) scale(0.92) !important;
     opacity: 0 !important;
     visibility: hidden !important;

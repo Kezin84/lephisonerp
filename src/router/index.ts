@@ -30,6 +30,8 @@ import QuanLyFile from '../components/QuanLyFile.vue'
 import DatabaseViewer from '../components/DatabaseViewer.vue'
 import QuanLyMauInFirebase from '../components/QuanLyMauInFirebase.vue'
 import ZaloBotConfigFirebase from '../components/ZaloBotConfigFirebase.vue'
+import SystemConfig from '../components/SystemConfig.vue'
+import { isLocalDevHost } from '../services/systemConfig'
 
 const routes = [
   {
@@ -231,6 +233,13 @@ const routes = [
     name: 'ZaloBotConfigFirebase',
     component: ZaloBotConfigFirebase,
     meta: { title: 'Cấu hình Zalo Bot' }
+  },
+  {
+    path: '/system-config',
+    alias: ['/cau-hinh-he-thong', '/config'],
+    name: 'SystemConfig',
+    component: SystemConfig,
+    meta: { title: 'Cấu hình Hệ thống & API' }
   }
 ]
 
@@ -239,8 +248,14 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, _from, next) => {
   if (to.path === '/login') {
+    next()
+    return
+  }
+
+  // Trên localhost cho phép vào thẳng /system-config trước khi đăng nhập để bật Mock cứu hộ khi Firebase bị limit
+  if (to.name === 'SystemConfig' && isLocalDevHost()) {
     next()
     return
   }

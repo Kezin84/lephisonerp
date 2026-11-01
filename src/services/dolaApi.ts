@@ -1,6 +1,17 @@
+import { getSystemConfigSync } from './systemConfig'
+
 export const DOLA_API_URL = '/byteplus-api/api/v3/responses';
 export const DOLA_API_KEY = 'VxCgNvLTE.ChthcGlrZXktMjAyNjEwMDUyMjA3NDktbGZyenEQ-5_rmAsYAiDyo-wtKhDgCT1nn4hI6LzlzeTU72K3.vUwluX2I2E5r_-5GdUJJapo_mIprJtyuroN1FWEcgAsaRatBdjaMKEGtxSmDrms9MZr5Zs0LXZ13LOWgJyDZrAeZ';
 export const DOLA_MODEL = 'seed-2-0-pro-260328';
+
+export const getDolaRuntimeConfig = () => {
+  const ai = getSystemConfigSync().ai
+  return {
+    apiUrl: (ai.dolaApiUrl || DOLA_API_URL).trim(),
+    apiKey: (ai.dolaApiKey || DOLA_API_KEY).trim(),
+    model: (ai.dolaModel || DOLA_MODEL).trim()
+  }
+}
 
 /**
  * Gọi API Dola (seed-2-0-pro-260328) để xử lý hình ảnh và văn bản
@@ -9,6 +20,7 @@ export const DOLA_MODEL = 'seed-2-0-pro-260328';
  * @param stream Bật chế độ stream (mặc định: false)
  */
 export const callDolaVision = async (prompt: string, base64Image: string, stream: boolean = false) => {
+  const { apiUrl, apiKey, model } = getDolaRuntimeConfig()
   const content: any[] = [];
   
   if (prompt) {
@@ -28,7 +40,7 @@ export const callDolaVision = async (prompt: string, base64Image: string, stream
   }
 
   const payload: any = {
-    model: DOLA_MODEL,
+    model: model,
     stream: stream,
     input: [
       {
@@ -39,10 +51,10 @@ export const callDolaVision = async (prompt: string, base64Image: string, stream
   };
 
   try {
-    const response = await fetch(DOLA_API_URL, {
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${DOLA_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(payload)
