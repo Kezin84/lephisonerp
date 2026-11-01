@@ -24273,8 +24273,13 @@ span[style*="color: #334155"] {
     white-space: nowrap;
   }
 
-  /* Fullscreen Mobile Sheet for Work Modals (.is-mobile-sheet) */
-  .bg-modal-overlay:has(.bg-modal-card.is-mobile-sheet) {
+  .report-container.page {
+    --mobile-modal-head-top: max(calc(env(safe-area-inset-top, 0px) + 6px), 52px);
+  }
+
+  /* Fullscreen Mobile Sheet for Work Modals (.is-mobile-sheet / .is-fullscreen-card) */
+  .bg-modal-overlay:has(.bg-modal-card.is-mobile-sheet),
+  .bg-modal-overlay:has(.bg-modal-card.is-fullscreen-card) {
     padding: 0;
     align-items: stretch;
   }
@@ -24288,6 +24293,16 @@ span[style*="color: #334155"] {
     border: none;
   }
 
+  /* Non-Fullscreen Centered Dialogs on Mobile: keep centered with >= 56px top safe clearance below clock/battery */
+  .bg-modal-overlay:not(.is-fullscreen-modal):not(:has(.bg-modal-card.is-mobile-sheet)):not(:has(.bg-modal-card.is-fullscreen-card)) {
+    padding: max(calc(env(safe-area-inset-top, 0px) + 12px), 56px) 14px calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+    align-items: center;
+  }
+
+  .bg-modal-card:not(.is-mobile-sheet):not(.is-fullscreen-card) {
+    max-height: calc(100dvh - max(calc(env(safe-area-inset-top, 0px) + 28px), 76px) - env(safe-area-inset-bottom, 0px));
+  }
+
   .dt-only-head {
     display: none !important;
   }
@@ -24297,8 +24312,46 @@ span[style*="color: #334155"] {
     flex-direction: column;
     background: var(--bg-panel-elev);
     border-bottom: 1px solid var(--bg-border);
-    padding: 6px 14px 10px;
+    padding: 10px 14px 10px;
     flex-shrink: 0;
+  }
+
+  .bg-modal-card.is-mobile-sheet > .m-grab-head-stack,
+  .bg-modal-card.is-fullscreen-card > .m-grab-head-stack {
+    padding: var(--mobile-modal-head-top, max(calc(env(safe-area-inset-top, 0px) + 6px), 52px)) 14px 12px !important;
+  }
+
+  .bg-modal-card.is-mobile-sheet > .m-grab-head-stack > .m-grab-pill,
+  .bg-modal-card.is-fullscreen-card > .m-grab-head-stack > .m-grab-pill {
+    display: none !important;
+  }
+
+  .m-grab-head-stack .bg-modal-close {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 11px;
+  }
+
+  .bg-gcal-workspace.is-fullscreen .bg-gcal-toolbar {
+    padding-top: var(--mobile-modal-head-top, max(calc(env(safe-area-inset-top, 0px) + 6px), 52px)) !important;
+  }
+
+  /* Lightbox on Mobile: pin close button safely below clock & battery icon */
+  .bg-lightbox-overlay {
+    padding: max(calc(env(safe-area-inset-top, 0px) + 52px), 96px) 14px calc(20px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .bg-lightbox-close {
+    position: fixed !important;
+    top: max(calc(env(safe-area-inset-top, 0px) + 6px), 52px) !important;
+    right: 14px !important;
+    width: 38px !important;
+    height: 38px !important;
+    z-index: 5 !important;
+    background: rgba(15, 23, 42, 0.76) !important;
+    border: 1px solid rgba(255, 255, 255, 0.24) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
   }
 
   .m-grab-pill {
@@ -24338,17 +24391,21 @@ span[style*="color: #334155"] {
     padding: 10px 14px calc(12px + env(safe-area-inset-bottom, 0px));
   }
 
-  /* CRITICAL: baogiaDialog stays Centered Non-Fullscreen Rounded Card on Mobile! */
+  /* CRITICAL: baogiaDialog stays Centered Non-Fullscreen Rounded Card on Mobile with >= 56px top safe clearance! */
   .baogia-dialog-overlay {
-    padding: 16px !important;
+    padding: max(calc(env(safe-area-inset-top, 0px) + 12px), 56px) 16px calc(16px + env(safe-area-inset-bottom, 0px)) !important;
     align-items: center !important;
   }
 
   .baogia-dialog-card {
     width: min(420px, calc(100vw - 24px)) !important;
     height: auto !important;
-    max-height: 86dvh !important;
+    max-height: calc(100dvh - max(calc(env(safe-area-inset-top, 0px) + 28px), 76px) - env(safe-area-inset-bottom, 0px)) !important;
     border-radius: 20px !important;
+  }
+
+  .baogia-dialog-card > .m-grab-head-stack {
+    padding: 8px 14px 10px !important;
   }
 }
 
@@ -26260,9 +26317,20 @@ span[style*="color: #334155"] {
     height: auto !important;
     min-height: 0 !important;
     gap: 0 !important;
-    padding: 6px 14px 10px !important;
+    padding: 10px 14px 10px !important;
     background: var(--bg-panel-elev);
     border-bottom: 1px solid var(--bg-border);
+  }
+
+  /* Fullscreen Mobile Modals: match baogiaFirebase notch/status-bar top safe-area (>= 52px) */
+  :global(#app .report-container.page .bg-modal-card.is-mobile-sheet > .m-grab-head-stack),
+  :global(#app .report-container.page .bg-modal-card.is-fullscreen-card > .m-grab-head-stack) {
+    padding: var(--mobile-modal-head-top, max(calc(env(safe-area-inset-top, 0px) + 6px), 52px)) 14px 12px !important;
+  }
+
+  :global(#app .report-container.page .bg-modal-card.is-mobile-sheet > .m-grab-head-stack > .m-grab-pill),
+  :global(#app .report-container.page .bg-modal-card.is-fullscreen-card > .m-grab-head-stack > .m-grab-pill) {
+    display: none !important;
   }
 
   :global(#app .report-container.page .m-grab-title) {

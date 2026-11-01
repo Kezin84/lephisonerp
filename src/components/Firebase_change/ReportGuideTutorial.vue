@@ -1547,17 +1547,19 @@ const popoverStyle = computed(() => {
   const cardW = maxCardW
   const cardH = Math.min(popoverSize.value.h || 215, vh - margin * 2)
 
+  const topSafeMargin = vw <= 1100 ? 54 : margin
+
   if (!targetFound.value || hole.value.w <= 0 || hole.value.h <= 0) {
     return {
       width: `${cardW}px`,
       left: `${Math.round((vw - cardW) / 2)}px`,
-      top: `${Math.max(margin, Math.round((vh - cardH) / 2))}px`
+      top: `${Math.max(topSafeMargin, Math.round((vh - cardH) / 2))}px`
     }
   }
 
   const h = hole.value
   const spaceBelow = vh - (h.y + h.h) - margin
-  const spaceAbove = h.y - margin
+  const spaceAbove = h.y - topSafeMargin
   const spaceRight = vw - (h.x + h.w) - margin
   const spaceLeft = h.x - margin
 
@@ -1577,12 +1579,12 @@ const popoverStyle = computed(() => {
     left = h.x - cardW - gap
     top = h.y + h.h / 2 - cardH / 2
   } else {
-    top = spaceBelow >= spaceAbove ? vh - cardH - margin : margin
+    top = spaceBelow >= spaceAbove ? vh - cardH - margin : topSafeMargin
     left = vw - cardW - margin
   }
 
   left = Math.max(margin, Math.min(vw - cardW - margin, Math.round(left)))
-  top = Math.max(margin, Math.min(vh - cardH - margin, Math.round(top)))
+  top = Math.max(topSafeMargin, Math.min(vh - cardH - margin, Math.round(top)))
 
   return {
     width: `${cardW}px`,
@@ -3780,6 +3782,12 @@ onUnmounted(() => {
 }
 
 /* ================== TABLET & MOBILE RESPONSIVE ================== */
+@media (max-width: 1100px) {
+  .qg-head {
+    padding-top: max(calc(env(safe-area-inset-top, 0px) + 6px), 52px);
+  }
+}
+
 @media (max-width: 960px) {
   .qg-count-pill {
     display: none;
@@ -3787,7 +3795,7 @@ onUnmounted(() => {
 
   .qg-head {
     flex-wrap: wrap;
-    padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 10px;
+    padding: max(calc(env(safe-area-inset-top, 0px) + 6px), 52px) 12px 10px;
     gap: 8px;
   }
 
