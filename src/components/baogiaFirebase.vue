@@ -34284,7 +34284,7 @@ td.dvt { font-family: inherit; white-space: normal; }
   }
 
   /* ================= NATIVE APP MOBILE LAYOUT ================= */
-  .page {
+  .page.baogia-firebase-page {
     --mobile-modal-head-top: max(calc(env(safe-area-inset-top, 0px) + 6px), 52px);
     padding: 0 !important;
     margin: 0 !important;

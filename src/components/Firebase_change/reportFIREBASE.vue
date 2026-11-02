@@ -4866,8 +4866,10 @@
                     <span v-if="report.link_excel_bao_gia || report.link_excel_mua_hang" class="bg-target-muted">Có Excel</span>
                   </div>
                   <div class="bg-cus-actions">
-                    <button v-if="report.trang_thai !== 'Hoàn thành'" type="button" class="bg-btn-xs is-amber" @click.stop="markAsFailed(report)">Fail</button>
-                    <button v-if="report.trang_thai !== 'Hoàn thành'" type="button" class="bg-btn-xs is-sky" @click.stop="moveToToday(report)">Làm hôm nay</button>
+                    <button type="button" class="bg-btn-xs is-rose" @click.stop="confirmDelete(report.id)">Xoá</button>
+                    <button v-if="report.trang_thai !== 'Hoàn thành' && report.isFailed !== true && report.isFailed !== 'TRUE' && report.trang_thai !== 'Failed'" type="button" class="bg-btn-xs is-amber" @click.stop="markAsFailed(report)">Fail</button>
+                    <button v-if="report.trang_thai !== 'Hoàn thành'" type="button" class="bg-btn-xs is-emerald" @click.stop="markAsCompleted(report)">Xong</button>
+                    <button v-if="report.trang_thai !== 'Hoàn thành' && (!isPendingReportToday(report) || report.isFailed === true || report.isFailed === 'TRUE' || report.trang_thai === 'Failed')" type="button" class="bg-btn-xs is-sky" @click.stop="moveToToday(report)">Làm hôm nay</button>
                   </div>
                 </div>
               </div>
@@ -4927,7 +4929,8 @@
                     <span v-if="report.link_excel_bao_gia || report.link_excel_mua_hang" class="bg-target-muted">Có Excel</span>
                   </div>
                   <div class="bg-cus-actions">
-                    <button v-if="report.trang_thai !== 'Hoàn thành'" type="button" class="bg-btn-xs is-amber" @click.stop="markAsFailed(report)">Fail</button>
+                    <button type="button" class="bg-btn-xs is-rose" @click.stop="confirmDelete(report.id)">Xoá</button>
+                    <button v-if="report.trang_thai !== 'Hoàn thành' && report.isFailed !== true && report.isFailed !== 'TRUE' && report.trang_thai !== 'Failed'" type="button" class="bg-btn-xs is-amber" @click.stop="markAsFailed(report)">Fail</button>
                     <button v-if="report.trang_thai !== 'Hoàn thành'" type="button" class="bg-btn-xs is-emerald" @click.stop="markAsCompleted(report)">Xong</button>
                   </div>
                 </div>
@@ -6327,6 +6330,14 @@ const filteredPendingReports = computed(() => {
   return list;
 });
 
+const isPendingReportToday = (report) => {
+  if (!report || !report.thoi_gian) return false;
+  const dObj = parseDateFromReport(report.thoi_gian);
+  if (!dObj) return false;
+  const dStr = `${dObj.getFullYear()}-${String(dObj.getMonth() + 1).padStart(2, '0')}-${String(dObj.getDate()).padStart(2, '0')}`;
+  return dStr === getTodayStr();
+};
+
 const pendingTodayReports = computed(() => {
   const todayStr = getTodayStr();
   return filteredPendingReports.value.filter(r => {
@@ -6443,7 +6454,7 @@ const onDropToToday = async (e) => {
 const moveToToday = async (report) => {
   if (!report) return;
   if (API_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL') {
-     alert("Tính năng này cần cấu hình API_URL");
+     showToast('Tính năng này cần cấu hình API_URL', 'warning');
      return;
   }
   const originalTime = report.thoi_gian;
@@ -6459,11 +6470,33 @@ const moveToToday = async (report) => {
   timeObj.thu = dayOfWeek === 0 ? '8' : String(dayOfWeek + 1);
   
   const newTimeStr = `${timeObj.hour}:${timeObj.minute} /${timeObj.thu} /${timeObj.day}/${timeObj.month}/${timeObj.year}`;
-  if (newTimeStr === originalTime && (!report.isFailed || report.isFailed === '')) return;
+  if (newTimeStr === originalTime && (!report.isFailed || report.isFailed === '') && report.trang_thai !== 'Failed') return;
+
+  const oldFmt = formatDisplayTime(originalTime);
+  const newFmt = formatDisplayTime(newTimeStr);
+  const oldLabel = [oldFmt.time, oldFmt.dayOfWeek, oldFmt.date].filter(Boolean).join(' • ') || originalTime;
+  const newLabel = [newFmt.time, newFmt.dayOfWeek, newFmt.date].filter(Boolean).join(' • ') || newTimeStr;
+
+  const confirmed = await enqueueBaogiaDialog({
+    mode: 'confirm',
+    variant: 'info',
+    title: 'Chuyển sang làm hôm nay?',
+    eyebrow: 'XÁC NHẬN DỜI LỊCH CÔNG VIỆC',
+    targetLabel: report.noi_dung || `Báo cáo #${report.id}`,
+    targetMeta: `Lịch cũ: ${oldLabel}  →  Hôm nay: ${newLabel}`,
+    message: 'Xác nhận chuyển thời gian thực hiện công việc này sang ngày hôm nay?',
+    confirmText: 'Chuyển sang hôm nay',
+    cancelText: 'Huỷ bỏ'
+  });
+  if (!confirmed) return;
   
   const originalIsFailed = report.isFailed;
+  const originalStatus = report.trang_thai;
   report.thoi_gian = newTimeStr;
   report.isFailed = '';
+  if (report.trang_thai === 'Failed') {
+    report.trang_thai = 'Chưa xử lý';
+  }
 
   droppedReportId.value = report.id;
   setTimeout(() => {
@@ -6479,12 +6512,16 @@ const moveToToday = async (report) => {
     if (result.status !== 'success') {
       report.thoi_gian = originalTime;
       report.isFailed = originalIsFailed;
-      alert('Lỗi cập nhật: ' + result.message);
+      report.trang_thai = originalStatus;
+      showToast('Lỗi cập nhật: ' + result.message, 'error');
+    } else {
+      showToast('Đã chuyển công việc sang hôm nay', 'success');
     }
   } catch (error) {
     report.thoi_gian = originalTime;
     report.isFailed = originalIsFailed;
-    alert('Lỗi kết nối: ' + error.message);
+    report.trang_thai = originalStatus;
+    showToast('Lỗi kết nối: ' + error.message, 'error');
   }
 };
 
@@ -21085,9 +21122,26 @@ span[style*="color: #334155"] {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
   padding-top: 6px;
   border-top: 1px solid var(--bg-border);
+}
+
+.bg-pending-foot .bg-cus-actions {
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.bg-pending-card .bg-btn-xs.is-sky {
+  background: var(--sem-sky-bg);
+  border-color: var(--sem-sky-bd);
+  color: var(--sem-sky-bright);
+}
+.bg-pending-card .bg-btn-xs.is-sky:hover {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  border-color: transparent;
+  color: #ffffff;
 }
 
 .bg-pending-files {
@@ -24139,7 +24193,11 @@ span[style*="color: #334155"] {
 ============================================================================ */
 @media (max-width: 1100px) {
   .report-container.page {
-    padding: 12px 12px 98px;
+    padding: 12px 12px calc(112px + env(safe-area-inset-bottom, 0px)) !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    overflow-x: clip !important;
   }
 
   .bg-hide-compact {
@@ -24415,9 +24473,13 @@ span[style*="color: #334155"] {
   }
 
   .report-container.page {
-    min-height: calc(100vh - env(safe-area-inset-top, 0px));
-    min-height: calc(100dvh - env(safe-area-inset-top, 0px));
-    padding: 12px 10px calc(144px + env(safe-area-inset-bottom, 0px));
+    min-height: calc(100vh - env(safe-area-inset-top, 0px)) !important;
+    min-height: calc(100dvh - env(safe-area-inset-top, 0px)) !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    overflow-x: clip !important;
+    padding: 12px 10px calc(176px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   .bg-mobile-dock {
