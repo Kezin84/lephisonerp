@@ -751,21 +751,30 @@ const fetchIncompleteTasks = async () => {
 }
 
 let lastScrollMap = new WeakMap()
+let scrollAnchorMap = new WeakMap()
+let scrollDirMap = new WeakMap()
 let lastWindowScrollY = 0
+let windowScrollAnchorY = 0
+let windowScrollDir = 0
 
-const updateMobileNavByScroll = (currentScrollTop, prevScrollTop) => {
+const updateMobileNavByScroll = (currentScrollTop, prevScrollTop, anchorScrollTop) => {
   if (typeof window === 'undefined' || window.innerWidth > 768) {
     if (isMobileNavHidden.value) isMobileNavHidden.value = false
-    return
+    return false
   }
-  const delta = currentScrollTop - prevScrollTop
+  const refTop = typeof anchorScrollTop === 'number' ? anchorScrollTop : prevScrollTop
+  const delta = currentScrollTop - refTop
   if (currentScrollTop <= 36) {
     isMobileNavHidden.value = false
-  } else if (delta > 10 && currentScrollTop > 64) {
+    return true
+  } else if (delta > 10 && currentScrollTop > 48) {
     isMobileNavHidden.value = true
+    return true
   } else if (delta < -8) {
     isMobileNavHidden.value = false
+    return true
   }
+  return false
 }
 
 const computeShouldShowScrollTop = () => {
@@ -847,8 +856,18 @@ const handleGlobalScrollCapture = (e) => {
     if (!isScrollingToTop) {
       showScrollTop.value = computeShouldShowScrollTop()
     }
-    updateMobileNavByScroll(curY, lastWindowScrollY)
-    lastWindowScrollY = curY
+    const frameDelta = curY - lastWindowScrollY
+    if (frameDelta !== 0) {
+      const curDir = frameDelta > 0 ? 1 : -1
+      if (curDir !== windowScrollDir) {
+        windowScrollDir = curDir
+        windowScrollAnchorY = lastWindowScrollY
+      }
+      if (updateMobileNavByScroll(curY, lastWindowScrollY, windowScrollAnchorY)) {
+        windowScrollAnchorY = curY
+      }
+      lastWindowScrollY = curY
+    }
     return
   }
 
@@ -877,7 +896,18 @@ const handleGlobalScrollCapture = (e) => {
     if (!isScrollingToTop) {
       showScrollTop.value = computeShouldShowScrollTop()
     }
-    updateMobileNavByScroll(curY, prevY)
+    const frameDelta = curY - prevY
+    const curDir = frameDelta > 0 ? 1 : -1
+    const prevDir = scrollDirMap.get(target) || 0
+    let anchorY = scrollAnchorMap.has(target) ? scrollAnchorMap.get(target) : prevY
+    if (curDir !== prevDir) {
+      scrollDirMap.set(target, curDir)
+      anchorY = prevY
+      scrollAnchorMap.set(target, anchorY)
+    }
+    if (updateMobileNavByScroll(curY, prevY, anchorY)) {
+      scrollAnchorMap.set(target, curY)
+    }
     lastScrollMap.set(target, curY)
   }
 }

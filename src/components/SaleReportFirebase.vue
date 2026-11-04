@@ -3179,7 +3179,7 @@
                           <div class="sr-po-goods-toolbar">
                             <div class="sr-po-goods-title-group">
                               <span class="sr-po-goods-subtitle">Danh sách hàng hóa / dịch vụ của PO ({{ item.goodsList?.length || 0 }} dòng)</span>
-                              <div v-if="item.goodsList && item.goodsList.length > 0" class="sr-po-goods-db-pills">
+                              <div v-if="hangHoaCatalogLoaded && item.goodsList && item.goodsList.length > 0" class="sr-po-goods-db-pills">
                                 <span v-if="getPoGoodsDbStats(item).newCount > 0" class="sr-po-db-pill is-new">
                                   Chưa có DB: {{ getPoGoodsDbStats(item).newCount }}
                                 </span>
@@ -3196,19 +3196,20 @@
                                 v-if="item.goodsList && item.goodsList.length > 0"
                                 type="button"
                                 class="sr-po-goods-db-btn"
+                                :disabled="goodsDbLoadingModal.show"
                                 @click="openPoGoodsDbSyncModal(item)"
-                                title="Kiểm tra hàng hóa với Database hang_hoa, tính toán Đơn giá chuẩn / Giá nhập / USD và xác nhận Thêm mới hoặc Cập nhật"
+                                :title="hangHoaCacheTimestamp ? `Tải dữ liệu hang_hoa mới nhất, cập nhật Cache & kiểm tra đồng bộ (Cập nhật gần nhất: ${new Date(hangHoaCacheTimestamp).toLocaleTimeString('vi-VN')})` : 'Nhấn để tải danh mục hang_hoa từ Database, lưu Cache và kiểm tra & đồng bộ hàng hóa'"
                               >
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
                                 <span>Kiểm tra &amp; Đồng bộ DB</span>
                                 <span
-                                  v-if="getPoGoodsDbStats(item).needActionCount > 0"
+                                  v-if="hangHoaCatalogLoaded && getPoGoodsDbStats(item).needActionCount > 0"
                                   class="sr-po-goods-db-count is-warn"
                                 >
                                   {{ getPoGoodsDbStats(item).needActionCount }}
                                 </span>
                                 <span
-                                  v-else-if="getPoGoodsDbStats(item).matchedCount > 0"
+                                  v-else-if="hangHoaCatalogLoaded && getPoGoodsDbStats(item).matchedCount > 0"
                                   class="sr-po-goods-db-count is-ok"
                                 >
                                   Đã khớp
@@ -8080,6 +8081,52 @@
       </div>
     </Teleport>
 
+    <!-- MODAL PROGRESS TẢI & ĐỒNG BỘ CACHE HÀNG HÓA (HANG_HOA) -->
+    <Teleport to="body">
+      <div
+        v-if="goodsDbLoadingModal.show"
+        class="sr-goods-db-loading-overlay"
+        :class="{ 'is-light': uiTheme === 'light' }"
+      >
+        <div class="sr-goods-db-loading-card">
+          <div class="sr-gdl-head">
+            <div class="sr-gdl-icon-ring">
+              <svg class="sr-gdl-spin" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <ellipse cx="12" cy="5" rx="9" ry="3" />
+                <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+              </svg>
+            </div>
+            <div class="sr-gdl-title-wrap">
+              <span class="sr-gdl-eyebrow">ĐỒNG BỘ DATABASE &amp; BỘ NHỚ ĐỆM CACHE</span>
+              <h4 class="sr-gdl-title">{{ goodsDbLoadingModal.stepTitle || 'Đang tải & đồng bộ danh mục Hàng hóa...' }}</h4>
+            </div>
+            <span class="sr-gdl-pct-badge">{{ Math.min(100, Math.max(0, Math.round(goodsDbLoadingModal.percent))) }}%</span>
+          </div>
+
+          <div class="sr-gdl-progress-track">
+            <div
+              class="sr-gdl-progress-fill"
+              :style="{ width: `${Math.min(100, Math.max(4, Math.round(goodsDbLoadingModal.percent)))}%` }"
+            ></div>
+          </div>
+
+          <div class="sr-gdl-meta-row">
+            <span class="sr-gdl-detail">{{ goodsDbLoadingModal.stepDetail }}</span>
+            <span v-if="goodsDbLoadingModal.totalCount > 0" class="sr-gdl-counter">
+              <strong>{{ goodsDbLoadingModal.processedCount.toLocaleString('vi-VN') }}</strong> / {{ goodsDbLoadingModal.totalCount.toLocaleString('vi-VN') }} SP
+            </span>
+          </div>
+
+          <div class="sr-gdl-cache-note">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span v-if="goodsDbLoadingModal.fromCacheFallback">Đang sử dụng dữ liệu từ Bộ nhớ đệm (IndexedDB Cache) do kết nối mạng chậm</span>
+            <span v-else>Tự động cập nhật dữ liệu mới nhất từ Cloud &amp; lưu vào Bộ nhớ đệm (IndexedDB Cache)</span>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- MODAL KIỂM TRA & ĐỒNG BỘ HÀNG HÓA PO VÀO DATABASE (HANG_HOA) — FULL SCREEN 100% -->
     <Teleport to="body">
       <div
@@ -9476,6 +9523,115 @@ const khachHangMap = ref<Record<string, any>>({})
 const hopDongTongQuatMap = ref<Record<string, any>>({})
 const saleReportCraftMap = ref<Record<string, any>>({})
 const hangHoaCatalogList = ref<any[]>([])
+const hangHoaCatalogLoaded = ref(false)
+const hangHoaCacheTimestamp = ref<number | null>(null)
+
+const SR_HANG_HOA_IDB_NAME = 'sr_hang_hoa_cache_db'
+const SR_HANG_HOA_IDB_STORE = 'catalog_store'
+const SR_HANG_HOA_IDB_KEY = 'hang_hoa_v1'
+const SR_HANG_HOA_NCC_LS_KEY = 'sr_hang_hoa_ncc_cache_v1'
+
+function loadNccListFromLocalCache(): string[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = localStorage.getItem(SR_HANG_HOA_NCC_LS_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed?.nccList)) {
+      if (parsed.updatedAt) hangHoaCacheTimestamp.value = Number(parsed.updatedAt) || null
+      return parsed.nccList.filter(Boolean)
+    }
+  } catch (e) {}
+  return []
+}
+
+function saveNccListToLocalCache(nccList: string[], updatedAt: number) {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(
+      SR_HANG_HOA_NCC_LS_KEY,
+      JSON.stringify({ nccList, updatedAt })
+    )
+  } catch (e) {}
+}
+
+function openHangHoaIdb(): Promise<IDBDatabase | null> {
+  if (typeof window === 'undefined' || !window.indexedDB) return Promise.resolve(null)
+  return new Promise(resolve => {
+    try {
+      const req = window.indexedDB.open(SR_HANG_HOA_IDB_NAME, 1)
+      req.onupgradeneeded = () => {
+        const db = req.result
+        if (!db.objectStoreNames.contains(SR_HANG_HOA_IDB_STORE)) {
+          db.createObjectStore(SR_HANG_HOA_IDB_STORE)
+        }
+      }
+      req.onsuccess = () => resolve(req.result)
+      req.onerror = () => resolve(null)
+    } catch (e) {
+      resolve(null)
+    }
+  })
+}
+
+async function readHangHoaCacheFromIdb(): Promise<{
+  catalogList: any[]
+  nccList: string[]
+  updatedAt: number
+} | null> {
+  const db = await openHangHoaIdb()
+  if (!db) return null
+  return new Promise(resolve => {
+    try {
+      const tx = db.transaction(SR_HANG_HOA_IDB_STORE, 'readonly')
+      const store = tx.objectStore(SR_HANG_HOA_IDB_STORE)
+      const getReq = store.get(SR_HANG_HOA_IDB_KEY)
+      getReq.onsuccess = () => {
+        const val = getReq.result
+        if (val && Array.isArray(val.catalogList)) {
+          resolve({
+            catalogList: val.catalogList,
+            nccList: Array.isArray(val.nccList) ? val.nccList : [],
+            updatedAt: Number(val.updatedAt) || Date.now()
+          })
+        } else {
+          resolve(null)
+        }
+      }
+      getReq.onerror = () => resolve(null)
+    } catch (e) {
+      resolve(null)
+    }
+  })
+}
+
+async function writeHangHoaCacheToIdb(catalogList: any[], nccList: string[]): Promise<void> {
+  const updatedAt = Date.now()
+  hangHoaCacheTimestamp.value = updatedAt
+  saveNccListToLocalCache(nccList, updatedAt)
+  const db = await openHangHoaIdb()
+  if (!db) return
+  return new Promise(resolve => {
+    try {
+      const plainCatalog = catalogList.map(item => toRaw(item))
+      const plainNcc = nccList.slice()
+      const tx = db.transaction(SR_HANG_HOA_IDB_STORE, 'readwrite')
+      const store = tx.objectStore(SR_HANG_HOA_IDB_STORE)
+      store.put(
+        {
+          catalogList: plainCatalog,
+          nccList: plainNcc,
+          updatedAt
+        },
+        SR_HANG_HOA_IDB_KEY
+      )
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => resolve()
+    } catch (e) {
+      resolve()
+    }
+  })
+}
 
 const activeSaleFilterCount = computed(() => {
   let c = 0
@@ -10269,10 +10425,17 @@ function crossReferenceFinancialsForImportedQuote(itemObj: any) {
 async function loadData() {
   loading.value = true
   try {
-    // ─── Read sale_report, hang_hoa, hop_dong_tong_quat, sale_report_craft from Firebase in parallel ───
-    const [saleReportRes, hangHoaRes, hdTongQuatRes, srCraftRes] = await Promise.allSettled([
+    // Khởi tạo trước danh sách NCC từ cache nhẹ để bộ lọc NCC hoạt động tức thì mà KHÔNG cần tải bảng hang_hoa nặng khi vào trang
+    if (hangHoaNccList.value.length === 0) {
+      const cachedNccs = loadNccListFromLocalCache()
+      if (cachedNccs.length > 0) {
+        hangHoaNccList.value = cachedNccs
+      }
+    }
+
+    // ─── Read sale_report, hop_dong_tong_quat, sale_report_craft from Firebase in parallel (KHÔNG gọi hang_hoa lúc mới vào trang) ───
+    const [saleReportRes, hdTongQuatRes, srCraftRes] = await Promise.allSettled([
       get(dbRef(database, 'sale_report')),
-      get(dbRef(database, 'hang_hoa')),
       get(dbRef(database, 'hop_dong_tong_quat')),
       get(dbRef(database, 'sale_report_craft'))
     ])
@@ -10282,52 +10445,6 @@ async function loadData() {
     }
     if (srCraftRes.status === 'fulfilled') {
       saleReportCraftMap.value = srCraftRes.value.val() || {}
-    }
-
-    if (hangHoaRes.status === 'fulfilled') {
-      const hangHoaData = hangHoaRes.value.val() || {}
-      const nccMap = new Map<string, string>()
-      const catList: any[] = []
-      Object.entries(hangHoaData).forEach(([fbKey, hh]: [string, any]) => {
-        if (!hh || typeof hh !== 'object') return
-        const rawNcc = String(
-          hh.Ten_nha_cung_cap || hh.ten_nha_cung_cap || hh.Ma_nha_cung_cap || hh.ma_nha_cung_cap || ''
-        ).trim()
-        catList.push({
-          _firebaseKey: fbKey,
-          ma_hang: String(hh.Ma_hang ?? hh.Ma_hang_hoa ?? hh.ma_hang_hoa ?? hh.ma_hang ?? '').trim(),
-          sku_code: String(hh.sku_code ?? hh.SKU ?? hh.sku ?? '').trim(),
-          ten_hang: String(hh.Ten_hang ?? hh.Ten_hang_hoa ?? hh.ten_hang_hoa ?? hh.ten_hang ?? '').trim(),
-          danh_muc: String(hh.Danh_muc ?? hh.danh_muc ?? '').trim().toUpperCase(),
-          dvt: String(hh.DVT ?? hh.dvt ?? '').trim(),
-          gia_tieu_chuan: Number(hh.Gia_tieu_chuan ?? hh.gia_tieu_chuan ?? hh.Don_gia ?? hh.don_gia ?? 0) || 0,
-          don_gia: Number(hh.Don_gia ?? hh.don_gia ?? hh.Gia_tieu_chuan ?? hh.gia_tieu_chuan ?? 0) || 0,
-          gia_nhap: Number(hh.gia_nhap ?? hh.Gia_nhap ?? 0) || 0,
-          muc_phan_tram_off: Number(hh['muc_%_off'] ?? hh.muc_phan_tram_off ?? 0) || 0,
-          don_vi_tien_te: String(hh.Don_vi_tien_te ?? hh.don_vi_tien_te ?? 'VND').trim().toUpperCase() || 'VND',
-          ti_gia: Number(hh.Ti_gia ?? hh.ti_gia ?? 1) || 1,
-          thue_vat: Number(hh.Thue_VAT ?? hh.thue_vat ?? 0) || 0,
-          features: String(hh.Features ?? hh.features ?? '').trim(),
-          description: String(hh.Description ?? hh.description ?? '').trim(),
-          ten_ncc: rawNcc,
-          ma_ncc: String(hh.Ma_nha_cung_cap ?? hh.ma_nha_cung_cap ?? '').trim()
-        })
-        if (!rawNcc) return
-        const key = rawNcc.toLowerCase()
-        if (!nccMap.has(key)) {
-          nccMap.set(key, rawNcc)
-        } else {
-          // Ưu tiên giữ phiên bản viết hoa đồng nhất nếu có
-          const existingVal = nccMap.get(key) || ''
-          if (rawNcc === rawNcc.toUpperCase() && existingVal !== existingVal.toUpperCase()) {
-            nccMap.set(key, rawNcc)
-          }
-        }
-      })
-      hangHoaCatalogList.value = catList
-      hangHoaNccList.value = Array.from(nccMap.values()).sort((a, b) => a.localeCompare(b, 'vi'))
-    } else {
-      console.warn('Lỗi load hang_hoa (NCC) từ Firebase:', hangHoaRes.reason)
     }
 
     if (saleReportRes.status === 'rejected') {
@@ -15830,6 +15947,11 @@ function matchPoGoodsRowWithDb(g: any): {
     return { status: 'empty', dbItem: null, dbDonGiaVnd: 0, dbGiaNhapVnd: 0 }
   }
 
+  // Nếu chưa bấm "Kiểm tra & Đồng bộ DB" (hangHoaCatalogLoaded === false) và dòng chưa đồng bộ trước đó -> trả về 'empty' tức thì để không gây đơ trang
+  if (!hangHoaCatalogLoaded.value && !g._syncedDbDone) {
+    return { status: 'empty', dbItem: null, dbDonGiaVnd: 0, dbGiaNhapVnd: 0 }
+  }
+
   const rawG = toRaw(g) as object
   const idx = hangHoaLookupIndex.value
   const fileDonGiaVnd = Math.round(toNum(g.donGia))
@@ -16121,7 +16243,163 @@ function formatUsdPrice(val: number): string {
   })
 }
 
-function openPoGoodsDbSyncModal(item: ImportItem, focusRowIdx?: number) {
+const goodsDbLoadingModal = ref<{
+  show: boolean
+  percent: number
+  stepTitle: string
+  stepDetail: string
+  processedCount: number
+  totalCount: number
+  fromCacheFallback: boolean
+}>({
+  show: false,
+  percent: 0,
+  stepTitle: '',
+  stepDetail: '',
+  processedCount: 0,
+  totalCount: 0,
+  fromCacheFallback: false
+})
+
+async function fetchAndSyncHangHoaCatalogWithProgress(): Promise<void> {
+  goodsDbLoadingModal.value = {
+    show: true,
+    percent: 8,
+    stepTitle: 'Đang kết nối & tải danh mục Hàng hóa mới nhất...',
+    stepDetail: 'Đang gọi bảng hang_hoa từ Cloud Database & kiểm tra bộ nhớ đệm...',
+    processedCount: 0,
+    totalCount: 0,
+    fromCacheFallback: false
+  }
+
+  let ticker: ReturnType<typeof setInterval> | null = setInterval(() => {
+    if (goodsDbLoadingModal.value.percent < 42) {
+      goodsDbLoadingModal.value.percent += 3
+    }
+  }, 90)
+
+  let rawHangHoaObj: Record<string, any> | null = null
+  try {
+    const snap = await get(dbRef(database, 'hang_hoa'))
+    rawHangHoaObj = snap.val() || {}
+  } catch (err) {
+    console.warn('Không thể tải hang_hoa mới từ Firebase, chuyển sang đọc Cache IndexedDB:', err)
+    rawHangHoaObj = null
+  } finally {
+    if (ticker) {
+      clearInterval(ticker)
+      ticker = null
+    }
+  }
+
+  if (rawHangHoaObj && Object.keys(rawHangHoaObj).length > 0) {
+    const entries = Object.entries(rawHangHoaObj)
+    const total = entries.length
+    goodsDbLoadingModal.value.percent = 45
+    goodsDbLoadingModal.value.totalCount = total
+    goodsDbLoadingModal.value.processedCount = 0
+    goodsDbLoadingModal.value.stepTitle = 'Đang chuẩn hóa & cập nhật Cache Hàng hóa...'
+    goodsDbLoadingModal.value.stepDetail = `Đang xử lý và lập chỉ mục ${total.toLocaleString('vi-VN')} mặt hàng...`
+
+    const nextVer = hangHoaCatalogVersion.value + 1
+    const nccMap = new Map<string, string>()
+    const catList: any[] = []
+    const CHUNK_SIZE = 350
+
+    for (let start = 0; start < total; start += CHUNK_SIZE) {
+      const end = Math.min(total, start + CHUNK_SIZE)
+      for (let i = start; i < end; i++) {
+        const [fbKey, hh] = entries[i]
+        if (!hh || typeof hh !== 'object') continue
+        const rawNcc = String(
+          hh.Ten_nha_cung_cap || hh.ten_nha_cung_cap || hh.Ma_nha_cung_cap || hh.ma_nha_cung_cap || ''
+        ).trim()
+        const itemEntry = {
+          _firebaseKey: fbKey,
+          ma_hang: String(hh.Ma_hang ?? hh.Ma_hang_hoa ?? hh.ma_hang_hoa ?? hh.ma_hang ?? '').trim(),
+          sku_code: String(hh.sku_code ?? hh.SKU ?? hh.sku ?? '').trim(),
+          ten_hang: String(hh.Ten_hang ?? hh.Ten_hang_hoa ?? hh.ten_hang_hoa ?? hh.ten_hang ?? '').trim(),
+          danh_muc: String(hh.Danh_muc ?? hh.danh_muc ?? '').trim().toUpperCase(),
+          dvt: String(hh.DVT ?? hh.dvt ?? '').trim(),
+          gia_tieu_chuan: Number(hh.Gia_tieu_chuan ?? hh.gia_tieu_chuan ?? hh.Don_gia ?? hh.don_gia ?? 0) || 0,
+          don_gia: Number(hh.Don_gia ?? hh.don_gia ?? hh.Gia_tieu_chuan ?? hh.gia_tieu_chuan ?? 0) || 0,
+          gia_nhap: Number(hh.gia_nhap ?? hh.Gia_nhap ?? 0) || 0,
+          muc_phan_tram_off: Number(hh['muc_%_off'] ?? hh.muc_phan_tram_off ?? 0) || 0,
+          don_vi_tien_te: String(hh.Don_vi_tien_te ?? hh.don_vi_tien_te ?? 'VND').trim().toUpperCase() || 'VND',
+          ti_gia: Number(hh.Ti_gia ?? hh.ti_gia ?? 1) || 1,
+          thue_vat: Number(hh.Thue_VAT ?? hh.thue_vat ?? 0) || 0,
+          features: String(hh.Features ?? hh.features ?? '').trim(),
+          description: String(hh.Description ?? hh.description ?? '').trim(),
+          ten_ncc: rawNcc,
+          ma_ncc: String(hh.Ma_nha_cung_cap ?? hh.ma_nha_cung_cap ?? '').trim()
+        }
+        const maNorm = normalizeGoodsMatchStr(itemEntry.ma_hang)
+        const tenNorm = normalizeGoodsMatchStr(itemEntry.ten_hang)
+        const tokens = tenNorm ? tenNorm.split(' ').filter(Boolean) : []
+        const nums = tokens.filter((t: string) => /^\d+$/.test(t))
+        const searchHay = normalizeGoodsMatchStr(
+          `${itemEntry.ma_hang || ''} ${itemEntry.ten_hang || ''} ${itemEntry.danh_muc || ''} ${itemEntry.ten_ncc || ''}`
+        )
+        hhNormWeakCache.set(itemEntry, {
+          ver: nextVer,
+          maNorm,
+          tenNorm,
+          tokens,
+          nums,
+          searchHay
+        })
+        catList.push(itemEntry)
+
+        if (rawNcc) {
+          const key = rawNcc.toLowerCase()
+          if (!nccMap.has(key)) {
+            nccMap.set(key, rawNcc)
+          } else {
+            const existingVal = nccMap.get(key) || ''
+            if (rawNcc === rawNcc.toUpperCase() && existingVal !== existingVal.toUpperCase()) {
+              nccMap.set(key, rawNcc)
+            }
+          }
+        }
+      }
+
+      goodsDbLoadingModal.value.processedCount = end
+      goodsDbLoadingModal.value.percent = 45 + Math.round((end / total) * 38)
+      await new Promise(resolve => setTimeout(resolve, 10))
+    }
+
+    const sortedNccs = Array.from(nccMap.values()).sort((a, b) => a.localeCompare(b, 'vi'))
+    hangHoaCatalogList.value = catList
+    hangHoaNccList.value = sortedNccs
+    hangHoaCatalogVersion.value = nextVer
+    hangHoaCatalogLoaded.value = true
+
+    goodsDbLoadingModal.value.stepDetail = 'Đang lưu bộ nhớ đệm (IndexedDB Cache) để tăng tốc lần sau...'
+    await writeHangHoaCacheToIdb(catList, sortedNccs)
+  } else {
+    const cached = await readHangHoaCacheFromIdb()
+    if (cached && cached.catalogList.length > 0) {
+      goodsDbLoadingModal.value.fromCacheFallback = true
+      goodsDbLoadingModal.value.totalCount = cached.catalogList.length
+      goodsDbLoadingModal.value.processedCount = cached.catalogList.length
+      goodsDbLoadingModal.value.percent = 82
+      goodsDbLoadingModal.value.stepTitle = 'Đang nạp dữ liệu từ Bộ nhớ đệm (Cache)...'
+      goodsDbLoadingModal.value.stepDetail = `Đã nạp ${cached.catalogList.length.toLocaleString('vi-VN')} mặt hàng từ Cache.`
+      hangHoaCatalogList.value = cached.catalogList
+      if (cached.nccList.length > 0) {
+        hangHoaNccList.value = cached.nccList
+      }
+      hangHoaCatalogVersion.value++
+      hangHoaCatalogLoaded.value = true
+      hangHoaCacheTimestamp.value = cached.updatedAt
+      await new Promise(resolve => setTimeout(resolve, 80))
+    } else {
+      hangHoaCatalogLoaded.value = true
+    }
+  }
+}
+
+async function openPoGoodsDbSyncModal(item: ImportItem, focusRowIdx?: number) {
   if (!item || !Array.isArray(item.goodsList) || item.goodsList.length === 0) {
     openSrAlert({
       variant: 'warning',
@@ -16132,85 +16410,107 @@ function openPoGoodsDbSyncModal(item: ImportItem, focusRowIdx?: number) {
     return
   }
 
-  let detectedUsdRate = hangHoaCatalogAttrStats.value.defaultUsdRate || 25500
-  const syncRows: PoGoodsDbSyncRow[] = []
+  if (goodsDbLoadingModal.value.show) return
 
-  item.goodsList.forEach((g: any, idx: number) => {
-    const rawTen = String(g.ten || '').trim()
-    const rawMa = String(g.maHang || '').trim()
-    if (!rawTen && !rawMa) return
+  try {
+    await fetchAndSyncHangHoaCatalogWithProgress()
 
-    const match = matchPoGoodsRowWithDb(g)
-    const dbItem = match.dbItem
-    const isUsdDb = dbItem && String(dbItem.don_vi_tien_te || 'VND').toUpperCase() === 'USD'
-    const dbRate = dbItem && toNum(dbItem.ti_gia) > 1 ? toNum(dbItem.ti_gia) : 1
-    if (dbRate > 1000) {
-      detectedUsdRate = dbRate
+    goodsDbLoadingModal.value.percent = 90
+    goodsDbLoadingModal.value.stepTitle = 'Đang đối chiếu hàng hóa của PO với Database...'
+    goodsDbLoadingModal.value.stepDetail = `Đang kiểm tra ${item.goodsList.length} dòng hàng hóa trong PO...`
+    await new Promise(resolve => setTimeout(resolve, 25))
+
+    let detectedUsdRate = hangHoaCatalogAttrStats.value.defaultUsdRate || 25500
+    const syncRows: PoGoodsDbSyncRow[] = []
+
+    item.goodsList.forEach((g: any, idx: number) => {
+      const rawTen = String(g.ten || '').trim()
+      const rawMa = String(g.maHang || '').trim()
+      if (!rawTen && !rawMa) return
+
+      const match = matchPoGoodsRowWithDb(g)
+      const dbItem = match.dbItem
+      const isUsdDb = dbItem && String(dbItem.don_vi_tien_te || 'VND').toUpperCase() === 'USD'
+      const dbRate = dbItem && toNum(dbItem.ti_gia) > 1 ? toNum(dbItem.ti_gia) : 1
+      if (dbRate > 1000) {
+        detectedUsdRate = dbRate
+      }
+
+      const danhMuc = String(g.danhMuc || dbItem?.danh_muc || '').trim().toUpperCase()
+      const dvt = String(g.dvt || dbItem?.dvt || 'Cái').trim()
+      const vatPct = toNum(g.vatPct !== undefined && g.vatPct !== '' ? g.vatPct : (dbItem?.thue_vat ?? 0))
+      const maHang = dbItem?.ma_hang || rawMa || genHangHoaCode(danhMuc, rawTen)
+
+      const savedCalc = g._lastSyncCalc || null
+      const donGiaFileVnd = Math.round(toNum(g.donGia))
+      const chenhLechVnd = savedCalc ? toNum(savedCalc.chenhLechVnd) : 0
+      const giaNhapVnd = savedCalc
+        ? toNum(savedCalc.giaNhapVnd)
+        : (match.dbGiaNhapVnd > 0 ? match.dbGiaNhapVnd : 0)
+      const offType: 'pct' | 'amount' = savedCalc?.offType === 'amount' ? 'amount' : 'pct'
+      const offPct = savedCalc ? toNum(savedCalc.offPct) : 0
+      const offAmountVnd = savedCalc ? toNum(savedCalc.offAmountVnd) : 0
+      const hasCustomCalc = chenhLechVnd !== 0 || offPct !== 0 || offAmountVnd !== 0
+      const priceMode: 'file' | 'calc' = savedCalc?.priceMode || (hasCustomCalc ? 'calc' : 'file')
+      const currency: 'VND' | 'USD' = savedCalc?.currency || (isUsdDb ? 'USD' : 'VND')
+      const tiGia = savedCalc?.tiGia
+        ? toNum(savedCalc.tiGia)
+        : (currency === 'USD' ? (dbRate > 1 ? dbRate : detectedUsdRate) : 1)
+
+      const status: 'new' | 'diff' | 'matched' =
+        match.status === 'new' || match.status === 'diff' || match.status === 'matched'
+          ? match.status
+          : 'new'
+
+      syncRows.push({
+        goodsIdx: idx,
+        selected: focusRowIdx !== undefined ? idx === focusRowIdx : (status === 'new' || status === 'diff'),
+        status,
+        dbItem,
+        maHang,
+        maHangEdited: Boolean(dbItem?.ma_hang || rawMa),
+        tenHang: rawTen,
+        danhMuc,
+        dvt,
+        vatPct,
+        dienGiai: String(g.dienGiai || dbItem?.features || '').trim(),
+        donGiaFileVnd,
+        chenhLechVnd,
+        giaNhapVnd,
+        offType,
+        offPct,
+        offAmountVnd,
+        priceMode,
+        currency,
+        tiGia
+      })
+    })
+
+    if (!item.productType && hangHoaCatalogList.value.length > 0) {
+      crossReferenceFinancialsForImportedQuote(item)
     }
 
-    const danhMuc = String(g.danhMuc || dbItem?.danh_muc || '').trim().toUpperCase()
-    const dvt = String(g.dvt || dbItem?.dvt || 'Cái').trim()
-    const vatPct = toNum(g.vatPct !== undefined && g.vatPct !== '' ? g.vatPct : (dbItem?.thue_vat ?? 0))
-    const maHang = dbItem?.ma_hang || rawMa || genHangHoaCode(danhMuc, rawTen)
+    goodsDbLoadingModal.value.percent = 100
+    goodsDbLoadingModal.value.stepTitle = 'Hoàn tất đồng bộ danh mục!'
+    await new Promise(resolve => setTimeout(resolve, 110))
+    goodsDbLoadingModal.value.show = false
 
-    const savedCalc = g._lastSyncCalc || null
-    const donGiaFileVnd = Math.round(toNum(g.donGia))
-    const chenhLechVnd = savedCalc ? toNum(savedCalc.chenhLechVnd) : 0
-    const giaNhapVnd = savedCalc
-      ? toNum(savedCalc.giaNhapVnd)
-      : (match.dbGiaNhapVnd > 0 ? match.dbGiaNhapVnd : 0)
-    const offType: 'pct' | 'amount' = savedCalc?.offType === 'amount' ? 'amount' : 'pct'
-    const offPct = savedCalc ? toNum(savedCalc.offPct) : 0
-    const offAmountVnd = savedCalc ? toNum(savedCalc.offAmountVnd) : 0
-    const hasCustomCalc = chenhLechVnd !== 0 || offPct !== 0 || offAmountVnd !== 0
-    const priceMode: 'file' | 'calc' = savedCalc?.priceMode || (hasCustomCalc ? 'calc' : 'file')
-    const currency: 'VND' | 'USD' = savedCalc?.currency || (isUsdDb ? 'USD' : 'VND')
-    const tiGia = savedCalc?.tiGia
-      ? toNum(savedCalc.tiGia)
-      : (currency === 'USD' ? (dbRate > 1 ? dbRate : detectedUsdRate) : 1)
-
-    const status: 'new' | 'diff' | 'matched' =
-      match.status === 'new' || match.status === 'diff' || match.status === 'matched'
-        ? match.status
-        : 'new'
-
-    syncRows.push({
-      goodsIdx: idx,
-      selected: focusRowIdx !== undefined ? idx === focusRowIdx : (status === 'new' || status === 'diff'),
-      status,
-      dbItem,
-      maHang,
-      maHangEdited: Boolean(dbItem?.ma_hang || rawMa),
-      tenHang: rawTen,
-      danhMuc,
-      dvt,
-      vatPct,
-      dienGiai: String(g.dienGiai || dbItem?.features || '').trim(),
-      donGiaFileVnd,
-      chenhLechVnd,
-      giaNhapVnd,
-      offType,
-      offPct,
-      offAmountVnd,
-      priceMode,
-      currency,
-      tiGia
-    })
-  })
-
-  poGoodsDbSyncModal.value = {
-    show: true,
-    saving: false,
-    targetItem: item,
-    filterTab: 'all',
-    bulkCurrency: syncRows.some(r => r.currency === 'USD') ? 'USD' : 'VND',
-    bulkTiGia: detectedUsdRate,
-    rows: syncRows,
-    pickerRowIdx: null,
-    pickerSearch: '',
-    attrPickerRowIdx: null,
-    attrPickerType: null,
-    attrPickerSearch: ''
+    poGoodsDbSyncModal.value = {
+      show: true,
+      saving: false,
+      targetItem: item,
+      filterTab: 'all',
+      bulkCurrency: syncRows.some(r => r.currency === 'USD') ? 'USD' : 'VND',
+      bulkTiGia: detectedUsdRate,
+      rows: syncRows,
+      pickerRowIdx: null,
+      pickerSearch: '',
+      attrPickerRowIdx: null,
+      attrPickerType: null,
+      attrPickerSearch: ''
+    }
+  } finally {
+    goodsDbLoadingModal.value.show = false
   }
 }
 
@@ -16665,6 +16965,8 @@ async function confirmSavePoGoodsToDatabase() {
     }
 
     hangHoaCatalogVersion.value++
+    hangHoaCatalogLoaded.value = true
+    writeHangHoaCacheToIdb(hangHoaCatalogList.value, hangHoaNccList.value).catch(() => {})
     isModalDirty.value = true
     modal.show = false
     await openSrAlert({
@@ -24496,6 +24798,8 @@ function openChartFromMindmap() {
 
 const isAnySaleModalOpen = computed(() => Boolean(
   reviewMindmapModal.value.show ||
+  poGoodsDbSyncModal.value.show ||
+  goodsDbLoadingModal.value.show ||
   showAddChoiceModal.value ||
   showFilterCustomerModal.value ||
   showFilterNccModal.value ||
@@ -40710,16 +41014,22 @@ const isAnySaleModalOpen = computed(() => Boolean(
     width: auto;
     max-width: 460px;
     margin: 0 auto;
-    transform: none;
+    transform: translate3d(0, 0, 0);
+    will-change: bottom, transform;
+    transition:
+      bottom 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.3s ease !important;
   }
 
-  /* Khi cuộn xuống làm Bottom Bar của App tự ẩn (.mobile-nav-hidden), thanh Dock trượt mượt xuống sát đáy */
-  :global(.app-layout.mobile-nav-hidden) .sr-mobile-dock {
-    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  /* Khi cuộn xuống làm Bottom Bar của App tự ẩn (.mobile-nav-hidden), thanh Dock trượt mượt xuống đúng vị trí thanh Bottom Bar */
+  :global(.app-layout.mobile-nav-hidden .sr-mobile-dock) {
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   .sr-mobile-dock.is-modal-hidden,
-  :global(.app-layout.has-open-modal) .sr-mobile-dock {
+  :global(.app-layout.has-open-modal .sr-mobile-dock) {
     transform: translateY(calc(100% + 96px + env(safe-area-inset-bottom, 0px))) scale(0.96) !important;
     opacity: 0 !important;
     visibility: hidden !important;
@@ -41100,9 +41410,10 @@ const isAnySaleModalOpen = computed(() => Boolean(
     z-index: 980 !important;
     border-radius: 14px !important;
     box-shadow: 0 20px 48px rgba(0, 0, 0, 0.72) !important;
+    transition: bottom 0.38s cubic-bezier(0.22, 1, 0.36, 1) !important;
   }
 
-  :global(.app-layout.mobile-nav-hidden) .sr-page.is-mobile-shell .sr-display-setting-dropdown {
+  :global(.app-layout.mobile-nav-hidden .sr-page.is-mobile-shell .sr-display-setting-dropdown) {
     bottom: calc(74px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
@@ -46928,5 +47239,207 @@ const isAnySaleModalOpen = computed(() => Boolean(
 .sr-mindmap-modal.is-light .sr-mm-tree.is-tour-active .sr-mm-node.is-reading-focus {
   border-color: #0284c7 !important;
   box-shadow: 0 0 0 3.5px rgba(2, 132, 199, 0.42), 0 20px 44px rgba(2, 132, 199, 0.25) !important;
+}
+
+/* ─── MODAL LOADING PROGRESS KHI TẢI & ĐỒNG BỘ CACHE HÀNG HÓA (HANG_HOA) ─── */
+.sr-goods-db-loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100080;
+  background: rgba(2, 6, 23, 0.74);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.sr-goods-db-loading-overlay.is-light {
+  background: rgba(15, 23, 42, 0.48);
+}
+
+.sr-goods-db-loading-card {
+  width: min(520px, calc(100vw - 28px));
+  background: linear-gradient(180deg, #0f172a 0%, #09111e 100%);
+  border: 1.5px solid rgba(52, 211, 153, 0.42);
+  border-radius: 18px;
+  padding: 20px 22px;
+  box-shadow:
+    0 24px 60px -12px rgba(0, 0, 0, 0.75),
+    0 0 0 1px rgba(16, 185, 129, 0.16);
+  color: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sr-goods-db-loading-overlay.is-light .sr-goods-db-loading-card {
+  background: #ffffff;
+  border-color: #38bdf8;
+  color: #0f172a;
+  box-shadow: 0 22px 54px -12px rgba(2, 132, 199, 0.28);
+}
+
+.sr-gdl-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sr-gdl-icon-ring {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(16, 185, 129, 0.16);
+  border: 1px solid rgba(52, 211, 153, 0.42);
+  color: #34d399;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sr-goods-db-loading-overlay.is-light .sr-gdl-icon-ring {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+  color: #0284c7;
+}
+
+.sr-gdl-spin {
+  animation: srGdlPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes srGdlPulse {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+    opacity: 0.92;
+  }
+  50% {
+    transform: translateY(-2px) scale(1.08);
+    opacity: 1;
+  }
+}
+
+.sr-gdl-title-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.sr-gdl-eyebrow {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #34d399;
+  margin-bottom: 2px;
+}
+
+.sr-goods-db-loading-overlay.is-light .sr-gdl-eyebrow {
+  color: #0284c7;
+}
+
+.sr-gdl-title {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 800;
+  line-height: 1.3;
+  color: inherit;
+}
+
+.sr-gdl-pct-badge {
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(52, 211, 153, 0.45);
+  color: #34d399;
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.sr-goods-db-loading-overlay.is-light .sr-gdl-pct-badge {
+  background: #e0f2fe;
+  border-color: #38bdf8;
+  color: #0369a1;
+}
+
+.sr-gdl-progress-track {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(30, 41, 59, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  overflow: hidden;
+}
+
+.sr-goods-db-loading-overlay.is-light .sr-gdl-progress-track {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+}
+
+.sr-gdl-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #10b981 0%, #34d399 50%, #38bdf8 100%);
+  transition: width 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sr-goods-db-loading-overlay.is-light .sr-gdl-progress-fill {
+  background: linear-gradient(90deg, #0284c7 0%, #0ea5e9 55%, #10b981 100%);
+}
+
+.sr-gdl-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.sr-goods-db-loading-overlay.is-light .sr-gdl-meta-row {
+  color: #475569;
+}
+
+.sr-gdl-detail {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sr-gdl-counter {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sr-gdl-counter strong {
+  color: #34d399;
+}
+
+.sr-goods-db-loading-overlay.is-light .sr-gdl-counter strong {
+  color: #0284c7;
+}
+
+.sr-gdl-cache-note {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 11px;
+  border-radius: 10px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(52, 211, 153, 0.24);
+  color: #a7f3d0;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.sr-goods-db-loading-overlay.is-light .sr-gdl-cache-note {
+  background: #f0f9ff;
+  border-color: #bae6fd;
+  color: #0369a1;
 }
 </style>
