@@ -3970,7 +3970,7 @@
           class="sr-modal sr-modal-large sr-mindmap-modal"
           :class="{ 'is-light': uiTheme === 'light' }"
         >
-          <!-- 1. HEADER -->
+          <!-- 1. HEADER (TỐI GIẢN: CHỈ HIỂN THỊ TIÊU ĐỀ REVIEW KINH DOANH & NÚT ĐÓNG) -->
           <div class="sr-mindmap-header">
             <div class="sr-mindmap-header-left">
               <button
@@ -3984,39 +3984,10 @@
               <span class="sr-mindmap-header-icon">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M8.7 10.7l6.6-3.4"/><path d="M8.7 13.3l6.6 3.4"/></svg>
               </span>
-              <div class="sr-mindmap-title-wrap">
-                <div class="sr-mindmap-title-row">
-                  <h3 class="sr-mindmap-title">Review Kinh Doanh</h3>
-                  <span class="sr-mindmap-scope-pill">
-                    <template v-if="reviewMindmapModal.companyScope">
-                      Cty: {{ getGroupTenKhachHang(reviewMindmapModal.companyScope) || reviewMindmapModal.companyScope.ten_cong_ty }} ({{ mindmapScopeSummary.poCount }} PO)
-                    </template>
-                    <template v-else>
-                      {{ mindmapTimeLabel }} • {{ mindmapScopeSummary.companyCount }} Công ty • {{ mindmapScopeSummary.poCount }} PO
-                    </template>
-                  </span>
-                  <button
-                    v-if="reviewMindmapModal.companyScope"
-                    type="button"
-                    class="sr-mindmap-scope-reset-btn"
-                    @click="clearMindmapCompanyScope()"
-                  >
-                    Xem toàn hệ thống
-                  </button>
-                </div>
-              </div>
+              <h3 class="sr-mindmap-title">Review Kinh Doanh</h3>
             </div>
 
             <div class="sr-mindmap-header-right">
-              <button
-                type="button"
-                class="sr-mindmap-jump-analytics-btn"
-                @click="openChartFromMindmap()"
-                title="Chuyển sang Biểu đồ Phân tích"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
-                <span class="sr-hide-mob">Biểu đồ Phân tích</span>
-              </button>
               <button
                 type="button"
                 class="sr-analytics-close-btn"
@@ -4028,50 +3999,53 @@
             </div>
           </div>
 
-          <!-- 2. SUBHEADER CONTROL BAR (CHUYỂN ĐỔI SƠ ĐỒ NGANG / SƠ ĐỒ DỌC / CÂY DỌC + BỘ LỌC REVIEW + TRÌNH CHIẾU & GIỌNG ĐỌC) -->
+          <!-- 2. SUBHEADER CONTROL BAR (SIÊU GỌN 1 DÒNG TRÊN MOBILE & PC + TOGGLE BỘ LỌC) -->
           <div class="sr-mindmap-toolbar">
-            <!-- Chế độ hiển thị chính: Sơ đồ Ngang (Mặc định) | Sơ đồ Dọc | Cây Dọc -->
+            <!-- Chế độ hiển thị chính: Sơ đồ Ngang | Sơ đồ Dọc | Cây Dọc -->
             <div class="sr-mindmap-layout-switch is-primary-switch">
               <button
                 type="button"
                 class="sr-mindmap-layout-btn"
                 :class="{ active: effectiveMindmapLayout === 'canvas' }"
                 @click="switchMindmapLayout('canvas')"
-                title="Sơ đồ Mindmap tỏa nhánh ngang từ Trái sang Phải trên 1 bảng lớn (Hỗ trợ Trình chiếu từng bước, kéo & thu phóng)"
+                title="Sơ đồ Mindmap tỏa nhánh ngang từ Trái sang Phải"
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="2" y="9" width="5" height="6" rx="1"/><rect x="17" y="4" width="5" height="6" rx="1"/><rect x="17" y="14" width="5" height="6" rx="1"/><path d="M7 12h5m0 0V7h5m-5 5v5h5"/></svg>
-                <span>Sơ đồ Ngang</span>
+                <span class="sr-mm-lbl-pc">Sơ đồ Ngang</span>
+                <span class="sr-mm-lbl-mob">Ngang</span>
               </button>
               <button
                 type="button"
                 class="sr-mindmap-layout-btn"
                 :class="{ active: effectiveMindmapLayout === 'vcanvas' }"
                 @click="switchMindmapLayout('vcanvas')"
-                title="Sơ đồ Mindmap tỏa nhánh dọc từ Trên xuống Dưới trên 1 bảng lớn (Hỗ trợ Trình chiếu từng bước, kéo & thu phóng)"
+                title="Sơ đồ Mindmap tỏa nhánh dọc từ Trên xuống Dưới"
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="9" y="2" width="6" height="5" rx="1"/><rect x="4" y="17" width="6" height="5" rx="1"/><rect x="14" y="17" width="6" height="5" rx="1"/><path d="M12 7v5m0 0H7v5m5-5h5v5"/></svg>
-                <span>Sơ đồ Dọc</span>
+                <span class="sr-mm-lbl-pc">Sơ đồ Dọc</span>
+                <span class="sr-mm-lbl-mob">Dọc</span>
               </button>
               <button
                 type="button"
                 class="sr-mindmap-layout-btn"
                 :class="{ active: effectiveMindmapLayout === 'tree' }"
                 @click="switchMindmapLayout('tree')"
-                title="Sơ đồ Cây phân cấp dọc (Đọc liền mạch trên Điện thoại & PC)"
+                title="Sơ đồ Cây phân cấp dọc"
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-                <span>Cây Dọc</span>
+                <span class="sr-mm-lbl-pc">Cây Dọc</span>
+                <span class="sr-mm-lbl-mob">Cây</span>
               </button>
             </div>
 
-            <!-- Tìm nhanh + Nút Bật/Tắt Bộ lọc độc lập trong Review -->
+            <!-- Tìm nhanh trên PC + Nút Toggle Bộ lọc (Hiển thị cả PC & Mobile) -->
             <div class="sr-mindmap-search-cluster">
-              <div class="sr-mindmap-search-box">
+              <div class="sr-mindmap-search-box sr-hide-mob">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <input
                   type="text"
                   v-model="reviewMindmapModal.searchQuery"
-                  placeholder="Tìm nhanh công ty, KH, số PO, nội dung HĐ, NCC..."
+                  placeholder="Tìm công ty, KH, số PO, NCC..."
                   class="sr-mindmap-search-input"
                 />
                 <button
@@ -4085,30 +4059,30 @@
               <button
                 type="button"
                 class="sr-mindmap-filter-toggle-btn"
-                :class="{ active: mindmapFilterExpanded || mindmapActiveFilterCount > 0 }"
+                :class="{ active: mindmapFilterExpanded || mindmapActiveFilterCount > 0, 'is-open': mindmapFilterExpanded }"
                 @click="mindmapFilterExpanded = !mindmapFilterExpanded"
-                title="Đóng/Mở bộ lọc độc lập trong Review (Thời gian, Công ty, NCC, Công nợ, Sắp xếp)"
+                title="Đóng/Mở bộ lọc và tuỳ chọn hiển thị"
               >
                 <svg width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
                 <span>Bộ lọc</span>
                 <span v-if="mindmapActiveFilterCount > 0" class="sr-mm-filter-badge">{{ mindmapActiveFilterCount }}</span>
+                <svg class="sr-mm-filter-caret" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
               </button>
 
               <button
                 v-if="mindmapActiveFilterCount > 0"
                 type="button"
-                class="sr-mindmap-filter-reset-btn"
+                class="sr-mindmap-filter-reset-btn sr-hide-mob"
                 @click="resetMindmapFilters()"
-                title="Đặt lại toàn bộ điều kiện lọc trong Review về mặc định"
+                title="Đặt lại toàn bộ điều kiện lọc về mặc định"
               >
                 <span>Đặt lại</span>
               </button>
             </div>
 
-            <!-- Cụm điều khiển 2 Chế độ Trình chiếu (Có giọng đọc / Không giọng đọc), Tốc độ đọc (tới 2.0x) & Thời gian chuyển bước -->
+            <!-- Cụm điều khiển Trình chiếu & Nhánh -->
             <div class="sr-mindmap-actions-right">
               <template v-if="effectiveMindmapLayout === 'canvas' || effectiveMindmapLayout === 'vcanvas'">
-                <!-- Cụm chọn Chế độ Trình chiếu chuẩn UI/UX: Có giọng đọc vs Không giọng đọc -->
                 <div class="sr-mindmap-present-mode-group">
                   <button
                     type="button"
@@ -4118,10 +4092,11 @@
                       'is-speaking': mindmapTourActive && mindmapVoiceEnabled && mindmapVoiceSpeaking
                     }"
                     @click="startOrSwitchMindmapTourMode(true)"
-                    title="Bật chế độ Trình chiếu có giọng đọc Tiếng Việt tự động và Focus vào từng Card"
+                    title="Bật chế độ Trình chiếu có giọng đọc Tiếng Việt tự động"
                   >
-                    <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
-                    <span>{{ mindmapTourActive && mindmapVoiceEnabled ? (mindmapVoiceSpeaking ? 'Đang đọc & Trình chiếu' : 'Trình chiếu có giọng đọc') : 'Trình chiếu có giọng đọc' }}</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+                    <span class="sr-mm-lbl-pc">{{ mindmapTourActive && mindmapVoiceEnabled ? (mindmapVoiceSpeaking ? 'Đang đọc' : 'Có giọng đọc') : 'Có giọng đọc' }}</span>
+                    <span class="sr-mm-lbl-mob">Đọc</span>
                   </button>
 
                   <button
@@ -4129,10 +4104,11 @@
                     class="sr-mindmap-mode-pill is-silent-mode"
                     :class="{ 'is-active': mindmapTourActive && !mindmapVoiceEnabled }"
                     @click="startOrSwitchMindmapTourMode(false)"
-                    title="Bật chế độ Trình chiếu không giọng đọc (Tự động trượt Focus qua từng Card theo thời gian cài đặt)"
+                    title="Bật chế độ Trình chiếu không giọng đọc"
                   >
-                    <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                    <span>Trình chiếu không giọng đọc</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    <span class="sr-mm-lbl-pc">Không giọng đọc</span>
+                    <span class="sr-mm-lbl-mob">Slide</span>
                   </button>
 
                   <button
@@ -4142,93 +4118,86 @@
                     @click="stopMindmapTour()"
                     title="Thoát chế độ Trình chiếu (Esc)"
                   >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
                     <span>Thoát ({{ mindmapSlideIdx + 1 }}/{{ mindmapTourSteps.length }})</span>
                   </button>
                 </div>
 
-                <!-- Ô điều chỉnh Tốc độ đọc (Hiển thị rõ ràng khi chọn chế độ Có giọng đọc) -->
-                <div
-                  v-if="mindmapVoiceEnabled"
-                  class="sr-mindmap-speed-cluster"
-                  title="Điều chỉnh tốc độ giọng đọc Tiếng Việt (0.9x đến 2.0x)"
-                >
-                  <span class="sr-mindmap-speed-lbl">
-                    <svg width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                    <span class="sr-hide-mob">Tốc độ đọc:</span>
-                  </span>
-                  <select
-                    v-model.number="mindmapVoiceRate"
-                    class="sr-mindmap-voice-rate"
-                    @change="onMindmapVoiceRateChange()"
+                <!-- Tốc độ đọc & Thời gian chuyển bước: chỉ hiện gọn khi đang bật Trình chiếu -->
+                <template v-if="mindmapTourActive">
+                  <div
+                    v-if="mindmapVoiceEnabled"
+                    class="sr-mindmap-speed-cluster"
+                    title="Tốc độ giọng đọc Tiếng Việt"
                   >
-                    <option :value="0.9">0.9x</option>
-                    <option :value="1.0">1.0x (Chuẩn)</option>
-                    <option :value="1.25">1.25x</option>
-                    <option :value="1.5">1.5x</option>
-                    <option :value="1.7">1.7x</option>
-                    <option :value="2.0">2.0x</option>
-                  </select>
-                </div>
+                    <span class="sr-mindmap-speed-lbl">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                    </span>
+                    <select
+                      v-model.number="mindmapVoiceRate"
+                      class="sr-mindmap-voice-rate"
+                      @change="onMindmapVoiceRateChange()"
+                    >
+                      <option :value="0.9">0.9x</option>
+                      <option :value="1.0">1.0x</option>
+                      <option :value="1.25">1.25x</option>
+                      <option :value="1.5">1.5x</option>
+                      <option :value="1.7">1.7x</option>
+                      <option :value="2.0">2.0x</option>
+                    </select>
+                  </div>
 
-                <!-- Cụm cài đặt Thời gian chuyển bước (Người dùng tự setup số giây) -->
-                <div
-                  class="sr-mindmap-timer-cluster"
-                  title="Tùy chỉnh thời gian chờ (giây) trước khi tự động chuyển sang Card tiếp theo"
-                >
-                  <span class="sr-mindmap-timer-lbl">
-                    <svg width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                    <span class="sr-hide-mob">Thời gian:</span>
-                  </span>
+                  <div
+                    class="sr-mindmap-timer-cluster"
+                    title="Thời gian chuyển trang sau khi đọc xong (giây)"
+                  >
+                    <span class="sr-mindmap-timer-lbl">Thời gian chuyển trang sau khi đọc xong:</span>
+                    <button
+                      type="button"
+                      class="sr-mindmap-timer-step"
+                      @click="adjustMindmapStepDuration(-1)"
+                    >−</button>
+                    <input
+                      type="number"
+                      min="1"
+                      max="300"
+                      step="1"
+                      v-model.number="mindmapStepDurationSec"
+                      @change="onMindmapStepDurationChange()"
+                      class="sr-mindmap-timer-input"
+                    />
+                    <span class="sr-mindmap-timer-unit">s</span>
+                    <button
+                      type="button"
+                      class="sr-mindmap-timer-step"
+                      @click="adjustMindmapStepDuration(1)"
+                    >+</button>
+                  </div>
+
                   <button
                     type="button"
-                    class="sr-mindmap-timer-step"
-                    @click="adjustMindmapStepDuration(-1)"
-                    title="Giảm 1 giây"
-                  >−</button>
-                  <input
-                    type="number"
-                    min="1"
-                    max="300"
-                    step="1"
-                    v-model.number="mindmapStepDurationSec"
-                    @change="onMindmapStepDurationChange()"
-                    class="sr-mindmap-timer-input"
-                    title="Nhập số giây tự chuyển bước (1 - 300 giây)"
-                  />
-                  <span class="sr-mindmap-timer-unit">giây</span>
-                  <button
-                    type="button"
-                    class="sr-mindmap-timer-step"
-                    @click="adjustMindmapStepDuration(1)"
-                    title="Tăng 1 giây"
-                  >+</button>
-                </div>
-
-                <button
-                  v-if="mindmapTourActive"
-                  type="button"
-                  class="sr-mindmap-tool-btn"
-                  :class="{ 'is-playing': mindmapSlideAutoPlay }"
-                  @click="toggleMindmapAutoPlay()"
-                  title="Tạm dừng hoặc tiếp tục tự động chạy qua các bước"
-                >
-                  <svg v-if="!mindmapSlideAutoPlay" width="12.5" height="12.5" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                  <svg v-else width="12.5" height="12.5" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-                  <span>
-                    {{
-                      mindmapSlideAutoPlay
-                        ? (mindmapVoiceSpeaking
-                            ? 'Đang đọc & Tự chạy'
-                            : ('Tự chạy (' + (mindmapAutoNextRemainingSec > 0 ? mindmapAutoNextRemainingSec : mindmapStepDurationSec) + 's)'))
-                        : 'Tiếp tục chạy'
-                    }}
-                  </span>
-                </button>
+                    class="sr-mindmap-tool-btn"
+                    :class="{ 'is-playing': mindmapSlideAutoPlay }"
+                    @click="toggleMindmapAutoPlay()"
+                    title="Tạm dừng / Tiếp tục tự chạy"
+                  >
+                    <svg v-if="!mindmapSlideAutoPlay" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    <svg v-else width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                    <span>
+                      {{
+                        mindmapSlideAutoPlay
+                          ? (mindmapVoiceSpeaking
+                              ? 'Đang đọc'
+                              : ((mindmapAutoNextRemainingSec > 0 ? mindmapAutoNextRemainingSec : mindmapStepDurationSec) + 's'))
+                          : 'Chạy tiếp'
+                      }}
+                    </span>
+                  </button>
+                </template>
               </template>
 
               <template v-if="!mindmapTourActive">
-                <div class="sr-mindmap-seg-group">
+                <div class="sr-mindmap-seg-group sr-hide-mob">
                   <button
                     type="button"
                     class="sr-mindmap-seg-btn"
@@ -4246,21 +4215,47 @@
                     <span>4 Trụ cột</span>
                   </button>
                 </div>
-                <button type="button" class="sr-mindmap-tool-btn" @click="expandAllMindmapNodes()">
-                  <span>Mở hết nhánh</span>
+                <button type="button" class="sr-mindmap-tool-btn sr-hide-mob" @click="expandAllMindmapNodes()">
+                  <span>Mở hết</span>
                 </button>
-                <button type="button" class="sr-mindmap-tool-btn" @click="collapseAllMindmapNodes()">
+                <button type="button" class="sr-mindmap-tool-btn sr-hide-mob" @click="collapseAllMindmapNodes()">
                   <span>Thu gọn</span>
                 </button>
               </template>
             </div>
           </div>
 
-          <!-- 2B. DẢI BỘ LỌC ĐỘC LẬP TRONG REVIEW (THỜI GIAN • CÔNG TY • NCC • CÔNG NỢ • SẮP XẾP) -->
+          <!-- 2B. BỘ LỌC THU GỌN CÓ TOGGLE (COMPACT DRAWER CHO MOBILE & PC) -->
           <div v-if="mindmapFilterExpanded" class="sr-mindmap-filter-bar">
-            <!-- Cụm 1: Lọc Thời gian -->
-            <div class="sr-mmf-group is-time-group">
-              <span class="sr-mmf-label">Kỳ thời gian:</span>
+            <!-- Hàng Tìm kiếm + Đặt lại dành riêng cho Mobile (trên PC đã có ở thanh trên) -->
+            <div class="sr-mmf-mob-search-row">
+              <div class="sr-mindmap-search-box is-mob-filter-search">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input
+                  type="text"
+                  v-model="reviewMindmapModal.searchQuery"
+                  placeholder="Tìm công ty, KH, số PO, nội dung HĐ, NCC..."
+                  class="sr-mindmap-search-input"
+                />
+                <button
+                  v-if="reviewMindmapModal.searchQuery"
+                  type="button"
+                  class="sr-mindmap-search-clear"
+                  @click="reviewMindmapModal.searchQuery = ''"
+                >✕</button>
+              </div>
+              <button
+                v-if="mindmapActiveFilterCount > 0"
+                type="button"
+                class="sr-mindmap-filter-reset-btn"
+                @click="resetMindmapFilters()"
+              >
+                Đặt lại ({{ mindmapActiveFilterCount }})
+              </button>
+            </div>
+
+            <!-- Hàng Lọc Thời gian gọn -->
+            <div class="sr-mmf-time-row">
               <div class="sr-mmf-seg">
                 <button type="button" class="sr-mmf-seg-btn" :class="{ active: mindmapFilter.timeMode === 'all' }" @click="mindmapFilter.timeMode = 'all'">Tất cả</button>
                 <button type="button" class="sr-mmf-seg-btn" :class="{ active: mindmapFilter.timeMode === 'day' }" @click="setMindmapTimeMode('day')">Ngày</button>
@@ -4295,51 +4290,89 @@
               </div>
             </div>
 
-            <!-- Cụm 2: Lọc Công ty / Khách hàng -->
-            <div class="sr-mmf-group">
-              <span class="sr-mmf-label">Công ty:</span>
-              <select v-model="mindmapFilter.customer" class="sr-mmf-select is-company" @change="reviewMindmapModal.companyScope = null">
-                <option value="Tất cả">Tất cả công ty ({{ uniqueCustomers.length }})</option>
-                <option v-for="c in uniqueCustomers" :key="'mmc-' + (c.companyCode || c.companyName)" :value="c.companyName">
-                  {{ c.companyName }} ({{ c.poCount }} PO)
-                </option>
-              </select>
+            <!-- Lưới 4 Bộ lọc Pill gọn (2x2 trên Mobile, 1 hàng ngang trên PC) -->
+            <div class="sr-mmf-compact-grid">
+              <label class="sr-mmf-pill" :class="{ 'has-val': mindmapFilter.customer !== 'Tất cả' }">
+                <span class="sr-mmf-tag">CTY</span>
+                <select v-model="mindmapFilter.customer" class="sr-mmf-pill-select" @change="reviewMindmapModal.companyScope = null">
+                  <option value="Tất cả">Tất cả ({{ uniqueCustomers.length }})</option>
+                  <option v-for="c in uniqueCustomers" :key="'mmc-' + (c.companyCode || c.companyName)" :value="c.companyName">
+                    {{ c.companyName }} ({{ c.poCount }} PO)
+                  </option>
+                </select>
+              </label>
+
+              <label class="sr-mmf-pill" :class="{ 'has-val': mindmapFilter.ncc !== 'Tất cả' }">
+                <span class="sr-mmf-tag">NCC</span>
+                <select v-model="mindmapFilter.ncc" class="sr-mmf-pill-select">
+                  <option value="Tất cả">Tất cả ({{ mindmapNccOptions.length }})</option>
+                  <option v-for="nccName in mindmapNccOptions" :key="'mmncc-' + nccName" :value="nccName">
+                    {{ nccName }}
+                  </option>
+                </select>
+              </label>
+
+              <label class="sr-mmf-pill" :class="{ 'has-val': mindmapFilter.debtStatus !== 'Tất cả' }">
+                <span class="sr-mmf-tag">NỢ</span>
+                <select v-model="mindmapFilter.debtStatus" class="sr-mmf-pill-select">
+                  <option value="Tất cả">Tất cả công nợ</option>
+                  <option value="Còn công nợ">Còn công nợ</option>
+                  <option value="Quá hạn thanh toán">Quá hạn</option>
+                  <option value="Sắp đến hạn">Sắp đến hạn (&le; 7N)</option>
+                  <option value="Thanh toán 1 phần">Trả 1 phần</option>
+                  <option value="Chưa thanh toán">Chưa trả</option>
+                  <option value="Đã tất toán">Đã tất toán</option>
+                </select>
+              </label>
+
+              <label class="sr-mmf-pill" :class="{ 'has-val': mindmapFilter.sortBy !== 'dsb_desc' }">
+                <span class="sr-mmf-tag">XẾP</span>
+                <select v-model="mindmapFilter.sortBy" class="sr-mmf-pill-select">
+                  <option value="dsb_desc">Doanh số ↓</option>
+                  <option value="margin_desc">Net Margin ↓</option>
+                  <option value="debt_desc">Công nợ ↓</option>
+                  <option value="po_desc">Số PO ↓</option>
+                </select>
+              </label>
             </div>
 
-            <!-- Cụm 3: Lọc Nhà cung cấp (NCC) -->
-            <div class="sr-mmf-group">
-              <span class="sr-mmf-label">NCC:</span>
-              <select v-model="mindmapFilter.ncc" class="sr-mmf-select">
-                <option value="Tất cả">Tất cả NCC ({{ mindmapNccOptions.length }})</option>
-                <option v-for="nccName in mindmapNccOptions" :key="'mmncc-' + nccName" :value="nccName">
-                  {{ nccName }}
-                </option>
-              </select>
-            </div>
+            <!-- Thanh công cụ phụ trên Mobile (Chế độ nhánh & Mở/Thu gọn nhánh) -->
+            <div class="sr-mmf-mob-tools">
+              <div class="sr-mindmap-seg-group">
+                <button
+                  type="button"
+                  class="sr-mindmap-seg-btn"
+                  :class="{ active: reviewMindmapModal.mode === 'hierarchy' }"
+                  @click="reviewMindmapModal.mode = 'hierarchy'"
+                >
+                  <span>Cây KH → PO</span>
+                </button>
+                <button
+                  type="button"
+                  class="sr-mindmap-seg-btn"
+                  :class="{ active: reviewMindmapModal.mode === 'pillars' }"
+                  @click="reviewMindmapModal.mode = 'pillars'"
+                >
+                  <span>4 Trụ cột</span>
+                </button>
+              </div>
 
-            <!-- Cụm 4: Lọc Trạng thái Công nợ -->
-            <div class="sr-mmf-group">
-              <span class="sr-mmf-label">Công nợ:</span>
-              <select v-model="mindmapFilter.debtStatus" class="sr-mmf-select">
-                <option value="Tất cả">Tất cả công nợ</option>
-                <option value="Còn công nợ">Còn công nợ</option>
-                <option value="Quá hạn thanh toán">Quá hạn thanh toán</option>
-                <option value="Sắp đến hạn">Sắp đến hạn (&le; 7 ngày)</option>
-                <option value="Thanh toán 1 phần">Thanh toán 1 phần</option>
-                <option value="Chưa thanh toán">Chưa thanh toán</option>
-                <option value="Đã tất toán">Đã tất toán (Hết nợ)</option>
-              </select>
-            </div>
-
-            <!-- Cụm 5: Sắp xếp thứ tự Công ty -->
-            <div class="sr-mmf-group">
-              <span class="sr-mmf-label">Sắp xếp Cty:</span>
-              <select v-model="mindmapFilter.sortBy" class="sr-mmf-select">
-                <option value="dsb_desc">Doanh số bán ↓</option>
-                <option value="margin_desc">Lợi nhuận Net Margin ↓</option>
-                <option value="debt_desc">Công nợ còn lại ↓</option>
-                <option value="po_desc">Số lượng PO ↓</option>
-              </select>
+              <div class="sr-mmf-mob-branch-btns">
+                <button
+                  v-if="reviewMindmapModal.companyScope"
+                  type="button"
+                  class="sr-mindmap-tool-btn"
+                  @click="clearMindmapCompanyScope()"
+                >
+                  <span>Toàn hệ thống</span>
+                </button>
+                <button type="button" class="sr-mindmap-tool-btn" @click="expandAllMindmapNodes()">
+                  <span>Mở hết</span>
+                </button>
+                <button type="button" class="sr-mindmap-tool-btn" @click="collapseAllMindmapNodes()">
+                  <span>Thu gọn</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -5193,8 +5226,9 @@
                 </div>
 
                 <div class="sr-spb-right">
-                  <div class="sr-spb-timer-mini sr-hide-mob" title="Thời gian chờ chuyển bước (giây)">
+                  <div class="sr-spb-timer-mini sr-hide-mob" title="Thời gian chuyển trang sau khi đọc xong (giây)">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <span class="sr-spb-timer-lbl">Thời gian chuyển trang sau khi đọc xong:</span>
                     <input
                       type="number"
                       min="1"
@@ -5527,6 +5561,567 @@
                 </div>
               </div>
             </div>
+          </div>
+
+          <!-- 4. MOBILE BOTTOM SHEET OVERLAY & DRAWER (CHỈ HIỆN TRÊN MOBILE KHI NHẤN DOCK) -->
+          <div
+            v-if="mindmapMobileSheet"
+            class="sr-mm-sheet-backdrop"
+            @click="mindmapMobileSheet = null"
+          >
+            <div class="sr-mm-bottom-sheet" @click.stop>
+              <div class="sr-mm-sheet-handle-bar" @click="mindmapMobileSheet = null">
+                <span class="sr-mm-sheet-grabber"></span>
+              </div>
+
+              <!-- SHEET 1: CHẾ ĐỘ HIỂN THỊ & BỐ CỤC -->
+              <template v-if="mindmapMobileSheet === 'mode'">
+                <div class="sr-mm-sheet-header">
+                  <div class="sr-mm-sheet-title-wrap">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+                    <h4>Chế độ hiển thị &amp; Sơ đồ</h4>
+                  </div>
+                  <button type="button" class="sr-mm-sheet-close" @click="mindmapMobileSheet = null">✕</button>
+                </div>
+
+                <div class="sr-mm-sheet-body">
+                  <div class="sr-mm-sheet-section">
+                    <label class="sr-mm-sheet-label">Kiểu bố cục sơ đồ</label>
+                    <div class="sr-mm-sheet-grid-3">
+                      <button
+                        type="button"
+                        class="sr-mm-sheet-choice"
+                        :class="{ active: effectiveMindmapLayout === 'canvas' }"
+                        @click="switchMindmapLayout('canvas'); mindmapMobileSheet = null"
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="2" y="9" width="5" height="6" rx="1"/><rect x="17" y="4" width="5" height="6" rx="1"/><rect x="17" y="14" width="5" height="6" rx="1"/><path d="M7 12h5m0 0V7h5m-5 5v5h5"/></svg>
+                        <span>Sơ đồ Ngang</span>
+                      </button>
+                      <button
+                        type="button"
+                        class="sr-mm-sheet-choice"
+                        :class="{ active: effectiveMindmapLayout === 'vcanvas' }"
+                        @click="switchMindmapLayout('vcanvas'); mindmapMobileSheet = null"
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="9" y="2" width="6" height="5" rx="1"/><rect x="4" y="17" width="6" height="5" rx="1"/><rect x="14" y="17" width="6" height="5" rx="1"/><path d="M12 7v5m0 0H7v5m5-5h5v5"/></svg>
+                        <span>Sơ đồ Dọc</span>
+                      </button>
+                      <button
+                        type="button"
+                        class="sr-mm-sheet-choice"
+                        :class="{ active: effectiveMindmapLayout === 'tree' }"
+                        @click="switchMindmapLayout('tree'); mindmapMobileSheet = null"
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                        <span>Cây Dọc</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="sr-mm-sheet-section">
+                    <label class="sr-mm-sheet-label">Cấu trúc phân nhánh</label>
+                    <div class="sr-mm-sheet-grid-2">
+                      <button
+                        type="button"
+                        class="sr-mm-sheet-choice"
+                        :class="{ active: reviewMindmapModal.mode === 'hierarchy' }"
+                        @click="reviewMindmapModal.mode = 'hierarchy'; mindmapMobileSheet = null"
+                      >
+                        <span>Cây Khách hàng → PO</span>
+                      </button>
+                      <button
+                        type="button"
+                        class="sr-mm-sheet-choice"
+                        :class="{ active: reviewMindmapModal.mode === 'pillars' }"
+                        @click="reviewMindmapModal.mode = 'pillars'; mindmapMobileSheet = null"
+                      >
+                        <span>4 Trụ cột Kinh doanh</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="sr-mm-sheet-section">
+                    <label class="sr-mm-sheet-label">Thao tác nhánh &amp; Góc nhìn</label>
+                    <div class="sr-mm-sheet-action-row">
+                      <button type="button" class="sr-mm-sheet-action-btn" @click="expandAllMindmapNodes(); mindmapMobileSheet = null">
+                        <span>Mở hết nhánh</span>
+                      </button>
+                      <button type="button" class="sr-mm-sheet-action-btn" @click="collapseAllMindmapNodes(); mindmapMobileSheet = null">
+                        <span>Thu gọn nhánh</span>
+                      </button>
+                      <button
+                        v-if="effectiveMindmapLayout === 'canvas' || effectiveMindmapLayout === 'vcanvas'"
+                        type="button"
+                        class="sr-mm-sheet-action-btn"
+                        @click="mindmapTourActive ? focusCameraOnTourSpotlight() : resetMindmapViewport(); mindmapMobileSheet = null"
+                      >
+                        <span>Căn chuẩn góc nhìn ({{ Math.round(reviewMindmapModal.zoom * 100) }}%)</span>
+                      </button>
+                      <button
+                        v-if="reviewMindmapModal.companyScope"
+                        type="button"
+                        class="sr-mm-sheet-action-btn is-accent"
+                        @click="clearMindmapCompanyScope(); mindmapMobileSheet = null"
+                      >
+                        <span>Về Sơ đồ Toàn hệ thống</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </template>
+
+              <!-- SHEET 2: BỘ LỌC DỮ LIỆU REVIEW -->
+              <template v-else-if="mindmapMobileSheet === 'filter'">
+                <div class="sr-mm-sheet-header">
+                  <div class="sr-mm-sheet-title-wrap">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                    <h4>Bộ lọc dữ liệu Review</h4>
+                    <span v-if="mindmapActiveFilterCount > 0" class="sr-mm-filter-badge">{{ mindmapActiveFilterCount }}</span>
+                  </div>
+                  <div class="sr-mm-sheet-header-actions">
+                    <button
+                      v-if="mindmapActiveFilterCount > 0"
+                      type="button"
+                      class="sr-mm-sheet-reset-btn"
+                      @click="resetMindmapFilters()"
+                    >
+                      Đặt lại
+                    </button>
+                    <button type="button" class="sr-mm-sheet-close" @click="mindmapMobileSheet = null">✕</button>
+                  </div>
+                </div>
+
+                <div class="sr-mm-sheet-body">
+                  <!-- Tìm kiếm nhanh -->
+                  <div class="sr-mm-sheet-section">
+                    <label class="sr-mm-sheet-label">Tìm kiếm nhanh</label>
+                    <div class="sr-mindmap-search-box is-sheet-search">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                      <input
+                        type="text"
+                        v-model="reviewMindmapModal.searchQuery"
+                        placeholder="Tìm công ty, KH, số PO, NCC..."
+                        class="sr-mindmap-search-input"
+                      />
+                      <button
+                        v-if="reviewMindmapModal.searchQuery"
+                        type="button"
+                        class="sr-mindmap-search-clear"
+                        @click="reviewMindmapModal.searchQuery = ''"
+                      >✕</button>
+                    </div>
+                  </div>
+
+                  <!-- Thời gian -->
+                  <div class="sr-mm-sheet-section">
+                    <label class="sr-mm-sheet-label">Kỳ thời gian</label>
+                    <div class="sr-mmf-time-row is-sheet-time">
+                      <div class="sr-mmf-seg">
+                        <button type="button" class="sr-mmf-seg-btn" :class="{ active: mindmapFilter.timeMode === 'all' }" @click="mindmapFilter.timeMode = 'all'">Tất cả</button>
+                        <button type="button" class="sr-mmf-seg-btn" :class="{ active: mindmapFilter.timeMode === 'day' }" @click="setMindmapTimeMode('day')">Ngày</button>
+                        <button type="button" class="sr-mmf-seg-btn" :class="{ active: mindmapFilter.timeMode === 'month' }" @click="setMindmapTimeMode('month')">Tháng</button>
+                        <button type="button" class="sr-mmf-seg-btn" :class="{ active: mindmapFilter.timeMode === 'year' }" @click="setMindmapTimeMode('year')">Năm</button>
+                      </div>
+
+                      <div v-if="mindmapFilter.timeMode !== 'all'" class="sr-mmf-period-ctrl">
+                        <button type="button" class="sr-mmf-step-btn" @click="shiftMindmapPeriod(-1)" title="Lùi kỳ trước">‹</button>
+                        <template v-if="mindmapFilter.timeMode === 'day'">
+                          <input type="date" v-model="mindmapFilter.dateFrom" :max="mindmapFilter.dateTo" class="sr-mmf-input is-date" />
+                          <span class="sr-mmf-sep">→</span>
+                          <input type="date" v-model="mindmapFilter.dateTo" :min="mindmapFilter.dateFrom" class="sr-mmf-input is-date" />
+                        </template>
+                        <template v-else-if="mindmapFilter.timeMode === 'month'">
+                          <input type="month" v-model="mindmapFilter.monthFrom" :max="mindmapFilter.monthTo" class="sr-mmf-input is-month" />
+                          <span class="sr-mmf-sep">→</span>
+                          <input type="month" v-model="mindmapFilter.monthTo" :min="mindmapFilter.monthFrom" class="sr-mmf-input is-month" />
+                        </template>
+                        <template v-else-if="mindmapFilter.timeMode === 'year'">
+                          <select v-model="mindmapFilter.yearFrom" class="sr-mmf-select is-year">
+                            <option value="">Tất cả</option>
+                            <option v-for="y in availableYearsList" :key="'mmyf-mob-' + y" :value="String(y)">{{ y }}</option>
+                          </select>
+                          <span class="sr-mmf-sep">→</span>
+                          <select v-model="mindmapFilter.yearTo" class="sr-mmf-select is-year">
+                            <option value="">Tất cả</option>
+                            <option v-for="y in availableYearsList" :key="'mmyt-mob-' + y" :value="String(y)">{{ y }}</option>
+                          </select>
+                        </template>
+                        <button type="button" class="sr-mmf-step-btn" @click="shiftMindmapPeriod(1)" title="Tiến kỳ tiếp theo">›</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 4 tiêu chí lọc -->
+                  <div class="sr-mm-sheet-section">
+                    <label class="sr-mm-sheet-label">Điều kiện lọc chi tiết</label>
+                    <div class="sr-mmf-compact-grid is-sheet-grid">
+                      <label class="sr-mmf-pill" :class="{ 'has-val': mindmapFilter.customer !== 'Tất cả' }">
+                        <span class="sr-mmf-tag">CTY</span>
+                        <select v-model="mindmapFilter.customer" class="sr-mmf-pill-select" @change="reviewMindmapModal.companyScope = null">
+                          <option value="Tất cả">Tất cả ({{ uniqueCustomers.length }})</option>
+                          <option v-for="c in uniqueCustomers" :key="'mmc-mob-' + (c.companyCode || c.companyName)" :value="c.companyName">
+                            {{ c.companyName }} ({{ c.poCount }} PO)
+                          </option>
+                        </select>
+                      </label>
+
+                      <label class="sr-mmf-pill" :class="{ 'has-val': mindmapFilter.ncc !== 'Tất cả' }">
+                        <span class="sr-mmf-tag">NCC</span>
+                        <select v-model="mindmapFilter.ncc" class="sr-mmf-pill-select">
+                          <option value="Tất cả">Tất cả ({{ mindmapNccOptions.length }})</option>
+                          <option v-for="nccName in mindmapNccOptions" :key="'mmncc-mob-' + nccName" :value="nccName">
+                            {{ nccName }}
+                          </option>
+                        </select>
+                      </label>
+
+                      <label class="sr-mmf-pill" :class="{ 'has-val': mindmapFilter.debtStatus !== 'Tất cả' }">
+                        <span class="sr-mmf-tag">NỢ</span>
+                        <select v-model="mindmapFilter.debtStatus" class="sr-mmf-pill-select">
+                          <option value="Tất cả">Tất cả công nợ</option>
+                          <option value="Còn công nợ">Còn công nợ</option>
+                          <option value="Quá hạn thanh toán">Quá hạn</option>
+                          <option value="Sắp đến hạn">Sắp đến hạn (&le; 7N)</option>
+                          <option value="Thanh toán 1 phần">Trả 1 phần</option>
+                          <option value="Chưa thanh toán">Chưa trả</option>
+                          <option value="Đã tất toán">Đã tất toán</option>
+                        </select>
+                      </label>
+
+                      <label class="sr-mmf-pill" :class="{ 'has-val': mindmapFilter.sortBy !== 'dsb_desc' }">
+                        <span class="sr-mmf-tag">XẾP</span>
+                        <select v-model="mindmapFilter.sortBy" class="sr-mmf-pill-select">
+                          <option value="dsb_desc">Doanh số ↓</option>
+                          <option value="margin_desc">Net Margin ↓</option>
+                          <option value="debt_desc">Công nợ ↓</option>
+                          <option value="po_desc">Số PO ↓</option>
+                        </select>
+                      </label>
+                    </div>
+                  </div>
+
+                  <button type="button" class="sr-mm-sheet-primary-btn" @click="mindmapMobileSheet = null">
+                    Áp dụng &amp; Xem sơ đồ
+                  </button>
+                </div>
+              </template>
+
+              <!-- SHEET 3: ĐỌC THUYẾT MINH TỰ ĐỘNG -->
+              <template v-else-if="mindmapMobileSheet === 'voice'">
+                <div class="sr-mm-sheet-header">
+                  <div class="sr-mm-sheet-title-wrap">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+                    <h4>Đọc thuyết minh tự động</h4>
+                  </div>
+                  <button type="button" class="sr-mm-sheet-close" @click="mindmapMobileSheet = null">✕</button>
+                </div>
+
+                <div class="sr-mm-sheet-body">
+                  <!-- Trạng thái & Điều khiển chính -->
+                  <div class="sr-mm-sheet-section">
+                    <div class="sr-mm-sheet-voice-hero">
+                      <button
+                        v-if="!mindmapTourActive || !mindmapVoiceEnabled"
+                        type="button"
+                        class="sr-mm-sheet-primary-btn is-voice"
+                        @click="
+                          if (effectiveMindmapLayout === 'tree') switchMindmapLayout('canvas');
+                          startOrSwitchMindmapTourMode(true);
+                        "
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                        <span>Bắt đầu Đọc thuyết minh ({{ mindmapTourSteps.length }} bước)</span>
+                      </button>
+
+                      <div v-else class="sr-mm-sheet-active-controls">
+                        <button
+                          type="button"
+                          class="sr-mm-sheet-ctrl-btn is-play"
+                          :class="{ 'is-playing': mindmapSlideAutoPlay }"
+                          @click="toggleMindmapAutoPlay()"
+                        >
+                          <svg v-if="!mindmapSlideAutoPlay" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                          <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                          <span>{{ mindmapSlideAutoPlay ? (mindmapVoiceSpeaking ? 'Đang đọc...' : `Chuyển sau ${mindmapAutoNextRemainingSec || mindmapStepDurationSec}s`) : 'Tiếp tục đọc' }}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          class="sr-mm-sheet-ctrl-btn"
+                          @click="replayCurrentTourStepVoice()"
+                        >
+                          <span>Đọc lại bước này</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          class="sr-mm-sheet-ctrl-btn is-danger"
+                          @click="stopMindmapTour()"
+                        >
+                          <span>Thoát đọc</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Cấu hình Tốc độ đọc & Thời gian chuyển trang sau khi đọc xong -->
+                  <div class="sr-mm-sheet-section">
+                    <div class="sr-mm-sheet-setting-card">
+                      <div class="sr-mm-sheet-setting-row">
+                        <span class="sr-mm-sheet-setting-lbl">Thời gian chuyển trang sau khi đọc xong</span>
+                        <div class="sr-mindmap-timer-cluster is-sheet-timer">
+                          <button type="button" class="sr-mindmap-timer-step" @click="adjustMindmapStepDuration(-1)">−</button>
+                          <input
+                            type="number"
+                            min="1"
+                            max="300"
+                            step="1"
+                            v-model.number="mindmapStepDurationSec"
+                            @change="onMindmapStepDurationChange()"
+                            class="sr-mindmap-timer-input"
+                          />
+                          <span class="sr-mindmap-timer-unit">s</span>
+                          <button type="button" class="sr-mindmap-timer-step" @click="adjustMindmapStepDuration(1)">+</button>
+                        </div>
+                      </div>
+
+                      <div class="sr-mm-sheet-setting-row">
+                        <span class="sr-mm-sheet-setting-lbl">Tốc độ giọng đọc Tiếng Việt</span>
+                        <select
+                          v-model.number="mindmapVoiceRate"
+                          class="sr-mindmap-voice-rate is-sheet-rate"
+                          @change="onMindmapVoiceRateChange()"
+                        >
+                          <option :value="0.9">0.9x (Chậm)</option>
+                          <option :value="1.0">1.0x (Chuẩn)</option>
+                          <option :value="1.25">1.25x (Nhanh vừa)</option>
+                          <option :value="1.5">1.5x (Nhanh)</option>
+                          <option :value="1.7">1.7x (Rất nhanh)</option>
+                          <option :value="2.0">2.0x (Tối đa)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Nội dung bước đang đọc & Điều hướng nhanh -->
+                  <div v-if="currentTourStep" class="sr-mm-sheet-section">
+                    <div class="sr-mm-sheet-step-box">
+                      <div class="sr-mm-sheet-step-top">
+                        <span class="sr-mm-sheet-step-badge">BƯỚC {{ mindmapSlideIdx + 1 }} / {{ mindmapTourSteps.length }}</span>
+                        <span class="sr-mm-sheet-step-stage">{{ currentTourStep.stageBadge }}</span>
+                      </div>
+                      <div class="sr-mm-sheet-step-title">{{ currentTourStep.title }}</div>
+                      <div class="sr-mm-sheet-step-sub">{{ currentTourStep.subtitle }}</div>
+                      <div class="sr-mm-sheet-step-nav">
+                        <button type="button" class="sr-mm-sheet-nav-btn" :disabled="mindmapSlideIdx <= 0" @click="prevMindmapSlide()">‹ Bước trước</button>
+                        <button type="button" class="sr-mm-sheet-nav-btn is-primary" :disabled="mindmapSlideIdx >= mindmapTourSteps.length - 1" @click="nextMindmapSlide()">Bước tiếp ›</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Danh sách các bước để nhảy nhanh -->
+                  <div v-if="mindmapTourSteps.length > 0" class="sr-mm-sheet-section">
+                    <label class="sr-mm-sheet-label">Chọn bước thuyết minh ({{ mindmapTourSteps.length }} bước)</label>
+                    <div class="sr-mm-sheet-steps-list">
+                      <button
+                        v-for="(st, sIdx) in mindmapTourSteps"
+                        :key="'mob-voice-st-' + st.id"
+                        type="button"
+                        class="sr-mm-sheet-step-item"
+                        :class="{ active: mindmapTourActive && mindmapSlideIdx === sIdx }"
+                        @click="
+                          if (effectiveMindmapLayout === 'tree') switchMindmapLayout('canvas');
+                          if (!mindmapTourActive || !mindmapVoiceEnabled) startOrSwitchMindmapTourMode(true);
+                          goToMindmapSlide(sIdx);
+                        "
+                      >
+                        <span class="sr-mm-sheet-step-num">{{ sIdx + 1 }}</span>
+                        <span class="sr-mm-sheet-step-name">{{ st.shortLabel }}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </template>
+
+              <!-- SHEET 4: TRÌNH CHIẾU SLIDE TỪNG BƯỚC -->
+              <template v-else-if="mindmapMobileSheet === 'slide'">
+                <div class="sr-mm-sheet-header">
+                  <div class="sr-mm-sheet-title-wrap">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    <h4>Trình chiếu Slide từng bước</h4>
+                  </div>
+                  <button type="button" class="sr-mm-sheet-close" @click="mindmapMobileSheet = null">✕</button>
+                </div>
+
+                <div class="sr-mm-sheet-body">
+                  <div class="sr-mm-sheet-section">
+                    <button
+                      v-if="!mindmapTourActive || mindmapVoiceEnabled"
+                      type="button"
+                      class="sr-mm-sheet-primary-btn"
+                      @click="
+                        if (effectiveMindmapLayout === 'tree') switchMindmapLayout('canvas');
+                        startOrSwitchMindmapTourMode(false);
+                      "
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                      <span>Bắt đầu Slide không giọng đọc ({{ mindmapTourSteps.length }} bước)</span>
+                    </button>
+
+                    <div v-else class="sr-mm-sheet-active-controls">
+                      <button
+                        type="button"
+                        class="sr-mm-sheet-ctrl-btn is-play"
+                        :class="{ 'is-playing': mindmapSlideAutoPlay }"
+                        @click="toggleMindmapAutoPlay()"
+                      >
+                        <svg v-if="!mindmapSlideAutoPlay" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                        <span>{{ mindmapSlideAutoPlay ? `Tạm dừng (${mindmapAutoNextRemainingSec || mindmapStepDurationSec}s)` : 'Tự động chạy Slide' }}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        class="sr-mm-sheet-ctrl-btn"
+                        @click="focusCameraOnTourSpotlight(); mindmapMobileSheet = null"
+                      >
+                        <span>Căn giữa Card</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        class="sr-mm-sheet-ctrl-btn is-danger"
+                        @click="stopMindmapTour()"
+                      >
+                        <span>Thoát Slide</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Thời gian chuyển trang sau khi đọc xong / chuyển bước -->
+                  <div class="sr-mm-sheet-section">
+                    <div class="sr-mm-sheet-setting-card">
+                      <div class="sr-mm-sheet-setting-row">
+                        <span class="sr-mm-sheet-setting-lbl">Thời gian chuyển trang sau khi đọc xong</span>
+                        <div class="sr-mindmap-timer-cluster is-sheet-timer">
+                          <button type="button" class="sr-mindmap-timer-step" @click="adjustMindmapStepDuration(-1)">−</button>
+                          <input
+                            type="number"
+                            min="1"
+                            max="300"
+                            step="1"
+                            v-model.number="mindmapStepDurationSec"
+                            @change="onMindmapStepDurationChange()"
+                            class="sr-mindmap-timer-input"
+                          />
+                          <span class="sr-mindmap-timer-unit">s</span>
+                          <button type="button" class="sr-mindmap-timer-step" @click="adjustMindmapStepDuration(1)">+</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Điều hướng Bước hiện tại -->
+                  <div v-if="currentTourStep" class="sr-mm-sheet-section">
+                    <div class="sr-mm-sheet-step-box">
+                      <div class="sr-mm-sheet-step-top">
+                        <span class="sr-mm-sheet-step-badge">SLIDE {{ mindmapSlideIdx + 1 }} / {{ mindmapTourSteps.length }}</span>
+                        <span class="sr-mm-sheet-step-stage">{{ currentTourStep.stageBadge }}</span>
+                      </div>
+                      <div class="sr-mm-sheet-step-title">{{ currentTourStep.title }}</div>
+                      <div class="sr-mm-sheet-step-sub">{{ currentTourStep.subtitle }}</div>
+                      <div class="sr-mm-sheet-step-nav">
+                        <button type="button" class="sr-mm-sheet-nav-btn" :disabled="mindmapSlideIdx <= 0" @click="goToMindmapSlide(0)">⏮ Đầu</button>
+                        <button type="button" class="sr-mm-sheet-nav-btn" :disabled="mindmapSlideIdx <= 0" @click="prevMindmapSlide()">‹ Trước</button>
+                        <button type="button" class="sr-mm-sheet-nav-btn is-primary" :disabled="mindmapSlideIdx >= mindmapTourSteps.length - 1" @click="nextMindmapSlide()">Tiếp theo ›</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Danh sách Slide -->
+                  <div v-if="mindmapTourSteps.length > 0" class="sr-mm-sheet-section">
+                    <label class="sr-mm-sheet-label">Danh sách các bước Slide ({{ mindmapTourSteps.length }})</label>
+                    <div class="sr-mm-sheet-steps-list">
+                      <button
+                        v-for="(st, sIdx) in mindmapTourSteps"
+                        :key="'mob-slide-st-' + st.id"
+                        type="button"
+                        class="sr-mm-sheet-step-item"
+                        :class="{ active: mindmapTourActive && mindmapSlideIdx === sIdx }"
+                        @click="
+                          if (effectiveMindmapLayout === 'tree') switchMindmapLayout('canvas');
+                          if (!mindmapTourActive) startOrSwitchMindmapTourMode(false);
+                          goToMindmapSlide(sIdx);
+                        "
+                      >
+                        <span class="sr-mm-sheet-step-num">{{ sIdx + 1 }}</span>
+                        <span class="sr-mm-sheet-step-name">{{ st.shortLabel }}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- 5. THANH BOTTOM DOCK RIÊNG TRONG MODAL (CHỈ ÁP DỤNG CHO MOBILE <= 768PX) -->
+          <div class="sr-mindmap-mobile-dock" @mousedown.stop @touchstart.stop>
+            <button
+              type="button"
+              class="sr-mm-dock-btn"
+              :class="{ active: mindmapMobileSheet === 'mode' }"
+              @click="toggleMindmapMobileSheet('mode')"
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+              <span class="sr-mm-dock-lbl">Chế độ</span>
+              <span class="sr-mm-dock-sub">{{ effectiveMindmapLayout === 'canvas' ? 'Ngang' : (effectiveMindmapLayout === 'vcanvas' ? 'Dọc' : 'Cây') }}</span>
+            </button>
+
+            <button
+              type="button"
+              class="sr-mm-dock-btn"
+              :class="{ active: mindmapMobileSheet === 'filter', 'has-badge': mindmapActiveFilterCount > 0 }"
+              @click="toggleMindmapMobileSheet('filter')"
+            >
+              <div class="sr-mm-dock-icon-wrap">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                <span v-if="mindmapActiveFilterCount > 0" class="sr-mm-dock-badge">{{ mindmapActiveFilterCount }}</span>
+              </div>
+              <span class="sr-mm-dock-lbl">Bộ lọc</span>
+              <span class="sr-mm-dock-sub">{{ mindmapActiveFilterCount > 0 ? `${mindmapActiveFilterCount} đang lọc` : 'Tất cả' }}</span>
+            </button>
+
+            <button
+              type="button"
+              class="sr-mm-dock-btn"
+              :class="{
+                active: mindmapMobileSheet === 'voice',
+                'is-running': mindmapTourActive && mindmapVoiceEnabled
+              }"
+              @click="toggleMindmapMobileSheet('voice')"
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+              <span class="sr-mm-dock-lbl">Đọc</span>
+              <span class="sr-mm-dock-sub">
+                {{ mindmapTourActive && mindmapVoiceEnabled ? `${mindmapSlideIdx + 1}/${mindmapTourSteps.length} • ${mindmapStepDurationSec}s` : 'Thuyết minh' }}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              class="sr-mm-dock-btn"
+              :class="{
+                active: mindmapMobileSheet === 'slide',
+                'is-running': mindmapTourActive && !mindmapVoiceEnabled
+              }"
+              @click="toggleMindmapMobileSheet('slide')"
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <span class="sr-mm-dock-lbl">Slide</span>
+              <span class="sr-mm-dock-sub">
+                {{ mindmapTourActive && !mindmapVoiceEnabled ? `${mindmapSlideIdx + 1}/${mindmapTourSteps.length} • ${mindmapStepDurationSec}s` : 'Trình chiếu' }}
+              </span>
+            </button>
           </div>
         </div>
       </div>
@@ -23049,10 +23644,16 @@ const mindmapSlideAutoPlay = ref(false)
 let mindmapAutoPlayTimer: ReturnType<typeof setInterval> | null = null
 let mindmapCameraAnimTimer: ReturnType<typeof setTimeout> | null = null
 
-// Trạng thái Thời gian chuyển bước (người dùng tự setup) & Giọng đọc Thuyết minh Tiếng Việt Chuẩn (vi-VN)
-const mindmapStepDurationSec = ref<number>(5)
+// Trạng thái Thời gian chuyển bước (người dùng tự setup, mặc định 1s) & Giọng đọc Thuyết minh Tiếng Việt Chuẩn (vi-VN)
+const mindmapStepDurationSec = ref<number>(1)
 const mindmapAutoNextRemainingSec = ref<number>(0)
 let mindmapCountdownInterval: ReturnType<typeof setInterval> | null = null
+
+// Trạng thái Bottom Sheet trên Mobile cho Modal Review Kinh Doanh
+const mindmapMobileSheet = ref<'mode' | 'filter' | 'voice' | 'slide' | null>(null)
+function toggleMindmapMobileSheet(tab: 'mode' | 'filter' | 'voice' | 'slide') {
+  mindmapMobileSheet.value = mindmapMobileSheet.value === tab ? null : tab
+}
 
 const mindmapVoiceEnabled = ref(true)
 const mindmapVoiceSpeaking = ref(false)
@@ -24521,6 +25122,7 @@ watch(() => reviewMindmapModal.value.show, (isOpen) => {
     stopMindmapVoiceSpeech()
     mindmapActiveReadingCardId.value = ''
     mindmapTourActive.value = false
+    mindmapMobileSheet.value = null
   }
 })
 
@@ -24572,6 +25174,8 @@ function openReviewMindmapModal(group?: any) {
   stopMindmapAutoPlay()
   stopMindmapVoiceSpeech()
   mindmapTourActive.value = false
+  mindmapFilterExpanded.value = false
+  mindmapMobileSheet.value = null
 
   // Kế thừa trạng thái bộ lọc hiện tại từ trang chính sang bộ lọc độc lập của Review
   mindmapFilter.value = {
@@ -45645,44 +46249,40 @@ const isAnySaleModalOpen = computed(() => Boolean(
 }
 
 @media (max-width: 1080px) {
+  .sr-mindmap-header {
+    padding: 9px 12px;
+  }
+
   .sr-mindmap-toolbar {
-    padding: 8px 12px;
-    gap: 8px;
+    padding: 6px 10px;
+    gap: 6px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
   }
 
   .sr-mindmap-layout-switch {
-    width: 100%;
-    overflow-x: auto;
+    width: auto;
+    flex-shrink: 0;
     flex-wrap: nowrap;
   }
 
   .sr-mindmap-layout-btn {
     white-space: nowrap;
-    flex: 1 0 auto;
-    justify-content: center;
-  }
-
-  .sr-mindmap-seg-group {
-    width: 100%;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .sr-mindmap-seg-btn {
-    justify-content: center;
-    padding: 6px 8px;
+    padding: 5px 8px;
     font-size: 11.5px;
+    justify-content: center;
   }
 
-  .sr-mindmap-search-box {
-    max-width: none;
-    width: 100%;
-    flex: 1 1 100%;
+  .sr-mindmap-search-cluster {
+    flex: 0 0 auto;
+    min-width: 0;
   }
 
   .sr-mindmap-actions-right {
-    width: 100%;
-    justify-content: space-between;
+    width: auto;
+    flex-shrink: 0;
+    flex-wrap: nowrap;
+    gap: 6px;
   }
 
   .sr-vtree-root-grid {
@@ -46678,24 +47278,29 @@ const isAnySaleModalOpen = computed(() => Boolean(
 }
 
 
-/* ─── REVIEW INDEPENDENT FILTER BAR & VOICE NARRATION CONTROLS ─── */
+/* ─── REVIEW INDEPENDENT FILTER BAR & VOICE NARRATION CONTROLS (COMPACT + MOBILE TOGGLE) ─── */
+.sr-mm-lbl-mob {
+  display: none;
+}
+
 .sr-mindmap-search-cluster {
   display: flex;
   align-items: center;
   gap: 8px;
   flex: 1;
-  min-width: 240px;
+  min-width: 0;
 }
 
 .sr-mindmap-search-cluster .sr-mindmap-search-box {
   flex: 1;
+  min-width: 180px;
 }
 
 .sr-mindmap-filter-toggle-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6.5px 12px;
+  gap: 5px;
+  padding: 6px 11px;
   border-radius: 8px;
   border: 1px solid #334155;
   background: #0f172a;
@@ -46727,6 +47332,15 @@ const isAnySaleModalOpen = computed(() => Boolean(
   color: #0369a1;
 }
 
+.sr-mm-filter-caret {
+  transition: transform 0.2s ease;
+  opacity: 0.85;
+}
+
+.sr-mindmap-filter-toggle-btn.is-open .sr-mm-filter-caret {
+  transform: rotate(180deg);
+}
+
 .sr-mm-filter-badge {
   display: inline-flex;
   align-items: center;
@@ -46742,7 +47356,7 @@ const isAnySaleModalOpen = computed(() => Boolean(
 }
 
 .sr-mindmap-filter-reset-btn {
-  padding: 6.5px 10px;
+  padding: 6px 10px;
   border-radius: 8px;
   border: 1px solid rgba(244, 63, 94, 0.45);
   background: rgba(244, 63, 94, 0.12);
@@ -46811,8 +47425,8 @@ const isAnySaleModalOpen = computed(() => Boolean(
 }
 
 .sr-mindmap-voice-rate {
-  padding: 5.5px 8px;
-  border-radius: 8px;
+  padding: 4px 7px;
+  border-radius: 7px;
   border: 1px solid rgba(16, 185, 129, 0.4);
   background: #0f172a;
   color: #34d399;
@@ -46828,13 +47442,13 @@ const isAnySaleModalOpen = computed(() => Boolean(
   color: #047857;
 }
 
-/* Review Independent Filter Bar */
+/* Review Compact Filter Bar */
 .sr-mindmap-filter-bar {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   flex-wrap: wrap;
-  padding: 9px 18px;
+  padding: 7px 16px;
   background: #0b1120;
   border-bottom: 1px solid #1e293b;
   flex-shrink: 0;
@@ -46845,25 +47459,16 @@ const isAnySaleModalOpen = computed(() => Boolean(
   border-bottom-color: #cbd5e1;
 }
 
-.sr-mmf-group {
+.sr-mmf-mob-search-row,
+.sr-mmf-mob-tools {
+  display: none;
+}
+
+.sr-mmf-time-row {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-}
-
-.sr-mmf-group.is-time-group {
   flex-wrap: wrap;
-}
-
-.sr-mmf-label {
-  font-size: 11.5px;
-  font-weight: 800;
-  color: #94a3b8;
-  white-space: nowrap;
-}
-
-.sr-mindmap-modal.is-light .sr-mmf-label {
-  color: #475569;
 }
 
 .sr-mmf-seg {
@@ -46881,14 +47486,15 @@ const isAnySaleModalOpen = computed(() => Boolean(
 }
 
 .sr-mmf-seg-btn {
-  padding: 4px 9px;
+  padding: 4px 8px;
   border-radius: 6px;
   border: none;
   background: transparent;
   color: #94a3b8;
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 700;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .sr-mindmap-modal.is-light .sr-mmf-seg-btn {
@@ -46934,13 +47540,13 @@ const isAnySaleModalOpen = computed(() => Boolean(
 
 .sr-mmf-input,
 .sr-mmf-select {
-  height: 28px;
-  padding: 0 9px;
-  border-radius: 7px;
+  height: 26px;
+  padding: 0 7px;
+  border-radius: 6px;
   border: 1px solid #334155;
   background: #0f172a;
   color: #f8fafc;
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 700;
   outline: none;
 }
@@ -46952,13 +47558,204 @@ const isAnySaleModalOpen = computed(() => Boolean(
   color: #0f172a;
 }
 
-.sr-mmf-select.is-company {
-  max-width: 220px;
-}
-
 .sr-mmf-sep {
   font-size: 11px;
   color: #64748b;
+}
+
+/* Compact Pill Selects Grid */
+.sr-mmf-compact-grid {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.sr-mmf-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 7px;
+  border: 1px solid #1e293b;
+  background: #0f172a;
+  min-width: 0;
+  max-width: 220px;
+  transition: border-color 0.15s ease;
+}
+
+.sr-mindmap-modal.is-light .sr-mmf-pill {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+.sr-mmf-pill.has-val {
+  border-color: rgba(56, 189, 248, 0.55);
+  background: rgba(2, 132, 199, 0.12);
+}
+
+.sr-mindmap-modal.is-light .sr-mmf-pill.has-val {
+  border-color: #0284c7;
+  background: #e0f2fe;
+}
+
+.sr-mmf-tag {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: #38bdf8;
+  flex-shrink: 0;
+}
+
+.sr-mindmap-modal.is-light .sr-mmf-tag {
+  color: #0284c7;
+}
+
+.sr-mmf-pill-select {
+  border: none;
+  background: transparent;
+  color: #f8fafc;
+  font-size: 11.5px;
+  font-weight: 700;
+  outline: none;
+  width: 100%;
+  min-width: 0;
+  cursor: pointer;
+  text-overflow: ellipsis;
+}
+
+.sr-mmf-pill-select option {
+  background: #0f172a;
+  color: #f8fafc;
+}
+
+.sr-mindmap-modal.is-light .sr-mmf-pill-select {
+  color: #0f172a;
+}
+
+.sr-mindmap-modal.is-light .sr-mmf-pill-select option {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+@media (max-width: 768px) {
+  .sr-mm-lbl-pc {
+    display: none !important;
+  }
+
+  .sr-mm-lbl-mob {
+    display: inline !important;
+  }
+
+  .sr-mindmap-search-cluster {
+    flex: 0 0 auto;
+  }
+
+  .sr-mindmap-filter-toggle-btn {
+    padding: 5px 9px;
+    font-size: 11.5px;
+  }
+
+  .sr-mindmap-mode-pill {
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+
+  .sr-mindmap-filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding: 8px 10px;
+  }
+
+  .sr-mmf-mob-search-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .sr-mindmap-search-box.is-mob-filter-search {
+    flex: 1;
+    min-width: 0;
+    max-width: none;
+    padding: 4px 9px;
+  }
+
+  .sr-mmf-time-row {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .sr-mmf-seg {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .sr-mmf-seg-btn {
+    text-align: center;
+    padding: 4px 4px;
+  }
+
+  .sr-mmf-period-ctrl {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .sr-mmf-period-ctrl .sr-mmf-input,
+  .sr-mmf-period-ctrl .sr-mmf-select {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .sr-mmf-compact-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .sr-mmf-pill {
+    max-width: none;
+    width: 100%;
+  }
+
+  .sr-mmf-mob-tools {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .sr-mmf-mob-tools .sr-mindmap-seg-group {
+    width: auto;
+    display: inline-flex;
+    flex: 1;
+  }
+
+  .sr-mmf-mob-tools .sr-mindmap-seg-btn {
+    flex: 1;
+    padding: 4px 6px;
+    font-size: 11px;
+    justify-content: center;
+  }
+
+  .sr-mmf-mob-branch-btns {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .sr-mmf-mob-branch-btns .sr-mindmap-tool-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
 }
 
 .sr-spb-btn.is-voice-toggle.active {
@@ -47441,5 +48238,773 @@ const isAnySaleModalOpen = computed(() => Boolean(
   background: #f0f9ff;
   border-color: #bae6fd;
   color: #0369a1;
+}
+
+/* =========================================================================
+   NHÃN THỜI GIAN CHUYỂN TRANG SAU KHI ĐỌC XONG + MOBILE DOCK & BOTTOM SHEET
+   + FIX MODAL PO MOBILE (CHỐNG AUTO-ZOOM & KÉO NGANG)
+   ========================================================================= */
+.sr-mindmap-timer-lbl,
+.sr-spb-timer-lbl {
+  font-size: 11px;
+  font-weight: 600;
+  color: #cbd5e1;
+  white-space: nowrap;
+  padding-left: 4px;
+  padding-right: 2px;
+}
+
+.sr-mindmap-modal.is-light .sr-mindmap-timer-lbl,
+.sr-mindmap-modal.is-light .sr-spb-timer-lbl {
+  color: #475569;
+}
+
+/* Mặc định trên PC ẩn Mobile Dock & Mobile Bottom Sheet */
+.sr-mindmap-mobile-dock,
+.sr-mm-sheet-backdrop {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  /* -----------------------------------------------------------------------
+     1. FIX MODAL PO (.sr-po-modal) TRÊN MOBILE:
+        - Chống tự động Zoom In / Zoom Out khi chạm vào ô nhập liệu (font-size >= 16px)
+        - Khoá hoàn toàn kéo qua kéo lại phương ngang (overflow-x: hidden, touch-action: pan-y)
+     ----------------------------------------------------------------------- */
+  .sr-modal-overlay:has(.sr-po-modal) {
+    padding: 0 !important;
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+    touch-action: pan-y;
+  }
+
+  .sr-po-modal {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    overflow-x: hidden !important;
+    overscroll-behavior-x: none !important;
+    touch-action: pan-y;
+  }
+
+  .sr-po-modal,
+  .sr-po-modal .sr-po-modal-header,
+  .sr-po-modal .sr-po-body-split,
+  .sr-po-modal .sr-po-left-sidebar,
+  .sr-po-modal .sr-po-right-pane,
+  .sr-po-modal .sr-po-section-block,
+  .sr-po-modal .sr-po-overview-grid,
+  .sr-po-modal .sr-po-overview-card,
+  .sr-po-modal .sr-po-goods-toolbar,
+  .sr-po-modal .sr-po-modal-footer {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Ngăn iOS Safari / Chrome Mobile tự động phóng to (auto-zoom) khi focus vào input/select/textarea */
+  .sr-po-modal input:not([type="checkbox"]):not([type="radio"]),
+  .sr-po-modal select,
+  .sr-po-modal textarea,
+  .sr-mindmap-modal input:not([type="checkbox"]):not([type="radio"]),
+  .sr-mindmap-modal select,
+  .sr-mindmap-modal textarea {
+    font-size: 16px !important;
+  }
+
+  /* Thanh công cụ bảng hàng hoá và chân trang Modal PO tự xuống dòng gọn gàng, không tràn ngang */
+  .sr-po-modal .sr-po-goods-toolbar,
+  .sr-po-modal .sr-po-goods-toolbar-left,
+  .sr-po-modal .sr-po-goods-toolbar-right {
+    flex-wrap: wrap !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    gap: 6px !important;
+  }
+
+  .sr-po-modal .sr-po-modal-footer {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .sr-po-modal .sr-po-footer-left,
+  .sr-po-modal .sr-po-footer-center,
+  .sr-po-modal .sr-po-footer-right {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    justify-content: stretch !important;
+    gap: 6px !important;
+  }
+
+  .sr-po-modal .sr-po-footer-left > *,
+  .sr-po-modal .sr-po-footer-center > *,
+  .sr-po-modal .sr-po-footer-right > * {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    justify-content: center !important;
+    text-align: center !important;
+  }
+
+  /* Chỉ riêng bảng chi tiết mặt hàng cho phép cuộn ngang nội bộ trong khung bảng */
+  .sr-po-modal .sr-po-table-wrap,
+  .sr-po-modal .sr-po-items-table-wrap {
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* -----------------------------------------------------------------------
+     2. MODAL REVIEW KINH DOANH (.sr-mindmap-modal) TRÊN MOBILE:
+        - Ẩn thanh công cụ trên, thanh mục lục bước, và bỏ bottom player modal cũ
+        - Thay bằng Thanh Dock 4 nút dưới đáy (Chế độ, Bộ lọc, Đọc, Slide) + Bottom Sheet
+     ----------------------------------------------------------------------- */
+  .sr-mindmap-modal .sr-mindmap-toolbar,
+  .sr-mindmap-modal .sr-mindmap-filter-bar,
+  .sr-mindmap-modal .sr-slide-chapter-bar,
+  .sr-mindmap-modal .sr-slide-player-bar,
+  .sr-mindmap-modal .sr-tour-step-banner {
+    display: none !important;
+  }
+
+  .sr-mindmap-modal .sr-mindmap-body {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .sr-mindmap-modal .sr-mindmap-hud {
+    bottom: 14px !important;
+    right: 12px !important;
+  }
+
+  /* Thanh Bottom Dock cố định ở đáy Modal Review Kinh Doanh trên Mobile */
+  .sr-mindmap-mobile-dock {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 60;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    padding: 7px 10px calc(7px + env(safe-area-inset-bottom, 0px));
+    background: rgba(15, 23, 42, 0.96);
+    border-top: 1px solid rgba(148, 163, 184, 0.22);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 -8px 24px rgba(2, 6, 23, 0.45);
+  }
+
+  .sr-mindmap-modal.is-light .sr-mindmap-mobile-dock {
+    background: rgba(255, 255, 255, 0.97);
+    border-top-color: #cbd5e1;
+    box-shadow: 0 -6px 20px rgba(15, 23, 42, 0.08);
+  }
+
+  .sr-mm-dock-btn {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-height: 50px;
+    padding: 5px 4px;
+    border-radius: 11px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: #94a3b8;
+    cursor: pointer;
+    transition: all 0.18s ease;
+  }
+
+  .sr-mindmap-modal.is-light .sr-mm-dock-btn {
+    color: #475569;
+  }
+
+  .sr-mm-dock-btn.active {
+    background: rgba(59, 130, 246, 0.18);
+    border-color: rgba(96, 165, 250, 0.45);
+    color: #60a5fa;
+  }
+
+  .sr-mindmap-modal.is-light .sr-mm-dock-btn.active {
+    background: #eff6ff;
+    border-color: #93c5fd;
+    color: #1d4ed8;
+  }
+
+  .sr-mm-dock-btn.is-running {
+    background: rgba(16, 185, 129, 0.16);
+    border-color: rgba(52, 211, 153, 0.45);
+    color: #34d399;
+  }
+
+  .sr-mindmap-modal.is-light .sr-mm-dock-btn.is-running {
+    background: #ecfdf5;
+    border-color: #6ee7b7;
+    color: #047857;
+  }
+
+  .sr-mm-dock-icon-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .sr-mm-dock-badge {
+    position: absolute;
+    top: -5px;
+    right: -10px;
+    min-width: 15px;
+    height: 15px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: #3b82f6;
+    color: #ffffff;
+    font-size: 9.5px;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .sr-mm-dock-lbl {
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.15;
+    color: inherit;
+  }
+
+  .sr-mm-dock-sub {
+    font-size: 9.5px;
+    font-weight: 600;
+    opacity: 0.78;
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
+  /* Bottom Sheet Overlay & Sheet Container */
+  .sr-mm-sheet-backdrop {
+    position: absolute;
+    inset: 0;
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    z-index: 55;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    background: rgba(2, 6, 23, 0.52);
+    backdrop-filter: blur(3px);
+    animation: srMmFadeIn 0.18s ease-out;
+  }
+
+  .sr-mm-bottom-sheet {
+    width: 100%;
+    max-height: 78%;
+    display: flex;
+    flex-direction: column;
+    background: #0f172a;
+    border-top: 1px solid rgba(148, 163, 184, 0.28);
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 -14px 36px rgba(2, 6, 23, 0.65);
+    overflow: hidden;
+    animation: srMmSheetUp 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .sr-mindmap-modal.is-light .sr-mm-bottom-sheet {
+    background: #ffffff;
+    border-top-color: #cbd5e1;
+    box-shadow: 0 -12px 32px rgba(15, 23, 42, 0.16);
+  }
+
+  .sr-mm-sheet-handle-bar {
+    display: flex;
+    justify-content: center;
+    padding: 8px 0 4px;
+    cursor: pointer;
+  }
+
+  .sr-mm-sheet-grabber {
+    width: 38px;
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.45);
+  }
+
+  .sr-mm-sheet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 14px 10px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  }
+
+  .sr-mindmap-modal.is-light .sr-mm-sheet-header {
+    border-bottom-color: #e2e8f0;
+  }
+
+  .sr-mm-sheet-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: #f8fafc;
+  }
+
+  .sr-mindmap-modal.is-light .sr-mm-sheet-title-wrap {
+    color: #0f172a;
+  }
+
+  .sr-mm-sheet-title-wrap h4 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 800;
+  }
+
+  .sr-mm-sheet-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .sr-mm-sheet-reset-btn {
+    height: 28px;
+    padding: 0 10px;
+    border-radius: 7px;
+    border: 1px solid rgba(248, 113, 113, 0.4);
+    background: rgba(239, 68, 68, 0.14);
+    color: #fca5a5;
+    font-size: 11.5px;
+    font-weight: 700;
+  }
+
+  .sr-mindmap-modal.is-light .sr-mm-sheet-reset-btn {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #dc2626;
+  }
+
+  .sr-mm-sheet-close {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    background: rgba(30, 41, 59, 0.7);
+    color: #cbd5e1;
+    font-size: 13px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .sr-mindmap-modal.is-light .sr-mm-sheet-close {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #334155;
+  }
+
+  .sr-mm-sheet-body {
+    padding: 12px 14px 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .sr-mm-sheet-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .sr-mm-sheet-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #94a3b8;
+  }
+
+  .sr-mindmap-modal.is-light .sr-mm-sheet-label {
+    color: #64748b;
+  }
+
+  .sr-mm-sheet-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .sr-mm-sheet-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .sr-mm-sheet-choice {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 8px;
+    border-radius: 10px;
+    border: 1px solid rgba(148, 163, 184, 0.24);
+    background: rgba(30, 41, 59, 0.72);
+    color: #e2e8f0;
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .sr-mindmap-modal.is-light .sr-mm-sheet-choice {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: #1e293b;
+  }
+
+  .sr-mm-sheet-choice.active {
+    background: rgba(37, 99, 235, 0.22);
+    border-color: #3b82f6;
+    color: #60a5fa;
+  }
+
+  .sr-mindmap-modal.is-light .sr-mm-sheet-choice.active {
+    background: #eff6ff;
+    border-color: #2563eb;
+    color: #1d4ed8;
+  }
+
+  .sr-mm-sheet-action-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .sr-mm-sheet-action-btn {
+    flex: 1 1 calc(50% - 4px);
+    min-height: 36px;
+    padding: 6px 10px;
+    border-radius: 9px;
+    border: 1px solid rgba(148, 163, 184, 0.24);
+    background: rgba(30, 41, 59, 0.65);
+    color: #e2e8f0;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .sr-mindmap-modal.is-light .sr-mm-sheet-action-btn {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: #1e293b;
+  }
+
+  .sr-mm-sheet-action-btn.is-accent {
+    border-color: rgba(59, 130, 246, 0.5);
+    color: #60a5fa;
+  }
+
+  .sr-mindmap-search-box.is-sheet-search {
+    width: 100%;
+    height: 38px;
+  }
+
+  .sr-mmf-compact-grid.is-sheet-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .sr-mm-sheet-primary-btn {
+    width: 100%;
+    min-height: 40px;
+    padding: 8px 14px;
+    border-radius: 10px;
+    border: 1px solid #2563eb;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .sr-mm-sheet-primary-btn.is-voice {
+    border-color: #059669;
+    background: linear-gradient(135deg, #10b981, #059669);
+  }
+
+  .sr-mm-sheet-active-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .sr-mm-sheet-ctrl-btn {
+    flex: 1 1 auto;
+    min-height: 36px;
+    padding: 6px 10px;
+    border-radius: 9px;
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    background: rgba(30, 41, 59, 0.8);
+    color: #f8fafc;
+    font-size: 12px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .sr-mindmap-modal.is-light .sr-mm-sheet-ctrl-btn {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #0f172a;
+  }
+
+  .sr-mm-sheet-ctrl-btn.is-play.is-playing {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: #10b981;
+    color: #34d399;
+  }
+
+  .sr-mindmap-modal.is-light .sr-mm-sheet-ctrl-btn.is-play.is-playing {
+    background: #ecfdf5;
+    border-color: #10b981;
+    color: #047857;
+  }
+
+  .sr-mm-sheet-ctrl-btn.is-danger {
+    background: rgba(239, 68, 68, 0.16);
+    border-color: rgba(248, 113, 113, 0.45);
+    color: #fca5a5;
+  }
+
+  .sr-mindmap-modal.is-light .sr-mm-sheet-ctrl-btn.is-danger {
+    background: #fef2f2;
+    border-color: #fca5a5;
+    color: #dc2626;
+  }
+
+  .sr-mm-sheet-setting-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 11px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    background: rgba(30, 41, 59, 0.55);
+  }
+
+  .sr-mindmap-modal.is-light .sr-mm-sheet-setting-card {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+  }
+
+  .sr-mm-sheet-setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .sr-mm-sheet-setting-lbl {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #e2e8f0;
+    line-height: 1.3;
+  }
+
+  .sr-mindmap-modal.is-light .sr-mm-sheet-setting-lbl {
+    color: #1e293b;
+  }
+
+  .sr-mindmap-voice-rate.is-sheet-rate {
+    height: 32px;
+    padding: 0 8px;
+    border-radius: 8px;
+  }
+
+  .sr-mm-sheet-step-box {
+    padding: 10px 12px;
+    border-radius: 11px;
+    border: 1px solid rgba(59, 130, 246, 0.32);
+    background: rgba(30, 58, 138, 0.22);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .sr-mindmap-modal.is-light .sr-mm-sheet-step-box {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+  }
+
+  .sr-mm-sheet-step-top {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .sr-mm-sheet-step-badge {
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: #2563eb;
+    color: #ffffff;
+  }
+
+  .sr-mm-sheet-step-stage {
+    font-size: 11px;
+    font-weight: 700;
+    color: #93c5fd;
+  }
+
+  .sr-mindmap-modal.is-light .sr-mm-sheet-step-stage {
+    color: #1d4ed8;
+  }
+
+  .sr-mm-sheet-step-title {
+    font-size: 13px;
+    font-weight: 800;
+    color: #f8fafc;
+  }
+
+  .sr-mindmap-modal.is-light .sr-mm-sheet-step-title {
+    color: #0f172a;
+  }
+
+  .sr-mm-sheet-step-sub {
+    font-size: 11.5px;
+    color: #cbd5e1;
+    line-height: 1.35;
+  }
+
+  .sr-mindmap-modal.is-light .sr-mm-sheet-step-sub {
+    color: #475569;
+  }
+
+  .sr-mm-sheet-step-nav {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .sr-mm-sheet-nav-btn {
+    flex: 1;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    background: rgba(15, 23, 42, 0.7);
+    color: #e2e8f0;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .sr-mindmap-modal.is-light .sr-mm-sheet-nav-btn {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    color: #1e293b;
+  }
+
+  .sr-mm-sheet-nav-btn.is-primary {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #ffffff;
+  }
+
+  .sr-mm-sheet-nav-btn:disabled {
+    opacity: 0.45;
+  }
+
+  .sr-mm-sheet-steps-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    max-height: 165px;
+    overflow-y: auto;
+  }
+
+  .sr-mm-sheet-step-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 8px;
+    border-radius: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    background: rgba(30, 41, 59, 0.6);
+    color: #cbd5e1;
+    font-size: 11.5px;
+    font-weight: 600;
+    text-align: left;
+  }
+
+  .sr-mindmap-modal.is-light .sr-mm-sheet-step-item {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+    color: #334155;
+  }
+
+  .sr-mm-sheet-step-item.active {
+    border-color: #3b82f6;
+    background: rgba(37, 99, 235, 0.22);
+    color: #60a5fa;
+  }
+
+  .sr-mindmap-modal.is-light .sr-mm-sheet-step-item.active {
+    border-color: #2563eb;
+    background: #eff6ff;
+    color: #1d4ed8;
+  }
+
+  .sr-mm-sheet-step-num {
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.22);
+    font-size: 10px;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .sr-mm-sheet-step-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  @keyframes srMmSheetUp {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes srMmFadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
 }
 </style>
