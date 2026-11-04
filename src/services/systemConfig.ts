@@ -95,11 +95,11 @@ export const DEFAULT_SYSTEM_CONFIG: SystemConfig = {
     dolaApiUrl: '/byteplus-api/api/v3/responses',
     dolaApiKey:
       'VxCgNvLTE.ChthcGlrZXktMjAyNjEwMDUyMjA3NDktbGZyenEQ-5_rmAsYAiDyo-wtKhDgCT1nn4hI6LzlzeTU72K3.vUwluX2I2E5r_-5GdUJJapo_mIprJtyuroN1FWEcgAsaRatBdjaMKEGtxSmDrms9MZr5Zs0LXZ13LOWgJyDZrAeZ',
-    dolaModel: 'seed-2-0-pro-260328',
-    deepseekApiUrl: '/byteplus-api/api/v3/chat/completions',
+    dolaModel: 'deepseek-v4-1-flash-261017',
+    deepseekApiUrl: '/byteplus-api/api/v3/responses',
     deepseekApiKey:
-      'VxCgNvLTE.ChthcGlrZXktMjAyNjEwMDUyMTA2MjEtN2ZzOW0Q-5_rmAsYAiCfgOwtKhAaV-B60txBRYBHBOtS7fGX.3anjjKeiObCad8KG5EhozRtIuoD2U-BFpSMbkg0T_HZW4vy4gHGiyyx5DjmiJrkVDu0bG_oO8PuNQmGsOS12HweZ',
-    deepseekModel: 'deepseek-v4-pro-ga-260813'
+      'VxCgNvLTE.ChthcGlrZXktMjAyNjEwMDUyMjA3NDktbGZyenEQ-5_rmAsYAiDyo-wtKhDgCT1nn4hI6LzlzeTU72K3.vUwluX2I2E5r_-5GdUJJapo_mIprJtyuroN1FWEcgAsaRatBdjaMKEGtxSmDrms9MZr5Zs0LXZ13LOWgJyDZrAeZ',
+    deepseekModel: 'deepseek-v4-1-flash-261017'
   },
   zaloBot: {
     defaultBotToken:
@@ -142,11 +142,45 @@ export function cloneDefaultConfig(): SystemConfig {
   return JSON.parse(JSON.stringify(DEFAULT_SYSTEM_CONFIG))
 }
 
+const LEGACY_AI_MODELS = new Set(['seed-2-0-pro-260328', 'deepseek-v4-pro-ga-260813'])
+const LEGACY_DEEPSEEK_KEY =
+  'VxCgNvLTE.ChthcGlrZXktMjAyNjEwMDUyMTA2MjEtN2ZzOW0Q-5_rmAsYAiCfgOwtKhAaV-B60txBRYBHBOtS7fGX.3anjjKeiObCad8KG5EhozRtIuoD2U-BFpSMbkg0T_HZW4vy4gHGiyyx5DjmiJrkVDu0bG_oO8PuNQmGsOS12HweZ'
+
+function migrateLegacyAiConfig(ai: AiRuntimeConfig, baseAi: AiRuntimeConfig): AiRuntimeConfig {
+  const out = { ...baseAi, ...ai }
+  if (!out.dolaModel || LEGACY_AI_MODELS.has(out.dolaModel.trim())) {
+    out.dolaModel = baseAi.dolaModel
+  }
+  if (!out.deepseekModel || LEGACY_AI_MODELS.has(out.deepseekModel.trim())) {
+    out.deepseekModel = baseAi.deepseekModel
+  }
+  if (!out.dolaApiUrl || /\/chat\/completions\/?$/i.test(out.dolaApiUrl.trim())) {
+    out.dolaApiUrl = baseAi.dolaApiUrl
+  }
+  if (!out.deepseekApiUrl || /\/chat\/completions\/?$/i.test(out.deepseekApiUrl.trim())) {
+    out.deepseekApiUrl = baseAi.deepseekApiUrl
+  }
+  if (!out.dolaApiKey || out.dolaApiKey.trim() === LEGACY_DEEPSEEK_KEY) {
+    out.dolaApiKey = baseAi.dolaApiKey
+  }
+  if (!out.deepseekApiKey || out.deepseekApiKey.trim() === LEGACY_DEEPSEEK_KEY) {
+    out.deepseekApiKey = baseAi.deepseekApiKey
+  }
+  return out
+}
+
 export function mergeSystemConfig(partial?: Partial<SystemConfig> | null): SystemConfig {
   const base = cloneDefaultConfig()
   if (!partial || typeof partial !== 'object') return base
 
   const dbMode = partial.dbMode === 'live' || partial.dbMode === 'mock' ? partial.dbMode : base.dbMode
+  const mergedAi = migrateLegacyAiConfig(
+    {
+      ...base.ai,
+      ...(partial.ai && typeof partial.ai === 'object' ? partial.ai : {})
+    },
+    base.ai
+  )
 
   return {
     dbMode,
@@ -158,10 +192,7 @@ export function mergeSystemConfig(partial?: Partial<SystemConfig> | null): Syste
       ...base.storage,
       ...(partial.storage && typeof partial.storage === 'object' ? partial.storage : {})
     },
-    ai: {
-      ...base.ai,
-      ...(partial.ai && typeof partial.ai === 'object' ? partial.ai : {})
-    },
+    ai: mergedAi,
     zaloBot: {
       ...base.zaloBot,
       ...(partial.zaloBot && typeof partial.zaloBot === 'object' ? partial.zaloBot : {})

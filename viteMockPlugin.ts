@@ -380,12 +380,15 @@ export function sonaiMockAndConfigPlugin(rootDir: string): Plugin {
         process.exit(0)
       })
 
+      const ttsViAudioCache = new Map<string, Buffer>()
+
       server.middlewares.use(async (req, res, next) => {
         const rawUrl = req.url || ''
         if (
           !rawUrl.startsWith('/__sys_config') &&
           !rawUrl.startsWith('/__mock_rtdb') &&
-          !rawUrl.startsWith('/__mock_upload')
+          !rawUrl.startsWith('/__mock_upload') &&
+          !rawUrl.startsWith('/__tts_vi')
         ) {
           next()
           return
@@ -562,6 +565,43 @@ export function sonaiMockAndConfigPlugin(rootDir: string): Plugin {
                 size: filePart.data.length
               }
             })
+            return
+          }
+
+          // 9. Vietnamese TTS Audio Stream Proxy (Đảm bảo giọng đọc Tiếng Việt chuẩn vi-VN 100% trên mọi trình duyệt)
+          if (pathname === '/__tts_vi' && req.method === 'GET') {
+            const q = String(parsedUrl.searchParams.get('q') || '').trim().slice(0, 220)
+            if (!q) {
+              sendJson(res, 400, { ok: false, error: 'Thiếu nội dung cần đọc (q)' })
+              return
+            }
+            let audioBuf = ttsViAudioCache.get(q)
+            if (!audioBuf) {
+              const ttsUrl = `https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=vi&client=tw-ob&q=${encodeURIComponent(q)}`
+              const upstream = await fetch(ttsUrl, {
+                headers: {
+                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                  'Referer': 'https://translate.google.com/'
+                }
+              })
+              if (!upstream.ok) {
+                sendJson(res, upstream.status, { ok: false, error: `TTS upstream HTTP ${upstream.status}` })
+                return
+              }
+              const arrBuf = await upstream.arrayBuffer()
+              audioBuf = Buffer.from(arrBuf)
+              if (ttsViAudioCache.size >= 400) {
+                const oldestKey = ttsViAudioCache.keys().next().value
+                if (oldestKey) ttsViAudioCache.delete(oldestKey)
+              }
+              ttsViAudioCache.set(q, audioBuf)
+            }
+            res.statusCode = 200
+            res.setHeader('Content-Type', 'audio/mpeg')
+            res.setHeader('Content-Length', String(audioBuf.length))
+            res.setHeader('Accept-Ranges', 'bytes')
+            res.setHeader('Cache-Control', 'public, max-age=86400')
+            res.end(audioBuf)
             return
           }
 

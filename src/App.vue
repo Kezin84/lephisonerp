@@ -1569,7 +1569,7 @@ body.app-has-open-modal .app-layout .scroll-to-top,
 }
 
 @media (min-width: 769px) and (max-width: 1100px) {
-  .app-layout:has(.bg-mobile-dock, .mobile-screen1-cart-bar, .mobile-screen2-action-bar) .sonai-quick-db-badge {
+  .app-layout:has(.bg-mobile-dock, .sr-mobile-dock, .mobile-screen1-cart-bar, .mobile-screen2-action-bar) .sonai-quick-db-badge {
     bottom: calc(78px + env(safe-area-inset-bottom, 0px));
   }
 }
@@ -1579,12 +1579,12 @@ body.app-has-open-modal .app-layout .scroll-to-top,
     bottom: calc(74px + env(safe-area-inset-bottom, 0px));
     right: 10px;
   }
-  .app-layout:has(.bg-mobile-dock, .mobile-screen1-cart-bar, .mobile-screen2-action-bar) .sonai-quick-db-badge {
+  .app-layout:has(.bg-mobile-dock, .sr-mobile-dock, .mobile-screen1-cart-bar, .mobile-screen2-action-bar) .sonai-quick-db-badge {
     bottom: calc(140px + env(safe-area-inset-bottom, 0px));
     left: 12px;
     right: auto;
   }
-  .app-layout.mobile-nav-hidden:has(.bg-mobile-dock, .mobile-screen1-cart-bar, .mobile-screen2-action-bar) .sonai-quick-db-badge {
+  .app-layout.mobile-nav-hidden:has(.bg-mobile-dock, .sr-mobile-dock, .mobile-screen1-cart-bar, .mobile-screen2-action-bar) .sonai-quick-db-badge {
     bottom: calc(76px + env(safe-area-inset-bottom, 0px));
   }
   .nav-section-title,

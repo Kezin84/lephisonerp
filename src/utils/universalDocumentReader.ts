@@ -894,69 +894,33 @@ export function parseJsonFromAiResponse(rawText: string): any {
 }
 
 /**
- * Gọi Vision AI (Dola Seed 2.0 Pro) hỗ trợ 1 hoặc nhiều trang ảnh, tự động tương thích cả /responses và /chat/completions
+ * Gọi AI (deepseek-v4-1-flash-261017) qua chuẩn /api/v3/responses hỗ trợ 1 hoặc nhiều trang ảnh
  */
 async function callVisionAiMultiImages(prompt: string, base64Images: string[]): Promise<string> {
   if (!base64Images.length) {
-    throw new Error('Không có hình ảnh để phân tích Vision AI.')
+    throw new Error('Không có hình ảnh để phân tích AI.')
   }
 
-  // Lần thử 1: Gọi qua callDolaVision nếu có 1 ảnh
   if (base64Images.length === 1) {
-    try {
-      const dolaRes = await callDolaVision(prompt, base64Images[0], false)
-      const txt = extractAiTextClean(dolaRes)
-      if (txt) return txt
-    } catch (err1) {
-      console.warn('Thử lại Vision AI qua chuẩn input_image / chat completions:', err1)
+    const dolaRes = await callDolaVision(prompt, base64Images[0], false)
+    const txt = extractAiTextClean(dolaRes)
+    if (!txt) {
+      throw new Error('AI Vision không trả về nội dung văn bản.')
     }
+    return txt
   }
 
   const { apiUrl: dolaRuntimeUrl, apiKey: dolaRuntimeKey, model: dolaRuntimeModel } = getDolaRuntimeConfig()
 
-  // Lần thử 2: Gọi /byteplus-api/api/v3/responses với chuẩn input_image cho 1 hoặc nhiều ảnh
-  try {
-    const contentItems: any[] = [{ type: 'input_text', text: prompt }]
-    for (const imgUrl of base64Images) {
-      contentItems.push({
-        type: 'input_image',
-        image_url: imgUrl
-      })
-    }
-    const resp = await fetch(dolaRuntimeUrl || '/byteplus-api/api/v3/responses', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${dolaRuntimeKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: dolaRuntimeModel,
-        stream: false,
-        input: [{ role: 'user', content: contentItems }]
-      })
+  const contentItems: any[] = [{ type: 'input_text', text: prompt }]
+  for (const imgUrl of base64Images) {
+    contentItems.push({
+      type: 'input_image',
+      image_url: imgUrl
     })
-    if (resp.ok) {
-      const json = await resp.json()
-      const txt = extractAiTextClean(json)
-      if (txt) return txt
-    }
-  } catch (err2) {
-    console.warn('Vision /responses input_image không khả dụng, thử /chat/completions:', err2)
   }
 
-  // Lần thử 3: Gọi /byteplus-api/api/v3/chat/completions với model Vision DOLA_MODEL
-  const chatContent: any[] = [{ type: 'text', text: prompt }]
-  for (const imgUrl of base64Images) {
-    chatContent.push({
-      type: 'image_url',
-      image_url: { url: imgUrl }
-    })
-  }
-  const fallbackChatUrl = (dolaRuntimeUrl || '/byteplus-api/api/v3/responses').replace(
-    /\/responses\/?$/,
-    '/chat/completions'
-  )
-  const chatResp = await fetch(fallbackChatUrl, {
+  const resp = await fetch(dolaRuntimeUrl || '/byteplus-api/api/v3/responses', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${dolaRuntimeKey}`,
@@ -965,15 +929,21 @@ async function callVisionAiMultiImages(prompt: string, base64Images: string[]): 
     body: JSON.stringify({
       model: dolaRuntimeModel,
       stream: false,
-      messages: [{ role: 'user', content: chatContent }]
+      input: [{ role: 'user', content: contentItems }]
     })
   })
-  if (!chatResp.ok) {
-    const errBody = await chatResp.text()
-    throw new Error(`Vision API error ${chatResp.status}: ${errBody}`)
+
+  if (!resp.ok) {
+    const errBody = await resp.text()
+    throw new Error(`AI Vision /responses error ${resp.status}: ${errBody}`)
   }
-  const chatData = await chatResp.json()
-  return extractAiTextClean(chatData)
+
+  const json = await resp.json()
+  const txt = extractAiTextClean(json)
+  if (!txt) {
+    throw new Error('AI Vision không trả về nội dung văn bản.')
+  }
+  return txt
 }
 
 /**

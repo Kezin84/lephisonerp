@@ -815,7 +815,7 @@
                   v-model.trim="draft.ai.dolaModel"
                   type="text"
                   class="cfg-input mono-num"
-                  placeholder="seed-2-0-pro-260328"
+                  placeholder="deepseek-v4-1-flash-261017"
                 />
               </div>
 
@@ -854,7 +854,7 @@
           <div class="cfg-card">
             <div class="cfg-card-head">
               <div>
-                <h2 class="cfg-card-title">04B. DeepSeek AI (Phân Tích Văn Bản, Bóc Tách License &amp; Trợ Lý Báo Giá)</h2>
+                <h2 class="cfg-card-title">04B. DeepSeek V4.1 Flash (Phân Tích Văn Bản, File, Bóc Tách License &amp; Trợ Lý Báo Giá)</h2>
                 <p class="cfg-card-sub">
                   Áp dụng cho <code>src/services/deepseek.ts</code> trên toàn bộ các trang Tạo Báo Giá, Quản Lý Hàng Hóa, License, Mẫu In.
                 </p>
@@ -889,7 +889,7 @@
                   v-model.trim="draft.ai.deepseekModel"
                   type="text"
                   class="cfg-input mono-num"
-                  placeholder="deepseek-v4-pro-ga-260813"
+                  placeholder="deepseek-v4-1-flash-261017"
                 />
               </div>
 
@@ -899,7 +899,7 @@
                   v-model.trim="draft.ai.deepseekApiUrl"
                   type="text"
                   class="cfg-input mono-num"
-                  placeholder="/byteplus-api/api/v3/chat/completions"
+                  placeholder="/byteplus-api/api/v3/responses"
                 />
               </div>
 
@@ -2008,6 +2008,7 @@ async function testDeepSeekKey(): Promise<void> {
   testingService.value = 'deepseek'
   testResults.deepseek = null
   const t0 = performance.now()
+  const isResponsesEndpoint = /\/responses\/?$/i.test(url)
   try {
     const res = await window.fetch(url, {
       method: 'POST',
@@ -2016,12 +2017,20 @@ async function testDeepSeekKey(): Promise<void> {
         Authorization: `Bearer ${key}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        model,
-        stream: false,
-        max_tokens: 12,
-        messages: [{ role: 'user', content: 'Trả lời đúng 1 từ: OK' }]
-      })
+      body: JSON.stringify(
+        isResponsesEndpoint
+          ? {
+              model,
+              stream: false,
+              input: [{ role: 'user', content: [{ type: 'input_text', text: 'Trả lời đúng 1 từ: OK' }] }]
+            }
+          : {
+              model,
+              stream: false,
+              max_tokens: 12,
+              messages: [{ role: 'user', content: 'Trả lời đúng 1 từ: OK' }]
+            }
+      )
     })
     const ms = Math.round(performance.now() - t0)
     if (res.ok) {
