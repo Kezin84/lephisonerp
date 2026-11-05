@@ -316,6 +316,94 @@ code {
   max-width: calc(100% - 76px);
 }
 
+/* ==========================================================================
+   SALE REPORT LIGHT BLUE TEMPLATE — PC LIGHT MODE SIDEBAR (@media min-width: 769px)
+   Synced with SaleReportFirebase.vue (.sr-page.theme-light-blue):
+   - Primary gradient: linear-gradient(160deg, #0284c7 0%, #2563eb 55%, #1d4ed8 100%)
+   - Accent borders: #38bdf8 / #7dd3fc | Ink: #ffffff / #f0f9ff / #e0f2fe
+   ========================================================================== */
+@media (min-width: 769px) {
+  .app-layout:has(.theme-light-blue) > .sidebar,
+  body.baogia-light-theme .app-layout > .sidebar {
+    background: linear-gradient(160deg, #0284c7 0%, #2563eb 55%, #1d4ed8 100%);
+    border-right: 1px solid #38bdf8;
+    box-shadow: 4px 0 24px -4px rgba(2, 132, 199, 0.25);
+  }
+
+  .app-layout:has(.theme-light-blue) > .sidebar .logo,
+  body.baogia-light-theme .app-layout > .sidebar .logo {
+    border-bottom: 1px solid rgba(125, 211, 252, 0.35);
+  }
+
+  .app-layout:has(.theme-light-blue) > .sidebar .logo h2,
+  body.baogia-light-theme .app-layout > .sidebar .logo h2 {
+    color: #ffffff;
+  }
+
+  .app-layout:has(.theme-light-blue) > .sidebar .toggle-btn,
+  body.baogia-light-theme .app-layout > .sidebar .toggle-btn {
+    color: #f0f9ff;
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.28);
+  }
+
+  .app-layout:has(.theme-light-blue) > .sidebar .toggle-btn:hover,
+  body.baogia-light-theme .app-layout > .sidebar .toggle-btn:hover {
+    background: #ffffff;
+    border-color: #ffffff;
+    color: #0284c7;
+  }
+
+  .app-layout:has(.theme-light-blue) > .sidebar .nav-menu,
+  body.baogia-light-theme .app-layout > .sidebar .nav-menu {
+    scrollbar-color: rgba(255, 255, 255, 0.35) transparent;
+  }
+
+  .app-layout:has(.theme-light-blue) > .sidebar .nav-menu::-webkit-scrollbar-thumb,
+  body.baogia-light-theme .app-layout > .sidebar .nav-menu::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.35);
+  }
+
+  .app-layout:has(.theme-light-blue) > .sidebar .nav-menu::-webkit-scrollbar-thumb:hover,
+  body.baogia-light-theme .app-layout > .sidebar .nav-menu::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.55);
+  }
+
+  .app-layout:has(.theme-light-blue) > .sidebar .nav-item,
+  body.baogia-light-theme .app-layout > .sidebar .nav-item {
+    color: #f0f9ff;
+  }
+
+  .app-layout:has(.theme-light-blue) > .sidebar .nav-item:hover,
+  body.baogia-light-theme .app-layout > .sidebar .nav-item:hover {
+    background: rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+  }
+
+  .app-layout:has(.theme-light-blue) > .sidebar .nav-item:active,
+  body.baogia-light-theme .app-layout > .sidebar .nav-item:active {
+    background: rgba(255, 255, 255, 0.26);
+  }
+
+  .app-layout:has(.theme-light-blue) > .sidebar .nav-item.router-link-active,
+  body.baogia-light-theme .app-layout > .sidebar .nav-item.router-link-active {
+    background: linear-gradient(90deg, rgba(12, 74, 110, 0.46) 0%, rgba(30, 58, 138, 0.46) 100%);
+    color: #ffffff;
+    font-weight: 600;
+    box-shadow:
+      0 4px 12px -2px rgba(3, 105, 161, 0.28),
+      inset 0 0 0 1px rgba(125, 211, 252, 0.42);
+  }
+
+  .app-layout:has(.theme-light-blue) > .main-content,
+  body.baogia-light-theme .app-layout > .main-content {
+    background:
+      radial-gradient(1100px 460px at 12% -5%, rgba(2, 132, 199, 0.14), transparent 60%),
+      radial-gradient(900px 420px at 90% 0%, rgba(37, 99, 235, 0.1), transparent 55%),
+      linear-gradient(180deg, #eaf4ff 0%, #f4f8fd 48%, #edf2f9 100%);
+  }
+}
+
 .mobile-only {
   display: none !important;
 }

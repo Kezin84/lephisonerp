@@ -14,13 +14,13 @@
   >
     <aside class="sidebar">
       <div class="logo">
-        <div v-if="isSidebarOpen" style="display: flex; align-items: center; gap: 12px; overflow: hidden;">
-          <div style="flex-shrink: 0; width: 42px; height: 42px; border-radius: 50%; overflow: hidden; border: 2px solid rgba(16,185,129,0.3); box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
-            <img :src="'/avatar.jpg'" @error="$event.target.src='https://ui-avatars.com/api/?name=Lê+Phi+Sơn&background=047857&color=fff&bold=true'" alt="Lê Phi Sơn" style="width: 100%; height: 100%; object-fit: cover;" />
+        <div v-if="isSidebarOpen" class="logo-brand-info">
+          <div class="logo-avatar-wrap">
+            <img :src="'/avatar.jpg'" @error="$event.target.src='https://ui-avatars.com/api/?name=Lê+Phi+Sơn&background=047857&color=fff&bold=true'" alt="Lê Phi Sơn" class="logo-avatar-img" />
           </div>
-          <div style="display: flex; flex-direction: column; justify-content: center;">
-            <h2 style="margin: 0; color: #f8fafc; font-size: 15px; font-weight: 700; letter-spacing: 0;">Lê Phi Sơn</h2>
-            <span style="color: #10b981; font-size: 12px; font-weight: 600;">Phó giám đốc NTS</span>
+          <div class="logo-user-meta">
+            <h2 class="logo-user-name">Lê Phi Sơn</h2>
+            <span class="logo-user-role">Phó giám đốc NTS</span>
           </div>
         </div>
         <button class="toggle-btn" @click="isSidebarOpen = !isSidebarOpen">
@@ -1460,6 +1460,51 @@ body.app-has-open-modal .app-layout .scroll-to-top,
 }
 
 /* Footer cố định ở đáy Sidebar */
+.logo-brand-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.logo-avatar-wrap {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid rgba(16, 185, 129, 0.3);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.logo-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.logo-user-meta {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.logo-user-name {
+  margin: 0 !important;
+  color: #f8fafc !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0 !important;
+}
+
+.logo-user-role {
+  color: #10b981;
+  font-size: 12px;
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+
 .sidebar-footer {
   padding: 10px 10px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
@@ -1519,6 +1564,166 @@ body.app-has-open-modal .app-layout .scroll-to-top,
 .footer-action-btn.logout-btn:hover {
   background: rgba(239, 68, 68, 0.16);
   color: #fca5a5;
+}
+
+/* ==========================================================================
+   SALE REPORT LIGHT BLUE TEMPLATE — LIGHT MODE SIDEBAR & MOBILE DRAWER
+   Synced with SaleReportFirebase.vue (.sr-page.theme-light-blue):
+   - Primary gradient: linear-gradient(160deg, #0284c7 0%, #2563eb 55%, #1d4ed8 100%)
+   - Accent borders: #38bdf8 / #7dd3fc | Ink: #ffffff / #f0f9ff / #e0f2fe
+   ========================================================================== */
+@media (min-width: 769px) {
+  .app-layout:has(.theme-light-blue) .logo-avatar-wrap,
+  :global(body.baogia-light-theme) .app-layout .logo-avatar-wrap {
+    border-color: #7dd3fc;
+    box-shadow: 0 4px 12px rgba(3, 105, 161, 0.35);
+  }
+
+  .app-layout:has(.theme-light-blue) .logo-user-name,
+  :global(body.baogia-light-theme) .app-layout .logo-user-name {
+    color: #ffffff !important;
+  }
+
+  .app-layout:has(.theme-light-blue) .logo-user-role,
+  :global(body.baogia-light-theme) .app-layout .logo-user-role {
+    color: #e0f2fe;
+  }
+
+  .app-layout:has(.theme-light-blue) .nav-section-title,
+  :global(body.baogia-light-theme) .app-layout .nav-section-title {
+    color: #bae6fd;
+  }
+
+  .app-layout:has(.theme-light-blue) .nav-section-title.clickable:hover,
+  :global(body.baogia-light-theme) .app-layout .nav-section-title.clickable:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.16);
+  }
+
+  .app-layout:has(.theme-light-blue) .nav-section-title.has-active-child,
+  :global(body.baogia-light-theme) .app-layout .nav-section-title.has-active-child {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.22);
+    box-shadow: inset 0 0 0 1px rgba(125, 211, 252, 0.45);
+  }
+
+  .app-layout:has(.theme-light-blue) .nav-section-divider,
+  .app-layout:has(.theme-light-blue) .nav-divider,
+  :global(body.baogia-light-theme) .app-layout .nav-section-divider,
+  :global(body.baogia-light-theme) .app-layout .nav-divider {
+    background: rgba(125, 211, 252, 0.35);
+  }
+
+  .app-layout:has(.theme-light-blue) .task-badge,
+  :global(body.baogia-light-theme) .app-layout .task-badge {
+    box-shadow: 0 0 0 2px #0284c7;
+  }
+
+  .app-layout:has(.theme-light-blue) .sidebar-footer,
+  :global(body.baogia-light-theme) .app-layout .sidebar-footer {
+    background: rgba(12, 74, 110, 0.28);
+    border-top: 1px solid rgba(125, 211, 252, 0.32);
+  }
+
+  .app-layout:has(.theme-light-blue) .footer-action-btn,
+  :global(body.baogia-light-theme) .app-layout .footer-action-btn {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.32);
+  }
+
+  .app-layout:has(.theme-light-blue) .footer-action-btn:hover,
+  :global(body.baogia-light-theme) .app-layout .footer-action-btn:hover {
+    background: #ffffff;
+    color: #0284c7;
+    border-color: #ffffff;
+  }
+
+  .app-layout:has(.theme-light-blue) .footer-action-btn.router-link-active,
+  :global(body.baogia-light-theme) .app-layout .footer-action-btn.router-link-active {
+    background: #ffffff;
+    color: #0369a1;
+    border-color: #ffffff;
+  }
+
+  .app-layout:has(.theme-light-blue) .footer-action-btn.logout-btn,
+  :global(body.baogia-light-theme) .app-layout .footer-action-btn.logout-btn {
+    color: #dc2626;
+    background: #fef2f2;
+    border-color: #fca5a5;
+  }
+
+  .app-layout:has(.theme-light-blue) .footer-action-btn.logout-btn:hover,
+  :global(body.baogia-light-theme) .app-layout .footer-action-btn.logout-btn:hover {
+    background: #dc2626;
+    color: #ffffff;
+    border-color: #dc2626;
+  }
+}
+
+/* Mobile Drawer in Light Mode (Sale Report Light Blue Template) */
+.app-layout:has(.theme-light-blue) .mobile-drawer,
+:global(body.baogia-light-theme) .app-layout .mobile-drawer {
+  background: linear-gradient(160deg, #0284c7 0%, #2563eb 55%, #1d4ed8 100%);
+  box-shadow: -6px 0 28px rgba(2, 132, 199, 0.32);
+}
+
+.app-layout:has(.theme-light-blue) .drawer-header,
+:global(body.baogia-light-theme) .app-layout .drawer-header {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 60%, #1d4ed8 100%);
+  border-bottom: 1px solid #7dd3fc;
+}
+
+.app-layout:has(.theme-light-blue) .drawer-header .toggle-btn,
+:global(body.baogia-light-theme) .app-layout .drawer-header .toggle-btn {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #ffffff;
+}
+
+.app-layout:has(.theme-light-blue) .drawer-header .toggle-btn:hover,
+:global(body.baogia-light-theme) .app-layout .drawer-header .toggle-btn:hover {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: #0284c7;
+}
+
+.app-layout:has(.theme-light-blue) .drawer-section-title,
+:global(body.baogia-light-theme) .app-layout .drawer-section-title {
+  color: #bae6fd;
+}
+
+.app-layout:has(.theme-light-blue) .drawer-item,
+:global(body.baogia-light-theme) .app-layout .drawer-item {
+  color: #f0f9ff;
+}
+
+.app-layout:has(.theme-light-blue) .drawer-item:hover,
+:global(body.baogia-light-theme) .app-layout .drawer-item:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+
+.app-layout:has(.theme-light-blue) .drawer-item.router-link-active,
+:global(body.baogia-light-theme) .app-layout .drawer-item.router-link-active {
+  background: linear-gradient(90deg, rgba(12, 74, 110, 0.46) 0%, rgba(30, 58, 138, 0.46) 100%);
+  color: #ffffff;
+  box-shadow: inset 0 0 0 1px rgba(125, 211, 252, 0.42);
+}
+
+.app-layout:has(.theme-light-blue) .drawer-divider,
+:global(body.baogia-light-theme) .app-layout .drawer-divider {
+  background: rgba(125, 211, 252, 0.35);
+}
+
+.app-layout:has(.theme-light-blue) .ios-guide-drawer-btn,
+:global(body.baogia-light-theme) .app-layout .ios-guide-drawer-btn {
+  color: #e0f2fe !important;
+}
+
+.app-layout:has(.theme-light-blue) .logout-drawer-btn,
+:global(body.baogia-light-theme) .app-layout .logout-drawer-btn {
+  color: #fee2e2 !important;
 }
 
 .sonai-quick-db-badge {

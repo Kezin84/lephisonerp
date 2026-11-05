@@ -2,7 +2,7 @@
   <div
     class="sr-page page"
     :class="[
-      { 'theme-light-blue': uiTheme === 'light', 'is-mobile-shell': isMobileShell },
+      { 'theme-light-blue': uiTheme === 'light', 'mode-craft': srDataMode === 'craft', 'is-mobile-shell': isMobileShell },
       isMobileShell ? 'm-tab-' + mobileActiveTab : ''
     ]"
   >
@@ -20,23 +20,45 @@
         <div class="bg-title-wrap">
           <div class="bg-title-row">
             <h1 class="bg-title">Quản Lý Sale Report</h1>
-            <span class="bg-count-pill">{{ filteredRows.length }} / {{ rows.length }} PO</span>
+            <span v-if="!isMobileShell" class="bg-count-pill" :class="{ 'is-craft-pill': srDataMode === 'craft' }">
+              {{ filteredRows.length }} / {{ rows.length }} {{ srDataMode === 'craft' ? 'Phương án tạm' : 'PO' }}
+            </span>
           </div>
           <p v-if="false" class="bg-subtitle">Theo dõi doanh số bán, lợi nhuận COM / Margin, chứng từ PO &amp; tiến độ thu hồi công nợ</p>
         </div>
       </div>
-      <div class="bg-topbar-right">
-        <button
-          type="button"
-          class="sr-topbar-review-btn"
-          @click.stop="openReviewMindmapModal()"
-          title="Mở Sơ đồ tư duy (Mindmap) Review toàn cảnh Kinh doanh từ Tổng quan đến Chi tiết"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M8.7 10.7l6.6-3.4"/><path d="M8.7 13.3l6.6 3.4"/></svg>
-          <span>Review</span>
-        </button>
+      <div v-if="false" class="bg-topbar-right">
+        <!-- Segmented Mode Switcher đã chuyển xuống thanh công cụ chính để tránh trùng lặp -->
       </div>
     </header>
+
+    <!-- Thanh chuyển chế độ Segmented Capsule 50/50 dành riêng cho Mobile (Phương án A - Không Emoji) -->
+    <div v-if="isMobileShell" class="sr-mob-mode-switcher-bar">
+      <div class="sr-ctt-mode-switcher is-mobile-full" role="tablist" aria-label="Chế độ dữ liệu Sale Report">
+        <button
+          type="button"
+          class="sr-ctt-mode-btn is-official"
+          :class="{ active: srDataMode === 'official' }"
+          @click.stop="switchSrDataMode('official')"
+          title="Chế độ Bản Chính Thức (Đã chốt deal)"
+        >
+          <svg class="sr-ctt-mode-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+          <span class="sr-ctt-mode-label">Bản Chính Thức</span>
+          <span class="sr-ctt-mode-count">{{ officialRows.length }}</span>
+        </button>
+        <button
+          type="button"
+          class="sr-ctt-mode-btn is-craft"
+          :class="{ active: srDataMode === 'craft' }"
+          @click.stop="switchSrDataMode('craft')"
+          title="Chế độ Phương Án Tạm (So sánh trước khi chốt deal)"
+        >
+          <svg class="sr-ctt-mode-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+          <span class="sr-ctt-mode-label">Phương Án Tạm</span>
+          <span class="sr-ctt-mode-count">{{ craftRows.length }}</span>
+        </button>
+      </div>
+    </div>
 
     <input type="file" ref="reportUploadInput" accept=".xlsx, .xls" multiple style="display: none" @change="onReportFilesSelected" />
 
@@ -144,8 +166,8 @@
       </div>
     </Teleport>
 
-    <!-- Top Summary Dashboard: Phương án A — 4 Card Phẳng (Nhãn gốc chuẩn labelMap, không chú thích ngoặc đơn, không emoji) -->
-    <div class="sr-top-summary" v-if="!loading && filteredRows.length > 0 && (isMobileShell ? (mobileActiveTab === 'overview' && !isKpiCollapsed) : !isKpiCollapsed)">
+    <!-- Top Summary Dashboard: Phương án A — 4 Card Phẳng (Chỉ hiện ở Bản Chính Thức, ẩn ở Bản Tạm) -->
+    <div class="sr-top-summary" v-if="srDataMode !== 'craft' && !loading && filteredRows.length > 0 && (isMobileShell ? (mobileActiveTab === 'overview' && !isKpiCollapsed) : !isKpiCollapsed)">
       <div class="sr-super-bento-grid">
         <!-- CARD 1: Doanh số bán | Net PO | Tổng tiền sau VAT -->
         <article class="sr-sb-card sb-card-revenue">
@@ -514,8 +536,8 @@
                   </div>
                 </div>
 
-                <!-- 3. Công nợ -->
-                <div class="pl-picker-wrap is-right-col" :class="{ 'is-open': openSalePickerKey === 'debt' }">
+                <!-- 3. Công nợ (Chỉ hiện ở Bản Chính Thức) -->
+                <div v-if="srDataMode !== 'craft'" class="pl-picker-wrap is-right-col" :class="{ 'is-open': openSalePickerKey === 'debt' }">
                   <div
                     class="pl-picker-trigger"
                     :class="{ 'has-value': filterDebtStatus !== 'Tất cả', 'is-open': openSalePickerKey === 'debt' }"
@@ -641,7 +663,8 @@
               :key="cGroup.ma_cong_ty + cIdx"
               class="sr-md-company-card"
               :class="{
-                active: activeMasterGroup && getGroupCollapseKey(activeMasterGroup) === getGroupCollapseKey(cGroup)
+                active: activeMasterGroup && getGroupCollapseKey(activeMasterGroup) === getGroupCollapseKey(cGroup),
+                'is-promoted-company-card': highlightedPoKey && Array.isArray(cGroup.items) && cGroup.items.some((it: any) => getPoRowKey(it) === highlightedPoKey || String(it.So_PO || '') === highlightedPoKey)
               }"
               @click="selectMasterGroup(cGroup)"
             >
@@ -671,8 +694,22 @@
                 </div>
               </div>
 
-              <!-- Dòng 2: Chỉ hiển thị đúng 4 thông tin: DSB, Đã TT, Công nợ, Tổng số PO -->
-              <div class="sr-md-cc-metrics-4col">
+              <!-- Dòng 2: Bản Chính Thức hiện DSB/Đã TT/Công nợ/PO; Bản Tạm hiện Số PA / DSB cao nhất / Margin tốt nhất -->
+              <div v-if="srDataMode === 'craft'" class="sr-md-cc-metrics-4col is-craft-sidebar-metrics" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
+                <div class="sr-md-ccm-item">
+                  <span class="sr-md-ccm-lbl">Phương án</span>
+                  <strong class="sr-md-ccm-val">{{ cGroup.items.length }} PA</strong>
+                </div>
+                <div class="sr-md-ccm-item">
+                  <span class="sr-md-ccm-lbl">DSB cao nhất</span>
+                  <strong class="sr-md-ccm-val is-com-text">{{ fmt(getGroupMaxDoanhSoBan(cGroup)) }}</strong>
+                </div>
+                <div class="sr-md-ccm-item">
+                  <span class="sr-md-ccm-lbl">Margin tốt nhất</span>
+                  <strong class="sr-md-ccm-val" :class="getGroupMaxNetMargin(cGroup) >= 0 ? 'is-com-text' : 'is-debt-text'">{{ fmt(getGroupMaxNetMargin(cGroup)) }}</strong>
+                </div>
+              </div>
+              <div v-else class="sr-md-cc-metrics-4col">
                 <div class="sr-md-ccm-item">
                   <span class="sr-md-ccm-lbl">DSB</span>
                   <strong class="sr-md-ccm-val is-com-text">{{ fmt(getGroupDoanhSoBan(cGroup)) }}</strong>
@@ -701,62 +738,68 @@
         >
           <!-- Thanh tác vụ nằm phía trên Header của tên công ty -->
           <div class="sr-company-top-toolbar" @click.stop>
-            <!-- Thanh ngữ cảnh Mobile (Tab Tổng quan: Thu gọn/Mở rộng Cty | Tab Chi tiết Cty: Quay lại Tổng quan & Chuyển nhanh Cty Trước/Sau) -->
-            <div v-if="isMobileShell" class="sr-mob-toolbar-left">
-              <template v-if="mobileActiveTab === 'overview'">
-                <button
-                  type="button"
-                  class="sr-mob-ctx-btn"
-                  @click.stop="toggleAllGroupsCollapse()"
-                  :title="areAllGroupsCollapsed ? 'Mở rộng tất cả nhóm công ty' : 'Thu gọn tất cả nhóm công ty'"
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline v-if="areAllGroupsCollapsed" points="6 9 12 15 18 9"/><polyline v-else points="18 15 12 9 6 15"/></svg>
-                  <span>{{ areAllGroupsCollapsed ? 'Mở tất cả Cty' : 'Thu gọn tất cả Cty' }}</span>
-                </button>
-              </template>
+            <!-- Thanh ngữ cảnh Mobile (Tab Chi tiết Cty: Quay lại Tổng quan & Chuyển nhanh Cty Trước/Sau) -->
+            <div v-if="isMobileShell && mobileActiveTab === 'company_detail'" class="sr-mob-toolbar-left">
+              <button
+                type="button"
+                class="sr-mob-ctx-btn is-back-list"
+                @click.stop="switchMobileTab('overview')"
+                title="Quay lại màn hình Tổng quan"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                <span>Tổng quan</span>
+              </button>
 
-              <template v-else-if="mobileActiveTab === 'company_detail'">
+              <div v-if="filteredRows.length > 1" class="sr-mob-company-stepper">
                 <button
                   type="button"
-                  class="sr-mob-ctx-btn is-back-list"
-                  @click.stop="switchMobileTab('overview')"
-                  title="Quay lại màn hình Tổng quan"
+                  class="sr-mob-step-btn"
+                  @click.stop="prevMobilePo()"
+                  title="Công ty trước"
                 >
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-                  <span>Tổng quan</span>
                 </button>
+                <span class="sr-mob-step-pos">PO {{ activeMobilePoIndex + 1 }}/{{ filteredRows.length }}</span>
+                <button
+                  type="button"
+                  class="sr-mob-step-btn"
+                  @click.stop="nextMobilePo()"
+                  title="PO tiếp theo"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+              </div>
+              <button v-if="activeMobilePoRow" type="button" class="sr-mob-ctx-btn is-edit-po" @click.stop="openMultiEditModal(activeMobilePoRow)">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                <span>Sửa PO</span>
+              </button>
+            </div>
 
-                <div v-if="filteredRows.length > 1" class="sr-mob-company-stepper">
-                  <button
-                    type="button"
-                    class="sr-mob-step-btn"
-                    @click.stop="prevMobilePo()"
-                    title="Công ty trước"
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-                  </button>
-                  <span class="sr-mob-step-pos">PO {{ activeMobilePoIndex + 1 }}/{{ filteredRows.length }}</span>
-                  <button
-                    type="button"
-                    class="sr-mob-step-btn"
-                    @click.stop="nextMobilePo()"
-                    title="PO tiếp theo"
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-                  </button>
-                </div>
-                <button v-if="activeMobilePoRow" type="button" class="sr-mob-ctx-btn is-edit-po" @click.stop="openMultiEditModal(activeMobilePoRow)">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                  <span>Sửa PO</span>
+            <div v-if="!isMobileShell" class="sr-ctt-left">
+              <div class="sr-ctt-mode-switcher" role="tablist" aria-label="Chế độ dữ liệu Sale Report">
+                <button
+                  type="button"
+                  class="sr-ctt-mode-btn is-official"
+                  :class="{ active: srDataMode === 'official' }"
+                  @click.stop="switchSrDataMode('official')"
+                  title="Chế độ Bản Chính Thức (Đã chốt deal)"
+                >
+                  <svg class="sr-ctt-mode-icon" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+                  <span class="sr-ctt-mode-label">Bản Chính Thức</span>
+                  <span class="sr-ctt-mode-count">{{ officialRows.length }}</span>
                 </button>
-                <div v-if="false">
-                  <button
-                    type="button"
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-                  </button>
-                </div>
-              </template>
+                <button
+                  type="button"
+                  class="sr-ctt-mode-btn is-craft"
+                  :class="{ active: srDataMode === 'craft' }"
+                  @click.stop="switchSrDataMode('craft')"
+                  title="Chế độ Phương Án Tạm (So sánh trước khi chốt deal)"
+                >
+                  <svg class="sr-ctt-mode-icon" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                  <span class="sr-ctt-mode-label">Phương Án Tạm</span>
+                  <span class="sr-ctt-mode-count">{{ craftRows.length }}</span>
+                </button>
+              </div>
             </div>
 
             <div class="sr-ctt-right">
@@ -767,17 +810,17 @@
                 title="Mở Mindmap Review Kinh Doanh (Tổng quan → Công ty → PO → Chi tiết)"
               >
                 <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M8.7 10.7l6.6-3.4"/><path d="M8.7 13.3l6.6 3.4"/></svg>
-                <span>Review</span>
+                <span>Review tổng</span>
               </button>
 
               <button
                 type="button"
                 class="sr-hdr-action-btn is-add"
                 @click.stop="openAddChoiceModal()"
-                title="Tạo PO mới hoặc Import Báo giá / DXMH / Report"
+                :title="srDataMode === 'craft' ? 'Tạo Phương án tạm mới hoặc Import Báo giá / DXMH / Report' : 'Tạo PO mới hoặc Import Báo giá / DXMH / Report'"
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                <span>Thêm mới</span>
+                <span>{{ srDataMode === 'craft' ? 'Thêm phương án' : 'Thêm mới' }}</span>
               </button>
 
               <button
@@ -902,6 +945,7 @@
                       </button>
 
                       <button
+                        v-if="srDataMode !== 'craft'"
                         type="button"
                         class="sr-ds-toggle-row"
                         :class="{ active: !isKpiCollapsed }"
@@ -912,7 +956,7 @@
                       </button>
 
                       <button
-                        v-if="isMobileShell ? mobileActiveTab === 'overview' : layoutViewMode === 'stacked-groups'"
+                        v-if="!isMobileShell && layoutViewMode === 'stacked-groups'"
                         type="button"
                         class="sr-ds-toggle-row"
                         :class="{ active: !areAllGroupsCollapsed }"
@@ -953,15 +997,15 @@
             :key="group.ma_cong_ty + gIdx"
             class="sr-report-group"
             :class="{
-              'is-group-collapsed': (isMobileShell ? mobileActiveTab === 'overview' : layoutViewMode === 'stacked-groups') && isGroupCollapsed(group),
+              'is-group-collapsed': !isMobileShell && layoutViewMode === 'stacked-groups' && isGroupCollapsed(group),
               'is-md-active-group': isMobileShell ? mobileActiveTab === 'company_detail' : layoutViewMode === 'master-detail'
             }"
           >
             <!-- Header Công Ty Dạng Hình File / Bìa Hồ Sơ (Folder Tab Shape) Phía Trên Card PO -->
             <div
               class="sr-company-folder-header"
-              @click="(isMobileShell ? mobileActiveTab === 'overview' : layoutViewMode === 'stacked-groups') ? toggleGroupCollapse(group) : undefined"
-              :style="{ cursor: (isMobileShell ? mobileActiveTab === 'overview' : layoutViewMode === 'stacked-groups') ? 'pointer' : 'default' }"
+              @click="(!isMobileShell && layoutViewMode === 'stacked-groups') ? toggleGroupCollapse(group) : undefined"
+              :style="{ cursor: (!isMobileShell && layoutViewMode === 'stacked-groups') ? 'pointer' : 'default' }"
             >
               <!-- Hàng trên: Tai File (Folder Ear Tab) bên trái + Cụm Tác vụ, Dữ liệu & Thiết lập hiển thị ở góc phải (chuẩn baogiaFirebase) -->
               <div class="sr-folder-top-bar">
@@ -979,10 +1023,9 @@
                     <span class="sr-folder-mst">MST: <span v-html="highlightSaleText(group.mst, searchStr)"></span></span>
                   </template>
                   <span class="sr-folder-sep">•</span>
-                  <span class="sr-folder-pocount">{{ group.items.length }} PO</span>
-                </div>
-
-                <div class="sr-cpb-right" @click.stop>
+                  <span class="sr-folder-pocount" :class="{ 'is-craft-count': srDataMode === 'craft' }">
+                    {{ group.items.length }} {{ srDataMode === 'craft' ? 'Phương án' : 'PO' }}
+                  </span>
                   <button
                     type="button"
                     class="sr-plain-text-btn is-folder-review-btn"
@@ -990,33 +1033,30 @@
                     title="Review Sơ đồ nhánh Kinh doanh của riêng công ty này"
                   >
                     <svg width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M8.7 10.7l6.6-3.4"/><path d="M8.7 13.3l6.6 3.4"/></svg>
-                    <span>Review</span>
+                    <span>Review công ty</span>
                   </button>
-                  <template v-if="isMobileShell ? mobileActiveTab === 'overview' : layoutViewMode === 'stacked-groups'">
-                  <button
-                    v-if="isMobileShell && mobileActiveTab === 'overview'"
-                    type="button"
-                    class="sr-plain-text-btn is-mob-company-jump"
-                    v-show="false"
-                    @click.stop="selectMasterGroup(group)"
-                  >
-                    KPI ›
-                  </button>
+                </div>
+
+                <div
+                  v-if="!isMobileShell && layoutViewMode === 'stacked-groups'"
+                  class="sr-cpb-right"
+                  @click.stop
+                >
                   <button
                     type="button"
                     class="sr-plain-text-btn"
                     @click.stop="toggleGroupCollapse(group)"
                   >
-                    <span class="sr-hide-mob">{{ isGroupCollapsed(group) ? 'Mở rộng' : 'Thu gọn' }}</span><svg class="sr-show-mob-inline sr-mob-folder-chevron" :class="{ 'is-collapsed': isGroupCollapsed(group) }" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+                    <span class="sr-hide-mob">{{ isGroupCollapsed(group) ? 'Mở rộng' : 'Thu gọn' }}</span>
                   </button>
-                  </template>
                 </div>
               </div>
 
               <div v-if="false" class="sr-mob-folder-subbar"><div class="sr-mob-fs-left"><strong v-if="getGroupTenKhachHang(group)" class="sr-mob-fs-code" v-html="highlightSaleText(getGroupTenKhachHang(group), searchStr)"></strong><span v-if="getGroupTenKhachHang(group) && group.mst && group.mst !== 'N/A'" class="sr-mob-fs-sep">•</span><span v-if="group.mst && group.mst !== 'N/A'" class="sr-mob-fs-mst">MST: <span v-html="highlightSaleText(group.mst, searchStr)"></span></span></div><div class="sr-mob-fs-right"><span class="sr-mob-fs-metric">DSB: <strong>{{ fmt(getGroupDoanhSoBan(group)) }}</strong></span><span class="sr-mob-fs-sep">•</span><span class="sr-mob-fs-metric" :class="getGroupCongNo(group) > 0 ? 'is-debt' : 'is-settled'">Nợ: <strong>{{ fmt(getGroupCongNo(group)) }}</strong></span></div></div>
-              <!-- Bên dưới Header Tên Công Ty: 4 Card KPI Dành Riêng Cho Khách Hàng Này -->
+              <!-- Bên dưới Header Tên Công Ty: 4 Card KPI Dành Riêng Cho Khách Hàng Này (Chỉ hiện ở Bản Chính Thức, ẩn ở Bản Tạm) -->
               <div
-                v-show="isMobileShell ? (mobileActiveTab === 'overview' && !isGroupCollapsed(group)) : (layoutViewMode === 'master-detail' || !isGroupCollapsed(group))"
+                v-if="srDataMode !== 'craft'"
+                v-show="isMobileShell ? mobileActiveTab === 'overview' : (layoutViewMode === 'master-detail' || !isGroupCollapsed(group))"
                 class="sr-customer-kpi-sheet sr-folder-body-sheet"
                 @click.stop
               >
@@ -1289,19 +1329,22 @@
               </div>
             </div>
 
-            <!-- Danh sách Card PO (Hỗ trợ 1 Cột hoặc 2 Cột) -->
+            <!-- Danh sách Card PO (Hỗ trợ 1 Cột hoặc 2 Cột + Lazy Loading tự động) -->
             <div
-              v-show="(isMobileShell ? mobileActiveTab === 'company_detail' : layoutViewMode === 'master-detail') || !isGroupCollapsed(group)"
+              v-show="isMobileShell || layoutViewMode === 'master-detail' || !isGroupCollapsed(group)"
               class="sr-card-list"
               :class="poCardCols === 2 ? 'is-cols-2' : 'is-cols-1'"
             >
-              <div v-for="(r, idx) in group.items" :key="getPoRowKey(r) || idx" class="sr-card-outer-item">
+              <div v-for="(r, idx) in getVisibleGroupPoItems(group)" :key="getPoRowKey(r) || idx" class="sr-card-outer-item">
                 <div
+                  :id="'sr-po-card-' + (getPoRowKey(r) || r.So_PO || idx)"
                   class="sr-record-card sr-po1-card"
                   :class="{
                     'is-selected-card': isPoRowSelected(r),
+                    'is-craft-card': srDataMode === 'craft',
                     'is-collapsed-card': isEffectivePoCollapsed(r),
-                    'is-mob-po-summary': isMobileShell && mobileActiveTab === 'overview'
+                    'is-mob-po-summary': isMobileShell && mobileActiveTab === 'overview',
+                    'is-promoted-highlight-card': highlightedPoKey && (highlightedPoKey === getPoRowKey(r) || highlightedPoKey === String(r.So_PO || ''))
                   }"
                   @click="openMultiEditModal(r)"
                   style="cursor: pointer;"
@@ -1316,11 +1359,12 @@
                           class="sr-md-cc-check"
                           :class="{ selected: isPoRowSelected(r) }"
                           @click.stop="toggleSelectPoRow(r)"
-                          :title="isPoRowSelected(r) ? 'Bỏ chọn PO này' : 'Chọn PO này để xuất Excel'"
+                          :title="isPoRowSelected(r) ? 'Bỏ chọn PO này' : 'Chọn PO này'"
                         >
                           <svg v-if="isPoRowSelected(r)" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                         </button>
-                        <strong class="sr-po1-po-num">PO <span v-html="highlightSaleText(r.So_PO, searchStr)"></span></strong>
+                        <span v-if="srDataMode === 'craft'" class="sr-craft-option-pill">BẢN TẠM #{{ idx + 1 }}</span>
+                        <strong class="sr-po1-po-num">{{ srDataMode === 'craft' ? 'Phương án' : 'PO' }} <span v-html="highlightSaleText(r.So_PO, searchStr)"></span></strong>
                         <span class="sr-po1-sep">•</span>
                         <span class="sr-po1-plain-meta"><span class="sr-hide-mob">Ngày </span>{{ fmtDate(r.created_time) }}<span class="sr-hide-mob"> (Tháng {{ getMonth(r.created_time) }})</span></span>
                         <template v-if="r.Ten_nha_cung_cap">
@@ -1330,30 +1374,52 @@
                       </div>
 
                       <div class="sr-po1-meta-right">
-                        <span
-                          class="sr-po1-plain-status"
-                          :class="congNo(r) <= 0 && tongSauVat(r) > 0 ? 'is-com-text' : 'is-debt-text'"
-                        >
-                          {{ congNo(r) <= 0 && tongSauVat(r) > 0 ? 'Đã tất toán' : (daThanhToan(r) > 0 && congNo(r) > 0 ? 'Thanh toán 1 phần' : 'Chưa thanh toán') }}
-                        </span>
-                        <template v-if="congNo(r) > 0 && getPoDueInfo(r).dueBadgeText">
-                          <span class="sr-po1-sep">•</span>
+                        <template v-if="srDataMode === 'craft'">
+                          <button
+                            type="button"
+                            class="sr-craft-card-btn is-clone"
+                            @click.stop="cloneCraftRow(r)"
+                            title="Nhân bản phương án này thành 1 phương án tạm mới để thử kịch bản giá khác"
+                          >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            <span>Nhân bản</span>
+                          </button>
+                          <button
+                            type="button"
+                            class="sr-craft-card-btn is-chotdeal"
+                            @click.stop="promoteCraftToOfficial(r)"
+                            title="Chốt Deal phương án này và chuyển sang Bản Chính Thức"
+                          >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            <span>Chốt Deal</span>
+                          </button>
+                        </template>
+                        <template v-else>
                           <span
-                            class="sr-po1-plain-due"
-                            :class="{ 'is-debt-text': getPoDueInfo(r).dueStatus === 'qua_han' }"
+                            class="sr-po1-plain-status"
+                            :class="congNo(r) <= 0 && tongSauVat(r) > 0 ? 'is-com-text' : 'is-debt-text'"
+                          >
+                            {{ congNo(r) <= 0 && tongSauVat(r) > 0 ? 'Đã tất toán' : (daThanhToan(r) > 0 && congNo(r) > 0 ? 'Thanh toán 1 phần' : 'Chưa thanh toán') }}
+                          </span>
+                          <template v-if="congNo(r) > 0 && getPoDueInfo(r).dueBadgeText">
+                            <span class="sr-po1-sep">•</span>
+                            <span
+                              class="sr-po1-plain-due"
+                              :class="{ 'is-debt-text': getPoDueInfo(r).dueStatus === 'qua_han' }"
+                              @click.stop="openPaymentModal(r)"
+                            >
+                              {{ getPoDueInfo(r).dueBadgeText }}
+                            </span>
+                          </template>
+                          <span class="sr-po1-sep">|</span>
+                          <button
+                            type="button"
+                            class="sr-po-pay-extend-btn"
                             @click.stop="openPaymentModal(r)"
                           >
-                            {{ getPoDueInfo(r).dueBadgeText }}
-                          </span>
+                            Thanh toán<span class="sr-hide-mob"> / Gia hạn</span><template v-if="getPaymentHistoryForPO(r).length > 0"> ({{ getPaymentHistoryForPO(r).length }})</template>
+                          </button>
                         </template>
-                        <span class="sr-po1-sep">|</span>
-                        <button
-                          type="button"
-                          class="sr-po-pay-extend-btn"
-                          @click.stop="openPaymentModal(r)"
-                        >
-                          Thanh toán<span class="sr-hide-mob"> / Gia hạn</span><template v-if="getPaymentHistoryForPO(r).length > 0"> ({{ getPaymentHistoryForPO(r).length }})</template>
-                        </button>
                         <button
                           type="button"
                           class="sr-po-collapse-arrow-btn"
@@ -1382,8 +1448,10 @@
                         <span>Net COM: <strong class="is-com-text">{{ fmt(netCom(r)) }}</strong></span>
                         <span class="sr-po1-sep">•</span>
                         <span>Margin: <strong :class="netMargin(r) >= 0 ? 'is-com-text' : 'is-debt-text'">{{ fmt(netMargin(r)) }}</strong></span>
-                        <span class="sr-po1-sep">•</span>
-                        <span>Nợ: <strong :class="congNo(r) > 0 ? 'is-debt-text' : 'is-com-text'">{{ fmt(congNo(r)) }}</strong></span>
+                        <template v-if="srDataMode !== 'craft'">
+                          <span class="sr-po1-sep">•</span>
+                          <span>Nợ: <strong :class="congNo(r) > 0 ? 'is-debt-text' : 'is-com-text'">{{ fmt(congNo(r)) }}</strong></span>
+                        </template>
                       </div>
                     </div>
 
@@ -1524,7 +1592,7 @@
                   </div>
 
                   <!-- 2. 4 KHỐI CHỈ SỐ THEO ĐÚNG NHÓM GỐC (SỐ TIỀN MÀU XANH LÁ / ĐỎ) -->
-                  <div v-show="!isEffectivePoCollapsed(r)" class="sr-po1-4blocks">
+                  <div v-show="!isEffectivePoCollapsed(r)" class="sr-po1-4blocks" :class="{ 'is-craft-3blocks': srDataMode === 'craft' }">
                     <!-- KHỐI 1: Doanh số bán, Giá mua, Tổng CP đơn hàng -->
                     <div class="sr-po1-block">
                       <div class="sr-po1-block-title is-blue-head">Doanh số &amp; Chi phí</div>
@@ -1539,6 +1607,10 @@
                       <div class="sr-po1-b-row sr-fin-row-clickable" @click.stop="openMultiEditModal(r, 'tongCP')" title="Nhấp để sửa Tổng CP đơn hàng">
                         <span class="sr-po1-b-lbl"><span class="sr-hide-mob">Tổng CP đơn hàng</span><span class="sr-show-mob-inline">Tổng chi phí</span></span>
                         <span class="sr-po1-b-val is-debt-text">{{ fmt(tongCP(r)) }}</span>
+                      </div>
+                      <div v-if="srDataMode === 'craft'" class="sr-po1-b-row is-sub-divider">
+                        <span class="sr-po1-b-lbl"><span class="sr-hide-mob">Tổng tiền sau VAT</span><span class="sr-show-mob-inline">Tổng sau VAT</span></span>
+                        <strong class="sr-po1-b-val is-com-text">{{ fmt(tongSauVat(r)) }}</strong>
                       </div>
                     </div>
 
@@ -1588,8 +1660,8 @@
                       </div>
                     </div>
 
-                    <!-- KHỐI 4: Tổng tiền sau VAT, Đã thanh toán, Công nợ còn lại, Thời gian TT, Hạn thanh toán -->
-                    <div class="sr-po1-block">
+                    <!-- KHỐI 4: Tổng tiền sau VAT, Đã thanh toán, Công nợ còn lại, Thời gian TT, Hạn thanh toán (Chỉ hiện ở Bản Chính Thức) -->
+                    <div v-if="srDataMode !== 'craft'" class="sr-po1-block">
                       <div class="sr-po1-block-title is-red-head">Thanh toán &amp; Công nợ</div>
                       <div class="sr-po1-b-row is-primary">
                         <span class="sr-po1-b-lbl"><span class="sr-hide-mob">Tổng tiền sau VAT</span><span class="sr-show-mob-inline">Tổng sau VAT</span></span>
@@ -1624,12 +1696,27 @@
                   </div>
                 </div>
               </div>
+
+              <!-- Sentinel Lazy Loading tự động tải thêm Card PO trong nhóm công ty khi cuộn xuống -->
+              <div
+                v-if="hasMoreGroupPoItems(group)"
+                v-po-lazy-observer="() => loadMoreGroupPoItems(group)"
+                class="sr-po-lazy-sentinel"
+              >
+                <button type="button" class="sr-po-lazy-more-btn" @click.stop="loadMoreGroupPoItems(group)">
+                  <span>Đang hiển thị {{ getVisibleGroupPoItems(group).length }} / {{ group.items.length }} {{ srDataMode === 'craft' ? 'phương án' : 'PO' }} • Tải thêm ({{ group.items.length - getVisibleGroupPoItems(group).length }})</span>
+                </button>
+              </div>
             </div>
           </div>
 
-          <div v-if="(isMobileShell ? mobileActiveTab === 'overview' : layoutViewMode === 'stacked-groups') && displayLimit < filteredRows.length" style="display: flex; justify-content: center; margin-top: 24px; margin-bottom: 24px;">
-            <button @click="loadMore" class="sr-btn sr-btn-import" style="background: rgba(56, 189, 248, 0.1); color: #38bdf8; border: 1px dashed rgba(56, 189, 248, 0.4); padding: 12px 32px; font-weight: 600; border-radius: 12px; transition: all 0.2s;">
-              Xem thêm ({{ filteredRows.length - displayLimit }} bản ghi nữa)
+          <div
+            v-if="(isMobileShell ? mobileActiveTab === 'overview' : layoutViewMode === 'stacked-groups') && displayLimit < filteredRows.length"
+            v-po-lazy-observer="loadMore"
+            class="sr-po-lazy-sentinel is-global-sentinel"
+          >
+            <button type="button" @click="loadMore" class="sr-po-lazy-more-btn">
+              <span>Đang hiển thị {{ Math.min(displayLimit, filteredRows.length) }} / {{ filteredRows.length }} {{ srDataMode === 'craft' ? 'phương án' : 'bản ghi PO' }} • Xem thêm ({{ filteredRows.length - displayLimit }})</span>
             </button>
           </div>
         </div>
@@ -1861,10 +1948,10 @@
       </div>
     </Teleport>
 
-    <!-- Thanh nổi thao tác nhanh khi chọn Card PO -->
+    <!-- Thanh nổi thao tác nhanh khi chọn Card PO hoặc Card Công ty -->
     <Teleport to="body">
       <div
-        v-if="selectedPoRows.length > 0 && !multiEditModal.show && !showExportModal && !paymentModal.show"
+        v-if="selectedPoRows.length > 0 && !multiEditModal.show && !showExportModal && !paymentModal.show && !showCraftCompareModal && !reviewMindmapModal.show"
         class="sr-selection-floating-bar"
       >
         <div class="sr-sel-bar-info">
@@ -1874,6 +1961,24 @@
           </span>
         </div>
         <div class="sr-sel-bar-actions">
+          <button
+            type="button"
+            class="sr-sel-btn sr-sel-btn-mindmap"
+            @click="openCompareMindmapReview()"
+            title="Mở Sơ đồ Tư duy (Mindmap) & Thuyết minh giọng đọc cho các PO đang chọn"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M8.7 10.7l6.6-3.4"/><path d="M8.7 13.3l6.6 3.4"/></svg>
+            <span>Review PO</span>
+          </button>
+          <button
+            type="button"
+            class="sr-sel-btn sr-sel-btn-compare"
+            @click="openCraftCompareModal()"
+            title="Mở bảng Phân tích & So sánh chỉ số giữa các PO đang chọn"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            <span>So sánh</span>
+          </button>
           <button
             type="button"
             class="sr-sel-btn sr-sel-btn-export"
@@ -1918,13 +2023,13 @@
       <div
         v-if="multiEditModal.show"
         class="sr-modal-overlay sr-po-modal-overlay"
-        :class="{ 'theme-light-blue': uiTheme === 'light', 'no-anim': isSwitchingTab }"
+        :class="{ 'theme-light-blue': uiTheme === 'light', 'is-craft-overlay': srDataMode === 'craft', 'no-anim': isSwitchingTab }"
         @click.self="multiEditModal.show = false"
         style="z-index: 10000;"
       >
         <div
           class="sr-modal sr-modal-large sr-po-modal is-fullscreen-100"
-          :class="{ 'is-light': uiTheme === 'light', 'no-anim': isSwitchingTab }"
+          :class="{ 'is-light': uiTheme === 'light', 'is-craft-modal': srDataMode === 'craft', 'no-anim': isSwitchingTab }"
         >
           <!-- 1. STICKY TOP HEADER -->
           <div class="sr-import-card-header sr-po-modal-header" v-if="activeModalItem">
@@ -1936,10 +2041,10 @@
               <div class="sr-po-header-titles">
                 <div class="sr-po-header-title-row">
                   <h4 class="sr-po-header-title">
-                    {{ multiEditModal.mode === 'create' ? 'Tạo mới đơn hàng PO' : 'Chỉnh sửa đơn hàng PO' }}
+                    {{ (activeModalItem as any)._clonedFromRow ? 'Nhân bản phương án PO' : (multiEditModal.mode === 'create' ? (srDataMode === 'craft' ? 'Tạo mới phương án PO' : 'Tạo mới đơn hàng PO') : (srDataMode === 'craft' ? 'Chỉnh sửa phương án PO' : 'Chỉnh sửa đơn hàng PO')) }}
                   </h4>
                   <span class="sr-po-mode-badge">
-                    {{ multiEditModal.mode === 'create' ? 'KHỞI TẠO PO MỚI' : 'CHỈNH SỬA PO' }}
+                    {{ (activeModalItem as any)._clonedFromRow ? 'NHÂN BẢN PHƯƠNG ÁN' : (multiEditModal.mode === 'create' ? (srDataMode === 'craft' ? 'KHỞI TẠO PHƯƠNG ÁN' : 'KHỞI TẠO PO MỚI') : 'CHỈNH SỬA PO') }}
                   </span>
                   <span v-if="false && activeModalItem.soPO" class="sr-po-index-badge">
                     PO #{{ activeModalItem.soPO }}
@@ -2955,7 +3060,7 @@
                         <!-- TAB 1: 4 KHỐI CHỈ SỐ TÀI CHÍNH & CÔNG NỢ ĐỒNG BỘ -->
                         <div v-if="item.activeTab !== 'goods'">
                           <template v-if="multiEditModal.mode === 'create' || item.row">
-                            <div class="sr-modal-finance-grid">
+                            <div class="sr-modal-finance-grid" :class="{ 'is-craft-3cols': srDataMode === 'craft' }">
                               <!-- KHỐI 1: DOANH SỐ BÁN, GIÁ MUA, TỔNG CP ĐƠN HÀNG -->
                               <div class="sr-modal-fin-col">
                                 <div class="sr-form-group">
@@ -2993,6 +3098,12 @@
                                     placeholder="0"
                                     class="sr-modal-input text-right is-fin-num"
                                   />
+                                </div>
+                                <div v-if="srDataMode === 'craft'" class="sr-fin-inline-row is-dashed-top" style="margin-top: 4px;">
+                                  <span class="sr-fin-inline-lbl">Tổng tiền sau VAT</span>
+                                  <strong class="sr-fin-inline-val text-green">
+                                    {{ fmt(item.goodsTotal?.ttSau || (item.row ? tongSauVat(item.row) : item.doanhSoBan)) }}
+                                  </strong>
                                 </div>
                               </div>
 
@@ -3099,8 +3210,8 @@
                                 </div>
                               </div>
 
-                              <!-- KHỐI 4: THANH TOÁN & CÔNG NỢ (1 KHỐI DỌC ĐỒNG BỘ) -->
-                              <div class="sr-modal-fin-col is-debt-col">
+                              <!-- KHỐI 4: THANH TOÁN & CÔNG NỢ (1 KHỐI DỌC ĐỒNG BỘ — Chỉ hiện ở Bản Chính Thức) -->
+                              <div v-if="srDataMode !== 'craft'" class="sr-modal-fin-col is-debt-col">
                                 <div class="sr-fin-inline-row">
                                   <span class="sr-fin-inline-lbl">Tổng tiền sau VAT</span>
                                   <strong class="sr-fin-inline-val text-green">
@@ -3179,7 +3290,7 @@
                           <div class="sr-po-goods-toolbar">
                             <div class="sr-po-goods-title-group">
                               <span class="sr-po-goods-subtitle">Danh sách hàng hóa / dịch vụ của PO ({{ item.goodsList?.length || 0 }} dòng)</span>
-                              <div v-if="hangHoaCatalogLoaded && item.goodsList && item.goodsList.length > 0" class="sr-po-goods-db-pills">
+                              <div v-if="srDataMode !== 'craft' && hangHoaCatalogLoaded && item.goodsList && item.goodsList.length > 0" class="sr-po-goods-db-pills">
                                 <span v-if="getPoGoodsDbStats(item).newCount > 0" class="sr-po-db-pill is-new">
                                   Chưa có DB: {{ getPoGoodsDbStats(item).newCount }}
                                 </span>
@@ -3193,7 +3304,7 @@
                             </div>
                             <div class="sr-po-goods-actions">
                               <button
-                                v-if="item.goodsList && item.goodsList.length > 0"
+                                v-if="srDataMode !== 'craft' && item.goodsList && item.goodsList.length > 0"
                                 type="button"
                                 class="sr-po-goods-db-btn"
                                 :disabled="goodsDbLoadingModal.show"
@@ -3385,22 +3496,41 @@
             <div class="sr-po-footer-left">
               <button type="button" class="sr-btn-remove sr-po-btn-delete" @click="deletePO(activeModalItem, activeItemIdx)">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                <span>{{ multiEditModal.mode === 'create' && multiEditModal.items.length > 1 ? 'Bỏ PO này' : 'Xóa PO' }}</span>
+                <span>{{ multiEditModal.mode === 'create' && multiEditModal.items.length > 1 ? (srDataMode === 'craft' ? 'Bỏ phương án này' : 'Bỏ PO này') : (srDataMode === 'craft' ? 'Xóa phương án' : 'Xóa PO') }}</span>
+              </button>
+              <button
+                v-if="srDataMode === 'craft'"
+                type="button"
+                class="sr-btn sr-po-btn-clone-tab"
+                @click="cloneActiveModalItemAsNewTab()"
+                title="Nhân bản phương án đang mở thành 1 tab phương án mới để chỉnh sửa & đối chiếu"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                <span>Nhân bản phương án</span>
               </button>
             </div>
             <div class="sr-po-footer-center">
               <button
-                v-if="isModalDirty || multiEditModal.mode === 'create'"
                 type="button"
                 class="sr-btn sr-btn-save sr-po-btn-save"
                 @click="saveMultiModal"
                 :disabled="savingModal || multiEditModal.items.length === 0"
               >
-                <svg v-if="savingModal" class="spin" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-                <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                <span>{{ savingModal ? 'Đang lưu...' : (multiEditModal.mode === 'create' ? (multiEditModal.items.length > 1 ? `LƯU TẤT CẢ (${multiEditModal.items.length} PO)` : 'KHỞI TẠO PO') : 'LƯU THAY ĐỔI') }}</span>
+                <svg v-if="savingModal" class="spin" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                <svg v-else width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                <span>{{ savingModal ? 'Đang lưu...' : (multiEditModal.mode === 'create' ? (multiEditModal.items.length > 1 ? `LƯU TẤT CẢ (${multiEditModal.items.length} ${srDataMode === 'craft' ? 'PHƯƠNG ÁN' : 'PO'})` : (srDataMode === 'craft' ? 'LƯU PHƯƠNG ÁN TẠM' : 'KHỞI TẠO PO')) : (srDataMode === 'craft' ? 'LƯU BẢN TẠM' : 'LƯU THAY ĐỔI')) }}</span>
               </button>
-              <span v-else class="sr-po-saved-hint">✓ Dữ liệu PO đã đồng bộ</span>
+              <button
+                v-if="srDataMode === 'craft'"
+                type="button"
+                class="sr-btn sr-po-btn-chotdeal"
+                :disabled="savingModal"
+                @click="chotDealFromActiveModalItem()"
+                title="Chốt Deal phương án này: Tự động lưu và chuyển lên Sale Report Bản Chính Thức"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>CHỐT DEAL LÊN CHÍNH THỨC</span>
+              </button>
             </div>
             <div class="sr-po-footer-right">
               <button type="button" class="sr-btn sr-btn-cancel sr-po-btn-cancel" @click="multiEditModal.show = false">Đóng</button>
@@ -6219,7 +6349,10 @@
           </div>
 
           <!-- 2-Column Split Workspace: Left Sidebar (Metrics + 4 KPI Cards) | Right Main (Toolbar + Full-Height Charts) -->
-          <div class="sr-analytics-split-shell" :class="`mob-analytics-dock-${analyticsMobileDockTab}`">
+          <div
+            class="sr-analytics-split-shell"
+            :class="[`mob-analytics-dock-${analyticsMobileDockTab}`, { 'is-sidebar-collapsed': isAnalyticsSidebarCollapsed }]"
+          >
             <!-- Thanh ngữ cảnh nhanh trên Mobile khi đang ở Tab Biểu đồ -->
             <div class="sr-analytics-mob-ctx-bar">
               <button type="button" class="sr-analytics-mob-ctx-pill is-metric" @click="analyticsMobileDockTab = 'metric'">
@@ -6267,7 +6400,18 @@
             <!-- CỘT TRÁI: Chọn 12 Chỉ Số + 4 Thẻ KPI Tóm Tắt -->
             <aside class="sr-analytics-sidebar custom-scrollbar">
               <div class="sr-analytics-side-section">
-                <div class="sr-analytics-side-heading">Chỉ số phân tích (12)</div>
+                <div class="sr-analytics-side-heading is-with-toggle">
+                  <span>Chỉ số phân tích (12)</span>
+                  <button
+                    type="button"
+                    class="sr-analytics-side-collapse-btn"
+                    @click="isAnalyticsSidebarCollapsed = true"
+                    title="Thu gọn cột chỉ số bên trái"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
+                    <span>Ẩn</span>
+                  </button>
+                </div>
                 <div class="sr-analytics-metric-strip">
                   <button
                     v-for="mOpt in analyticsMetricOptions"
@@ -6313,6 +6457,21 @@
                 <div v-if="chartModal.companyScope" class="sr-analytics-tabs">
                   <button
                     type="button"
+                    class="sr-analytics-sidebar-toggle-btn"
+                    :class="{ 'is-collapsed': isAnalyticsSidebarCollapsed }"
+                    @click="isAnalyticsSidebarCollapsed = !isAnalyticsSidebarCollapsed"
+                    :title="isAnalyticsSidebarCollapsed ? 'Mở lại cột chỉ số KPI bên trái' : 'Thu gọn cột chỉ số bên trái để mở rộng không gian'"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2" />
+                      <line x1="9" y1="3" x2="9" y2="21" />
+                      <polyline v-if="isAnalyticsSidebarCollapsed" points="13 9 16 12 13 15" />
+                      <polyline v-else points="15 9 12 12 15 15" />
+                    </svg>
+                    <span>{{ isAnalyticsSidebarCollapsed ? 'Mở cột chỉ số' : 'Ẩn cột trái' }}</span>
+                  </button>
+                  <button
+                    type="button"
                     class="sr-analytics-tab-btn"
                     :class="{ active: analyticsActiveTab === 'timeline' }"
                     @click="switchAnalyticsTab('timeline')"
@@ -6351,6 +6510,21 @@
 
                 <!-- 6 Tabs khi xem Toàn hệ thống -->
                 <div v-else class="sr-analytics-tabs">
+                  <button
+                    type="button"
+                    class="sr-analytics-sidebar-toggle-btn"
+                    :class="{ 'is-collapsed': isAnalyticsSidebarCollapsed }"
+                    @click="isAnalyticsSidebarCollapsed = !isAnalyticsSidebarCollapsed"
+                    :title="isAnalyticsSidebarCollapsed ? 'Mở lại cột chỉ số KPI bên trái' : 'Thu gọn cột chỉ số bên trái để mở rộng không gian'"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2" />
+                      <line x1="9" y1="3" x2="9" y2="21" />
+                      <polyline v-if="isAnalyticsSidebarCollapsed" points="13 9 16 12 13 15" />
+                      <polyline v-else points="15 9 12 12 15 15" />
+                    </svg>
+                    <span>{{ isAnalyticsSidebarCollapsed ? 'Mở cột chỉ số' : 'Ẩn cột trái' }}</span>
+                  </button>
                   <button
                     type="button"
                     class="sr-analytics-tab-btn"
@@ -9528,6 +9702,919 @@
       </button>
     </nav>
 
+    <!-- MODAL PHÂN TÍCH & SO SÁNH ĐA PHƯƠNG ÁN (ĐỒNG BỘ GIAO DIỆN MODAL PHÂN TÍCH BẢN CHÍNH THỨC) -->
+    <Teleport to="body">
+      <div
+        v-if="showCraftCompareModal"
+        class="sr-modal-overlay"
+        :class="{ 'theme-light-blue': uiTheme === 'light', 'mode-craft': srDataMode === 'craft', 'no-anim': isSwitchingTab }"
+        @click.self="showCraftCompareModal = false"
+        style="z-index: 100000; padding: 0;"
+      >
+        <div
+          class="sr-modal sr-modal-large sr-analytics-modal"
+          :class="{ 'is-light': uiTheme === 'light', 'mode-craft': srDataMode === 'craft', 'no-anim': isSwitchingTab }"
+        >
+          <!-- Header (Đồng bộ chuẩn .sr-analytics-header bên Bản Chính Thức) -->
+          <div class="sr-analytics-header">
+            <div class="sr-analytics-header-left">
+              <button
+                type="button"
+                class="sr-analytics-back-btn"
+                @click="isMobile && craftCompareMobileDockTab === 'chart' ? (craftCompareMobileDockTab = 'group') : (isMobile && craftCompareMobileDockTab === 'group' ? (craftCompareMobileDockTab = 'metric') : (showCraftCompareModal = false))"
+                title="Quay lại"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+              </button>
+              <span class="sr-analytics-header-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+              </span>
+              <div class="sr-analytics-title-wrap">
+                <div class="sr-analytics-title-row" style="flex-wrap: wrap; gap: 8px;">
+                  <h3 class="sr-analytics-title">Phân tích &amp; So sánh Phương án</h3>
+                  <span class="sr-analytics-po-badge">Đã chọn {{ effectiveCraftCompareRows.length }} / {{ rows.length }} Phương án</span>
+                </div>
+                <p class="sr-analytics-sub">
+                  Chọn các chỉ số KPI ở cột bên trái để hiển thị Biểu đồ và Bảng ma trận đối chiếu theo Nội dung hợp đồng (content_of_contract_PO)
+                </p>
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <button
+                v-if="effectiveCraftCompareRows.length > 0"
+                type="button"
+                class="sr-ccm-tool-btn is-clone"
+                @click="cloneCraftRowFromCompare(effectiveCraftCompareRows[effectiveCraftCompareRows.length - 1])"
+                title="Nhân bản thêm 1 phương án mới ngay trong modal phân tích"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                <span class="sr-hide-mob">+ Nhân bản PA</span>
+              </button>
+              <button
+                v-if="effectiveCraftCompareRows.length > 0"
+                type="button"
+                class="sr-ccm-tool-btn is-mindmap"
+                @click="openCompareMindmapReview()"
+                title="Mở Sơ đồ Tư duy (Mindmap) & Thuyết minh giọng đọc cho các phương án đang so sánh"
+              >
+                <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M8.7 10.7l6.6-3.4"/><path d="M8.7 13.3l6.6 3.4"/></svg>
+                <span class="sr-hide-mob">Review Mindmap</span>
+              </button>
+              <button
+                type="button"
+                class="sr-add-choice-close"
+                @click="showCraftCompareModal = false"
+                title="Đóng phân tích so sánh"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- 2-Column Split Workspace: Left Sidebar (Chọn Phương Án + 10 KPI Metrics + 4 KPI Summary Cards) | Right Main (Toolbar + Full-Height Charts & Tables) -->
+          <div
+            class="sr-analytics-split-shell"
+            :class="[`mob-analytics-dock-${craftCompareMobileDockTab}`, { 'is-sidebar-collapsed': isAnalyticsSidebarCollapsed }]"
+          >
+            <!-- Thanh ngữ cảnh nhanh trên Mobile khi đang ở Tab Biểu đồ -->
+            <div class="sr-analytics-mob-ctx-bar">
+              <button type="button" class="sr-analytics-mob-ctx-pill is-metric" @click="craftCompareMobileDockTab = 'metric'">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+                <span>Phương án ({{ effectiveCraftCompareRows.length }}) &amp; Chỉ số: <strong>{{ craftCompareChartMetric === 'triple_kpi' ? 'Gộp 3 KPI chính' : activeCraftChartMetricDef.label }}</strong></span>
+              </button>
+              <button type="button" class="sr-analytics-mob-ctx-pill is-group" @click="craftCompareMobileDockTab = 'group'">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+                <span>{{ craftCompareViewSection === 'table' ? 'Ma trận 10 KPI' : 'So sánh Phương án PO' }}</span>
+              </button>
+            </div>
+
+            <!-- Thanh Bottom Dock 3 nút trên Mobile: 1. Chỉ số | 2. Nhóm biểu đồ | 3. Biểu đồ -->
+            <nav class="sr-analytics-mobile-dock" aria-label="Điều hướng phân tích phương án">
+              <button
+                type="button"
+                class="sr-analytics-dock-btn"
+                :class="{ active: craftCompareMobileDockTab === 'metric' }"
+                @click="craftCompareMobileDockTab = 'metric'"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+                <span>Phương án &amp; Chỉ số</span>
+              </button>
+              <button
+                type="button"
+                class="sr-analytics-dock-btn"
+                :class="{ active: craftCompareMobileDockTab === 'group' }"
+                @click="craftCompareMobileDockTab = 'group'"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>
+                <span>Góc nhìn</span>
+              </button>
+              <button
+                type="button"
+                class="sr-analytics-dock-btn"
+                :class="{ active: craftCompareMobileDockTab === 'chart' }"
+                @click="craftCompareMobileDockTab = 'chart'"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                <span>Biểu đồ</span>
+              </button>
+            </nav>
+
+            <!-- CỘT TRÁI: Chọn 10 Chỉ Số KPI + 4 Thẻ KPI Tóm Tắt -->
+            <aside class="sr-analytics-sidebar custom-scrollbar">
+              <!-- MỤC 1: CHỌN 10 CHỈ SỐ PHÂN TÍCH KPI -->
+              <div class="sr-analytics-side-section">
+                <div class="sr-analytics-side-heading is-with-toggle">
+                  <span>Chỉ số biểu đồ (3 Card KPI)</span>
+                  <button
+                    type="button"
+                    class="sr-analytics-side-collapse-btn"
+                    @click="isAnalyticsSidebarCollapsed = true"
+                    title="Thu gọn cột chỉ số bên trái"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
+                    <span>Ẩn</span>
+                  </button>
+                </div>
+                <div class="sr-analytics-metric-strip">
+                  <button
+                    v-for="mDef in craftCompareMetricDefs"
+                    :key="mDef.key"
+                    type="button"
+                    class="sr-analytics-metric-chip"
+                    :class="[
+                      mDef.group === 'profit' ? 'is-margin' : `is-${mDef.group}`,
+                      { active: craftCompareChartMetric === mDef.key }
+                    ]"
+                    @click="craftCompareChartMetric = mDef.key; craftCompareMobileDockTab = 'chart'"
+                    :title="mDef.formula ? `${mDef.label} (${mDef.formula})` : mDef.label"
+                  >
+                    {{ mDef.shortLabel || mDef.label }}
+                  </button>
+                  <button
+                    type="button"
+                    class="sr-analytics-metric-chip is-margin"
+                    :class="{ active: craftCompareChartMetric === 'triple_kpi' }"
+                    @click="craftCompareChartMetric = 'triple_kpi'; craftCompareMobileDockTab = 'chart'"
+                    title="Vẽ gộp 3 cột KPI chính (Doanh số bán • Net COM • Net Margin) cho từng phương án trên cùng 1 biểu đồ"
+                  >
+                    Gộp 3 KPI chính
+                  </button>
+                </div>
+              </div>
+
+              <div class="sr-analytics-side-section">
+                <div class="sr-analytics-side-heading">
+                  Tóm tắt — {{ craftCompareChartMetric === 'triple_kpi' ? '3 Cụm KPI' : activeCraftChartMetricDef.label }}
+                </div>
+                <div class="sr-analytics-kpi-grid">
+                  <div
+                    v-for="(kpi, kIdx) in craftCompareSummaryKpis"
+                    :key="kIdx"
+                    class="sr-analytics-kpi-card"
+                    :class="`is-${kpi.tone}`"
+                  >
+                    <span class="sr-analytics-kpi-label">{{ kpi.label }}</span>
+                    <strong class="sr-analytics-kpi-val">{{ kpi.value }}</strong>
+                    <span class="sr-analytics-kpi-sub" :title="kpi.sub">{{ kpi.sub }}</span>
+                  </div>
+                </div>
+              </div>
+            </aside>
+
+            <!-- CỘT PHẢI: Thanh Tab Góc Nhìn + Vùng Biểu Đồ & Bảng Full Chiều Cao (Giống hệt Bản Chính Thức) -->
+            <div class="sr-analytics-main">
+              <!-- Toolbar: View Tabs (Left) + Context Controls (Right) -->
+              <div class="sr-analytics-toolbar">
+                <div class="sr-analytics-tabs">
+                  <button
+                    type="button"
+                    class="sr-analytics-sidebar-toggle-btn"
+                    :class="{ 'is-collapsed': isAnalyticsSidebarCollapsed }"
+                    @click="isAnalyticsSidebarCollapsed = !isAnalyticsSidebarCollapsed"
+                    :title="isAnalyticsSidebarCollapsed ? 'Mở lại cột chỉ số KPI bên trái' : 'Thu gọn cột chỉ số bên trái để mở rộng không gian'"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2" />
+                      <line x1="9" y1="3" x2="9" y2="21" />
+                      <polyline v-if="isAnalyticsSidebarCollapsed" points="13 9 16 12 13 15" />
+                      <polyline v-else points="15 9 12 12 15 15" />
+                    </svg>
+                    <span>{{ isAnalyticsSidebarCollapsed ? 'Mở cột chỉ số' : 'Ẩn cột trái' }}</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="sr-analytics-tab-btn"
+                    :class="{ active: craftCompareViewSection === 'both' }"
+                    @click="craftCompareViewSection = 'both'; craftCompareMobileDockTab = 'chart'"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                    <span>So sánh Phương án PO ({{ effectiveCraftCompareRows.length }})</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="sr-analytics-tab-btn"
+                    :class="{ active: craftCompareViewSection === 'table' }"
+                    @click="craftCompareViewSection = 'table'; craftCompareMobileDockTab = 'chart'"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                    <span>Ma trận 10 chỉ số KPI (3 Cụm)</span>
+                  </button>
+                </div>
+
+                <!-- Controls cho Tab Biểu đồ So sánh PO -->
+                <div v-if="craftCompareViewSection !== 'table'" class="sr-analytics-controls">
+                  <div class="sr-analytics-ctrl-group">
+                    <span class="sr-analytics-ctrl-label">Sắp xếp:</span>
+                    <button
+                      type="button"
+                      class="sr-analytics-seg-btn"
+                      :class="{ active: craftCompareChartSort === 'original' }"
+                      @click="craftCompareChartSort = 'original'"
+                    >
+                      Thứ tự gốc
+                    </button>
+                    <button
+                      type="button"
+                      class="sr-analytics-seg-btn"
+                      :class="{ active: craftCompareChartSort === 'desc' }"
+                      @click="craftCompareChartSort = 'desc'"
+                    >
+                      Cao nhất
+                    </button>
+                    <button
+                      type="button"
+                      class="sr-analytics-seg-btn"
+                      :class="{ active: craftCompareChartSort === 'asc' }"
+                      @click="craftCompareChartSort = 'asc'"
+                    >
+                      Thấp nhất
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Controls cho Tab Bảng Ma trận 10 KPI -->
+                <div v-else class="sr-analytics-controls">
+                  <div class="sr-analytics-ctrl-group">
+                    <span class="sr-analytics-ctrl-label">Bố cục:</span>
+                    <button
+                      type="button"
+                      class="sr-analytics-seg-btn"
+                      :class="{ active: craftCompareLayout === 'columns' }"
+                      @click="craftCompareLayout = 'columns'"
+                    >
+                      Dạng Cột
+                    </button>
+                    <button
+                      type="button"
+                      class="sr-analytics-seg-btn"
+                      :class="{ active: craftCompareLayout === 'rows' }"
+                      @click="craftCompareLayout = 'rows'"
+                    >
+                      Dạng Dòng
+                    </button>
+                  </div>
+                  <div v-if="effectiveCraftCompareRows.length > 1" class="sr-analytics-ctrl-group">
+                    <span class="sr-analytics-ctrl-label">Bản gốc:</span>
+                    <button
+                      v-for="(r, bIdx) in effectiveCraftCompareRows"
+                      :key="'base-pick-' + (getPoRowKey(r) || bIdx)"
+                      type="button"
+                      class="sr-analytics-seg-btn"
+                      :class="{ active: isCraftBaselineRow(r) }"
+                      @click="setCraftBaselineRow(r)"
+                      :title="'Chọn làm Bản gốc: ' + getCraftCompareColTitle(r, bIdx)"
+                    >
+                      {{ isCraftBaselineRow(r) ? '★ ' : '' }}PA {{ bIdx + 1 }}
+                    </button>
+                  </div>
+                  <div class="sr-analytics-ctrl-group">
+                    <button
+                      type="button"
+                      class="sr-analytics-seg-btn"
+                      :class="{ active: craftCompareOnlyDiff }"
+                      @click="craftCompareOnlyDiff = !craftCompareOnlyDiff"
+                    >
+                      {{ craftCompareOnlyDiff ? 'Đang lọc: Có chênh lệch' : 'Tất cả 10 chỉ số KPI' }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Body: Biểu đồ + Bảng xếp hạng / Ma trận KPI -->
+              <div
+                class="sr-analytics-body custom-scrollbar"
+                :class="{ 'is-matrix-body': craftCompareViewSection === 'table' && effectiveCraftCompareRows.length > 0 }"
+              >
+                <div v-if="effectiveCraftCompareRows.length === 0" class="sr-ccm-empty">
+                  <p>Chưa có phương án nào được chọn. Hãy tích chọn các phương án ở danh sách bên ngoài rồi mở bảng so sánh.</p>
+                </div>
+
+                <div v-else class="sr-analytics-ranking-workspace">
+                  <!-- HÀNG 1: BIỂU ĐỒ TRÒN DOUGHNUT + BIỂU ĐỒ CỘT BAR CHART (Mỗi cột là content_of_contract_PO) -->
+                  <div v-if="craftCompareViewSection !== 'table'" class="sr-analytics-charts-row">
+                    <!-- Doughnut Chart (Ẩn khi xem chỉ số tỷ lệ % hoặc Gộp 3 KPI) -->
+                    <div
+                      v-if="craftCompareChartMetric !== 'triple_kpi' && !activeCraftChartMetricDef.isRatio"
+                      class="sr-analytics-doughnut-card"
+                    >
+                      <div class="sr-analytics-panel-head">
+                        <h4 class="sr-analytics-panel-title">Cơ cấu tỷ trọng phương án</h4>
+                        <span class="sr-analytics-panel-sub">{{ activeCraftChartMetricDef.label }}</span>
+                      </div>
+                      <div class="sr-analytics-doughnut-wrap">
+                        <Doughnut
+                          :key="'ccm-dn-' + craftCompareChartMetric + '-' + craftCompareChartSort + '-' + effectiveCraftCompareRows.length + '-' + uiTheme"
+                          :data="craftComparePieData"
+                          :options="craftComparePieOptions"
+                        />
+                      </div>
+                    </div>
+
+                    <!-- Standard Ranking Bar Chart: Cột là từng content_of_contract_PO -->
+                    <div class="sr-analytics-bar-card">
+                      <div class="sr-analytics-panel-head">
+                        <h4 class="sr-analytics-panel-title">
+                          Biểu đồ xếp hạng Phương án PO —
+                          {{ craftCompareChartMetric === 'triple_kpi' ? 'Doanh số bán • Net COM • Net Margin' : activeCraftChartMetricDef.label }}
+                        </h4>
+                        <span class="sr-analytics-panel-sub">
+                          Tên mỗi cột là Nội dung hợp đồng (content_of_contract_PO) • Chọn nhanh 10 chỉ số KPI ở cột bên trái
+                        </span>
+                      </div>
+                      <div class="sr-analytics-bar-scroll custom-scrollbar">
+                        <div
+                          class="chart-wrapper-mobile"
+                          :style="isMobile ? {
+                            '--mob-bar-h': Math.max(240, craftCompareSortedChartRows.length * (craftCompareChartMetric === 'triple_kpi' ? 88 : 68) + 64) + 'px',
+                            height: Math.max(240, craftCompareSortedChartRows.length * (craftCompareChartMetric === 'triple_kpi' ? 88 : 68) + 64) + 'px',
+                            width: '100%',
+                            minWidth: '100%'
+                          } : {
+                            height: '420px',
+                            width: Math.max(100, craftCompareSortedChartRows.length * (craftCompareChartMetric === 'triple_kpi' ? 165 : 125)) + 'px',
+                            minWidth: '100%'
+                          }"
+                        >
+                          <Bar
+                            :key="'ccm-bar-' + (isMobile ? 'mob-h' : 'pc-v') + '-' + craftCompareChartMetric + '-' + craftCompareChartSort + '-' + effectiveCraftCompareRows.length + '-' + uiTheme"
+                            :data="craftCompareBarData"
+                            :options="craftCompareBarOptions"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- HÀNG 2A: BẢNG CHI TIẾT XẾP HẠNG PHƯƠNG ÁN PO (Chuẩn giao diện Modal Phân tích Bản Chính Thức) -->
+                  <div v-if="craftCompareViewSection !== 'table'" class="sr-analytics-table-card">
+                    <div class="sr-analytics-panel-head">
+                      <h4 class="sr-analytics-panel-title">
+                        Bảng chi tiết xếp hạng Phương án PO ({{ craftCompareSortedChartRows.length }} phương án)
+                      </h4>
+                      <span class="sr-analytics-panel-sub">
+                        So sánh trực tiếp Doanh số bán, Net COM, Net Margin và thao tác Sửa / Nhân bản / Chốt Deal từng phương án
+                      </span>
+                    </div>
+                    <div class="sr-analytics-table-scroll custom-scrollbar">
+                      <table class="sr-analytics-table">
+                        <thead>
+                          <tr>
+                            <th style="width: 56px;">Hạng</th>
+                            <th>Nội dung hợp đồng (content of contract)</th>
+                            <th style="width: 150px; text-align: right;">Doanh số bán</th>
+                            <th style="width: 145px; text-align: right;">Net COM</th>
+                            <th style="width: 145px; text-align: right;">Net Margin</th>
+                            <th v-if="craftCompareChartMetric !== 'triple_kpi'" style="width: 160px; text-align: right;">
+                              {{ activeCraftChartMetricDef.label }}
+                            </th>
+                            <th v-if="craftCompareChartMetric !== 'triple_kpi' && !activeCraftChartMetricDef.isRatio" style="width: 185px;">
+                              Tỷ trọng
+                            </th>
+                            <th style="width: 215px; text-align: right;">Thao tác</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr
+                            v-for="(item, rIdx) in craftCompareSortedChartRows"
+                            :key="(getPoRowKey(item.row) || rIdx)"
+                          >
+                            <td>
+                              <span class="sr-rank-badge" :class="{ 'is-top1': rIdx === 0, 'is-top2': rIdx === 1, 'is-top3': rIdx === 2 }">
+                                {{ rIdx + 1 }}
+                              </span>
+                            </td>
+                            <td class="sr-rank-name" :title="item.label">
+                              <div>{{ item.label }}</div>
+                              <div style="font-size: 11px; font-weight: 500; opacity: 0.72; margin-top: 2px; white-space: normal;">
+                                {{ item.row.Ten_cong_ty || item.row.Ten_khach_hang || 'Khách lẻ' }}
+                                <template v-if="item.row.So_PO"> • PO: {{ item.row.So_PO }}</template>
+                                <template v-if="item.row.Ten_nha_cung_cap"> • NCC: {{ item.row.Ten_nha_cung_cap }}</template>
+                              </div>
+                            </td>
+                            <td style="text-align: right; font-weight: 700; font-variant-numeric: tabular-nums;">{{ fmt(doanhSoBan(item.row)) }} đ</td>
+                            <td style="text-align: right; font-weight: 700; font-variant-numeric: tabular-nums;">
+                              {{ fmt(netCom(item.row)) }} đ
+                              <small style="display: block; font-size: 10px; opacity: 0.72;">({{ pct(netCom(item.row), doanhSoBan(item.row)) }}% DSB)</small>
+                            </td>
+                            <td style="text-align: right; font-variant-numeric: tabular-nums;" class="sr-rank-val" :class="netMargin(item.row) < 0 ? 'text-red' : 'text-green'">
+                              {{ fmt(netMargin(item.row)) }} đ
+                              <small style="display: block; font-size: 10px; opacity: 0.72;">({{ pct(netMargin(item.row), doanhSoBan(item.row)) }}% DSB)</small>
+                            </td>
+                            <td
+                              v-if="craftCompareChartMetric !== 'triple_kpi'"
+                              style="text-align: right; font-variant-numeric: tabular-nums;"
+                              class="sr-rank-val"
+                              :class="item.val < 0 ? 'text-red' : 'text-green'"
+                            >
+                              {{ activeCraftChartMetricDef.format(item.row) }}
+                            </td>
+                            <td v-if="craftCompareChartMetric !== 'triple_kpi' && !activeCraftChartMetricDef.isRatio">
+                              <div class="sr-rank-share-cell">
+                                <div class="sr-rank-share-bar">
+                                  <div
+                                    class="sr-rank-share-fill"
+                                    :style="{
+                                      width: (craftCompareChartTotal > 0 ? Math.min(100, Math.max(0, (Math.max(0, item.val) / craftCompareChartTotal) * 100)) : 0) + '%'
+                                    }"
+                                  ></div>
+                                </div>
+                                <span class="sr-rank-share-text">
+                                  {{ craftCompareChartTotal > 0 ? ((Math.max(0, item.val) / craftCompareChartTotal) * 100).toFixed(1) : '0.0' }}%
+                                </span>
+                              </div>
+                            </td>
+                            <td style="text-align: right;">
+                              <div style="display: inline-flex; gap: 5px; justify-content: flex-end; flex-wrap: wrap;">
+                                <button type="button" class="sr-rank-filter-btn" @click="openMultiEditModalFromCompare(item.row)">
+                                  Sửa
+                                </button>
+                                <button type="button" class="sr-rank-filter-btn" @click="cloneCraftRowFromCompare(item.row)">
+                                  Nhân bản
+                                </button>
+                                <button
+                                  v-if="srDataMode === 'craft'"
+                                  type="button"
+                                  class="sr-rank-filter-btn"
+                                  style="background: linear-gradient(135deg, #059669 0%, #047857 100%); color: #fff; border-color: #34d399;"
+                                  @click="promoteCraftToOfficial(item.row)"
+                                >
+                                  Chốt Deal
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <!-- HÀNG 2B: BẢNG MA TRẬN ĐỐI CHIẾU 10 CHỈ SỐ KPI (SO SÁNH TĂNG/GIẢM THEO BẢN GỐC ĐƯỢC CHỌN Ở CẢ DẠNG CỘT VÀ DẠNG DÒNG) -->
+                  <div v-else class="sr-analytics-table-card is-matrix-full-card">
+                    <div class="sr-analytics-table-scroll is-matrix-full-scroll custom-scrollbar">
+                      <!-- DẠNG CỘT (COLUMNS): Cột đầu là Tên Chỉ Số (3 Cụm KPI), các cột tiếp theo là từng Nội dung hợp đồng (content_of_contract_PO) -->
+                      <table
+                        v-if="craftCompareLayout === 'columns'"
+                        class="sr-ccm-table is-columns-layout is-clean-sheet"
+                        :style="{ '--ccm-opt-count': Math.max(1, effectiveCraftCompareRows.length) }"
+                      >
+                        <colgroup>
+                          <col class="sr-ccm-col-sticky" />
+                          <col
+                            v-for="(r, colIdx) in effectiveCraftCompareRows"
+                            :key="'col-' + (getPoRowKey(r) || colIdx)"
+                            class="sr-ccm-col-option"
+                          />
+                        </colgroup>
+                        <thead>
+                          <tr>
+                            <th class="sr-ccm-sticky-col sr-ccm-metric-th">
+                              <div class="sr-ccm-corner-head">
+                                <span>CHỈ SỐ KPI ({{ filteredCraftCompareMetricDefs.length }})</span>
+                                <small v-if="effectiveCraftCompareRows.length > 1">
+                                  So với Bản gốc: PA {{ effectiveCraftBaseRowIndex + 1 }}
+                                </small>
+                              </div>
+                            </th>
+                            <th
+                              v-for="(r, colIdx) in effectiveCraftCompareRows"
+                              :key="getPoRowKey(r) || colIdx"
+                              class="sr-ccm-option-th"
+                              :class="{ 'is-baseline-col': isCraftBaselineRow(r) }"
+                            >
+                              <div class="sr-ccm-opt-head">
+                                <div class="sr-ccm-opt-top">
+                                  <div class="sr-ccm-opt-top-left">
+                                    <span class="sr-ccm-opt-num">PHƯƠNG ÁN {{ colIdx + 1 }}</span>
+                                    <button
+                                      v-if="effectiveCraftCompareRows.length > 1"
+                                      type="button"
+                                      class="sr-ccm-base-btn"
+                                      :class="{ 'is-active': isCraftBaselineRow(r) }"
+                                      @click.stop="setCraftBaselineRow(r)"
+                                      :title="isCraftBaselineRow(r) ? 'Phương án này đang được chọn làm Bản gốc' : 'Chọn phương án này làm Bản gốc để so sánh tăng/giảm'"
+                                    >
+                                      {{ isCraftBaselineRow(r) ? '★ Bản gốc' : 'Chọn làm gốc' }}
+                                    </button>
+                                  </div>
+                                  <button
+                                    v-if="effectiveCraftCompareRows.length > 1"
+                                    type="button"
+                                    class="sr-ccm-opt-rm"
+                                    @click="removeCraftRowFromCompare(r)"
+                                    title="Ẩn phương án này khỏi bảng so sánh"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                                <div class="sr-ccm-opt-po" :title="getCraftCompareColTitle(r, colIdx)">
+                                  {{ getCraftCompareColTitle(r, colIdx) }}
+                                </div>
+                                <div class="sr-ccm-opt-cust" :title="r.Ten_cong_ty || r.Ten_khach_hang">
+                                  {{ r.Ten_cong_ty || r.Ten_khach_hang || 'Chưa chọn công ty' }}
+                                  <template v-if="r.So_PO"> • {{ r.So_PO }}</template>
+                                  <template v-if="r.Ten_nha_cung_cap"> • {{ r.Ten_nha_cung_cap }}</template>
+                                </div>
+                              </div>
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <template v-for="mDef in filteredCraftCompareMetricDefs" :key="mDef.key">
+                            <tr v-if="mDef.sectionTitle" class="sr-ccm-section-banner">
+                              <td :colspan="effectiveCraftCompareRows.length + 1" class="sr-ccm-section-td">
+                                <span class="sr-ccm-sec-dot" :class="'is-' + mDef.group"></span>
+                                <span>{{ mDef.sectionTitle }}</span>
+                              </td>
+                            </tr>
+                            <tr
+                              :class="'sr-ccm-row-' + mDef.group"
+                              :title="mDef.formula ? `${mDef.label}: ${mDef.formula}` : mDef.label"
+                            >
+                              <td
+                                class="sr-ccm-sticky-col sr-ccm-metric-td"
+                                style="cursor: pointer;"
+                                @click="craftCompareChartMetric = mDef.key"
+                              >
+                                <div class="sr-ccm-m-label">
+                                  <span class="sr-ccm-m-dot" :class="'is-' + mDef.group"></span>
+                                  <strong>{{ mDef.label }}</strong>
+                                </div>
+                              </td>
+                              <td
+                                v-for="(r, colIdx) in effectiveCraftCompareRows"
+                                :key="(getPoRowKey(r) || colIdx) + '_' + mDef.key"
+                                class="sr-ccm-val-td is-editable-cell"
+                                :class="{
+                                  'is-baseline-col': isCraftBaselineRow(r),
+                                  'is-editing-cell': isEditingMatrixCell(r, mDef)
+                                }"
+                                title="Click để sửa nhanh chỉ số này"
+                                @click.stop="startEditMatrixCell(r, mDef)"
+                              >
+                                <div class="sr-ccm-cell-main is-right-aligned">
+                                  <input
+                                    v-if="isEditingMatrixCell(r, mDef) && editingMatrixCell"
+                                    id="sr-ccm-inline-input-main"
+                                    type="text"
+                                    class="sr-ccm-inline-input"
+                                    :value="editingMatrixCell.rawVal"
+                                    placeholder="Giá trị"
+                                    @input="onMatrixInlineInput($event, mDef)"
+                                    @keydown.enter.prevent="commitEditMatrixCell(r, mDef)"
+                                    @keydown.esc.prevent="cancelEditMatrixCell()"
+                                    @click.stop
+                                  />
+                                  <span
+                                    v-else
+                                    class="sr-ccm-cell-val"
+                                    :class="{
+                                      'is-neg-val': mDef.isNumeric && mDef.getNumeric(r) < 0
+                                    }"
+                                    @click.stop="startEditMatrixCell(r, mDef, 'main')"
+                                  >
+                                    {{ mDef.format(r) }}
+                                  </span>
+                                </div>
+                                <!-- Khi đang sửa ở phương án so sánh: cho phép sửa trực tiếp Δ Số cụ thể hoặc Δ % -->
+                                <div
+                                  v-if="isEditingMatrixCell(r, mDef) && editingMatrixCell && !isCraftBaselineRow(r) && effectiveCraftCompareRows.length > 1"
+                                  class="sr-ccm-delta-edit-row"
+                                  @click.stop
+                                >
+                                  <div class="sr-ccm-delta-input-wrap" title="Sửa số tăng/giảm cụ thể so với Bản gốc">
+                                    <span class="sr-ccm-delta-prefix">Δ</span>
+                                    <input
+                                      id="sr-ccm-inline-input-abs"
+                                      type="text"
+                                      class="sr-ccm-delta-input is-abs"
+                                      :value="editingMatrixCell.rawDeltaAbs"
+                                      placeholder="± Số"
+                                      @input="onMatrixDeltaAbsInput($event, r, mDef)"
+                                      @keydown.enter.prevent="commitEditMatrixCell(r, mDef)"
+                                      @keydown.esc.prevent="cancelEditMatrixCell()"
+                                      @click.stop
+                                    />
+                                  </div>
+                                  <div class="sr-ccm-delta-input-wrap is-pct-wrap" title="Sửa % tăng/giảm so với Bản gốc">
+                                    <input
+                                      id="sr-ccm-inline-input-pct"
+                                      type="text"
+                                      class="sr-ccm-delta-input is-pct"
+                                      :value="editingMatrixCell.rawDeltaPct"
+                                      placeholder="±%"
+                                      @input="onMatrixDeltaPctInput($event, r, mDef)"
+                                      @keydown.enter.prevent="commitEditMatrixCell(r, mDef)"
+                                      @keydown.esc.prevent="cancelEditMatrixCell()"
+                                      @click.stop
+                                    />
+                                    <span class="sr-ccm-delta-suffix">%</span>
+                                  </div>
+                                </div>
+                                <!-- Chênh lệch Δ số tiền/điểm % kèm % tăng giảm so với Bản gốc (Click vào số hoặc % để sửa trực tiếp) -->
+                                <div
+                                  v-else-if="mDef.isNumeric && !isCraftBaselineRow(r) && getCraftMetricDelta(mDef, r, colIdx, effectiveCraftCompareRows)"
+                                  class="sr-ccm-delta-row is-right-aligned"
+                                >
+                                  <span
+                                    class="sr-ccm-delta-text"
+                                    :class="getCraftMetricDelta(mDef, r, colIdx, effectiveCraftCompareRows)?.toneClass"
+                                  >
+                                    <span
+                                      class="sr-ccm-delta-part"
+                                      title="Click để sửa trực tiếp số tăng/giảm cụ thể so với Bản gốc"
+                                      @click.stop="startEditMatrixCell(r, mDef, 'delta_abs')"
+                                    >
+                                      {{ getCraftMetricDelta(mDef, r, colIdx, effectiveCraftCompareRows)?.deltaText }}
+                                    </span>
+                                    <span
+                                      v-if="getCraftMetricDelta(mDef, r, colIdx, effectiveCraftCompareRows)?.pctText"
+                                      class="sr-ccm-delta-part is-pct-part"
+                                      title="Click để sửa trực tiếp % tăng/giảm so với Bản gốc"
+                                      @click.stop="startEditMatrixCell(r, mDef, 'delta_pct')"
+                                    >
+                                      ({{ getCraftMetricDelta(mDef, r, colIdx, effectiveCraftCompareRows)?.pctText }})
+                                    </span>
+                                  </span>
+                                </div>
+                                <div
+                                  v-if="isEditingMatrixCell(r, mDef)"
+                                  class="sr-ccm-inline-actions"
+                                  @click.stop
+                                >
+                                  <button
+                                    type="button"
+                                    class="sr-ccm-inline-btn is-save"
+                                    @click.stop="commitEditMatrixCell(r, mDef)"
+                                  >
+                                    Lưu
+                                  </button>
+                                  <button
+                                    type="button"
+                                    class="sr-ccm-inline-btn is-cancel"
+                                    @click.stop="cancelEditMatrixCell()"
+                                  >
+                                    Hủy
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          </template>
+                        </tbody>
+                        <!-- Dòng Footer Thao tác cho từng cột phương án -->
+                        <tfoot>
+                          <tr class="sr-ccm-footer-actions-row">
+                            <td class="sr-ccm-sticky-col sr-ccm-metric-td">
+                              <strong style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.78;">Thao tác phương án</strong>
+                            </td>
+                            <td
+                              v-for="(r, colIdx) in effectiveCraftCompareRows"
+                              :key="'foot-act-' + (getPoRowKey(r) || colIdx)"
+                              class="sr-ccm-foot-act-td"
+                              :class="{ 'is-baseline-col': isCraftBaselineRow(r) }"
+                            >
+                              <div class="sr-ccm-opt-actions is-right-aligned">
+                                <button type="button" class="sr-ccm-act-btn is-edit" @click="openMultiEditModalFromCompare(r)">
+                                  Sửa
+                                </button>
+                                <button type="button" class="sr-ccm-act-btn is-clone" @click="cloneCraftRowFromCompare(r)">
+                                  Nhân bản
+                                </button>
+                                <button v-if="srDataMode === 'craft'" type="button" class="sr-ccm-act-btn is-chot" @click="promoteCraftToOfficial(r)">
+                                  Chốt Deal
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+
+                      <!-- DẠNG DÒNG (ROWS): Mỗi dòng là 1 Nội dung hợp đồng, các cột là 10 chỉ số KPI -->
+                      <table
+                        v-else
+                        class="sr-ccm-table is-rows-layout is-clean-sheet"
+                        :style="{ '--ccm-metric-count': Math.max(1, filteredCraftCompareMetricDefs.length) }"
+                      >
+                        <colgroup>
+                          <col class="sr-ccm-col-row-sticky" />
+                          <col
+                            v-for="mDef in filteredCraftCompareMetricDefs"
+                            :key="'rcol-' + mDef.key"
+                            class="sr-ccm-col-row-metric"
+                          />
+                          <col class="sr-ccm-col-row-actions" />
+                        </colgroup>
+                        <thead>
+                          <tr>
+                            <th class="sr-ccm-sticky-col">
+                              <div class="sr-ccm-corner-head">
+                                <span>NỘI DUNG HỢP ĐỒNG</span>
+                                <small v-if="effectiveCraftCompareRows.length > 1">
+                                  So với Bản gốc: PA {{ effectiveCraftBaseRowIndex + 1 }}
+                                </small>
+                              </div>
+                            </th>
+                            <th
+                              v-for="mDef in filteredCraftCompareMetricDefs"
+                              :key="mDef.key"
+                              class="sr-ccm-row-metric-th"
+                              style="text-align: right;"
+                              :title="mDef.formula || mDef.label"
+                            >
+                              <div>{{ mDef.shortLabel || mDef.label }}</div>
+                            </th>
+                            <th class="sr-ccm-row-actions-th" style="text-align: right;">Thao tác</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr
+                            v-for="(r, rowIdx) in effectiveCraftCompareRows"
+                            :key="getPoRowKey(r) || rowIdx"
+                            :class="{ 'is-baseline-row': isCraftBaselineRow(r) }"
+                          >
+                            <td
+                              class="sr-ccm-sticky-col sr-ccm-row-opt-td"
+                              :class="{ 'is-baseline-col': isCraftBaselineRow(r) }"
+                            >
+                              <div class="sr-ccm-row-opt-head">
+                                <span class="sr-ccm-opt-num">PA {{ rowIdx + 1 }}</span>
+                                <button
+                                  v-if="effectiveCraftCompareRows.length > 1"
+                                  type="button"
+                                  class="sr-ccm-base-btn"
+                                  :class="{ 'is-active': isCraftBaselineRow(r) }"
+                                  @click.stop="setCraftBaselineRow(r)"
+                                  :title="isCraftBaselineRow(r) ? 'Phương án này đang được chọn làm Bản gốc' : 'Chọn phương án này làm Bản gốc để so sánh tăng/giảm'"
+                                >
+                                  {{ isCraftBaselineRow(r) ? '★ Bản gốc' : 'Chọn làm gốc' }}
+                                </button>
+                              </div>
+                              <div class="sr-ccm-opt-po" style="margin-top: 3px;" :title="getCraftCompareColTitle(r, rowIdx)">
+                                {{ getCraftCompareColTitle(r, rowIdx) }}
+                              </div>
+                              <div class="sr-ccm-opt-cust">
+                                {{ r.Ten_cong_ty || r.Ten_khach_hang }}
+                                <template v-if="r.Ten_nha_cung_cap"> • NCC: {{ r.Ten_nha_cung_cap }}</template>
+                              </div>
+                            </td>
+                            <td
+                              v-for="mDef in filteredCraftCompareMetricDefs"
+                              :key="mDef.key"
+                              class="sr-ccm-val-td is-editable-cell"
+                              :class="{
+                                'is-baseline-col': isCraftBaselineRow(r),
+                                'is-editing-cell': isEditingMatrixCell(r, mDef)
+                              }"
+                              title="Click để sửa nhanh chỉ số này"
+                              @click.stop="startEditMatrixCell(r, mDef)"
+                            >
+                              <div class="sr-ccm-cell-main is-right-aligned">
+                                <input
+                                  v-if="isEditingMatrixCell(r, mDef) && editingMatrixCell"
+                                  id="sr-ccm-inline-input-main"
+                                  type="text"
+                                  class="sr-ccm-inline-input"
+                                  :value="editingMatrixCell.rawVal"
+                                  placeholder="Giá trị"
+                                  @input="onMatrixInlineInput($event, mDef)"
+                                  @keydown.enter.prevent="commitEditMatrixCell(r, mDef)"
+                                  @keydown.esc.prevent="cancelEditMatrixCell()"
+                                  @click.stop
+                                />
+                                <span
+                                  v-else
+                                  class="sr-ccm-cell-val"
+                                  :class="{
+                                    'is-neg-val': mDef.isNumeric && mDef.getNumeric(r) < 0
+                                  }"
+                                  @click.stop="startEditMatrixCell(r, mDef, 'main')"
+                                >
+                                  {{ mDef.format(r) }}
+                                </span>
+                              </div>
+                              <div
+                                v-if="isEditingMatrixCell(r, mDef) && editingMatrixCell && !isCraftBaselineRow(r) && effectiveCraftCompareRows.length > 1"
+                                class="sr-ccm-delta-edit-row"
+                                @click.stop
+                              >
+                                <div class="sr-ccm-delta-input-wrap" title="Sửa số tăng/giảm cụ thể so với Bản gốc">
+                                  <span class="sr-ccm-delta-prefix">Δ</span>
+                                  <input
+                                    id="sr-ccm-inline-input-abs"
+                                    type="text"
+                                    class="sr-ccm-delta-input is-abs"
+                                    :value="editingMatrixCell.rawDeltaAbs"
+                                    placeholder="± Số"
+                                    @input="onMatrixDeltaAbsInput($event, r, mDef)"
+                                    @keydown.enter.prevent="commitEditMatrixCell(r, mDef)"
+                                    @keydown.esc.prevent="cancelEditMatrixCell()"
+                                    @click.stop
+                                  />
+                                </div>
+                                <div class="sr-ccm-delta-input-wrap is-pct-wrap" title="Sửa % tăng/giảm so với Bản gốc">
+                                  <input
+                                    id="sr-ccm-inline-input-pct"
+                                    type="text"
+                                    class="sr-ccm-delta-input is-pct"
+                                    :value="editingMatrixCell.rawDeltaPct"
+                                    placeholder="±%"
+                                    @input="onMatrixDeltaPctInput($event, r, mDef)"
+                                    @keydown.enter.prevent="commitEditMatrixCell(r, mDef)"
+                                    @keydown.esc.prevent="cancelEditMatrixCell()"
+                                    @click.stop
+                                  />
+                                  <span class="sr-ccm-delta-suffix">%</span>
+                                </div>
+                              </div>
+                              <div
+                                v-else-if="mDef.isNumeric && !isCraftBaselineRow(r) && getCraftMetricDelta(mDef, r, rowIdx, effectiveCraftCompareRows)"
+                                class="sr-ccm-delta-row is-right-aligned"
+                              >
+                                <span
+                                  class="sr-ccm-delta-text"
+                                  :class="getCraftMetricDelta(mDef, r, rowIdx, effectiveCraftCompareRows)?.toneClass"
+                                >
+                                  <span
+                                    class="sr-ccm-delta-part"
+                                    title="Click để sửa trực tiếp số tăng/giảm cụ thể so với Bản gốc"
+                                    @click.stop="startEditMatrixCell(r, mDef, 'delta_abs')"
+                                  >
+                                    {{ getCraftMetricDelta(mDef, r, rowIdx, effectiveCraftCompareRows)?.deltaText }}
+                                  </span>
+                                  <span
+                                    v-if="getCraftMetricDelta(mDef, r, rowIdx, effectiveCraftCompareRows)?.pctText"
+                                    class="sr-ccm-delta-part is-pct-part"
+                                    title="Click để sửa trực tiếp % tăng/giảm so với Bản gốc"
+                                    @click.stop="startEditMatrixCell(r, mDef, 'delta_pct')"
+                                  >
+                                    ({{ getCraftMetricDelta(mDef, r, rowIdx, effectiveCraftCompareRows)?.pctText }})
+                                  </span>
+                                </span>
+                              </div>
+                              <div
+                                v-if="isEditingMatrixCell(r, mDef)"
+                                class="sr-ccm-inline-actions"
+                                @click.stop
+                              >
+                                <button
+                                  type="button"
+                                  class="sr-ccm-inline-btn is-save"
+                                  @click.stop="commitEditMatrixCell(r, mDef)"
+                                >
+                                  Lưu
+                                </button>
+                                <button
+                                  type="button"
+                                  class="sr-ccm-inline-btn is-cancel"
+                                  @click.stop="cancelEditMatrixCell()"
+                                >
+                                  Hủy
+                                </button>
+                              </div>
+                            </td>
+                            <td
+                              class="sr-ccm-row-actions-td"
+                              :class="{ 'is-baseline-col': isCraftBaselineRow(r) }"
+                            >
+                              <div class="sr-ccm-opt-actions is-right-aligned">
+                                <button type="button" class="sr-ccm-act-btn is-edit" @click="openMultiEditModalFromCompare(r)">Sửa</button>
+                                <button type="button" class="sr-ccm-act-btn is-clone" @click="cloneCraftRowFromCompare(r)">Nhân bản</button>
+                                <button v-if="srDataMode === 'craft'" type="button" class="sr-ccm-act-btn is-chot" @click="promoteCraftToOfficial(r)">Chốt Deal</button>
+                              </div>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
   </div>
 </template>
 
@@ -9602,7 +10689,19 @@ const database = getDatabase(firebaseApp)
 // BASE_URL removed - all CRUD operations now use Firebase Realtime Database
 
 const loading = ref(false)
-const rows = ref<any[]>([])
+const srDataMode = ref<'official' | 'craft'>('official')
+const officialRows = ref<any[]>([])
+const craftRows = ref<any[]>([])
+const rows = computed<any[]>({
+  get: () => (srDataMode.value === 'craft' ? craftRows.value : officialRows.value),
+  set: (val) => {
+    if (srDataMode.value === 'craft') {
+      craftRows.value = val
+    } else {
+      officialRows.value = val
+    }
+  }
+})
 const hdChiTietData = ref<any[]>([])
 const searchStr = ref('')
 const showSearchSuggestions = ref(false)
@@ -10058,6 +11157,7 @@ function highlightSaleText(rawText: any, customQuery?: string): string {
 const isMobileFilterExpanded = ref(false)
 const isKpiCollapsed = ref(false)
 const isSidebarFilterExpanded = ref(true)
+const isAnalyticsSidebarCollapsed = ref(false)
 const showDisplaySettingPopover = ref(false)
 
 // Custom Popover Pill Pickers & Filter Modals
@@ -10723,7 +11823,7 @@ const getPoDueInfo = (r: any) => {
 
 async function syncAllCustomersCongNo(currentRows?: any[]) {
   try {
-    const activeRows = currentRows || rows.value || []
+    const activeRows = currentRows || officialRows.value || []
     const khSnapshot = await get(dbRef(database, 'khach_hang'))
     const khData = khSnapshot.val() || {}
     khachHangMap.value = khData
@@ -10761,7 +11861,8 @@ async function syncAllCustomersCongNo(currentRows?: any[]) {
     })
 
     if (Object.keys(updates).length > 0) {
-      await update(dbRef(database), updates)
+      const cleanUpdates = JSON.parse(JSON.stringify(updates))
+    await update(dbRef(database), cleanUpdates)
     }
   } catch (e) {
     console.warn('Lỗi đồng bộ cong_no vào khach_hang:', e)
@@ -10912,7 +12013,7 @@ function cleanupDuplicatedChiTietAndAutoInjectedCom() {
         }
         if (isExactRepeat) {
           const singleBlockSum = entries.slice(0, m).reduce((s, e) => s + toNum(e.arr[13]) * (toNum(e.arr[18]) || 1), 0)
-          const matchedPo = rows.value.find((r: any) => String(r?.ma_hop_dong || '').trim() === maHD)
+          const matchedPo = officialRows.value.find((r: any) => String(r?.ma_hop_dong || '').trim() === maHD)
           const poDsb = matchedPo ? doanhSoBan(matchedPo) : 0
           const isDefaultRow = m === 1 && String(entries[0].arr[3] || '').trim() === 'Hàng hóa mặc định'
           if (isDefaultRow || (poDsb > 0 && Math.abs(singleBlockSum - poDsb) <= 10)) {
@@ -10940,7 +12041,7 @@ function cleanupDuplicatedChiTietAndAutoInjectedCom() {
   })
 
   // Làm sạch các PO không có ảnh COM nhưng bị hàm auto-cross-reference cũ tự điền / nhân đôi COM từ chênh lệch giá hang_hoa
-  rows.value.forEach((r: any) => {
+  officialRows.value.forEach((r: any) => {
     if (!r || typeof r !== 'object') return
     const hasComImg = Boolean(String(r.img_save || '').trim())
     if (hasComImg) return
@@ -11091,7 +12192,121 @@ async function loadData() {
         ID: item.ID || firebaseKey
       })
     })
-    rows.value = mappedRows
+    officialRows.value = mappedRows
+
+    // ─── Map sale_report_craft (Bản tạm chưa chốt deal) sang cấu trúc chuẩn của SaleReportFirebase.vue ───
+    const closedCraftKeys = new Set<string>()
+    mappedRows.forEach((offRow: any) => {
+      const fc = String(offRow?.from_craft || '').trim()
+      if (fc) closedCraftKeys.add(fc)
+    })
+    const mappedCrafts: any[] = []
+    let runningMaxPo = 0
+    mappedRows.forEach((offRow: any) => {
+      const n = parseInt(String(offRow?.So_PO || ''), 10)
+      if (!isNaN(n) && n > runningMaxPo) runningMaxPo = n
+    })
+    Object.values(saleReportCraftMap.value || {}).forEach((c: any) => {
+      const raw = String(c?.So_PO || c?.soPO || '').trim()
+      if (/^\d+$/.test(raw)) {
+        const n = parseInt(raw, 10)
+        if (!isNaN(n) && n > runningMaxPo) runningMaxPo = n
+      }
+    })
+    Object.entries(saleReportCraftMap.value || {}).forEach(([craftKey, c]: [string, any]) => {
+      if (!c || typeof c !== 'object') return
+      if (c.chotDeal === true || closedCraftKeys.has(craftKey)) return
+      const dsb = toNum(c.Tong_tien_truoc_thueVAT ?? c.doanhSoBan ?? c.goodsTotal?.ttTruoc ?? 0)
+      const vat = toNum(c.Tong_thueVAT ?? c.goodsTotal?.vat ?? 0)
+      const tSauCraft = toNum(c.Tong_tien_sau_thueVAT) > 0 ? toNum(c.Tong_tien_sau_thueVAT) : dsb + vat
+      const gm = toNum(c.Tong_thanh_tien_chua_VAT_mua_hang ?? c.giaMua ?? 0)
+      const tcp = toNum(c.Tong_CP_don_hang ?? c.tongCP ?? gm)
+      const gCom = toNum(c.chiet_khau_tong_truoc_thue ?? c.chenh_lech_gia ?? c.gross_com ?? c.grossCom ?? 0)
+      const tPct =
+        c.phan_tram_thue_chenh_lech_gia !== undefined && c.phan_tram_thue_chenh_lech_gia !== ''
+          ? toNum(c.phan_tram_thue_chenh_lech_gia)
+          : c.taxPct !== undefined && c.taxPct !== ''
+            ? toNum(c.taxPct)
+            : 25
+      const tCom =
+        c.thue_chenh_lech_gia !== undefined && c.thue_chenh_lech_gia !== ''
+          ? toNum(c.thue_chenh_lech_gia)
+          : Math.round(gCom * (tPct / 100))
+      const nCom =
+        c.con_lai !== undefined && c.con_lai !== ''
+          ? toNum(c.con_lai)
+          : c.netCom !== undefined && c.netCom !== ''
+            ? toNum(c.netCom)
+            : Math.round(gCom - tCom)
+      const tenCongTy = String(c.Ten_cong_ty || c.customer || c.Ten_khach_hang || c.recipient || 'Khách hàng (Bản tạm)').trim()
+      const tenKhachHang = String(c.Ten_khach_hang || c.recipient || tenCongTy).trim()
+      const maCongTy = String(c.Ma_cong_ty || c.linkedMaCongTy || genMaCongTy(tenCongTy) || 'CTY_CRAFT').trim()
+      const maKhachHang = String(c.Ma_khach_hang || c.linkedMaKH || genMaKhachHang(tenKhachHang, tenCongTy) || maCongTy).trim()
+      const rawSoPo = String(c.So_PO || c.soPO || '').trim()
+      const isCleanPo = Boolean(rawSoPo && !/^(PA[-_\s]?\d+|.*-PA\d+)$/i.test(rawSoPo))
+      const finalCraftSoPo = isCleanPo ? rawSoPo : String(++runningMaxPo)
+      if (!isCleanPo) {
+        backfillUpdates[`sale_report_craft/${craftKey}/So_PO`] = finalCraftSoPo
+      }
+      const danhSachFileKhacCraft = Array.isArray(c.danh_sach_file_khac)
+        ? c.danh_sach_file_khac.filter(Boolean)
+        : c.danh_sach_file_khac && typeof c.danh_sach_file_khac === 'object'
+          ? Object.values(c.danh_sach_file_khac).filter(Boolean)
+          : []
+      const rawGoodsList = Array.isArray(c.goodsList)
+        ? c.goodsList.filter(Boolean)
+        : c.goodsList && typeof c.goodsList === 'object'
+          ? Object.values(c.goodsList).filter(Boolean)
+          : []
+
+      mappedCrafts.push({
+        ...c,
+        So_PO: finalCraftSoPo,
+        Ten_nha_cung_cap: String(c.Ten_nha_cung_cap || c.productType || '').trim(),
+        Ma_cong_ty: maCongTy,
+        Ten_cong_ty: tenCongTy,
+        Ma_khach_hang: maKhachHang,
+        Ten_khach_hang: tenKhachHang,
+        MST: String(c.MST || c.mst || '').trim(),
+        created_time: String(c.created_time || c.createdTime || '').trim() || getFormattedNow(),
+        content_of_contract_PO: String(c.content_of_contract_PO || c.content || '').trim(),
+        ghi_chu: String(c.ghi_chu || c.ghiChu || '').trim(),
+        Tong_tien_truoc_thueVAT: dsb,
+        Tong_thueVAT: vat,
+        Tong_tien_sau_thueVAT: tSauCraft,
+        Tong_thanh_tien_chua_VAT_mua_hang: gm,
+        Tong_CP_don_hang: tcp,
+        chiet_khau_tong_truoc_thue: gCom,
+        chenh_lech_gia: gCom,
+        gross_com: gCom,
+        phan_tram_thue_chenh_lech_gia: tPct,
+        thue_chenh_lech_gia: tCom,
+        con_lai: nCom,
+        tong_chiet_khau: nCom,
+        net_com: nCom,
+        account_manager_name: String(c.account_manager_name || c.am || '').trim(),
+        img_save: String(c.img_save || c.existingImgUrl || '').trim(),
+        link_excel_bao_gia: String(c.link_excel_bao_gia || c.linkBaoGia || '').trim(),
+        link_excel_mua_hang: String(c.link_excel_mua_hang || c.linkMuaHang || '').trim(),
+        link_excel_dxmh: String(c.link_excel_dxmh || c.linkDxmh || '').trim(),
+        ten_file_bao_gia: String(c.ten_file_bao_gia || c.tenFileBG || '').trim(),
+        ten_file_mua_hang: String(c.ten_file_mua_hang || c.tenFileMH || '').trim(),
+        ten_file_dxmh: String(c.ten_file_dxmh || c.tenFileDxmh || '').trim(),
+        so_tien_da_thanh_toan: toNum(c.so_tien_da_thanh_toan),
+        cong_no: Math.max(0, tSauCraft - toNum(c.so_tien_da_thanh_toan)),
+        thoi_gian_thanh_toan: String(c.thoi_gian_thanh_toan || ''),
+        loai_thanh_toan: 'mot_lan',
+        han_thanh_toan: String(c.han_thanh_toan || ''),
+        ke_hoach_thanh_toan: [],
+        danh_sach_file_khac: danhSachFileKhacCraft,
+        goodsList: rawGoodsList,
+        goodsTotal: c.goodsTotal || (dsb > 0 ? { ttTruoc: dsb, vat, ttSau: tSauCraft } : null),
+        _isCraft: true,
+        _firebaseKey: craftKey,
+        ID: c.ID || craftKey
+      })
+    })
+    craftRows.value = mappedCrafts
 
     if (Object.keys(backfillUpdates).length > 0) {
       update(dbRef(database), backfillUpdates).catch(err => console.warn('Backfill sale_report debt fields error:', err))
@@ -11139,7 +12354,8 @@ async function loadData() {
     cleanupDuplicatedChiTietAndAutoInjectedCom()
   } catch (e) {
     console.error('Lỗi load sale_report từ Firebase:', e)
-    rows.value = []
+    officialRows.value = []
+    craftRows.value = []
   } finally {
     loading.value = false
   }
@@ -11340,10 +12556,70 @@ const filteredRows = computed(() => {
 })
 
 const displayLimit = ref(15)
+const PO_LAZY_BATCH_SIZE = 8
+const groupPoVisibleLimitMap = ref<Record<string, number>>({})
 
 watch(filteredRows, () => {
   displayLimit.value = 15
+  groupPoVisibleLimitMap.value = {}
 })
+
+function getGroupPoLimit(group: any): number {
+  const key = getGroupCollapseKey(group)
+  return groupPoVisibleLimitMap.value[key] || PO_LAZY_BATCH_SIZE
+}
+
+function getVisibleGroupPoItems(group: any): any[] {
+  if (!Array.isArray(group?.items)) return []
+  return group.items.slice(0, getGroupPoLimit(group))
+}
+
+function hasMoreGroupPoItems(group: any): boolean {
+  return Array.isArray(group?.items) && group.items.length > getGroupPoLimit(group)
+}
+
+function loadMoreGroupPoItems(group: any) {
+  if (!group) return
+  const key = getGroupCollapseKey(group)
+  const current = groupPoVisibleLimitMap.value[key] || PO_LAZY_BATCH_SIZE
+  const total = Array.isArray(group.items) ? group.items.length : current
+  if (current >= total) return
+  groupPoVisibleLimitMap.value = {
+    ...groupPoVisibleLimitMap.value,
+    [key]: Math.min(total, current + PO_LAZY_BATCH_SIZE)
+  }
+}
+
+const vPoLazyObserver = {
+  mounted(el: HTMLElement, binding: { value: () => void }) {
+    ;(el as any)._poLazyCallback = binding.value
+    if (typeof IntersectionObserver === 'undefined') return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const cb = (el as any)._poLazyCallback
+          if (entry.isIntersecting && typeof cb === 'function') {
+            cb()
+          }
+        })
+      },
+      { root: null, rootMargin: '320px 0px', threshold: 0.01 }
+    )
+    observer.observe(el)
+    ;(el as any)._poLazyObserver = observer
+  },
+  updated(el: HTMLElement, binding: { value: () => void }) {
+    ;(el as any)._poLazyCallback = binding.value
+  },
+  unmounted(el: HTMLElement) {
+    const observer = (el as any)._poLazyObserver as IntersectionObserver | undefined
+    if (observer) {
+      observer.disconnect()
+      delete (el as any)._poLazyObserver
+    }
+    delete (el as any)._poLazyCallback
+  }
+}
 
 const displayedRows = computed(() => {
   return filteredRows.value.slice(0, displayLimit.value)
@@ -12490,7 +13766,8 @@ async function savePaymentScheduleOnly() {
     }
 
     if (Object.keys(updates).length > 0) {
-      await update(dbRef(database), updates)
+      const cleanUpdates = JSON.parse(JSON.stringify(updates))
+    await update(dbRef(database), cleanUpdates)
     }
 
     r.loai_thanh_toan = payload.loai_thanh_toan
@@ -12618,7 +13895,8 @@ async function submitPayment() {
       updates[`hop_dong_tong_quat/${r.ma_hop_dong}/ke_hoach_thanh_toan`] = schedulePayload.ke_hoach_thanh_toan
     }
 
-    await update(dbRef(database), updates)
+    const cleanUpdates = JSON.parse(JSON.stringify(updates))
+    await update(dbRef(database), cleanUpdates)
 
     // Cập nhật state tại chỗ
     r.so_tien_da_thanh_toan = newPaid
@@ -12704,7 +13982,8 @@ async function deletePaymentHistoryItem(h: any) {
       updates[`hop_dong_tong_quat/${r.ma_hop_dong}/han_thanh_toan`] = schedulePayload.han_thanh_toan
     }
     if (Object.keys(updates).length > 0) {
-      await update(dbRef(database), updates)
+      const cleanUpdates = JSON.parse(JSON.stringify(updates))
+    await update(dbRef(database), cleanUpdates)
     }
 
     r.so_tien_da_thanh_toan = newPaid
@@ -13606,6 +14885,44 @@ const companyGoodsList = computed(() => {
     })
   }
 
+  // Hỗ trợ đọc trực tiếp từ r.goodsList (dành cho Bản Tạm sale_report_craft hoặc PO có lưu trực tiếp goodsList)
+  rowsList.forEach(r => {
+    if (!Array.isArray(r?.goodsList) || r.goodsList.length === 0) return
+    const mhd = String(r?.ma_hop_dong || '').trim()
+    if (mhd && Array.isArray(hdChiTietData.value) && hdChiTietData.value.some(arr => String(arr[0] || '').trim() === mhd)) {
+      return
+    }
+    const soPo = String(r?.So_PO || 'PA').trim()
+    r.goodsList.forEach((gi: any) => {
+      if (!gi || typeof gi !== 'object') return
+      const ten = String(gi.ten || gi.dienGiai || 'Mặt hàng').trim()
+      const danhMuc = String(gi.danhMuc || r?.Ten_nha_cung_cap || '').trim()
+      const dvt = String(gi.dvt || 'Cái').trim()
+      const donGia = toNum(gi.donGia)
+      const sl = toNum(gi.sl) || 1
+      const ttTruoc = toNum(gi.ttTruoc) || donGia * sl
+      const key = `${ten.toLowerCase()}__${dvt.toLowerCase()}`
+      if (!goodsMap.has(key)) {
+        goodsMap.set(key, {
+          ten,
+          danhMuc,
+          dvt,
+          totalSl: 0,
+          lastDonGia: donGia,
+          totalTruocVat: 0,
+          buyCount: 0,
+          poSet: new Set()
+        })
+      }
+      const g = goodsMap.get(key)!
+      g.totalSl += sl
+      if (donGia > 0) g.lastDonGia = donGia
+      g.totalTruocVat += ttTruoc
+      g.buyCount += 1
+      if (soPo) g.poSet.add(soPo)
+    })
+  })
+
   // Nếu chưa có dòng chi tiết trong hdChiTietData, gom theo nội dung hợp đồng / sản phẩm trên PO
   if (goodsMap.size === 0) {
     rowsList.forEach((r, idx) => {
@@ -13736,7 +15053,10 @@ const buildRankingData = (dimension: 'customer' | 'industry' | 'customerGroup' |
       const contentStr = getPoContractContent(r, 70)
       const dateStr = r.created_time ? String(r.created_time).split(' ')[0] : ''
       key = String(r.ID || r._firebaseKey || `${soPo}_${idx}`)
-      displaySeed = isCompanyScoped ? soPo : `${soPo} — ${ctyLabel}`
+      const craftTitle = String(r?.content_of_contract_PO || r?.content || '').trim() || soPo
+      displaySeed = srDataMode.value === 'craft'
+        ? craftTitle
+        : (isCompanyScoped ? soPo : `${soPo} — ${ctyLabel}`)
       subText = [dateStr ? `Ngày: ${dateStr}` : '', contentStr, ncc ? `NCC: ${ncc}` : ''].filter(Boolean).join(' • ')
     } else {
       const cn = congNo(r)
@@ -14617,7 +15937,7 @@ const multiEditModal = ref({
 
 const activeItemIdx = ref(0)
 const isPoLeftPaneCollapsed = ref(false)
-const isPoLeftPaneWide = ref(false)
+const isPoLeftPaneWide = ref(true)
 const mobilePoPane = ref<'form' | 'docs'>('form')
 
 watch(
@@ -14626,7 +15946,7 @@ watch(
     if (isOpen) {
       activeItemIdx.value = 0
       isPoLeftPaneCollapsed.value = false
-      isPoLeftPaneWide.value = false
+      isPoLeftPaneWide.value = true
       mobilePoPane.value = 'form'
     }
   }
@@ -16928,6 +18248,7 @@ async function fetchAndSyncHangHoaCatalogWithProgress(): Promise<void> {
           ten_ncc: rawNcc,
           ma_ncc: String(hh.Ma_nha_cung_cap ?? hh.ma_nha_cung_cap ?? '').trim()
         }
+        // Tiền xử lý trước chỉ mục từ khóa vào WeakMap để tránh đơ luồng chính khi mở bảng đối chiếu
         const maNorm = normalizeGoodsMatchStr(itemEntry.ma_hang)
         const tenNorm = normalizeGoodsMatchStr(itemEntry.ten_hang)
         const tokens = tenNorm ? tenNorm.split(' ').filter(Boolean) : []
@@ -16972,6 +18293,7 @@ async function fetchAndSyncHangHoaCatalogWithProgress(): Promise<void> {
     goodsDbLoadingModal.value.stepDetail = 'Đang lưu bộ nhớ đệm (IndexedDB Cache) để tăng tốc lần sau...'
     await writeHangHoaCacheToIdb(catList, sortedNccs)
   } else {
+    // Fallback đọc từ IndexedDB Cache nếu mạng lỗi hoặc Firebase trống
     const cached = await readHangHoaCacheFromIdb()
     if (cached && cached.catalogList.length > 0) {
       goodsDbLoadingModal.value.fromCacheFallback = true
@@ -17081,6 +18403,7 @@ async function openPoGoodsDbSyncModal(item: ImportItem, focusRowIdx?: number) {
       })
     })
 
+    // Tự động nhận diện Nhà cung cấp nếu PO chưa có NCC
     if (!item.productType && hangHoaCatalogList.value.length > 0) {
       crossReferenceFinancialsForImportedQuote(item)
     }
@@ -17556,7 +18879,8 @@ async function confirmSavePoGoodsToDatabase() {
     }
 
     if (Object.keys(updates).length > 0) {
-      await update(dbRef(database), updates)
+      const cleanUpdates = JSON.parse(JSON.stringify(updates))
+    await update(dbRef(database), cleanUpdates)
     }
 
     hangHoaCatalogVersion.value++
@@ -17792,6 +19116,44 @@ function createImportItemFromExistingRow(row: any, id: number): ImportItem {
     }
   }
 
+  // Fallback đọc từ row.goodsList (dành cho Bản Tạm sale_report_craft hoặc bản ghi lưu sẵn goodsList)
+  if ((!initItem.goodsList || initItem.goodsList.length === 0) && Array.isArray(row?.goodsList) && row.goodsList.length > 0) {
+    let tTruoc = 0, tVat = 0, tSau = 0
+    initItem.goodsList = row.goodsList.map((g: any, i: number) => {
+      const donGia = toNum(g.donGia)
+      const sl = toNum(g.sl) || 1
+      const ttTruoc = toNum(g.ttTruoc) || donGia * sl
+      const vatPct = toNum(g.vatPct)
+      const vat = toNum(g.vat) || (ttTruoc * vatPct) / 100
+      const ttSau = toNum(g.ttSau) || ttTruoc + vat
+      tTruoc += ttTruoc
+      tVat += vat
+      tSau += ttSau
+      return {
+        stt: i + 1,
+        maHang: String(g.maHang || '').trim(),
+        danhMuc: String(g.danhMuc || ''),
+        ten: String(g.ten || ''),
+        dienGiai: String(g.dienGiai || ''),
+        dvt: String(g.dvt || ''),
+        sl,
+        donGia,
+        ttTruoc,
+        vat,
+        ttSau,
+        vatPct: String(vatPct),
+        vatStr: vat > 0 ? vat.toLocaleString('vi-VN') : ''
+      }
+    })
+    initItem.goodsTotal = row.goodsTotal
+      ? {
+          ttTruoc: toNum(row.goodsTotal.ttTruoc) || tTruoc,
+          vat: toNum(row.goodsTotal.vat) || tVat,
+          ttSau: toNum(row.goodsTotal.ttSau) || tSau
+        }
+      : { ttTruoc: tTruoc, vat: tVat, ttSau: tSau }
+  }
+
   void autoRepairItemXlsOfficeLinks(initItem)
   return initItem
 }
@@ -17857,6 +19219,43 @@ function onRowSelectedInModal(item: ImportItem) {
   } else {
     item.goodsList = [];
     item.goodsTotal = null;
+  }
+
+  if ((!item.goodsList || item.goodsList.length === 0) && Array.isArray(item.row?.goodsList) && item.row.goodsList.length > 0) {
+    let tTruoc = 0, tVat = 0, tSau = 0
+    item.goodsList = item.row.goodsList.map((g: any, i: number) => {
+      const donGia = toNum(g.donGia)
+      const sl = toNum(g.sl) || 1
+      const ttTruoc = toNum(g.ttTruoc) || donGia * sl
+      const vatPct = toNum(g.vatPct)
+      const vat = toNum(g.vat) || (ttTruoc * vatPct) / 100
+      const ttSau = toNum(g.ttSau) || ttTruoc + vat
+      tTruoc += ttTruoc
+      tVat += vat
+      tSau += ttSau
+      return {
+        stt: i + 1,
+        maHang: String(g.maHang || '').trim(),
+        danhMuc: String(g.danhMuc || ''),
+        ten: String(g.ten || ''),
+        dienGiai: String(g.dienGiai || ''),
+        dvt: String(g.dvt || ''),
+        sl,
+        donGia,
+        ttTruoc,
+        vat,
+        ttSau,
+        vatPct: String(vatPct),
+        vatStr: vat > 0 ? vat.toLocaleString('vi-VN') : ''
+      }
+    })
+    item.goodsTotal = item.row.goodsTotal
+      ? {
+          ttTruoc: toNum(item.row.goodsTotal.ttTruoc) || tTruoc,
+          vat: toNum(item.row.goodsTotal.vat) || tVat,
+          ttSau: toNum(item.row.goodsTotal.ttSau) || tSau
+        }
+      : { ttTruoc: tTruoc, vat: tVat, ttSau: tSau }
   }
 
   item.mst = item.row.MST || ''
@@ -18300,6 +19699,10 @@ function genMaCongTy(company: string) {
 
 async function saveMultiModal() {
   const m = multiEditModal.value
+  if (srDataMode.value === 'craft') {
+    await saveModalItemsToCraft()
+    return
+  }
   const validItems = m.mode === 'create' ? m.items : m.items.filter(i => i.row)
   if (validItems.length === 0 || savingModal.value) return
 
@@ -18514,7 +19917,8 @@ async function saveMultiModal() {
               }
             }
           }
-          await update(dbRef(database), updates);
+          const cleanUpdates = JSON.parse(JSON.stringify(updates))
+    await update(dbRef(database), cleanUpdates);
         }
 
         await loadData()
@@ -18852,7 +20256,7 @@ async function saveMultiModal() {
 }
 
 async function deletePO(item: ImportItem, idx: number) {
-  if (multiEditModal.value.mode === 'create' && !item.row) {
+  if ((multiEditModal.value.mode === 'create' || srDataMode.value === 'craft') && !item.row) {
     if (multiEditModal.value.items.length > 1) {
       multiEditModal.value.items.splice(idx, 1)
       if (activeItemIdx.value >= multiEditModal.value.items.length) {
@@ -18863,23 +20267,47 @@ async function deletePO(item: ImportItem, idx: number) {
     multiEditModal.value.show = false
     return
   }
+  const isCraftItem = Boolean(srDataMode.value === 'craft' || item.row?._isCraft)
   const poName = item.row?.So_PO || item.content || 'này'
   const confirmed = await openSrConfirm({
     variant: 'danger',
-    eyebrow: 'Xác nhận xóa đơn hàng',
-    title: 'Xóa đơn hàng PO',
-    highlightLabel: 'ĐƠN HÀNG PO ĐANG CHỌN',
-    highlightValue: `PO ${poName}${item.customer ? ' — ' + item.customer : ''}`,
-    message: `Bạn có chắc chắn muốn xóa vĩnh viễn PO ${poName} khỏi hệ thống?`,
-    subNote: 'Hành động này sẽ xóa PO cùng lịch sử thanh toán liên quan và không thể hoàn tác.',
-    confirmText: 'Xóa PO ngay',
+    eyebrow: isCraftItem ? 'Xác nhận xóa Phương án tạm' : 'Xác nhận xóa đơn hàng',
+    title: isCraftItem ? 'Xóa Phương án tạm (Bản Tạm)' : 'Xóa đơn hàng PO',
+    highlightLabel: isCraftItem ? 'PHƯƠNG ÁN TẠM ĐANG CHỌN' : 'ĐƠN HÀNG PO ĐANG CHỌN',
+    highlightValue: `${isCraftItem ? 'Phương án' : 'PO'} ${poName}${item.customer ? ' — ' + item.customer : ''}`,
+    message: isCraftItem
+      ? `Bạn có chắc chắn muốn xóa Phương án tạm ${poName} khỏi danh sách Bản Tạm?`
+      : `Bạn có chắc chắn muốn xóa vĩnh viễn PO ${poName} khỏi hệ thống?`,
+    subNote: isCraftItem
+      ? 'Hành động này sẽ xóa phương án tạm này khỏi bảng sale_report_craft.'
+      : 'Hành động này sẽ xóa PO cùng lịch sử thanh toán liên quan và không thể hoàn tác.',
+    confirmText: isCraftItem ? 'Xóa phương án ngay' : 'Xóa PO ngay',
     cancelText: 'Hủy bỏ'
   })
   if (!confirmed) return
   try {
-    // ─── Delete from Firebase ───
     const firebaseKey = item.row?._firebaseKey || item.row?.ID;
     const srId = item.row?.ID || firebaseKey;
+    if (isCraftItem) {
+      if (firebaseKey) {
+        await remove(dbRef(database, `sale_report_craft/${firebaseKey}`));
+      }
+      selectedCraftCompareKeys.value = selectedCraftCompareKeys.value.filter(k => k !== String(firebaseKey));
+      multiEditModal.value.items.splice(idx, 1)
+      if (multiEditModal.value.items.length === 0) multiEditModal.value.show = false
+      await loadData()
+      await openSrAlert({
+        variant: 'success',
+        eyebrow: 'Xóa phương án tạm hoàn tất',
+        title: 'Đã xóa Phương án tạm',
+        highlightLabel: 'PHƯƠNG ÁN ĐÃ XÓA',
+        highlightValue: `Phương án ${poName}${item.customer ? ' — ' + item.customer : ''}`,
+        message: `Đã xóa Phương án tạm ${poName} khỏi danh sách Bản Tạm thành công.`,
+        confirmText: 'Hoàn tất'
+      })
+      return
+    }
+    // ─── Delete from Firebase (Bản Chính Thức) ───
     if (firebaseKey) {
       await remove(dbRef(database, `sale_report/${firebaseKey}`));
     }
@@ -18904,7 +20332,7 @@ async function deletePO(item: ImportItem, idx: number) {
     }
     const idQuanLyFile = item.row?.id_quanlyfile || item.row?.id_quan_ly_file;
     if (idQuanLyFile) {
-      const remainingSrKeys = (rows.value || [])
+      const remainingSrKeys = (officialRows.value || [])
         .filter((r: any) => {
           const rKey = r?._firebaseKey || r?.ID
           if (!rKey || rKey === firebaseKey) return false
@@ -18937,11 +20365,1743 @@ async function deletePO(item: ImportItem, idx: number) {
     console.error('Lỗi xóa PO:', e)
     await openSrAlert({
       variant: 'error',
-      title: 'Lỗi xóa đơn hàng PO',
-      message: 'Đã xảy ra lỗi khi xóa PO khỏi hệ thống. Vui lòng thử lại.',
+      title: 'Lỗi xóa dữ liệu',
+      message: 'Đã xảy ra lỗi khi xóa dữ liệu khỏi hệ thống. Vui lòng thử lại.',
       confirmText: 'Đóng'
     })
   }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// BẢN TẠM (SALE REPORT CRAFT) & BẢNG MA TRẬN SO SÁNH ĐA PHƯƠNG ÁN
+// ════════════════════════════════════════════════════════════════════════════
+const selectedPoKeyList = ref<string[]>([])
+const selectedCraftCompareKeys = selectedPoKeyList
+const showCraftCompareModal = ref(false)
+const craftCompareLayout = ref<'columns' | 'rows'>('columns')
+const craftCompareBaseline = ref<'first' | 'prev'>('first')
+const craftCompareBaseRowKey = ref<string>('')
+const craftCompareOnlyDiff = ref(false)
+const craftCompareCompanyFilter = ref('')
+const mindmapCompareCustomRows = ref<any[] | null>(null)
+
+function switchSrDataMode(mode: 'official' | 'craft') {
+  if (srDataMode.value === mode) return
+  srDataMode.value = mode
+  selectedPoKeyList.value = []
+  selectedMasterGroupKey.value = ''
+  if (mode === 'official') {
+    showCraftCompareModal.value = false
+  }
+}
+
+function thueVat(r: any): number {
+  const v = toNum(r?.Tong_thueVAT)
+  if (v > 0) return v
+  const s = toNum(r?.Tong_tien_sau_thueVAT)
+  const t = toNum(r?.Tong_tien_truoc_thueVAT)
+  return s > t ? s - t : 0
+}
+
+function thueCom(r: any): number {
+  return Math.round(thue(r))
+}
+
+function pct(num: number, den: number): string {
+  if (!den || !Number.isFinite(den) || Math.abs(den) < 0.0001) return '0.00'
+  const val = (Number(num || 0) / den) * 100
+  return Number.isFinite(val) ? val.toFixed(2) : '0.00'
+}
+
+function getCraftCompareKey(r: any): string {
+  return String(r?._firebaseKey || r?.ID || r?.So_PO || '').trim()
+}
+
+function isCraftSelectedForCompare(r: any): boolean {
+  const k = getCraftCompareKey(r)
+  return Boolean(k && selectedPoKeyList.value.includes(k))
+}
+
+function toggleCraftCompareRow(r: any) {
+  const k = getCraftCompareKey(r)
+  if (!k) return
+  const idx = selectedPoKeyList.value.indexOf(k)
+  if (idx >= 0) {
+    selectedPoKeyList.value.splice(idx, 1)
+  } else {
+    selectedPoKeyList.value.push(k)
+  }
+}
+
+function clearCraftCompareSelection() {
+  selectedPoKeyList.value = []
+}
+
+function removeCraftRowFromCompare(r: any) {
+  const k = getCraftCompareKey(r)
+  if (!k) return
+  selectedPoKeyList.value = selectedPoKeyList.value.filter(key => key !== k)
+}
+
+const selectedCraftCompareRows = computed<any[]>(() => {
+  if (!selectedPoKeyList.value.length) return []
+  const byKey = new Map<string, any>()
+  rows.value.forEach(r => {
+    const k = getCraftCompareKey(r)
+    if (k) byKey.set(k, r)
+  })
+  return selectedPoKeyList.value.map(k => byKey.get(k)).filter(Boolean)
+})
+
+const craftCompanyGroupsForPicker = computed(() => {
+  const map = new Map<string, { key: string; name: string; items: any[] }>()
+  craftRows.value.forEach(r => {
+    const key = String(r?.Ma_cong_ty || r?.Ten_cong_ty || 'Khác').trim()
+    const name = String(r?.Ten_cong_ty || r?.Ten_khach_hang || 'Khác').trim()
+    if (!map.has(key)) {
+      map.set(key, { key, name, items: [] })
+    }
+    map.get(key)!.items.push(r)
+  })
+  return Array.from(map.values()).sort((a, b) => b.items.length - a.items.length)
+})
+
+function selectCraftCompareCompanyFilter(compKey: string) {
+  craftCompareCompanyFilter.value = compKey
+  if (!compKey) {
+    selectedPoKeyList.value = []
+    return
+  }
+  const group = craftCompanyGroupsForPicker.value.find(g => g.key === compKey)
+  if (group) {
+    selectedPoKeyList.value = group.items.map(r => getCraftCompareKey(r)).filter(Boolean)
+  }
+}
+
+function getGroupMaxDoanhSoBan(g: any): number {
+  if (!g || !Array.isArray(g.items) || !g.items.length) return 0
+  return Math.max(0, ...g.items.map((r: any) => doanhSoBan(r)))
+}
+
+function getGroupMaxNetMargin(g: any): number {
+  if (!g || !Array.isArray(g.items) || !g.items.length) return 0
+  return Math.max(...g.items.map((r: any) => netMargin(r)))
+}
+
+const effectiveCraftCompareRows = computed<any[]>(() => {
+  return [...selectedCraftCompareRows.value]
+})
+
+function openCraftCompareModal() {
+  showCraftCompareModal.value = true
+}
+
+function openCraftCompareForCompany(group: any) {
+  if (!group || !Array.isArray(group.items)) return
+  craftCompareCompanyFilter.value = ''
+  selectedPoKeyList.value = group.items.map((r: any) => getCraftCompareKey(r)).filter(Boolean)
+  showCraftCompareModal.value = true
+}
+
+function openCraftCompareFromCard(r: any, _group?: any) {
+  const k = getCraftCompareKey(r)
+  if (k && !selectedPoKeyList.value.includes(k)) {
+    selectedPoKeyList.value = [...selectedPoKeyList.value, k]
+  }
+  showCraftCompareModal.value = true
+}
+
+function openMultiEditModalFromCompare(r: any) {
+  showCraftCompareModal.value = false
+  openMultiEditModal(r)
+}
+
+function getCraftCompareColTitle(r: any, idx = 0): string {
+  const content = String(r?.content_of_contract_PO || r?.content || '').trim()
+  if (content) return content
+  const soPo = String(r?.So_PO || '').trim()
+  if (soPo) return soPo
+  return `Phương án #${idx + 1}`
+}
+
+interface CraftCompareMetricDef {
+  key: string
+  label: string
+  shortLabel?: string
+  formula?: string
+  sectionTitle?: string
+  group: 'info' | 'rev' | 'cost' | 'com' | 'profit' | 'ratio'
+  isNumeric: boolean
+  isRatio?: boolean
+  higherIsBetter?: boolean | null
+  highlightRow?: boolean
+  getNumeric: (r: any) => number
+  format: (r: any) => string
+}
+
+// 10 Chỉ số đối chiếu chuẩn theo đúng 3 Khối Card PO (1. Doanh số bán | 2. Hoa hồng (COM) | 3. Lợi nhuận (Margin))
+const craftCompareMetricDefs: CraftCompareMetricDef[] = [
+  // CỤM 1 — KHỐI 1: DOANH SỐ BÁN
+  {
+    key: 'dsb',
+    sectionTitle: '1. DOANH SỐ BÁN',
+    label: 'Doanh số bán',
+    shortLabel: 'Doanh số bán',
+    formula: 'Giá trị hàng bán trước thuế VAT',
+    group: 'rev',
+    isNumeric: true,
+    higherIsBetter: true,
+    highlightRow: true,
+    getNumeric: (r: any) => doanhSoBan(r),
+    format: (r: any) => fmt(doanhSoBan(r))
+  },
+  {
+    key: 'net_po',
+    label: 'Net PO',
+    shortLabel: 'Net PO',
+    formula: '= Doanh số bán - Gross COM',
+    group: 'rev',
+    isNumeric: true,
+    higherIsBetter: true,
+    getNumeric: (r: any) => netPO(r),
+    format: (r: any) => fmt(netPO(r))
+  },
+  {
+    key: 'tong_sau_vat',
+    label: 'Tổng tiền sau VAT',
+    shortLabel: 'Tổng tiền sau VAT',
+    formula: '= Doanh số bán + Thuế VAT',
+    group: 'rev',
+    isNumeric: true,
+    higherIsBetter: true,
+    getNumeric: (r: any) => tongSauVat(r),
+    format: (r: any) => fmt(tongSauVat(r))
+  },
+
+  // CỤM 2 — KHỐI 2: HOA HỒNG (COM)
+  {
+    key: 'net_com',
+    sectionTitle: '2. HOA HỒNG (COM)',
+    label: 'Net COM',
+    shortLabel: 'Net COM',
+    formula: '= Gross COM - Thuế COM',
+    group: 'com',
+    isNumeric: true,
+    higherIsBetter: true,
+    highlightRow: true,
+    getNumeric: (r: any) => netCom(r),
+    format: (r: any) => fmt(netCom(r))
+  },
+  {
+    key: 'gross_com',
+    label: 'Gross COM',
+    shortLabel: 'Gross COM',
+    formula: 'Chênh lệch nâng giá trước thuế',
+    group: 'com',
+    isNumeric: true,
+    higherIsBetter: true,
+    getNumeric: (r: any) => grossCom(r),
+    format: (r: any) => fmt(grossCom(r))
+  },
+  {
+    key: 'pct_com_netpo',
+    label: 'Net Com / Net PO',
+    shortLabel: 'Net Com / Net PO',
+    formula: '= (Net COM / Net PO) × 100%',
+    group: 'com',
+    isNumeric: true,
+    isRatio: true,
+    higherIsBetter: true,
+    getNumeric: (r: any) => {
+      const np = netPO(r)
+      return np > 0 ? Number(((netCom(r) / np) * 100).toFixed(2)) : 0
+    },
+    format: (r: any) => `${pct(netCom(r), netPO(r))}%`
+  },
+  {
+    key: 'pct_com_dsb',
+    label: 'Net Com / DSB',
+    shortLabel: 'Net Com / DSB',
+    formula: '= (Net COM / Doanh số bán) × 100%',
+    group: 'com',
+    isNumeric: true,
+    isRatio: true,
+    higherIsBetter: true,
+    getNumeric: (r: any) => {
+      const d = doanhSoBan(r)
+      return d > 0 ? Number(((netCom(r) / d) * 100).toFixed(2)) : 0
+    },
+    format: (r: any) => `${pct(netCom(r), doanhSoBan(r))}%`
+  },
+
+  // CỤM 3 — KHỐI 3: LỢI NHUẬN (MARGIN)
+  {
+    key: 'net_margin',
+    sectionTitle: '3. LỢI NHUẬN (MARGIN)',
+    label: 'Net Margin',
+    shortLabel: 'Net Margin',
+    formula: '= Doanh số bán - Gross COM - Tổng CP',
+    group: 'profit',
+    isNumeric: true,
+    higherIsBetter: true,
+    highlightRow: true,
+    getNumeric: (r: any) => netMargin(r),
+    format: (r: any) => fmt(netMargin(r))
+  },
+  {
+    key: 'pct_margin_netpo',
+    label: 'Net Margin / Net PO',
+    shortLabel: 'Net Margin / Net PO',
+    formula: '= (Net Margin / Net PO) × 100%',
+    group: 'profit',
+    isNumeric: true,
+    isRatio: true,
+    higherIsBetter: true,
+    getNumeric: (r: any) => {
+      const np = netPO(r)
+      return np > 0 ? Number(((netMargin(r) / np) * 100).toFixed(2)) : 0
+    },
+    format: (r: any) => `${pct(netMargin(r), netPO(r))}%`
+  },
+  {
+    key: 'pct_margin_dsb',
+    label: 'Net Margin / DSB',
+    shortLabel: 'Net Margin / DSB',
+    formula: '= (Net Margin / Doanh số bán) × 100%',
+    group: 'profit',
+    isNumeric: true,
+    isRatio: true,
+    higherIsBetter: true,
+    getNumeric: (r: any) => {
+      const d = doanhSoBan(r)
+      return d > 0 ? Number(((netMargin(r) / d) * 100).toFixed(2)) : 0
+    },
+    format: (r: any) => `${pct(netMargin(r), doanhSoBan(r))}%`
+  }
+]
+
+const filteredCraftCompareMetricDefs = computed(() => {
+  if (!craftCompareOnlyDiff.value || effectiveCraftCompareRows.value.length < 2) {
+    return craftCompareMetricDefs
+  }
+  const rowsToCheck = effectiveCraftCompareRows.value
+  return craftCompareMetricDefs.filter(mDef => {
+    const firstFormatted = mDef.format(rowsToCheck[0])
+    return rowsToCheck.some(r => mDef.format(r) !== firstFormatted)
+  })
+})
+
+function isBestCraftMetricCell(mDef: CraftCompareMetricDef, r: any, list: any[]): boolean {
+  if (!mDef.isNumeric || mDef.higherIsBetter === null || mDef.higherIsBetter === undefined) return false
+  if (!list || list.length < 2) return false
+  const vals = list.map(item => mDef.getNumeric(item))
+  const allEqual = vals.every(v => Math.abs(v - vals[0]) < 0.001)
+  if (allEqual) return false
+  const curVal = mDef.getNumeric(r)
+  if (mDef.higherIsBetter === false) {
+    const positiveVals = vals.filter(v => v > 0)
+    if (!positiveVals.length || curVal <= 0) return false
+    const minVal = Math.min(...positiveVals)
+    return Math.abs(curVal - minVal) < 0.001
+  }
+  const maxVal = Math.max(...vals)
+  return Math.abs(curVal - maxVal) < 0.001
+}
+
+function getCraftMetricInlinePctText(mDef: CraftCompareMetricDef, r: any, list: any[]): string {
+  if (!mDef.isNumeric || mDef.isRatio) return ''
+  const dsbVal = doanhSoBan(r)
+  if (mDef.key === 'dsb') {
+    if (!list || list.length <= 1) return '100%'
+    const maxDsb = Math.max(...list.map(item => Math.max(0, doanhSoBan(item))), 0)
+    return maxDsb > 0 ? `${pct(dsbVal, maxDsb)}%` : '0.00%'
+  }
+  return dsbVal > 0 ? `${pct(mDef.getNumeric(r), dsbVal)}% DSB` : '0.00% DSB'
+}
+
+const effectiveCraftBaseRow = computed<any>(() => {
+  const list = effectiveCraftCompareRows.value
+  if (!list.length) return null
+  if (craftCompareBaseRowKey.value) {
+    const found = list.find(r => getCraftCompareKey(r) === craftCompareBaseRowKey.value)
+    if (found) return found
+  }
+  return list[0]
+})
+
+const effectiveCraftBaseRowIndex = computed<number>(() => {
+  const list = effectiveCraftCompareRows.value
+  const base = effectiveCraftBaseRow.value
+  if (!list.length || !base) return 0
+  const idx = list.indexOf(base)
+  return idx >= 0 ? idx : 0
+})
+
+function isCraftBaselineRow(r: any): boolean {
+  const base = effectiveCraftBaseRow.value
+  if (!base || !r) return false
+  return getCraftCompareKey(base) === getCraftCompareKey(r)
+}
+
+function setCraftBaselineRow(r: any) {
+  const k = getCraftCompareKey(r)
+  if (k) craftCompareBaseRowKey.value = k
+}
+
+// ─── INLINE EDIT TRỰC TIẾP TRÊN Ô CỦA BẢNG MA TRẬN 10 CHỈ SỐ KPI (SỬA SỐ CHÍNH / Δ SỐ CỤ THỂ / Δ %) ───
+const editingMatrixCell = ref<{
+  rowKey: string
+  metricKey: string
+  rawVal: string
+  rawDeltaAbs: string
+  rawDeltaPct: string
+  focusField: 'main' | 'delta_abs' | 'delta_pct'
+} | null>(null)
+
+function isEditingMatrixCell(r: any, mDef: CraftCompareMetricDef): boolean {
+  const rk = getCraftCompareKey(r)
+  return Boolean(
+    editingMatrixCell.value &&
+      editingMatrixCell.value.rowKey === rk &&
+      editingMatrixCell.value.metricKey === mDef.key
+  )
+}
+
+function parseFormattedMetricVal(rawStr: string, isRatio?: boolean): number {
+  const s = String(rawStr || '').trim()
+  if (!s || s === '-' || s === '+') return 0
+  if (isRatio) {
+    const n = Number(s.replace(/%/g, '').replace(/\+/g, '').replace(',', '.'))
+    return Number.isFinite(n) ? n : 0
+  }
+  const isNeg = s.startsWith('-')
+  const digits = s.replace(/\D/g, '')
+  if (!digits) return 0
+  return isNeg ? -Number(digits) : Number(digits)
+}
+
+function formatSignedMetricVal(val: number, isRatio?: boolean): string {
+  if (!Number.isFinite(val) || Math.abs(val) < 0.0001) return '0'
+  const sign = val > 0 ? '+' : '-'
+  const absVal = Math.abs(val)
+  if (isRatio) {
+    return `${sign}${Number(absVal.toFixed(2))}`
+  }
+  return `${sign}${fmt(Math.round(absVal))}`
+}
+
+function startEditMatrixCell(
+  r: any,
+  mDef: CraftCompareMetricDef,
+  focusField: 'main' | 'delta_abs' | 'delta_pct' = 'main'
+) {
+  if (!mDef.isNumeric) return
+  const rk = getCraftCompareKey(r)
+  if (!rk) return
+  if (isEditingMatrixCell(r, mDef)) return
+  const numVal = mDef.getNumeric(r)
+  const formattedMain = mDef.isRatio ? String(numVal) : fmt(Math.round(numVal))
+
+  const refRow = effectiveCraftBaseRow.value
+  const baseVal = refRow ? mDef.getNumeric(refRow) : numVal
+  const diff = numVal - baseVal
+  const pctDiff =
+    Math.abs(baseVal) > 0.001 ? Number(((diff / Math.abs(baseVal)) * 100).toFixed(1)) : 0
+
+  editingMatrixCell.value = {
+    rowKey: rk,
+    metricKey: mDef.key,
+    rawVal: formattedMain,
+    rawDeltaAbs: formatSignedMetricVal(diff, mDef.isRatio),
+    rawDeltaPct: `${pctDiff > 0 ? '+' : ''}${pctDiff}`,
+    focusField
+  }
+  nextTick(() => {
+    const targetId =
+      focusField === 'delta_abs'
+        ? 'sr-ccm-inline-input-abs'
+        : focusField === 'delta_pct'
+          ? 'sr-ccm-inline-input-pct'
+          : 'sr-ccm-inline-input-main'
+    const inputEl =
+      (document.getElementById(targetId) as HTMLInputElement | null) ||
+      (document.getElementById('sr-ccm-inline-input-main') as HTMLInputElement | null)
+    if (inputEl) {
+      inputEl.focus()
+      inputEl.select()
+    }
+  })
+}
+
+function onMatrixInlineInput(ev: Event, mDef: CraftCompareMetricDef) {
+  if (!editingMatrixCell.value) return
+  const target = ev.target as HTMLInputElement
+  const raw = target.value
+  if (mDef.isRatio) {
+    editingMatrixCell.value.rawVal = raw.replace(/[^0-9.,-]/g, '')
+  } else {
+    const trimmed = raw.trim()
+    const isNeg = trimmed.startsWith('-')
+    const digits = trimmed.replace(/\D/g, '')
+    if (!digits) {
+      editingMatrixCell.value.rawVal = isNeg ? '-' : ''
+    } else {
+      const n = Number(digits)
+      editingMatrixCell.value.rawVal = (isNeg ? '-' : '') + fmt(n)
+    }
+  }
+  // Tự động đồng bộ sang ô Δ Số cụ thể và ô Δ %
+  const refRow = effectiveCraftBaseRow.value
+  if (refRow) {
+    const baseVal = mDef.getNumeric(refRow)
+    const newMain = parseFormattedMetricVal(editingMatrixCell.value.rawVal, mDef.isRatio)
+    const diff = newMain - baseVal
+    const pctDiff =
+      Math.abs(baseVal) > 0.001 ? Number(((diff / Math.abs(baseVal)) * 100).toFixed(1)) : 0
+    editingMatrixCell.value.rawDeltaAbs = formatSignedMetricVal(diff, mDef.isRatio)
+    editingMatrixCell.value.rawDeltaPct = `${pctDiff > 0 ? '+' : ''}${pctDiff}`
+  }
+}
+
+function onMatrixDeltaAbsInput(ev: Event, _r: any, mDef: CraftCompareMetricDef) {
+  if (!editingMatrixCell.value) return
+  const target = ev.target as HTMLInputElement
+  const raw = target.value.trim()
+  const sign = raw.startsWith('-') ? '-' : raw.startsWith('+') ? '+' : ''
+
+  let diffVal = 0
+  if (mDef.isRatio) {
+    const cleaned = raw.replace(/[^0-9.,+-]/g, '')
+    editingMatrixCell.value.rawDeltaAbs = cleaned
+    diffVal = parseFormattedMetricVal(cleaned, true)
+  } else {
+    const digits = raw.replace(/\D/g, '')
+    if (!digits) {
+      editingMatrixCell.value.rawDeltaAbs = sign
+      diffVal = 0
+    } else {
+      const n = Number(digits)
+      editingMatrixCell.value.rawDeltaAbs = (sign || '+') + fmt(n)
+      diffVal = sign === '-' ? -n : n
+    }
+  }
+
+  const refRow = effectiveCraftBaseRow.value
+  const baseVal = refRow ? mDef.getNumeric(refRow) : 0
+  const newMain = baseVal + diffVal
+  editingMatrixCell.value.rawVal = mDef.isRatio
+    ? String(Number(newMain.toFixed(2)))
+    : fmt(Math.round(newMain))
+  const pctDiff =
+    Math.abs(baseVal) > 0.001 ? Number(((diffVal / Math.abs(baseVal)) * 100).toFixed(1)) : 0
+  editingMatrixCell.value.rawDeltaPct = `${pctDiff > 0 ? '+' : ''}${pctDiff}`
+}
+
+function onMatrixDeltaPctInput(ev: Event, _r: any, mDef: CraftCompareMetricDef) {
+  if (!editingMatrixCell.value) return
+  const target = ev.target as HTMLInputElement
+  const cleaned = target.value.replace(/[^0-9.,+-]/g, '')
+  editingMatrixCell.value.rawDeltaPct = cleaned
+
+  const pctVal = parseFormattedMetricVal(cleaned, true)
+  const refRow = effectiveCraftBaseRow.value
+  const baseVal = refRow ? mDef.getNumeric(refRow) : 0
+  const diffVal = Math.abs(baseVal) * (pctVal / 100)
+  const newMain = baseVal + diffVal
+
+  editingMatrixCell.value.rawDeltaAbs = formatSignedMetricVal(diffVal, mDef.isRatio)
+  editingMatrixCell.value.rawVal = mDef.isRatio
+    ? String(Number(newMain.toFixed(2)))
+    : fmt(Math.round(newMain))
+}
+
+function cancelEditMatrixCell() {
+  editingMatrixCell.value = null
+}
+
+async function commitEditMatrixCell(r: any, mDef: CraftCompareMetricDef) {
+  if (!editingMatrixCell.value) return
+  const cell = editingMatrixCell.value
+  const rk = getCraftCompareKey(r)
+  if (cell.rowKey !== rk || cell.metricKey !== mDef.key) return
+  editingMatrixCell.value = null
+
+  const rawStr = String(cell.rawVal || '').trim()
+  if (!rawStr || rawStr === '-') return
+
+  let newVal = 0
+  if (mDef.isRatio) {
+    newVal = Number(rawStr.replace(/%/g, '').replace(',', '.'))
+  } else {
+    const isNeg = rawStr.startsWith('-')
+    const digits = rawStr.replace(/\D/g, '')
+    newVal = digits ? (isNeg ? -Number(digits) : Number(digits)) : 0
+  }
+  if (!Number.isFinite(newVal)) return
+
+  const oldVal = mDef.getNumeric(r)
+  if (Math.abs(newVal - oldVal) < 0.005) return
+
+  let dsb = doanhSoBan(r)
+  let vat = thueVat(r)
+  let tSau = tongSauVat(r)
+  let gCom = grossCom(r)
+  const tPct = thuePct(r)
+  let nCom = netCom(r)
+  let cp = tongCP(r)
+
+  const recalcNetComFromGross = (gross: number) => {
+    gCom = Math.round(gross)
+    const taxVal = Math.round(gCom * (tPct / 100))
+    nCom = gCom - taxVal
+  }
+
+  const recalcGrossComFromNet = (net: number) => {
+    nCom = Math.round(net)
+    const divisor = 1 - tPct / 100
+    gCom = divisor > 0.0001 ? Math.round(nCom / divisor) : nCom
+  }
+
+  switch (mDef.key) {
+    case 'dsb': {
+      dsb = Math.max(0, Math.round(newVal))
+      tSau = dsb + vat
+      break
+    }
+    case 'tong_sau_vat': {
+      tSau = Math.max(0, Math.round(newVal))
+      vat = Math.max(0, tSau - dsb)
+      break
+    }
+    case 'net_po': {
+      const targetNetPo = Math.round(newVal)
+      recalcNetComFromGross(Math.max(0, dsb - targetNetPo))
+      break
+    }
+    case 'gross_com': {
+      recalcNetComFromGross(Math.max(0, newVal))
+      break
+    }
+    case 'net_com': {
+      recalcGrossComFromNet(Math.max(0, newVal))
+      break
+    }
+    case 'pct_com_dsb': {
+      const targetNet = Math.round(dsb * (newVal / 100))
+      recalcGrossComFromNet(Math.max(0, targetNet))
+      break
+    }
+    case 'pct_com_netpo': {
+      const ratio = newVal / 100
+      const netFactor = Math.max(0.0001, 1 - tPct / 100)
+      const denom = netFactor + ratio
+      const targetGross = denom > 0.0001 ? Math.round((ratio * dsb) / denom) : 0
+      recalcNetComFromGross(Math.max(0, targetGross))
+      break
+    }
+    case 'net_margin': {
+      const targetMargin = Math.round(newVal)
+      cp = Math.max(0, dsb - gCom - targetMargin)
+      break
+    }
+    case 'pct_margin_netpo': {
+      const curNetPo = dsb - gCom
+      const targetMargin = Math.round(curNetPo * (newVal / 100))
+      cp = Math.max(0, curNetPo - targetMargin)
+      break
+    }
+    case 'pct_margin_dsb': {
+      const targetMargin = Math.round(dsb * (newVal / 100))
+      cp = Math.max(0, dsb - gCom - targetMargin)
+      break
+    }
+  }
+
+  const tCom = Math.round(gCom - nCom)
+  const updateFields: Record<string, any> = {
+    Tong_tien_truoc_thueVAT: dsb,
+    Tong_thueVAT: vat,
+    Tong_tien_sau_thueVAT: tSau,
+    Tong_CP_don_hang: cp,
+    chiet_khau_tong_truoc_thue: gCom,
+    chenh_lech_gia: gCom,
+    gross_com: gCom,
+    phan_tram_thue_chenh_lech_gia: tPct,
+    thue_chenh_lech_gia: tCom,
+    con_lai: nCom,
+    tong_chiet_khau: nCom,
+    net_com: nCom
+  }
+  if (r.goodsTotal && typeof r.goodsTotal === 'object') {
+    updateFields.goodsTotal = {
+      ...r.goodsTotal,
+      ttTruoc: dsb,
+      vat: vat,
+      ttSau: tSau
+    }
+  }
+
+  Object.assign(r, updateFields)
+
+  const fbKey = String(r?._firebaseKey || r?.ID || '').trim()
+  if (fbKey) {
+    const tablePath = r?._isCraft || srDataMode.value === 'craft' ? 'sale_report_craft' : 'sale_report'
+    try {
+      await update(dbRef(database, `${tablePath}/${fbKey}`), JSON.parse(JSON.stringify(updateFields)))
+    } catch (err) {
+      console.error('Lỗi lưu nhanh chỉ số trên ma trận:', err)
+    }
+  }
+}
+
+function getCraftMetricDelta(mDef: CraftCompareMetricDef, r: any, _idx: number, list: any[]) {
+  if (!mDef.isNumeric || !list || list.length < 2) return null
+  const refRow = effectiveCraftBaseRow.value
+  if (!refRow || getCraftCompareKey(refRow) === getCraftCompareKey(r)) return null
+  const baseVal = mDef.getNumeric(refRow)
+  const curVal = mDef.getNumeric(r)
+  const diff = curVal - baseVal
+  if (Math.abs(diff) < 0.005) {
+    return {
+      deltaText: 'Không đổi',
+      pctText: '0%',
+      toneClass: 'is-flat'
+    }
+  }
+  const isRatio = Boolean(mDef.isRatio || mDef.group === 'ratio')
+  const arrow = diff > 0 ? '▲ +' : '▼ '
+  const deltaText = isRatio
+    ? `${arrow}${diff.toFixed(2)}%`
+    : `${arrow}${fmt(Math.round(diff))}`
+  let pctText = ''
+  if (Math.abs(baseVal) > 0.001) {
+    const p = ((diff / Math.abs(baseVal)) * 100).toFixed(1)
+    pctText = `${diff > 0 ? '+' : ''}${p}%`
+  }
+  let toneClass = 'is-neutral'
+  if (mDef.higherIsBetter === true) {
+    toneClass = diff > 0 ? 'is-good' : 'is-bad'
+  } else if (mDef.higherIsBetter === false) {
+    toneClass = diff < 0 ? 'is-good' : 'is-bad'
+  }
+  return { deltaText, pctText, toneClass }
+}
+
+const craftCompareBestSummary = computed(() => {
+  const list = effectiveCraftCompareRows.value
+  if (!list || list.length < 2) return null
+
+  let bestDsbRow = list[0]
+  let worstDsbVal = doanhSoBan(list[0])
+  let bestMarginRow = list[0]
+  let worstMarginVal = netMargin(list[0])
+  let bestComRow = list[0]
+  let worstComVal = netCom(list[0])
+
+  list.forEach(r => {
+    const d = doanhSoBan(r)
+    if (d > doanhSoBan(bestDsbRow)) bestDsbRow = r
+    if (d < worstDsbVal) worstDsbVal = d
+
+    const m = netMargin(r)
+    if (m > netMargin(bestMarginRow)) bestMarginRow = r
+    if (m < worstMarginVal) worstMarginVal = m
+
+    const c = netCom(r)
+    if (c > netCom(bestComRow)) bestComRow = r
+    if (c < worstComVal) worstComVal = c
+  })
+
+  const getLabel = (row: any) => {
+    const idx = list.indexOf(row)
+    return getCraftCompareColTitle(row, idx >= 0 ? idx : 0)
+  }
+
+  return {
+    bestDsbLabel: getLabel(bestDsbRow),
+    bestDsbVal: doanhSoBan(bestDsbRow),
+    bestDsbNetPo: netPO(bestDsbRow),
+    dsbLeadDiff: Math.max(0, doanhSoBan(bestDsbRow) - worstDsbVal),
+    bestMarginKey: getPoRowKey(bestMarginRow),
+    bestMarginLabel: getLabel(bestMarginRow),
+    bestMarginVal: netMargin(bestMarginRow),
+    bestMarginPctDsb: pct(netMargin(bestMarginRow), doanhSoBan(bestMarginRow)),
+    marginLeadDiff: Math.max(0, netMargin(bestMarginRow) - worstMarginVal),
+    bestComLabel: getLabel(bestComRow),
+    bestComVal: netCom(bestComRow),
+    bestComPctDsb: pct(netCom(bestComRow), doanhSoBan(bestComRow)),
+    comLeadDiff: Math.max(0, netCom(bestComRow) - worstComVal)
+  }
+})
+
+// ─── BIỂU ĐỒ KPI SO SÁNH PHƯƠNG ÁN TRONG MODAL SO SÁNH (ĐỒNG BỘ CHUẨN BIỂU ĐỒ KPI BẢN CHÍNH THỨC) ───
+const craftCompareViewSection = ref<'both' | 'chart' | 'table'>('both')
+const craftCompareChartMetric = ref<string>('dsb')
+const craftCompareChartSort = ref<'original' | 'desc' | 'asc'>('original')
+const craftCompareMobileDockTab = ref<'metric' | 'group' | 'chart'>('chart')
+
+function getCraftMetricBarPercent(mDef: CraftCompareMetricDef, r: any, list: any[]): number {
+  if (!mDef.isNumeric || !list || list.length === 0) return 0
+  const vals = list.map(item => Math.max(0, mDef.getNumeric(item)))
+  const maxVal = Math.max(...vals, 0)
+  if (maxVal <= 0) return 0
+  const curVal = Math.max(0, mDef.getNumeric(r))
+  return Math.min(100, Math.max(4, Math.round((curVal / maxVal) * 100)))
+}
+
+const activeCraftChartMetricDef = computed<CraftCompareMetricDef>(() => {
+  return (
+    craftCompareMetricDefs.find(m => m.key === craftCompareChartMetric.value) ||
+    craftCompareMetricDefs[0]
+  )
+})
+
+const craftCompareSortedChartRows = computed(() => {
+  const mDef = activeCraftChartMetricDef.value
+  const list = effectiveCraftCompareRows.value.map((r, idx) => ({
+    row: r,
+    origIdx: idx,
+    label: getCraftCompareColTitle(r, idx),
+    val: craftCompareChartMetric.value === 'triple_kpi' ? netMargin(r) : mDef.getNumeric(r)
+  }))
+  if (craftCompareChartSort.value === 'desc') {
+    return [...list].sort((a, b) => b.val - a.val)
+  }
+  if (craftCompareChartSort.value === 'asc') {
+    return [...list].sort((a, b) => a.val - b.val)
+  }
+  return list
+})
+
+const craftCompareChartTotal = computed(() => {
+  const mDef = activeCraftChartMetricDef.value
+  return craftCompareSortedChartRows.value.reduce(
+    (s, item) => s + Math.max(0, mDef.getNumeric(item.row)),
+    0
+  )
+})
+
+const craftCompareSummaryKpis = computed(() => {
+  const items = craftCompareSortedChartRows.value
+  const count = items.length
+  const mDef = activeCraftChartMetricDef.value
+  const ratio = craftCompareChartMetric.value !== 'triple_kpi' && Boolean(mDef.isRatio)
+  const formatVal = (v: number) => (ratio ? pctFmt(v) : `${fmt(Math.round(v))} đ`)
+
+  if (!count) {
+    return [
+      { label: 'Tổng phương án', value: '0', sub: 'Chưa có dữ liệu', tone: 'blue' },
+      { label: 'Phương án dẫn đầu', value: '0', sub: 'Chưa có dữ liệu', tone: 'emerald' },
+      { label: 'Trung bình / Phương án', value: '0', sub: 'Chưa có dữ liệu', tone: 'amber' },
+      { label: 'Chênh lệch tối đa', value: '0', sub: 'Chưa có dữ liệu', tone: 'blue' }
+    ]
+  }
+
+  const byValDesc = [...items].sort((a, b) => b.val - a.val)
+  const bestItem = byValDesc[0]
+  const worstItem = byValDesc[byValDesc.length - 1]
+  const sumVal = items.reduce((s, x) => s + x.val, 0)
+  const avgVal = sumVal / count
+  const diffVal = Math.max(0, bestItem.val - worstItem.val)
+
+  return [
+    {
+      label: 'Tổng phương án so sánh',
+      value: `${count} PA`,
+      sub: ratio
+        ? `Đang so sánh: ${mDef.label}`
+        : `Tổng ${craftCompareChartMetric.value === 'triple_kpi' ? 'Net Margin' : mDef.label}: ${formatVal(sumVal)}`,
+      tone: 'blue'
+    },
+    {
+      label: 'Phương án dẫn đầu (Top 1)',
+      value: formatVal(bestItem.val),
+      sub: bestItem.label,
+      tone: 'emerald'
+    },
+    {
+      label: 'Trung bình mỗi phương án',
+      value: formatVal(avgVal),
+      sub: `Chia đều trên ${count} phương án`,
+      tone: 'amber'
+    },
+    {
+      label: 'Biên độ chênh lệch (Max - Min)',
+      value: count > 1 ? formatVal(diffVal) : '0',
+      sub: count > 1 ? `Thấp nhất: ${worstItem.label} (${formatVal(worstItem.val)})` : 'Cần >= 2 phương án',
+      tone: 'blue'
+    }
+  ]
+})
+
+const craftComparePiePalette = [
+  '#10b981', '#0284c7', '#f59e0b', '#14b8a6', '#f97316',
+  '#3b82f6', '#84cc16', '#06b6d4', '#64748b'
+]
+
+const craftComparePieData = computed(() => {
+  const mDef = activeCraftChartMetricDef.value
+  const items = craftCompareSortedChartRows.value
+    .map(item => ({ label: item.label, val: Math.max(0, mDef.getNumeric(item.row)) }))
+    .filter(item => item.val > 0)
+
+  const labels = items.map(item => {
+    const text = item.label
+    if (isMobile.value && text.length > 18) return text.substring(0, 18) + '...'
+    if (!isMobile.value && text.length > 28) return text.substring(0, 28) + '...'
+    return text
+  })
+  const values = items.map(item => item.val)
+
+  return {
+    labels,
+    datasets: [
+      {
+        data: values,
+        backgroundColor: craftComparePiePalette,
+        borderWidth: 2,
+        borderColor: uiTheme.value === 'light' ? '#ffffff' : '#091411'
+      }
+    ]
+  }
+})
+
+const craftComparePieOptions = computed(() => {
+  const isLight = uiTheme.value === 'light'
+  const mDef = activeCraftChartMetricDef.value
+  const total = craftCompareSortedChartRows.value.reduce(
+    (s, item) => s + Math.max(0, mDef.getNumeric(item.row)),
+    0
+  )
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '58%',
+    plugins: {
+      legend: {
+        position: 'bottom' as const,
+        labels: {
+          color: isLight ? '#334155' : '#cbd5e1',
+          font: { size: 11, weight: '600' },
+          boxWidth: 10
+        }
+      },
+      tooltip: {
+        callbacks: {
+          label: (ctx: any) => {
+            const p = total > 0 ? ((ctx.raw / total) * 100).toFixed(1) : '0.0'
+            return ` ${ctx.label}: ${fmt(ctx.raw)} đ (${p}%)`
+          }
+        }
+      },
+      datalabels: {
+        color: '#ffffff',
+        formatter: (val: number) => {
+          if (!total) return ''
+          const p = (val / total) * 100
+          return p >= 6 ? `${p.toFixed(0)}%` : ''
+        },
+        font: { weight: 'bold', size: 11 },
+        textShadowBlur: 4,
+        textShadowColor: 'rgba(0,0,0,0.75)'
+      }
+    }
+  }
+})
+
+const craftCompareBarData = computed(() => {
+  const items = craftCompareSortedChartRows.value
+  const isLight = uiTheme.value === 'light'
+  const labels = items.map(d =>
+    isMobile.value ? wrapText(d.label, 18, 3) : wrapText(d.label, 22, 3)
+  )
+
+  if (craftCompareChartMetric.value === 'triple_kpi') {
+    return {
+      labels,
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Doanh số bán',
+          data: items.map(d => doanhSoBan(d.row)),
+          backgroundColor: isLight ? '#0284c7' : '#38bdf8',
+          borderRadius: 6,
+          maxBarThickness: isMobile.value ? 22 : 38
+        },
+        {
+          type: 'bar',
+          label: 'Net COM',
+          data: items.map(d => netCom(d.row)),
+          backgroundColor: isLight ? '#d97706' : '#f59e0b',
+          borderRadius: 6,
+          maxBarThickness: isMobile.value ? 22 : 38
+        },
+        {
+          type: 'bar',
+          label: 'Net Margin',
+          data: items.map(d => netMargin(d.row)),
+          backgroundColor: isLight ? '#059669' : '#10b981',
+          borderRadius: 6,
+          maxBarThickness: isMobile.value ? 22 : 38
+        }
+      ]
+    }
+  }
+
+  const mDef = activeCraftChartMetricDef.value
+  const ratio = Boolean(mDef.isRatio)
+  const values = items.map(d => mDef.getNumeric(d.row))
+  const positiveBarColor =
+    mDef.group === 'rev'
+      ? '#0284c7'
+      : mDef.group === 'com'
+        ? '#f59e0b'
+        : isLight
+          ? '#059669'
+          : '#10b981'
+
+  const datasets: any[] = []
+  if (items.length > 1) {
+    const avgVal = values.reduce((s, v) => s + v, 0) / items.length
+    datasets.push({
+      type: 'line',
+      label: `Trung bình phương án (${ratio ? pctFmt(avgVal) : fmt(Math.round(avgVal)) + ' đ'})`,
+      data: values.map(() => avgVal),
+      borderColor: isLight ? '#d97706' : '#fbbf24',
+      borderWidth: 2,
+      borderDash: [6, 5],
+      pointRadius: 2.5,
+      fill: false,
+      order: 1,
+      datalabels: { display: false }
+    })
+  }
+
+  datasets.push({
+    type: 'bar',
+    label: mDef.label,
+    data: values,
+    backgroundColor: (ctx: any) => (ctx.raw < 0 ? '#ef4444' : positiveBarColor),
+    borderRadius: 6,
+    maxBarThickness: isMobile.value ? 28 : 54,
+    order: 2
+  })
+
+  return {
+    labels,
+    datasets
+  }
+})
+
+const craftCompareBarOptions = computed(() => {
+  const isLight = uiTheme.value === 'light'
+  const isTriple = craftCompareChartMetric.value === 'triple_kpi'
+  const mDef = activeCraftChartMetricDef.value
+  const ratio = !isTriple && Boolean(mDef.isRatio)
+  const items = craftCompareSortedChartRows.value
+  const total =
+    !isTriple && !ratio
+      ? items.reduce((s, d) => s + Math.max(0, mDef.getNumeric(d.row)), 0)
+      : 0
+  const horiz = isMobile.value
+
+  const formatAxisValue = (v: any) => {
+    const num = Number(v)
+    if (ratio) return pctFmt(num)
+    if (horiz) {
+      if (Math.abs(num) >= 1e9) return (num / 1e9).toFixed(1).replace(/\.0$/, '') + ' Tỷ'
+      if (Math.abs(num) >= 1e6) return (num / 1e6).toFixed(0) + ' Tr'
+      if (Math.abs(num) >= 1e3) return (num / 1e3).toFixed(0) + 'k'
+    }
+    return fmt(num)
+  }
+
+  return {
+    indexAxis: horiz ? ('y' as const) : ('x' as const),
+    responsive: true,
+    maintainAspectRatio: false,
+    layout: horiz
+      ? { padding: { top: 8, right: ratio ? 44 : 62, bottom: 8, left: 2 } }
+      : { padding: { top: 42, bottom: 16 } },
+    scales: horiz
+      ? {
+          x: {
+            beginAtZero: true,
+            grace: '22%',
+            grid: { color: isLight ? 'rgba(148, 163, 184, 0.25)' : 'rgba(51, 65, 85, 0.45)' },
+            ticks: {
+              color: isLight ? '#475569' : '#94a3b8',
+              maxTicksLimit: 5,
+              font: { weight: '600', size: 10 },
+              callback: formatAxisValue
+            }
+          },
+          y: {
+            grid: { display: false },
+            ticks: {
+              color: isLight ? '#0f172a' : '#e2e8f0',
+              autoSkip: false,
+              font: { size: 10.5, weight: '700' }
+            }
+          }
+        }
+      : {
+          y: {
+            beginAtZero: true,
+            grace: '24%',
+            grid: { color: isLight ? 'rgba(148, 163, 184, 0.25)' : 'rgba(51, 65, 85, 0.45)' },
+            ticks: {
+              color: isLight ? '#475569' : '#94a3b8',
+              font: { weight: '600', size: 11 },
+              callback: (v: any) => (ratio ? pctFmt(v) : fmt(v))
+            }
+          },
+          x: {
+            grid: { display: false },
+            ticks: {
+              color: isLight ? '#0f172a' : '#e2e8f0',
+              minRotation: 0,
+              maxRotation: 0,
+              autoSkip: false,
+              font: { size: 11, weight: '700' }
+            }
+          }
+        },
+    plugins: {
+      legend: {
+        display: isTriple || items.length > 1,
+        position: 'top' as const,
+        labels: {
+          color: isLight ? '#0f172a' : '#e2e8f0',
+          font: { size: 11, weight: '600' },
+          usePointStyle: true,
+          boxWidth: 9
+        }
+      },
+      tooltip: {
+        callbacks: {
+          title: (tooltipItems: any[]) => {
+            if (!tooltipItems || !tooltipItems.length) return ''
+            const idx = tooltipItems[0].dataIndex
+            const item = items[idx]
+            if (!item) return ''
+            const cty = item.row?.Ten_cong_ty || item.row?.Ten_khach_hang || ''
+            return cty ? `${item.label} — ${cty}` : item.label
+          },
+          label: (ctx: any) => {
+            const dsLabel = ctx.dataset?.label || ''
+            if (ratio) return ` ${dsLabel}: ${pctFmt(ctx.raw)}`
+            return ` ${dsLabel}: ${fmt(Math.round(ctx.raw))} đ`
+          },
+          afterBody: (tooltipItems: any[]) => {
+            if (!tooltipItems || !tooltipItems.length) return []
+            const idx = tooltipItems[0].dataIndex
+            const r = items[idx]?.row
+            if (!r) return []
+            const lines: string[] = []
+            if (r.So_PO) lines.push(`Mã PO: ${r.So_PO}`)
+            if (r.Ten_nha_cung_cap) lines.push(`NCC: ${r.Ten_nha_cung_cap}`)
+            return lines
+          }
+        }
+      },
+      datalabels: {
+        labels: {
+          value: {
+            color: isLight ? '#0f172a' : '#ffffff',
+            anchor: 'end',
+            align: horiz ? 'end' : 'top',
+            offset: horiz ? 6 : ratio || isTriple ? 4 : 18,
+            textAlign: horiz ? ('left' as const) : ('center' as const),
+            font: { weight: 'bold', size: horiz ? 10 : isTriple ? 10 : 11 },
+            formatter: (val: number, ctx: any) => {
+              if (ctx?.dataset?.type === 'line') return ''
+              if (ratio) return pctFmt(val)
+              let shortVal = fmt(val)
+              if (Math.abs(val) >= 1e9) shortVal = (val / 1e9).toFixed(2) + ' Tỷ'
+              else if (Math.abs(val) >= 1e6) shortVal = (val / 1e6).toFixed(1) + ' Tr'
+              if (horiz && total && !isTriple) {
+                const p = (val / total) * 100
+                return [shortVal, `(${p.toFixed(1)}%)`]
+              }
+              return shortVal
+            },
+            textShadowBlur: isLight ? 0 : 4,
+            textShadowColor: 'rgba(0,0,0,0.5)'
+          },
+          percent: {
+            display: !horiz && !isTriple && !ratio,
+            color: isLight ? '#059669' : '#34d399',
+            anchor: 'end',
+            align: 'top',
+            offset: 3,
+            font: { weight: 'bold', size: 10.5 },
+            formatter: (val: number, ctx: any) => {
+              if (ctx?.dataset?.type === 'line') return ''
+              if (ratio || !total) return ''
+              const p = (val / total) * 100
+              return `${p.toFixed(1)}%`
+            },
+            textShadowBlur: isLight ? 0 : 4,
+            textShadowColor: 'rgba(0,0,0,0.5)'
+          }
+        }
+      }
+    }
+  }
+})
+
+// Lưu tất cả các tab trong multiEditModal vào bảng sale_report_craft
+async function saveModalItemsToCraft(silent = false): Promise<string[]> {
+  const m = multiEditModal.value
+  const validItems = m.items.filter(Boolean)
+  if (!validItems.length || savingModal.value) return []
+
+  savingModal.value = true
+  const savedKeys: string[] = []
+  try {
+    const nowStr = getFormattedNow()
+    const updates: Record<string, any> = {}
+
+    for (let idx = 0; idx < validItems.length; idx++) {
+      const item = validItems[idx]
+      const fallbackRow = item.row || (item as any)._clonedFromRow || null
+      let uploadedUrl = fallbackRow?.img_save || ''
+      if (item.base64Img) {
+        uploadedUrl = await uploadFileToCloudinary('data:image/jpeg;base64,' + item.base64Img)
+      } else if (item.rawFileScanCom) {
+        uploadedUrl =
+          item.previewUrlScanCom && item.previewUrlScanCom.startsWith('https://res.cloudinary.com/')
+            ? item.previewUrlScanCom
+            : await uploadFileToCloudinary(item.rawFileScanCom)
+      }
+
+      let linkBG = fallbackRow?.link_excel_bao_gia || ''
+      let linkMH = fallbackRow?.link_excel_mua_hang || ''
+      let linkDXMH = fallbackRow?.link_excel_dxmh || item.linkDxmh || ''
+      let tenBG = fallbackRow?.ten_file_bao_gia || ''
+      let tenMH = fallbackRow?.ten_file_mua_hang || ''
+      let tenDXMH = fallbackRow?.ten_file_dxmh || item.tenFileDxmh || ''
+
+      if (item.rawFileBaoGia) {
+        linkBG =
+          item.previewUrlBG && item.previewUrlBG.startsWith('https://res.cloudinary.com/')
+            ? item.previewUrlBG
+            : await uploadFileToCloudinary(item.rawFileBaoGia)
+        tenBG = item.rawFileBaoGia.name
+      }
+      if (item.rawFileMuaHang) {
+        linkMH =
+          item.previewUrlMH && item.previewUrlMH.startsWith('https://res.cloudinary.com/')
+            ? item.previewUrlMH
+            : await uploadFileToCloudinary(item.rawFileMuaHang)
+        tenMH = item.rawFileMuaHang.name
+      }
+      if (item.rawFileDxmh) {
+        linkDXMH =
+          item.previewUrlDXMH && item.previewUrlDXMH.startsWith('https://res.cloudinary.com/')
+            ? item.previewUrlDXMH
+            : await uploadFileToCloudinary(item.rawFileDxmh)
+        tenDXMH = item.rawFileDxmh.name
+      }
+
+      const {
+        maKHGen,
+        maCongTyGen,
+        tenCongTy,
+        tenKhachHang,
+        mstVal
+      } = await upsertCustomerFromModalItem(item)
+
+      const tTruoc = Number(item.doanhSoBan ?? item.goodsTotal?.ttTruoc ?? 0)
+      const tVat = Number(item.goodsTotal?.vat ?? toNum(fallbackRow?.Tong_thueVAT) ?? 0)
+      const tSau = tTruoc + tVat
+      const gCom = Number(item.grossCom) || 0
+      const tPct = Number(item.taxPct) || 0
+      const tCom = Math.round(gCom * (tPct / 100))
+      const nCom = Number(item.netCom) || Math.round(gCom - tCom)
+      const finalCreatedTime = normalizePoCreatedTime(item.createdTime, fallbackRow?.created_time || nowStr)
+      const savedOtherFiles = await resolveUploadedOtherFiles(item, nowStr)
+
+      const existingCraftKey = item.row?._isCraft ? (item.row?._firebaseKey || item.row?.ID) : ''
+      const targetKey = existingCraftKey || push(dbRef(database, 'sale_report_craft')).key || ('CRAFT_' + Date.now() + '_' + idx)
+      const soPoLabel = String(item.soPO || item.row?.So_PO || getNextAvailableSoPO(idx + 1)[idx]).trim()
+
+      const craftPayload: Record<string, any> = {
+        ID: targetKey,
+        id_quanlyfile: fallbackRow?.id_quanlyfile || fallbackRow?.id_quan_ly_file || '',
+        id_quan_ly_file: fallbackRow?.id_quan_ly_file || fallbackRow?.id_quanlyfile || '',
+        ma_hop_dong: item.row?.ma_hop_dong || ('HD_CRAFT_' + Date.now() + '_' + idx),
+        so_hop_dong: item.row?.so_hop_dong || '',
+        So_PO: soPoLabel,
+        Ten_nha_cung_cap: item.productType || '',
+        Ma_khach_hang: maKHGen,
+        Ten_khach_hang: tenKhachHang || tenCongTy,
+        Ma_cong_ty: maCongTyGen,
+        Ten_cong_ty: tenCongTy,
+        MST: mstVal,
+        created_time: finalCreatedTime,
+        content_of_contract_PO: item.content || '',
+        ghi_chu: item.ghiChu ?? fallbackRow?.ghi_chu ?? '',
+        Tong_tien_truoc_thueVAT: tTruoc,
+        Tong_thueVAT: tVat,
+        Tong_tien_sau_thueVAT: tSau,
+        Tong_thanh_tien_chua_VAT_mua_hang: Number(item.giaMua) || 0,
+        Tong_CP_don_hang: Number(item.tongCP) || 0,
+        chiet_khau_tong_truoc_thue: gCom,
+        chenh_lech_gia: gCom,
+        gross_com: gCom,
+        phan_tram_thue_chenh_lech_gia: tPct,
+        thue_chenh_lech_gia: tCom,
+        con_lai: nCom,
+        tong_chiet_khau: nCom,
+        net_com: nCom,
+        account_manager_name: item.am || '',
+        img_save: uploadedUrl,
+        link_excel_bao_gia: linkBG,
+        link_excel_mua_hang: linkMH,
+        link_excel_dxmh: linkDXMH,
+        ten_file_bao_gia: tenBG,
+        ten_file_mua_hang: tenMH,
+        ten_file_dxmh: tenDXMH,
+        danh_sach_file_khac: savedOtherFiles,
+        goodsList: Array.isArray(item.goodsList) ? JSON.parse(JSON.stringify(item.goodsList)) : [],
+        goodsTotal: item.goodsTotal ? JSON.parse(JSON.stringify(item.goodsTotal)) : { ttTruoc: tTruoc, vat: tVat, ttSau: tSau },
+        is_craft: true,
+        chotDeal: false
+      }
+
+      updates[`sale_report_craft/${targetKey}`] = craftPayload
+      savedKeys.push(targetKey)
+      if ((item as any)._clonedFromRow) {
+        const origKey = getCraftCompareKey((item as any)._clonedFromRow)
+        if (origKey && selectedCraftCompareKeys.value.includes(origKey) && !selectedCraftCompareKeys.value.includes(targetKey)) {
+          selectedCraftCompareKeys.value.push(targetKey)
+        }
+      }
+    }
+
+    if (Object.keys(updates).length > 0) {
+      const cleanUpdates = JSON.parse(JSON.stringify(updates))
+      await update(dbRef(database), cleanUpdates)
+    }
+
+    await loadData()
+    if (!silent) {
+      m.show = false
+      await openSrAlert({
+        variant: 'success',
+        eyebrow: 'Lưu Bản Tạm hoàn tất',
+        title: m.mode === 'create' ? 'Đã tạo Phương án tạm mới' : 'Đã lưu cập nhật Phương án tạm',
+        highlightLabel: 'SỐ PHƯƠNG ÁN TẠM ĐÃ LƯU',
+        highlightValue: `${savedKeys.length} phương án tạm`,
+        message: 'Dữ liệu Phương án tạm đã được lưu vào bảng sale_report_craft. Bạn có thể chọn nhiều phương án để So sánh mọi chỉ số trước khi Chốt Deal.',
+        confirmText: 'Hoàn tất'
+      })
+    }
+  } catch (e) {
+    console.error('Lỗi lưu sale_report_craft:', e)
+    if (!silent) {
+      await openSrAlert({
+        variant: 'error',
+        title: 'Lỗi lưu Phương án tạm',
+        message: 'Không thể lưu Phương án tạm lên Firebase. Vui lòng thử lại.',
+        confirmText: 'Đóng'
+      })
+    }
+  } finally {
+    savingModal.value = false
+  }
+  return savedKeys
+}
+
+// Mở Modal Nhân bản Phương án tạm để người dùng xem & chỉnh sửa trước khi bấm Lưu tạo mới
+function cloneCraftRow(sourceRow: any, fromCompareModal = false) {
+  if (!sourceRow) return
+  if (fromCompareModal) {
+    showCraftCompareModal.value = false
+  }
+  const id = Date.now()
+  const clonedItem = createImportItemFromExistingRow(sourceRow, id)
+  const sameCompanyCount = craftRows.value.filter(
+    r => String(r?.Ma_cong_ty || '') === String(sourceRow?.Ma_cong_ty || '')
+  ).length
+  clonedItem.row = null
+  ;(clonedItem as any)._clonedFromRow = sourceRow
+  clonedItem.soPO = getNextAvailableSoPO(1)[0]
+  clonedItem.createdTime = getFormattedNow()
+  clonedItem.content = sourceRow.content_of_contract_PO
+    ? `${sourceRow.content_of_contract_PO} (Phương án #${sameCompanyCount + 1})`
+    : `Phương án #${sameCompanyCount + 1}`
+
+  activeItemIdx.value = 0
+  multiEditModal.value = {
+    show: true,
+    mode: 'create',
+    items: [clonedItem],
+    isReportImport: false
+  }
+  isModalDirty.value = true
+}
+
+function cloneCraftRowFromCompare(sourceRow: any) {
+  cloneCraftRow(sourceRow, true)
+}
+
+// Nhân bản tab đang mở bên trong multiEditModal thành 1 tab mới ngay trong phiên
+function cloneActiveModalItemAsNewTab() {
+  const cur = activeModalItem.value
+  if (!cur) return
+  const newId = Date.now() + Math.floor(Math.random() * 1000)
+  const tabCount = multiEditModal.value.items.length + 1
+  const nextPo = getNextAvailableSoPO(1)[0]
+  const clonedItem: ImportItem = {
+    ...JSON.parse(JSON.stringify({
+      ...cur,
+      row: null,
+      rawFileBaoGia: undefined,
+      rawFileMuaHang: undefined,
+      rawFileDxmh: undefined,
+      rawFileScanCom: undefined
+    })),
+    id: newId,
+    row: null,
+    soPO: nextPo,
+    content: cur.content ? `${cur.content} (PA #${tabCount})` : `Phương án #${tabCount}`,
+    goodsList: Array.isArray(cur.goodsList) ? JSON.parse(JSON.stringify(cur.goodsList)) : [],
+    goodsTotal: cur.goodsTotal ? JSON.parse(JSON.stringify(cur.goodsTotal)) : undefined,
+    otherFiles: Array.isArray(cur.otherFiles) ? cur.otherFiles.map(f => ({ ...f })) : []
+  }
+  multiEditModal.value.items.push(clonedItem)
+  activeItemIdx.value = multiEditModal.value.items.length - 1
+  isModalDirty.value = true
+}
+
+// Lưu tất cả các tab trong multiEditModal và mở ngay Bảng Ma Trận So Sánh
+async function compareModalSessionItems() {
+  const keys = await saveModalItemsToCraft(true)
+  if (keys.length > 0) {
+    selectedCraftCompareKeys.value = keys
+    multiEditModal.value.show = false
+    showCraftCompareModal.value = true
+  }
+}
+
+function getNextAvailableSoPO(count = 1): string[] {
+  const existingNums = [
+    ...officialRows.value.map(r => parseInt(String(r?.So_PO || ''), 10)),
+    ...craftRows.value.map(r => parseInt(String(r?.So_PO || ''), 10)),
+    ...multiEditModal.value.items.map(it => parseInt(String(it?.soPO || ''), 10))
+  ].filter(n => !isNaN(n) && n > 0)
+  const currentMax = existingNums.length > 0 ? Math.max(...existingNums) : 0
+  const result: string[] = []
+  for (let i = 1; i <= count; i++) {
+    result.push(String(currentMax + i))
+  }
+  return result
+}
+
+const highlightedPoKey = ref('')
+let highlightPoTimer: ReturnType<typeof setTimeout> | null = null
+
+async function focusAndHighlightOfficialPo(targetKey: string, targetSoPo: string, maCongTyHint?: string) {
+  srDataMode.value = 'official'
+  await nextTick()
+
+  let targetRow = officialRows.value.find(
+    r =>
+      String(r?._firebaseKey || '') === String(targetKey) ||
+      String(r?.ID || '') === String(targetKey) ||
+      (targetSoPo && String(r?.So_PO || '') === String(targetSoPo))
+  )
+
+  if (targetRow && !filteredRows.value.some(r => getPoRowKey(r) === getPoRowKey(targetRow))) {
+    searchStr.value = ''
+    filterCustomer.value = 'Tất cả'
+    filterYear.value = 'Tất cả'
+    filterMonth.value = 'Tất cả'
+    filterDebtStatus.value = 'Tất cả'
+    companySidebarSearch.value = ''
+    await nextTick()
+  }
+
+  displayLimit.value = Math.max(displayLimit.value, filteredRows.value.length + 10)
+  const groupKey = String(targetRow?.Ma_cong_ty || targetRow?.Ten_cong_ty || maCongTyHint || 'Khác')
+  selectedMasterGroupKey.value = groupKey
+  groupPoVisibleLimitMap.value = {
+    ...groupPoVisibleLimitMap.value,
+    [groupKey]: Math.max(9999, filteredRows.value.length + 10)
+  }
+  collapsedGroupMap.value = {
+    ...collapsedGroupMap.value,
+    [groupKey]: false
+  }
+
+  const poKey = targetRow ? (getPoRowKey(targetRow) || String(targetRow.So_PO || targetSoPo)) : (targetKey || targetSoPo)
+  if (poKey) {
+    collapsedPoCardMap.value = {
+      ...collapsedPoCardMap.value,
+      [poKey]: false
+    }
+    if (isMobileShell.value) {
+      selectedMobilePoKey.value = poKey
+      mobileActiveTab.value = 'company_detail'
+    }
+  }
+
+  highlightedPoKey.value = poKey
+  if (highlightPoTimer) clearTimeout(highlightPoTimer)
+  highlightPoTimer = setTimeout(() => {
+    highlightedPoKey.value = ''
+  }, 5000)
+
+  await nextTick()
+  setTimeout(() => {
+    const activeCompanyCard = document.querySelector('.sr-md-company-card.active') as HTMLElement | null
+    if (activeCompanyCard) {
+      activeCompanyCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+    const cardEl =
+      (poKey ? document.getElementById(`sr-po-card-${poKey}`) : null) ||
+      (targetSoPo ? document.getElementById(`sr-po-card-${targetSoPo}`) : null)
+    if (cardEl) {
+      cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, 120)
+}
+async function promoteCraftToOfficial(craftRow: any) {
+  if (!craftRow) return
+  const poLabel = craftRow.So_PO || 'Phương án tạm'
+  const compLabel = craftRow.Ten_cong_ty || craftRow.Ten_khach_hang || 'Khách hàng'
+  const confirmed = await openSrConfirm({
+    variant: 'success',
+    eyebrow: 'Xác nhận Chốt Deal lên Bản Chính Thức',
+    title: `Chốt Deal PO ${poLabel} — ${compLabel}`,
+    highlightLabel: 'PHƯƠNG ÁN ĐƯỢC CHỌN CHỐT DEAL',
+    highlightValue: `PO ${poLabel} | DSB: ${fmt(doanhSoBan(craftRow))} đ | Net Margin: ${fmt(netMargin(craftRow))} đ`,
+    message: 'Phương án này sẽ được chuyển thành đơn hàng PO Chính Thức trong bảng sale_report và đồng bộ sang Hợp đồng tổng quát & Chi tiết hàng hóa.',
+    subNote: 'Sau khi Chốt Deal, bản ghi sẽ xuất hiện ngay bên tab Bản Chính Thức.',
+    confirmText: 'Chốt Deal ngay',
+    cancelText: 'Hủy bỏ'
+  })
+  if (!confirmed) return
+
+  try {
+    loading.value = true
+    const craftKey = craftRow._firebaseKey || craftRow.ID || ''
+    let hdLen = 0
+    try {
+      const hdSnapshot = await get(dbRef(database, 'hop_dong_tong_quat'))
+      const hdData = hdSnapshot.val()
+      if (hdData && typeof hdData === 'object') hdLen = Object.keys(hdData).length
+    } catch (_) {}
+
+    const maHD =
+      craftRow.ma_hop_dong && !String(craftRow.ma_hop_dong).startsWith('HD_CRAFT_')
+        ? craftRow.ma_hop_dong
+        : 'HD' + Date.now() + Math.floor(Math.random() * 1000)
+    hdLen++
+    const soHD = craftRow.so_hop_dong && String(craftRow.so_hop_dong).trim() ? craftRow.so_hop_dong : `HĐ ${hdLen}`
+
+    const finalSoPo = String(craftRow.So_PO || '').trim() || getNextAvailableSoPO(1)[0]
+
+    const tTruoc = doanhSoBan(craftRow)
+    const tVat = thueVat(craftRow)
+    const tSau = tongSauVat(craftRow)
+    const gm = giaMua(craftRow)
+    const tcp = tongCP(craftRow)
+    const gCom = grossCom(craftRow)
+    const tPct = thuePct(craftRow)
+    const tCom = thueCom(craftRow)
+    const nCom = netCom(craftRow)
+    const nowStr = getFormattedNow()
+    const srID = 'SR_' + Date.now() + '_' + Math.floor(Math.random() * 10000)
+    const newSrKey = push(dbRef(database, 'sale_report')).key || srID
+
+    const srPayload: Record<string, any> = {
+      ID: srID,
+      ma_hop_dong: maHD,
+      so_hop_dong: soHD,
+      So_PO: finalSoPo,
+      Ten_nha_cung_cap: craftRow.Ten_nha_cung_cap || '',
+      Ma_khach_hang: craftRow.Ma_khach_hang || '',
+      Ten_khach_hang: craftRow.Ten_khach_hang || craftRow.Ten_cong_ty || '',
+      Ma_cong_ty: craftRow.Ma_cong_ty || '',
+      Ten_cong_ty: craftRow.Ten_cong_ty || craftRow.Ten_khach_hang || '',
+      MST: craftRow.MST || '',
+      created_time: craftRow.created_time || nowStr,
+      content_of_contract_PO: craftRow.content_of_contract_PO || '',
+      ghi_chu: craftRow.ghi_chu || '',
+      Tong_tien_truoc_thueVAT: tTruoc,
+      Tong_thueVAT: tVat,
+      Tong_tien_sau_thueVAT: tSau,
+      so_tien_da_thanh_toan: 0,
+      cong_no: tSau,
+      thoi_gian_thanh_toan: '',
+      chiet_khau_tong_truoc_thue: gCom,
+      chenh_lech_gia: gCom,
+      gross_com: gCom,
+      phan_tram_thue_chenh_lech_gia: tPct,
+      thue_chenh_lech_gia: tCom,
+      Tong_thanh_tien_chua_VAT_mua_hang: gm,
+      Tong_CP_don_hang: tcp,
+      con_lai: nCom,
+      tong_chiet_khau: nCom,
+      net_com: nCom,
+      account_manager_name: craftRow.account_manager_name || '',
+      img_save: craftRow.img_save || '',
+      link_excel_bao_gia: craftRow.link_excel_bao_gia || '',
+      link_excel_mua_hang: craftRow.link_excel_mua_hang || '',
+      link_excel_dxmh: craftRow.link_excel_dxmh || '',
+      ten_file_bao_gia: craftRow.ten_file_bao_gia || '',
+      ten_file_mua_hang: craftRow.ten_file_mua_hang || '',
+      ten_file_dxmh: craftRow.ten_file_dxmh || '',
+      danh_sach_file_khac: Array.isArray(craftRow.danh_sach_file_khac) ? craftRow.danh_sach_file_khac : [],
+      id_quanlyfile: craftRow.id_quanlyfile || craftRow.id_quan_ly_file || '',
+      id_quan_ly_file: craftRow.id_quan_ly_file || craftRow.id_quanlyfile || '',
+      from_craft: craftKey,
+      is_craft: false,
+      goodsList: Array.isArray(craftRow.goodsList) ? craftRow.goodsList : [],
+      goodsTotal: craftRow.goodsTotal || { ttTruoc: tTruoc, vat: tVat, ttSau: tSau }
+    }
+
+    const hdTongData = {
+      ma_hop_dong: maHD,
+      so_hop_dong: soHD,
+      ma_khach_hang: craftRow.Ma_khach_hang || '',
+      ten_khach_hang: craftRow.Ten_khach_hang || craftRow.Ten_cong_ty || '',
+      ngay_tao: formatNgayTaoHopDong(),
+      tong_truoc_vat: tTruoc,
+      tong_vat: tVat,
+      tong_sau_vat: tSau,
+      da_thanh_toan: 0,
+      con_phai_thu: tSau,
+      trang_thai_thanh_toan: 'Chưa thanh toán đủ',
+      loai_hop_dong: 'Chính thức',
+      content: craftRow.content_of_contract_PO || '',
+      don_vi_tien_te: 'VND',
+      ti_gia: 1,
+      ghi_chu: craftRow.ghi_chu || '',
+      tong_truoc_vat_goc: tTruoc,
+      ngay_tao_date: formatCreatedTimeDateOnly(),
+      so_po: finalSoPo,
+      po_content: '',
+      content_po: craftRow.content_of_contract_PO || '',
+      gross_com: gCom,
+      chenh_lech_gia: gCom,
+      chiet_khau_tong_truoc_thue: gCom,
+      phan_tram_chiet_khau: 0,
+      thue_chenh_lech_gia: tCom,
+      phan_tram_thue: tPct,
+      phan_tram_thue_chenh_lech_gia: tPct,
+      tong_chiet_khau: nCom,
+      con_lai: nCom,
+      tong_cp: tcp
+    }
+
+    const updates: Record<string, any> = {}
+    updates[`sale_report/${newSrKey}`] = srPayload
+    updates[`hop_dong_tong_quat/${maHD}`] = hdTongData
+
+    if (Array.isArray(craftRow.goodsList) && craftRow.goodsList.length > 0) {
+      for (const g of craftRow.goodsList) {
+        const newCtKey = push(dbRef(database, 'hop_dong_chi_tiet')).key
+        if (newCtKey) {
+          updates[`hop_dong_chi_tiet/${newCtKey}`] = {
+            ma_hop_dong: maHD,
+            so_hop_dong: soHD,
+            ma_hang: g.maHang || '',
+            ten_hang: g.ten || '',
+            main_img: '',
+            ma_ncc: '',
+            ten_ncc: craftRow.Ten_nha_cung_cap || '',
+            mo_ta_chung: '',
+            mo_ta_chi_tiet: '',
+            dien_giai: g.dienGiai || '',
+            danh_muc: g.danhMuc || '',
+            ghi_chu: '',
+            dvt: g.dvt || '',
+            don_gia: toNum(g.donGia),
+            gia_tieu_chuan: toNum(g.donGia),
+            don_vi_tien_te: 'VND',
+            ti_gia: 1,
+            thue_vat: toNum(g.vatPct),
+            so_luong: toNum(g.sl) || 1,
+            features: '',
+            gia_hardware: 0,
+            gia_nhap: 0,
+            muc_phan_tram_off: 0
+          }
+        }
+      }
+    }
+
+    if (craftKey) {
+      updates[`sale_report_craft/${craftKey}/chotDeal`] = true
+      updates[`sale_report_craft/${craftKey}/chotDealTime`] = Date.now()
+      updates[`sale_report_craft/${craftKey}/id_sale_report`] = newSrKey
+      updates[`sale_report_craft/${craftKey}/So_PO`] = finalSoPo
+      updates[`sale_report_craft/${craftKey}/ma_hop_dong`] = maHD
+      updates[`sale_report_craft/${craftKey}/so_hop_dong`] = soHD
+    }
+
+    const fileId = craftRow.id_quanlyfile || craftRow.id_quan_ly_file
+    if (fileId) {
+      updates[`quan_ly_file/${fileId}/craft_chotDeal`] = true
+      updates[`quan_ly_file/${fileId}/id_sale_report`] = newSrKey
+      updates[`quan_ly_file/${fileId}/trangThaiBaoGia`] = 'Thành công'
+    }
+
+    const cleanUpdates = JSON.parse(JSON.stringify(updates))
+    await update(dbRef(database), cleanUpdates)
+    selectedCraftCompareKeys.value = selectedCraftCompareKeys.value.filter(k => k !== String(craftKey))
+    showCraftCompareModal.value = false
+    multiEditModal.value.show = false
+
+    await loadData()
+    loading.value = false
+
+    await openSrAlert({
+      variant: 'success',
+      eyebrow: 'Chốt Deal Thành Công',
+      title: `Đã chuyển lên PO Chính Thức (${finalSoPo})`,
+      highlightLabel: 'ĐƠN HÀNG CHÍNH THỨC MỚI',
+      highlightValue: `PO ${finalSoPo} — ${compLabel} (${soHD})`,
+      message: 'Phương án tạm đã được Chốt Deal và chuyển sang danh sách Bản Chính Thức kèm đầy đủ Hợp đồng & Chi tiết hàng hóa.',
+      confirmText: 'Xem Bản Chính Thức'
+    })
+
+    await focusAndHighlightOfficialPo(newSrKey, finalSoPo, craftRow.Ma_cong_ty || craftRow.Ten_cong_ty)
+  } catch (e) {
+    console.error('Lỗi Chốt Deal từ Bản Tạm:', e)
+    await openSrAlert({
+      variant: 'error',
+      title: 'Lỗi Chốt Deal',
+      message: 'Đã xảy ra lỗi khi chuyển Phương án tạm lên Bản Chính Thức. Vui lòng thử lại.',
+      confirmText: 'Đóng'
+    })
+  } finally {
+    loading.value = false
+  }
+}
+
+async function chotDealFromActiveModalItem() {
+  const keys = await saveModalItemsToCraft(true)
+  const targetKey = keys[activeItemIdx.value] || keys[0]
+  if (!targetKey) return
+  const craftRow = craftRows.value.find(r => (r._firebaseKey || r.ID) === targetKey)
+  if (craftRow) {
+    await promoteCraftToOfficial(craftRow)
+  }
+}
+
+// Mở Mindmap Review & Thuyết minh Giọng đọc tập trung vào đúng các Phương án đang so sánh
+function openCompareMindmapReview() {
+  const list = effectiveCraftCompareRows.value
+  if (!list.length) return
+  mindmapCompareCustomRows.value = [...list]
+  showCraftCompareModal.value = false
+  openReviewMindmapModal()
 }
 
 
@@ -22946,13 +26106,12 @@ async function processImportFilesScan(
 }
 
 
-// ─── Chọn Card PO để Xuất Excel ───
-const selectedPoKeyList = ref<string[]>([])
+// ─── Chọn Card PO / Card Công ty thống nhất (Cả Bản Chính Thức & Bản Tạm) ───
 const selectedPoKeySet = computed(() => new Set(selectedPoKeyList.value))
 
 function getPoRowKey(r: any): string {
   if (!r) return ''
-  return String(r._firebaseKey || r.ID || '')
+  return String(r._firebaseKey || r.ID || r.So_PO || '').trim()
 }
 
 function isPoRowSelected(r: any): boolean {
@@ -23021,20 +26180,24 @@ async function deleteSelectedPoRows() {
   const list = selectedPoRows.value
   if (!list.length) return
   const count = list.length
+  const isCraftMode = srDataMode.value === 'craft'
+  const itemTerm = isCraftMode ? 'phương án tạm' : 'đơn hàng PO'
   const poLabels = list
     .map(r => (r.So_PO ? `PO ${r.So_PO}` : r.content_of_contract_PO || 'PO'))
     .filter(Boolean)
     .slice(0, 8)
-    .join(', ') + (count > 8 ? ` (+${count - 8} PO khác)` : '')
+    .join(', ') + (count > 8 ? ` (+${count - 8} khác)` : '')
 
   const confirmed = await openSrConfirm({
     variant: 'danger',
-    eyebrow: 'Xác nhận xóa đơn hàng',
-    title: count > 1 ? `Xóa tất cả ${count} đơn hàng PO đã chọn` : 'Xóa đơn hàng PO đã chọn',
-    highlightLabel: 'DANH SÁCH PO ĐANG CHỌN',
-    highlightValue: `${count} đơn hàng PO (${poLabels})`,
-    message: `Bạn có chắc chắn muốn xóa vĩnh viễn ${count} đơn hàng PO đã chọn khỏi hệ thống?`,
-    subNote: 'Hành động này sẽ xóa các PO cùng lịch sử thanh toán liên quan và không thể hoàn tác.',
+    eyebrow: isCraftMode ? 'Xác nhận xóa phương án tạm' : 'Xác nhận xóa đơn hàng',
+    title: count > 1 ? `Xóa tất cả ${count} ${itemTerm} đã chọn` : `Xóa ${itemTerm} đã chọn`,
+    highlightLabel: isCraftMode ? 'DANH SÁCH PHƯƠNG ÁN ĐANG CHỌN' : 'DANH SÁCH PO ĐANG CHỌN',
+    highlightValue: `${count} ${itemTerm} (${poLabels})`,
+    message: `Bạn có chắc chắn muốn xóa vĩnh viễn ${count} ${itemTerm} đã chọn khỏi hệ thống?`,
+    subNote: isCraftMode
+      ? 'Hành động này sẽ xóa các phương án tạm đã chọn khỏi danh sách Bản Tạm.'
+      : 'Hành động này sẽ xóa các PO cùng lịch sử thanh toán liên quan và không thể hoàn tác.',
     confirmText: 'Xóa tất cả PO',
     cancelText: 'Hủy bỏ'
   })
@@ -23046,6 +26209,13 @@ async function deleteSelectedPoRows() {
     for (const r of list) {
       const firebaseKey = r?._firebaseKey || r?.ID
       const srId = r?.ID || firebaseKey
+      if (isCraftMode) {
+        if (firebaseKey) {
+          deletedKeySet.add(String(firebaseKey))
+          await remove(dbRef(database, `sale_report_craft/${firebaseKey}`))
+        }
+        continue
+      }
       if (firebaseKey) {
         deletedKeySet.add(String(firebaseKey))
         await remove(dbRef(database, `sale_report/${firebaseKey}`))
@@ -23091,19 +26261,21 @@ async function deleteSelectedPoRows() {
     await loadData()
     await openSrAlert({
       variant: 'success',
-      eyebrow: 'Xóa đơn hàng hoàn tất',
-      title: 'Xóa đơn hàng PO thành công',
-      highlightLabel: 'DANH SÁCH PO ĐÃ XÓA',
-      highlightValue: `${count} đơn hàng PO (${poLabels})`,
-      message: `Đã xóa vĩnh viễn ${count} đơn hàng PO đã chọn và đồng bộ lại dữ liệu công nợ, hợp đồng thành công.`,
+      eyebrow: isCraftMode ? 'Xóa phương án tạm hoàn tất' : 'Xóa đơn hàng hoàn tất',
+      title: isCraftMode ? 'Xóa phương án tạm thành công' : 'Xóa đơn hàng PO thành công',
+      highlightLabel: isCraftMode ? 'DANH SÁCH PHƯƠNG ÁN ĐÃ XÓA' : 'DANH SÁCH PO ĐÃ XÓA',
+      highlightValue: `${count} ${itemTerm} (${poLabels})`,
+      message: isCraftMode
+        ? `Đã xóa ${count} phương án tạm đã chọn khỏi danh sách Bản Tạm thành công.`
+        : `Đã xóa vĩnh viễn ${count} đơn hàng PO đã chọn và đồng bộ lại dữ liệu công nợ, hợp đồng thành công.`,
       confirmText: 'Hoàn tất'
     })
   } catch (e) {
     console.error('Lỗi xóa hàng loạt PO:', e)
     await openSrAlert({
       variant: 'error',
-      title: 'Lỗi xóa đơn hàng PO',
-      message: 'Đã xảy ra lỗi khi xóa các đơn hàng PO đã chọn. Vui lòng thử lại.',
+      title: 'Lỗi xóa dữ liệu',
+      message: 'Đã xảy ra lỗi khi xóa các mục đã chọn. Vui lòng thử lại.',
       confirmText: 'Đóng'
     })
   } finally {
@@ -23120,14 +26292,7 @@ watch(rows, (newRows) => {
   }
 })
 
-const selectedPoRows = computed(() => {
-  if (!selectedPoKeyList.value.length) return []
-  const setRef = selectedPoKeySet.value
-  return rows.value.filter(r => {
-    const k = getPoRowKey(r)
-    return Boolean(k && setRef.has(k))
-  })
-})
+const selectedPoRows = selectedCraftCompareRows
 
 const selectedPoTotalDsb = computed(() =>
   selectedPoRows.value.reduce((sum, r) => sum + doanhSoBan(r), 0)
@@ -23681,6 +26846,9 @@ const effectiveMindmapLayout = computed<'canvas' | 'vcanvas' | 'tree'>(() => {
 
 // Lọc danh sách PO độc lập theo mindmapFilter bên trong Review
 const mindmapFilteredRows = computed(() => {
+  if (Array.isArray(mindmapCompareCustomRows.value) && mindmapCompareCustomRows.value.length > 0) {
+    return mindmapCompareCustomRows.value
+  }
   const f = mindmapFilter.value
   let list = rows.value
 
@@ -25122,6 +28290,7 @@ watch(() => reviewMindmapModal.value.show, (isOpen) => {
     stopMindmapVoiceSpeech()
     mindmapActiveReadingCardId.value = ''
     mindmapTourActive.value = false
+    mindmapCompareCustomRows.value = null
     mindmapMobileSheet.value = null
   }
 })
@@ -25402,6 +28571,7 @@ function openChartFromMindmap() {
 
 const isAnySaleModalOpen = computed(() => Boolean(
   reviewMindmapModal.value.show ||
+  showCraftCompareModal.value ||
   poGoodsDbSyncModal.value.show ||
   goodsDbLoadingModal.value.show ||
   showAddChoiceModal.value ||
@@ -27688,6 +30858,30 @@ const isAnySaleModalOpen = computed(() => Boolean(
 .sr-sel-btn-preview:hover {
   background: #334155;
   color: #ffffff;
+}
+
+.sr-sel-btn-mindmap {
+  background: rgba(6, 182, 212, 0.16);
+  border: 1px solid rgba(34, 211, 238, 0.45);
+  color: #22d3ee;
+}
+
+.sr-sel-btn-mindmap:hover:not(:disabled) {
+  background: rgba(6, 182, 212, 0.28);
+  color: #ecfeff;
+  transform: translateY(-1px);
+}
+
+.sr-sel-btn-compare {
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  border: 1px solid #38bdf8;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.36);
+}
+
+.sr-sel-btn-compare:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
 }
 
 .sr-sel-btn-export {
@@ -31528,13 +34722,13 @@ const isAnySaleModalOpen = computed(() => Boolean(
 
 /* 5. STICKY BOTTOM FOOTER */
 .sr-po-modal-footer {
-  padding: 10px 22px !important;
+  padding: 12px 22px !important;
   border-top: 1px solid rgba(52, 211, 153, 0.24) !important;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  background: rgba(9, 18, 15, 0.96) !important;
+  background: rgba(9, 18, 15, 0.98) !important;
   border-radius: 0 !important;
   flex-shrink: 0;
 }
@@ -31544,6 +34738,7 @@ const isAnySaleModalOpen = computed(() => Boolean(
   flex: 1;
   display: flex;
   align-items: center;
+  gap: 10px;
 }
 
 .sr-po-footer-right {
@@ -31551,10 +34746,11 @@ const isAnySaleModalOpen = computed(() => Boolean(
 }
 
 .sr-po-footer-center {
-  flex: 1;
+  flex: 1.2;
   display: flex;
   justify-content: center;
   align-items: center;
+  gap: 10px;
 }
 
 .sr-po-saved-hint {
@@ -31567,23 +34763,26 @@ const isAnySaleModalOpen = computed(() => Boolean(
 .sr-po-btn-delete {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 36px;
-  padding: 0 14px;
+  justify-content: center;
+  gap: 7px;
+  height: 38px;
+  padding: 0 15px;
   border-radius: 9px;
-  border: 1px solid rgba(239, 68, 68, 0.35);
-  background: rgba(239, 68, 68, 0.12);
-  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.55);
+  background: rgba(239, 68, 68, 0.16);
+  color: #fca5a5;
   font-size: 12.5px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.18s ease;
+  white-space: nowrap;
 }
 
 .sr-po-btn-delete:hover {
-  background: rgba(239, 68, 68, 0.24);
+  background: #dc2626;
   border-color: #ef4444;
   color: #ffffff;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35);
 }
 
 .sr-po-btn-save {
@@ -31592,42 +34791,48 @@ const isAnySaleModalOpen = computed(() => Boolean(
   justify-content: center;
   gap: 8px;
   height: 38px;
-  padding: 0 32px;
-  min-width: 210px;
-  border-radius: 10px;
-  border: 1px solid #34d399;
-  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  padding: 0 22px;
+  min-width: 175px;
+  border-radius: 9px;
+  border: 1px solid #60a5fa;
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
   color: #ffffff;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 800;
   letter-spacing: 0.03em;
-  box-shadow: 0 8px 20px -6px rgba(16, 185, 129, 0.48);
+  box-shadow: 0 6px 16px -4px rgba(37, 99, 235, 0.45);
   cursor: pointer;
   transition: all 0.18s ease;
+  white-space: nowrap;
 }
 
 .sr-po-btn-save:hover:not(:disabled) {
   transform: translateY(-1px);
-  filter: brightness(1.07);
+  filter: brightness(1.08);
+  box-shadow: 0 8px 20px -4px rgba(37, 99, 235, 0.55);
 }
 
 .sr-po-btn-cancel {
-  height: 36px;
-  padding: 0 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  padding: 0 20px;
   border-radius: 9px;
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  background: rgba(30, 41, 59, 0.72);
+  border: 1px solid #475569;
+  background: #1e293b;
   color: #e2e8f0;
   font-size: 12.5px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.18s ease;
+  white-space: nowrap;
 }
 
 .sr-po-btn-cancel:hover {
-  border-color: #34d399;
+  border-color: #94a3b8;
   color: #ffffff;
-  background: rgba(16, 185, 129, 0.16);
+  background: #334155;
 }
 
 /* Modal Chọn Năm Import Report (.sr-year-modal) */
@@ -35407,7 +38612,7 @@ const isAnySaleModalOpen = computed(() => Boolean(
 }
 
 .sr-po-modal.is-light .sr-po-modal-footer {
-  background: #ffffff !important;
+  background: #f8fafc !important;
   border-top-color: #bae6fd !important;
 }
 
@@ -35415,22 +38620,42 @@ const isAnySaleModalOpen = computed(() => Boolean(
   color: #0284c7;
 }
 
+.sr-po-modal.is-light .sr-po-btn-delete {
+  background: #fef2f2;
+  border-color: #f87171;
+  color: #dc2626;
+}
+
+.sr-po-modal.is-light .sr-po-btn-delete:hover {
+  background: #dc2626;
+  border-color: #b91c1c;
+  color: #ffffff;
+}
+
 .sr-po-modal.is-light .sr-po-btn-save {
-  border-color: #38bdf8;
-  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
-  box-shadow: 0 8px 20px -6px rgba(37, 99, 235, 0.42);
+  border: 1.5px solid #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
+}
+
+.sr-po-modal.is-light .sr-po-btn-save:hover:not(:disabled) {
+  background: #2563eb;
+  border-color: #1d4ed8;
+  color: #ffffff;
+  box-shadow: 0 6px 16px -4px rgba(37, 99, 235, 0.38);
 }
 
 .sr-po-modal.is-light .sr-po-btn-cancel {
-  background: #f8fafc;
+  background: #f1f5f9;
   border-color: #cbd5e1;
   color: #334155;
 }
 
 .sr-po-modal.is-light .sr-po-btn-cancel:hover {
-  background: #e0f2fe;
-  border-color: #38bdf8;
-  color: #0284c7;
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  color: #0f172a;
 }
 
 /* Light Blue Mode — Year Modal (.sr-year-modal.is-light) */
@@ -42406,7 +45631,7 @@ const isAnySaleModalOpen = computed(() => Boolean(
   gap: 4px 6px !important;
   flex: 0 1 auto !important;
   width: auto !important;
-  max-width: calc(100% - 34px) !important;
+  max-width: 100% !important;
   padding: 8px 22px 7px 12px !important;
   border-radius: 10px 14px 0 0 !important;
   background: linear-gradient(135deg, #059669 0%, #0d9488 58%, #0f766e 100%) !important;
@@ -48038,6 +51263,1625 @@ const isAnySaleModalOpen = computed(() => Boolean(
   box-shadow: 0 0 0 3.5px rgba(2, 132, 199, 0.42), 0 20px 44px rgba(2, 132, 199, 0.25) !important;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   CHẾ ĐỘ BẢN CHÍNH THỨC ↔ BẢN TẠM (PHƯƠNG ÁN) & BẢNG MA TRẬN SO SÁNH ĐA PHƯƠNG ÁN
+   ═══════════════════════════════════════════════════════════════════════════ */
+.bg-count-pill.is-craft-pill {
+  background: rgba(245, 158, 11, 0.16) !important;
+  color: #fbbf24 !important;
+  border-color: rgba(245, 158, 11, 0.42) !important;
+}
+.theme-light-blue .bg-count-pill.is-craft-pill {
+  background: #fef3c7 !important;
+  color: #b45309 !important;
+  border-color: #f59e0b !important;
+}
+
+.sr-mode-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+}
+.theme-light-blue .sr-mode-switcher {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.sr-mode-switch-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  white-space: nowrap;
+}
+.theme-light-blue .sr-mode-switch-btn {
+  color: #475569;
+}
+.sr-mode-switch-btn:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.05);
+}
+.theme-light-blue .sr-mode-switch-btn:hover {
+  color: #0f172a;
+  background: #e2e8f0;
+}
+.sr-mode-switch-btn.is-official.active {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: #ffffff !important;
+  border-color: rgba(52, 211, 153, 0.5);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.28);
+}
+.sr-mode-switch-btn.is-craft.active {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  color: #ffffff !important;
+  border-color: rgba(251, 191, 36, 0.55);
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+.sr-mode-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.sr-mode-dot.is-emerald {
+  background: #34d399;
+}
+.sr-mode-dot.is-amber {
+  background: #fbbf24;
+}
+.sr-mode-count {
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 800;
+  background: rgba(0, 0, 0, 0.24);
+  color: inherit;
+}
+.theme-light-blue .sr-mode-switch-btn:not(.active) .sr-mode-count {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.sr-topbar-compare-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 9px;
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  background: linear-gradient(135deg, rgba(217, 119, 6, 0.22) 0%, rgba(180, 83, 9, 0.32) 100%);
+  color: #fde68a;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  white-space: nowrap;
+}
+.sr-topbar-compare-btn.has-selection,
+.sr-topbar-compare-btn:hover {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  color: #ffffff !important;
+  border-color: #fbbf24;
+  box-shadow: 0 3px 10px rgba(245, 158, 11, 0.32);
+}
+.sr-compare-badge {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.28);
+  font-size: 10.5px;
+  font-weight: 800;
+}
+
+/* Thanh Chọn Nhanh Cụm Phương Án 1 dòng gọn (Thay thế 4 Card KPI ở chế độ Bản Tạm) */
+.sr-craft-quick-compare-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, rgba(15, 23, 42, 0.94) 0%, rgba(30, 41, 59, 0.92) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.38);
+  box-shadow: 0 6px 18px rgba(2, 6, 23, 0.24);
+}
+
+.theme-light-blue .sr-craft-quick-compare-bar {
+  background: linear-gradient(90deg, #fffbeb 0%, #ffffff 100%);
+  border-color: #fcd34d;
+  box-shadow: 0 4px 14px rgba(180, 83, 9, 0.08);
+}
+
+.sr-cqcb-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.sr-cqcb-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #fbbf24;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.theme-light-blue .sr-cqcb-label {
+  color: #b45309;
+}
+
+.sr-cqcb-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 2px 0;
+  min-width: 0;
+}
+
+.sr-cqcb-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  background: rgba(15, 23, 42, 0.65);
+  color: #cbd5e1;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.16s ease;
+}
+
+.theme-light-blue .sr-cqcb-chip {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.sr-cqcb-chip:hover {
+  border-color: rgba(251, 191, 36, 0.55);
+  color: #fde68a;
+}
+
+.theme-light-blue .sr-cqcb-chip:hover {
+  border-color: #f59e0b;
+  color: #b45309;
+}
+
+.sr-cqcb-chip.active {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  border-color: #fbbf24;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.28);
+}
+
+.sr-cqcb-chip-name {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sr-cqcb-chip-badge {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.25);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.theme-light-blue .sr-cqcb-chip:not(.active) .sr-cqcb-chip-badge {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.sr-cqcb-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.sr-cqcb-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.16s ease;
+}
+
+.sr-cqcb-action-btn.is-primary {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  border-color: #fbbf24;
+  color: #ffffff;
+}
+
+.sr-cqcb-action-btn.is-mindmap {
+  background: rgba(16, 185, 129, 0.16);
+  border-color: rgba(52, 211, 153, 0.45);
+  color: #34d399;
+}
+
+.theme-light-blue .sr-cqcb-action-btn.is-mindmap {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+  color: #047857;
+}
+
+.sr-md-ccm-compare-mini {
+  width: 100%;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+  font-size: 10.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.theme-light-blue .sr-md-ccm-compare-mini {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #b45309;
+}
+
+@media (max-width: 768px) {
+  .sr-craft-quick-compare-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 8px 10px;
+  }
+
+  .sr-cqcb-right {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .sr-cqcb-action-btn {
+    justify-content: center;
+  }
+}
+
+.sr-company-top-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.sr-ctt-left {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.sr-ctt-mode-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  box-shadow: inset 0 1px 2px rgba(2, 6, 23, 0.35);
+}
+
+.theme-light-blue .sr-ctt-mode-switcher {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.sr-ctt-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sr-ctt-mode-btn:hover:not(.active) {
+  color: #e2e8f0;
+  background: rgba(148, 163, 184, 0.1);
+}
+
+.theme-light-blue .sr-ctt-mode-btn {
+  color: #475569;
+}
+
+.theme-light-blue .sr-ctt-mode-btn:hover:not(.active) {
+  color: #0f172a;
+  background: rgba(15, 23, 42, 0.05);
+}
+
+.sr-ctt-mode-icon {
+  flex-shrink: 0;
+  opacity: 0.85;
+  transition: transform 0.18s ease, opacity 0.18s ease;
+}
+
+.sr-ctt-mode-btn.active .sr-ctt-mode-icon {
+  opacity: 1;
+}
+
+.sr-ctt-mode-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 800;
+  line-height: 1;
+  background: rgba(148, 163, 184, 0.16);
+  color: #cbd5e1;
+  transition: all 0.18s ease;
+}
+
+.theme-light-blue .sr-ctt-mode-count {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+/* Dark Mode Active: Official = Dark Emerald | Craft = Dark Ocean Blue */
+.sr-ctt-mode-btn.is-official.active {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  border-color: rgba(52, 211, 153, 0.45);
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
+}
+
+.sr-ctt-mode-btn.is-craft.active {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+  border-color: rgba(56, 189, 248, 0.45);
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(2, 132, 199, 0.32);
+}
+
+/* Light Mode Active: Official = Ocean Blue | Craft = Emerald Green */
+.theme-light-blue .sr-ctt-mode-btn.is-official.active {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+  border-color: rgba(2, 132, 199, 0.35);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.26);
+}
+
+.theme-light-blue .sr-ctt-mode-btn.is-craft.active {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  border-color: rgba(5, 150, 105, 0.35);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.26);
+}
+
+.sr-ctt-mode-btn.active .sr-ctt-mode-count {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}
+
+/* Mobile 50/50 Full-Width Segmented Capsule Bar */
+.sr-mob-mode-switcher-bar {
+  margin: 0 0 10px 0;
+  width: 100%;
+}
+
+.sr-ctt-mode-switcher.is-mobile-full {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+  padding: 3.5px;
+  border-radius: 11px;
+}
+
+.sr-ctt-mode-switcher.is-mobile-full .sr-ctt-mode-btn {
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 10px;
+  font-size: 12px;
+  border-radius: 8px;
+}
+
+.sr-hdr-action-btn.is-compare-craft {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important;
+  border-color: #f59e0b !important;
+  color: #ffffff !important;
+}
+
+.sr-plain-text-btn.is-folder-compare-btn {
+  color: #fbbf24 !important;
+  border-color: rgba(245, 158, 11, 0.45) !important;
+  background: rgba(245, 158, 11, 0.14) !important;
+}
+.theme-light-blue .sr-plain-text-btn.is-folder-compare-btn {
+  color: #b45309 !important;
+  background: #fef3c7 !important;
+  border-color: #f59e0b !important;
+}
+.sr-plain-text-btn.is-folder-clone-btn {
+  color: #38bdf8 !important;
+  border-color: rgba(56, 189, 248, 0.4) !important;
+  background: rgba(2, 132, 199, 0.14) !important;
+}
+.theme-light-blue .sr-plain-text-btn.is-folder-clone-btn {
+  color: #0369a1 !important;
+  background: #e0f2fe !important;
+  border-color: #38bdf8 !important;
+}
+
+.sr-craft-option-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+}
+.theme-light-blue .sr-craft-option-pill {
+  background: #fef3c7;
+  color: #b45309;
+  border-color: #f59e0b;
+}
+
+.sr-craft-card-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3.5px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(15, 23, 42, 0.6);
+  color: #e2e8f0;
+  transition: all 0.15s ease;
+}
+.theme-light-blue .sr-craft-card-btn {
+  background: #ffffff;
+  color: #334155;
+  border-color: #cbd5e1;
+}
+.sr-craft-card-btn.is-compare.active {
+  background: #d97706 !important;
+  border-color: #fbbf24 !important;
+  color: #ffffff !important;
+}
+.sr-craft-card-btn.is-clone:hover {
+  background: #0284c7 !important;
+  border-color: #38bdf8 !important;
+  color: #ffffff !important;
+}
+.sr-craft-card-btn.is-chotdeal {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+  border-color: #34d399 !important;
+  color: #ffffff !important;
+}
+
+.sr-po-btn-clone-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 38px;
+  padding: 0 15px;
+  border-radius: 9px;
+  font-size: 12.5px;
+  font-weight: 700;
+  background: rgba(14, 165, 233, 0.18);
+  color: #7dd3fc;
+  border: 1px solid rgba(56, 189, 248, 0.55);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+.sr-po-btn-clone-tab:hover {
+  background: #0284c7;
+  border-color: #38bdf8;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+}
+.sr-po-modal.is-light .sr-po-btn-clone-tab {
+  background: #e0f2fe;
+  border-color: #38bdf8;
+  color: #0369a1;
+}
+.sr-po-modal.is-light .sr-po-btn-clone-tab:hover {
+  background: #0284c7;
+  border-color: #0369a1;
+  color: #ffffff;
+}
+.sr-po-btn-compare-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 13px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  cursor: pointer;
+}
+.sr-po-btn-chotdeal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 38px;
+  padding: 0 18px;
+  border-radius: 9px;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  color: #ffffff !important;
+  border: 1px solid #34d399;
+  cursor: pointer;
+  box-shadow: 0 6px 18px -4px rgba(16, 185, 129, 0.48);
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+.sr-po-btn-chotdeal:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+  box-shadow: 0 8px 22px -4px rgba(16, 185, 129, 0.58);
+}
+.sr-po-modal.is-light .sr-po-btn-chotdeal {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  border-color: #10b981;
+  color: #ffffff !important;
+  box-shadow: 0 6px 16px -4px rgba(5, 150, 105, 0.38);
+}
+.sr-po-modal.is-light .sr-po-btn-chotdeal:hover:not(:disabled) {
+  filter: brightness(1.06);
+  box-shadow: 0 8px 20px -4px rgba(5, 150, 105, 0.48);
+}
+
+/* Floating Multi-Draft Compare Dock */
+.sr-craft-compare-dock {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 10040;
+  width: min(1180px, calc(100vw - 32px));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 16px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.96);
+  border: 1.5px solid rgba(245, 158, 11, 0.55);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(14px);
+}
+.sr-craft-compare-dock.is-light {
+  background: rgba(255, 255, 255, 0.97);
+  border-color: #f59e0b;
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.18);
+}
+.sr-ccd-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+.sr-ccd-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.sr-craft-compare-dock.is-light .sr-ccd-badge {
+  background: #fef3c7;
+  color: #b45309;
+}
+.sr-ccd-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.sr-ccd-item-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  border-radius: 8px;
+  background: rgba(30, 41, 59, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  color: #f8fafc;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+.sr-craft-compare-dock.is-light .sr-ccd-item-pill {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+.sr-ccd-item-sub {
+  color: #94a3b8;
+  font-size: 11px;
+}
+.sr-ccd-item-rm {
+  border: none;
+  background: transparent;
+  color: #f87171;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 0 2px;
+}
+.sr-ccd-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.sr-ccd-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.sr-ccd-btn.is-clone {
+  background: rgba(2, 132, 199, 0.18);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.45);
+}
+.sr-ccd-btn.is-mindmap {
+  background: rgba(16, 185, 129, 0.18);
+  color: #34d399;
+  border-color: rgba(52, 211, 153, 0.45);
+}
+.sr-ccd-btn.is-primary {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  color: #ffffff;
+  border-color: #fbbf24;
+}
+.sr-ccd-btn.is-clear {
+  background: rgba(239, 68, 68, 0.14);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+/* Multi-Draft Comparison Matrix Modal */
+.sr-craft-compare-modal {
+  width: min(1460px, 96vw);
+  height: min(90vh, 920px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  background: #0f172a;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  box-shadow: 0 26px 70px rgba(0, 0, 0, 0.65);
+  overflow: hidden;
+  color: #f8fafc;
+}
+.sr-craft-compare-modal.is-light {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+.sr-ccm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 20px;
+  background: rgba(15, 23, 42, 0.95);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  flex-wrap: wrap;
+}
+.sr-craft-compare-modal.is-light .sr-ccm-header {
+  background: #f8fafc;
+  border-bottom-color: #e2e8f0;
+}
+.sr-ccm-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.sr-ccm-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+.sr-ccm-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sr-ccm-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+}
+.sr-ccm-count-pill {
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+}
+.sr-ccm-sub {
+  margin: 3px 0 0;
+  font-size: 12px;
+  color: #94a3b8;
+}
+.sr-ccm-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.sr-ccm-seg {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 8px;
+  background: rgba(30, 41, 59, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+}
+.sr-craft-compare-modal.is-light .sr-ccm-seg {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+}
+.sr-ccm-seg-btn {
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.sr-craft-compare-modal.is-light .sr-ccm-seg-btn {
+  color: #475569;
+}
+.sr-ccm-seg-btn.active {
+  background: #0284c7;
+  color: #ffffff;
+}
+.sr-ccm-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(30, 41, 59, 0.8);
+  color: #e2e8f0;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.sr-craft-compare-modal.is-light .sr-ccm-tool-btn {
+  background: #ffffff;
+  color: #334155;
+  border-color: #cbd5e1;
+}
+.sr-ccm-tool-btn.active {
+  background: #d97706;
+  border-color: #fbbf24;
+  color: #ffffff;
+}
+.sr-ccm-tool-btn.is-clone {
+  background: rgba(2, 132, 199, 0.2);
+  border-color: rgba(56, 189, 248, 0.45);
+  color: #38bdf8;
+}
+.sr-ccm-tool-btn.is-mindmap {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  border-color: #34d399;
+  color: #ffffff;
+}
+.sr-ccm-close {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: transparent;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.sr-ccm-highlights {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  padding: 12px 20px;
+  background: rgba(30, 41, 59, 0.45);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+}
+.sr-craft-compare-modal.is-light .sr-ccm-highlights {
+  background: #f8fafc;
+  border-bottom-color: #e2e8f0;
+}
+.sr-ccm-hl-card {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.65);
+}
+.sr-craft-compare-modal.is-light .sr-ccm-hl-card {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+.sr-ccm-hl-card.is-emerald {
+  border-color: rgba(16, 185, 129, 0.45);
+}
+.sr-ccm-hl-card.is-blue {
+  border-color: rgba(56, 189, 248, 0.45);
+}
+.sr-ccm-hl-card.is-amber {
+  border-color: rgba(245, 158, 11, 0.45);
+}
+.sr-ccm-hl-badge {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+  margin-bottom: 4px;
+}
+.sr-ccm-hl-main {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+.sr-ccm-hl-val.is-emerald {
+  color: #34d399;
+  font-weight: 800;
+  font-size: 15px;
+}
+.sr-ccm-hl-val.is-blue {
+  color: #38bdf8;
+  font-weight: 800;
+  font-size: 15px;
+}
+.sr-ccm-hl-val.is-amber {
+  color: #fbbf24;
+  font-weight: 800;
+  font-size: 15px;
+}
+.sr-ccm-hl-pct {
+  font-size: 11.5px;
+  color: #94a3b8;
+}
+.sr-ccm-hl-sub {
+  margin-top: 3px;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.sr-ccm-side-clear-btn {
+  padding: 2px 7px;
+  border-radius: 5px;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.sr-ccm-side-clear-btn:hover {
+  background: rgba(239, 68, 68, 0.22);
+}
+
+.sr-ccm-po-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 230px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.sr-ccm-po-pick-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(15, 23, 42, 0.45);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.sr-analytics-modal.is-light .sr-ccm-po-pick-item {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+.sr-ccm-po-pick-item:hover {
+  border-color: rgba(56, 189, 248, 0.45);
+}
+.sr-ccm-po-pick-item.active {
+  border-color: rgba(56, 189, 248, 0.7);
+  background: rgba(2, 132, 199, 0.14);
+}
+.sr-analytics-modal.is-light .sr-ccm-po-pick-item.active {
+  background: #f0f9ff;
+  border-color: #0284c7;
+}
+.sr-ccm-po-pick-check {
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  border: 1.5px solid rgba(148, 163, 184, 0.5);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: #ffffff;
+}
+.sr-ccm-po-pick-item.active .sr-ccm-po-pick-check {
+  background: #0284c7;
+  border-color: #38bdf8;
+}
+.sr-ccm-po-pick-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.sr-ccm-po-pick-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sr-ccm-po-pick-sub {
+  font-size: 10px;
+  color: #94a3b8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sr-ccm-po-picker-empty {
+  font-size: 11px;
+  color: #94a3b8;
+  padding: 8px 4px;
+}
+
+.sr-ccm-empty-pick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+  width: 100%;
+  max-width: 720px;
+  margin-top: 12px;
+  text-align: left;
+}
+
+.sr-ccm-chart-workspace {
+  padding: 14px 20px 18px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.55);
+}
+.sr-craft-compare-modal.is-light .sr-ccm-chart-workspace {
+  background: #f8fafc;
+  border-bottom-color: #e2e8f0;
+}
+.sr-ccm-chart-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.sr-ccm-chart-metrics {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.sr-ccm-metric-chip {
+  padding: 5px 11px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.sr-ccm-metric-chip.is-triple {
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.14);
+  color: #fbbf24;
+}
+.sr-ccm-metric-chip.is-triple.active {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border-color: #fcd34d;
+  color: #ffffff;
+}
+.sr-craft-compare-modal.is-light .sr-ccm-metric-chip.is-triple {
+  background: #fffbeb;
+  border-color: #f59e0b;
+  color: #b45309;
+}
+.sr-craft-compare-modal.is-light .sr-ccm-metric-chip.is-triple.active {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #ffffff;
+}
+.sr-ccm-chart-sort {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sr-ccm-charts-row {
+  margin-bottom: 0;
+}
+.sr-analytics-table-card.is-matrix-full-card {
+  padding: 10px 12px;
+  gap: 6px;
+}
+.sr-analytics-table-scroll.is-matrix-full-scroll {
+  max-height: none !important;
+  height: auto !important;
+  overflow-y: visible !important;
+  overflow-x: auto;
+}
+.sr-ccm-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12.5px;
+  color: #f1f5f9;
+  background: #0f172a;
+}
+.sr-analytics-modal.is-light .sr-ccm-table {
+  color: #0f172a;
+  background: #ffffff;
+}
+.sr-ccm-table th,
+.sr-ccm-table td {
+  padding: 7px 14px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+  border-right: 1px solid rgba(148, 163, 184, 0.18);
+  vertical-align: middle;
+  background: #0f172a;
+  transition: background-color 0.14s ease;
+}
+.sr-analytics-modal.is-light .sr-ccm-table th,
+.sr-analytics-modal.is-light .sr-ccm-table td {
+  border-bottom-color: #e2e8f0;
+  border-right-color: #e2e8f0;
+  background: #ffffff;
+}
+.sr-ccm-table tbody tr:hover td {
+  background: #172338;
+}
+.sr-analytics-modal.is-light .sr-ccm-table tbody tr:hover td {
+  background: #f8fafc;
+}
+.sr-ccm-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: #1e293b;
+  border-bottom: 2px solid rgba(148, 163, 184, 0.35);
+}
+.sr-analytics-modal.is-light .sr-ccm-table thead th {
+  background: #f1f5f9;
+  border-bottom: 2px solid #cbd5e1;
+}
+.sr-ccm-sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  background: #0f172a;
+  min-width: 245px;
+  max-width: 275px;
+  border-right: 2px solid rgba(148, 163, 184, 0.32) !important;
+}
+.sr-analytics-modal.is-light .sr-ccm-sticky-col {
+  background: #ffffff;
+  border-right: 2px solid #cbd5e1 !important;
+}
+.sr-ccm-table thead th.sr-ccm-sticky-col {
+  z-index: 6;
+  background: #1e293b;
+}
+.sr-analytics-modal.is-light .sr-ccm-table thead th.sr-ccm-sticky-col {
+  background: #f1f5f9;
+}
+
+.sr-ccm-corner-head {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: left;
+}
+.sr-ccm-corner-head span {
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #f8fafc;
+}
+.sr-analytics-modal.is-light .sr-ccm-corner-head span {
+  color: #0f172a;
+}
+.sr-ccm-corner-head small {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+.sr-analytics-modal.is-light .sr-ccm-corner-head small {
+  color: #475569;
+}
+
+.sr-ccm-option-th {
+  min-width: 255px;
+  text-align: left;
+}
+.sr-ccm-option-th.is-best-overall {
+  background: #112d28 !important;
+  border-bottom-color: #10b981 !important;
+}
+.sr-analytics-modal.is-light .sr-ccm-option-th.is-best-overall {
+  background: #ecfdf5 !important;
+  border-bottom-color: #10b981 !important;
+}
+.sr-ccm-opt-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sr-ccm-opt-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.sr-ccm-opt-num {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: rgba(245, 158, 11, 0.22);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  color: #fcd34d;
+}
+.sr-analytics-modal.is-light .sr-ccm-opt-num {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #b45309;
+}
+.sr-ccm-opt-crown {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: rgba(16, 185, 129, 0.24);
+  border: 1px solid rgba(16, 185, 129, 0.5);
+  color: #34d399;
+}
+.sr-analytics-modal.is-light .sr-ccm-opt-crown {
+  background: #d1fae5;
+  border-color: #10b981;
+  color: #047857;
+}
+.sr-ccm-opt-rm {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.sr-ccm-opt-rm:hover {
+  background: rgba(239, 68, 68, 0.16);
+  color: #ef4444;
+}
+.sr-ccm-opt-po {
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.35;
+  color: #f8fafc;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+.sr-analytics-modal.is-light .sr-ccm-opt-po {
+  color: #0f172a;
+}
+.sr-ccm-opt-cust {
+  font-size: 11px;
+  font-weight: 500;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sr-analytics-modal.is-light .sr-ccm-opt-cust {
+  color: #475569;
+}
+
+.sr-ccm-opt-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+.sr-ccm-act-btn {
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: #1e293b;
+  color: #f1f5f9;
+  transition: all 0.15s ease;
+}
+.sr-ccm-act-btn:hover {
+  border-color: #38bdf8;
+  color: #38bdf8;
+}
+.sr-analytics-modal.is-light .sr-ccm-act-btn {
+  background: #ffffff;
+  color: #1e293b;
+  border-color: #cbd5e1;
+}
+.sr-analytics-modal.is-light .sr-ccm-act-btn:hover {
+  background: #f0f9ff;
+  border-color: #0284c7;
+  color: #0284c7;
+}
+.sr-ccm-act-btn.is-chot {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+  border-color: #10b981 !important;
+  color: #ffffff !important;
+}
+.sr-ccm-act-btn.is-chot:hover {
+  filter: brightness(1.08);
+}
+
+.sr-ccm-section-banner .sr-ccm-section-td {
+  padding: 5px 14px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: #162235 !important;
+  color: #e2e8f0;
+  border-top: 1px solid rgba(148, 163, 184, 0.3);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.3);
+}
+.sr-ccm-section-banner.is-sec-rev .sr-ccm-section-td {
+  background: #0c243d !important;
+  color: #38bdf8;
+}
+.sr-ccm-section-banner.is-sec-com .sr-ccm-section-td {
+  background: #291f0c !important;
+  color: #fbbf24;
+}
+.sr-ccm-section-banner.is-sec-profit .sr-ccm-section-td {
+  background: #0b2922 !important;
+  color: #34d399;
+}
+.sr-analytics-modal.is-light .sr-ccm-section-banner .sr-ccm-section-td {
+  background: #f1f5f9 !important;
+  color: #1e293b;
+  border-top-color: #cbd5e1;
+  border-bottom-color: #cbd5e1;
+}
+.sr-analytics-modal.is-light .sr-ccm-section-banner.is-sec-rev .sr-ccm-section-td {
+  background: #e0f2fe !important;
+  color: #0369a1;
+}
+.sr-analytics-modal.is-light .sr-ccm-section-banner.is-sec-com .sr-ccm-section-td {
+  background: #fef3c7 !important;
+  color: #b45309;
+}
+.sr-analytics-modal.is-light .sr-ccm-section-banner.is-sec-profit .sr-ccm-section-td {
+  background: #d1fae5 !important;
+  color: #047857;
+}
+.sr-ccm-sec-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 7px;
+  vertical-align: middle;
+  background: #64748b;
+}
+.sr-ccm-sec-dot.is-rev { background: #0284c7; }
+.sr-ccm-sec-dot.is-com { background: #f59e0b; }
+.sr-ccm-sec-dot.is-profit { background: #10b981; }
+
+.sr-ccm-m-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sr-ccm-m-label strong {
+  color: #f1f5f9;
+  font-weight: 700;
+  font-size: 12.5px;
+}
+.sr-analytics-modal.is-light .sr-ccm-m-label strong {
+  color: #1e293b;
+}
+.sr-ccm-m-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #64748b;
+  flex-shrink: 0;
+}
+.sr-ccm-m-dot.is-rev { background: #0284c7; }
+.sr-ccm-m-dot.is-cost { background: #f59e0b; }
+.sr-ccm-m-dot.is-com { background: #f59e0b; }
+.sr-ccm-m-dot.is-profit { background: #10b981; }
+.sr-ccm-m-dot.is-ratio { background: #0284c7; }
+
+.sr-ccm-table tr.is-highlight-row td {
+  background: #132036;
+}
+.sr-ccm-table tr.is-highlight-row .sr-ccm-m-label strong {
+  font-weight: 800;
+  color: #ffffff;
+}
+.sr-analytics-modal.is-light .sr-ccm-table tr.is-highlight-row td {
+  background: #f8fafc;
+}
+.sr-analytics-modal.is-light .sr-ccm-table tr.is-highlight-row .sr-ccm-m-label strong {
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.sr-ccm-table tr.is-active-chart-metric td {
+  background: #122b47 !important;
+}
+.sr-analytics-modal.is-light .sr-ccm-table tr.is-active-chart-metric td {
+  background: #e0f2fe !important;
+}
+
+.sr-ccm-val-td.is-best-cell {
+  background: rgba(16, 185, 129, 0.14) !important;
+}
+.sr-analytics-modal.is-light .sr-ccm-val-td.is-best-cell {
+  background: #ecfdf5 !important;
+}
+
+.sr-ccm-cell-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sr-ccm-cell-main.is-right-aligned {
+  justify-content: flex-end;
+}
+.sr-ccm-cell-val {
+  font-weight: 700;
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+  color: #f8fafc;
+}
+.sr-analytics-modal.is-light .sr-ccm-cell-val {
+  color: #0f172a;
+}
+.sr-ccm-cell-val.is-best-val {
+  font-weight: 800;
+  color: #34d399;
+}
+.sr-analytics-modal.is-light .sr-ccm-cell-val.is-best-val {
+  color: #047857;
+}
+.sr-ccm-cell-val.is-neg-val {
+  color: #f87171;
+}
+.sr-analytics-modal.is-light .sr-ccm-cell-val.is-neg-val {
+  color: #dc2626;
+}
+.sr-ccm-cell-pct {
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #38bdf8;
+  white-space: nowrap;
+}
+.sr-analytics-modal.is-light .sr-ccm-cell-pct {
+  color: #0284c7;
+}
+
+.sr-ccm-delta-row {
+  margin-top: 2px;
+}
+.sr-ccm-delta-row.is-right-aligned {
+  text-align: right;
+}
+.sr-ccm-delta-text {
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.sr-ccm-delta-text.is-good {
+  color: #34d399;
+}
+.sr-analytics-modal.is-light .sr-ccm-delta-text.is-good {
+  color: #047857;
+}
+.sr-ccm-delta-text.is-bad {
+  color: #f87171;
+}
+.sr-analytics-modal.is-light .sr-ccm-delta-text.is-bad {
+  color: #dc2626;
+}
+.sr-ccm-delta-text.is-flat,
+.sr-ccm-delta-text.is-neutral {
+  color: #94a3b8;
+}
+.sr-analytics-modal.is-light .sr-ccm-delta-text.is-flat,
+.sr-analytics-modal.is-light .sr-ccm-delta-text.is-neutral {
+  color: #64748b;
+}
+.sr-ccm-opt-actions.is-right-aligned {
+  justify-content: flex-end;
+  margin-top: 0;
+}
+.sr-ccm-footer-actions-row td {
+  background: #162235 !important;
+  border-top: 2px solid rgba(148, 163, 184, 0.32);
+  padding: 8px 14px;
+}
+.sr-analytics-modal.is-light .sr-ccm-footer-actions-row td {
+  background: #f1f5f9 !important;
+  border-top: 2px solid #cbd5e1;
+}
+
+@keyframes sr-promoted-outline-blink {
+  0%, 100% {
+    outline-color: #10b981;
+    outline-offset: 2px;
+  }
+  50% {
+    outline-color: #f59e0b;
+    outline-offset: 5px;
+  }
+}
+
+@keyframes sr-promoted-overlay-flash {
+  0%, 100% {
+    opacity: 0.92;
+    border-color: #10b981;
+    background: rgba(16, 185, 129, 0.22);
+    box-shadow:
+      inset 0 0 32px rgba(16, 185, 129, 0.48),
+      0 0 28px rgba(16, 185, 129, 0.55);
+  }
+  50% {
+    opacity: 0.18;
+    border-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.08);
+    box-shadow:
+      inset 0 0 10px rgba(245, 158, 11, 0.2),
+      0 0 12px rgba(245, 158, 11, 0.25);
+  }
+}
+
+.sr-record-card.sr-po1-card.is-promoted-highlight-card,
+.sr-page.theme-light-blue .sr-record-card.sr-po1-card.is-promoted-highlight-card {
+  position: relative !important;
+  z-index: 12 !important;
+  outline: 3.5px solid #10b981 !important;
+  outline-offset: 2px;
+  animation: sr-promoted-outline-blink 0.75s ease-in-out infinite !important;
+}
+
+.sr-record-card.sr-po1-card.is-promoted-highlight-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  border: 3px solid #10b981;
+  pointer-events: none;
+  z-index: 25;
+  animation: sr-promoted-overlay-flash 0.75s ease-in-out infinite;
+}
+
+.sr-md-company-card.is-promoted-company-card {
+  outline: 2.5px solid #10b981 !important;
+  outline-offset: 1px;
+  animation: sr-promoted-outline-blink 0.75s ease-in-out infinite !important;
+}
+
 /* ─── MODAL LOADING PROGRESS KHI TẢI & ĐỒNG BỘ CACHE HÀNG HÓA (HANG_HOA) ─── */
 .sr-goods-db-loading-overlay {
   position: fixed;
@@ -48238,6 +53082,71 @@ const isAnySaleModalOpen = computed(() => Boolean(
   background: #f0f9ff;
   border-color: #bae6fd;
   color: #0369a1;
+}
+
+/* Đồng bộ chuyển động mượt của Thanh Compare Dock & Bảng So Sánh Bản Tạm trên Mobile */
+@media (max-width: 768px) {
+  .sr-page.is-mobile-shell .sr-company-top-toolbar .sr-hdr-action-btn.is-compare-craft {
+    display: inline-flex !important;
+  }
+
+  .sr-craft-compare-overlay {
+    padding: 0 !important;
+  }
+
+  .sr-craft-compare-modal {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+  }
+
+  .sr-ccm-header {
+    padding: max(calc(env(safe-area-inset-top, 0px) + 8px), 48px) 12px 10px !important;
+    gap: 8px !important;
+  }
+
+  .sr-ccm-sub {
+    display: none;
+  }
+
+  .sr-ccm-highlights {
+    display: flex;
+    overflow-x: auto;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+
+  .sr-ccm-hl-card {
+    min-width: 220px;
+    flex-shrink: 0;
+  }
+
+  .sr-ccm-sticky-col {
+    min-width: 145px;
+    max-width: 165px;
+  }
+
+  .sr-craft-compare-dock {
+    left: 10px;
+    right: 10px;
+    width: auto;
+    bottom: calc(136px + env(safe-area-inset-bottom, 0px));
+    transform: none;
+    padding: 8px 10px;
+    gap: 8px;
+    flex-direction: column;
+    align-items: stretch;
+    transition:
+      bottom 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.24s ease;
+  }
+
+  :global(body:has(.app-layout.mobile-nav-hidden) .sr-craft-compare-dock) {
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+  }
 }
 
 /* =========================================================================
@@ -49006,5 +53915,1347 @@ const isAnySaleModalOpen = computed(() => Boolean(
       opacity: 1;
     }
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ĐỒNG BỘ PHÂN TÁCH MÀU THEO CHẾ ĐỘ (BẢN CHÍNH THỨC ↔ BẢN TẠM) & GIAO DIỆN (LIGHT ↔ DARK)
+   - Light Mode: Bản Chính Thức = Xanh Dương (Ocean Blue) | Bản Tạm = Xanh Lá Cây (Emerald Green)
+   - Dark Mode : Bản Chính Thức = Xanh Lá Cây (Dark Emerald) | Bản Tạm = Xanh Dương (Dark Ocean Blue)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* 1A. LIGHT MODE — BẢN CHÍNH THỨC (XANH DƯƠNG) */
+.sr-page.theme-light-blue .sr-mode-switch-btn.is-official.active,
+.sr-page.theme-light-blue .sr-ctt-mode-btn.is-official.active {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+  border-color: #38bdf8 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.28) !important;
+}
+
+.sr-page.theme-light-blue .sr-mode-switch-btn.is-official .sr-mode-dot.is-emerald,
+.sr-page.theme-light-blue .sr-ctt-mode-btn.is-official .sr-mode-dot.is-emerald {
+  background: #38bdf8 !important;
+}
+
+.sr-page.theme-light-blue .sr-mode-switch-btn.is-official.active .sr-mode-dot.is-emerald,
+.sr-page.theme-light-blue .sr-ctt-mode-btn.is-official.active .sr-mode-dot.is-emerald {
+  background: #bae6fd !important;
+}
+
+/* 1B. LIGHT MODE — BẢN TẠM / PHƯƠNG ÁN (XANH LÁ CÂY - EMERALD GREEN) */
+.sr-page.theme-light-blue .sr-mode-switch-btn.is-craft .sr-mode-dot.is-amber,
+.sr-page.theme-light-blue .sr-ctt-mode-btn.is-craft .sr-mode-dot.is-amber {
+  background: #10b981 !important;
+}
+
+.sr-page.theme-light-blue .sr-mode-switch-btn.is-craft.active .sr-mode-dot.is-amber,
+.sr-page.theme-light-blue .sr-ctt-mode-btn.is-craft.active .sr-mode-dot.is-amber {
+  background: #a7f3d0 !important;
+}
+
+.sr-page.theme-light-blue .sr-mode-switch-btn.is-craft.active,
+.sr-page.theme-light-blue .sr-ctt-mode-btn.is-craft.active {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
+  border-color: #34d399 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.28) !important;
+}
+
+.sr-page.theme-light-blue.mode-craft .bg-count-pill.is-craft-pill {
+  background: #d1fae5 !important;
+  color: #065f46 !important;
+  border-color: #10b981 !important;
+}
+
+/* Card Công ty cột trái & Khung Danh sách công ty ở Light Mode - Bản Tạm */
+.sr-page.theme-light-blue.mode-craft .sr-md-sidebar {
+  background: #ffffff !important;
+  border-color: #6ee7b7 !important;
+  box-shadow: 0 10px 28px -8px rgba(5, 150, 105, 0.14) !important;
+}
+
+.sr-page.theme-light-blue.mode-craft .sr-md-sidebar-head {
+  background: linear-gradient(135deg, #059669 0%, #10b981 58%, #047857 100%) !important;
+  border-bottom-color: #34d399 !important;
+}
+
+.sr-page.theme-light-blue.mode-craft .sr-md-sh-plain-count {
+  color: #d1fae5 !important;
+}
+
+.sr-page.theme-light-blue.mode-craft .sr-sb-head-btn:hover:not(:disabled),
+.sr-page.theme-light-blue.mode-craft .sr-sb-head-btn.is-filter-toggle.active {
+  background: #ffffff !important;
+  border-color: #ffffff !important;
+  color: #059669 !important;
+}
+
+.sr-page.theme-light-blue.mode-craft .sr-sidebar-search-shell {
+  border-color: #6ee7b7 !important;
+}
+
+.sr-page.theme-light-blue.mode-craft .sr-sidebar-filter-panel {
+  background: #f0fdf4 !important;
+  border-color: #6ee7b7 !important;
+}
+
+.sr-page.theme-light-blue.mode-craft .sr-md-company-card {
+  border-color: #a7f3d0 !important;
+}
+
+.sr-page.theme-light-blue.mode-craft .sr-md-company-card:hover {
+  background: #ecfdf5 !important;
+  border-color: #10b981 !important;
+}
+
+.sr-page.theme-light-blue.mode-craft .sr-md-company-card.active {
+  background: linear-gradient(135deg, #a7f3d0 0%, #d1fae5 100%) !important;
+  border: 2px solid #059669 !important;
+  box-shadow: inset 4px 0 0 #059669, 0 6px 16px -4px rgba(5, 150, 105, 0.24) !important;
+}
+
+.sr-page.theme-light-blue.mode-craft .sr-md-company-card .sr-md-cc-code-plain,
+.sr-page.theme-light-blue.mode-craft .sr-md-company-card.active .sr-md-cc-code-plain {
+  color: #047857 !important;
+}
+
+.sr-page.theme-light-blue.mode-craft .sr-md-company-card.active .sr-md-cc-metrics-4col {
+  border-top-color: #6ee7b7 !important;
+}
+
+.sr-page.theme-light-blue.mode-craft .sr-md-cc-check.selected {
+  background: #059669 !important;
+  border-color: #059669 !important;
+}
+
+/* Thư mục Công ty (Folder Header & Body Sheet) ở Light Mode - Bản Tạm */
+.sr-page.theme-light-blue.mode-craft .sr-folder-top-bar {
+  border-bottom: 3px solid #059669 !important;
+}
+
+.sr-page.theme-light-blue.mode-craft .sr-folder-ear-tab,
+.sr-page.theme-light-blue.mode-craft.is-mobile-shell .sr-folder-ear-tab,
+.sr-page.theme-light-blue.mode-craft.is-mobile-shell.m-tab-overview .sr-folder-ear-tab {
+  background: linear-gradient(135deg, #059669 0%, #10b981 58%, #047857 100%) !important;
+  border-color: #34d399 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 -4px 14px -4px rgba(5, 150, 105, 0.25) !important;
+}
+
+.sr-page.theme-light-blue.mode-craft .sr-folder-icon {
+  color: #d1fae5 !important;
+}
+
+.sr-page.theme-light-blue.mode-craft .sr-customer-kpi-sheet.sr-folder-body-sheet,
+.sr-page.theme-light-blue.mode-craft.is-mobile-shell .sr-customer-kpi-sheet.sr-folder-body-sheet,
+.sr-page.theme-light-blue.mode-craft.is-mobile-shell.m-tab-overview .sr-customer-kpi-sheet.sr-folder-body-sheet {
+  background: #f0fdf4 !important;
+  border-color: #6ee7b7 !important;
+  border-top: 3px solid #059669 !important;
+  box-shadow: 0 8px 20px -6px rgba(5, 150, 105, 0.14) !important;
+}
+
+.sr-page.theme-light-blue.mode-craft .sr-plain-text-btn {
+  background: rgba(255, 255, 255, 0.94) !important;
+  border-color: #6ee7b7 !important;
+  color: #047857 !important;
+}
+
+.sr-page.theme-light-blue.mode-craft .sr-plain-text-btn:hover:not(:disabled) {
+  background: #059669 !important;
+  border-color: #047857 !important;
+  color: #ffffff !important;
+}
+
+/* Card PO (.sr-po1-card) ở Light Mode - Bản Tạm */
+.sr-page.theme-light-blue.mode-craft .sr-record-card.sr-po1-card {
+  background: #ffffff !important;
+  border: 2px solid #059669 !important;
+  box-shadow: 0 8px 22px -6px rgba(5, 150, 105, 0.2) !important;
+}
+
+.sr-page.theme-light-blue.mode-craft .sr-record-card.sr-po1-card:hover {
+  border-color: #047857 !important;
+  box-shadow: 0 12px 26px -6px rgba(5, 150, 105, 0.28) !important;
+}
+
+.sr-page.theme-light-blue.mode-craft .sr-record-card.sr-po1-card.is-selected-card {
+  border-color: #059669 !important;
+  box-shadow: inset 4px 0 0 #059669 !important;
+}
+
+.sr-page.theme-light-blue.mode-craft .sr-po1-header {
+  background: linear-gradient(90deg, #bbf7d0 0%, #d1fae5 55%, #ecfdf5 100%) !important;
+  border-bottom: 1.5px solid #34d399 !important;
+}
+
+.sr-page.theme-light-blue.mode-craft .sr-po1-po-num {
+  color: #047857 !important;
+}
+
+.sr-page.theme-light-blue.mode-craft .sr-po1-contract-row {
+  border-top-color: #a7f3d0 !important;
+}
+
+.sr-page.theme-light-blue.mode-craft .sr-po1-contract-files {
+  border-top-color: #6ee7b7 !important;
+}
+
+.sr-page.theme-light-blue.mode-craft .sr-craft-option-pill {
+  background: #059669 !important;
+  color: #ffffff !important;
+  border-color: #047857 !important;
+}
+
+
+/* 2A. DARK MODE — BẢN CHÍNH THỨC (XANH LÁ CÂY - DARK EMERALD) */
+.sr-page:not(.theme-light-blue):not(.mode-craft) .sr-md-company-card.active {
+  background: linear-gradient(135deg, rgba(5, 150, 105, 0.36) 0%, rgba(6, 78, 59, 0.62) 100%) !important;
+  border: 1.5px solid #10b981 !important;
+  box-shadow: inset 4px 0 0 #10b981, 0 6px 16px -4px rgba(16, 185, 129, 0.32) !important;
+}
+
+.sr-page:not(.theme-light-blue):not(.mode-craft) .sr-md-company-card .sr-md-cc-code-plain {
+  color: #34d399 !important;
+}
+
+.sr-page:not(.theme-light-blue):not(.mode-craft) .sr-record-card.sr-po1-card {
+  background: rgba(8, 22, 18, 0.96) !important;
+  border: 2px solid rgba(16, 185, 129, 0.62) !important;
+  box-shadow: 0 8px 22px -8px rgba(0, 0, 0, 0.52) !important;
+}
+
+.sr-page:not(.theme-light-blue):not(.mode-craft) .sr-record-card.sr-po1-card:hover {
+  border-color: #34d399 !important;
+}
+
+.sr-page:not(.theme-light-blue):not(.mode-craft) .sr-po1-header {
+  background: linear-gradient(90deg, rgba(5, 150, 105, 0.44) 0%, rgba(13, 148, 136, 0.32) 52%, rgba(15, 23, 42, 0.94) 100%) !important;
+  border-bottom: 1.5px solid rgba(52, 211, 153, 0.48) !important;
+}
+
+.sr-page:not(.theme-light-blue):not(.mode-craft) .sr-po1-po-num {
+  color: #34d399 !important;
+}
+
+
+/* 2B. DARK MODE — BẢN TẠM / PHƯƠNG ÁN (XANH DƯƠNG - DARK OCEAN BLUE) */
+.sr-page:not(.theme-light-blue) .sr-mode-switch-btn.is-craft .sr-mode-dot.is-amber,
+.sr-page:not(.theme-light-blue) .sr-ctt-mode-btn.is-craft .sr-mode-dot.is-amber {
+  background: #38bdf8 !important;
+}
+
+.sr-page:not(.theme-light-blue) .sr-mode-switch-btn.is-craft.active,
+.sr-page:not(.theme-light-blue) .sr-ctt-mode-btn.is-craft.active {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+  border-color: #38bdf8 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 10px rgba(2, 132, 199, 0.38) !important;
+}
+
+.sr-page:not(.theme-light-blue).mode-craft .bg-count-pill.is-craft-pill {
+  background: rgba(2, 132, 199, 0.22) !important;
+  color: #7dd3fc !important;
+  border-color: rgba(56, 189, 248, 0.5) !important;
+}
+
+/* Card Công ty cột trái & Khung Danh sách công ty ở Dark Mode - Bản Tạm */
+.sr-page:not(.theme-light-blue).mode-craft .sr-md-sidebar {
+  border-color: rgba(56, 189, 248, 0.35) !important;
+}
+
+.sr-page:not(.theme-light-blue).mode-craft .sr-md-sidebar-head {
+  background: linear-gradient(135deg, rgba(2, 132, 199, 0.88) 0%, rgba(37, 99, 235, 0.72) 55%, rgba(15, 23, 42, 0.96) 100%) !important;
+  border-bottom-color: rgba(56, 189, 248, 0.45) !important;
+}
+
+.sr-page:not(.theme-light-blue).mode-craft .sr-folder-top-bar {
+  border-bottom: 3px solid #0284c7 !important;
+}
+
+.sr-page:not(.theme-light-blue).mode-craft .sr-md-company-card:hover {
+  background: rgba(15, 32, 58, 0.85) !important;
+  border-color: rgba(56, 189, 248, 0.48) !important;
+}
+
+.sr-page:not(.theme-light-blue).mode-craft .sr-md-company-card.active {
+  background: linear-gradient(135deg, rgba(2, 132, 199, 0.38) 0%, rgba(12, 74, 110, 0.62) 100%) !important;
+  border: 1.5px solid #38bdf8 !important;
+  box-shadow: inset 4px 0 0 #38bdf8, 0 6px 16px -4px rgba(2, 132, 199, 0.38) !important;
+}
+
+.sr-page:not(.theme-light-blue).mode-craft .sr-md-company-card .sr-md-cc-code-plain {
+  color: #38bdf8 !important;
+}
+
+.sr-page:not(.theme-light-blue).mode-craft .sr-md-cc-check.selected {
+  background: #0284c7 !important;
+  border-color: #38bdf8 !important;
+}
+
+/* Thư mục Công ty (Folder Header & Body Sheet) ở Dark Mode - Bản Tạm */
+.sr-page:not(.theme-light-blue).mode-craft .sr-folder-ear-tab,
+.sr-page:not(.theme-light-blue).mode-craft.is-mobile-shell .sr-folder-ear-tab,
+.sr-page:not(.theme-light-blue).mode-craft.is-mobile-shell.m-tab-overview .sr-folder-ear-tab {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 58%, #1d4ed8 100%) !important;
+  border-color: rgba(56, 189, 248, 0.65) !important;
+  box-shadow: 0 -2px 14px rgba(2, 132, 199, 0.28) !important;
+}
+
+.sr-page:not(.theme-light-blue).mode-craft .sr-folder-icon {
+  color: #bae6fd !important;
+}
+
+.sr-page:not(.theme-light-blue).mode-craft .sr-cpb-code,
+.sr-page:not(.theme-light-blue).mode-craft .sr-folder-mst {
+  color: #e0f2fe !important;
+}
+
+.sr-page:not(.theme-light-blue).mode-craft .sr-customer-kpi-sheet.sr-folder-body-sheet,
+.sr-page:not(.theme-light-blue).mode-craft.is-mobile-shell .sr-customer-kpi-sheet.sr-folder-body-sheet,
+.sr-page:not(.theme-light-blue).mode-craft.is-mobile-shell.m-tab-overview .sr-customer-kpi-sheet.sr-folder-body-sheet {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.96) 0%, rgba(11, 22, 38, 0.98) 100%) !important;
+  border-color: rgba(56, 189, 248, 0.45) !important;
+  border-top: 3px solid #0284c7 !important;
+}
+
+.sr-page:not(.theme-light-blue).mode-craft .sr-plain-text-btn:hover,
+.sr-page:not(.theme-light-blue).mode-craft .sr-plain-text-btn.active {
+  background: rgba(2, 132, 199, 0.35) !important;
+  border-color: #38bdf8 !important;
+  color: #ffffff !important;
+}
+
+/* Card PO (.sr-po1-card) ở Dark Mode - Bản Tạm */
+.sr-page:not(.theme-light-blue).mode-craft .sr-record-card.sr-po1-card {
+  background: rgba(11, 22, 38, 0.96) !important;
+  border: 2px solid rgba(56, 189, 248, 0.68) !important;
+  box-shadow: 0 8px 22px -8px rgba(2, 132, 199, 0.35) !important;
+}
+
+.sr-page:not(.theme-light-blue).mode-craft .sr-record-card.sr-po1-card:hover {
+  border-color: #38bdf8 !important;
+  box-shadow: 0 12px 26px -8px rgba(56, 189, 248, 0.45) !important;
+}
+
+.sr-page:not(.theme-light-blue).mode-craft .sr-record-card.sr-po1-card.is-selected-card {
+  border-color: #38bdf8 !important;
+  box-shadow: inset 4px 0 0 #38bdf8 !important;
+}
+
+.sr-page:not(.theme-light-blue).mode-craft .sr-po1-header {
+  background: linear-gradient(90deg, rgba(2, 132, 199, 0.45) 0%, rgba(37, 99, 235, 0.35) 55%, rgba(15, 23, 42, 0.95) 100%) !important;
+  border-bottom: 1.5px solid rgba(56, 189, 248, 0.55) !important;
+}
+
+.sr-page:not(.theme-light-blue).mode-craft .sr-po1-po-num {
+  color: #38bdf8 !important;
+}
+
+.sr-page:not(.theme-light-blue).mode-craft .sr-craft-option-pill {
+  background: rgba(2, 132, 199, 0.28) !important;
+  color: #7dd3fc !important;
+  border-color: #38bdf8 !important;
+}
+
+/* 3. BỐ CỤC 3 KHỐI CHỈ SỐ Ở BẢN TẠM (KHI ĐÃ BỎ CỘT CÔNG NỢ) */
+.sr-po1-4blocks.is-craft-3blocks {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+.sr-card-list.is-cols-2 .sr-po1-4blocks.is-craft-3blocks {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+.sr-card-list.is-cols-2 .sr-po1-4blocks.is-craft-3blocks .sr-po1-block:nth-child(2) {
+  border-right: 1px solid rgba(148, 163, 184, 0.14) !important;
+}
+
+.sr-page.theme-light-blue .sr-card-list.is-cols-2 .sr-po1-4blocks.is-craft-3blocks .sr-po1-block:nth-child(2) {
+  border-right: 1px solid #cbd5e1 !important;
+}
+
+.sr-card-list.is-cols-2 .sr-po1-4blocks.is-craft-3blocks .sr-po1-block:nth-child(1),
+.sr-card-list.is-cols-2 .sr-po1-4blocks.is-craft-3blocks .sr-po1-block:nth-child(2) {
+  border-bottom: none !important;
+}
+
+.sr-po-modal .sr-modal-finance-grid.is-craft-3cols {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+.sr-po-modal .sr-modal-finance-grid.is-craft-3cols .sr-modal-fin-col {
+  border-bottom: none !important;
+  border-right: 1px solid #1e293b !important;
+}
+
+.sr-po-modal.is-light .sr-modal-finance-grid.is-craft-3cols .sr-modal-fin-col {
+  border-right: 1px solid #e2e8f0 !important;
+}
+
+.sr-po-modal .sr-modal-finance-grid.is-craft-3cols .sr-modal-fin-col:last-child {
+  border-right: none !important;
+}
+
+@media (max-width: 768px) {
+  .sr-po1-4blocks.is-craft-3blocks,
+  .sr-card-list.is-cols-2 .sr-po1-4blocks.is-craft-3blocks,
+  .sr-po-modal .sr-modal-finance-grid.is-craft-3cols {
+    grid-template-columns: 1fr !important;
+  }
+
+  .sr-po-modal .sr-modal-finance-grid.is-craft-3cols .sr-modal-fin-col {
+    border-right: none !important;
+    border-bottom: 1px solid #1e293b !important;
+  }
+
+  .sr-po-modal.is-light .sr-modal-finance-grid.is-craft-3cols .sr-modal-fin-col {
+    border-bottom: 1px solid #e2e8f0 !important;
+  }
+
+  .sr-po-modal .sr-modal-finance-grid.is-craft-3cols .sr-modal-fin-col:last-child {
+    border-bottom: none !important;
+  }
+}
+
+/* 4. HEADER MODAL CHỈNH SỬA PHƯƠNG ÁN PO Ở MỤC TẠM (.sr-po-modal.is-craft-modal) — MÀU XANH LÁ CÂY */
+.sr-po-modal.is-craft-modal .sr-po-modal-header,
+.sr-po-modal.is-light.is-craft-modal .sr-po-modal-header,
+.sr-modal-overlay.theme-light-blue.is-craft-overlay .sr-po-modal-header {
+  background: linear-gradient(90deg, #059669 0%, #10b981 55%, #047857 100%) !important;
+  border-bottom: 1px solid #34d399 !important;
+  color: #ffffff !important;
+}
+
+.sr-po-modal.is-light.is-craft-modal .sr-po-layout-btn.active,
+.sr-po-modal.is-light.is-craft-modal .sr-po-header-add-btn:hover {
+  background: #ffffff !important;
+  color: #059669 !important;
+}
+/* 5. ĐỒNG BỘ MÀU NỀN KHUNG CHỨA 4 CARD KPI CÔNG TY (.sr-customer-kpi-sheet.sr-folder-body-sheet) TRÙNG MÀU VỚI HEADER CÔNG TY (.sr-folder-ear-tab) */
+.sr-page:not(.theme-light-blue):not(.mode-craft) .sr-customer-kpi-sheet.sr-folder-body-sheet,
+.sr-page:not(.theme-light-blue):not(.mode-craft).is-mobile-shell .sr-customer-kpi-sheet.sr-folder-body-sheet,
+.sr-page:not(.theme-light-blue):not(.mode-craft).is-mobile-shell.m-tab-overview .sr-customer-kpi-sheet.sr-folder-body-sheet {
+  background: linear-gradient(135deg, #059669 0%, #0d9488 58%, #0f766e 100%) !important;
+  border: 1px solid rgba(52, 211, 153, 0.55) !important;
+  border-top: none !important;
+  box-shadow: 0 10px 24px -6px rgba(16, 185, 129, 0.25) !important;
+}
+
+.sr-page.theme-light-blue:not(.mode-craft) .sr-customer-kpi-sheet.sr-folder-body-sheet,
+.sr-page.theme-light-blue:not(.mode-craft).is-mobile-shell .sr-customer-kpi-sheet.sr-folder-body-sheet,
+.sr-page.theme-light-blue:not(.mode-craft).is-mobile-shell.m-tab-overview .sr-customer-kpi-sheet.sr-folder-body-sheet {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 60%, #1d4ed8 100%) !important;
+  border: 1px solid #38bdf8 !important;
+  border-top: none !important;
+  box-shadow: 0 10px 24px -6px rgba(2, 132, 199, 0.28) !important;
+}
+
+/* 6. LAZY LOADING & CONTENT-VISIBILITY CHO CARD PO (CẢ BẢN CHÍNH THỨC & BẢN TẠM) */
+.sr-card-outer-item {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 220px;
+}
+
+.sr-po-lazy-sentinel {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 14px;
+}
+
+.sr-po-lazy-sentinel.is-global-sentinel {
+  margin-top: 12px;
+  margin-bottom: 24px;
+}
+
+.sr-po-lazy-more-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 22px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px dashed rgba(52, 211, 153, 0.5);
+  color: #6ee7b7;
+}
+
+.sr-po-lazy-more-btn:hover {
+  background: rgba(16, 185, 129, 0.26);
+  border-color: #34d399;
+  color: #ffffff;
+}
+
+.sr-page:not(.theme-light-blue).mode-craft .sr-po-lazy-more-btn {
+  background: rgba(2, 132, 199, 0.16);
+  border-color: rgba(56, 189, 248, 0.5);
+  color: #7dd3fc;
+}
+
+.sr-page:not(.theme-light-blue).mode-craft .sr-po-lazy-more-btn:hover {
+  background: rgba(2, 132, 199, 0.3);
+  border-color: #38bdf8;
+  color: #ffffff;
+}
+
+.sr-page.theme-light-blue:not(.mode-craft) .sr-po-lazy-more-btn {
+  background: #eff6ff;
+  border-color: #60a5fa;
+  color: #1d4ed8;
+}
+
+.sr-page.theme-light-blue:not(.mode-craft) .sr-po-lazy-more-btn:hover {
+  background: #dbeafe;
+  border-color: #2563eb;
+  color: #1e40af;
+}
+
+.sr-page.theme-light-blue.mode-craft .sr-po-lazy-more-btn {
+  background: #ecfdf5;
+  border-color: #34d399;
+  color: #047857;
+}
+
+.sr-page.theme-light-blue.mode-craft .sr-po-lazy-more-btn:hover {
+  background: #d1fae5;
+  border-color: #059669;
+  color: #065f46;
+}
+
+/* =========================================================================
+   NÚT REVIEW CÔNG TY NẰM TRONG HEADER CÔNG TY (.sr-folder-ear-tab)
+   ========================================================================= */
+.sr-page .sr-folder-ear-tab .is-folder-review-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  height: 24px !important;
+  padding: 0 10px !important;
+  margin-left: 4px !important;
+  border-radius: 999px !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  background: rgba(255, 255, 255, 0.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12) !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  transition: all 0.18s ease !important;
+}
+
+.sr-page .sr-folder-ear-tab .is-folder-review-btn:hover {
+  background: #ffffff !important;
+  border-color: #ffffff !important;
+  color: #047857 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18) !important;
+}
+
+/* Hover text color theo màu chủ đạo của từng chế độ */
+.sr-page.theme-light-blue:not(.mode-craft) .sr-folder-ear-tab .is-folder-review-btn:hover,
+.sr-page:not(.theme-light-blue).mode-craft .sr-folder-ear-tab .is-folder-review-btn:hover {
+  color: #1d4ed8 !important;
+}
+
+.sr-page.theme-light-blue.mode-craft .sr-folder-ear-tab .is-folder-review-btn:hover,
+.sr-page:not(.theme-light-blue):not(.mode-craft) .sr-folder-ear-tab .is-folder-review-btn:hover {
+  color: #047857 !important;
+}
+
+/* =========================================================================
+   ĐỒNG BỘ TEMPLATE MA TRẬN 10 CHỈ SỐ KPI VỚI TRANG CHÍNH (CARD PO & HỆ MÀU)
+   ========================================================================= */
+.sr-ccm-opt-top-left,
+.sr-ccm-row-opt-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Đảm bảo số tiền chính của mọi phương án luôn nằm thẳng hàng ngang tuyệt đối ở Dạng cột */
+.sr-ccm-table.is-columns-layout td.sr-ccm-val-td,
+.sr-ccm-table.is-columns-layout td.sr-ccm-metric-td {
+  vertical-align: top !important;
+}
+
+/* Ở Dạng dòng: Căn giữa theo chiều dọc (vertical-align: middle) khớp với ô Nội dung hợp đồng */
+.sr-ccm-table.is-rows-layout td.sr-ccm-val-td,
+.sr-ccm-table.is-rows-layout td.sr-ccm-row-opt-td,
+.sr-ccm-table.is-rows-layout td.sr-ccm-row-actions-td {
+  vertical-align: middle !important;
+}
+
+.sr-ccm-table .sr-ccm-cell-main {
+  min-height: 18px;
+  line-height: 1.25 !important;
+}
+
+.sr-ccm-table .sr-ccm-delta-row {
+  margin-top: 2px !important;
+  line-height: 1.15 !important;
+}
+
+/* Bảng Ma trận mở phẳng toàn vùng phải (không đóng khung), tự co giãn phủ kín & tự cuộn ngang khi nhiều cột */
+.sr-analytics-body.is-matrix-body {
+  padding: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.sr-analytics-body.is-matrix-body .sr-analytics-ranking-workspace {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  gap: 0 !important;
+}
+
+.sr-analytics-table-card.is-matrix-full-card,
+.sr-analytics-modal:not(.is-light).mode-craft .sr-analytics-table-card.is-matrix-full-card,
+.sr-analytics-modal.is-light:not(.mode-craft) .sr-analytics-table-card.is-matrix-full-card,
+.sr-analytics-modal.is-light.mode-craft .sr-analytics-table-card.is-matrix-full-card {
+  width: 100% !important;
+  max-width: 100% !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  overflow: hidden !important;
+}
+
+.sr-analytics-table-scroll.is-matrix-full-scroll {
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-height: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sr-ccm-table {
+  width: 100% !important;
+  min-width: max-content !important;
+}
+
+.sr-ccm-table.is-columns-layout {
+  table-layout: fixed !important;
+  width: 100% !important;
+  min-width: calc(195px + var(--ccm-opt-count, 1) * 220px) !important;
+  height: 100%;
+}
+
+.sr-ccm-table.is-columns-layout th,
+.sr-ccm-table.is-columns-layout td {
+  padding: 6px 14px !important;
+}
+
+.sr-ccm-table.is-columns-layout col.sr-ccm-col-sticky,
+.sr-ccm-table.is-columns-layout .sr-ccm-sticky-col {
+  width: 195px !important;
+  min-width: 195px !important;
+  max-width: 195px !important;
+}
+
+.sr-ccm-table.is-columns-layout col.sr-ccm-col-option,
+.sr-ccm-table.is-columns-layout .sr-ccm-option-th,
+.sr-ccm-table.is-columns-layout .sr-ccm-val-td,
+.sr-ccm-table.is-columns-layout .sr-ccm-foot-act-td {
+  width: calc((100% - 195px) / var(--ccm-opt-count, 1)) !important;
+  min-width: 220px !important;
+  max-width: none !important;
+}
+
+/* Dạng Dòng (Rows Layout): Chia đều các cột chỉ số & tách phần tăng giảm thành 2 hàng gọn gàng */
+.sr-ccm-table.is-rows-layout {
+  table-layout: fixed !important;
+  width: 100% !important;
+  min-width: calc(210px + 165px + var(--ccm-metric-count, 10) * 140px) !important;
+  height: 100%;
+}
+
+.sr-ccm-table.is-rows-layout th,
+.sr-ccm-table.is-rows-layout td {
+  padding: 6px 10px !important;
+}
+
+.sr-ccm-table.is-rows-layout col.sr-ccm-col-row-sticky,
+.sr-ccm-table.is-rows-layout .sr-ccm-sticky-col {
+  width: 210px !important;
+  min-width: 210px !important;
+  max-width: 210px !important;
+}
+
+.sr-ccm-table.is-rows-layout col.sr-ccm-col-row-metric,
+.sr-ccm-table.is-rows-layout .sr-ccm-row-metric-th,
+.sr-ccm-table.is-rows-layout .sr-ccm-val-td {
+  width: calc((100% - 210px - 165px) / var(--ccm-metric-count, 10)) !important;
+  min-width: 140px !important;
+  max-width: none !important;
+}
+
+.sr-ccm-table.is-rows-layout col.sr-ccm-col-row-actions,
+.sr-ccm-table.is-rows-layout .sr-ccm-row-actions-th,
+.sr-ccm-table.is-rows-layout .sr-ccm-row-actions-td {
+  width: 165px !important;
+  min-width: 165px !important;
+  max-width: 165px !important;
+}
+
+.sr-ccm-table.is-rows-layout .sr-ccm-delta-text {
+  display: inline-flex !important;
+  flex-direction: column !important;
+  align-items: flex-end !important;
+  gap: 1px !important;
+  line-height: 1.18 !important;
+}
+
+.sr-ccm-table.is-rows-layout .sr-ccm-delta-part {
+  display: block !important;
+  white-space: nowrap !important;
+}
+
+.sr-ccm-table.is-rows-layout .sr-ccm-delta-part.is-pct-part {
+  margin-left: 0 !important;
+  font-size: 10px !important;
+  opacity: 0.92;
+}
+
+.sr-ccm-table.is-rows-layout .sr-ccm-delta-edit-row {
+  flex-direction: column !important;
+  align-items: flex-end !important;
+  gap: 3px !important;
+}
+
+.sr-ccm-table.is-rows-layout .sr-ccm-delta-input-wrap {
+  width: 100% !important;
+  max-width: 118px !important;
+  justify-content: space-between !important;
+}
+
+.sr-ccm-table.is-rows-layout .sr-ccm-delta-input.is-abs,
+.sr-ccm-table.is-rows-layout .sr-ccm-delta-input.is-pct {
+  width: 100% !important;
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+}
+
+@media (max-width: 1080px) {
+  .sr-analytics-body.is-matrix-body {
+    overflow: visible !important;
+  }
+  .sr-analytics-table-scroll.is-matrix-full-scroll {
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+  }
+}
+
+.sr-ccm-table.is-columns-layout .sr-ccm-opt-head {
+  gap: 3px !important;
+}
+
+.sr-ccm-table.is-columns-layout .sr-ccm-opt-po {
+  font-size: 12px !important;
+  line-height: 1.25 !important;
+  -webkit-line-clamp: 1 !important;
+}
+
+.sr-ccm-table.is-columns-layout .sr-ccm-opt-cust {
+  font-size: 10.5px !important;
+  line-height: 1.2 !important;
+}
+
+/* Tiêu đề 3 Cụm chỉ số đồng bộ phong cách .sr-po1-bhead trên Card PO */
+.sr-ccm-table .sr-ccm-section-banner .sr-ccm-section-td {
+  padding: 4px 11px !important;
+  font-size: 10.5px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.04em !important;
+}
+
+.sr-ccm-table.is-columns-layout .sr-ccm-m-label strong {
+  font-size: 12px !important;
+}
+
+.sr-ccm-table.is-columns-layout .sr-ccm-cell-val {
+  font-size: 12.5px !important;
+  line-height: 1.25 !important;
+}
+
+.sr-ccm-table.is-columns-layout .sr-ccm-delta-text {
+  font-size: 10.5px !important;
+}
+
+.sr-ccm-table.is-columns-layout .sr-ccm-footer-actions-row td {
+  padding: 6px 11px !important;
+}
+
+.sr-ccm-table.is-columns-layout .sr-ccm-act-btn {
+  padding: 3px 8px !important;
+  font-size: 10.5px !important;
+}
+
+/* Badge PHƯƠNG ÁN / PA đồng bộ pill .sr-craft-option-pill của Card PO (bỏ màu cam cũ) */
+.sr-ccm-opt-num {
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.03em !important;
+  padding: 2px 7px !important;
+  border-radius: 5px !important;
+  background: rgba(16, 185, 129, 0.24) !important;
+  border: 1px solid rgba(52, 211, 153, 0.55) !important;
+  color: #6ee7b7 !important;
+}
+
+/* Nút Chọn làm gốc / ★ Bản gốc */
+.sr-ccm-base-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px dashed rgba(148, 163, 184, 0.48);
+  background: rgba(15, 23, 42, 0.55);
+  color: #cbd5e1;
+  transition: all 0.15s ease;
+}
+
+.sr-ccm-base-btn:hover {
+  border-style: solid;
+  border-color: #34d399;
+  color: #6ee7b7;
+  background: rgba(16, 185, 129, 0.18);
+}
+
+.sr-ccm-base-btn.is-active {
+  border-style: solid;
+  border-color: #34d399;
+  background: #059669;
+  color: #ffffff;
+}
+
+/* ─── 1. DARK MODE — BẢN CHÍNH THỨC (XANH LÁ - DARK EMERALD) ─── */
+.sr-analytics-modal:not(.is-light):not(.mode-craft) .sr-ccm-table thead th {
+  background: linear-gradient(90deg, rgba(5, 150, 105, 0.44) 0%, rgba(13, 148, 136, 0.32) 52%, rgba(15, 23, 42, 0.96) 100%) !important;
+  border-bottom: 1.5px solid rgba(52, 211, 153, 0.48) !important;
+}
+
+.sr-analytics-modal:not(.is-light):not(.mode-craft) .sr-ccm-table th,
+.sr-analytics-modal:not(.is-light):not(.mode-craft) .sr-ccm-table td {
+  background: rgba(8, 22, 18, 0.96);
+  border-bottom-color: rgba(52, 211, 153, 0.16);
+  border-right-color: rgba(52, 211, 153, 0.14);
+}
+
+.sr-analytics-modal:not(.is-light):not(.mode-craft) .sr-ccm-section-banner .sr-ccm-section-td {
+  background: rgba(6, 78, 59, 0.45) !important;
+  color: #6ee7b7 !important;
+  border-top-color: rgba(52, 211, 153, 0.28) !important;
+  border-bottom-color: rgba(52, 211, 153, 0.28) !important;
+}
+
+/* ─── 2. DARK MODE — BẢN TẠM / PHƯƠNG ÁN (XANH DƯƠNG - DARK OCEAN BLUE) ─── */
+.sr-analytics-modal:not(.is-light).mode-craft .sr-analytics-header {
+  background: linear-gradient(135deg, rgba(2, 132, 199, 0.88) 0%, rgba(37, 99, 235, 0.72) 55%, rgba(15, 23, 42, 0.98) 100%) !important;
+  border-bottom-color: rgba(56, 189, 248, 0.45) !important;
+}
+
+.sr-analytics-modal:not(.is-light).mode-craft .sr-ccm-table thead th {
+  background: linear-gradient(90deg, rgba(2, 132, 199, 0.45) 0%, rgba(37, 99, 235, 0.35) 55%, rgba(15, 23, 42, 0.96) 100%) !important;
+  border-bottom: 1.5px solid rgba(56, 189, 248, 0.55) !important;
+}
+
+.sr-analytics-modal:not(.is-light).mode-craft .sr-ccm-table th,
+.sr-analytics-modal:not(.is-light).mode-craft .sr-ccm-table td {
+  background: rgba(11, 22, 38, 0.96);
+  border-bottom-color: rgba(56, 189, 248, 0.16);
+  border-right-color: rgba(56, 189, 248, 0.14);
+}
+
+.sr-analytics-modal:not(.is-light).mode-craft .sr-ccm-section-banner .sr-ccm-section-td {
+  background: rgba(12, 74, 110, 0.48) !important;
+  color: #7dd3fc !important;
+  border-top-color: rgba(56, 189, 248, 0.3) !important;
+  border-bottom-color: rgba(56, 189, 248, 0.3) !important;
+}
+
+.sr-analytics-modal:not(.is-light).mode-craft .sr-ccm-opt-num {
+  background: rgba(2, 132, 199, 0.28) !important;
+  border-color: rgba(56, 189, 248, 0.55) !important;
+  color: #7dd3fc !important;
+}
+
+.sr-analytics-modal:not(.is-light).mode-craft .sr-ccm-base-btn:hover {
+  border-color: #38bdf8;
+  color: #7dd3fc;
+  background: rgba(2, 132, 199, 0.2);
+}
+
+.sr-analytics-modal:not(.is-light).mode-craft .sr-ccm-base-btn.is-active {
+  border-color: #38bdf8;
+  background: #0284c7;
+  color: #ffffff;
+}
+
+/* ─── 3. LIGHT MODE — BẢN CHÍNH THỨC (XANH DƯƠNG - OCEAN BLUE) ─── */
+.sr-analytics-modal.is-light:not(.mode-craft) .sr-ccm-table thead th {
+  background: linear-gradient(90deg, #bae6fd 0%, #e0f2fe 55%, #f0f9ff 100%) !important;
+  border-bottom: 1.5px solid #38bdf8 !important;
+}
+
+.sr-analytics-modal.is-light:not(.mode-craft) .sr-ccm-section-banner .sr-ccm-section-td {
+  background: #f0f9ff !important;
+  color: #0369a1 !important;
+  border-top-color: #bae6fd !important;
+  border-bottom-color: #bae6fd !important;
+}
+
+.sr-analytics-modal.is-light:not(.mode-craft) .sr-ccm-opt-num {
+  background: #0284c7 !important;
+  border-color: #0369a1 !important;
+  color: #ffffff !important;
+}
+
+.sr-analytics-modal.is-light:not(.mode-craft) .sr-ccm-base-btn {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: #7dd3fc;
+  color: #0369a1;
+}
+
+.sr-analytics-modal.is-light:not(.mode-craft) .sr-ccm-base-btn:hover {
+  border-color: #0284c7;
+  background: #e0f2fe;
+  color: #0284c7;
+}
+
+.sr-analytics-modal.is-light:not(.mode-craft) .sr-ccm-base-btn.is-active {
+  border-color: #0369a1;
+  background: #0284c7;
+  color: #ffffff;
+}
+
+/* ─── 4. LIGHT MODE — BẢN TẠM / PHƯƠNG ÁN (XANH LÁ - EMERALD GREEN) ─── */
+.sr-analytics-modal.is-light.mode-craft .sr-analytics-header {
+  background: linear-gradient(135deg, #059669 0%, #10b981 55%, #047857 100%) !important;
+  border-bottom-color: #34d399 !important;
+}
+
+.sr-analytics-modal.is-light.mode-craft .sr-ccm-table thead th {
+  background: linear-gradient(90deg, #bbf7d0 0%, #d1fae5 55%, #ecfdf5 100%) !important;
+  border-bottom: 1.5px solid #34d399 !important;
+}
+
+.sr-analytics-modal.is-light.mode-craft .sr-ccm-table th,
+.sr-analytics-modal.is-light.mode-craft .sr-ccm-table td {
+  border-bottom-color: #d1fae5;
+  border-right-color: #d1fae5;
+}
+
+.sr-analytics-modal.is-light.mode-craft .sr-ccm-table .sr-ccm-sticky-col {
+  border-right-color: #6ee7b7 !important;
+}
+
+.sr-analytics-modal.is-light.mode-craft .sr-ccm-section-banner .sr-ccm-section-td {
+  background: #ecfdf5 !important;
+  color: #047857 !important;
+  border-top-color: #a7f3d0 !important;
+  border-bottom-color: #a7f3d0 !important;
+}
+
+.sr-analytics-modal.is-light.mode-craft .sr-ccm-opt-num {
+  background: #059669 !important;
+  border-color: #047857 !important;
+  color: #ffffff !important;
+}
+
+.sr-analytics-modal.is-light.mode-craft .sr-ccm-base-btn {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: #6ee7b7;
+  color: #047857;
+}
+
+.sr-analytics-modal.is-light.mode-craft .sr-ccm-base-btn:hover {
+  border-color: #059669;
+  background: #d1fae5;
+  color: #047857;
+}
+
+.sr-analytics-modal.is-light.mode-craft .sr-ccm-base-btn.is-active {
+  border-color: #047857;
+  background: #059669;
+  color: #ffffff;
+}
+
+.sr-analytics-modal.is-light.mode-craft .sr-ccm-footer-actions-row td {
+  background: #f0fdf4 !important;
+  border-top-color: #6ee7b7 !important;
+}
+
+/* =========================================================================
+   ĐỔ MÀU NỀN CỘT / DÒNG ĐANG LÀM BẢN GỐC & Ô INPUT INLINE EDIT TRÊN MA TRẬN
+   ========================================================================= */
+.sr-ccm-val-td.is-editable-cell {
+  cursor: pointer;
+  position: relative;
+}
+
+.sr-ccm-val-td.is-editable-cell:hover .sr-ccm-cell-val {
+  text-decoration: underline dashed rgba(148, 163, 184, 0.65);
+  text-underline-offset: 3px;
+}
+
+.sr-ccm-inline-input {
+  width: 100%;
+  max-width: 155px;
+  height: 24px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 12.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  outline: none;
+  background: #0f172a;
+  border: 1.5px solid #38bdf8;
+  color: #ffffff;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.22);
+}
+
+.sr-analytics-modal.is-light .sr-ccm-inline-input {
+  background: #ffffff;
+  border-color: #0284c7;
+  color: #0f172a;
+  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.18);
+}
+
+.sr-analytics-modal.is-light.mode-craft .sr-ccm-inline-input {
+  border-color: #059669;
+  box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.2);
+}
+
+.sr-ccm-inline-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  margin-top: 4px;
+}
+
+.sr-ccm-inline-btn {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.14s ease;
+}
+
+.sr-ccm-inline-btn.is-save {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  border: 1px solid #34d399;
+  color: #ffffff;
+}
+
+.sr-ccm-inline-btn.is-save:hover {
+  filter: brightness(1.08);
+}
+
+.sr-ccm-inline-btn.is-cancel {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  color: #cbd5e1;
+}
+
+.sr-ccm-inline-btn.is-cancel:hover {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: #f87171;
+  color: #f87171;
+}
+
+.sr-analytics-modal.is-light .sr-ccm-inline-btn.is-cancel {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+.sr-analytics-modal.is-light .sr-ccm-inline-btn.is-cancel:hover {
+  background: #fef2f2;
+  border-color: #ef4444;
+  color: #dc2626;
+}
+
+.sr-ccm-delta-part {
+  cursor: pointer;
+  padding: 1px 2px;
+  border-radius: 3px;
+  transition: background-color 0.14s ease;
+}
+
+.sr-ccm-delta-part:hover {
+  background: rgba(56, 189, 248, 0.18);
+  text-decoration: underline dashed currentColor;
+  text-underline-offset: 2px;
+}
+
+.sr-ccm-delta-part.is-pct-part {
+  margin-left: 3px;
+}
+
+.sr-ccm-delta-edit-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 3px;
+}
+
+.sr-ccm-delta-input-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 5px;
+  height: 22px;
+  border-radius: 4px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.55);
+}
+
+.sr-analytics-modal.is-light .sr-ccm-delta-input-wrap {
+  background: #f8fafc;
+  border-color: #7dd3fc;
+}
+
+.sr-analytics-modal.is-light.mode-craft .sr-ccm-delta-input-wrap {
+  border-color: #6ee7b7;
+}
+
+.sr-ccm-delta-prefix,
+.sr-ccm-delta-suffix {
+  font-size: 9.5px;
+  font-weight: 800;
+  color: #94a3b8;
+  user-select: none;
+}
+
+.sr-analytics-modal.is-light .sr-ccm-delta-prefix,
+.sr-analytics-modal.is-light .sr-ccm-delta-suffix {
+  color: #64748b;
+}
+
+.sr-ccm-delta-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #38bdf8;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  padding: 0;
+}
+
+.sr-ccm-delta-input.is-abs {
+  width: 82px;
+}
+
+.sr-ccm-delta-input.is-pct {
+  width: 42px;
+}
+
+.sr-analytics-modal.is-light .sr-ccm-delta-input {
+  color: #0284c7;
+}
+
+.sr-analytics-modal.is-light.mode-craft .sr-ccm-delta-input {
+  color: #047857;
+}
+
+/* 1. Đổ màu nền Cột/Dòng Bản gốc — Dark Mode Chính thức (Xanh lá) */
+.sr-analytics-modal:not(.is-light):not(.mode-craft) .sr-ccm-table th.is-baseline-col {
+  background: linear-gradient(135deg, rgba(5, 150, 105, 0.68) 0%, rgba(13, 148, 136, 0.52) 100%) !important;
+  border-bottom: 2px solid #34d399 !important;
+}
+
+.sr-analytics-modal:not(.is-light):not(.mode-craft) .sr-ccm-table td.is-baseline-col {
+  background: rgba(16, 185, 129, 0.16) !important;
+}
+
+/* 2. Đổ màu nền Cột/Dòng Bản gốc — Dark Mode Bản tạm (Xanh dương) */
+.sr-analytics-modal:not(.is-light).mode-craft .sr-ccm-table th.is-baseline-col {
+  background: linear-gradient(135deg, rgba(2, 132, 199, 0.72) 0%, rgba(37, 99, 235, 0.56) 100%) !important;
+  border-bottom: 2px solid #38bdf8 !important;
+}
+
+.sr-analytics-modal:not(.is-light).mode-craft .sr-ccm-table td.is-baseline-col {
+  background: rgba(2, 132, 199, 0.18) !important;
+}
+
+/* 3. Đổ màu nền Cột/Dòng Bản gốc — Light Mode Chính thức (Xanh dương) */
+.sr-analytics-modal.is-light:not(.mode-craft) .sr-ccm-table th.is-baseline-col {
+  background: linear-gradient(135deg, #7dd3fc 0%, #bae6fd 100%) !important;
+  border-bottom: 2px solid #0284c7 !important;
+}
+
+.sr-analytics-modal.is-light:not(.mode-craft) .sr-ccm-table td.is-baseline-col {
+  background: #e0f2fe !important;
+}
+
+/* 4. Đổ màu nền Cột/Dòng Bản gốc — Light Mode Bản tạm (Xanh lá) */
+.sr-analytics-modal.is-light.mode-craft .sr-ccm-table th.is-baseline-col {
+  background: linear-gradient(135deg, #6ee7b7 0%, #a7f3d0 100%) !important;
+  border-bottom: 2px solid #059669 !important;
+}
+
+.sr-analytics-modal.is-light.mode-craft .sr-ccm-table td.is-baseline-col {
+  background: #d1fae5 !important;
+}
+
+/* =========================================================================
+   TOGGLE ĐÓNG / MỞ CỘT TRÁI (SIDEBAR) TRONG MODAL PHÂN TÍCH & SO SÁNH
+   ========================================================================= */
+.sr-analytics-split-shell.is-sidebar-collapsed {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.sr-analytics-split-shell.is-sidebar-collapsed .sr-analytics-sidebar {
+  display: none !important;
+}
+
+.sr-analytics-side-heading.is-with-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sr-analytics-side-collapse-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.65);
+  color: #cbd5e1;
+  transition: all 0.15s ease;
+}
+
+.sr-analytics-side-collapse-btn:hover {
+  border-color: #34d399;
+  color: #6ee7b7;
+  background: rgba(16, 185, 129, 0.16);
+}
+
+.sr-analytics-modal:not(.is-light).mode-craft .sr-analytics-side-collapse-btn:hover {
+  border-color: #38bdf8;
+  color: #7dd3fc;
+  background: rgba(2, 132, 199, 0.18);
+}
+
+.sr-analytics-modal.is-light .sr-analytics-side-collapse-btn {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+.sr-analytics-modal.is-light:not(.mode-craft) .sr-analytics-side-collapse-btn:hover {
+  border-color: #0284c7;
+  color: #0284c7;
+  background: #e0f2fe;
+}
+
+.sr-analytics-modal.is-light.mode-craft .sr-analytics-side-collapse-btn:hover {
+  border-color: #059669;
+  color: #047857;
+  background: #d1fae5;
+}
+
+.sr-analytics-sidebar-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 11px;
+  border-radius: 9px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px dashed rgba(148, 163, 184, 0.42);
+  background: rgba(15, 23, 42, 0.68);
+  color: #cbd5e1;
+  transition: all 0.16s ease;
+}
+
+.sr-analytics-sidebar-toggle-btn:hover,
+.sr-analytics-sidebar-toggle-btn.is-collapsed {
+  border-style: solid;
+  border-color: #34d399;
+  color: #6ee7b7;
+  background: rgba(16, 185, 129, 0.18);
+}
+
+.sr-analytics-modal:not(.is-light).mode-craft .sr-analytics-sidebar-toggle-btn:hover,
+.sr-analytics-modal:not(.is-light).mode-craft .sr-analytics-sidebar-toggle-btn.is-collapsed {
+  border-style: solid;
+  border-color: #38bdf8;
+  color: #7dd3fc;
+  background: rgba(2, 132, 199, 0.22);
+}
+
+.sr-analytics-modal.is-light .sr-analytics-sidebar-toggle-btn {
+  background: #ffffff;
+  border-color: #94a3b8;
+  color: #334155;
+}
+
+.sr-analytics-modal.is-light:not(.mode-craft) .sr-analytics-sidebar-toggle-btn:hover,
+.sr-analytics-modal.is-light:not(.mode-craft) .sr-analytics-sidebar-toggle-btn.is-collapsed {
+  border-style: solid;
+  border-color: #0284c7;
+  color: #0369a1;
+  background: #e0f2fe;
+}
+
+.sr-analytics-modal.is-light.mode-craft .sr-analytics-sidebar-toggle-btn:hover,
+.sr-analytics-modal.is-light.mode-craft .sr-analytics-sidebar-toggle-btn.is-collapsed {
+  border-style: solid;
+  border-color: #059669;
+  color: #047857;
+  background: #d1fae5;
+}
+
+@media (max-width: 1080px) {
+  .sr-analytics-sidebar-toggle-btn,
+  .sr-analytics-side-collapse-btn {
+    display: none !important;
+  }
+}
+
+.sr-page.is-mobile-shell .bg-topbar .bg-count-pill,
+.sr-page.is-mobile-shell .bg-topbar .bg-topbar-right {
+  display: none !important;
 }
 </style>
