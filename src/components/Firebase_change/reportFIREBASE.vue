@@ -1,5 +1,9 @@
 <template>
-  <div class="report-container page" :class="{ 'theme-light-blue': uiTheme === 'light' }">
+  <div
+    class="report-container page"
+    :class="{ 'theme-light-blue': uiTheme === 'light', 'theme-custom-glass': uiTheme === 'custom' }"
+    :style="uiTheme === 'custom' ? customGlassStyleVars : null"
+  >
     <!-- MODULE 1A: MINIMAL PAGE IDENTITY HEADER -->
     <header class="bg-topbar" data-guide="report-topbar">
       <div class="bg-brand-title-wrap">
@@ -10,6 +14,256 @@
           <h1 class="bg-page-title">Quản Lý Báo Cáo</h1>
           <span class="bg-page-subtitle bg-hide-sm">Theo dõi tiến độ &amp; điều phối lịch công việc</span>
         </div>
+      </div>
+
+      <div class="bg-theme-switch-anchor">
+        <div class="bg-theme-mode-switch" role="tablist" aria-label="Chế độ giao diện">
+          <button
+            type="button"
+            class="bg-theme-seg-btn"
+            :class="{ 'is-active': uiTheme === 'dark' }"
+            @click="setUiTheme('dark')"
+            title="Giao diện Dark Navy"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+            <span>Dark</span>
+          </button>
+          <button
+            type="button"
+            class="bg-theme-seg-btn"
+            :class="{ 'is-active': uiTheme === 'light' }"
+            @click="setUiTheme('light')"
+            title="Giao diện Enterprise Light Blue"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+            <span>Light</span>
+          </button>
+          <button
+            type="button"
+            class="bg-theme-seg-btn is-custom-glass"
+            :class="{ 'is-active': uiTheme === 'custom' }"
+            @click="onClickCustomThemeBtn"
+            title="Giao diện Custom Glassify (Nhấn lần nữa để mở bảng chỉnh độ trong suốt & độ sáng kính)"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3" ry="3"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+            <span>Custom</span>
+          </button>
+          <button
+            v-if="uiTheme === 'custom'"
+            type="button"
+            class="bg-theme-tuner-btn"
+            :class="{ 'is-open': showCustomGlassTuner }"
+            @click.stop="showCustomGlassTuner = !showCustomGlassTuner"
+            title="Tùy chỉnh độ sáng kính, độ trong suốt & ảnh nền"
+            aria-label="Mở bảng tùy chỉnh kính mờ"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
+          </button>
+        </div>
+
+        <!-- POPOVER TÙY CHỈNH KÍNH MỜ (CUSTOM GLASS TUNER — TELEPORTED TO BODY TO PREVENT CLIPPING/OVERLAP) -->
+        <Teleport to="body">
+          <div
+            v-if="uiTheme === 'custom' && showCustomGlassTuner"
+            class="bg-custom-tuner-backdrop"
+            @click="showCustomGlassTuner = false"
+          ></div>
+          <Transition name="bg-pop-fade">
+            <div
+              v-if="uiTheme === 'custom' && showCustomGlassTuner"
+              class="bg-custom-tuner-popover"
+              role="dialog"
+              aria-label="Bảng tùy chỉnh giao diện kính mờ"
+              @click.stop
+            >
+              <div class="bg-ct-head">
+                <div class="bg-ct-head-left">
+                  <span class="bg-ct-badge-ic" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
+                  </span>
+                  <div>
+                    <div class="bg-ct-title">Tùy chỉnh Kính mờ (Glassify)</div>
+                    <div class="bg-ct-sub">Kéo thanh trượt để chỉnh trực tiếp</div>
+                  </div>
+                </div>
+                <div class="bg-ct-head-actions">
+                  <button type="button" class="bg-ct-reset-btn" @click="resetCustomGlassConfig" title="Khôi phục thông số kính mặc định">
+                    Đặt lại
+                  </button>
+                  <button type="button" class="bg-ct-close-btn" @click="showCustomGlassTuner = false" title="Đóng">✕</button>
+                </div>
+              </div>
+
+              <!-- 3 Preset Chọn Nhanh -->
+              <div class="bg-ct-preset-section">
+                <div class="bg-ct-sec-label">Cấu hình mẫu (Presets)</div>
+                <div class="bg-ct-preset-grid">
+                  <button
+                    type="button"
+                    class="bg-ct-preset-btn"
+                    :class="{ 'is-active': activeGlassPreset === 'ios_frost' }"
+                    @click="applyGlassPreset('ios_frost')"
+                  >
+                    <span class="bg-ct-preset-dot is-frost"></span>
+                    <span>iOS Frosted</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="bg-ct-preset-btn"
+                    :class="{ 'is-active': activeGlassPreset === 'ocean_dark' }"
+                    @click="applyGlassPreset('ocean_dark')"
+                  >
+                    <span class="bg-ct-preset-dot is-ocean"></span>
+                    <span>Ocean Dark</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="bg-ct-preset-btn"
+                    :class="{ 'is-active': activeGlassPreset === 'crystal_clear' }"
+                    @click="applyGlassPreset('crystal_clear')"
+                  >
+                    <span class="bg-ct-preset-dot is-clear"></span>
+                    <span>Trong suốt</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- 4 Thanh Progress Điều Chỉnh Trực Tiếp -->
+              <div class="bg-ct-sliders-stack">
+                <!-- 1. Độ sáng mặt kính (Frost Brightness) -->
+                <div class="bg-ct-slider-row">
+                  <div class="bg-ct-slider-top">
+                    <span class="bg-ct-slider-lbl">Độ sáng mặt kính (Sương trắng)</span>
+                    <span class="bg-ct-slider-val bg-tabular">{{ customGlassConfig.brightness }}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    class="bg-ct-range"
+                    min="0"
+                    max="85"
+                    step="1"
+                    v-model.number="customGlassConfig.brightness"
+                    :style="{ '--range-pct': Math.round((customGlassConfig.brightness / 85) * 100) + '%' }"
+                  />
+                  <div class="bg-ct-slider-hints">
+                    <span>Kính tối (0%)</span>
+                    <span>Kính trắng mờ (85%)</span>
+                  </div>
+                </div>
+
+                <!-- 2. Độ đục / Trong suốt (Glass Opacity) -->
+                <div class="bg-ct-slider-row">
+                  <div class="bg-ct-slider-top">
+                    <span class="bg-ct-slider-lbl">Độ đục mặt kính (Opacity)</span>
+                    <span class="bg-ct-slider-val bg-tabular">{{ customGlassConfig.opacity }}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    class="bg-ct-range"
+                    min="12"
+                    max="86"
+                    step="1"
+                    v-model.number="customGlassConfig.opacity"
+                    :style="{ '--range-pct': Math.round(((customGlassConfig.opacity - 12) / 74) * 100) + '%' }"
+                  />
+                  <div class="bg-ct-slider-hints">
+                    <span>Trong veo (12%)</span>
+                    <span>Đặc (86%)</span>
+                  </div>
+                </div>
+
+                <!-- 3. Độ mờ sương (Backdrop Blur) -->
+                <div class="bg-ct-slider-row">
+                  <div class="bg-ct-slider-top">
+                    <span class="bg-ct-slider-lbl">Độ nhòe kính (Backdrop Blur)</span>
+                    <span class="bg-ct-slider-val bg-tabular">{{ customGlassConfig.blur }}px</span>
+                  </div>
+                  <input
+                    type="range"
+                    class="bg-ct-range"
+                    min="0"
+                    max="36"
+                    step="1"
+                    v-model.number="customGlassConfig.blur"
+                    :style="{ '--range-pct': Math.round((customGlassConfig.blur / 36) * 100) + '%' }"
+                  />
+                  <div class="bg-ct-slider-hints">
+                    <span>Rõ nền (0px)</span>
+                    <span>Mờ sương (36px)</span>
+                  </div>
+                </div>
+
+                <!-- 4. Độ dịu ảnh nền (Wallpaper Dim) -->
+                <div class="bg-ct-slider-row">
+                  <div class="bg-ct-slider-top">
+                    <span class="bg-ct-slider-lbl">Độ dịu ảnh nền (Wallpaper Dim)</span>
+                    <span class="bg-ct-slider-val bg-tabular">{{ customGlassConfig.dim }}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    class="bg-ct-range"
+                    min="0"
+                    max="75"
+                    step="1"
+                    v-model.number="customGlassConfig.dim"
+                    :style="{ '--range-pct': Math.round((customGlassConfig.dim / 75) * 100) + '%' }"
+                  />
+                  <div class="bg-ct-slider-hints">
+                    <span>Ảnh rực rỡ (0%)</span>
+                    <span>Dịu tối (75%)</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Đổi ảnh nền tùy chọn -->
+              <div class="bg-ct-wallpaper-section">
+                <div class="bg-ct-sec-label">Ảnh nền (Wallpaper)</div>
+                <div class="bg-ct-wp-actions">
+                  <button
+                    type="button"
+                    class="bg-ct-wp-btn"
+                    :class="{ 'is-active': customGlassConfig.wallpaper === '/hon-mun-island-in-nha-trang.jpg' }"
+                    @click="setDefaultHonMunWallpaper"
+                  >
+                    Hòn Mun Nha Trang
+                  </button>
+                  <button
+                    type="button"
+                    class="bg-ct-wp-btn"
+                    @click="triggerCustomWallpaperUpload"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    <span>Tải ảnh từ máy</span>
+                  </button>
+                  <input
+                    ref="customWallpaperFileInputRef"
+                    type="file"
+                    accept="image/*"
+                    style="display: none"
+                    @change="onCustomWallpaperFileChange"
+                  />
+                </div>
+                <div class="bg-ct-wp-url-row">
+                  <input
+                    type="text"
+                    class="bg-ct-wp-url-input"
+                    v-model.trim="customWallpaperUrlInput"
+                    placeholder="Hoặc dán link URL ảnh nền..."
+                    @keydown.enter.prevent="applyCustomWallpaperUrl"
+                  />
+                  <button
+                    type="button"
+                    class="bg-ct-wp-apply-btn"
+                    :disabled="!customWallpaperUrlInput"
+                    @click="applyCustomWallpaperUrl"
+                  >
+                    Áp dụng
+                  </button>
+                </div>
+              </div>
+            </div>
+          </Transition>
+        </Teleport>
       </div>
     </header>
 
@@ -557,17 +811,31 @@
           </button>
         </div>
 
-        <!-- Dual-Theme Toggle (Dark Navy ⇄ Enterprise Light Blue) placed right beside View Switcher on PC & Mobile -->
+        <!-- Tri-Theme Toggle (Dark Navy ⇄ Light Blue ⇄ Custom Glass Hòn Mun) placed right beside View Switcher on PC & Mobile -->
         <button
           type="button"
           class="bg-btn bg-btn-theme"
           @click="toggleUiTheme"
-          :title="uiTheme === 'light' ? 'Chuyển sang giao diện Dark Navy' : 'Chuyển sang giao diện Light Blue'"
-          :aria-label="uiTheme === 'light' ? 'Chuyển sang giao diện Dark Navy' : 'Chuyển sang giao diện Light Blue'"
+          :title="uiTheme === 'dark' ? 'Đang ở Dark Navy — Nhấn để sang Light Blue' : (uiTheme === 'light' ? 'Đang ở Light Blue — Nhấn để sang Custom Glass (Hòn Mun)' : 'Đang ở Custom Glass (Hòn Mun) — Nhấn để sang Dark Navy')"
+          :aria-label="uiTheme === 'dark' ? 'Chuyển sang giao diện Light Blue' : (uiTheme === 'light' ? 'Chuyển sang giao diện Custom Glass' : 'Chuyển sang giao diện Dark Navy')"
         >
-          <svg v-if="uiTheme === 'light'" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-          <svg v-else xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-          <span class="bg-theme-btn-lbl">{{ uiTheme === 'light' ? 'Dark' : 'Light' }}</span>
+          <svg v-if="uiTheme === 'dark'" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+          <svg v-else-if="uiTheme === 'light'" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+          <svg v-else xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3" ry="3"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+          <span class="bg-theme-btn-lbl">{{ uiTheme === 'dark' ? 'Dark' : (uiTheme === 'light' ? 'Light' : 'Custom') }}</span>
+        </button>
+
+        <button
+          v-if="uiTheme === 'custom'"
+          type="button"
+          class="bg-btn bg-btn-theme is-tuner-shortcut"
+          :class="{ 'is-active': showCustomGlassTuner }"
+          @click.stop="showCustomGlassTuner = !showCustomGlassTuner"
+          title="Tùy chỉnh độ sáng kính & độ trong suốt"
+          aria-label="Mở bảng tùy chỉnh kính mờ"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="14.5" height="14.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
+          <span class="bg-theme-btn-lbl">Chỉnh kính</span>
         </button>
 
         <!-- Interactive Functional Mindmap & Live Spotlight Guide (PC: "Hướng dẫn" right of Light/Dark | Mobile: "?" icon right of Light/Dark) -->
@@ -594,7 +862,8 @@
       <div
         v-if="isCompactShell && openPickerKey && pickerMetaMap[openPickerKey]"
         class="pl-sheet-overlay"
-        :class="{ 'theme-light-blue': uiTheme === 'light' }"
+        :class="{ 'theme-light-blue': uiTheme === 'light', 'theme-custom-glass': uiTheme === 'custom' }"
+        :style="uiTheme === 'custom' ? customGlassStyleVars : null"
         @click.self="closePicker"
       >
         <div class="pl-sheet-panel">
@@ -3588,7 +3857,8 @@
       <div
         v-if="isModalOpen && isCompactShell && isMobileAttachSheetOpen"
         class="bg-attach-sheet-overlay"
-        :class="{ 'theme-light-blue': uiTheme === 'light' }"
+        :class="{ 'theme-light-blue': uiTheme === 'light', 'theme-custom-glass': uiTheme === 'custom' }"
+        :style="uiTheme === 'custom' ? customGlassStyleVars : null"
         @click.self="isMobileAttachSheetOpen = false"
       >
         <div class="bg-attach-sheet-panel">
@@ -5126,7 +5396,8 @@
     <div
       v-if="selectedImage"
       class="bg-lightbox-overlay"
-      :class="{ 'theme-light-blue': uiTheme === 'light' }"
+      :class="{ 'theme-light-blue': uiTheme === 'light', 'theme-custom-glass': uiTheme === 'custom' }"
+      :style="uiTheme === 'custom' ? customGlassStyleVars : null"
       @click="selectedImage = null"
     >
       <div class="bg-lightbox-inner" @click.stop>
@@ -5141,7 +5412,8 @@
     <div
       v-if="baogiaDialog.open"
       class="baogia-dialog-overlay"
-      :class="{ 'theme-light-blue': uiTheme === 'light' }"
+      :class="{ 'theme-light-blue': uiTheme === 'light', 'theme-custom-glass': uiTheme === 'custom' }"
+      :style="uiTheme === 'custom' ? customGlassStyleVars : null"
       role="dialog"
       aria-modal="true"
       @click.self="onBaogiaDialogBackdrop"
@@ -5227,7 +5499,8 @@
       <div
         v-if="smartToast.visible"
         class="smart-toast-wrap"
-        :class="['is-' + smartToast.type, { 'theme-light-blue': uiTheme === 'light' }]"
+        :class="['is-' + smartToast.type, { 'theme-light-blue': uiTheme === 'light', 'theme-custom-glass': uiTheme === 'custom' }]"
+        :style="uiTheme === 'custom' ? customGlassStyleVars : null"
         role="status"
         aria-live="polite"
         @mouseenter="pauseSmartToast"
@@ -5253,7 +5526,7 @@
   <ReportGuideTutorial
     ref="reportGuideRef"
     v-model="showReportGuideModal"
-    :theme-mode="uiTheme"
+    :theme-mode="uiTheme === 'dark' ? 'dark' : 'light'"
     :is-mobile="isCompactShell"
     :prepare-step="prepareReportGuideStep"
     :cleanup-auto-opened="cleanupReportGuideAutoOpened"
@@ -7448,27 +7721,291 @@ const getStorageCustomerLabel = (val) => {
   const found = uniqueStorageCustomers.value.find(o => o.key === val);
   return found ? found.label : val;
 };
-const REPORT_THEME_STORAGE_KEY = 'sonai_report_fb_theme';
+const REPORT_THEME_STORAGE_KEY = 'sonai_report_fb_theme_v2';
+const REPORT_CUSTOM_GLASS_CFG_KEY = 'sonai_report_fb_custom_glass_cfg_v1';
 const REPORT_RECENT_SEARCH_KEY = 'sonai_report_recent_searches';
 
-const uiTheme = ref(
-  (typeof window !== 'undefined' && localStorage.getItem(REPORT_THEME_STORAGE_KEY) === 'light')
-    ? 'light'
-    : 'dark'
+const DEFAULT_CUSTOM_GLASS_CONFIG = {
+  brightness: 34,
+  opacity: 46,
+  blur: 22,
+  dim: 20,
+  wallpaper: '/hon-mun-island-in-nha-trang.jpg'
+};
+
+const GLASS_PRESETS = {
+  ios_frost: { brightness: 34, opacity: 46, blur: 22, dim: 20 },
+  ocean_dark: { brightness: 6, opacity: 52, blur: 20, dim: 32 },
+  crystal_clear: { brightness: 42, opacity: 26, blur: 12, dim: 14 }
+};
+
+const getInitialReportTheme = () => {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem(REPORT_THEME_STORAGE_KEY);
+    if (saved === 'dark' || saved === 'light' || saved === 'custom') {
+      return saved;
+    }
+  }
+  return 'custom';
+};
+
+const loadInitialCustomGlassConfig = () => {
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem(REPORT_CUSTOM_GLASS_CFG_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+          return {
+            brightness: Number.isFinite(Number(parsed.brightness)) ? Math.max(0, Math.min(85, Number(parsed.brightness))) : DEFAULT_CUSTOM_GLASS_CONFIG.brightness,
+            opacity: Number.isFinite(Number(parsed.opacity)) ? Math.max(12, Math.min(86, Number(parsed.opacity))) : DEFAULT_CUSTOM_GLASS_CONFIG.opacity,
+            blur: Number.isFinite(Number(parsed.blur)) ? Math.max(0, Math.min(36, Number(parsed.blur))) : DEFAULT_CUSTOM_GLASS_CONFIG.blur,
+            dim: Number.isFinite(Number(parsed.dim)) ? Math.max(0, Math.min(75, Number(parsed.dim))) : DEFAULT_CUSTOM_GLASS_CONFIG.dim,
+            wallpaper: typeof parsed.wallpaper === 'string' && parsed.wallpaper.trim() ? parsed.wallpaper.trim() : DEFAULT_CUSTOM_GLASS_CONFIG.wallpaper
+          };
+        }
+      }
+    } catch (e) {}
+  }
+  return { ...DEFAULT_CUSTOM_GLASS_CONFIG };
+};
+
+const uiTheme = ref(getInitialReportTheme());
+const showCustomGlassTuner = ref(false);
+const customGlassConfig = ref(loadInitialCustomGlassConfig());
+const customWallpaperFileInputRef = ref(null);
+const customWallpaperUrlInput = ref('');
+
+watch(
+  customGlassConfig,
+  (val) => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(REPORT_CUSTOM_GLASS_CFG_KEY, JSON.stringify(val));
+    } catch (e) {}
+  },
+  { deep: true }
 );
 
-const toggleUiTheme = () => {
-  uiTheme.value = uiTheme.value === 'light' ? 'dark' : 'light';
+const activeGlassPreset = computed(() => {
+  const c = customGlassConfig.value;
+  for (const [key, preset] of Object.entries(GLASS_PRESETS)) {
+    if (
+      Number(c.brightness) === preset.brightness &&
+      Number(c.opacity) === preset.opacity &&
+      Number(c.blur) === preset.blur &&
+      Number(c.dim) === preset.dim
+    ) {
+      return key;
+    }
+  }
+  return '';
+});
+
+const applyGlassPreset = (presetKey) => {
+  const preset = GLASS_PRESETS[presetKey];
+  if (!preset) return;
+  customGlassConfig.value = {
+    ...customGlassConfig.value,
+    brightness: preset.brightness,
+    opacity: preset.opacity,
+    blur: preset.blur,
+    dim: preset.dim
+  };
+};
+
+const resetCustomGlassConfig = () => {
+  customGlassConfig.value = { ...DEFAULT_CUSTOM_GLASS_CONFIG };
+  customWallpaperUrlInput.value = '';
+  showToast('Đã khôi phục thông số kính mờ iOS Frosted mặc định', 'info', 2000);
+};
+
+const setDefaultHonMunWallpaper = () => {
+  customGlassConfig.value.wallpaper = '/hon-mun-island-in-nha-trang.jpg';
+  customWallpaperUrlInput.value = '';
+  showToast('Đã đặt ảnh nền Hòn Mun Nha Trang', 'info', 1800);
+};
+
+const triggerCustomWallpaperUpload = () => {
+  if (customWallpaperFileInputRef.value) {
+    customWallpaperFileInputRef.value.value = '';
+    customWallpaperFileInputRef.value.click();
+  }
+};
+
+const onCustomWallpaperFileChange = (e) => {
+  const file = e?.target?.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const rawDataUrl = String(ev?.target?.result || '');
+    if (!rawDataUrl) return;
+    // Compress/resize large images so localStorage never overflows
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const maxW = 1920;
+        const maxH = 1200;
+        let w = img.width || 1600;
+        let h = img.height || 900;
+        if (w > maxW || h > maxH) {
+          const ratio = Math.min(maxW / w, maxH / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        const compressed = canvas.toDataURL('image/jpeg', 0.84);
+        customGlassConfig.value.wallpaper = compressed;
+        showToast('Đã cập nhật ảnh nền từ máy của bạn', 'success', 2200);
+      } catch (err) {
+        customGlassConfig.value.wallpaper = rawDataUrl;
+        showToast('Đã cập nhật ảnh nền từ máy của bạn', 'success', 2200);
+      }
+    };
+    img.src = rawDataUrl;
+  };
+  reader.readAsDataURL(file);
+};
+
+const applyCustomWallpaperUrl = () => {
+  const url = String(customWallpaperUrlInput.value || '').trim();
+  if (!url) return;
+  customGlassConfig.value.wallpaper = url;
+  showToast('Đã áp dụng ảnh nền từ URL', 'success', 2000);
+};
+
+const customGlassStyleVars = computed(() => {
+  const c = customGlassConfig.value || DEFAULT_CUSTOM_GLASS_CONFIG;
+  const b = Math.max(0, Math.min(85, Number(c.brightness) || 0)) / 100;
+  const op = Math.max(12, Math.min(86, Number(c.opacity) || 46)) / 100;
+  const blur = Math.max(0, Math.min(36, Number(c.blur) ?? 22));
+  const dim = Math.max(0, Math.min(75, Number(c.dim) ?? 20)) / 100;
+
+  // Interpolate base RGB from Deep Ocean (8, 28, 46) -> Frosted Milky White-Ice (230, 242, 252)
+  const r = Math.round(8 + b * 222);
+  const g = Math.round(28 + b * 214);
+  const bl = Math.round(46 + b * 206);
+
+  const r2 = Math.round(4 + b * 198);
+  const g2 = Math.round(18 + b * 195);
+  const bl2 = Math.round(34 + b * 190);
+
+  const aPanelTop = Math.min(0.92, +(op + 0.04).toFixed(3));
+  const aPanelBot = Math.max(0.08, +(op - 0.10).toFixed(3));
+  const aCardTop = Math.min(0.94, +(op + 0.10).toFixed(3));
+  const aCardBot = Math.max(0.10, +(op - 0.03).toFixed(3));
+  const aCardHoverTop = Math.min(0.96, +(op + 0.18).toFixed(3));
+  const aCardHoverBot = Math.min(0.92, +(op + 0.06).toFixed(3));
+  const aWell = Math.max(0.08, +(op - 0.06).toFixed(3));
+  const aInput = Math.max(0.12, +(op - 0.02).toFixed(3));
+  const aSubhead = Math.min(0.90, +(op + 0.02).toFixed(3));
+  const aModalTop = Math.min(0.96, +(op + 0.30).toFixed(3));
+  const aModalBot = Math.min(0.94, +(op + 0.22).toFixed(3));
+
+  const borderAlpha = +(0.24 + b * 0.48).toFixed(3);
+  const borderStrongAlpha = +(0.38 + b * 0.50).toFixed(3);
+  const specularAlpha = +(0.24 + b * 0.52).toFixed(3);
+
+  const dimTop = +(dim * 0.85).toFixed(3);
+  const dimMid = +(dim * 0.65).toFixed(3);
+  const dimBot = +(dim * 1.15).toFixed(3);
+
+  const rawWp = (c.wallpaper || '/hon-mun-island-in-nha-trang.jpg').replace(/"/g, '\\"');
+
+  return {
+    '--cg-panel-top': `rgba(${r}, ${g}, ${bl}, ${aPanelTop})`,
+    '--cg-panel-bot': `rgba(${r2}, ${g2}, ${bl2}, ${aPanelBot})`,
+    '--cg-card-top': `rgba(${r}, ${g}, ${bl}, ${aCardTop})`,
+    '--cg-card-bot': `rgba(${r2}, ${g2}, ${bl2}, ${aCardBot})`,
+    '--cg-card-hover-top': `rgba(${r}, ${g}, ${bl}, ${aCardHoverTop})`,
+    '--cg-card-hover-bot': `rgba(${r2}, ${g2}, ${bl2}, ${aCardHoverBot})`,
+    '--cg-well-bg': `rgba(${r2}, ${g2}, ${bl2}, ${aWell})`,
+    '--cg-input-bg': `rgba(${r}, ${g}, ${bl}, ${aInput})`,
+    '--cg-subhead-bg': `rgba(${r}, ${g}, ${bl}, ${aSubhead})`,
+    '--cg-modal-top': `rgba(${Math.round(8 + b * 95)}, ${Math.round(28 + b * 100)}, ${Math.round(46 + b * 105)}, ${aModalTop})`,
+    '--cg-modal-bot': `rgba(${Math.round(4 + b * 80)}, ${Math.round(18 + b * 85)}, ${Math.round(34 + b * 92)}, ${aModalBot})`,
+    '--cg-border': `rgba(255, 255, 255, ${borderAlpha})`,
+    '--cg-border-strong': `rgba(255, 255, 255, ${borderStrongAlpha})`,
+    '--cg-specular': `rgba(255, 255, 255, ${specularAlpha})`,
+    '--cg-blur': `${blur}px`,
+    '--cg-blur-sm': `${Math.max(0, Math.round(blur * 0.72))}px`,
+    '--cg-blur-lg': `${Math.round(blur * 1.25)}px`,
+    '--cg-dim-top': `rgba(3, 14, 26, ${dimTop})`,
+    '--cg-dim-mid': `rgba(4, 22, 38, ${dimMid})`,
+    '--cg-dim-bot': `rgba(3, 14, 26, ${dimBot})`,
+    '--cg-wallpaper': `url("${rawWp}")`
+  };
+});
+
+const syncCustomGlassVarsToDocumentRoot = () => {
+  if (typeof document === 'undefined') return;
+  const rootStyle = document.documentElement.style;
+  const vars = customGlassStyleVars.value;
+  if (uiTheme.value === 'custom' && vars) {
+    for (const [k, v] of Object.entries(vars)) {
+      rootStyle.setProperty(k, String(v));
+    }
+  } else {
+    for (const k of Object.keys(vars || {})) {
+      rootStyle.removeProperty(k);
+    }
+  }
+};
+
+watch([uiTheme, customGlassStyleVars], () => {
+  syncCustomGlassVarsToDocumentRoot();
+}, { immediate: true });
+
+onMounted(() => {
+  syncCustomGlassVarsToDocumentRoot();
+});
+
+onUnmounted(() => {
+  if (typeof document !== 'undefined') {
+    const rootStyle = document.documentElement.style;
+    for (const k of Object.keys(customGlassStyleVars.value || {})) {
+      rootStyle.removeProperty(k);
+    }
+  }
+});
+
+const setUiTheme = (nextTheme) => {
+  if (!nextTheme || uiTheme.value === nextTheme) return;
+  uiTheme.value = nextTheme;
+  if (nextTheme !== 'custom') {
+    showCustomGlassTuner.value = false;
+  }
   try {
     localStorage.setItem(REPORT_THEME_STORAGE_KEY, uiTheme.value);
   } catch (e) {}
   showToast(
-    uiTheme.value === 'light'
-      ? 'Đã chuyển giao diện Enterprise Light Blue'
-      : 'Đã chuyển giao diện Dark Navy',
+    uiTheme.value === 'custom'
+      ? 'Đã chuyển giao diện Custom Glassify (Nhấn icon thanh trượt để chỉnh độ trong suốt & độ sáng kính)'
+      : uiTheme.value === 'light'
+        ? 'Đã chuyển giao diện Enterprise Light Blue'
+        : 'Đã chuyển giao diện Dark Navy',
     'info',
-    2200
+    2400
   );
+};
+
+const onClickCustomThemeBtn = () => {
+  if (uiTheme.value !== 'custom') {
+    setUiTheme('custom');
+  } else {
+    showCustomGlassTuner.value = !showCustomGlassTuner.value;
+  }
+};
+
+const toggleUiTheme = () => {
+  const order = ['dark', 'light', 'custom'];
+  const idx = order.indexOf(uiTheme.value);
+  const next = order[(idx + 1) % order.length];
+  setUiTheme(next);
 };
 
 // --- Split Search & Recent Search Chips (max 8) ---
@@ -17411,6 +17948,36 @@ span[style*="color: #334155"] {
   background: #e3edf9 !important;
 }
 
+/* Ensure PC Sidebar (.sidebar, z-index: 100) NEVER covers any Report Modal (.bg-modal-overlay, etc.) */
+:global(
+  .app-layout:has(
+    .report-container.page .bg-modal-overlay,
+    .report-container.page .modal-overlay,
+    .report-container.page .elite-modal-overlay,
+    .report-container.page .taste-modal-overlay,
+    .report-container.page .baogia-dialog-overlay,
+    .report-container.page .pl-sheet-overlay,
+    .report-container.page .bg-attach-sheet-overlay
+  ) > .sidebar
+) {
+  z-index: 1 !important;
+  pointer-events: none !important;
+}
+
+:global(
+  .app-layout:has(
+    .report-container.page .bg-modal-overlay,
+    .report-container.page .modal-overlay,
+    .report-container.page .elite-modal-overlay,
+    .report-container.page .taste-modal-overlay,
+    .report-container.page .baogia-dialog-overlay,
+    .report-container.page .pl-sheet-overlay,
+    .report-container.page .bg-attach-sheet-overlay
+  ) .main-content
+) {
+  z-index: 100020 !important;
+}
+
 .report-container.page {
   background: var(--bg-page-canvas) !important;
   color: var(--bg-text);
@@ -17424,6 +17991,11 @@ span[style*="color: #334155"] {
   box-sizing: border-box;
   overflow-x: clip;
   transition: background 0.25s ease, color 0.2s ease;
+}
+
+.bg-board-anchor {
+  position: relative;
+  z-index: 5;
 }
 
 .bg-board-anchor:not(.is-calendar-mode) {
@@ -17523,6 +18095,8 @@ span[style*="color: #334155"] {
 
 /* 2-Column Asymmetric Bento Command Deck */
 .bg-bento-deck {
+  position: relative;
+  z-index: 80;
   display: grid;
   grid-template-columns: minmax(0, 1.56fr) minmax(345px, 1fr);
   gap: 14px;
@@ -17530,9 +18104,14 @@ span[style*="color: #334155"] {
   margin-bottom: 14px;
 }
 
+.bg-bento-deck:has(.pl-popover, .bg-recent-dropdown) {
+  z-index: 500 !important;
+}
+
 /* Right Bento: Asymmetric Status Cards (Col 1: Tall Hero Total | Col 2: 3 Stacked Rows) */
 .bg-kpi-grid {
   position: relative;
+  z-index: 10;
   display: grid;
   grid-template-columns: minmax(146px, 0.92fr) minmax(0, 1.26fr);
   gap: 10px;
@@ -18314,6 +18893,7 @@ span[style*="color: #334155"] {
 ============================================================================ */
 .bg-filter-strip {
   position: relative;
+  z-index: 90;
   background: var(--bg-glass-panel);
   border: 1px solid var(--bg-glass-border);
   border-radius: 18px;
@@ -18322,10 +18902,14 @@ span[style*="color: #334155"] {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  overflow: visible;
+  overflow: visible !important;
   box-shadow:
     inset 0 1px 0 var(--bg-specular),
     var(--bg-shadow-panel);
+}
+
+.bg-filter-strip:has(.pl-popover, .bg-recent-dropdown) {
+  z-index: 450 !important;
 }
 
 .report-container.page.theme-light-blue .bg-filter-strip {
@@ -18676,6 +19260,9 @@ span[style*="color: #334155"] {
 
 /* Tier 2: Balanced 5-Column Single-Row Sub-Bar for Attribute Pickers (2A) */
 .bg-filter-row-pickers {
+  position: relative;
+  z-index: 95;
+  overflow: visible !important;
   display: grid;
   grid-template-columns:
     minmax(0, 0.82fr)
@@ -18724,7 +19311,12 @@ span[style*="color: #334155"] {
 
 .pl-picker-wrap {
   position: relative;
+  z-index: 10;
   min-width: 0;
+}
+
+.pl-picker-wrap:has(.pl-popover) {
+  z-index: 300 !important;
 }
 
 .pl-picker-trigger {
@@ -18863,7 +19455,7 @@ span[style*="color: #334155"] {
   top: calc(100% + 7px);
   left: 0;
   min-width: 210px;
-  z-index: 1250;
+  z-index: 3000 !important;
   background: var(--bg-panel-elev);
   border: 1px solid var(--bg-border-strong);
   border-radius: 14px;
@@ -19062,6 +19654,7 @@ span[style*="color: #334155"] {
 .bg-modal-overlay {
   position: fixed;
   inset: 0;
+  z-index: 100020 !important;
   background: var(--bg-overlay);
   backdrop-filter: blur(8px);
   display: flex;
@@ -27110,5 +27703,966 @@ span[style*="color: #334155"] {
 
 .bg-mcal-mcell.is-selected .bg-mcal-mdot.is-done {
   background: #ffffff;
+}
+
+/* ============================================================================
+   CUSTOM GLASSIFY UI MODE (HÒN MUN NHA TRANG WALLPAPER + DYNAMIC GLASS TUNER)
+============================================================================ */
+.bg-theme-switch-anchor {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  z-index: 120;
+}
+
+.bg-theme-mode-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3.5px;
+  border-radius: 999px;
+  background: var(--bg-well);
+  border: 1px solid var(--bg-glass-border);
+  box-shadow:
+    inset 0 1px 0 var(--bg-specular),
+    0 6px 18px -8px rgba(0, 0, 0, 0.38);
+  flex-shrink: 0;
+}
+
+.bg-theme-seg-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 29px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--bg-text-sec);
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s var(--bg-ease);
+  white-space: nowrap;
+}
+
+.bg-theme-seg-btn:hover:not(.is-active) {
+  color: var(--bg-text);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.bg-theme-seg-btn.is-active {
+  background: var(--theme-pri-grad);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #ffffff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 4px 12px -3px var(--theme-pri-shadow);
+}
+
+.bg-theme-seg-btn.is-custom-glass.is-active {
+  background: linear-gradient(135deg, #06b6d4 0%, #0284c7 52%, #059669 100%) !important;
+  border-color: rgba(165, 243, 252, 0.65) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.38),
+    0 4px 14px -2px rgba(6, 182, 212, 0.5) !important;
+}
+
+.bg-theme-tuner-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 29px;
+  height: 29px;
+  border-radius: 50%;
+  border: 1px solid rgba(165, 243, 252, 0.45);
+  background: rgba(6, 182, 212, 0.22);
+  color: #e0f2fe;
+  cursor: pointer;
+  transition: all 0.18s var(--bg-ease);
+  flex-shrink: 0;
+}
+
+.bg-theme-tuner-btn:hover,
+.bg-theme-tuner-btn.is-open {
+  background: linear-gradient(135deg, #06b6d4 0%, #10b981 100%);
+  border-color: #ffffff;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(6, 182, 212, 0.55);
+}
+
+.bg-btn-theme.is-tuner-shortcut.is-active {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.32) 0%, rgba(16, 185, 129, 0.28) 100%) !important;
+  border-color: rgba(165, 243, 252, 0.72) !important;
+  color: #ffffff !important;
+}
+
+/* --- Custom Glass Tuner Popover (Teleported to body) --- */
+.bg-custom-tuner-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000089;
+  background: transparent;
+}
+
+.bg-custom-tuner-popover {
+  position: fixed;
+  top: 64px;
+  right: 20px;
+  z-index: 1000090;
+  width: 344px;
+  max-height: calc(100dvh - 80px);
+  overflow-y: auto;
+  padding: 14px;
+  border-radius: 18px;
+  background: linear-gradient(160deg, rgba(10, 28, 46, 0.90) 0%, rgba(6, 18, 32, 0.94) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.38),
+    0 24px 54px -10px rgba(2, 8, 20, 0.78);
+  backdrop-filter: blur(26px) saturate(185%);
+  -webkit-backdrop-filter: blur(26px) saturate(185%);
+  color: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.bg-ct-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.bg-ct-head-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.bg-ct-badge-ic {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.28) 0%, rgba(16, 185, 129, 0.28) 100%);
+  border: 1px solid rgba(165, 243, 252, 0.45);
+  color: #67e8f9;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.bg-ct-title {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+.bg-ct-sub {
+  font-size: 0.67rem;
+  color: #cbd5e1;
+  margin-top: 1px;
+}
+
+.bg-ct-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.bg-ct-reset-btn {
+  height: 25px;
+  padding: 0 8.5px;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.bg-ct-reset-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #ffffff;
+}
+
+.bg-ct-close-btn {
+  width: 25px;
+  height: 25px;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+  font-size: 0.74rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.bg-ct-close-btn:hover {
+  background: rgba(244, 63, 94, 0.28);
+  border-color: rgba(251, 113, 133, 0.55);
+  color: #ffffff;
+}
+
+.bg-ct-sec-label {
+  font-size: 0.67rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+  margin-bottom: 6px;
+}
+
+.bg-ct-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.bg-ct-preset-btn {
+  height: 31px;
+  padding: 0 7px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.07);
+  color: #e2e8f0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  white-space: nowrap;
+}
+
+.bg-ct-preset-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.34);
+}
+
+.bg-ct-preset-btn.is-active {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.36) 0%, rgba(16, 185, 129, 0.32) 100%);
+  border-color: #67e8f9;
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.bg-ct-preset-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.bg-ct-preset-dot.is-frost {
+  background: linear-gradient(135deg, #f8fafc 0%, #93c5fd 100%);
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.75);
+}
+
+.bg-ct-preset-dot.is-ocean {
+  background: linear-gradient(135deg, #0284c7 0%, #0f172a 100%);
+  border: 1px solid rgba(125, 211, 252, 0.7);
+}
+
+.bg-ct-preset-dot.is-clear {
+  background: rgba(255, 255, 255, 0.25);
+  border: 1.5px solid #67e8f9;
+}
+
+.bg-ct-sliders-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.bg-ct-slider-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bg-ct-slider-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.bg-ct-slider-lbl {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.bg-ct-slider-val {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #67e8f9;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(6, 182, 212, 0.16);
+  border: 1px solid rgba(103, 232, 249, 0.3);
+}
+
+.bg-ct-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    #06b6d4 0%,
+    #10b981 var(--range-pct, 45%),
+    rgba(255, 255, 255, 0.18) var(--range-pct, 45%),
+    rgba(255, 255, 255, 0.18) 100%
+  );
+  outline: none;
+  cursor: pointer;
+}
+
+.bg-ct-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #06b6d4;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+  cursor: grab;
+  transition: transform 0.12s ease;
+}
+
+.bg-ct-range::-webkit-slider-thumb:active {
+  transform: scale(1.16);
+  cursor: grabbing;
+}
+
+.bg-ct-range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #06b6d4;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+  cursor: grab;
+}
+
+.bg-ct-slider-hints {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.62rem;
+  color: #94a3b8;
+}
+
+.bg-ct-wallpaper-section {
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.bg-ct-wp-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.bg-ct-wp-btn {
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.bg-ct-wp-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.36);
+}
+
+.bg-ct-wp-btn.is-active {
+  background: rgba(6, 182, 212, 0.25);
+  border-color: #67e8f9;
+  color: #ffffff;
+}
+
+.bg-ct-wp-url-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bg-ct-wp-url-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 29px;
+  padding: 0 9px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(4, 15, 28, 0.55);
+  color: #ffffff;
+  font-size: 0.7rem;
+  outline: none;
+}
+
+.bg-ct-wp-url-input::placeholder {
+  color: #94a3b8;
+}
+
+.bg-ct-wp-url-input:focus {
+  border-color: #38bdf8;
+}
+
+.bg-ct-wp-apply-btn {
+  height: 29px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(103, 232, 249, 0.45);
+  background: linear-gradient(135deg, #06b6d4 0%, #0284c7 100%);
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.bg-ct-wp-apply-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ============================================================================
+   DYNAMIC FROSTED GLASS THEME TOKENS (DARK-BASE + BRIGHT FROST SHEEN)
+============================================================================ */
+.report-container.page.theme-custom-glass,
+.pl-sheet-overlay.theme-custom-glass,
+.bg-attach-sheet-overlay.theme-custom-glass,
+.bg-lightbox-overlay.theme-custom-glass,
+.baogia-dialog-overlay.theme-custom-glass,
+.smart-toast-wrap.theme-custom-glass {
+  --bg-page: #041524;
+  --bg-page-canvas: transparent;
+  --bg-panel: var(--cg-panel-top, rgba(83, 101, 116, 0.50));
+  --bg-panel-elev: var(--cg-card-top, rgba(83, 101, 116, 0.56));
+  --bg-glass-panel: linear-gradient(155deg, var(--cg-panel-top, rgba(83, 101, 116, 0.50)) 0%, var(--cg-panel-bot, rgba(71, 84, 99, 0.36)) 100%);
+  --bg-glass-border: var(--cg-border, rgba(255, 255, 255, 0.40));
+  --bg-modal-surface: linear-gradient(165deg, var(--cg-modal-top, rgba(40, 62, 82, 0.76)) 0%, var(--cg-modal-bot, rgba(31, 47, 65, 0.68)) 100%);
+  --bg-group-surface: var(--cg-subhead-bg, rgba(83, 101, 116, 0.48));
+  --bg-group-border: var(--cg-border, rgba(255, 255, 255, 0.36));
+  --bg-soft-pad: var(--cg-input-bg, rgba(83, 101, 116, 0.44));
+  --bg-soft-pad-bd: var(--cg-border, rgba(255, 255, 255, 0.36));
+  --bg-well: var(--cg-well-bg, rgba(71, 84, 99, 0.40));
+  --bg-well-border: var(--cg-border, rgba(255, 255, 255, 0.36));
+  --bg-well-shadow: inset 0 1px 2px rgba(2, 8, 20, 0.22), inset 0 1px 0 var(--cg-specular, rgba(255, 255, 255, 0.42));
+  --bg-island: var(--cg-panel-top, rgba(83, 101, 116, 0.50));
+  --bg-subbar: var(--cg-well-bg, rgba(71, 84, 99, 0.36));
+  --bg-subbar-sep: var(--cg-border, rgba(255, 255, 255, 0.32));
+  --bg-chip-rest: var(--cg-input-bg, rgba(83, 101, 116, 0.44));
+  --bg-chip-rest-bd: var(--cg-border, rgba(255, 255, 255, 0.38));
+  --bg-cselect-bg: var(--cg-input-bg, rgba(83, 101, 116, 0.48));
+  --bg-cselect-bd: var(--cg-border, rgba(255, 255, 255, 0.40));
+  --bg-specular: var(--cg-specular, rgba(255, 255, 255, 0.42));
+  --bg-specular-strong: var(--cg-border-strong, rgba(255, 255, 255, 0.55));
+
+  --bg-card: var(--cg-card-top, rgba(83, 101, 116, 0.56));
+  --bg-subtle: var(--cg-well-bg, rgba(71, 84, 99, 0.40));
+  --bg-input: var(--cg-input-bg, rgba(83, 101, 116, 0.44));
+  --bg-hover: var(--cg-card-hover-top, rgba(83, 101, 116, 0.64));
+  --bg-border: var(--cg-border, rgba(255, 255, 255, 0.40));
+  --bg-border-strong: var(--cg-border-strong, rgba(255, 255, 255, 0.55));
+  --bg-text: #f8fafc;
+  --bg-text-sec: #e2e8f0;
+  --bg-text-muted: #cbd5e1;
+  --bg-shadow-panel: 0 18px 42px -12px rgba(2, 10, 22, 0.46), 0 4px 14px -4px rgba(2, 10, 22, 0.28);
+  --bg-shadow-pop: 0 28px 60px -12px rgba(2, 8, 18, 0.68);
+  --bg-overlay: rgba(2, 10, 22, 0.52);
+  --bg-dock-glass: var(--cg-modal-top, rgba(40, 62, 82, 0.78));
+  --bg-scheme: dark;
+
+  --theme-pri: #06b6d4;
+  --theme-pri-bright: #67e8f9;
+  --theme-pri-bg: rgba(6, 182, 212, 0.24);
+  --theme-pri-bd: rgba(103, 232, 249, 0.55);
+  --theme-pri-grad: linear-gradient(135deg, #06b6d4 0%, #0284c7 100%);
+  --theme-pri-header-grad: linear-gradient(135deg, rgba(8, 145, 178, 0.72) 0%, rgba(5, 150, 105, 0.66) 100%);
+  --theme-pri-shadow: rgba(6, 182, 212, 0.42);
+  --theme-pri-ring: rgba(34, 211, 238, 0.30);
+}
+
+:global(.app-layout:has(.report-container.page.theme-custom-glass)) {
+  position: relative;
+  isolation: isolate;
+  background: #041524 !important;
+}
+
+:global(.app-layout:has(.report-container.page.theme-custom-glass)::before) {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(
+      180deg,
+      var(--cg-dim-top, rgba(3, 14, 26, 0.17)) 0%,
+      var(--cg-dim-mid, rgba(4, 22, 38, 0.13)) 45%,
+      var(--cg-dim-bot, rgba(3, 14, 26, 0.23)) 100%
+    ),
+    var(--cg-wallpaper, url('/hon-mun-island-in-nha-trang.jpg')) center center / cover no-repeat;
+  pointer-events: none;
+  transform: translateZ(0);
+}
+
+:global(.app-layout:has(.report-container.page.theme-custom-glass) .main-content) {
+  position: relative;
+  z-index: auto !important;
+  background: transparent !important;
+}
+
+/* --- Frosted Glass Sidebar & Mobile Drawer (Synced with Custom Glass Tuner) --- */
+:global(.app-layout:has(.report-container.page.theme-custom-glass) > .sidebar) {
+  background: linear-gradient(
+    165deg,
+    var(--cg-panel-top, rgba(83, 101, 116, 0.50)) 0%,
+    var(--cg-panel-bot, rgba(71, 84, 99, 0.36)) 100%
+  ) !important;
+  border-right: 1px solid var(--cg-border, rgba(255, 255, 255, 0.40)) !important;
+  box-shadow:
+    inset -1px 0 0 var(--cg-specular, rgba(255, 255, 255, 0.35)),
+    10px 0 32px -10px rgba(2, 10, 22, 0.44) !important;
+  backdrop-filter: blur(var(--cg-blur, 22px)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(var(--cg-blur, 22px)) saturate(180%) !important;
+}
+
+:global(.app-layout:has(.report-container.page.theme-custom-glass) > .sidebar .logo) {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-bottom: 1px solid var(--cg-border, rgba(255, 255, 255, 0.32)) !important;
+}
+
+:global(.app-layout:has(.report-container.page.theme-custom-glass) > .sidebar .logo-avatar-wrap) {
+  border-color: rgba(103, 232, 249, 0.65) !important;
+  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.35) !important;
+}
+
+:global(.app-layout:has(.report-container.page.theme-custom-glass) > .sidebar .logo-user-name) {
+  color: #ffffff !important;
+  text-shadow: 0 1px 6px rgba(2, 10, 22, 0.45);
+}
+
+:global(.app-layout:has(.report-container.page.theme-custom-glass) > .sidebar .logo-user-role) {
+  color: #67e8f9 !important;
+}
+
+:global(.app-layout:has(.report-container.page.theme-custom-glass) > .sidebar .toggle-btn) {
+  background: var(--cg-input-bg, rgba(83, 101, 116, 0.44)) !important;
+  border: 1px solid var(--cg-border, rgba(255, 255, 255, 0.36)) !important;
+  color: #ffffff !important;
+}
+
+:global(.app-layout:has(.report-container.page.theme-custom-glass) > .sidebar .toggle-btn:hover) {
+  background: rgba(255, 255, 255, 0.22) !important;
+  border-color: #ffffff !important;
+}
+
+:global(.app-layout:has(.report-container.page.theme-custom-glass) > .sidebar .nav-section-title) {
+  color: #bae6fd !important;
+  text-shadow: 0 1px 4px rgba(2, 10, 22, 0.42);
+}
+
+:global(.app-layout:has(.report-container.page.theme-custom-glass) > .sidebar .nav-section-title.clickable:hover) {
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: #ffffff !important;
+}
+
+:global(.app-layout:has(.report-container.page.theme-custom-glass) > .sidebar .nav-section-title.has-active-child) {
+  background: rgba(6, 182, 212, 0.22) !important;
+  color: #ffffff !important;
+  box-shadow: inset 0 0 0 1px rgba(103, 232, 249, 0.45) !important;
+}
+
+:global(.app-layout:has(.report-container.page.theme-custom-glass) > .sidebar .nav-section-divider),
+:global(.app-layout:has(.report-container.page.theme-custom-glass) > .sidebar .nav-divider) {
+  background: var(--cg-border, rgba(255, 255, 255, 0.28)) !important;
+}
+
+:global(.app-layout:has(.report-container.page.theme-custom-glass) > .sidebar .nav-item) {
+  color: #f1f5f9 !important;
+  text-shadow: 0 1px 3px rgba(2, 10, 22, 0.36);
+}
+
+:global(.app-layout:has(.report-container.page.theme-custom-glass) > .sidebar .nav-item:hover) {
+  background: rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
+}
+
+:global(.app-layout:has(.report-container.page.theme-custom-glass) > .sidebar .nav-item.router-link-active) {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.72) 0%, rgba(5, 150, 105, 0.66) 100%) !important;
+  border: 1px solid rgba(165, 243, 252, 0.65) !important;
+  color: #ffffff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    0 6px 16px -4px rgba(6, 182, 212, 0.45) !important;
+}
+
+:global(.app-layout:has(.report-container.page.theme-custom-glass) > .sidebar .sidebar-footer) {
+  background: var(--cg-well-bg, rgba(71, 84, 99, 0.40)) !important;
+  border-top: 1px solid var(--cg-border, rgba(255, 255, 255, 0.32)) !important;
+}
+
+:global(.app-layout:has(.report-container.page.theme-custom-glass) > .sidebar .footer-action-btn) {
+  background: var(--cg-input-bg, rgba(83, 101, 116, 0.44)) !important;
+  border-color: var(--cg-border, rgba(255, 255, 255, 0.36)) !important;
+  color: #f8fafc !important;
+}
+
+:global(.app-layout:has(.report-container.page.theme-custom-glass) > .sidebar .footer-action-btn:hover) {
+  background: rgba(255, 255, 255, 0.22) !important;
+  border-color: #ffffff !important;
+  color: #ffffff !important;
+}
+
+:global(.app-layout:has(.report-container.page.theme-custom-glass) > .sidebar .footer-action-btn.logout-btn) {
+  background: rgba(225, 29, 72, 0.30) !important;
+  border-color: rgba(251, 113, 133, 0.55) !important;
+  color: #ffe4e6 !important;
+}
+
+:global(.app-layout:has(.report-container.page.theme-custom-glass) .mobile-drawer) {
+  background: linear-gradient(
+    165deg,
+    var(--cg-modal-top, rgba(40, 62, 82, 0.80)) 0%,
+    var(--cg-modal-bot, rgba(31, 47, 65, 0.72)) 100%
+  ) !important;
+  border-left: 1px solid var(--cg-border-strong, rgba(255, 255, 255, 0.52)) !important;
+  backdrop-filter: blur(var(--cg-blur-lg, 28px)) saturate(185%) !important;
+  -webkit-backdrop-filter: blur(var(--cg-blur-lg, 28px)) saturate(185%) !important;
+}
+
+:global(.app-layout:has(.report-container.page.theme-custom-glass) .drawer-header) {
+  background: linear-gradient(135deg, rgba(8, 145, 178, 0.68) 0%, rgba(5, 150, 105, 0.62) 100%) !important;
+  border-bottom: 1px solid var(--cg-border, rgba(255, 255, 255, 0.38)) !important;
+}
+
+.report-container.page.theme-custom-glass {
+  position: relative;
+  z-index: auto !important;
+  background: transparent !important;
+}
+
+/* Fixed Full-Viewport Wallpaper Layer Fallback */
+.report-container.page.theme-custom-glass::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(
+      180deg,
+      var(--cg-dim-top, rgba(3, 14, 26, 0.17)) 0%,
+      var(--cg-dim-mid, rgba(4, 22, 38, 0.13)) 45%,
+      var(--cg-dim-bot, rgba(3, 14, 26, 0.23)) 100%
+    ),
+    var(--cg-wallpaper, url('/hon-mun-island-in-nha-trang.jpg')) center center / cover no-repeat;
+  pointer-events: none;
+  transform: translateZ(0);
+}
+
+/* Frosted Glassmorphism across Topbar & All Workspace Containers */
+.report-container.page.theme-custom-glass .bg-topbar {
+  position: relative;
+  z-index: 45;
+  padding: 8px 14px;
+  margin-bottom: 10px;
+  border-radius: 16px;
+  background: linear-gradient(145deg, var(--cg-panel-top, rgba(83, 101, 116, 0.50)) 0%, var(--cg-panel-bot, rgba(71, 84, 99, 0.36)) 100%);
+  border: 1px solid var(--cg-border, rgba(255, 255, 255, 0.40));
+  box-shadow:
+    inset 0 1px 0 var(--cg-specular, rgba(255, 255, 255, 0.42)),
+    0 12px 30px -10px rgba(2, 10, 22, 0.42);
+  backdrop-filter: blur(var(--cg-blur, 22px)) saturate(175%);
+  -webkit-backdrop-filter: blur(var(--cg-blur, 22px)) saturate(175%);
+}
+
+/* Explicit z-index hierarchy so Filter Popovers (Buổi, Ưu tiên, Phân loại, Sắp xếp) NEVER get covered by Kanban columns below */
+.report-container.page.theme-custom-glass .bg-bento-deck {
+  position: relative;
+  z-index: 80;
+}
+
+.report-container.page.theme-custom-glass .bg-bento-deck:has(.pl-popover, .bg-recent-dropdown) {
+  z-index: 500 !important;
+}
+
+.report-container.page.theme-custom-glass .bg-filter-strip {
+  position: relative;
+  z-index: 90;
+  overflow: visible !important;
+}
+
+.report-container.page.theme-custom-glass .bg-filter-strip:has(.pl-popover, .bg-recent-dropdown, .bg-recent-search-pop) {
+  z-index: 450 !important;
+}
+
+.report-container.page.theme-custom-glass .bg-kpi-grid {
+  position: relative;
+  z-index: 10;
+}
+
+.report-container.page.theme-custom-glass .bg-board-anchor {
+  position: relative;
+  z-index: 5 !important;
+}
+
+.report-container.page.theme-custom-glass .bg-board-toolbar,
+.report-container.page.theme-custom-glass .bg-tool-island {
+  position: relative;
+  z-index: 6;
+}
+
+.report-container.page.theme-custom-glass .bg-detail-board,
+.report-container.page.theme-custom-glass .bg-detail-col.kanban-column,
+.report-container.page.theme-custom-glass .bg-cal-shell,
+.report-container.page.theme-custom-glass .bg-mcal-shell {
+  position: relative;
+  z-index: 4;
+}
+
+.report-container.page.theme-custom-glass .bg-filter-strip,
+.report-container.page.theme-custom-glass .bg-kpi-grid,
+.report-container.page.theme-custom-glass .bg-tool-island,
+.report-container.page.theme-custom-glass .bg-board-view-cluster .bg-seg-switch,
+.report-container.page.theme-custom-glass .bg-board-view-cluster .bg-btn-theme,
+.report-container.page.theme-custom-glass .bg-board-view-cluster .bg-btn-guide,
+.report-container.page.theme-custom-glass .bg-theme-mode-switch,
+.report-container.page.theme-custom-glass .bg-detail-col.kanban-column,
+.report-container.page.theme-custom-glass .bg-cal-shell,
+.report-container.page.theme-custom-glass .bg-mcal-shell {
+  background: linear-gradient(145deg, var(--cg-panel-top, rgba(83, 101, 116, 0.50)) 0%, var(--cg-panel-bot, rgba(71, 84, 99, 0.36)) 100%) !important;
+  border: 1px solid var(--cg-border, rgba(255, 255, 255, 0.40)) !important;
+  box-shadow:
+    inset 0 1px 0 var(--cg-specular, rgba(255, 255, 255, 0.42)),
+    0 16px 38px -10px rgba(2, 10, 22, 0.42) !important;
+  backdrop-filter: blur(var(--cg-blur, 22px)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(var(--cg-blur, 22px)) saturate(180%) !important;
+}
+
+.report-container.page.theme-custom-glass .bg-page-title {
+  color: #ffffff !important;
+  text-shadow: 0 2px 10px rgba(2, 10, 22, 0.55);
+}
+
+.report-container.page.theme-custom-glass .bg-page-subtitle {
+  color: #e0f2fe !important;
+  text-shadow: 0 1px 6px rgba(2, 10, 22, 0.45);
+}
+
+/* Filter Header & KPI Bento in Dynamic Frosted Glass Mode */
+.report-container.page.theme-custom-glass .bg-filter-head {
+  background: linear-gradient(135deg, rgba(8, 145, 178, 0.66) 0%, rgba(5, 150, 105, 0.60) 100%) !important;
+  border-bottom: 1px solid var(--cg-border, rgba(255, 255, 255, 0.38)) !important;
+  box-shadow: inset 0 1px 0 var(--cg-specular, rgba(255, 255, 255, 0.40)) !important;
+  backdrop-filter: blur(var(--cg-blur-sm, 16px));
+  -webkit-backdrop-filter: blur(var(--cg-blur-sm, 16px));
+}
+
+.report-container.page.theme-custom-glass .bg-kpi-grid::before {
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.25) 0%, #22d3ee 48%, #34d399 100%);
+  box-shadow: 0 2px 14px rgba(34, 211, 238, 0.45);
+}
+
+.report-container.page.theme-custom-glass .bg-kpi-card.is-total-hero,
+.report-container.page.theme-custom-glass .bg-kpi-card.is-stack-row {
+  background: linear-gradient(155deg, var(--cg-card-top, rgba(83, 101, 116, 0.56)) 0%, var(--cg-card-bot, rgba(71, 84, 99, 0.43)) 100%) !important;
+  border-color: var(--cg-border, rgba(255, 255, 255, 0.40)) !important;
+  backdrop-filter: blur(var(--cg-blur-sm, 16px)) saturate(170%);
+  -webkit-backdrop-filter: blur(var(--cg-blur-sm, 16px)) saturate(170%);
+  box-shadow: inset 0 1px 0 var(--cg-specular, rgba(255, 255, 255, 0.42));
+}
+
+.report-container.page.theme-custom-glass .bg-kpi-card.is-total-hero.is-active {
+  background: linear-gradient(145deg, rgba(6, 182, 212, 0.48) 0%, rgba(5, 150, 105, 0.42) 100%) !important;
+  border-color: rgba(165, 243, 252, 0.72) !important;
+}
+
+/* Search Box, Date Capsule, Pickers in Dynamic Frosted Glass Mode */
+.report-container.page.theme-custom-glass .bg-search-shell,
+.report-container.page.theme-custom-glass .bg-date-range-capsule,
+.report-container.page.theme-custom-glass .bg-seg-switch.is-compact,
+.report-container.page.theme-custom-glass .pl-picker-trigger:not(.is-custom),
+.report-container.page.theme-custom-glass .bg-period-step-btn,
+.report-container.page.theme-custom-glass .bg-btn-chip:not(.is-active) {
+  background: var(--cg-input-bg, rgba(83, 101, 116, 0.44)) !important;
+  border-color: var(--cg-border, rgba(255, 255, 255, 0.38)) !important;
+  box-shadow: inset 0 1px 0 var(--cg-specular, rgba(255, 255, 255, 0.38)) !important;
+}
+
+.report-container.page.theme-custom-glass .bg-filter-row-pickers {
+  position: relative;
+  z-index: 30;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-top-color: var(--cg-border, rgba(255, 255, 255, 0.28)) !important;
+  overflow: visible !important;
+}
+
+.report-container.page.theme-custom-glass .pl-picker-wrap {
+  position: relative;
+  z-index: 5;
+}
+
+.report-container.page.theme-custom-glass .pl-picker-wrap:has(.pl-popover) {
+  z-index: 120 !important;
+}
+
+.report-container.page.theme-custom-glass .pl-popover {
+  z-index: 999 !important;
+  background: linear-gradient(165deg, rgba(12, 34, 54, 0.94) 0%, rgba(7, 22, 38, 0.96) 100%) !important;
+  border: 1px solid var(--cg-border-strong, rgba(255, 255, 255, 0.52)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.38),
+    0 22px 48px -8px rgba(2, 8, 20, 0.78) !important;
+  backdrop-filter: blur(24px) saturate(185%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(185%) !important;
+}
+
+/* Kanban Columns, Headers, Subheaders & Group Bars in Dynamic Frosted Glass Mode */
+.report-container.page.theme-custom-glass .bg-detail-col.kb-col-pending .bg-dcol-head.kanban-header {
+  background: linear-gradient(135deg, rgba(217, 119, 6, 0.72) 0%, rgba(180, 83, 9, 0.64) 100%) !important;
+  backdrop-filter: blur(var(--cg-blur-sm, 16px));
+}
+
+.report-container.page.theme-custom-glass .bg-detail-col.kb-col-failed .bg-dcol-head.kanban-header {
+  background: linear-gradient(135deg, rgba(225, 29, 72, 0.72) 0%, rgba(190, 18, 60, 0.64) 100%) !important;
+  backdrop-filter: blur(var(--cg-blur-sm, 16px));
+}
+
+.report-container.page.theme-custom-glass .bg-detail-col.kb-col-done .bg-dcol-head.kanban-header {
+  background: linear-gradient(135deg, rgba(8, 145, 178, 0.72) 0%, rgba(3, 105, 161, 0.64) 100%) !important;
+  backdrop-filter: blur(var(--cg-blur-sm, 16px));
+}
+
+.report-container.page.theme-custom-glass .bg-dcol-subhead,
+.report-container.page.theme-custom-glass .bg-dcol-group-head,
+.report-container.page.theme-custom-glass .bg-m-detail-group-head {
+  background: var(--cg-subhead-bg, rgba(83, 101, 116, 0.48)) !important;
+  border-color: var(--cg-border, rgba(255, 255, 255, 0.36)) !important;
+  backdrop-filter: blur(var(--cg-blur-sm, 16px));
+  -webkit-backdrop-filter: blur(var(--cg-blur-sm, 16px));
+}
+
+/* Task Cards (.tl-rect) — Dynamic Frosted Glass Cards */
+.report-container.page.theme-custom-glass .tl-rect {
+  background: linear-gradient(160deg, var(--cg-card-top, rgba(83, 101, 116, 0.56)) 0%, var(--cg-card-bot, rgba(71, 84, 99, 0.43)) 100%) !important;
+  border: 1px solid var(--cg-border, rgba(255, 255, 255, 0.40)) !important;
+  backdrop-filter: blur(var(--cg-blur, 22px)) saturate(175%) !important;
+  -webkit-backdrop-filter: blur(var(--cg-blur, 22px)) saturate(175%) !important;
+  box-shadow:
+    inset 0 1px 0 var(--cg-specular, rgba(255, 255, 255, 0.42)),
+    0 10px 26px -8px rgba(2, 10, 22, 0.38) !important;
+}
+
+.report-container.page.theme-custom-glass .tl-rect:hover {
+  background: linear-gradient(160deg, var(--cg-card-hover-top, rgba(83, 101, 116, 0.64)) 0%, var(--cg-card-hover-bot, rgba(71, 84, 99, 0.52)) 100%) !important;
+  border-color: var(--cg-border-strong, rgba(255, 255, 255, 0.58)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 14px 32px -8px rgba(6, 182, 212, 0.28) !important;
+}
+
+.report-container.page.theme-custom-glass .tl-rect .tl-body-text {
+  color: #ffffff !important;
+  text-shadow: 0 1px 3px rgba(2, 10, 22, 0.35);
+}
+
+.report-container.page.theme-custom-glass .tl-rect .tl-rect-note {
+  background: rgba(159, 18, 57, 0.34) !important;
+  border-color: rgba(251, 113, 133, 0.48) !important;
+}
+
+.report-container.page.theme-custom-glass .tl-att-v5 .tl-att-row {
+  background: var(--cg-well-bg, rgba(71, 84, 99, 0.40)) !important;
+  border-color: var(--cg-border, rgba(255, 255, 255, 0.34)) !important;
+}
+
+/* Calendar Views & Modals in Dynamic Frosted Glass Mode */
+.report-container.page.theme-custom-glass .bg-cal-wcol,
+.report-container.page.theme-custom-glass .bg-cal-mcell,
+.report-container.page.theme-custom-glass .bg-mcal-mcell,
+.report-container.page.theme-custom-glass .bg-cal-wcard {
+  background: var(--cg-card-top, rgba(83, 101, 116, 0.52)) !important;
+  border-color: var(--cg-border, rgba(255, 255, 255, 0.38)) !important;
+  backdrop-filter: blur(var(--cg-blur-sm, 16px));
+  -webkit-backdrop-filter: blur(var(--cg-blur-sm, 16px));
+}
+
+.report-container.page.theme-custom-glass .elite-modal-card,
+.report-container.page.theme-custom-glass .pl-picker-popover,
+.pl-sheet-overlay.theme-custom-glass .pl-sheet-panel,
+.bg-attach-sheet-overlay.theme-custom-glass .bg-attach-sheet-panel,
+.baogia-dialog-overlay.theme-custom-glass .baogia-dialog-card {
+  background: linear-gradient(165deg, var(--cg-modal-top, rgba(40, 62, 82, 0.76)) 0%, var(--cg-modal-bot, rgba(31, 47, 65, 0.68)) 100%) !important;
+  border: 1px solid var(--cg-border-strong, rgba(255, 255, 255, 0.52)) !important;
+  backdrop-filter: blur(var(--cg-blur-lg, 28px)) saturate(185%) !important;
+  -webkit-backdrop-filter: blur(var(--cg-blur-lg, 28px)) saturate(185%) !important;
+}
+
+@media (max-width: 768px) {
+  .bg-theme-mode-switch {
+    padding: 2.5px;
+    gap: 2px;
+  }
+
+  .bg-theme-seg-btn {
+    height: 26px;
+    padding: 0 8px;
+    font-size: 0.68rem;
+    gap: 3.5px;
+  }
+
+  .bg-theme-tuner-btn {
+    width: 26px;
+    height: 26px;
+  }
+
+  .bg-custom-tuner-popover {
+    position: fixed;
+    top: 58px;
+    left: 10px;
+    right: 10px;
+    width: auto;
+    max-width: 390px;
+    margin: 0 auto;
+  }
 }
 </style>

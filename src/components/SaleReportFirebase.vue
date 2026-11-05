@@ -2024,7 +2024,7 @@
         v-if="multiEditModal.show"
         class="sr-modal-overlay sr-po-modal-overlay"
         :class="{ 'theme-light-blue': uiTheme === 'light', 'is-craft-overlay': srDataMode === 'craft', 'no-anim': isSwitchingTab }"
-        @click.self="multiEditModal.show = false"
+        @click.self="requestCloseMultiEditModal()"
         style="z-index: 10000;"
       >
         <div
@@ -2107,7 +2107,7 @@
               <button
                 type="button"
                 class="sr-po-header-close"
-                @click="multiEditModal.show = false"
+                @click="requestCloseMultiEditModal()"
                 title="Đóng cửa sổ"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -3492,11 +3492,16 @@
           </div>
 
           <!-- 5. STICKY BOTTOM FOOTER -->
-          <div v-if="activeModalItem" class="sr-import-card-footer sr-po-modal-footer">
+          <div
+            v-if="activeModalItem"
+            class="sr-import-card-footer sr-po-modal-footer"
+            :class="{ 'is-craft-footer': srDataMode === 'craft', 'is-official-footer': srDataMode !== 'craft' }"
+          >
             <div class="sr-po-footer-left">
               <button type="button" class="sr-btn-remove sr-po-btn-delete" @click="deletePO(activeModalItem, activeItemIdx)">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                <span>{{ multiEditModal.mode === 'create' && multiEditModal.items.length > 1 ? (srDataMode === 'craft' ? 'Bỏ phương án này' : 'Bỏ PO này') : (srDataMode === 'craft' ? 'Xóa phương án' : 'Xóa PO') }}</span>
+                <span class="sr-po-btn-lbl-dt">{{ multiEditModal.mode === 'create' && multiEditModal.items.length > 1 ? (srDataMode === 'craft' ? 'Bỏ phương án này' : 'Bỏ PO này') : (srDataMode === 'craft' ? 'Xóa phương án' : 'Xóa PO') }}</span>
+                <span class="sr-po-btn-lbl-mob">{{ multiEditModal.mode === 'create' && multiEditModal.items.length > 1 ? (srDataMode === 'craft' ? 'Bỏ PA' : 'Bỏ PO') : (srDataMode === 'craft' ? 'Xóa PA' : 'Xóa PO') }}</span>
               </button>
               <button
                 v-if="srDataMode === 'craft'"
@@ -3506,7 +3511,15 @@
                 title="Nhân bản phương án đang mở thành 1 tab phương án mới để chỉnh sửa & đối chiếu"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                <span>Nhân bản phương án</span>
+                <span class="sr-po-btn-lbl-dt">Nhân bản phương án</span>
+                <span class="sr-po-btn-lbl-mob">Nhân bản</span>
+              </button>
+              <button
+                type="button"
+                class="sr-btn sr-btn-cancel sr-po-btn-cancel is-mob-inline-close"
+                @click="requestCloseMultiEditModal()"
+              >
+                Đóng
               </button>
             </div>
             <div class="sr-po-footer-center">
@@ -3518,7 +3531,7 @@
               >
                 <svg v-if="savingModal" class="spin" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
                 <svg v-else width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                <span>{{ savingModal ? 'Đang lưu...' : (multiEditModal.mode === 'create' ? (multiEditModal.items.length > 1 ? `LƯU TẤT CẢ (${multiEditModal.items.length} ${srDataMode === 'craft' ? 'PHƯƠNG ÁN' : 'PO'})` : (srDataMode === 'craft' ? 'LƯU PHƯƠNG ÁN TẠM' : 'KHỞI TẠO PO')) : (srDataMode === 'craft' ? 'LƯU BẢN TẠM' : 'LƯU THAY ĐỔI')) }}</span>
+                <span>{{ savingModal ? 'Đang lưu...' : (multiEditModal.mode === 'create' ? (multiEditModal.items.length > 1 ? `LƯU TẤT CẢ (${multiEditModal.items.length} ${srDataMode === 'craft' ? 'PA' : 'PO'})` : (srDataMode === 'craft' ? 'LƯU PHƯƠNG ÁN TẠM' : 'KHỞI TẠO PO')) : (srDataMode === 'craft' ? 'LƯU BẢN TẠM' : 'LƯU THAY ĐỔI')) }}</span>
               </button>
               <button
                 v-if="srDataMode === 'craft'"
@@ -3529,11 +3542,12 @@
                 title="Chốt Deal phương án này: Tự động lưu và chuyển lên Sale Report Bản Chính Thức"
               >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                <span>CHỐT DEAL LÊN CHÍNH THỨC</span>
+                <span class="sr-po-btn-lbl-dt">CHỐT DEAL LÊN CHÍNH THỨC</span>
+                <span class="sr-po-btn-lbl-mob">CHỐT DEAL</span>
               </button>
             </div>
             <div class="sr-po-footer-right">
-              <button type="button" class="sr-btn sr-btn-cancel sr-po-btn-cancel" @click="multiEditModal.show = false">Đóng</button>
+              <button type="button" class="sr-btn sr-btn-cancel sr-po-btn-cancel" @click="requestCloseMultiEditModal()">Đóng</button>
             </div>
           </div>
         </div>
@@ -6353,8 +6367,8 @@
             class="sr-analytics-split-shell"
             :class="[`mob-analytics-dock-${analyticsMobileDockTab}`, { 'is-sidebar-collapsed': isAnalyticsSidebarCollapsed }]"
           >
-            <!-- Thanh ngữ cảnh nhanh trên Mobile khi đang ở Tab Biểu đồ -->
-            <div class="sr-analytics-mob-ctx-bar">
+            <!-- Thanh ngữ cảnh nhanh trên Mobile khi đang ở Tab Biểu đồ (Đã ẩn theo yêu cầu để mở rộng không gian) -->
+            <div v-if="false" class="sr-analytics-mob-ctx-bar">
               <button type="button" class="sr-analytics-mob-ctx-pill is-metric" @click="analyticsMobileDockTab = 'metric'">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
                 <span>Chỉ số: <strong>{{ activeChartMetricLabel }}</strong></span>
@@ -9602,6 +9616,109 @@
       </div>
     </Teleport>
 
+    <!-- ================== MODAL NHẮC NHỞ DỮ LIỆU CHƯA LƯU KHI ĐÓNG MODAL PO (PHƯƠNG ÁN A - 3 NÚT) ================== -->
+    <Teleport to="body">
+      <div
+        v-if="showUnsavedPoCloseModal"
+        class="sr-modal-overlay sr-dialog-overlay"
+        :class="{ 'theme-light-blue': uiTheme === 'light', 'is-light': uiTheme === 'light' }"
+        style="z-index: 1000250;"
+        @click.self="showUnsavedPoCloseModal = false"
+      >
+        <div
+          class="sr-dialog-card is-variant-warning is-mode-confirm sr-unsaved-po-dialog"
+          :class="{ 'is-light': uiTheme === 'light' }"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Thay đổi chưa được lưu"
+        >
+          <!-- Header -->
+          <div class="sr-dialog-head">
+            <div class="sr-dialog-dt-head">
+              <span class="sr-dialog-head-ico">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              </span>
+              <span class="sr-dialog-head-title">Thay đổi chưa được lưu</span>
+            </div>
+
+            <div class="sr-dialog-m-head">
+              <span class="sr-dialog-m-eyebrow">{{ srDataMode === 'craft' ? 'Cảnh báo Phương án tạm chưa lưu' : 'Cảnh báo đơn hàng PO chưa lưu' }}</span>
+              <span class="sr-dialog-m-title">Thay đổi chưa được lưu</span>
+            </div>
+
+            <button
+              type="button"
+              class="sr-dialog-close-x"
+              @click="showUnsavedPoCloseModal = false"
+              aria-label="Đóng hộp thoại"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Body -->
+          <div class="sr-dialog-body custom-scrollbar">
+            <div class="sr-dialog-target-card">
+              <div class="sr-dialog-target-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              </div>
+              <div class="sr-dialog-target-info">
+                <div class="sr-dialog-target-tag">{{ srDataMode === 'craft' ? 'PHƯƠNG ÁN TẠM ĐANG NHẬP' : 'ĐƠN HÀNG PO ĐANG NHẬP' }}</div>
+                <div class="sr-dialog-target-val" :title="unsavedPoModalTargetLabel">
+                  {{ unsavedPoModalTargetLabel }}
+                </div>
+              </div>
+            </div>
+
+            <div class="sr-dialog-msg-box">
+              <div class="sr-dialog-msg-icon">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              </div>
+              <div class="sr-dialog-msg-text">Bạn có dữ liệu vừa chỉnh sửa nhưng chưa lưu. Nếu đóng ngay bây giờ, các thay đổi vừa nhập sẽ bị mất.</div>
+            </div>
+
+            <div class="sr-dialog-subnote">
+              <svg class="sr-dialog-subnote-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+              <span>Chọn "Lưu &amp; Đóng" để ghi nhận thay đổi trước khi thoát, hoặc "Thoát không lưu" để hủy bỏ các chỉnh sửa.</span>
+            </div>
+          </div>
+
+          <!-- Footer (3 Nút: Tiếp tục sửa | Thoát không lưu | Lưu & Đóng) -->
+          <div class="sr-dialog-foot is-three-actions">
+            <button
+              type="button"
+              class="sr-dlg-btn sr-dlg-cancel"
+              @click="showUnsavedPoCloseModal = false"
+            >
+              <span>Tiếp tục sửa</span>
+            </button>
+
+            <button
+              type="button"
+              class="sr-dlg-btn sr-dlg-discard"
+              @click="confirmDiscardAndCloseMultiEditModal()"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              <span>Thoát không lưu</span>
+            </button>
+
+            <button
+              type="button"
+              class="sr-dlg-btn sr-dlg-confirm is-btn-save-close"
+              :disabled="savingModal"
+              @click="confirmSaveAndCloseMultiEditModal()"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              <span>{{ savingModal ? 'Đang lưu...' : 'Lưu & Đóng' }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- MOBILE FLOATING GLASS BOTTOM DOCK (Phương án A: 1. Tổng quan & DS Công ty | 2. Thêm mới (Giữa) | 3. Chi tiết Công ty) -->
     <nav
       v-if="isMobileShell"
@@ -9726,7 +9843,7 @@
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
               </button>
-              <span class="sr-analytics-header-icon">
+              <span v-if="!isMobile" class="sr-analytics-header-icon">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
               </span>
               <div class="sr-analytics-title-wrap">
@@ -9742,7 +9859,7 @@
 
             <div style="display: flex; align-items: center; gap: 8px;">
               <button
-                v-if="effectiveCraftCompareRows.length > 0"
+                v-if="!isMobile && effectiveCraftCompareRows.length > 0"
                 type="button"
                 class="sr-ccm-tool-btn is-clone"
                 @click="cloneCraftRowFromCompare(effectiveCraftCompareRows[effectiveCraftCompareRows.length - 1])"
@@ -9752,7 +9869,7 @@
                 <span class="sr-hide-mob">+ Nhân bản PA</span>
               </button>
               <button
-                v-if="effectiveCraftCompareRows.length > 0"
+                v-if="!isMobile && effectiveCraftCompareRows.length > 0"
                 type="button"
                 class="sr-ccm-tool-btn is-mindmap"
                 @click="openCompareMindmapReview()"
@@ -9777,8 +9894,8 @@
             class="sr-analytics-split-shell"
             :class="[`mob-analytics-dock-${craftCompareMobileDockTab}`, { 'is-sidebar-collapsed': isAnalyticsSidebarCollapsed }]"
           >
-            <!-- Thanh ngữ cảnh nhanh trên Mobile khi đang ở Tab Biểu đồ -->
-            <div class="sr-analytics-mob-ctx-bar">
+            <!-- Thanh ngữ cảnh nhanh trên Mobile khi đang ở Tab Biểu đồ (Đã ẩn theo yêu cầu để mở rộng không gian) -->
+            <div v-if="false" class="sr-analytics-mob-ctx-bar">
               <button type="button" class="sr-analytics-mob-ctx-pill is-metric" @click="craftCompareMobileDockTab = 'metric'">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
                 <span>Phương án ({{ effectiveCraftCompareRows.length }}) &amp; Chỉ số: <strong>{{ craftCompareChartMetric === 'triple_kpi' ? 'Gộp 3 KPI chính' : activeCraftChartMetricDef.label }}</strong></span>
@@ -9825,7 +9942,7 @@
               <!-- MỤC 1: CHỌN 10 CHỈ SỐ PHÂN TÍCH KPI -->
               <div class="sr-analytics-side-section">
                 <div class="sr-analytics-side-heading is-with-toggle">
-                  <span>Chỉ số biểu đồ (3 Card KPI)</span>
+                  <span>Chỉ số biểu đồ (3 Nhóm Card PO)</span>
                   <button
                     type="button"
                     class="sr-analytics-side-collapse-btn"
@@ -9843,10 +9960,10 @@
                     type="button"
                     class="sr-analytics-metric-chip"
                     :class="[
-                      mDef.group === 'profit' ? 'is-margin' : `is-${mDef.group}`,
+                      mDef.group === 'profit' || mDef.group === 'ratio' ? 'is-margin' : (mDef.group === 'cost' ? 'is-com' : `is-${mDef.group}`),
                       { active: craftCompareChartMetric === mDef.key }
                     ]"
-                    @click="craftCompareChartMetric = mDef.key; craftCompareMobileDockTab = 'chart'"
+                    @click="craftCompareChartMetric = mDef.key; craftCompareMobileDockTab = 'group'"
                     :title="mDef.formula ? `${mDef.label} (${mDef.formula})` : mDef.label"
                   >
                     {{ mDef.shortLabel || mDef.label }}
@@ -9855,7 +9972,7 @@
                     type="button"
                     class="sr-analytics-metric-chip is-margin"
                     :class="{ active: craftCompareChartMetric === 'triple_kpi' }"
-                    @click="craftCompareChartMetric = 'triple_kpi'; craftCompareMobileDockTab = 'chart'"
+                    @click="craftCompareChartMetric = 'triple_kpi'; craftCompareMobileDockTab = 'group'"
                     title="Vẽ gộp 3 cột KPI chính (Doanh số bán • Net COM • Net Margin) cho từng phương án trên cùng 1 biểu đồ"
                   >
                     Gộp 3 KPI chính
@@ -9918,7 +10035,7 @@
                     @click="craftCompareViewSection = 'table'; craftCompareMobileDockTab = 'chart'"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
-                    <span>Ma trận 10 chỉ số KPI (3 Cụm)</span>
+                    <span>Bảng Ma trận So sánh (3 Nhóm)</span>
                   </button>
                 </div>
 
@@ -10145,21 +10262,32 @@
                               </div>
                             </td>
                             <td style="text-align: right;">
-                              <div style="display: inline-flex; gap: 5px; justify-content: flex-end; flex-wrap: wrap;">
-                                <button type="button" class="sr-rank-filter-btn" @click="openMultiEditModalFromCompare(item.row)">
-                                  Sửa
+                              <div class="sr-ccm-opt-actions is-right-aligned">
+                                <button
+                                  type="button"
+                                  class="sr-ccm-act-btn is-edit is-icon-only"
+                                  title="Sửa phương án"
+                                  @click="openMultiEditModalFromCompare(item.row)"
+                                >
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                                 </button>
-                                <button type="button" class="sr-rank-filter-btn" @click="cloneCraftRowFromCompare(item.row)">
-                                  Nhân bản
+                                <button
+                                  type="button"
+                                  class="sr-ccm-act-btn is-clone is-icon-only"
+                                  title="Nhân bản phương án"
+                                  @click="cloneCraftRowFromCompare(item.row)"
+                                >
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                                 </button>
                                 <button
                                   v-if="srDataMode === 'craft'"
                                   type="button"
-                                  class="sr-rank-filter-btn"
-                                  style="background: linear-gradient(135deg, #059669 0%, #047857 100%); color: #fff; border-color: #34d399;"
+                                  class="sr-ccm-act-btn is-chot"
+                                  title="Chốt Deal phương án này"
                                   @click="promoteCraftToOfficial(item.row)"
                                 >
-                                  Chốt Deal
+                                  <svg width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                  <span>Chốt</span>
                                 </button>
                               </div>
                             </td>
@@ -10191,9 +10319,6 @@
                             <th class="sr-ccm-sticky-col sr-ccm-metric-th">
                               <div class="sr-ccm-corner-head">
                                 <span>CHỈ SỐ KPI ({{ filteredCraftCompareMetricDefs.length }})</span>
-                                <small v-if="effectiveCraftCompareRows.length > 1">
-                                  So với Bản gốc: PA {{ effectiveCraftBaseRowIndex + 1 }}
-                                </small>
                               </div>
                             </th>
                             <th
@@ -10205,7 +10330,6 @@
                               <div class="sr-ccm-opt-head">
                                 <div class="sr-ccm-opt-top">
                                   <div class="sr-ccm-opt-top-left">
-                                    <span class="sr-ccm-opt-num">PHƯƠNG ÁN {{ colIdx + 1 }}</span>
                                     <button
                                       v-if="effectiveCraftCompareRows.length > 1"
                                       type="button"
@@ -10241,9 +10365,16 @@
                         </thead>
                         <tbody>
                           <template v-for="mDef in filteredCraftCompareMetricDefs" :key="mDef.key">
-                            <tr v-if="mDef.sectionTitle" class="sr-ccm-section-banner">
+                            <tr
+                              v-if="mDef.sectionTitle"
+                              class="sr-ccm-section-banner"
+                              :class="'is-sec-' + (mDef.sectionGroup === 'rev_cost' ? 'rev' : mDef.sectionGroup === 'com_tax_margin' ? 'com' : 'profit')"
+                            >
                               <td :colspan="effectiveCraftCompareRows.length + 1" class="sr-ccm-section-td">
-                                <span class="sr-ccm-sec-dot" :class="'is-' + mDef.group"></span>
+                                <span
+                                  class="sr-ccm-sec-dot"
+                                  :class="'is-' + (mDef.sectionGroup === 'rev_cost' ? 'rev' : mDef.sectionGroup === 'com_tax_margin' ? 'com' : 'profit')"
+                                ></span>
                                 <span>{{ mDef.sectionTitle }}</span>
                               </td>
                             </tr>
@@ -10269,7 +10400,7 @@
                                   'is-baseline-col': isCraftBaselineRow(r),
                                   'is-editing-cell': isEditingMatrixCell(r, mDef)
                                 }"
-                                title="Click để sửa nhanh chỉ số này"
+                                :title="mDef.key === 'thue_com' ? 'Click để sửa % Thuế COM' : 'Click để sửa nhanh chỉ số này'"
                                 @click.stop="startEditMatrixCell(r, mDef)"
                               >
                                 <div class="sr-ccm-cell-main is-right-aligned">
@@ -10279,7 +10410,7 @@
                                     type="text"
                                     class="sr-ccm-inline-input"
                                     :value="editingMatrixCell.rawVal"
-                                    placeholder="Giá trị"
+                                    :placeholder="mDef.key === 'thue_com' ? '% Thuế' : (mDef.isRatio ? '% Tỉ suất' : 'Giá trị')"
                                     @input="onMatrixInlineInput($event, mDef)"
                                     @keydown.enter.prevent="commitEditMatrixCell(r, mDef)"
                                     @keydown.esc.prevent="cancelEditMatrixCell()"
@@ -10394,14 +10525,31 @@
                               :class="{ 'is-baseline-col': isCraftBaselineRow(r) }"
                             >
                               <div class="sr-ccm-opt-actions is-right-aligned">
-                                <button type="button" class="sr-ccm-act-btn is-edit" @click="openMultiEditModalFromCompare(r)">
-                                  Sửa
+                                <button
+                                  type="button"
+                                  class="sr-ccm-act-btn is-edit is-icon-only"
+                                  title="Sửa phương án"
+                                  @click="openMultiEditModalFromCompare(r)"
+                                >
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                                 </button>
-                                <button type="button" class="sr-ccm-act-btn is-clone" @click="cloneCraftRowFromCompare(r)">
-                                  Nhân bản
+                                <button
+                                  type="button"
+                                  class="sr-ccm-act-btn is-clone is-icon-only"
+                                  title="Nhân bản phương án"
+                                  @click="cloneCraftRowFromCompare(r)"
+                                >
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                                 </button>
-                                <button v-if="srDataMode === 'craft'" type="button" class="sr-ccm-act-btn is-chot" @click="promoteCraftToOfficial(r)">
-                                  Chốt Deal
+                                <button
+                                  v-if="srDataMode === 'craft'"
+                                  type="button"
+                                  class="sr-ccm-act-btn is-chot"
+                                  title="Chốt Deal phương án này"
+                                  @click="promoteCraftToOfficial(r)"
+                                >
+                                  <svg width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                  <span>Chốt</span>
                                 </button>
                               </div>
                             </td>
@@ -10425,15 +10573,25 @@
                           <col class="sr-ccm-col-row-actions" />
                         </colgroup>
                         <thead>
-                          <tr>
-                            <th class="sr-ccm-sticky-col">
+                          <tr class="sr-ccm-row-group-header-tr">
+                            <th rowspan="2" class="sr-ccm-sticky-col">
                               <div class="sr-ccm-corner-head">
                                 <span>NỘI DUNG HỢP ĐỒNG</span>
-                                <small v-if="effectiveCraftCompareRows.length > 1">
-                                  So với Bản gốc: PA {{ effectiveCraftBaseRowIndex + 1 }}
-                                </small>
                               </div>
                             </th>
+                            <th
+                              v-for="grp in craftCompareRowHeaderGroups"
+                              :key="grp.key"
+                              :colspan="grp.count"
+                              class="sr-ccm-row-group-th"
+                              :class="'is-sec-' + grp.tone"
+                            >
+                              <span class="sr-ccm-sec-dot" :class="'is-' + grp.tone"></span>
+                              <span>{{ grp.title }}</span>
+                            </th>
+                            <th rowspan="2" class="sr-ccm-row-actions-th" style="text-align: right;">Thao tác</th>
+                          </tr>
+                          <tr class="sr-ccm-row-metric-header-tr">
                             <th
                               v-for="mDef in filteredCraftCompareMetricDefs"
                               :key="mDef.key"
@@ -10443,7 +10601,6 @@
                             >
                               <div>{{ mDef.shortLabel || mDef.label }}</div>
                             </th>
-                            <th class="sr-ccm-row-actions-th" style="text-align: right;">Thao tác</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -10456,10 +10613,8 @@
                               class="sr-ccm-sticky-col sr-ccm-row-opt-td"
                               :class="{ 'is-baseline-col': isCraftBaselineRow(r) }"
                             >
-                              <div class="sr-ccm-row-opt-head">
-                                <span class="sr-ccm-opt-num">PA {{ rowIdx + 1 }}</span>
+                              <div v-if="effectiveCraftCompareRows.length > 1" class="sr-ccm-row-opt-head">
                                 <button
-                                  v-if="effectiveCraftCompareRows.length > 1"
                                   type="button"
                                   class="sr-ccm-base-btn"
                                   :class="{ 'is-active': isCraftBaselineRow(r) }"
@@ -10485,7 +10640,7 @@
                                 'is-baseline-col': isCraftBaselineRow(r),
                                 'is-editing-cell': isEditingMatrixCell(r, mDef)
                               }"
-                              title="Click để sửa nhanh chỉ số này"
+                              :title="mDef.key === 'thue_com' ? 'Click để sửa % Thuế COM' : 'Click để sửa nhanh chỉ số này'"
                               @click.stop="startEditMatrixCell(r, mDef)"
                             >
                               <div class="sr-ccm-cell-main is-right-aligned">
@@ -10495,7 +10650,7 @@
                                   type="text"
                                   class="sr-ccm-inline-input"
                                   :value="editingMatrixCell.rawVal"
-                                  placeholder="Giá trị"
+                                  :placeholder="mDef.key === 'thue_com' ? '% Thuế' : (mDef.isRatio ? '% Tỉ suất' : 'Giá trị')"
                                   @input="onMatrixInlineInput($event, mDef)"
                                   @keydown.enter.prevent="commitEditMatrixCell(r, mDef)"
                                   @keydown.esc.prevent="cancelEditMatrixCell()"
@@ -10597,9 +10752,32 @@
                               :class="{ 'is-baseline-col': isCraftBaselineRow(r) }"
                             >
                               <div class="sr-ccm-opt-actions is-right-aligned">
-                                <button type="button" class="sr-ccm-act-btn is-edit" @click="openMultiEditModalFromCompare(r)">Sửa</button>
-                                <button type="button" class="sr-ccm-act-btn is-clone" @click="cloneCraftRowFromCompare(r)">Nhân bản</button>
-                                <button v-if="srDataMode === 'craft'" type="button" class="sr-ccm-act-btn is-chot" @click="promoteCraftToOfficial(r)">Chốt Deal</button>
+                                <button
+                                  type="button"
+                                  class="sr-ccm-act-btn is-edit is-icon-only"
+                                  title="Sửa phương án"
+                                  @click="openMultiEditModalFromCompare(r)"
+                                >
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                                </button>
+                                <button
+                                  type="button"
+                                  class="sr-ccm-act-btn is-clone is-icon-only"
+                                  title="Nhân bản phương án"
+                                  @click="cloneCraftRowFromCompare(r)"
+                                >
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                </button>
+                                <button
+                                  v-if="srDataMode === 'craft'"
+                                  type="button"
+                                  class="sr-ccm-act-btn is-chot"
+                                  title="Chốt Deal phương án này"
+                                  @click="promoteCraftToOfficial(r)"
+                                >
+                                  <svg width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                  <span>Chốt</span>
+                                </button>
                               </div>
                             </td>
                           </tr>
@@ -10996,6 +11174,7 @@ async function confirmYearAndImportReport() {
   }
 
   if (allItems.length > 0) {
+    isModalDirty.value = true;
     multiEditModal.value = {
       show: true,
       mode: 'create',
@@ -15939,6 +16118,130 @@ const activeItemIdx = ref(0)
 const isPoLeftPaneCollapsed = ref(false)
 const isPoLeftPaneWide = ref(true)
 const mobilePoPane = ref<'form' | 'docs'>('form')
+const showUnsavedPoCloseModal = ref(false)
+const initialPoModalSnapshot = ref('')
+const wasPreDirtyOnOpen = ref(false)
+
+function serializeModalItemsForDirtyCheck(items: ImportItem[] | undefined | null): string {
+  if (!Array.isArray(items) || items.length === 0) return ''
+  try {
+    return JSON.stringify(
+      items.map(it => ({
+        rowKey: it.row ? String(it.row._firebaseKey || it.row.ID || '') : '',
+        soPO: String(it.soPO ?? '').trim(),
+        customer: String(it.customer ?? '').trim(),
+        recipient: String(it.recipient ?? '').trim(),
+        mst: String(it.mst ?? '').trim(),
+        industry: String(it.industry ?? '').trim(),
+        _industryEdited: Boolean(it._industryEdited),
+        customerGroup: String(it.customerGroup ?? '').trim(),
+        _customerGroupEdited: Boolean(it._customerGroupEdited),
+        linkedMaKH: String(it.linkedMaKH ?? '').trim(),
+        linkedMaCongTy: String(it.linkedMaCongTy ?? '').trim(),
+        productType: String(it.productType ?? '').trim(),
+        createdTime: String(it.createdTime ?? '').trim(),
+        content: String(it.content ?? '').trim(),
+        ghiChu: String(it.ghiChu ?? '').trim(),
+        am: String(it.am ?? '').trim(),
+        doanhSoBan: Number(it.doanhSoBan) || 0,
+        giaMua: Number(it.giaMua) || 0,
+        tongCP: Number(it.tongCP) || 0,
+        grossCom: Number(it.grossCom) || 0,
+        netCom: Number(it.netCom) || 0,
+        taxPct: Number(it.taxPct) || 0,
+        soTienDaThanhToan: Number(it.soTienDaThanhToan) || 0,
+        linkBaoGia: String(it.linkBaoGia ?? ''),
+        linkMuaHang: String(it.linkMuaHang ?? ''),
+        linkDxmh: String(it.linkDxmh ?? ''),
+        tenFileDxmh: String(it.tenFileDxmh ?? ''),
+        base64Img: String(it.base64Img ?? ''),
+        previewUrlScanCom: String(it.previewUrlScanCom ?? ''),
+        previewUrlBG: String(it.previewUrlBG ?? ''),
+        previewUrlMH: String(it.previewUrlMH ?? ''),
+        previewUrlDXMH: String(it.previewUrlDXMH ?? ''),
+        rawFileBaoGia: it.rawFileBaoGia ? `${it.rawFileBaoGia.name}:${it.rawFileBaoGia.size}:${it.rawFileBaoGia.lastModified}` : '',
+        rawFileMuaHang: it.rawFileMuaHang ? `${it.rawFileMuaHang.name}:${it.rawFileMuaHang.size}:${it.rawFileMuaHang.lastModified}` : '',
+        rawFileDxmh: it.rawFileDxmh ? `${it.rawFileDxmh.name}:${it.rawFileDxmh.size}:${it.rawFileDxmh.lastModified}` : '',
+        rawFileScanCom: it.rawFileScanCom ? `${it.rawFileScanCom.name}:${it.rawFileScanCom.size}:${it.rawFileScanCom.lastModified}` : '',
+        dxmhCustomerDetails: it.dxmhCustomerDetails || null,
+        otherFiles: Array.isArray(it.otherFiles)
+          ? it.otherFiles.map(f => ({
+              ten: String(f?.ten_file ?? ''),
+              link: String(f?.link_file ?? ''),
+              raw: f?.rawFile ? `${f.rawFile.name}:${f.rawFile.size}` : ''
+            }))
+          : [],
+        goodsList: Array.isArray(it.goodsList)
+          ? it.goodsList.map(g => ({
+              maHang: String(g?.maHang ?? '').trim(),
+              danhMuc: String(g?.danhMuc ?? '').trim(),
+              ten: String(g?.ten ?? '').trim(),
+              dienGiai: String(g?.dienGiai ?? '').trim(),
+              dvt: String(g?.dvt ?? '').trim(),
+              sl: Number(g?.sl) || 0,
+              donGia: Number(g?.donGia) || 0,
+              ttTruoc: Number(g?.ttTruoc) || 0,
+              vatPct: String(g?.vatPct ?? ''),
+              vat: Number(g?.vat) || 0,
+              ttSau: Number(g?.ttSau) || 0
+            }))
+          : []
+      }))
+    )
+  } catch (_) {
+    return String(Date.now())
+  }
+}
+
+const unsavedPoModalTargetLabel = computed(() => {
+  const items = multiEditModal.value.items || []
+  const isCraft = srDataMode.value === 'craft'
+  const prefix = isCraft ? 'Phương án' : 'PO'
+  if (items.length > 1) {
+    return `${items.length} ${isCraft ? 'phương án tạm' : 'đơn hàng PO'} trong phiên`
+  }
+  const cur = activeModalItem.value || items[0]
+  if (!cur) return isCraft ? 'Phương án tạm' : 'Đơn hàng PO'
+  const poPart = cur.soPO ? `${prefix} #${cur.soPO}` : prefix
+  const namePart = cur.customer || cur.content || 'Chưa đặt tên'
+  return `${poPart} — ${namePart}`
+})
+
+function hasUnsavedPoModalChanges(): boolean {
+  if (!multiEditModal.value.show || multiEditModal.value.items.length === 0) return false
+  if (wasPreDirtyOnOpen.value) return true
+  const currentSnap = serializeModalItemsForDirtyCheck(multiEditModal.value.items)
+  if (initialPoModalSnapshot.value && currentSnap !== initialPoModalSnapshot.value) {
+    return true
+  }
+  return isModalDirty.value && !initialPoModalSnapshot.value
+}
+
+function requestCloseMultiEditModal() {
+  if (savingModal.value) return
+  if (hasUnsavedPoModalChanges()) {
+    showUnsavedPoCloseModal.value = true
+    return
+  }
+  showUnsavedPoCloseModal.value = false
+  isModalDirty.value = false
+  wasPreDirtyOnOpen.value = false
+  initialPoModalSnapshot.value = ''
+  multiEditModal.value.show = false
+}
+
+function confirmDiscardAndCloseMultiEditModal() {
+  showUnsavedPoCloseModal.value = false
+  isModalDirty.value = false
+  wasPreDirtyOnOpen.value = false
+  initialPoModalSnapshot.value = ''
+  multiEditModal.value.show = false
+}
+
+async function confirmSaveAndCloseMultiEditModal() {
+  showUnsavedPoCloseModal.value = false
+  await saveMultiModal()
+}
 
 watch(
   () => multiEditModal.value.show,
@@ -15948,6 +16251,18 @@ watch(
       isPoLeftPaneCollapsed.value = false
       isPoLeftPaneWide.value = true
       mobilePoPane.value = 'form'
+      showUnsavedPoCloseModal.value = false
+      wasPreDirtyOnOpen.value = isModalDirty.value
+      initialPoModalSnapshot.value = serializeModalItemsForDirtyCheck(multiEditModal.value.items)
+      nextTick(() => {
+        if (!isModalDirty.value && !wasPreDirtyOnOpen.value && multiEditModal.value.show) {
+          initialPoModalSnapshot.value = serializeModalItemsForDirtyCheck(multiEditModal.value.items)
+        }
+      })
+    } else {
+      showUnsavedPoCloseModal.value = false
+      wasPreDirtyOnOpen.value = false
+      initialPoModalSnapshot.value = ''
     }
   }
 )
@@ -16220,7 +16535,7 @@ function handleCreateBlankPO() {
     ghiChu: '',
     activePreviewTab: 'bg'
   }
-  isModalDirty.value = true
+  isModalDirty.value = false
   activeItemIdx.value = 0
   multiEditModal.value = {
     show: true,
@@ -20214,6 +20529,10 @@ async function saveMultiModal() {
       .map(i => (i.soPO ? `PO ${i.soPO}` : i.row?.So_PO ? `PO ${i.row.So_PO}` : i.content))
       .filter(Boolean)
       .join(', ')
+    isModalDirty.value = false
+    wasPreDirtyOnOpen.value = false
+    initialPoModalSnapshot.value = ''
+    showUnsavedPoCloseModal.value = false
     m.show = false
     if (createdOrUpdatedMode === 'create') {
       await openSrAlert({
@@ -20530,6 +20849,7 @@ interface CraftCompareMetricDef {
   shortLabel?: string
   formula?: string
   sectionTitle?: string
+  sectionGroup?: 'rev_cost' | 'com_tax_margin' | 'ratio'
   group: 'info' | 'rev' | 'cost' | 'com' | 'profit' | 'ratio'
   isNumeric: boolean
   isRatio?: boolean
@@ -20539,12 +20859,13 @@ interface CraftCompareMetricDef {
   format: (r: any) => string
 }
 
-// 10 Chỉ số đối chiếu chuẩn theo đúng 3 Khối Card PO (1. Doanh số bán | 2. Hoa hồng (COM) | 3. Lợi nhuận (Margin))
+// 13 Chỉ số đối chiếu chuẩn theo đúng 3 Nhóm trên Card PO (1. DOANH SỐ & CHI PHÍ | 2. COM, THUẾ & MARGIN | 3. TỈ SUẤT)
 const craftCompareMetricDefs: CraftCompareMetricDef[] = [
-  // CỤM 1 — KHỐI 1: DOANH SỐ BÁN
+  // NHÓM 1: DOANH SỐ & CHI PHÍ
   {
     key: 'dsb',
-    sectionTitle: '1. DOANH SỐ BÁN',
+    sectionGroup: 'rev_cost',
+    sectionTitle: '1. DOANH SỐ & CHI PHÍ',
     label: 'Doanh số bán',
     shortLabel: 'Doanh số bán',
     formula: 'Giá trị hàng bán trước thuế VAT',
@@ -20556,18 +20877,32 @@ const craftCompareMetricDefs: CraftCompareMetricDef[] = [
     format: (r: any) => fmt(doanhSoBan(r))
   },
   {
-    key: 'net_po',
-    label: 'Net PO',
-    shortLabel: 'Net PO',
-    formula: '= Doanh số bán - Gross COM',
-    group: 'rev',
+    key: 'gia_mua',
+    sectionGroup: 'rev_cost',
+    label: 'Giá mua',
+    shortLabel: 'Giá mua',
+    formula: 'Giá trị mua hàng đầu vào',
+    group: 'cost',
     isNumeric: true,
-    higherIsBetter: true,
-    getNumeric: (r: any) => netPO(r),
-    format: (r: any) => fmt(netPO(r))
+    higherIsBetter: false,
+    getNumeric: (r: any) => giaMua(r),
+    format: (r: any) => fmt(giaMua(r))
+  },
+  {
+    key: 'tong_cp',
+    sectionGroup: 'rev_cost',
+    label: 'Tổng CP đơn hàng',
+    shortLabel: 'Tổng CP đơn hàng',
+    formula: 'Tổng chi phí thực hiện đơn hàng',
+    group: 'cost',
+    isNumeric: true,
+    higherIsBetter: false,
+    getNumeric: (r: any) => tongCP(r),
+    format: (r: any) => fmt(tongCP(r))
   },
   {
     key: 'tong_sau_vat',
+    sectionGroup: 'rev_cost',
     label: 'Tổng tiền sau VAT',
     shortLabel: 'Tổng tiền sau VAT',
     formula: '= Doanh số bán + Thuế VAT',
@@ -20578,10 +20913,11 @@ const craftCompareMetricDefs: CraftCompareMetricDef[] = [
     format: (r: any) => fmt(tongSauVat(r))
   },
 
-  // CỤM 2 — KHỐI 2: HOA HỒNG (COM)
+  // NHÓM 2: COM, THUẾ & MARGIN
   {
     key: 'net_com',
-    sectionTitle: '2. HOA HỒNG (COM)',
+    sectionGroup: 'com_tax_margin',
+    sectionTitle: '2. COM, THUẾ & MARGIN',
     label: 'Net COM',
     shortLabel: 'Net COM',
     formula: '= Gross COM - Thuế COM',
@@ -20594,6 +20930,7 @@ const craftCompareMetricDefs: CraftCompareMetricDef[] = [
   },
   {
     key: 'gross_com',
+    sectionGroup: 'com_tax_margin',
     label: 'Gross COM',
     shortLabel: 'Gross COM',
     formula: 'Chênh lệch nâng giá trước thuế',
@@ -20604,40 +20941,32 @@ const craftCompareMetricDefs: CraftCompareMetricDef[] = [
     format: (r: any) => fmt(grossCom(r))
   },
   {
-    key: 'pct_com_netpo',
-    label: 'Net Com / Net PO',
-    shortLabel: 'Net Com / Net PO',
-    formula: '= (Net COM / Net PO) × 100%',
-    group: 'com',
+    key: 'thue_com',
+    sectionGroup: 'com_tax_margin',
+    label: 'Thuế',
+    shortLabel: 'Thuế',
+    formula: '= Gross COM × % Thuế COM',
+    group: 'cost',
     isNumeric: true,
-    isRatio: true,
-    higherIsBetter: true,
-    getNumeric: (r: any) => {
-      const np = netPO(r)
-      return np > 0 ? Number(((netCom(r) / np) * 100).toFixed(2)) : 0
-    },
-    format: (r: any) => `${pct(netCom(r), netPO(r))}%`
+    higherIsBetter: false,
+    getNumeric: (r: any) => Math.round(thue(r)),
+    format: (r: any) => `${fmt(Math.round(thue(r)))} (${thuePct(r)}%)`
   },
   {
-    key: 'pct_com_dsb',
-    label: 'Net Com / DSB',
-    shortLabel: 'Net Com / DSB',
-    formula: '= (Net COM / Doanh số bán) × 100%',
-    group: 'com',
+    key: 'net_po',
+    sectionGroup: 'com_tax_margin',
+    label: 'Net PO',
+    shortLabel: 'Net PO',
+    formula: '= Doanh số bán - Gross COM',
+    group: 'rev',
     isNumeric: true,
-    isRatio: true,
     higherIsBetter: true,
-    getNumeric: (r: any) => {
-      const d = doanhSoBan(r)
-      return d > 0 ? Number(((netCom(r) / d) * 100).toFixed(2)) : 0
-    },
-    format: (r: any) => `${pct(netCom(r), doanhSoBan(r))}%`
+    getNumeric: (r: any) => netPO(r),
+    format: (r: any) => fmt(netPO(r))
   },
-
-  // CỤM 3 — KHỐI 3: LỢI NHUẬN (MARGIN)
   {
     key: 'net_margin',
-    sectionTitle: '3. LỢI NHUẬN (MARGIN)',
+    sectionGroup: 'com_tax_margin',
     label: 'Net Margin',
     shortLabel: 'Net Margin',
     formula: '= Doanh số bán - Gross COM - Tổng CP',
@@ -20648,12 +20977,32 @@ const craftCompareMetricDefs: CraftCompareMetricDef[] = [
     getNumeric: (r: any) => netMargin(r),
     format: (r: any) => fmt(netMargin(r))
   },
+
+  // NHÓM 3: TỈ SUẤT
+  {
+    key: 'pct_com_netpo',
+    sectionGroup: 'ratio',
+    sectionTitle: '3. TỈ SUẤT',
+    label: 'Net COM / Net PO',
+    shortLabel: 'Net COM / Net PO',
+    formula: '= (Net COM / Net PO) × 100%',
+    group: 'ratio',
+    isNumeric: true,
+    isRatio: true,
+    higherIsBetter: true,
+    getNumeric: (r: any) => {
+      const np = netPO(r)
+      return np > 0 ? Number(((netCom(r) / np) * 100).toFixed(2)) : 0
+    },
+    format: (r: any) => `${pct(netCom(r), netPO(r))}%`
+  },
   {
     key: 'pct_margin_netpo',
+    sectionGroup: 'ratio',
     label: 'Net Margin / Net PO',
     shortLabel: 'Net Margin / Net PO',
     formula: '= (Net Margin / Net PO) × 100%',
-    group: 'profit',
+    group: 'ratio',
     isNumeric: true,
     isRatio: true,
     higherIsBetter: true,
@@ -20664,11 +21013,28 @@ const craftCompareMetricDefs: CraftCompareMetricDef[] = [
     format: (r: any) => `${pct(netMargin(r), netPO(r))}%`
   },
   {
+    key: 'pct_com_dsb',
+    sectionGroup: 'ratio',
+    label: 'Net COM / DSB',
+    shortLabel: 'Net COM / DSB',
+    formula: '= (Net COM / Doanh số bán) × 100%',
+    group: 'ratio',
+    isNumeric: true,
+    isRatio: true,
+    higherIsBetter: true,
+    getNumeric: (r: any) => {
+      const d = doanhSoBan(r)
+      return d > 0 ? Number(((netCom(r) / d) * 100).toFixed(2)) : 0
+    },
+    format: (r: any) => `${pct(netCom(r), doanhSoBan(r))}%`
+  },
+  {
     key: 'pct_margin_dsb',
+    sectionGroup: 'ratio',
     label: 'Net Margin / DSB',
     shortLabel: 'Net Margin / DSB',
     formula: '= (Net Margin / Doanh số bán) × 100%',
-    group: 'profit',
+    group: 'ratio',
     isNumeric: true,
     isRatio: true,
     higherIsBetter: true,
@@ -20681,14 +21047,55 @@ const craftCompareMetricDefs: CraftCompareMetricDef[] = [
 ]
 
 const filteredCraftCompareMetricDefs = computed(() => {
-  if (!craftCompareOnlyDiff.value || effectiveCraftCompareRows.value.length < 2) {
-    return craftCompareMetricDefs
+  const baseList =
+    !craftCompareOnlyDiff.value || effectiveCraftCompareRows.value.length < 2
+      ? craftCompareMetricDefs
+      : craftCompareMetricDefs.filter(mDef => {
+          const rowsToCheck = effectiveCraftCompareRows.value
+          const firstFormatted = mDef.format(rowsToCheck[0])
+          return rowsToCheck.some(r => mDef.format(r) !== firstFormatted)
+        })
+  const seenGroup = new Set<string>()
+  const groupTitleMap: Record<string, string> = {
+    rev_cost: '1. DOANH SỐ & CHI PHÍ',
+    com_tax_margin: '2. COM, THUẾ & MARGIN',
+    ratio: '3. TỈ SUẤT'
   }
-  const rowsToCheck = effectiveCraftCompareRows.value
-  return craftCompareMetricDefs.filter(mDef => {
-    const firstFormatted = mDef.format(rowsToCheck[0])
-    return rowsToCheck.some(r => mDef.format(r) !== firstFormatted)
+  return baseList.map(mDef => {
+    const gKey = mDef.sectionGroup || 'rev_cost'
+    if (!seenGroup.has(gKey)) {
+      seenGroup.add(gKey)
+      return {
+        ...mDef,
+        sectionTitle: groupTitleMap[gKey] || mDef.sectionTitle
+      }
+    }
+    return {
+      ...mDef,
+      sectionTitle: undefined
+    }
   })
+})
+
+const craftCompareRowHeaderGroups = computed(() => {
+  const defs = filteredCraftCompareMetricDefs.value
+  const groups: Array<{ key: string; title: string; tone: string; count: number }> = []
+  const groupMeta: Record<string, { title: string; tone: string }> = {
+    rev_cost: { title: '1. DOANH SỐ & CHI PHÍ', tone: 'rev' },
+    com_tax_margin: { title: '2. COM, THUẾ & MARGIN', tone: 'com' },
+    ratio: { title: '3. TỈ SUẤT', tone: 'profit' }
+  }
+  for (const m of defs) {
+    const gKey = m.sectionGroup || 'rev_cost'
+    const meta = groupMeta[gKey] || groupMeta.rev_cost
+    const last = groups[groups.length - 1]
+    if (last && last.key === gKey) {
+      last.count += 1
+    } else {
+      groups.push({ key: gKey, title: meta.title, tone: meta.tone, count: 1 })
+    }
+  }
+  return groups
 })
 
 function isBestCraftMetricCell(mDef: CraftCompareMetricDef, r: any, list: any[]): boolean {
@@ -20799,11 +21206,16 @@ function startEditMatrixCell(
   const rk = getCraftCompareKey(r)
   if (!rk) return
   if (isEditingMatrixCell(r, mDef)) return
-  const numVal = mDef.getNumeric(r)
-  const formattedMain = mDef.isRatio ? String(numVal) : fmt(Math.round(numVal))
+  const isPctEdit = Boolean(mDef.isRatio || mDef.key === 'thue_com')
+  const numVal = mDef.key === 'thue_com' ? thuePct(r) : mDef.getNumeric(r)
+  const formattedMain = isPctEdit ? String(numVal) : fmt(Math.round(numVal))
 
   const refRow = effectiveCraftBaseRow.value
-  const baseVal = refRow ? mDef.getNumeric(refRow) : numVal
+  const baseVal = refRow
+    ? mDef.key === 'thue_com'
+      ? thuePct(refRow)
+      : mDef.getNumeric(refRow)
+    : numVal
   const diff = numVal - baseVal
   const pctDiff =
     Math.abs(baseVal) > 0.001 ? Number(((diff / Math.abs(baseVal)) * 100).toFixed(1)) : 0
@@ -20812,7 +21224,7 @@ function startEditMatrixCell(
     rowKey: rk,
     metricKey: mDef.key,
     rawVal: formattedMain,
-    rawDeltaAbs: formatSignedMetricVal(diff, mDef.isRatio),
+    rawDeltaAbs: formatSignedMetricVal(diff, isPctEdit),
     rawDeltaPct: `${pctDiff > 0 ? '+' : ''}${pctDiff}`,
     focusField
   }
@@ -20837,7 +21249,8 @@ function onMatrixInlineInput(ev: Event, mDef: CraftCompareMetricDef) {
   if (!editingMatrixCell.value) return
   const target = ev.target as HTMLInputElement
   const raw = target.value
-  if (mDef.isRatio) {
+  const isPctEdit = Boolean(mDef.isRatio || mDef.key === 'thue_com')
+  if (isPctEdit) {
     editingMatrixCell.value.rawVal = raw.replace(/[^0-9.,-]/g, '')
   } else {
     const trimmed = raw.trim()
@@ -20853,12 +21266,12 @@ function onMatrixInlineInput(ev: Event, mDef: CraftCompareMetricDef) {
   // Tự động đồng bộ sang ô Δ Số cụ thể và ô Δ %
   const refRow = effectiveCraftBaseRow.value
   if (refRow) {
-    const baseVal = mDef.getNumeric(refRow)
-    const newMain = parseFormattedMetricVal(editingMatrixCell.value.rawVal, mDef.isRatio)
+    const baseVal = mDef.key === 'thue_com' ? thuePct(refRow) : mDef.getNumeric(refRow)
+    const newMain = parseFormattedMetricVal(editingMatrixCell.value.rawVal, isPctEdit)
     const diff = newMain - baseVal
     const pctDiff =
       Math.abs(baseVal) > 0.001 ? Number(((diff / Math.abs(baseVal)) * 100).toFixed(1)) : 0
-    editingMatrixCell.value.rawDeltaAbs = formatSignedMetricVal(diff, mDef.isRatio)
+    editingMatrixCell.value.rawDeltaAbs = formatSignedMetricVal(diff, isPctEdit)
     editingMatrixCell.value.rawDeltaPct = `${pctDiff > 0 ? '+' : ''}${pctDiff}`
   }
 }
@@ -20868,9 +21281,10 @@ function onMatrixDeltaAbsInput(ev: Event, _r: any, mDef: CraftCompareMetricDef) 
   const target = ev.target as HTMLInputElement
   const raw = target.value.trim()
   const sign = raw.startsWith('-') ? '-' : raw.startsWith('+') ? '+' : ''
+  const isPctEdit = Boolean(mDef.isRatio || mDef.key === 'thue_com')
 
   let diffVal = 0
-  if (mDef.isRatio) {
+  if (isPctEdit) {
     const cleaned = raw.replace(/[^0-9.,+-]/g, '')
     editingMatrixCell.value.rawDeltaAbs = cleaned
     diffVal = parseFormattedMetricVal(cleaned, true)
@@ -20887,9 +21301,13 @@ function onMatrixDeltaAbsInput(ev: Event, _r: any, mDef: CraftCompareMetricDef) 
   }
 
   const refRow = effectiveCraftBaseRow.value
-  const baseVal = refRow ? mDef.getNumeric(refRow) : 0
+  const baseVal = refRow
+    ? mDef.key === 'thue_com'
+      ? thuePct(refRow)
+      : mDef.getNumeric(refRow)
+    : 0
   const newMain = baseVal + diffVal
-  editingMatrixCell.value.rawVal = mDef.isRatio
+  editingMatrixCell.value.rawVal = isPctEdit
     ? String(Number(newMain.toFixed(2)))
     : fmt(Math.round(newMain))
   const pctDiff =
@@ -20902,15 +21320,20 @@ function onMatrixDeltaPctInput(ev: Event, _r: any, mDef: CraftCompareMetricDef) 
   const target = ev.target as HTMLInputElement
   const cleaned = target.value.replace(/[^0-9.,+-]/g, '')
   editingMatrixCell.value.rawDeltaPct = cleaned
+  const isPctEdit = Boolean(mDef.isRatio || mDef.key === 'thue_com')
 
   const pctVal = parseFormattedMetricVal(cleaned, true)
   const refRow = effectiveCraftBaseRow.value
-  const baseVal = refRow ? mDef.getNumeric(refRow) : 0
+  const baseVal = refRow
+    ? mDef.key === 'thue_com'
+      ? thuePct(refRow)
+      : mDef.getNumeric(refRow)
+    : 0
   const diffVal = Math.abs(baseVal) * (pctVal / 100)
   const newMain = baseVal + diffVal
 
-  editingMatrixCell.value.rawDeltaAbs = formatSignedMetricVal(diffVal, mDef.isRatio)
-  editingMatrixCell.value.rawVal = mDef.isRatio
+  editingMatrixCell.value.rawDeltaAbs = formatSignedMetricVal(diffVal, isPctEdit)
+  editingMatrixCell.value.rawVal = isPctEdit
     ? String(Number(newMain.toFixed(2)))
     : fmt(Math.round(newMain))
 }
@@ -20928,9 +21351,10 @@ async function commitEditMatrixCell(r: any, mDef: CraftCompareMetricDef) {
 
   const rawStr = String(cell.rawVal || '').trim()
   if (!rawStr || rawStr === '-') return
+  const isPctEdit = Boolean(mDef.isRatio || mDef.key === 'thue_com')
 
   let newVal = 0
-  if (mDef.isRatio) {
+  if (isPctEdit) {
     newVal = Number(rawStr.replace(/%/g, '').replace(',', '.'))
   } else {
     const isNeg = rawStr.startsWith('-')
@@ -20939,15 +21363,16 @@ async function commitEditMatrixCell(r: any, mDef: CraftCompareMetricDef) {
   }
   if (!Number.isFinite(newVal)) return
 
-  const oldVal = mDef.getNumeric(r)
+  const oldVal = mDef.key === 'thue_com' ? thuePct(r) : mDef.getNumeric(r)
   if (Math.abs(newVal - oldVal) < 0.005) return
 
   let dsb = doanhSoBan(r)
   let vat = thueVat(r)
   let tSau = tongSauVat(r)
   let gCom = grossCom(r)
-  const tPct = thuePct(r)
+  let tPct = thuePct(r)
   let nCom = netCom(r)
+  let gMua = giaMua(r)
   let cp = tongCP(r)
 
   const recalcNetComFromGross = (gross: number) => {
@@ -20968,6 +21393,18 @@ async function commitEditMatrixCell(r: any, mDef: CraftCompareMetricDef) {
       tSau = dsb + vat
       break
     }
+    case 'gia_mua': {
+      const oldGm = gMua
+      gMua = Math.max(0, Math.round(newVal))
+      if (cp === 0 || cp === oldGm) {
+        cp = gMua
+      }
+      break
+    }
+    case 'tong_cp': {
+      cp = Math.max(0, Math.round(newVal))
+      break
+    }
     case 'tong_sau_vat': {
       tSau = Math.max(0, Math.round(newVal))
       vat = Math.max(0, tSau - dsb)
@@ -20980,6 +21417,11 @@ async function commitEditMatrixCell(r: any, mDef: CraftCompareMetricDef) {
     }
     case 'gross_com': {
       recalcNetComFromGross(Math.max(0, newVal))
+      break
+    }
+    case 'thue_com': {
+      tPct = Number(Math.min(100, Math.max(0, newVal)).toFixed(2))
+      recalcNetComFromGross(gCom)
       break
     }
     case 'net_com': {
@@ -21022,6 +21464,7 @@ async function commitEditMatrixCell(r: any, mDef: CraftCompareMetricDef) {
     Tong_tien_truoc_thueVAT: dsb,
     Tong_thueVAT: vat,
     Tong_tien_sau_thueVAT: tSau,
+    Tong_thanh_tien_chua_VAT_mua_hang: gMua,
     Tong_CP_don_hang: cp,
     chiet_khau_tong_truoc_thue: gCom,
     chenh_lech_gia: gCom,
@@ -21139,6 +21582,9 @@ const craftCompareViewSection = ref<'both' | 'chart' | 'table'>('both')
 const craftCompareChartMetric = ref<string>('dsb')
 const craftCompareChartSort = ref<'original' | 'desc' | 'asc'>('original')
 const craftCompareMobileDockTab = ref<'metric' | 'group' | 'chart'>('chart')
+watch(() => showCraftCompareModal.value, (v) => {
+  if (v) craftCompareMobileDockTab.value = 'chart'
+})
 
 function getCraftMetricBarPercent(mDef: CraftCompareMetricDef, r: any, list: any[]): number {
   if (!mDef.isNumeric || !list || list.length === 0) return 0
@@ -21688,7 +22134,11 @@ async function saveModalItemsToCraft(silent = false): Promise<string[]> {
 
     await loadData()
     if (!silent) {
-      m.show = false
+      isModalDirty.value = false
+    wasPreDirtyOnOpen.value = false
+    initialPoModalSnapshot.value = ''
+    showUnsavedPoCloseModal.value = false
+    m.show = false
       await openSrAlert({
         variant: 'success',
         eyebrow: 'Lưu Bản Tạm hoàn tất',
@@ -34753,6 +35203,11 @@ const isAnySaleModalOpen = computed(() => Boolean(
   gap: 10px;
 }
 
+.sr-po-btn-lbl-mob,
+.sr-po-btn-cancel.is-mob-inline-close {
+  display: none !important;
+}
+
 .sr-po-saved-hint {
   font-size: 12px;
   font-weight: 700;
@@ -43712,6 +44167,30 @@ const isAnySaleModalOpen = computed(() => Boolean(
   color: #0f172a !important;
 }
 
+.sr-dialog-foot button.sr-dlg-discard {
+  background: rgba(239, 68, 68, 0.14) !important;
+  border: 1px solid rgba(239, 68, 68, 0.48) !important;
+  color: #fca5a5 !important;
+}
+
+.sr-dialog-foot button.sr-dlg-discard:hover {
+  background: rgba(220, 38, 38, 0.9) !important;
+  border-color: #ef4444 !important;
+  color: #ffffff !important;
+}
+
+.sr-dialog-card.is-light .sr-dialog-foot button.sr-dlg-discard {
+  background: #fef2f2 !important;
+  border: 1px solid #fecaca !important;
+  color: #dc2626 !important;
+}
+
+.sr-dialog-card.is-light .sr-dialog-foot button.sr-dlg-discard:hover {
+  background: #dc2626 !important;
+  border-color: #dc2626 !important;
+  color: #ffffff !important;
+}
+
 .sr-dialog-foot button.sr-dlg-confirm {
   border: none !important;
   color: #ffffff !important;
@@ -43787,6 +44266,11 @@ const isAnySaleModalOpen = computed(() => Boolean(
   }
 
   .sr-dialog-foot.is-single-action button.sr-dlg-confirm {
+    width: 100% !important;
+  }
+
+  .sr-dialog-foot.is-three-actions button.sr-dlg-confirm.is-btn-save-close {
+    grid-column: 1 / -1 !important;
     width: 100% !important;
   }
 }
@@ -53238,15 +53722,30 @@ const isAnySaleModalOpen = computed(() => Boolean(
   .sr-po-modal .sr-po-modal-footer {
     flex-direction: column !important;
     align-items: stretch !important;
-    gap: 8px !important;
-    padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+    gap: 6px !important;
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .sr-po-modal .sr-po-footer-right {
+    display: none !important;
+  }
+
+  .sr-po-modal .sr-po-btn-lbl-dt {
+    display: none !important;
+  }
+
+  .sr-po-modal .sr-po-btn-lbl-mob {
+    display: inline !important;
+  }
+
+  .sr-po-modal .sr-po-btn-cancel.is-mob-inline-close {
+    display: inline-flex !important;
   }
 
   .sr-po-modal .sr-po-footer-left,
-  .sr-po-modal .sr-po-footer-center,
-  .sr-po-modal .sr-po-footer-right {
+  .sr-po-modal .sr-po-footer-center {
     display: flex !important;
-    flex-wrap: wrap !important;
+    flex-wrap: nowrap !important;
     width: 100% !important;
     min-width: 0 !important;
     justify-content: stretch !important;
@@ -53254,12 +53753,23 @@ const isAnySaleModalOpen = computed(() => Boolean(
   }
 
   .sr-po-modal .sr-po-footer-left > *,
-  .sr-po-modal .sr-po-footer-center > *,
-  .sr-po-modal .sr-po-footer-right > * {
-    flex: 1 1 auto !important;
+  .sr-po-modal .sr-po-footer-center > * {
+    flex: 1 1 0% !important;
     min-width: 0 !important;
     justify-content: center !important;
     text-align: center !important;
+    padding: 0 8px !important;
+    font-size: 11.5px !important;
+    height: 35px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .sr-po-modal .sr-po-footer-center > * {
+    height: 38px !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
   }
 
   /* Chỉ riêng bảng chi tiết mặt hàng cho phép cuộn ngang nội bộ trong khung bảng */
@@ -54754,19 +55264,19 @@ const isAnySaleModalOpen = computed(() => Boolean(
 
 /* ─── 1. DARK MODE — BẢN CHÍNH THỨC (XANH LÁ - DARK EMERALD) ─── */
 .sr-analytics-modal:not(.is-light):not(.mode-craft) .sr-ccm-table thead th {
-  background: linear-gradient(90deg, rgba(5, 150, 105, 0.44) 0%, rgba(13, 148, 136, 0.32) 52%, rgba(15, 23, 42, 0.96) 100%) !important;
+  background: linear-gradient(90deg, #064e3b 0%, #0f3d3e 52%, #0f172a 100%) !important;
   border-bottom: 1.5px solid rgba(52, 211, 153, 0.48) !important;
 }
 
 .sr-analytics-modal:not(.is-light):not(.mode-craft) .sr-ccm-table th,
 .sr-analytics-modal:not(.is-light):not(.mode-craft) .sr-ccm-table td {
-  background: rgba(8, 22, 18, 0.96);
+  background: #081612;
   border-bottom-color: rgba(52, 211, 153, 0.16);
   border-right-color: rgba(52, 211, 153, 0.14);
 }
 
 .sr-analytics-modal:not(.is-light):not(.mode-craft) .sr-ccm-section-banner .sr-ccm-section-td {
-  background: rgba(6, 78, 59, 0.45) !important;
+  background: #06382b !important;
   color: #6ee7b7 !important;
   border-top-color: rgba(52, 211, 153, 0.28) !important;
   border-bottom-color: rgba(52, 211, 153, 0.28) !important;
@@ -54779,19 +55289,19 @@ const isAnySaleModalOpen = computed(() => Boolean(
 }
 
 .sr-analytics-modal:not(.is-light).mode-craft .sr-ccm-table thead th {
-  background: linear-gradient(90deg, rgba(2, 132, 199, 0.45) 0%, rgba(37, 99, 235, 0.35) 55%, rgba(15, 23, 42, 0.96) 100%) !important;
+  background: linear-gradient(90deg, #0c4a6e 0%, #1e3a8a 55%, #0f172a 100%) !important;
   border-bottom: 1.5px solid rgba(56, 189, 248, 0.55) !important;
 }
 
 .sr-analytics-modal:not(.is-light).mode-craft .sr-ccm-table th,
 .sr-analytics-modal:not(.is-light).mode-craft .sr-ccm-table td {
-  background: rgba(11, 22, 38, 0.96);
+  background: #0b1626;
   border-bottom-color: rgba(56, 189, 248, 0.16);
   border-right-color: rgba(56, 189, 248, 0.14);
 }
 
 .sr-analytics-modal:not(.is-light).mode-craft .sr-ccm-section-banner .sr-ccm-section-td {
-  background: rgba(12, 74, 110, 0.48) !important;
+  background: #0c3554 !important;
   color: #7dd3fc !important;
   border-top-color: rgba(56, 189, 248, 0.3) !important;
   border-bottom-color: rgba(56, 189, 248, 0.3) !important;
@@ -55088,24 +55598,56 @@ const isAnySaleModalOpen = computed(() => Boolean(
   color: #047857;
 }
 
-/* 1. Đổ màu nền Cột/Dòng Bản gốc — Dark Mode Chính thức (Xanh lá) */
+/* 1. Đổ màu nền Cột/Dòng Bản gốc — Dark Mode Chính thức (Xanh lá đặc 100% không trong suốt) */
 .sr-analytics-modal:not(.is-light):not(.mode-craft) .sr-ccm-table th.is-baseline-col {
-  background: linear-gradient(135deg, rgba(5, 150, 105, 0.68) 0%, rgba(13, 148, 136, 0.52) 100%) !important;
+  background: linear-gradient(135deg, #065f46 0%, #0f5148 100%) !important;
   border-bottom: 2px solid #34d399 !important;
 }
 
 .sr-analytics-modal:not(.is-light):not(.mode-craft) .sr-ccm-table td.is-baseline-col {
-  background: rgba(16, 185, 129, 0.16) !important;
+  background: #0a2921 !important;
 }
 
-/* 2. Đổ màu nền Cột/Dòng Bản gốc — Dark Mode Bản tạm (Xanh dương) */
+/* 2. Đổ màu nền Cột/Dòng Bản gốc — Dark Mode Bản tạm (Xanh dương đặc 100% không trong suốt) */
 .sr-analytics-modal:not(.is-light).mode-craft .sr-ccm-table th.is-baseline-col {
-  background: linear-gradient(135deg, rgba(2, 132, 199, 0.72) 0%, rgba(37, 99, 235, 0.56) 100%) !important;
+  background: linear-gradient(135deg, #075985 0%, #1e40af 100%) !important;
   border-bottom: 2px solid #38bdf8 !important;
 }
 
 .sr-analytics-modal:not(.is-light).mode-craft .sr-ccm-table td.is-baseline-col {
-  background: rgba(2, 132, 199, 0.18) !important;
+  background: #0c2540 !important;
+}
+
+/* Đảm bảo cột sticky (Nội dung hợp đồng / Chỉ số KPI) luôn đặc 100% & z-index cao khi cuộn ngang */
+.sr-ccm-table td.sr-ccm-sticky-col {
+  z-index: 8 !important;
+  box-shadow: 4px 0 10px -2px rgba(2, 6, 23, 0.45);
+}
+
+.sr-ccm-table thead th.sr-ccm-sticky-col {
+  z-index: 14 !important;
+  box-shadow: 4px 0 10px -2px rgba(2, 6, 23, 0.5);
+}
+
+.sr-analytics-modal:not(.is-light):not(.mode-craft) .sr-ccm-table td.sr-ccm-sticky-col:not(.is-baseline-col) {
+  background: #081612 !important;
+}
+
+.sr-analytics-modal:not(.is-light).mode-craft .sr-ccm-table td.sr-ccm-sticky-col:not(.is-baseline-col) {
+  background: #0b1626 !important;
+}
+
+.sr-analytics-modal.is-light .sr-ccm-table td.sr-ccm-sticky-col,
+.sr-analytics-modal.is-light .sr-ccm-table thead th.sr-ccm-sticky-col {
+  box-shadow: 4px 0 10px -2px rgba(15, 23, 42, 0.08);
+}
+
+.sr-analytics-modal.is-light .sr-ccm-table td.sr-ccm-sticky-col:not(.is-baseline-col) {
+  background: #ffffff !important;
+}
+
+.sr-analytics-mob-ctx-bar {
+  display: none !important;
 }
 
 /* 3. Đổ màu nền Cột/Dòng Bản gốc — Light Mode Chính thức (Xanh dương) */
@@ -55257,5 +55799,201 @@ const isAnySaleModalOpen = computed(() => Boolean(
 .sr-page.is-mobile-shell .bg-topbar .bg-count-pill,
 .sr-page.is-mobile-shell .bg-topbar .bg-topbar-right {
   display: none !important;
+}
+
+.sr-ccm-table.is-rows-layout th.sr-ccm-row-group-th {
+  text-align: center !important;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 7px 10px !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+  border-left: 1px solid rgba(148, 163, 184, 0.18);
+  border-right: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.sr-ccm-table.is-rows-layout th.sr-ccm-row-group-th.is-sec-rev {
+  background: #0c243d !important;
+  color: #38bdf8;
+}
+
+.sr-ccm-table.is-rows-layout th.sr-ccm-row-group-th.is-sec-com {
+  background: #291f0c !important;
+  color: #fbbf24;
+}
+
+.sr-ccm-table.is-rows-layout th.sr-ccm-row-group-th.is-sec-profit {
+  background: #0b2922 !important;
+  color: #34d399;
+}
+
+.sr-analytics-modal.is-light .sr-ccm-table.is-rows-layout th.sr-ccm-row-group-th {
+  border-color: #cbd5e1;
+}
+
+.sr-analytics-modal.is-light .sr-ccm-table.is-rows-layout th.sr-ccm-row-group-th.is-sec-rev {
+  background: #e0f2fe !important;
+  color: #0369a1;
+}
+
+.sr-analytics-modal.is-light .sr-ccm-table.is-rows-layout th.sr-ccm-row-group-th.is-sec-com {
+  background: #fef3c7 !important;
+  color: #b45309;
+}
+
+.sr-analytics-modal.is-light .sr-ccm-table.is-rows-layout th.sr-ccm-row-group-th.is-sec-profit {
+  background: #d1fae5 !important;
+  color: #047857;
+}
+
+.sr-ccm-corner-head small {
+  display: none !important;
+}
+
+.sr-ccm-corner-head span {
+  font-size: 11px !important;
+  line-height: 1.2 !important;
+  letter-spacing: 0.02em !important;
+}
+
+.sr-ccm-table thead th,
+.sr-ccm-table.is-columns-layout thead th,
+.sr-ccm-table.is-rows-layout thead th {
+  padding: 6px 8px !important;
+}
+
+.sr-ccm-table.is-rows-layout th.sr-ccm-row-group-th {
+  padding: 4px 8px !important;
+  font-size: 10px !important;
+}
+
+.sr-ccm-table.is-columns-layout .sr-ccm-opt-head {
+  gap: 2px !important;
+}
+
+.sr-ccm-table.is-columns-layout .sr-ccm-opt-po,
+.sr-ccm-table.is-rows-layout .sr-ccm-opt-po {
+  font-size: 11.5px !important;
+  line-height: 1.2 !important;
+}
+
+.sr-ccm-table.is-columns-layout .sr-ccm-opt-cust,
+.sr-ccm-table.is-rows-layout .sr-ccm-opt-cust {
+  font-size: 10px !important;
+  line-height: 1.15 !important;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.sr-ccm-base-btn {
+  padding: 2px 7px !important;
+  font-size: 9.5px !important;
+}
+
+@media (max-width: 768px) {
+  .sr-ccm-corner-head span {
+    font-size: 10.5px !important;
+  }
+
+  .sr-ccm-table thead th,
+  .sr-ccm-table.is-columns-layout th,
+  .sr-ccm-table.is-columns-layout td,
+  .sr-ccm-table.is-rows-layout th,
+  .sr-ccm-table.is-rows-layout td {
+    padding: 5px 7px !important;
+  }
+
+  .sr-ccm-table.is-rows-layout th.sr-ccm-row-group-th {
+    padding: 4px 6px !important;
+    font-size: 9.5px !important;
+  }
+
+  .sr-ccm-table.is-columns-layout .sr-ccm-opt-po,
+  .sr-ccm-table.is-rows-layout .sr-ccm-opt-po {
+    font-size: 11px !important;
+  }
+
+  .sr-ccm-table.is-columns-layout .sr-ccm-opt-cust,
+  .sr-ccm-table.is-rows-layout .sr-ccm-opt-cust {
+    font-size: 9.5px !important;
+  }
+
+  .sr-ccm-base-btn {
+    padding: 1px 6px !important;
+  }
+
+  .sr-ccm-table.is-columns-layout {
+    min-width: calc(122px + var(--ccm-opt-count, 1) * 148px) !important;
+  }
+
+  .sr-ccm-table.is-columns-layout col.sr-ccm-col-sticky,
+  .sr-ccm-table.is-columns-layout .sr-ccm-sticky-col {
+    width: 122px !important;
+    min-width: 122px !important;
+    max-width: 122px !important;
+  }
+
+  .sr-ccm-table.is-columns-layout col.sr-ccm-col-option,
+  .sr-ccm-table.is-columns-layout .sr-ccm-option-th,
+  .sr-ccm-table.is-columns-layout .sr-ccm-val-td,
+  .sr-ccm-table.is-columns-layout .sr-ccm-foot-act-td {
+    width: calc((100% - 122px) / var(--ccm-opt-count, 1)) !important;
+    min-width: 148px !important;
+  }
+
+  .sr-ccm-table.is-rows-layout {
+    min-width: calc(130px + 135px + var(--ccm-metric-count, 10) * 115px) !important;
+  }
+
+  .sr-ccm-table.is-rows-layout col.sr-ccm-col-row-sticky,
+  .sr-ccm-table.is-rows-layout .sr-ccm-sticky-col {
+    width: 130px !important;
+    min-width: 130px !important;
+    max-width: 130px !important;
+  }
+
+  .sr-ccm-table.is-rows-layout col.sr-ccm-col-row-metric,
+  .sr-ccm-table.is-rows-layout .sr-ccm-row-metric-th,
+  .sr-ccm-table.is-rows-layout .sr-ccm-val-td {
+    width: calc((100% - 130px - 135px) / var(--ccm-metric-count, 10)) !important;
+    min-width: 115px !important;
+  }
+
+  .sr-ccm-table.is-rows-layout col.sr-ccm-col-row-actions,
+  .sr-ccm-table.is-rows-layout .sr-ccm-row-actions-th,
+  .sr-ccm-table.is-rows-layout .sr-ccm-row-actions-td {
+    width: 135px !important;
+    min-width: 135px !important;
+    max-width: 135px !important;
+  }
+
+  .sr-analytics-header .sr-analytics-header-icon,
+  .sr-analytics-header .sr-ccm-tool-btn.is-clone,
+  .sr-analytics-header .sr-ccm-tool-btn.is-mindmap {
+    display: none !important;
+  }
+}
+
+.sr-ccm-act-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  line-height: 1 !important;
+}
+
+.sr-ccm-act-btn.is-icon-only {
+  width: 28px !important;
+  height: 26px !important;
+  padding: 0 !important;
+}
+
+.sr-ccm-act-btn.is-chot {
+  height: 26px !important;
+  padding: 0 9px !important;
+  font-weight: 800 !important;
 }
 </style>
