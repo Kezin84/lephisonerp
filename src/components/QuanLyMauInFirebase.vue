@@ -817,6 +817,9 @@
             <button class="btn btn-emerald" @click="handleCreateAgencyTemplate">
               + Tạo mẫu Đại Lý
             </button>
+            <button class="btn btn-emerald" @click="handleCreateListPriceTemplate">
+              + Tạo mẫu Giá List
+            </button>
             <button class="btn btn-blue" @click="handleCreateBlankTemplate">
               + Tạo mẫu tự thiết kế
             </button>
@@ -1392,6 +1395,7 @@ import {
   createBlankTemplateConfig,
   createDealRegTemplateConfig,
   createAgencyTemplateConfig,
+  createListPriceTemplateConfig,
   ensureGridHeaderPopulated,
   parseExcelBufferToTemplateConfig,
   fetchAndSyncPrintTemplates,
@@ -3224,6 +3228,18 @@ async function handleCreateAgencyTemplate() {
   selectTemplate(newTpl)
   showTemplateModal.value = false
   showToast('Đã tạo Mẫu Báo Giá Đại Lý chuẩn 13 cột!')
+}
+
+async function handleCreateListPriceTemplate() {
+  const existing = templates.value.find(t => t.id === 'MINTL_GIA_LIST')
+  const newId = existing ? `MINTL_GIA_LIST_${Date.now()}` : 'MINTL_GIA_LIST'
+  const newName = existing ? `Mẫu Báo Giá List (${templates.value.length + 1})` : 'Mẫu Báo Giá List'
+  const newTpl = createListPriceTemplateConfig(newId, newName)
+  await savePrintTemplateToFirebase(newTpl)
+  templates.value.unshift(newTpl)
+  selectTemplate(newTpl)
+  showTemplateModal.value = false
+  showToast('Đã tạo Mẫu Báo Giá List!')
 }
 
 async function handleCreateBlankTemplate() {

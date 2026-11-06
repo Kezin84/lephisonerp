@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs'
+import JSZip from 'jszip'
 import html2canvas from 'html2canvas'
 import { getDatabase, ref as dbRef, get, set, update, remove } from 'firebase/database'
 import { getApps, getApp, initializeApp } from 'firebase/app'
@@ -1136,6 +1137,49 @@ export function createStarterTemplateConfig(customId?: string, name = 'Mẫu Bá
     ],
     grid_cells: cells
   }
+}
+
+export function isListPriceTemplate(tpl?: Partial<PrintTemplateConfig> | null): boolean {
+  if (!tpl) return false
+  const id = String(tpl.id || '').trim()
+  const name = String(tpl.ten_mau || '').toLowerCase()
+  return (
+    id === 'MINTL_GIA_LIST' ||
+    id.startsWith('MINTL_GIA_LIST_') ||
+    name.includes('giá list') ||
+    name.includes('gia list')
+  )
+}
+
+export function isDealRegTemplate(tpl?: Partial<PrintTemplateConfig> | null): boolean {
+  if (!tpl) return false
+  const id = String(tpl.id || '').trim()
+  const name = String(tpl.ten_mau || '').toLowerCase()
+  return id === 'MINTL_DEAL_REG' || id.startsWith('MINTL_DEAL_REG_') || name.includes('deal reg')
+}
+
+export function isAgencyTemplate(tpl?: Partial<PrintTemplateConfig> | null): boolean {
+  if (!tpl) return false
+  const id = String(tpl.id || '').trim()
+  const name = String(tpl.ten_mau || '').toLowerCase()
+  const link = String(tpl.link_file_goc || '')
+  return (
+    id === 'MINTL_DAI_LY' ||
+    id.startsWith('MINTL_DAI_LY_') ||
+    name.includes('đại lý') ||
+    name.includes('dai ly') ||
+    link.includes('bao_gia_dl_template')
+  )
+}
+
+export function createListPriceTemplateConfig(
+  customId?: string,
+  name = 'Mẫu Báo Giá List'
+): PrintTemplateConfig {
+  const id = customId || 'MINTL_GIA_LIST'
+  const tpl = createStarterTemplateConfig(id, name)
+  tpl.ghi_chu = 'Mẫu báo giá Giá List (Chỉ xuất đơn giá List không Off khách/hãng, kèm 3 cột phụ ở Page 2 khi xuất Excel)'
+  return tpl
 }
 
 export function normalizeLegacyTokenSyntax(val: string): string {
@@ -2507,6 +2551,7 @@ export async function fetchAndSyncPrintTemplates(): Promise<PrintTemplateConfig[
           String(raw.ten_mau || '').toLowerCase().includes('đại lý') ||
           String(raw.ten_mau || '').toLowerCase().includes('dai ly') ||
           String(raw.link_file_goc || '').includes('bao_gia_dl_template')
+        const isListPriceId = isListPriceTemplate({ id, ten_mau: raw.ten_mau })
 
         const hasExplicitMergesJson = typeof raw.merges_json === 'string'
         const parsedMerges = hasExplicitMergesJson
@@ -2524,7 +2569,9 @@ export async function fetchAndSyncPrintTemplates(): Promise<PrintTemplateConfig[
           ? createDealRegTemplateConfig(id, raw.ten_mau || 'Mẫu Deal Registration')
           : isAgencyId
             ? createAgencyTemplateConfig(id, raw.ten_mau || 'Mẫu Báo Giá Đại Lý')
-            : createStarterTemplateConfig(id, raw.ten_mau || 'Mẫu in')
+            : isListPriceId
+              ? createListPriceTemplateConfig(id, raw.ten_mau || 'Mẫu Báo Giá List')
+              : createStarterTemplateConfig(id, raw.ten_mau || 'Mẫu in')
         const normalizedColWidths = normalizeNumericIndexMap(
           raw.col_widths_json ?? raw.col_widths,
           starter.col_widths
@@ -2687,6 +2734,14 @@ export async function fetchAndSyncPrintTemplates(): Promise<PrintTemplateConfig[
       newSyncUpdates[`mau_in_thiet_lap/${agencyTpl.id}`] = serializeTemplateForFirebase(agencyTpl)
     }
 
+    // 6. Auto-seed built-in List Price template (`MINTL_GIA_LIST`) if not yet present and not deleted by user
+    if (!templatesMap.has('MINTL_GIA_LIST') && !deletedIds.has('MINTL_GIA_LIST')) {
+      const listPriceTpl = createListPriceTemplateConfig('MINTL_GIA_LIST', 'Mẫu Báo Giá List')
+      listPriceTpl.mac_dinh = false
+      templatesMap.set(listPriceTpl.id, listPriceTpl)
+      newSyncUpdates[`mau_in_thiet_lap/${listPriceTpl.id}`] = serializeTemplateForFirebase(listPriceTpl)
+    }
+
     if (Object.keys(newSyncUpdates).length > 0) {
       await update(dbRef(database), newSyncUpdates)
     }
@@ -2698,9 +2753,10 @@ export async function fetchAndSyncPrintTemplates(): Promise<PrintTemplateConfig[
     console.error('Lỗi fetchAndSyncPrintTemplates:', e)
     const fallback = createStarterTemplateConfig('MINTL_DEFAULT_NTS', 'Mẫu Báo Giá Chuẩn NTS')
     fallback.mac_dinh = true
+    const listPriceFallback = createListPriceTemplateConfig('MINTL_GIA_LIST', 'Mẫu Báo Giá List')
     const dealRegFallback = createDealRegTemplateConfig('MINTL_DEAL_REG', 'Mẫu Deal Registration')
     const agencyFallback = createAgencyTemplateConfig('MINTL_DAI_LY', 'Mẫu Báo Giá Đại Lý')
-    return [fallback, agencyFallback, dealRegFallback]
+    return [fallback, listPriceFallback, agencyFallback, dealRegFallback]
   }
 }
 
@@ -2914,6 +2970,18 @@ export interface QuoteExportRowItem {
   pctVat?: number | string
 }
 
+export type VndRoundingMode = 'round' | 'ceil' | 'floor' | 'none'
+
+export function roundVndByMode(val: number, mode: VndRoundingMode = 'round'): number {
+  const num = Number(val)
+  if (!Number.isFinite(num)) return 0
+  if (mode === 'none') return Math.round((num + Number.EPSILON) * 100) / 100
+  const intVal = Math.round(num)
+  if (mode === 'ceil') return Math.ceil(intVal / 1000) * 1000
+  if (mode === 'floor') return Math.floor(intVal / 1000) * 1000
+  return Math.round(intVal / 1000) * 1000
+}
+
 export interface QuoteExportContext {
   khach: {
     Ma_khach_hang?: string
@@ -2938,6 +3006,7 @@ export interface QuoteExportContext {
   soPO: string
   noiDungPO: string
   currency: 'VND' | 'USD'
+  vndRoundingMode?: VndRoundingMode
   tiGia: number
   rows: QuoteExportRowItem[]
   itemSttFormat?: 'number' | 'roman' | 'hierarchical'
@@ -3523,7 +3592,82 @@ function formatContinuousFlatStt(idx: number, ctx: QuoteExportContext): string {
 /* =====================================================
    8. RENDER HTML ĐỂ XEM TRƯỚC / IN PDF / XUẤT PNG / XUẤT HTML
 ===================================================== */
-export function renderTemplateToHtml(tpl: PrintTemplateConfig, ctx: QuoteExportContext): string {
+
+export function normalizeContextForTemplate(
+  tpl: PrintTemplateConfig,
+  rawCtx: QuoteExportContext
+): QuoteExportContext {
+  if (!isListPriceTemplate(tpl)) {
+    return rawCtx
+  }
+
+  let sumTruoc = 0
+  let sumVat = 0
+  const curr = rawCtx.currency || 'VND'
+
+  const normalizedRows: QuoteExportRowItem[] = (rawCtx.rows || []).map(r => {
+    if (r.type !== 'item') return r
+    const it = r.item || {}
+    const sl = Number(it.So_luong) || 1
+    const tg = Number(it.Ti_gia) > 0 ? Number(it.Ti_gia) : (Number(rawCtx.tiGia) > 1 ? Number(rawCtx.tiGia) : 1)
+    const rawOriginList = (Number(it.Don_gia) || 0) + (Number(it.gia_hardware) || 0) + (Number(it.gia_nhap) || 0)
+    const fallbackList =
+      curr === 'USD'
+        ? Math.round(rawOriginList * 100) / 100
+        : Math.round(rawOriginList * tg * 100) / 100
+    const unitList =
+      r.listPrice !== undefined && r.listPrice !== null && Number(r.listPrice) > 0
+        ? Number(r.listPrice)
+        : fallbackList
+
+    const vatPct = formatPctNumber(
+      r.pctVat !== undefined && r.pctVat !== null && r.pctVat !== ''
+        ? r.pctVat
+        : it.Thue_VAT ?? 0
+    )
+    // Giữ nguyên Giá List gốc không làm tròn; Thành tiền trước thuế = Giá List * SL
+    const truoc = Math.round(unitList * sl * 100) / 100
+    const rawVat = Math.round(((truoc * vatPct) / 100) * 100) / 100
+    const vat =
+      curr === 'VND' && rawCtx.vndRoundingMode && rawCtx.vndRoundingMode !== 'none'
+        ? roundVndByMode(rawVat, rawCtx.vndRoundingMode)
+        : rawVat
+    const sau = Math.round((truoc + vat) * 100) / 100
+
+    sumTruoc += truoc
+    sumVat += vat
+
+    return {
+      ...r,
+      listPrice: unitList,
+      donGiaKH: unitList,
+      truocThue: truoc,
+      vatAmount: vat,
+      sauThue: sau,
+      pctOffHang: 0,
+      pctOff: 0
+    }
+  })
+
+  const finalTruoc = Math.round(sumTruoc * 100) / 100
+  const finalVat = Math.round(sumVat * 100) / 100
+  const finalSau = Math.round((finalTruoc + finalVat) * 100) / 100
+
+  return {
+    ...rawCtx,
+    rows: normalizedRows,
+    totals: {
+      ...rawCtx.totals,
+      truoc: finalTruoc,
+      vat: finalVat,
+      sau: finalSau,
+      off: 0
+    }
+  }
+}
+
+export function renderTemplateToHtml(tpl: PrintTemplateConfig, rawCtx: QuoteExportContext): string {
+  const ctx = normalizeContextForTemplate(tpl, rawCtx)
   const globalMap = buildGlobalTokenMap(tpl, ctx)
   const vung = tpl.mapping_vung || {
     dong_tieu_de_bang: 7,
@@ -4996,9 +5140,12 @@ function resolveParsedTermsForTemplate(
 
 export async function generateExcelBlobFromTemplate(
   rawTpl: PrintTemplateConfig,
-  ctx: QuoteExportContext
+  rawCtx: QuoteExportContext
 ): Promise<Blob> {
   const tpl = rawTpl
+  const ctx = normalizeContextForTemplate(tpl, rawCtx)
+  const isListTpl = isListPriceTemplate(tpl)
+  const appendPage2PriceCols = !isDealRegTemplate(tpl) && !isAgencyTemplate(tpl)
   const wb = new ExcelJS.Workbook()
   const safeSheetName = (ctx.noiDungPO || '')
     .trim()
@@ -5007,6 +5154,9 @@ export async function generateExcelBlobFromTemplate(
   const ws = wb.addWorksheet(safeSheetName || 'BaoGia')
 
   const totalCols = Math.max(tpl.so_cot || 9, 1)
+  const extraColListPrice = totalCols + 1
+  const extraColOffHang = totalCols + 2
+  const extraColOffKhach = totalCols + 3
   const totalRows = Math.max(tpl.so_dong || 18, 1)
   const pageCfg = tpl.cau_hinh_trang || ({} as any)
   const defaultFontFamily = pageCfg.font_mac_dinh || 'Arial'
@@ -5032,6 +5182,14 @@ export async function generateExcelBlobFromTemplate(
       ws.getColumn(c).hidden = false
       ws.getColumn(c).width = Math.max(Number((pxW / 7).toFixed(2)), 1)
     }
+  }
+  if (appendPage2PriceCols) {
+    ws.getColumn(extraColListPrice).hidden = false
+    ws.getColumn(extraColListPrice).width = 16
+    ws.getColumn(extraColOffHang).hidden = false
+    ws.getColumn(extraColOffHang).width = 13
+    ws.getColumn(extraColOffKhach).hidden = false
+    ws.getColumn(extraColOffKhach).width = 13
   }
 
   const vung = tpl.mapping_vung || {
@@ -5261,6 +5419,27 @@ export async function generateExcelBlobFromTemplate(
               : replacedGrpVal
             applyPreviewOverrideToExcelCell(cell, `row_${qRowIdx}_${c}`, gCell?.style, rawGrpVal)
           }
+          if (appendPage2PriceCols) {
+            const grpBaseStyle =
+              tpl.grid_cells?.[`${groupRowIdx}_${totalCols}`]?.style ||
+              tpl.grid_cells?.[`${groupRowIdx}_2`]?.style || {
+                bold: true,
+                fontSize: defaultFontSize,
+                fontFamily: defaultFontFamily,
+                border: true
+              }
+            ;[extraColListPrice, extraColOffHang, extraColOffKhach].forEach(ec => {
+              const ecCell = row.getCell(ec)
+              applyGridStyleToExcelCell(ecCell, {
+                ...grpBaseStyle,
+                bgColor: '#0070C0',
+                color: '#FFFFFF',
+                bold: true,
+                border: true
+              })
+              ecCell.value = ''
+            })
+          }
           applyRowMergesWithStyle(outRowIdx, getGridRowMerges(groupRowIdx))
           outRowIdx++
         } else {
@@ -5431,6 +5610,72 @@ export async function generateExcelBlobFromTemplate(
             if (wrap && ovRes.appliedValue && ovRes.plainLines > maxEstimatedLines) {
               maxEstimatedLines = ovRes.plainLines
             }
+          }
+          if (appendPage2PriceCols) {
+            const priceColStyle =
+              tpl.grid_cells?.[`${itemRowIdx}_6`]?.style ||
+              tpl.grid_cells?.[`${itemRowIdx}_${totalCols}`]?.style || {
+                bold: true,
+                fontSize: defaultFontSize,
+                fontFamily: defaultFontFamily,
+                color: '#FFFFFF',
+                bgColor: '#0070C0',
+                border: true,
+                wrapText: true
+              }
+
+            const cList = row.getCell(extraColListPrice)
+            applyGridStyleToExcelCell(
+              cList,
+              {
+                ...priceColStyle,
+                bgColor: '#0070C0',
+                color: '#FFFFFF',
+                bold: true,
+                align: 'right',
+                valign: 'middle',
+                border: true
+              },
+              '{{LIST_PRICE}}'
+            )
+            cList.value = rawNumberMap['{{LIST_PRICE}}'] ?? 0
+            cList.numFmt = numFmt
+
+            const offHangPct = isListTpl ? 0 : formatPctNumber(qRow.pctOffHang)
+            const cOffH = row.getCell(extraColOffHang)
+            applyGridStyleToExcelCell(
+              cOffH,
+              {
+                ...priceColStyle,
+                bgColor: '#0070C0',
+                color: '#FFFFFF',
+                bold: true,
+                align: 'center',
+                valign: 'middle',
+                border: true
+              },
+              '{{PHAN_TRAM_OFF_HANG}}'
+            )
+            cOffH.value = offHangPct / 100
+            cOffH.numFmt = getExcelPctNumFmt(offHangPct)
+
+            const offKhachPct = isListTpl ? 0 : formatPctNumber(qRow.pctOff)
+            const cOffK = row.getCell(extraColOffKhach)
+            applyGridStyleToExcelCell(
+              cOffK,
+              {
+                ...priceColStyle,
+                bgColor: '#0070C0',
+                color: '#FFFFFF',
+                bold: true,
+                align: 'center',
+                valign: 'middle',
+                border: true
+              },
+              '{{PHAN_TRAM_OFF}}'
+            )
+            cOffK.value = offKhachPct / 100
+            cOffK.numFmt = getExcelPctNumFmt(offKhachPct)
           }
           row.height = Math.max(26, maxEstimatedLines * 14.5 + 8)
           applyRowMergesWithStyle(outRowIdx, getGridRowMerges(itemRowIdx))
@@ -5603,6 +5848,65 @@ export async function generateExcelBlobFromTemplate(
       applyPreviewOverrideToExcelCell(xlCell, `grid_${r}_${c}`, gCell?.style, rawVal)
     }
 
+    if (appendPage2PriceCols && r === gridHeaderRowIdx) {
+      const hdrStyle =
+        tpl.grid_cells?.[`${r}_6`]?.style ||
+        tpl.grid_cells?.[`${r}_${totalCols}`]?.style || {
+          bold: true,
+          fontSize: defaultFontSize,
+          fontFamily: defaultFontFamily,
+          color: '#FFFFFF',
+          bgColor: '#0070C0',
+          align: 'center',
+          valign: 'middle',
+          border: true,
+          wrapText: true
+        }
+      const extraHeaders = [
+        { col: extraColListPrice, text: `Giá List\n(${ctx.currency || 'VND'})` },
+        { col: extraColOffHang, text: '% Off Hãng' },
+        { col: extraColOffKhach, text: '% Off Khách' }
+      ]
+      extraHeaders.forEach(eh => {
+        const xlC = rowObj.getCell(eh.col)
+        applyGridStyleToExcelCell(xlC, {
+          ...hdrStyle,
+          bold: true,
+          bgColor: '#0070C0',
+          color: '#FFFFFF',
+          align: 'center',
+          valign: 'middle',
+          border: true,
+          wrapText: true
+        })
+        xlC.value = eh.text
+      })
+    } else if (appendPage2PriceCols && (vung.danh_sach_dong_tong || []).includes(r)) {
+      const totStyle =
+        tpl.grid_cells?.[`${r}_${totalCols}`]?.style ||
+        tpl.grid_cells?.[`${r}_1`]?.style || {
+          bold: true,
+          fontSize: defaultFontSize,
+          fontFamily: defaultFontFamily,
+          color: '#FFFFFF',
+          bgColor: '#0070C0',
+          align: 'center',
+          valign: 'middle',
+          border: true
+        }
+      ;[extraColListPrice, extraColOffHang, extraColOffKhach].forEach(ec => {
+        const xlC = rowObj.getCell(ec)
+        applyGridStyleToExcelCell(xlC, {
+          ...totStyle,
+          bgColor: '#0070C0',
+          color: '#FFFFFF',
+          bold: true,
+          border: true
+        })
+        xlC.value = ''
+      })
+    }
+
     applyRowMergesWithStyle(outRowIdx, rowMerges)
     outRowIdx++
   }
@@ -5658,9 +5962,10 @@ export async function generateExcelBlobFromTemplate(
     } catch {}
   }
 
-  // 4. Strictly lock horizontal PageView to 1 page wide (matching Thiết lập mẫu in page config)
+  // 4. Configure horizontal PageView (Page 1 = A..totalCols, Page 2 = extra 3 price cols when appendPage2PriceCols is active)
   const finalLastRow = Math.max(ws.rowCount, 1)
-  const lastColLetter = colIndexToLetter(totalCols)
+  const printLastCol = appendPage2PriceCols ? totalCols + 3 : totalCols
+  const lastColLetter = colIndexToLetter(printLastCol)
   ws.pageSetup.paperSize = tpl.cau_hinh_trang?.kho_giay === 'A3' ? 8 : 9 // 9 = A4
   ws.pageSetup.orientation = tpl.cau_hinh_trang?.huong_giay || 'portrait'
   ws.pageSetup.margins = {
@@ -5671,14 +5976,34 @@ export async function generateExcelBlobFromTemplate(
     header: 0.3,
     footer: 0.3
   }
-  ws.pageSetup.fitToPage = true
-  ws.pageSetup.fitToWidth = 1
-  ws.pageSetup.fitToHeight = 0
-  ;(ws.pageSetup as any).scale = undefined
   ws.pageSetup.printArea = `A1:${lastColLetter}${finalLastRow}`
-  if ((ws as any).properties?.pageSetup) {
-    ;(ws as any).properties.pageSetup.fitToPage = true
+
+  if (appendPage2PriceCols) {
+    let sumPage1Px = 0
+    for (let c = 1; c <= totalCols; c++) {
+      sumPage1Px += Math.max(0, ctx.previewColWidthOverrides?.[c] ?? tpl.col_widths?.[c] ?? 100)
+    }
+    const isLandscape = (tpl.cau_hinh_trang?.huong_giay || 'portrait') === 'landscape'
+    const printableTargetPx = isLandscape ? 980 : 665
+    const computedScale = Math.min(85, Math.max(45, Math.floor((printableTargetPx / Math.max(sumPage1Px, 1)) * 100)))
+
+    ws.pageSetup.fitToPage = false
+    ;(ws.pageSetup as any).fitToWidth = undefined
+    ;(ws.pageSetup as any).fitToHeight = undefined
+    ws.pageSetup.scale = computedScale
+    if ((ws as any).properties?.pageSetup) {
+      ;(ws as any).properties.pageSetup.fitToPage = false
+    }
+  } else {
+    ws.pageSetup.fitToPage = true
+    ws.pageSetup.fitToWidth = 1
+    ws.pageSetup.fitToHeight = 0
+    ;(ws.pageSetup as any).scale = undefined
+    if ((ws as any).properties?.pageSetup) {
+      ;(ws as any).properties.pageSetup.fitToPage = true
+    }
   }
+
   ws.views = [
     {
       state: 'normal',
@@ -5688,7 +6013,30 @@ export async function generateExcelBlobFromTemplate(
     } as any
   ]
 
-  const outBuffer = await wb.xlsx.writeBuffer()
+  let outBuffer = await wb.xlsx.writeBuffer()
+  if (appendPage2PriceCols) {
+    try {
+      const zip = await JSZip.loadAsync(outBuffer)
+      const sheetFile = zip.file('xl/worksheets/sheet1.xml')
+      if (sheetFile) {
+        let sheetXml = await sheetFile.async('string')
+        const colBreakXml = `<colBreaks count="1" manualBreakCount="1"><brk id="${totalCols}" max="1048575" man="1"/></colBreaks>`
+        if (!sheetXml.includes('<colBreaks')) {
+          if (sheetXml.includes('</rowBreaks>')) {
+            sheetXml = sheetXml.replace('</rowBreaks>', `</rowBreaks>${colBreakXml}`)
+          } else if (sheetXml.includes('<drawing ')) {
+            sheetXml = sheetXml.replace('<drawing ', `${colBreakXml}<drawing `)
+          } else {
+            sheetXml = sheetXml.replace('</worksheet>', `${colBreakXml}</worksheet>`)
+          }
+          zip.file('xl/worksheets/sheet1.xml', sheetXml)
+          outBuffer = await zip.generateAsync({ type: 'arraybuffer' })
+        }
+      }
+    } catch (err) {
+      console.warn('Không thể chèn colBreaks vào sheet1.xml:', err)
+    }
+  }
   return new Blob([outBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
 }
 

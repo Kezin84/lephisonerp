@@ -30,6 +30,10 @@ import {
   fetchAndSyncPrintTemplates,
   deletePrintTemplateFromFirebase,
   createAgencyTemplateConfig,
+  createListPriceTemplateConfig,
+  isListPriceTemplate,
+  roundVndByMode,
+  type VndRoundingMode,
   generateExcelBlobFromTemplate,
   exportPdfOrPrintFromTemplate,
   exportPngFromTemplate,
@@ -2767,7 +2771,7 @@ function getPreviewCellValue(r: any, field: string) {
     case 'ghi_chu': return i.Ghi_chu || '';
     
     case 'list_price': {
-      const lpVND = round2(donGiaLP(i) * tg);
+      const lpVND = round2((donGiaLP(i) + toNum(i.gia_nhap, 0)) * tg);
       const val = isUsdExport ? round2(lpVND / tg) : (Number(lpVND) || 0);
       return formatCurrencyPreview(val, isUsdExport);
     }
@@ -5213,19 +5217,229 @@ async function loadPipelineToFE() {
   }
 }
 
+const quoteCurrency = ref('VND')
+type VndPriceFieldKey =
+  | 'gia_tieu_chuan'
+  | 'list_price'
+  | 'gia_nhap'
+  | 'don_gia_kh'
+  | 'tt_truoc_thue'
+  | 'vat'
+  | 'tt_sau_thue'
+
+const defaultVndFieldRounding: Record<VndPriceFieldKey, VndRoundingMode> = {
+  gia_tieu_chuan: 'none',
+  list_price: 'none',
+  gia_nhap: 'none',
+  don_gia_kh: 'round',
+  tt_truoc_thue: 'round',
+  vat: 'round',
+  tt_sau_thue: 'none'
+}
+
+function loadInitialVndFieldRounding(): Record<VndPriceFieldKey, VndRoundingMode> {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem('bg_vnd_field_rounding')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed && typeof parsed === 'object') {
+          return { ...defaultVndFieldRounding, ...parsed }
+        }
+      }
+    }
+  } catch {}
+  return { ...defaultVndFieldRounding }
+}
+
+const vndFieldRounding = reactive<Record<VndPriceFieldKey, VndRoundingMode>>(loadInitialVndFieldRounding())
+
+watch(
+  vndFieldRounding,
+  val => {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('bg_vnd_field_rounding', JSON.stringify(val))
+      }
+    } catch {}
+  },
+  { deep: true }
+)
+
+const vndRoundingMode = computed<VndRoundingMode>({
+  get: () => vndFieldRounding.don_gia_kh || 'round',
+  set: (val: VndRoundingMode) => {
+    vndFieldRounding.don_gia_kh = val
+    vndFieldRounding.tt_truoc_thue = val
+    vndFieldRounding.vat = val
+  }
+})
+
+function getItemOrFieldRounding(item: any, field: VndPriceFieldKey): VndRoundingMode {
+  const itemMode = item?._vndRounding?.[field] as VndRoundingMode | undefined
+  if (itemMode && (itemMode === 'round' || itemMode === 'ceil' || itemMode === 'floor' || itemMode === 'none')) {
+    return itemMode
+  }
+  return vndFieldRounding[field] || 'none'
+}
+
+function getRoundingBtnLabel(mode: VndRoundingMode, compact = false): string {
+  if (mode === 'ceil') return compact ? '↑.000' : '↑ .000'
+  if (mode === 'floor') return compact ? '↓.000' : '↓ .000'
+  if (mode === 'round') return compact ? '≈.000' : '≈ .000'
+  return compact ? '.000▾' : '.000 ▾'
+}
+
+const vndRoundingMenu = reactive<{
+  open: boolean
+  top: number
+  left: number
+  scope: 'column' | 'quoteEdit' | 'itemForm' | 'cardEdit'
+  field: VndPriceFieldKey
+  label: string
+}>({
+  open: false,
+  top: 0,
+  left: 0,
+  scope: 'column',
+  field: 'don_gia_kh',
+  label: ''
+})
+
+function getActiveMenuRoundingMode(): VndRoundingMode {
+  const f = vndRoundingMenu.field
+  if (vndRoundingMenu.scope === 'quoteEdit' && quoteEdit.value) {
+    return getItemOrFieldRounding(quoteEdit.value, f)
+  }
+  if (vndRoundingMenu.scope === 'itemForm' && itemForm.value) {
+    return (itemForm.value as any)?._vndRounding?.[f] || 'none'
+  }
+  if (vndRoundingMenu.scope === 'cardEdit' && cardEdit.value) {
+    return (cardEdit.value as any)?._vndRounding?.[f] || 'none'
+  }
+  return vndFieldRounding[f] || 'none'
+}
+
+function openVndRoundingMenu(
+  e: MouseEvent,
+  scope: 'column' | 'quoteEdit' | 'itemForm' | 'cardEdit',
+  field: VndPriceFieldKey,
+  label: string
+) {
+  const btn = e.currentTarget as HTMLElement | null
+  if (
+    vndRoundingMenu.open &&
+    vndRoundingMenu.scope === scope &&
+    vndRoundingMenu.field === field
+  ) {
+    vndRoundingMenu.open = false
+    return
+  }
+  let top = 120
+  let left = 120
+  if (btn && typeof window !== 'undefined') {
+    const rect = btn.getBoundingClientRect()
+    const menuW = 248
+    const menuH = 215
+    left = Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - menuW - 12))
+    if (rect.bottom + menuH + 10 > window.innerHeight && rect.top > menuH + 10) {
+      top = rect.top - menuH - 6
+    } else {
+      top = rect.bottom + 6
+    }
+  }
+  vndRoundingMenu.scope = scope
+  vndRoundingMenu.field = field
+  vndRoundingMenu.label = label
+  vndRoundingMenu.top = top
+  vndRoundingMenu.left = left
+  vndRoundingMenu.open = true
+}
+
+function applyDirectBaseFieldRoundingOnObject(target: any, field: VndPriceFieldKey, mode: VndRoundingMode) {
+  if (!target) return
+  if (!target._vndRounding) target._vndRounding = {}
+  target._vndRounding[field] = mode
+
+  const propMap: Partial<Record<VndPriceFieldKey, string>> = {
+    list_price: 'Don_gia',
+    gia_tieu_chuan: 'Gia_tieu_chuan',
+    gia_nhap: 'gia_nhap'
+  }
+  const prop = propMap[field]
+  if (!prop) return
+
+  if (!target._unroundedBase) target._unroundedBase = {}
+  if (target._unroundedBase[prop] === undefined) {
+    target._unroundedBase[prop] = toNum(target[prop], 0)
+  }
+
+  if (mode === 'none') {
+    if (target._unroundedBase[prop] !== undefined) {
+      target[prop] = target._unroundedBase[prop]
+      delete target._unroundedBase[prop]
+    }
+    return
+  }
+
+  const baseVal = toNum(target._unroundedBase[prop] ?? target[prop], 0)
+  const tg = Math.max(1, toNum(target.Ti_gia, 1))
+  const rawVnd = baseVal * tg
+  const roundedVnd = roundVndByMode(rawVnd, mode)
+  target[prop] = tg > 1 ? roundedVnd / tg : roundedVnd
+}
+
+function selectVndRoundingOption(mode: VndRoundingMode) {
+  const { scope, field } = vndRoundingMenu
+  if (scope === 'column') {
+    vndFieldRounding[field] = mode
+    selectedItems.value.forEach((it: any) => {
+      if (it && it._vndRounding && it._vndRounding[field] !== undefined) {
+        delete it._vndRounding[field]
+      }
+    })
+  } else if (scope === 'quoteEdit' && quoteEdit.value) {
+    applyDirectBaseFieldRoundingOnObject(quoteEdit.value, field, mode)
+    quoteEdit.value = { ...quoteEdit.value }
+  } else if (scope === 'itemForm' && itemForm.value) {
+    applyDirectBaseFieldRoundingOnObject(itemForm.value, field, mode)
+  } else if (scope === 'cardEdit' && cardEdit.value) {
+    applyDirectBaseFieldRoundingOnObject(cardEdit.value, field, mode)
+  }
+  vndRoundingMenu.open = false
+}
+
+function roundVndThousand(n: number, mode: VndRoundingMode = vndFieldRounding.don_gia_kh): number {
+  return roundVndByMode(n, mode)
+}
+
 function unitPrice(i: any) {
   const gia = donGiaSauOff(i)
   const tg = toNum(i.Ti_gia, 1)
-  return round2(gia * tg)
+  const raw = round2(gia * tg)
+  return quoteCurrency.value === 'VND' ? roundVndByMode(raw, getItemOrFieldRounding(i, 'don_gia_kh')) : raw
 }
 
 function standardPrice(i: any) {
   const gt = toNum(i.Gia_tieu_chuan, 0)
   const tg = toNum(i.Ti_gia, 1)
-  return round2(gt * tg)
+  const raw = round2(gt * tg)
+  return quoteCurrency.value === 'VND' ? roundVndByMode(raw, getItemOrFieldRounding(i, 'gia_tieu_chuan')) : raw
 }
 
-const quoteCurrency = ref('VND')
+function listPriceVnd(i: any, includeGiaNhap = false) {
+  const tg = toNum(i.Ti_gia, 1) || 1
+  const base = donGiaLP(i) + (includeGiaNhap ? toNum(i.gia_nhap, 0) : 0)
+  const raw = round2(base * tg)
+  return quoteCurrency.value === 'VND' ? roundVndByMode(raw, getItemOrFieldRounding(i, 'list_price')) : raw
+}
+
+function giaNhapVnd(i: any) {
+  const tg = toNum(i.Ti_gia, 1) || 1
+  const raw = round2(toNum(i.gia_nhap, 0) * tg)
+  return quoteCurrency.value === 'VND' ? roundVndByMode(raw, getItemOrFieldRounding(i, 'gia_nhap')) : raw
+}
+
 function onEditDonGiaVND(item: any, e: Event) {
   const vnd = Number((e.target as HTMLInputElement).value || 0)
   const tg = toNum(item.Ti_gia, 1)
@@ -5242,10 +5456,9 @@ function round2(n: number) {
 }
 
 function roundPrice(n: number, item?: any) {
-  // If currency is VND or exchange rate > 100, round to nearest 1,000 like Excel ROUND(..., -3)
   const isVND = !item || !item.Don_vi_tien_te || item.Don_vi_tien_te.toUpperCase() === 'VND' || toNum(item.Ti_gia, 1) > 100;
   if (isVND) {
-    return Math.round(n / 1000) * 1000;
+    return roundVndThousand(n);
   }
   return round2(n);
 }
@@ -5323,25 +5536,30 @@ function vatGoc(i: any) {
 
 function unitPriceRaw(i: any) {
   const tg = getGocNumber(i, '_Ti_gia_goc', toNum(i.Ti_gia, 1))
-  return round2(donGiaSauOffGoc(i) * tg)
+  const raw = round2(donGiaSauOffGoc(i) * tg)
+  return quoteCurrency.value === 'VND' ? roundVndByMode(raw, getItemOrFieldRounding(i, 'don_gia_kh')) : raw
 }
 
 function standardPriceRaw(i: any) {
   const tg = getGocNumber(i, '_Ti_gia_goc', toNum(i.Ti_gia, 1))
-  return round2(toNum(i.Gia_tieu_chuan, 0) * tg)
+  const raw = round2(toNum(i.Gia_tieu_chuan, 0) * tg)
+  return quoteCurrency.value === 'VND' ? roundVndByMode(raw, getItemOrFieldRounding(i, 'gia_tieu_chuan')) : raw
 }
 
 function lineTruocThueRaw(i: any) {
-  return round2(unitPriceRaw(i) * toNum(i.So_luong, 1))
+  const raw = round2(unitPriceRaw(i) * toNum(i.So_luong, 1))
+  return quoteCurrency.value === 'VND' ? roundVndByMode(raw, getItemOrFieldRounding(i, 'tt_truoc_thue')) : raw
 }
 
 function lineVATRaw(i: any) {
   const vat = getGocNumber(i, '_Thue_VAT_goc', toNum(i.Thue_VAT, 0))
-  return round2((lineTruocThueRaw(i) * vat) / 100)
+  const raw = round2((lineTruocThueRaw(i) * vat) / 100)
+  return quoteCurrency.value === 'VND' ? roundVndByMode(raw, getItemOrFieldRounding(i, 'vat')) : raw
 }
 
 function lineSauThueRaw(i: any) {
-  return round2(lineTruocThueRaw(i) + lineVATRaw(i))
+  const raw = round2(lineTruocThueRaw(i) + lineVATRaw(i))
+  return quoteCurrency.value === 'VND' ? roundVndByMode(raw, getItemOrFieldRounding(i, 'tt_sau_thue')) : raw
 }
 
 function lineLoiNhuanRaw(i: any) {
@@ -9650,14 +9868,11 @@ function donGiaSauOff(i: any) {
 
 /* ✅ Hiển thị Giá Tiêu Chuẩn (theo mode VND) */
 function displayGiaTieuChuan(i: any) {
-  const tc = toNum(i.Gia_tieu_chuan, 0)
   const tg = toNum(i.Ti_gia, 1)
-  return fmtPrice(tc * tg, tg)
+  return fmtPrice(standardPrice(i), tg)
 }
 function displayGiaTieuChuanRaw(i: any) {
-  const tc = toNum(i.Gia_tieu_chuan, 0)
-  const tg = getGocNumber(i, '_Ti_gia_goc', toNum(i.Ti_gia, 1))
-  return formatVND(tc * tg)
+  return formatVND(standardPriceRaw(i))
 }
 
 function displayGiaTieuChuanPct(i: any) {
@@ -9676,27 +9891,23 @@ function displayGiaTieuChuanPctRaw(i: any) {
 
 /* ✅ Hiển thị Đơn giá LP (theo mode VND) */
 function displayDonGiaLP(i: any) {
-  const lp = donGiaLP(i)
   const tg = toNum(i.Ti_gia, 1)
-  return fmtPrice(lp * tg, tg)
+  return fmtPrice(listPriceVnd(i, false), tg)
 }
 
 /* ✅ Hiển thị Đơn giá sau Off (theo mode VND) */
 function displayQuoteDonGia(i: any) {
-  const gia = donGiaSauOff(i)
   const tg = toNum(i.Ti_gia, 1)
-  return fmtPrice(gia * tg, tg)
+  return fmtPrice(unitPrice(i), tg)
 }
 function displayDonGiaLPRaw(i: any) {
   const tg = getGocNumber(i, '_Ti_gia_goc', toNum(i.Ti_gia, 1))
-  const lpVnd = donGiaLPGoc(i) * tg
-  return formatVND(lpVnd)
+  const lpVnd = round2(donGiaLPGoc(i) * tg)
+  return formatVND(roundVndByMode(lpVnd, getItemOrFieldRounding(i, 'list_price')))
 }
 
 function displayQuoteDonGiaRaw(i: any) {
-  const tg = getGocNumber(i, '_Ti_gia_goc', toNum(i.Ti_gia, 1))
-  const giaVnd = donGiaSauOffGoc(i) * tg
-  return formatVND(giaVnd)
+  return formatVND(unitPriceRaw(i))
 }
 
 function displayMucOffAmount(i: any) {
@@ -9717,15 +9928,18 @@ function ensureNumberField(item: any, key: string) {
 }
 
 function lineTruocThue(i: any) {
-  return round2(unitPrice(i) * toNum(i.So_luong, 1))
+  const raw = round2(unitPrice(i) * toNum(i.So_luong, 1))
+  return quoteCurrency.value === 'VND' ? roundVndByMode(raw, getItemOrFieldRounding(i, 'tt_truoc_thue')) : raw
 }
 
 function lineVAT(i: any) {
-  return round2((lineTruocThue(i) * toNum(i.Thue_VAT, 0)) / 100)
+  const raw = round2((lineTruocThue(i) * toNum(i.Thue_VAT, 0)) / 100)
+  return quoteCurrency.value === 'VND' ? roundVndByMode(raw, getItemOrFieldRounding(i, 'vat')) : raw
 }
 
 function lineSauThue(i: any) {
-  return round2(lineTruocThue(i) + lineVAT(i))
+  const raw = round2(lineTruocThue(i) + lineVAT(i))
+  return quoteCurrency.value === 'VND' ? roundVndByMode(raw, getItemOrFieldRounding(i, 'tt_sau_thue')) : raw
 }
 
 function lineLoiNhuan(i: any) {
@@ -13191,9 +13405,9 @@ function buildCurrentQuoteExportContext(): QuoteExportContext {
     const truoc = lineTruocThue(i)
     const vat = lineVAT(i)
     const sau = lineSauThue(i)
-    const lpVND = round2(donGiaLP(i) * tg)
+    const lpVND = listPriceVnd(i, true)
     const stdVND = standardPrice(i)
-    const nhapVND = round2(toNum(i.gia_nhap, 0) * tg)
+    const nhapVND = giaNhapVnd(i)
 
     return {
       type: 'item',
@@ -13247,6 +13461,7 @@ function buildCurrentQuoteExportContext(): QuoteExportContext {
     soPO: currentPO.value || '',
     noiDungPO: contentOfContractPO.value.trim() || '',
     currency: isUsdExport ? 'USD' : 'VND',
+    vndRoundingMode: vndRoundingMode.value,
     tiGia: mainTiGia.value || 1,
     rows: mappedRows,
     itemSttFormat: quoteItemSttFormat.value,
@@ -20675,7 +20890,7 @@ onUnmounted(() => {
                   <th v-if="quoteColVisible.sl" class="col-sl">SL</th>
                   <th v-if="quoteCurrency === 'USD' && quoteColVisible.ti_gia" class="col-dg" style="min-width: 70px;">TỈ GIÁ</th>
                   <th v-if="quoteColVisible.gia_off_hang" class="col-dg">GIÁ VỐN / GIÁ OFF HÃNG</th>
-                  <th v-if="quoteColVisible.list_price" class="col-dg">LIST PRICE</th> 
+                  <th v-if="quoteColVisible.list_price" class="col-dg">LIST PRICE</th>
                   <th v-if="quoteColVisible.gia_nhap" class="col-dg">GIÁ NHẬP</th>
                   <th v-if="quoteColVisible.muc_off" class="col-dg">MỨC OFF</th>
                   <th v-if="quoteColVisible.don_gia_kh" class="col-dg">ĐƠN GIÁ (KH)</th>
@@ -20761,7 +20976,7 @@ onUnmounted(() => {
                       <div class="muted" style="font-size: 11px; margin-top: 2px; color: #10b981 !important;">({{ displayGiaTieuChuanPct(r.item) }}%)</div>
                     </td>
                     <td v-if="quoteColVisible.list_price" data-label="List Price" class="right" style="color: #10b981; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Don_gia')">{{ displayDonGiaLP(r.item) }}</td> 
-                    <td v-if="quoteColVisible.gia_nhap" data-label="Giá nhập" class="right" style="color: #ef4444; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'gia_nhap')">{{ fmtPrice(toNum(r.item.gia_nhap, 0) * toNum(r.item.Ti_gia, 1), toNum(r.item.Ti_gia, 1)) }}</td>
+                    <td v-if="quoteColVisible.gia_nhap" data-label="Giá nhập" class="right" style="color: #ef4444; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'gia_nhap')">{{ fmtPrice(giaNhapVnd(r.item), toNum(r.item.Ti_gia, 1)) }}</td>
                     <td v-if="quoteColVisible.muc_off" data-label="Mức off" class="right" style="line-height: 1.3; font-weight: 700; color: #ef4444;" @click.stop="openQuoteEdit(r.idx, 'muc_phan_tram_off')">
                       <div>{{ displayMucOffAmount(r.item) }}</div>
                       <div class="muted" style="font-size: 11px; margin-top: 2px; color: #ef4444 !important;">(-{{ toNum(r.item.muc_phan_tram_off, 0) }}%)</div>
@@ -23217,7 +23432,9 @@ onUnmounted(() => {
             
             <div style="display: flex; flex-direction: column; gap: 6px;">
               <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
-                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px; margin: 0;">ĐƠN GIÁ BÁN ({{ itemForm.Don_vi_tien_te || 'VND' }})</label>
+                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                  <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px; margin: 0;">ĐƠN GIÁ BÁN ({{ itemForm.Don_vi_tien_te || 'VND' }})</label>
+                </div>
                 <span
                   v-if="toNum(itemForm.Gia_tieu_chuan, 0) > 0 && toNum(itemForm.Don_gia, 0) > 0"
                   class="cost-diff-pill"
@@ -23249,7 +23466,9 @@ onUnmounted(() => {
             </div>
             
             <div style="display: flex; flex-direction: column; gap: 6px;">
-              <label style="font-size: 11px; text-transform: uppercase; color: #fbbf24; font-weight: 600; letter-spacing: 0.5px;">Giá vốn / Giá off hãng ({{ itemForm.Don_vi_tien_te || 'VND' }})</label>
+              <label>
+                <span style="font-size: 11px; text-transform: uppercase; color: #fbbf24; font-weight: 600; letter-spacing: 0.5px;">Giá vốn / Giá off hãng ({{ itemForm.Don_vi_tien_te || 'VND' }})</span>
+              </label>
               <div style="position: relative;">
                 <FormattedInput
                   v-if="!itemForm.Don_vi_tien_te || itemForm.Don_vi_tien_te.toUpperCase() === 'VND'"
@@ -23317,7 +23536,9 @@ onUnmounted(() => {
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 6px;">
-              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Giá Nhập ({{ itemForm.Don_vi_tien_te || 'VND' }})</label>
+              <label>
+                <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Giá Nhập ({{ itemForm.Don_vi_tien_te || 'VND' }})</span>
+              </label>
               <div style="position: relative;">
                 <FormattedInput
                   v-if="!itemForm.Don_vi_tien_te || itemForm.Don_vi_tien_te.toUpperCase() === 'VND'"
@@ -23838,9 +24059,11 @@ onUnmounted(() => {
             
             <div style="display: flex; flex-direction: column; gap: 6px;">
               <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
-                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px; margin: 0;">
-                  ĐƠN GIÁ BÁN ({{ (cardEdit.Don_vi_tien_te && cardEdit.Don_vi_tien_te.toUpperCase() === 'USD' && Number(cardEdit.Ti_gia || 1) <= 1) ? 'USD' : 'VND' }})
-                </label>
+                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                  <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px; margin: 0;">
+                    ĐƠN GIÁ BÁN ({{ (cardEdit.Don_vi_tien_te && cardEdit.Don_vi_tien_te.toUpperCase() === 'USD' && Number(cardEdit.Ti_gia || 1) <= 1) ? 'USD' : 'VND' }})
+                  </label>
+                </div>
                 <span
                   v-if="toNum(cardEdit.Gia_tieu_chuan, 0) > 0 && toNum(cardEdit.Don_gia, 0) > 0"
                   class="cost-diff-pill"
@@ -23873,8 +24096,10 @@ onUnmounted(() => {
             </div>
             
             <div style="display: flex; flex-direction: column; gap: 6px;">
-              <label style="font-size: 11px; text-transform: uppercase; color: #fbbf24; font-weight: 600; letter-spacing: 0.5px;">
-                Giá vốn / Giá off hãng ({{ (cardEdit.Don_vi_tien_te && cardEdit.Don_vi_tien_te.toUpperCase() === 'USD' && Number(cardEdit.Ti_gia || 1) <= 1) ? 'USD' : 'VND' }})
+              <label>
+                <span style="font-size: 11px; text-transform: uppercase; color: #fbbf24; font-weight: 600; letter-spacing: 0.5px;">
+                  Giá vốn / Giá off hãng ({{ (cardEdit.Don_vi_tien_te && cardEdit.Don_vi_tien_te.toUpperCase() === 'USD' && Number(cardEdit.Ti_gia || 1) <= 1) ? 'USD' : 'VND' }})
+                </span>
               </label>
               <div style="position: relative;">
                 <FormattedInput
@@ -23944,7 +24169,9 @@ onUnmounted(() => {
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 6px;">
-              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Giá Nhập (VND)</label>
+              <label>
+                <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Giá Nhập (VND)</span>
+              </label>
               <div style="position: relative;">
                 <FormattedInput :decimals="0" :modelValue="(cardEdit.gia_nhap || 0) * (Number(cardEdit.Ti_gia) || 1)" @update:modelValue="cardEdit.gia_nhap = $event / (Number(cardEdit.Ti_gia) || 1)" placeholder="0" style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px;" />
                 <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #64748b; pointer-events: none;">₫</span>
@@ -25469,12 +25696,12 @@ onUnmounted(() => {
 
               <!-- Giá vốn / Giá off hãng (VND) -->
               <div style="display: flex; flex-direction: column; gap: 6px;">
-                <label style="display: flex; justify-content: space-between; align-items: center;">
+                <label>
                   <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Giá vốn / Giá off hãng (VND)</span>
                 </label>
                 <div style="display: flex; align-items: center; gap: 8px;">
                   <div class="qe-has-right-unit" style="position: relative; flex: 1;">
-                    <FormattedInput id="qe-Gia_tieu_chuan" :decimals="0" :modelValue="(quoteEdit.Gia_tieu_chuan || 0) * (Number(quoteEdit.Ti_gia) || 1)" @update:modelValue="quoteEdit.Gia_tieu_chuan = $event / (Number(quoteEdit.Ti_gia) || 1)" @input="ensureNumberField(quoteEdit, 'Gia_tieu_chuan')" style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px; font-weight: 600; color: #8b5cf6;" />
+                    <FormattedInput id="qe-Gia_tieu_chuan" :decimals="0" :modelValue="standardPrice(quoteEdit)" @update:modelValue="quoteEdit.Gia_tieu_chuan = $event / (Number(quoteEdit.Ti_gia) || 1)" @input="ensureNumberField(quoteEdit, 'Gia_tieu_chuan')" style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px; font-weight: 600; color: #8b5cf6;" />
                     <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #8b5cf6; pointer-events: none;">₫</span>
                   </div>
                   <template v-if="quoteEdit.Don_vi_tien_te && quoteEdit.Don_vi_tien_te.toUpperCase() !== 'VND' && quoteEdit.Ti_gia > 1">
@@ -25489,12 +25716,12 @@ onUnmounted(() => {
 
               <!-- Giá Nhập (VND) -->
               <div style="display: flex; flex-direction: column; gap: 6px;">
-                <label style="display: flex; justify-content: space-between; align-items: center;">
+                <label>
                   <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Giá Nhập (VND)</span>
                 </label>
                 <div style="display: flex; align-items: center; gap: 8px;">
                   <div class="qe-has-right-unit" style="position: relative; flex: 1;">
-                    <FormattedInput id="qe-gia_nhap" :decimals="0" :modelValue="(quoteEdit.gia_nhap || 0) * (Number(quoteEdit.Ti_gia) || 1)" @update:modelValue="quoteEdit.gia_nhap = $event / (Number(quoteEdit.Ti_gia) || 1)" @input="ensureNumberField(quoteEdit, 'gia_nhap')" style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px; font-weight: 500;" />
+                    <FormattedInput id="qe-gia_nhap" :decimals="0" :modelValue="giaNhapVnd(quoteEdit)" @update:modelValue="quoteEdit.gia_nhap = $event / (Number(quoteEdit.Ti_gia) || 1)" @input="ensureNumberField(quoteEdit, 'gia_nhap')" style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px; font-weight: 500;" />
                     <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #94a3b8; pointer-events: none;">₫</span>
                   </div>
                   <template v-if="quoteEdit.Don_vi_tien_te && quoteEdit.Don_vi_tien_te.toUpperCase() !== 'VND' && quoteEdit.Ti_gia > 1">
@@ -25509,8 +25736,10 @@ onUnmounted(() => {
 
               <!-- List Price -->
               <div style="display: flex; flex-direction: column; gap: 6px;">
-                <label style="display: flex; justify-content: space-between; align-items: center;">
-                  <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">List Price</span>
+                <label style="display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap;">
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">List Price</span>
+                  </div>
                   <div style="display: flex; gap: 6px;">
                     <button type="button" data-guide="qe-btn-edit-list-price" class="util-btn small inline-normal-edit" :class="{ 'is-guide-pulse': activeGuideStepId === 'table-item-edit-price' }" @click="openAdjustPrice('field', '', 'Đơn giá', 'Don_gia', true)" title="Sửa thường - cập nhật giá thực tế">
                       <i class="ri-edit-line"></i>
@@ -25524,7 +25753,7 @@ onUnmounted(() => {
                 </label>
                 <div style="display: flex; align-items: center; gap: 8px;">
                   <div class="qe-has-left-icon qe-has-right-unit" style="position: relative; flex: 1;">
-                    <FormattedInput id="qe-Don_gia" :decimals="0" :modelValue="(quoteEdit.Don_gia || 0) * (Number(quoteEdit.Ti_gia) || 1)" @update:modelValue="quoteEdit.Don_gia = $event / (Number(quoteEdit.Ti_gia) || 1)" @input="ensureNumberField(quoteEdit, 'Don_gia')" :readonly="true" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
+                    <FormattedInput id="qe-Don_gia" :decimals="0" :modelValue="listPriceVnd(quoteEdit, false)" @update:modelValue="quoteEdit.Don_gia = $event / (Number(quoteEdit.Ti_gia) || 1)" @input="ensureNumberField(quoteEdit, 'Don_gia')" :readonly="true" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
                     <i class="lucide-tag" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
                     <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #10b981; pointer-events: none;">₫</span>
                   </div>
@@ -25563,7 +25792,7 @@ onUnmounted(() => {
               <!-- % Off khách & Thuế VAT -->
               <div class="qe-2col-mobile" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                 <div style="display: flex; flex-direction: column; gap: 6px;">
-                  <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">% Off khách</label>
+                  <label class="price-label-with-round" style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">% Off khách</label>
                   <div class="qe-has-right-unit" style="position: relative;">
                     <FormattedInput id="qe-muc_phan_tram_off" v-model="quoteEditMucOffGoc" style="width: 100%; padding: 10px 14px; padding-right: 30px; border-radius: 8px; color: #f59e0b; font-weight: 700;" />
                     <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 600; color: #f59e0b; pointer-events: none;">%</span>
@@ -25571,10 +25800,23 @@ onUnmounted(() => {
                 </div>
 
                 <div style="display: flex; flex-direction: column; gap: 6px;">
-                  <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Thuế VAT</label>
+                  <label class="price-label-with-round">
+                    <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Thuế VAT</span>
+                    <button
+                      v-if="quoteCurrency === 'VND'"
+                      type="button"
+                      class="vnd-round-chip-btn"
+                      :class="'mode-' + getItemOrFieldRounding(quoteEdit, 'vat')"
+                      title="Làm tròn chẵn .000đ cho Tiền thuế VAT"
+                      @click.stop="openVndRoundingMenu($event, 'quoteEdit', 'vat', 'Tiền thuế VAT')"
+                    >{{ getRoundingBtnLabel(getItemOrFieldRounding(quoteEdit, 'vat')) }}</button>
+                  </label>
                   <div class="qe-has-right-unit" style="position: relative;">
                     <FormattedInput id="qe-Thue_VAT" v-model="quoteEdit.Thue_VAT" @input="ensureNumberField(quoteEdit, 'Thue_VAT')" style="width: 100%; padding: 10px 14px; padding-right: 30px; border-radius: 8px; color: #3b82f6; font-weight: 700;" />
                     <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 600; color: #3b82f6; pointer-events: none;">%</span>
+                  </div>
+                  <div v-if="quoteCurrency === 'VND'" class="muted" style="font-size: 11px; color: #60a5fa; text-align: right;">
+                    Tiền VAT: <b>{{ formatVND(lineVAT(quoteEdit)) }} ₫</b>
                   </div>
                 </div>
               </div>
@@ -25598,8 +25840,18 @@ onUnmounted(() => {
 
                 <!-- Đơn giá (KH) -->
                 <div style="display: flex; flex-direction: column; gap: 6px;">
-                  <label style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Đơn giá (KH)</span>
+                  <label style="display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Đơn giá (KH)</span>
+                      <button
+                        v-if="quoteCurrency === 'VND'"
+                        type="button"
+                        class="vnd-round-chip-btn"
+                        :class="'mode-' + getItemOrFieldRounding(quoteEdit, 'don_gia_kh')"
+                        title="Làm tròn chẵn .000đ cho Đơn giá (KH)"
+                        @click.stop="openVndRoundingMenu($event, 'quoteEdit', 'don_gia_kh', 'Đơn giá (KH)')"
+                      >{{ getRoundingBtnLabel(getItemOrFieldRounding(quoteEdit, 'don_gia_kh')) }}</button>
+                    </div>
                     <div style="display: flex; gap: 6px;">
                       <button type="button" data-guide="qe-btn-edit-unit-price" class="util-btn small inline-normal-edit" :class="{ 'is-guide-pulse': activeGuideStepId === 'table-item-edit-price' }" @click="openAdjustPrice('field', '', 'Đơn giá (KH)', 'unit_price_kh', true)" title="Sửa thường">
                         <i class="ri-edit-line"></i>
@@ -25623,8 +25875,18 @@ onUnmounted(() => {
 
                 <!-- TT Trước thuế -->
                 <div style="display: flex; flex-direction: column; gap: 6px;">
-                  <label style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">TT Trước thuế</span>
+                  <label style="display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">TT Trước thuế</span>
+                      <button
+                        v-if="quoteCurrency === 'VND'"
+                        type="button"
+                        class="vnd-round-chip-btn"
+                        :class="'mode-' + getItemOrFieldRounding(quoteEdit, 'tt_truoc_thue')"
+                        title="Làm tròn chẵn .000đ cho TT Trước thuế"
+                        @click.stop="openVndRoundingMenu($event, 'quoteEdit', 'tt_truoc_thue', 'TT Trước thuế')"
+                      >{{ getRoundingBtnLabel(getItemOrFieldRounding(quoteEdit, 'tt_truoc_thue')) }}</button>
+                    </div>
                     <div style="display: flex; gap: 6px;">
                       <button type="button" data-guide="qe-btn-edit-line-total" class="util-btn small inline-normal-edit" :class="{ 'is-guide-pulse': activeGuideStepId === 'table-item-edit-price' }" @click="openAdjustPrice('field', '', 'Thành tiền trước thuế', 'line_truoc_thue', true)" title="Sửa thường">
                         <i class="ri-edit-line"></i>
@@ -25685,6 +25947,80 @@ onUnmounted(() => {
         </div>
       </div>
     </div>
+
+    <!-- ================== POPOVER MENU LÀM TRÒN TIỀN VND (.000đ) ================== -->
+    <Teleport to="body">
+      <div
+        v-if="vndRoundingMenu.open"
+        class="vnd-round-backdrop"
+        :class="{ 'is-light': quoteThemeMode === 'light' }"
+        @click="vndRoundingMenu.open = false"
+      >
+        <div
+          class="vnd-round-popover"
+          :style="{ top: vndRoundingMenu.top + 'px', left: vndRoundingMenu.left + 'px' }"
+          @click.stop
+        >
+          <div class="vnd-round-popover-head">
+            <span class="vnd-round-popover-title">Làm tròn .000đ — {{ vndRoundingMenu.label }}</span>
+            <button type="button" class="vnd-round-popover-close" @click="vndRoundingMenu.open = false">✕</button>
+          </div>
+          <div class="vnd-round-popover-sub">
+            {{ vndRoundingMenu.scope === 'column' ? 'Áp dụng cho toàn bộ cột này trong báo giá & xuất file' : 'Áp dụng riêng cho dòng sản phẩm đang mở' }}
+          </div>
+          <div class="vnd-round-popover-list">
+            <button
+              type="button"
+              class="vnd-round-opt"
+              :class="{ active: getActiveMenuRoundingMode() === 'ceil' }"
+              @click="selectVndRoundingOption('ceil')"
+            >
+              <span class="vnd-round-opt-icon mode-ceil">↑</span>
+              <span class="vnd-round-opt-text">
+                <strong>Làm tròn LÊN (.000↑)</strong>
+                <small>Luôn đẩy lên hàng nghìn kế tiếp (VD: 1.100 → 2.000)</small>
+              </span>
+            </button>
+            <button
+              type="button"
+              class="vnd-round-opt"
+              :class="{ active: getActiveMenuRoundingMode() === 'floor' }"
+              @click="selectVndRoundingOption('floor')"
+            >
+              <span class="vnd-round-opt-icon mode-floor">↓</span>
+              <span class="vnd-round-opt-text">
+                <strong>Làm tròn XUỐNG (.000↓)</strong>
+                <small>Cắt bỏ phần lẻ hàng trăm/chục/đơn vị (VD: 1.900 → 1.000)</small>
+              </span>
+            </button>
+            <button
+              type="button"
+              class="vnd-round-opt"
+              :class="{ active: getActiveMenuRoundingMode() === 'round' }"
+              @click="selectVndRoundingOption('round')"
+            >
+              <span class="vnd-round-opt-icon mode-round">≈</span>
+              <span class="vnd-round-opt-text">
+                <strong>Làm tròn chuẩn (±500)</strong>
+                <small>Từ 500đ làm tròn lên, dưới 500đ làm tròn xuống</small>
+              </span>
+            </button>
+            <button
+              type="button"
+              class="vnd-round-opt"
+              :class="{ active: getActiveMenuRoundingMode() === 'none' }"
+              @click="selectVndRoundingOption('none')"
+            >
+              <span class="vnd-round-opt-icon mode-none">↺</span>
+              <span class="vnd-round-opt-text">
+                <strong>Khôi phục số gốc</strong>
+                <small>Giữ nguyên số tiền chi tiết chưa làm tròn</small>
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
 
     <!-- ================== MODAL: CẤU HÌNH EXCEL MAPPING ================== -->
     <div v-if="showExcelConfigModal" class="modal" @click.self="showExcelConfigModal = false" style="align-items: center; justify-content: center; display: flex;">
@@ -52202,5 +52538,348 @@ td.dvt { font-family: inherit; white-space: normal; }
     padding: 7px 10px;
     font-size: 11px;
   }
+}
+
+/* ================== VND (.000đ) ROUNDING CHIP & POPOVER ================== */
+
+#app .page label.price-label-with-round {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 6px !important;
+  min-height: 21px !important;
+  margin: 0 !important;
+  flex-wrap: wrap !important;
+}
+
+button.vnd-round-chip-btn,
+#app .page button.vnd-round-chip-btn,
+#app .page .modal-card button.vnd-round-chip-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 3px !important;
+  width: auto !important;
+  min-width: max-content !important;
+  max-width: max-content !important;
+  height: 20px !important;
+  min-height: 20px !important;
+  max-height: 20px !important;
+  padding: 0 7px !important;
+  margin: 0 !important;
+  flex: 0 0 auto !important;
+  border-radius: 5px !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+  letter-spacing: -0.01em !important;
+  cursor: pointer !important;
+  border: 1px solid rgba(148, 163, 184, 0.35) !important;
+  background: rgba(30, 41, 59, 0.85) !important;
+  color: #cbd5e1 !important;
+  box-shadow: none !important;
+  transition: all 0.15s ease !important;
+  white-space: nowrap !important;
+  user-select: none !important;
+}
+
+button.vnd-round-chip-btn:hover,
+#app .page button.vnd-round-chip-btn:hover,
+#app .page .modal-card button.vnd-round-chip-btn:hover {
+  border-color: #38bdf8 !important;
+  color: #ffffff !important;
+  background: rgba(14, 116, 144, 0.55) !important;
+  transform: translateY(-0.5px) !important;
+}
+
+/* Trạng thái trong Modal (Dark Mode) */
+button.vnd-round-chip-btn.mode-ceil,
+#app .page button.vnd-round-chip-btn.mode-ceil,
+#app .page .modal-card button.vnd-round-chip-btn.mode-ceil {
+  background: rgba(16, 185, 129, 0.18) !important;
+  border-color: rgba(16, 185, 129, 0.6) !important;
+  color: #34d399 !important;
+}
+
+button.vnd-round-chip-btn.mode-floor,
+#app .page button.vnd-round-chip-btn.mode-floor,
+#app .page .modal-card button.vnd-round-chip-btn.mode-floor {
+  background: rgba(245, 158, 11, 0.18) !important;
+  border-color: rgba(245, 158, 11, 0.6) !important;
+  color: #fbbf24 !important;
+}
+
+button.vnd-round-chip-btn.mode-round,
+#app .page button.vnd-round-chip-btn.mode-round,
+#app .page .modal-card button.vnd-round-chip-btn.mode-round {
+  background: rgba(56, 189, 248, 0.18) !important;
+  border-color: rgba(56, 189, 248, 0.6) !important;
+  color: #38bdf8 !important;
+}
+
+/* Light Mode styles */
+#app .page.theme-light-blue button.vnd-round-chip-btn,
+#app .page.theme-light-blue .modal-card button.vnd-round-chip-btn {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #475569 !important;
+}
+
+#app .page.theme-light-blue button.vnd-round-chip-btn:hover,
+#app .page.theme-light-blue .modal-card button.vnd-round-chip-btn:hover {
+  background: #e0f2fe !important;
+  border-color: #38bdf8 !important;
+  color: #0369a1 !important;
+}
+
+#app .page.theme-light-blue button.vnd-round-chip-btn.mode-ceil,
+#app .page.theme-light-blue .modal-card button.vnd-round-chip-btn.mode-ceil {
+  background: #ecfdf5 !important;
+  border-color: #34d399 !important;
+  color: #047857 !important;
+}
+
+#app .page.theme-light-blue button.vnd-round-chip-btn.mode-floor,
+#app .page.theme-light-blue .modal-card button.vnd-round-chip-btn.mode-floor {
+  background: #fffbeb !important;
+  border-color: #fbbf24 !important;
+  color: #b45309 !important;
+}
+
+#app .page.theme-light-blue button.vnd-round-chip-btn.mode-round,
+#app .page.theme-light-blue .modal-card button.vnd-round-chip-btn.mode-round {
+  background: #eff6ff !important;
+  border-color: #60a5fa !important;
+  color: #1d4ed8 !important;
+}
+
+/* Popover Menu (<Teleport to="body">) */
+.vnd-round-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 999999 !important;
+  background: transparent !important;
+}
+
+.vnd-round-popover {
+  position: fixed !important;
+  width: 264px !important;
+  background: #0f172a !important;
+  border: 1px solid rgba(56, 189, 248, 0.4) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 18px 40px rgba(2, 6, 23, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.06) !important;
+  padding: 10px !important;
+  color: #f8fafc !important;
+  z-index: 1000000 !important;
+  animation: vndRoundPopoverIn 0.14s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box !important;
+}
+
+@keyframes vndRoundPopoverIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.vnd-round-popover-head {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  padding: 2px 4px 4px !important;
+}
+
+.vnd-round-popover-title {
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  color: #38bdf8 !important;
+  letter-spacing: 0.01em !important;
+  line-height: 1.3 !important;
+}
+
+button.vnd-round-popover-close {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 22px !important;
+  min-width: 22px !important;
+  max-width: 22px !important;
+  height: 22px !important;
+  min-height: 22px !important;
+  max-height: 22px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  flex: 0 0 22px !important;
+  background: rgba(148, 163, 184, 0.12) !important;
+  border: none !important;
+  color: #94a3b8 !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+}
+
+button.vnd-round-popover-close:hover {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #fca5a5 !important;
+}
+
+.vnd-round-popover-sub {
+  font-size: 10.5px !important;
+  color: #94a3b8 !important;
+  padding: 0 4px 8px !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16) !important;
+  margin-bottom: 6px !important;
+  line-height: 1.35 !important;
+}
+
+.vnd-round-popover-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 5px !important;
+}
+
+button.vnd-round-opt {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  gap: 9px !important;
+  width: 100% !important;
+  min-height: 0 !important;
+  height: auto !important;
+  text-align: left !important;
+  padding: 7px 9px !important;
+  margin: 0 !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(148, 163, 184, 0.14) !important;
+  background: rgba(30, 41, 59, 0.6) !important;
+  color: #e2e8f0 !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+  transition: all 0.15s ease !important;
+}
+
+button.vnd-round-opt:hover {
+  background: rgba(51, 65, 85, 0.85) !important;
+  border-color: rgba(148, 163, 184, 0.35) !important;
+}
+
+button.vnd-round-opt.active {
+  background: rgba(14, 116, 144, 0.35) !important;
+  border-color: #38bdf8 !important;
+}
+
+.vnd-round-opt-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 24px !important;
+  height: 24px !important;
+  border-radius: 6px !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  flex-shrink: 0 !important;
+  margin-top: 1px !important;
+}
+
+.vnd-round-opt-icon.mode-ceil {
+  background: rgba(16, 185, 129, 0.2) !important;
+  color: #34d399 !important;
+}
+
+.vnd-round-opt-icon.mode-floor {
+  background: rgba(245, 158, 11, 0.2) !important;
+  color: #fbbf24 !important;
+}
+
+.vnd-round-opt-icon.mode-round {
+  background: rgba(56, 189, 248, 0.2) !important;
+  color: #38bdf8 !important;
+}
+
+.vnd-round-opt-icon.mode-none {
+  background: rgba(148, 163, 184, 0.18) !important;
+  color: #cbd5e1 !important;
+}
+
+.vnd-round-opt-text {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+  min-width: 0 !important;
+  flex: 1 !important;
+}
+
+.vnd-round-opt-text strong {
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: #f8fafc !important;
+  line-height: 1.25 !important;
+}
+
+.vnd-round-opt-text small {
+  font-size: 10.5px !important;
+  color: #94a3b8 !important;
+  line-height: 1.3 !important;
+  font-weight: 500 !important;
+}
+
+/* Light Mode cho Popover */
+.vnd-round-backdrop.is-light .vnd-round-popover {
+  background: #ffffff !important;
+  border-color: #93c5fd !important;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16), 0 4px 12px rgba(37, 99, 235, 0.08) !important;
+  color: #0f172a !important;
+}
+
+.vnd-round-backdrop.is-light .vnd-round-popover-title {
+  color: #1d4ed8 !important;
+}
+
+.vnd-round-backdrop.is-light button.vnd-round-popover-close {
+  background: #f1f5f9 !important;
+  color: #64748b !important;
+}
+
+.vnd-round-backdrop.is-light button.vnd-round-popover-close:hover {
+  background: #fee2e2 !important;
+  color: #dc2626 !important;
+}
+
+.vnd-round-backdrop.is-light .vnd-round-popover-sub {
+  color: #64748b !important;
+  border-bottom-color: #e2e8f0 !important;
+}
+
+.vnd-round-backdrop.is-light button.vnd-round-opt {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #1e293b !important;
+}
+
+.vnd-round-backdrop.is-light button.vnd-round-opt:hover {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+
+.vnd-round-backdrop.is-light button.vnd-round-opt.active {
+  background: #eff6ff !important;
+  border-color: #2563eb !important;
+}
+
+.vnd-round-backdrop.is-light .vnd-round-opt-text strong {
+  color: #0f172a !important;
+}
+
+.vnd-round-backdrop.is-light .vnd-round-opt-text small {
+  color: #64748b !important;
 }
 </style>
