@@ -2820,8 +2820,8 @@
         <div v-if="isStudioDragOver" class="bg-studio-drop-overlay">
           <div class="bg-studio-drop-box">
             <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-            <div class="bg-studio-drop-title">Thả Ảnh hoặc File Excel (.xlsx) vào đây để tải lên</div>
-            <div class="bg-studio-drop-sub">Tự động nhận diện Ảnh minh hoạ · File Báo Giá · File Mua Hàng</div>
+            <div class="bg-studio-drop-title">Thả Ảnh hoặc Tệp đính kèm vào đây để tải lên</div>
+            <div class="bg-studio-drop-sub">Tự động nhận diện Ảnh minh hoạ · File Báo Giá · File DXMH/Khác &amp; Quét Khách Hàng</div>
           </div>
         </div>
 
@@ -2870,8 +2870,8 @@
 
         <!-- Hidden Upload Inputs (Shared by Right Upload Column & Mobile Sheet 3A) -->
         <input type="file" accept="image/*" multiple ref="imgUploadInput" style="display: none;" @change="handleImgUpload" />
-        <input type="file" accept=".xlsx,.xls,.csv" multiple ref="bgUploadInput" style="display: none;" @change="e => handleExcelUpload(e, 'link_excel_bao_gia')" />
-        <input type="file" accept=".xlsx,.xls,.csv" multiple ref="mhUploadInput" style="display: none;" @change="e => handleExcelUpload(e, 'link_excel_mua_hang')" />
+        <input type="file" multiple ref="bgUploadInput" style="display: none;" @change="e => handleExcelUpload(e, 'link_excel_bao_gia')" />
+        <input type="file" multiple ref="mhUploadInput" style="display: none;" @change="e => handleExcelUpload(e, 'link_excel_mua_hang')" />
 
         <form @submit.prevent="saveReport" class="bg-modal-form">
           <div class="bg-modal-body bg-studio-modal-body">
@@ -3496,7 +3496,7 @@
                         :class="{ 'has-items': formBgCount > 0 }"
                         :disabled="!!isUploadingFiles"
                         @click="triggerUploadInput('bg')"
-                        title="Tải file Excel Báo Giá lên"
+                        title="Tải file Báo Giá lên (tự động quét Khách hàng)"
                       >
                         <span class="bg-studio-up-ic" aria-hidden="true">
                           <span v-if="isUploadingFiles === 'bg'" class="bg-spin-dot"></span>
@@ -3512,13 +3512,13 @@
                         :class="{ 'has-items': formMhCount > 0 }"
                         :disabled="!!isUploadingFiles"
                         @click="triggerUploadInput('mh')"
-                        title="Tải file Excel Mua Hàng lên"
+                        title="Tải file DXMH / Khác lên (tự động quét Khách hàng)"
                       >
                         <span class="bg-studio-up-ic" aria-hidden="true">
                           <span v-if="isUploadingFiles === 'mh'" class="bg-spin-dot"></span>
                           <svg v-else xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
                         </span>
-                        <span class="bg-studio-up-lbl">{{ isUploadingFiles === 'mh' ? 'Đang tải...' : 'Mua hàng' }}</span>
+                        <span class="bg-studio-up-lbl">{{ isUploadingFiles === 'mh' ? 'Đang tải...' : 'DXMH/Khác' }}</span>
                         <span v-if="formMhCount > 0" class="bg-studio-tool-badge bg-tabular">{{ formMhCount }}</span>
                       </button>
                     </div>
@@ -3530,7 +3530,7 @@
                       <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
                     </div>
                     <div class="bg-studio-empty-title">Chưa có ảnh hoặc file đính kèm</div>
-                    <div class="bg-studio-empty-sub">Bấm các nút tải lên ở trên, kéo-thả Ảnh / Excel vào đây hoặc nhấn <strong>Ctrl+V</strong> dán ảnh</div>
+                    <div class="bg-studio-empty-sub">Bấm các nút tải lên ở trên, kéo-thả Ảnh / Báo giá / DXMH vào đây hoặc nhấn <strong>Ctrl+V</strong> dán ảnh</div>
                   </div>
 
                   <div v-else class="bg-studio-files-vault">
@@ -3560,9 +3560,9 @@
                       </div>
                     </div>
 
-                    <!-- Excel Pills (Báo Giá & Mua Hàng with 1-Click ⇄ Category Swap) -->
+                    <!-- Excel Pills (Báo Giá & DXMH/Khác with 1-Click ⇄ Category Swap) -->
                     <div v-if="formData.link_excel_bao_gia || formData.link_excel_mua_hang" class="bg-studio-vault-sec">
-                      <div class="bg-studio-vault-lbl bg-tabular">FILE BÁO GIÁ &amp; MUA HÀNG ({{ formBgCount + formMhCount }})</div>
+                      <div class="bg-studio-vault-lbl bg-tabular">FILE BÁO GIÁ &amp; DXMH/KHÁC ({{ formBgCount + formMhCount }})</div>
                       <div class="bg-studio-excel-stack">
                         <div
                           v-for="(link, i) in (formData.link_excel_bao_gia ? formData.link_excel_bao_gia.split('\n').filter(Boolean) : [])"
@@ -3578,7 +3578,7 @@
                             <button
                               type="button"
                               class="bg-file-pill-act is-swap"
-                              title="Chuyển tệp này sang nhóm File Mua Hàng"
+                              title="Chuyển tệp này sang nhóm File DXMH/Khác"
                               @click.stop.prevent="swapExcelAttachmentCategory('link_excel_bao_gia', i)"
                             >⇄</button>
                             <button type="button" class="bg-file-pill-act is-view" title="Xem bằng View Office" @click.stop.prevent="openDirectAttachmentView(link, getExcelFileName(formData, 'link_excel_bao_gia', i, 'Báo giá'), 'bao_gia')">
@@ -3596,10 +3596,10 @@
                           :key="'st-mh-' + i"
                           class="bg-file-pill is-amber"
                         >
-                          <span class="bg-studio-file-kind is-mh">MUA HÀNG</span>
-                          <span class="bg-file-pill-ic" v-html="getFileIconSvg(getExcelFileName(formData, 'link_excel_mua_hang', i, 'Mua hàng'))"></span>
-                          <a href="#" @click.prevent.stop="openDirectAttachmentView(link, getExcelFileName(formData, 'link_excel_mua_hang', i, 'Mua hàng'), 'mua_hang')" class="bg-file-pill-link" :title="getExcelFileName(formData, 'link_excel_mua_hang', i, 'Mua hàng')">
-                            {{ formatCalendarFileName(getExcelFileName(formData, 'link_excel_mua_hang', i, 'Mua hàng'), 24) }}
+                          <span class="bg-studio-file-kind is-mh">DXMH/KHÁC</span>
+                          <span class="bg-file-pill-ic" v-html="getFileIconSvg(getExcelFileName(formData, 'link_excel_mua_hang', i, 'DXMH/Khác'))"></span>
+                          <a href="#" @click.prevent.stop="openDirectAttachmentView(link, getExcelFileName(formData, 'link_excel_mua_hang', i, 'DXMH/Khác'), 'mua_hang')" class="bg-file-pill-link" :title="getExcelFileName(formData, 'link_excel_mua_hang', i, 'DXMH/Khác')">
+                            {{ formatCalendarFileName(getExcelFileName(formData, 'link_excel_mua_hang', i, 'DXMH/Khác'), 24) }}
                           </a>
                           <div class="bg-file-pill-acts">
                             <button
@@ -3608,10 +3608,10 @@
                               title="Chuyển tệp này sang nhóm File Báo Giá"
                               @click.stop.prevent="swapExcelAttachmentCategory('link_excel_mua_hang', i)"
                             >⇄</button>
-                            <button type="button" class="bg-file-pill-act is-view" title="Xem bằng View Office" @click.stop.prevent="openDirectAttachmentView(link, getExcelFileName(formData, 'link_excel_mua_hang', i, 'Mua hàng'), 'mua_hang')">
+                            <button type="button" class="bg-file-pill-act is-view" title="Xem bằng View Office" @click.stop.prevent="openDirectAttachmentView(link, getExcelFileName(formData, 'link_excel_mua_hang', i, 'DXMH/Khác'), 'mua_hang')">
                               <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                             </button>
-                            <button type="button" class="bg-file-pill-act is-dl" :title="'Tải xuống: ' + getExcelFileName(formData, 'link_excel_mua_hang', i, 'Mua hàng')" @click.stop.prevent="downloadDirectAttachment(link, getExcelFileName(formData, 'link_excel_mua_hang', i, 'Mua hàng'), $event)">
+                            <button type="button" class="bg-file-pill-act is-dl" :title="'Tải xuống: ' + getExcelFileName(formData, 'link_excel_mua_hang', i, 'DXMH/Khác')" @click.stop.prevent="downloadDirectAttachment(link, getExcelFileName(formData, 'link_excel_mua_hang', i, 'DXMH/Khác'), $event)">
                               <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                             </button>
                             <button type="button" class="bg-file-pill-act is-del" @click.stop.prevent="removeLink('link_excel_mua_hang', i)" title="Xoá">✕</button>
@@ -3852,6 +3852,154 @@
       </div>
     </div>
 
+    <!-- MODULE 3D: SUB-MODAL HỎI LẤY TÊN FILE ĐƯA VÀO NỘI DUNG CÔNG VIỆC -->
+    <div
+      v-if="isUploadFileNameModalOpen"
+      class="bg-modal-overlay is-studio-submodal-overlay"
+      style="z-index: 100080;"
+      @click.self="cancelUploadFileNameModal"
+    >
+      <div class="bg-modal-card is-sm is-studio-submodal-card" role="dialog" aria-modal="true">
+        <div class="bg-modal-head">
+          <div class="bg-modal-title-row">
+            <div class="bg-modal-icon is-teal">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+              </svg>
+            </div>
+            <div>
+              <h2 class="bg-modal-title">Lấy Tên File Đưa Vào Nội Dung?</h2>
+              <p class="bg-modal-sub">Chọn tệp vừa tải lên để chèn tên vào Nội dung công việc</p>
+            </div>
+          </div>
+          <button type="button" class="bg-modal-close" @click="cancelUploadFileNameModal" title="Đóng (Esc)">✕</button>
+        </div>
+
+        <div class="bg-modal-body bg-ufn-modal-body">
+          <!-- Banner thông báo Khách hàng đã tự động quét từ File Báo giá / DXMH -->
+          <div v-if="lastScannedCustomerSummary" class="bg-ufn-cus-banner" :class="'is-' + lastScannedCustomerSummary.status">
+            <div class="bg-ufn-cus-head">
+              <span class="bg-ufn-cus-badge" :class="'is-' + lastScannedCustomerSummary.status">
+                {{
+                  lastScannedCustomerSummary.status === 'new'
+                    ? 'KHÁCH HÀNG MỚI'
+                    : (lastScannedCustomerSummary.status === 'updated' ? 'ĐÃ BỔ SUNG THÔNG TIN KH' : 'ĐÃ KHỚP KHÁCH HÀNG DB')
+                }}
+              </span>
+              <span class="bg-ufn-cus-src bg-tabular">Nguồn: File {{ lastScannedCustomerSummary.sourceLabel }}</span>
+            </div>
+            <div class="bg-ufn-cus-main">
+              <strong>{{ lastScannedCustomerSummary.displayName }}</strong>
+              <span v-if="lastScannedCustomerSummary.companyName && lastScannedCustomerSummary.companyName !== lastScannedCustomerSummary.displayName">
+                — {{ lastScannedCustomerSummary.companyName }}
+              </span>
+            </div>
+            <div class="bg-ufn-cus-meta bg-tabular">
+              Mã KH: <strong>{{ lastScannedCustomerSummary.maKH }}</strong> · Đã tự động chọn vào ô Khách hàng
+            </div>
+          </div>
+
+          <!-- Danh sách các file/ảnh vừa tải lên -->
+          <div class="bg-field">
+            <div class="bg-label-row">
+              <label class="bg-label">
+                <span>Danh sách tệp vừa tải lên ({{ selectedUploadFileCount }}/{{ uploadFileNameModalItems.length }})</span>
+              </label>
+              <div v-if="uploadFileNameModalItems.length > 1" class="bg-ufn-quick-tools">
+                <button
+                  type="button"
+                  class="bg-ufn-tool-btn"
+                  @click="toggleAllUploadFileNames(true)"
+                >Chọn tất cả</button>
+                <button
+                  type="button"
+                  class="bg-ufn-tool-btn"
+                  @click="toggleAllUploadFileNames(false)"
+                >Bỏ chọn</button>
+              </div>
+            </div>
+
+            <div class="bg-ufn-list">
+              <div
+                v-for="item in uploadFileNameModalItems"
+                :key="item.id"
+                class="bg-ufn-item"
+                :class="{ 'is-checked': item.selected }"
+                @click="item.selected = !item.selected"
+              >
+                <span class="bg-ufn-check" :class="{ 'is-checked': item.selected }" aria-hidden="true">
+                  <svg v-if="item.selected" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </span>
+                <span
+                  class="bg-ufn-kind-pill"
+                  :class="item.kind === 'img' ? 'is-sky' : (item.kind === 'mh' ? 'is-amber' : 'is-emerald')"
+                >
+                  {{ item.kind === 'img' ? 'ẢNH' : (item.kind === 'mh' ? 'DXMH/KHÁC' : 'BÁO GIÁ') }}
+                </span>
+                <span class="bg-ufn-name" :title="item.name">{{ item.name }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tùy chọn Nối thêm ngang hàng (|) hoặc Thay thế khi ô Nội dung đã có chữ -->
+          <div v-if="hasExistingReportContent" class="bg-field">
+            <label class="bg-label">Cách đưa vào ô Nội dung công việc</label>
+            <div class="bg-choice-grid">
+              <button
+                type="button"
+                class="bg-choice-btn"
+                :class="{ 'is-active-emerald': uploadFileNameInsertMode === 'append' }"
+                @click="uploadFileNameInsertMode = 'append'"
+              >
+                Nối thêm ngang hàng ( | )
+              </button>
+              <button
+                type="button"
+                class="bg-choice-btn"
+                :class="{ 'is-active-amber': uploadFileNameInsertMode === 'replace' }"
+                @click="uploadFileNameInsertMode = 'replace'"
+              >
+                Thay thế nội dung cũ
+              </button>
+            </div>
+          </div>
+
+          <!-- Xem trước Nội dung công việc sau khi đưa tên file vào -->
+          <div class="bg-field">
+            <label class="bg-label">Xem trước nội dung sẽ áp dụng</label>
+            <div class="bg-ufn-preview-box" :class="{ 'is-empty': selectedUploadFileCount === 0 }">
+              <template v-if="selectedUploadFileCount > 0">
+                {{ uploadFileNamePreviewText }}
+              </template>
+              <template v-else>
+                Chưa chọn tệp nào — nhấn "Bỏ qua" nếu bạn không muốn đưa tên file vào nội dung.
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-modal-foot">
+          <button type="button" class="bg-btn bg-btn-slate" @click="cancelUploadFileNameModal">
+            Không, giữ nguyên
+          </button>
+          <div class="bg-foot-right">
+            <button
+              type="button"
+              class="bg-btn bg-btn-emerald"
+              :disabled="selectedUploadFileCount === 0"
+              @click="confirmUploadFileNameModal"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Đưa vào nội dung</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Teleported Mobile Attachment Bottom Sheet 3A (<= 1100px) -->
     <Teleport to="body">
       <div
@@ -3896,7 +4044,7 @@
                   @click="triggerUploadInput('mh')"
                 >
                   <span v-if="isUploadingFiles === 'mh'" class="bg-spin-dot"></span>
-                  <span>{{ isUploadingFiles === 'mh' ? 'Đang tải...' : '+ File Mua Hàng' }}</span>
+                  <span>{{ isUploadingFiles === 'mh' ? 'Đang tải...' : '+ File DXMH/Khác' }}</span>
                 </button>
               </div>
             </div>
@@ -3940,7 +4088,7 @@
                     {{ formatCalendarFileName(getExcelFileName(formData, 'link_excel_bao_gia', i, 'Báo giá'), 24) }}
                   </a>
                   <div class="bg-file-pill-acts">
-                    <button type="button" class="bg-file-pill-act is-swap" title="Chuyển sang File Mua Hàng" @click.stop.prevent="swapExcelAttachmentCategory('link_excel_bao_gia', i)">⇄</button>
+                    <button type="button" class="bg-file-pill-act is-swap" title="Chuyển sang File DXMH/Khác" @click.stop.prevent="swapExcelAttachmentCategory('link_excel_bao_gia', i)">⇄</button>
                     <button type="button" class="bg-file-pill-act is-view" title="Xem bằng View Office" @click.stop.prevent="openDirectAttachmentView(link, getExcelFileName(formData, 'link_excel_bao_gia', i, 'Báo giá'), 'bao_gia')">
                       <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                     </button>
@@ -3958,17 +4106,17 @@
                   :key="'mb-mh-' + i"
                   class="bg-file-pill is-amber"
                 >
-                  <span class="bg-studio-file-kind is-mh">MUA HÀNG</span>
-                  <span class="bg-file-pill-ic" v-html="getFileIconSvg(getExcelFileName(formData, 'link_excel_mua_hang', i, 'Mua hàng'))"></span>
-                  <a href="#" @click.prevent.stop="openDirectAttachmentView(link, getExcelFileName(formData, 'link_excel_mua_hang', i, 'Mua hàng'), 'mua_hang')" class="bg-file-pill-link" :title="getExcelFileName(formData, 'link_excel_mua_hang', i, 'Mua hàng')">
-                    {{ formatCalendarFileName(getExcelFileName(formData, 'link_excel_mua_hang', i, 'Mua hàng'), 24) }}
+                  <span class="bg-studio-file-kind is-mh">DXMH/KHÁC</span>
+                  <span class="bg-file-pill-ic" v-html="getFileIconSvg(getExcelFileName(formData, 'link_excel_mua_hang', i, 'DXMH/Khác'))"></span>
+                  <a href="#" @click.prevent.stop="openDirectAttachmentView(link, getExcelFileName(formData, 'link_excel_mua_hang', i, 'DXMH/Khác'), 'mua_hang')" class="bg-file-pill-link" :title="getExcelFileName(formData, 'link_excel_mua_hang', i, 'DXMH/Khác')">
+                    {{ formatCalendarFileName(getExcelFileName(formData, 'link_excel_mua_hang', i, 'DXMH/Khác'), 24) }}
                   </a>
                   <div class="bg-file-pill-acts">
                     <button type="button" class="bg-file-pill-act is-swap" title="Chuyển sang File Báo Giá" @click.stop.prevent="swapExcelAttachmentCategory('link_excel_mua_hang', i)">⇄</button>
-                    <button type="button" class="bg-file-pill-act is-view" title="Xem bằng View Office" @click.stop.prevent="openDirectAttachmentView(link, getExcelFileName(formData, 'link_excel_mua_hang', i, 'Mua hàng'), 'mua_hang')">
+                    <button type="button" class="bg-file-pill-act is-view" title="Xem bằng View Office" @click.stop.prevent="openDirectAttachmentView(link, getExcelFileName(formData, 'link_excel_mua_hang', i, 'DXMH/Khác'), 'mua_hang')">
                       <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                     </button>
-                    <button type="button" class="bg-file-pill-act is-dl" :title="'Tải xuống: ' + getExcelFileName(formData, 'link_excel_mua_hang', i, 'Mua hàng')" @click.stop.prevent="downloadDirectAttachment(link, getExcelFileName(formData, 'link_excel_mua_hang', i, 'Mua hàng'), $event)">
+                    <button type="button" class="bg-file-pill-act is-dl" :title="'Tải xuống: ' + getExcelFileName(formData, 'link_excel_mua_hang', i, 'DXMH/Khác')" @click.stop.prevent="downloadDirectAttachment(link, getExcelFileName(formData, 'link_excel_mua_hang', i, 'DXMH/Khác'), $event)">
                       <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                     </button>
                     <button type="button" class="bg-file-pill-act is-del" @click.stop.prevent="removeLink('link_excel_mua_hang', i)">✕</button>
@@ -4743,8 +4891,8 @@
                             </a>
                           </template>
                           <template v-if="task.link_excel_mua_hang">
-                            <a v-for="(link, i) in task.link_excel_mua_hang.split('\n').filter(Boolean)" :key="'m-mh'+i" href="#" @click.prevent.stop="downloadExcelFile(link, getExcelFileName(task, 'link_excel_mua_hang', i, 'Mua hàng'))" class="bg-tag-pill is-amber">
-                              {{ getExcelFileName(task, 'link_excel_mua_hang', i, 'Mua hàng') }}
+                            <a v-for="(link, i) in task.link_excel_mua_hang.split('\n').filter(Boolean)" :key="'m-mh'+i" href="#" @click.prevent.stop="downloadExcelFile(link, getExcelFileName(task, 'link_excel_mua_hang', i, 'DXMH/Khác'))" class="bg-tag-pill is-amber">
+                              {{ getExcelFileName(task, 'link_excel_mua_hang', i, 'DXMH/Khác') }}
                             </a>
                           </template>
                         </div>
@@ -4782,8 +4930,8 @@
                             </a>
                           </template>
                           <template v-if="task.link_excel_mua_hang">
-                            <a v-for="(link, i) in task.link_excel_mua_hang.split('\n').filter(Boolean)" :key="'a-mh'+i" href="#" @click.prevent.stop="downloadExcelFile(link, getExcelFileName(task, 'link_excel_mua_hang', i, 'Mua hàng'))" class="bg-tag-pill is-amber">
-                              {{ getExcelFileName(task, 'link_excel_mua_hang', i, 'Mua hàng') }}
+                            <a v-for="(link, i) in task.link_excel_mua_hang.split('\n').filter(Boolean)" :key="'a-mh'+i" href="#" @click.prevent.stop="downloadExcelFile(link, getExcelFileName(task, 'link_excel_mua_hang', i, 'DXMH/Khác'))" class="bg-tag-pill is-amber">
+                              {{ getExcelFileName(task, 'link_excel_mua_hang', i, 'DXMH/Khác') }}
                             </a>
                           </template>
                         </div>
@@ -5539,6 +5687,10 @@ import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import * as XLSX from 'xlsx-js-style'
 import { downloadCardFilesAsZip } from '../../utils/cardZipHelper'
+import {
+  parseCustomerDxmhStandardFromFile,
+  parseCustomerQuoteStandardFromFile
+} from '../../utils/universalDocumentReader'
 
 import CustomSelect from '../CustomSelect.vue'
 import ReportGuideTutorial from './ReportGuideTutorial.vue'
@@ -8731,7 +8883,7 @@ const getCalendarTaskAttachments = (task) => {
       .map((s) => s.trim())
       .filter(Boolean)
       .forEach((link, idx) => {
-        pushAtt(link, getExcelFileName(task, 'link_excel_mua_hang', idx, 'Mua hàng'), 'mua_hang');
+        pushAtt(link, getExcelFileName(task, 'link_excel_mua_hang', idx, 'DXMH/Khác'), 'mua_hang');
       });
   }
 
@@ -9161,6 +9313,83 @@ const clearAndCloseStudioReminderModal = () => {
   isStudioReminderModalOpen.value = false;
 };
 
+// --- MODULE 3D: HỎI LẤY TÊN FILE / ẢNH ĐƯA VÀO NỘI DUNG CÔNG VIỆC ---
+const isUploadFileNameModalOpen = ref(false);
+const uploadFileNameModalItems = ref([]);
+const uploadFileNameInsertMode = ref('append'); // 'append' (nối thêm ngang hàng bằng ' | ') | 'replace' (thay thế nội dung cũ)
+const lastScannedCustomerSummary = ref(null);
+const uploadedFileObjectsMap = new Map();
+
+const hasExistingReportContent = computed(() => {
+  return Boolean(formData.value?.noi_dung && String(formData.value.noi_dung).trim());
+});
+
+const selectedUploadFileCount = computed(() => {
+  return uploadFileNameModalItems.value.filter((it) => it.selected).length;
+});
+
+const uploadFileNamePreviewText = computed(() => {
+  const names = uploadFileNameModalItems.value
+    .filter((it) => it.selected)
+    .map((it) => String(it.name || '').trim())
+    .filter(Boolean);
+  if (names.length === 0) return '';
+  const joined = names.join(' | ');
+  const existing = String(formData.value?.noi_dung || '').trim();
+  if (existing && uploadFileNameInsertMode.value === 'append') {
+    return `${existing} | ${joined}`;
+  }
+  return joined;
+});
+
+const openUploadFileNamePrompt = (uploadedList = [], scannedCusSummary = null) => {
+  const valid = (Array.isArray(uploadedList) ? uploadedList : []).filter(
+    (it) => it && String(it.name || '').trim()
+  );
+  if (valid.length === 0) return;
+  lastScannedCustomerSummary.value = scannedCusSummary || null;
+  uploadFileNameModalItems.value = valid.map((it, idx) => ({
+    id: `ufn_${Date.now()}_${idx}`,
+    name: String(it.name).trim(),
+    kind: it.kind || 'bg',
+    selected: true
+  }));
+  uploadFileNameInsertMode.value = 'append';
+  isUploadFileNameModalOpen.value = true;
+};
+
+const toggleAllUploadFileNames = (selectAll = true) => {
+  uploadFileNameModalItems.value.forEach((it) => {
+    it.selected = Boolean(selectAll);
+  });
+};
+
+const confirmUploadFileNameModal = () => {
+  const names = uploadFileNameModalItems.value
+    .filter((it) => it.selected)
+    .map((it) => String(it.name || '').trim())
+    .filter(Boolean);
+  if (names.length > 0) {
+    const joined = names.join(' | ');
+    const existing = String(formData.value.noi_dung || '').trim();
+    if (existing && uploadFileNameInsertMode.value === 'append') {
+      formData.value.noi_dung = `${existing} | ${joined}`;
+    } else {
+      formData.value.noi_dung = joined;
+    }
+    showToast('Đã đưa tên file vào Nội dung công việc', 'success');
+  }
+  isUploadFileNameModalOpen.value = false;
+  uploadFileNameModalItems.value = [];
+  lastScannedCustomerSummary.value = null;
+};
+
+const cancelUploadFileNameModal = () => {
+  isUploadFileNameModalOpen.value = false;
+  uploadFileNameModalItems.value = [];
+  lastScannedCustomerSummary.value = null;
+};
+
 const openStudioLinkedFileModal = () => {
   fileSearchQuery.value = '';
   isFileSelectModalOpen.value = true;
@@ -9197,6 +9426,10 @@ watch(isModalOpen, (open) => {
     isMobileAttachSheetOpen.value = false;
     isStudioNoteModalOpen.value = false;
     isStudioReminderModalOpen.value = false;
+    isUploadFileNameModalOpen.value = false;
+    uploadFileNameModalItems.value = [];
+    lastScannedCustomerSummary.value = null;
+    uploadedFileObjectsMap.clear();
     openModalSelectKey.value = null;
     isInlineCusDropdownOpen.value = false;
     isInlineCusEditing.value = false;
@@ -9207,6 +9440,10 @@ watch(isModalOpen, (open) => {
   } else {
     isStudioNoteModalOpen.value = false;
     isStudioReminderModalOpen.value = false;
+    isUploadFileNameModalOpen.value = false;
+    uploadFileNameModalItems.value = [];
+    lastScannedCustomerSummary.value = null;
+    uploadedFileObjectsMap.clear();
     isInlineCusDropdownOpen.value = false;
     isInlineCusEditing.value = false;
     inlineCusQuery.value = '';
@@ -9511,10 +9748,815 @@ const inlineFilteredQuanLyFiles = computed(() => {
 // --- Smart Drag-and-Drop Auto-Classifier & 1-Click ⇄ Excel Category Swap ---
 const classifyDroppedExcelField = (fileName) => {
   const norm = normalizeReportSearch(fileName || '').replace(/[_\-.]+/g, ' ');
-  if (/\b(mua|mh|po|order|ncc|dathang|muahang)\b/.test(norm) || norm.includes('mua hang') || norm.includes('dat hang')) {
+  if (
+    /\b(dxmh|mua|mh|po|order|ncc|dathang|muahang|hd|hopdong)\b/.test(norm) ||
+    norm.includes('mua hang') ||
+    norm.includes('dat hang') ||
+    norm.includes('de xuat')
+  ) {
     return 'link_excel_mua_hang';
   }
   return 'link_excel_bao_gia';
+};
+
+// --- Tự động quét Khách hàng từ File Báo Giá & File DXMH/Khác (Chuẩn SaleReportFirebase) ---
+const normalizeCustomerCompareStr = (s) => {
+  return String(s || '').trim().replace(/\s+/g, ' ').toLowerCase();
+};
+
+const cleanExtractedCompanyText = (raw) => {
+  const s = String(raw || '')
+    .replace(/^[\s:–\-]+/, '')
+    .replace(/(?:^|\s)(?:ngày|date)\s*(?::|\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}).*$/i, '')
+    .replace(/(?:^|\s)(?:mst|mã\s*số\s*thuế|tax\s*code)\s*:?.*$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!s || /^\{+.*\}+$/i.test(s) || /nam\s+trường\s+sơn|nam\s+truong\s+son|ntssi/i.test(s)) return '';
+  return s;
+};
+
+const cleanExtractedRecipientText = (raw) => {
+  const s = String(raw || '')
+    .replace(/^[\s:–\-]+/, '')
+    .replace(/(?:^|\s)(?:tel|mobile|sđt|số\s*điện\s*thoại|điện\s*thoại|đt|email|e-mail|fax|chức\s*vụ|bộ\s*phận|phòng|ngày|date)\s*:?.*$/i, '')
+    .replace(/(?:[\s\-–/|,(]+(?:\+?84|0)\d[\d\s.\-]{7,}\)?)$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!s || /^\{+.*\}+$/i.test(s) || /^(?:mr|ms|mrs|miss|dr|anh|chị|chi|ông|ong|bà|ba)\.?$/i.test(s)) return '';
+  return s;
+};
+
+const cleanExtractedAddressText = (raw) => {
+  const s = String(raw || '')
+    .replace(/^[\s:–\-]+/, '')
+    .replace(/(?:^|\s)(?:ngày|date)\s*(?::|\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}).*$/i, '')
+    .replace(/(?:^|\s)(?:tel|fax|mobile|sđt|số\s*điện\s*thoại|điện\s*thoại|mst|mã\s*số\s*thuế)\s*:?.*$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!s || /^\{+.*\}+$/i.test(s) || /tăng\s*bạt\s*hổ|tang\s*bat\s*ho/i.test(s)) return '';
+  return s;
+};
+
+const isSpreadsheetExt = (fileName) => {
+  const ext = extractCleanExt(fileName || '');
+  return ['xlsx', 'xls', 'csv', 'ods', 'xlsm', 'xlsb'].includes(ext);
+};
+
+// Quét đầy đủ 15 trường khách hàng từ File DXMH/Khác
+const extractCustomerFromDxmhFile = async (file) => {
+  if (!file) return null;
+  const ext = extractCleanExt(file.name || '');
+  if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'zip', 'rar', '7z'].includes(ext)) {
+    return null;
+  }
+
+  let excelDetails = null;
+  if (isSpreadsheetExt(file.name)) {
+    try {
+      const buffer = await file.arrayBuffer();
+      const wb = XLSX.read(buffer, { type: 'array' });
+      const orderedNames = [...(wb.SheetNames || [])].sort((a, b) => {
+        const rank = (name) => {
+          const u = String(name || '').toUpperCase().trim();
+          if (u === 'PO') return 0;
+          if (u.includes('ĐƠN HÀNG') || u.includes('DON HANG') || u.includes('DXMH')) return 1;
+          return 2;
+        };
+        return rank(a) - rank(b);
+      });
+
+      for (const shName of orderedNames) {
+        const ws = wb.Sheets[shName];
+        if (!ws) continue;
+        const rawData = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+        if (!Array.isArray(rawData) || rawData.length < 2) continue;
+
+        const record = {};
+        const splitInline = (txt) => {
+          const idx = String(txt || '').indexOf(':');
+          return idx !== -1 ? String(txt).slice(idx + 1).trim() : '';
+        };
+
+        for (let r = 0; r < Math.min(rawData.length, 45); r++) {
+          const row = rawData[r];
+          if (!Array.isArray(row) || row.length === 0) continue;
+
+          const label1 = String(row[0] || row[1] || '').trim();
+          let val1 = row[2] !== undefined ? row[2] : '';
+          if (row[0] && row[1] && String(row[0]).trim() !== label1) val1 = row[1];
+          if ((val1 === '' || val1 === undefined) && row[1] && String(row[0]).trim() === label1) val1 = row[1];
+          const val1Str = String(val1 ?? '').trim();
+
+          if (label1.length <= 32) {
+            if (/company/i.test(label1)) record.CUS_COMPANY = cleanExtractedCompanyText(val1Str || splitInline(label1)) || record.CUS_COMPANY || '';
+            if (/address/i.test(label1)) record.CUS_ADDRESS = cleanExtractedAddressText(val1Str || splitInline(label1)) || record.CUS_ADDRESS || '';
+            if (/\btel\b/i.test(label1)) record.CUS_TEL = (val1Str || splitInline(label1)) || record.CUS_TEL || '';
+            if (/\bfax\b/i.test(label1)) record.CUS_FAX = (val1Str || splitInline(label1)) || record.CUS_FAX || '';
+            if (/contact/i.test(label1)) record.CUS_CONTACT = cleanExtractedRecipientText(val1Str || splitInline(label1)) || record.CUS_CONTACT || '';
+            if (/email/i.test(label1)) {
+              const em = val1Str || splitInline(label1);
+              if (em && !/ntssi|namtruongson/i.test(em)) {
+                if (r < 13) record.CUS_EMAIL = em || record.CUS_EMAIL || '';
+                else record.INV_EMAIL = em || record.INV_EMAIL || '';
+              }
+            }
+            if (/mobile/i.test(label1)) record.CUS_MOBILE = (val1Str || splitInline(label1)) || record.CUS_MOBILE || '';
+            if (/website/i.test(label1)) record.CUS_WEBSITE = (val1Str || splitInline(label1)) || record.CUS_WEBSITE || '';
+            if (label1.includes('Công ty') || /^công\s*ty\s*(\(\*\))?\s*:?$/i.test(label1)) {
+              record.INV_CONG_TY = cleanExtractedCompanyText(val1Str || splitInline(label1)) || record.INV_CONG_TY || '';
+            }
+            if (/^địa\s*chỉ/i.test(label1)) {
+              const addr = cleanExtractedAddressText(val1Str || splitInline(label1));
+              if (r > 12 || !record.INV_DIA_CHI) record.INV_DIA_CHI = addr || record.INV_DIA_CHI || '';
+            }
+            if (/\bmst\b|mã\s*số\s*thuế/i.test(label1)) {
+              const rawM = (val1Str || splitInline(label1)).replace(/\s+/g, '').trim();
+              if (rawM && !rawM.startsWith('0309945')) record.INV_MST = rawM;
+            }
+          }
+
+          const label2 = String(row[3] || row[4] || '').trim();
+          let val2 = row[5] !== undefined ? row[5] : '';
+          if (row[3] && row[4] && String(row[3]).trim() !== label2) val2 = row[4];
+          if ((val2 === '' || val2 === undefined) && row[4] && String(row[3]).trim() === label2) val2 = row[4];
+          const val2Str = String(val2 ?? '').trim();
+
+          if (label2.length <= 32) {
+            if (/người\s*nhận/i.test(label2)) record.DEL_NGUOI_NHAN = cleanExtractedRecipientText(val2Str || splitInline(label2)) || record.DEL_NGUOI_NHAN || '';
+            if (/số\s*điện\s*thoại/i.test(label2)) record.DEL_SDT = (val2Str || splitInline(label2)) || record.DEL_SDT || '';
+          }
+        }
+
+        const contactRaw = String(record.CUS_CONTACT || '').trim();
+        const nguoiNhan = String(record.DEL_NGUOI_NHAN || '').trim();
+        const tenKH = contactRaw || nguoiNhan;
+        const tenCT = cleanExtractedCompanyText(record.INV_CONG_TY || record.CUS_COMPANY || '');
+        const mst = String(record.INV_MST || '').replace(/\s+/g, '').trim();
+
+        if (tenKH || tenCT) {
+          const hasSecondary = Boolean(contactRaw && nguoiNhan && contactRaw !== nguoiNhan);
+          excelDetails = {
+            sourceKind: 'mh',
+            sourceLabel: 'DXMH/Khác',
+            fileName: file.name,
+            ten_khach_hang: tenKH,
+            ten_cong_ty: tenCT,
+            mst,
+            email_ca_nhan: contactRaw ? String(record.CUS_EMAIL || '').trim() : '',
+            so_dien_thoai_ca_nhan: contactRaw
+              ? String(record.CUS_MOBILE || record.DEL_SDT || '').trim()
+              : String(record.DEL_SDT || '').trim(),
+            so_dien_thoai_cong_ty: String(record.CUS_TEL || '').trim(),
+            so_fax_cong_ty: String(record.CUS_FAX || '').trim(),
+            dia_chi_cong_ty: String(record.INV_DIA_CHI || record.CUS_ADDRESS || '').trim(),
+            email_cong_ty: String(record.INV_EMAIL || record.CUS_EMAIL || '').trim(),
+            website_cong_ty: String(record.CUS_WEBSITE || '').trim(),
+            ten_khach_hang_phu: hasSecondary ? nguoiNhan : '',
+            so_dien_thoai_ca_nhan_phu: hasSecondary ? String(record.DEL_SDT || '').trim() : '',
+            company: cleanExtractedCompanyText(record.CUS_COMPANY || ''),
+            address: cleanExtractedAddressText(record.CUS_ADDRESS || ''),
+            tel: String(record.CUS_TEL || '').trim()
+          };
+          break;
+        }
+      }
+    } catch (e) {
+      console.warn('Lỗi đọc bảng Excel DXMH:', e);
+    }
+  }
+
+  if (excelDetails && (excelDetails.ten_cong_ty || excelDetails.ten_khach_hang)) {
+    return excelDetails;
+  }
+
+  // Fallback qua bộ đọc đa năng (hỗ trợ Word .docx/.doc, PDF, hoặc cấu trúc bảng khác)
+  try {
+    const std = await parseCustomerDxmhStandardFromFile(file);
+    if (std) {
+      const tenCT = cleanExtractedCompanyText(std.Ten_cong_ty || '');
+      const tenKH = cleanExtractedRecipientText(std.Ten_khach_hang || '');
+      const mst = String(std.MST || '').replace(/\s+/g, '').trim();
+      if (tenCT || tenKH) {
+        return {
+          sourceKind: 'mh',
+          sourceLabel: 'DXMH/Khác',
+          fileName: file.name,
+          ten_khach_hang: tenKH,
+          ten_cong_ty: tenCT,
+          mst: mst && !mst.startsWith('0309945') ? mst : '',
+          email_ca_nhan: String(std.Email_ca_nhan || '').trim(),
+          so_dien_thoai_ca_nhan: String(std.So_dien_thoai_ca_nhan || '').trim(),
+          so_dien_thoai_cong_ty: String(std.So_dien_thoai_cong_ty || '').trim(),
+          so_fax_cong_ty: String(std.So_fax_cong_ty || '').trim(),
+          dia_chi_cong_ty: cleanExtractedAddressText(std.Dia_chi_cong_ty || ''),
+          email_cong_ty: String(std.Email_cong_ty || '').trim(),
+          website_cong_ty: String(std.Website_cong_ty || '').trim(),
+          ten_khach_hang_phu: cleanExtractedRecipientText(std.Ten_khach_hang_phu || ''),
+          so_dien_thoai_ca_nhan_phu: String(std.So_dien_thoai_ca_nhan_phu || '').trim(),
+          company: cleanExtractedCompanyText(std.COMPANY || ''),
+          address: cleanExtractedAddressText(std.ADDRESS || ''),
+          tel: String(std.TEL || '').trim()
+        };
+      }
+    }
+  } catch (e) {
+    console.warn('Bỏ qua quét KH từ file Khác:', file.name, e);
+  }
+
+  return null;
+};
+
+// Quét thông tin khách hàng rút gọn từ File Báo Giá (không đòi hỏi đủ 15 trường như DXMH)
+const extractCustomerFromQuoteFile = async (file) => {
+  if (!file) return null;
+  const ext = extractCleanExt(file.name || '');
+  if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'zip', 'rar', '7z'].includes(ext)) {
+    return null;
+  }
+
+  let extractedCompany = '';
+  let extractedRecipient = '';
+  let extractedMST = '';
+  let extractedAddress = '';
+  let extractedPhone = '';
+  let extractedEmail = '';
+
+  // 1. Quét theo ô Excel chuẩn SaleReportFirebase (nhận diện cả khi nhãn và giá trị nằm ở 2 ô liền kề)
+  if (isSpreadsheetExt(file.name)) {
+    try {
+      const buffer = await file.arrayBuffer();
+      const wb = XLSX.read(buffer, { type: 'array' });
+      for (const shName of (wb.SheetNames || [])) {
+        const ws = wb.Sheets[shName];
+        if (!ws) continue;
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+        if (!Array.isArray(rows) || rows.length === 0) continue;
+
+        let expectingCompanyExcel = false;
+        let expectingRecipientExcel = false;
+
+        for (let i = 0; i < Math.min(rows.length, 28); i++) {
+          const row = rows[i];
+          if (!Array.isArray(row)) continue;
+
+          for (let j = 0; j < row.length; j++) {
+            const v = String(row[j] || '').trim();
+            if (!v) continue;
+
+            if (expectingCompanyExcel && !extractedCompany) {
+              const cand = cleanExtractedCompanyText(v);
+              if (cand) extractedCompany = cand;
+              expectingCompanyExcel = false;
+              continue;
+            }
+            if (expectingRecipientExcel && !extractedRecipient) {
+              const cand = cleanExtractedRecipientText(v);
+              if (cand) extractedRecipient = cand;
+              expectingRecipientExcel = false;
+              continue;
+            }
+
+            const vLower = v.toLowerCase();
+
+            if (
+              !extractedCompany &&
+              (vLower.includes('kính gởi') ||
+                vLower.includes('kính gửi') ||
+                vLower.includes('kinh goi') ||
+                vLower.includes('kinh gui') ||
+                vLower.includes('bên mua') ||
+                vLower.includes('khách hàng') ||
+                vLower.includes('đơn vị') ||
+                /\b(customer|client|bill\s*to)\b/i.test(vLower))
+            ) {
+              const match = v.match(/(kính g[ưở]i|kinh g[oiu]i|bên mua|khách hàng|đơn vị|customer|client|bill\s*to)/i);
+              if (match) {
+                const colonIdx = v.indexOf(':', match.index);
+                let cand = '';
+                if (colonIdx !== -1) {
+                  cand = cleanExtractedCompanyText(v.substring(colonIdx + 1));
+                } else {
+                  cand = cleanExtractedCompanyText(v.substring((match.index || 0) + match[0].length));
+                }
+                if (!cand) {
+                  for (let k = j + 1; k < row.length; k++) {
+                    const nextVal = cleanExtractedCompanyText(row[k]);
+                    if (nextVal) {
+                      cand = nextVal;
+                      break;
+                    }
+                  }
+                }
+                if (cand) {
+                  extractedCompany = cand;
+                } else {
+                  expectingCompanyExcel = true;
+                }
+              }
+            }
+
+            if (
+              !extractedRecipient &&
+              (vLower.includes('người nhận') ||
+                vLower.includes('người liên hệ') ||
+                vLower.includes('đại diện') ||
+                /\b(attn|attention|contact)\b/i.test(vLower)) &&
+              !vLower.includes('người nhận hàng')
+            ) {
+              const match = v.match(/(người nhận|người liên hệ|đại diện|attention|attn|contact)/i);
+              if (match) {
+                const colonIdx = v.indexOf(':', match.index);
+                let cand = '';
+                if (colonIdx !== -1) {
+                  cand = cleanExtractedRecipientText(v.substring(colonIdx + 1));
+                } else {
+                  cand = cleanExtractedRecipientText(v.substring((match.index || 0) + match[0].length));
+                }
+                if (!cand) {
+                  for (let k = j + 1; k < row.length; k++) {
+                    const nextVal = cleanExtractedRecipientText(row[k]);
+                    if (nextVal) {
+                      cand = nextVal;
+                      break;
+                    }
+                  }
+                }
+                if (cand) {
+                  extractedRecipient = cand;
+                } else {
+                  expectingRecipientExcel = true;
+                }
+              }
+            }
+
+            if (!extractedAddress && (vLower.includes('địa chỉ') || vLower.includes('dia chi') || /\baddress\b/i.test(vLower)) && !vLower.includes('tăng bạt hổ') && !vLower.includes('giao hàng')) {
+              const colonIdx = v.indexOf(':');
+              let cand = colonIdx !== -1 ? cleanExtractedAddressText(v.substring(colonIdx + 1)) : '';
+              if (!cand) {
+                for (let k = j + 1; k < row.length; k++) {
+                  const nextVal = cleanExtractedAddressText(row[k]);
+                  if (nextVal) {
+                    cand = nextVal;
+                    break;
+                  }
+                }
+              }
+              if (cand) extractedAddress = cand;
+            }
+
+            if (!extractedMST && (vLower.includes('mã số thuế') || /\bmst\b/i.test(vLower) || vLower.includes('tax code'))) {
+              const colonIdx = v.indexOf(':');
+              let candidate = colonIdx !== -1 ? v.substring(colonIdx + 1).trim() : '';
+              if (!candidate && row[j + 1]) candidate = String(row[j + 1] || '').trim();
+              const mstMatch = candidate.replace(/\s+/g, '').match(/[0-9]{8,14}(?:-[0-9]{1,4})?/);
+              if (mstMatch && !mstMatch[0].startsWith('0309945')) {
+                extractedMST = mstMatch[0];
+              }
+            }
+
+            if (!extractedPhone && (vLower.includes('điện thoại') || /\b(sđt|tel|mobile|phone|hp)\b/i.test(vLower))) {
+              const colonIdx = v.indexOf(':');
+              let candidate = colonIdx !== -1 ? v.substring(colonIdx + 1).trim() : '';
+              if (!candidate && row[j + 1]) candidate = String(row[j + 1] || '').trim();
+              const pm = candidate.match(/[+0-9()\s.\-]{8,18}/);
+              if (pm && !pm[0].replace(/\D/g, '').startsWith('028384')) {
+                extractedPhone = pm[0].trim();
+              }
+            }
+
+            if (!extractedEmail && v.includes('@')) {
+              const em = v.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+              if (em && !/ntssi|namtruongson/i.test(em[0])) {
+                extractedEmail = em[0].trim();
+              }
+            }
+          }
+        }
+        if (extractedCompany || extractedRecipient) break;
+      }
+    } catch (e) {
+      console.warn('Lỗi đọc bảng Excel Báo giá:', e);
+    }
+  }
+
+  // 2. Kết hợp / Fallback với bộ đọc Báo giá đa năng (hỗ trợ PDF, Word, Excel)
+  try {
+    const std = await parseCustomerQuoteStandardFromFile(file);
+    if (std) {
+      if (!extractedCompany && std.Ten_cong_ty) extractedCompany = cleanExtractedCompanyText(std.Ten_cong_ty);
+      if (!extractedRecipient && std.Ten_khach_hang) extractedRecipient = cleanExtractedRecipientText(std.Ten_khach_hang);
+      if (!extractedAddress && std.Dia_chi_cong_ty) extractedAddress = cleanExtractedAddressText(std.Dia_chi_cong_ty);
+      if (!extractedMST && std.MST && !String(std.MST).startsWith('0309945')) {
+        extractedMST = String(std.MST).replace(/\s+/g, '').trim();
+      }
+      if (!extractedPhone && std.So_dien_thoai_ca_nhan) extractedPhone = String(std.So_dien_thoai_ca_nhan).trim();
+      if (!extractedEmail && std.Email_ca_nhan && !/ntssi|namtruongson/i.test(std.Email_ca_nhan)) {
+        extractedEmail = String(std.Email_ca_nhan).trim();
+      }
+    }
+  } catch (e) {
+    console.warn('Bỏ qua quét KH từ file Báo giá:', file.name, e);
+  }
+
+  if (!extractedCompany && !extractedRecipient && !extractedMST) {
+    return null;
+  }
+
+  return {
+    sourceKind: 'bg',
+    sourceLabel: 'Báo giá',
+    fileName: file.name,
+    ten_khach_hang: extractedRecipient,
+    ten_cong_ty: extractedCompany,
+    mst: extractedMST,
+    email_ca_nhan: extractedEmail,
+    so_dien_thoai_ca_nhan: extractedPhone,
+    so_dien_thoai_cong_ty: '',
+    so_fax_cong_ty: '',
+    dia_chi_cong_ty: extractedAddress,
+    email_cong_ty: '',
+    website_cong_ty: '',
+    ten_khach_hang_phu: '',
+    so_dien_thoai_ca_nhan_phu: '',
+    company: '',
+    address: '',
+    tel: ''
+  };
+};
+
+// Tìm khách hàng khớp trong customersList (khach_hang) giống SaleReportFirebase
+const findMatchedCustomerInDb = (extracted) => {
+  if (!extracted) return null;
+  const list = Array.isArray(customersList.value) ? customersList.value : [];
+  if (list.length === 0) return null;
+
+  const mstClean = String(extracted.mst || '').replace(/[^0-9A-Za-z-]/g, '').trim();
+  const rawComp = String(extracted.ten_cong_ty || '').trim();
+  const rawRec = String(extracted.ten_khach_hang || '').trim();
+  const normComp = normalizeCustomerCompareStr(rawComp);
+  const normRec = normalizeCustomerCompareStr(rawRec);
+
+  // 1. Tra cứu theo MST
+  if (mstClean && mstClean.length >= 8) {
+    const byMst = list.find(
+      (c) => String(c.mst || c.MST || '').replace(/[^0-9A-Za-z-]/g, '').trim() === mstClean
+    );
+    if (byMst) return byMst;
+  }
+
+  // 2. Tra cứu theo Mã KH sinh tự động (TenKH-MaCT)
+  const genKH = genMaKH(rawRec, rawComp);
+  if (genKH) {
+    const byMaKH = list.find((c) => String(c.ma_khach_hang || '').trim() === genKH);
+    if (byMaKH) return byMaKH;
+  }
+
+  // 3. Tra cứu theo Mã công ty (MaCT)
+  const genCT = genMaCT(rawComp || rawRec);
+  if (genCT) {
+    const byMaCT = list.find(
+      (c) =>
+        String(c.ma_cong_ty || '').trim() === genCT ||
+        String(c.ma_khach_hang || '').trim() === genCT
+    );
+    if (byMaCT) return byMaCT;
+  }
+
+  // 4. Tra cứu theo Tên công ty chuẩn hoá
+  if (normComp) {
+    const compCode = genMaCT(rawComp);
+    const byComp = list.find((c) => {
+      const cComp = normalizeCustomerCompareStr(c.ten_cong_ty);
+      const cKH = normalizeCustomerCompareStr(c.ten_khach_hang);
+      if (cComp && cComp === normComp) return true;
+      if (compCode && compCode.length >= 4 && genMaCT(c.ten_cong_ty) === compCode) return true;
+      if (!cComp && cKH === normComp) return true;
+      return false;
+    });
+    if (byComp) return byComp;
+  }
+
+  // 5. Trường hợp File Báo giá chỉ có Tên người nhận (không có tên công ty)
+  if (!normComp && normRec) {
+    const byRec = list.find((c) => {
+      const cKH = normalizeCustomerCompareStr(c.ten_khach_hang);
+      const cComp = normalizeCustomerCompareStr(c.ten_cong_ty);
+      return cKH === normRec || cComp === normRec;
+    });
+    if (byRec) return byRec;
+  }
+
+  return null;
+};
+
+// Đồng bộ thông tin khách hàng quét được vào bảng khach_hang & tự động gán formData.maKH
+const syncExtractedCustomerToDb = async (extracted, hasDxmhInContext = false) => {
+  if (!extracted) return null;
+  if (customersList.value.length === 0) {
+    await fetchCustomersForQuote();
+  }
+
+  const rawComp = String(extracted.ten_cong_ty || '').trim();
+  const rawRec = String(extracted.ten_khach_hang || '').trim();
+  const mstClean = String(extracted.mst || '').replace(/\s+/g, '').trim();
+  if (!rawComp && !rawRec && !mstClean) return null;
+
+  const isDxmhSource = extracted.sourceKind === 'mh';
+  const reportHasDxmh =
+    isDxmhSource ||
+    hasDxmhInContext ||
+    Boolean(formData.value?.link_excel_mua_hang && String(formData.value.link_excel_mua_hang).trim());
+
+  const detailFields = [
+    'email_ca_nhan',
+    'so_dien_thoai_ca_nhan',
+    'so_dien_thoai_cong_ty',
+    'so_fax_cong_ty',
+    'dia_chi_cong_ty',
+    'email_cong_ty',
+    'website_cong_ty',
+    'ten_khach_hang_phu',
+    'so_dien_thoai_ca_nhan_phu',
+    'company',
+    'address',
+    'tel'
+  ];
+
+  const existingCus = findMatchedCustomerInDb(extracted);
+
+  if (existingCus) {
+    // QUY TẮC BẤT BIẾN: Không bao giờ thay đổi ma_khach_hang và ma_cong_ty của khách đã tồn tại trong DB
+    const maKHFixed = String(existingCus.ma_khach_hang || '').trim() || genMaKH(rawRec, rawComp);
+    const maCTFixed =
+      String(existingCus.ma_cong_ty || '').trim() ||
+      genMaCT(existingCus.ten_cong_ty || existingCus.ten_khach_hang || rawComp || rawRec);
+
+    const dbComp = String(existingCus.ten_cong_ty || '').trim();
+    const dbRec = String(existingCus.ten_khach_hang || '').trim();
+    const dbMst = String(existingCus.mst || '').replace(/\s+/g, '').trim();
+
+    const khUpdates = {};
+    if (!existingCus.ma_cong_ty && maCTFixed) khUpdates.ma_cong_ty = maCTFixed;
+    if (!dbMst && mstClean) khUpdates.mst = mstClean;
+    if (!dbComp && rawComp) khUpdates.ten_cong_ty = rawComp;
+
+    // Nếu trước đó tạo từ Báo giá chỉ có tên công ty (dbRec đang trống hoặc bằng đúng dbComp), nay có tên người liên hệ thực tế -> tự điền bổ sung
+    const dbRecWasFallbackFromComp =
+      dbRec && dbComp && normalizeCustomerCompareStr(dbRec) === normalizeCustomerCompareStr(dbComp);
+    if ((!dbRec || (isDxmhSource && dbRecWasFallbackFromComp)) && rawRec) {
+      khUpdates.ten_khach_hang = rawRec;
+    }
+
+    // Tự động bồi đắp các trường chi tiết đang trống trong DB (đặc biệt khi up thêm File DXMH sau File Báo giá)
+    detailFields.forEach((field) => {
+      const incomingVal = String(extracted[field] || '').trim();
+      const currentVal = String(existingCus[field] || '').trim();
+      if (incomingVal && !currentVal) {
+        khUpdates[field] = incomingVal;
+      }
+    });
+
+    if (!existingCus.sdt && (extracted.so_dien_thoai_ca_nhan || extracted.so_dien_thoai_cong_ty)) {
+      khUpdates.sdt = String(extracted.so_dien_thoai_ca_nhan || extracted.so_dien_thoai_cong_ty).trim();
+    }
+    if (!existingCus.email && (extracted.email_ca_nhan || extracted.email_cong_ty)) {
+      khUpdates.email = String(extracted.email_ca_nhan || extracted.email_cong_ty).trim();
+    }
+    if (!existingCus.dia_chi && (extracted.dia_chi_cong_ty || extracted.address)) {
+      khUpdates.dia_chi = String(extracted.dia_chi_cong_ty || extracted.address).trim();
+    }
+
+    // Kiểm tra xung đột thông tin cốt lõi (chỉ hỏi khi thực sự khác biệt; nếu báo cáo đã có DXMH thì Báo giá không ghi đè DXMH)
+    const shouldCheckConflict = isDxmhSource || !reportHasDxmh;
+    const compChanged =
+      shouldCheckConflict &&
+      Boolean(dbComp && rawComp && normalizeCustomerCompareStr(dbComp) !== normalizeCustomerCompareStr(rawComp));
+    const recChanged =
+      shouldCheckConflict &&
+      !isDxmhSource &&
+      Boolean(
+        dbRec &&
+          rawRec &&
+          !dbRecWasFallbackFromComp &&
+          normalizeCustomerCompareStr(dbRec) !== normalizeCustomerCompareStr(rawRec) &&
+          normalizeCustomerCompareStr(rawRec) !== normalizeCustomerCompareStr(dbComp)
+      );
+    const mstChanged =
+      shouldCheckConflict &&
+      Boolean(
+        dbMst &&
+          mstClean &&
+          dbMst.replace(/[^0-9A-Za-z-]/g, '') !== mstClean.replace(/[^0-9A-Za-z-]/g, '')
+      );
+
+    if (compChanged || recChanged || mstChanged) {
+      const diffLines = [];
+      if (compChanged) diffLines.push(`• Tên công ty: "${dbComp}" ➔ "${rawComp}"`);
+      if (recChanged) diffLines.push(`• Người nhận (Tên KH): "${dbRec}" ➔ "${rawRec}"`);
+      if (mstChanged) diffLines.push(`• Mã số thuế: "${dbMst}" ➔ "${mstClean}"`);
+
+      const allowUpdate = await enqueueBaogiaDialog({
+        mode: 'confirm',
+        variant: 'info',
+        eyebrow: `ĐỒNG BỘ KHÁCH HÀNG TỪ FILE ${extracted.sourceLabel.toUpperCase()}`,
+        title: `Khác biệt thông tin khách hàng (${extracted.sourceLabel})`,
+        targetLabel: `MÃ KH GIỮ NGUYÊN: ${maKHFixed}`,
+        targetMeta: `Tệp: ${extracted.fileName || extracted.sourceLabel}`,
+        message: `Khách hàng đã có trong DB nhưng thông tin trong file ${extracted.sourceLabel} có sự khác biệt:\n${diffLines.join('\n')}\n\nBạn có muốn cập nhật lại thông tin mới này vào danh bạ Khách Hàng (khach_hang) không?`,
+        subnote: `Mã KH "${maKHFixed}" và Mã công ty "${maCTFixed}" vẫn giữ nguyên 100%.`,
+        confirmText: `Cập nhật theo File ${extracted.sourceLabel}`,
+        cancelText: 'Giữ nguyên theo DB'
+      });
+
+      if (allowUpdate) {
+        if (compChanged) khUpdates.ten_cong_ty = rawComp;
+        if (recChanged) khUpdates.ten_khach_hang = rawRec;
+        if (mstChanged) khUpdates.mst = mstClean;
+        if (isDxmhSource) {
+          detailFields.forEach((field) => {
+            const incomingVal = String(extracted[field] || '').trim();
+            if (incomingVal) khUpdates[field] = incomingVal;
+          });
+        }
+      }
+    }
+
+    const updatedKeysCount = Object.keys(khUpdates).length;
+    if (updatedKeysCount > 0 && existingCus.id) {
+      try {
+        khUpdates.last_updated = new Date().toISOString();
+        await update(dbRef(database, `khach_hang/${existingCus.id}`), khUpdates);
+        Object.assign(existingCus, khUpdates);
+      } catch (e) {
+        console.warn('Lỗi cập nhật bổ sung khach_hang:', e);
+      }
+    }
+
+    formData.value.maKH = maKHFixed;
+    recordRecentCustomerCode(maKHFixed);
+
+    const finalDisplayName =
+      khUpdates.ten_khach_hang ||
+      existingCus.ten_khach_hang ||
+      khUpdates.ten_cong_ty ||
+      existingCus.ten_cong_ty ||
+      maKHFixed;
+    const finalCompanyName = khUpdates.ten_cong_ty || existingCus.ten_cong_ty || '';
+
+    return {
+      status: updatedKeysCount > 0 ? 'updated' : 'matched',
+      maKH: maKHFixed,
+      displayName: finalDisplayName,
+      companyName: finalCompanyName,
+      sourceLabel: extracted.sourceLabel,
+      updatedFieldsCount: updatedKeysCount
+    };
+  }
+
+  // Khách hàng MỚI hoàn toàn -> Tạo bản ghi mới vào khach_hang
+  const tenCongTy = rawComp || '';
+  const tenKhachHang = rawRec || rawComp || '';
+  const maCongTyGen = genMaCT(tenCongTy || tenKhachHang) || `CTY_${Date.now()}`;
+  const maKHGen = genMaKH(rawRec, rawComp) || maCongTyGen || `KH_${Date.now()}`;
+  const nowIso = new Date().toISOString();
+
+  const sdtCaNhan = String(extracted.so_dien_thoai_ca_nhan || '').trim();
+  const sdtCongTy = String(extracted.so_dien_thoai_cong_ty || '').trim();
+  const emailCaNhan = String(extracted.email_ca_nhan || '').trim();
+  const emailCongTy = String(extracted.email_cong_ty || '').trim();
+  const diaChiCongTy = String(extracted.dia_chi_cong_ty || extracted.address || '').trim();
+
+  const newKhPayload = {
+    ...defaultCustomerForm,
+    ma_khach_hang: maKHGen,
+    ten_khach_hang: tenKhachHang,
+    ma_cong_ty: maCongTyGen,
+    ten_cong_ty: tenCongTy,
+    mst: mstClean,
+    so_dien_thoai_ca_nhan: sdtCaNhan,
+    email_ca_nhan: emailCaNhan,
+    ten_khach_hang_phu: String(extracted.ten_khach_hang_phu || '').trim(),
+    so_dien_thoai_ca_nhan_phu: String(extracted.so_dien_thoai_ca_nhan_phu || '').trim(),
+    email_ca_nhan_phu: '',
+    dia_chi_cong_ty: diaChiCongTy,
+    email_cong_ty: emailCongTy,
+    website_cong_ty: String(extracted.website_cong_ty || '').trim(),
+    so_dien_thoai_cong_ty: sdtCongTy,
+    so_fax_cong_ty: String(extracted.so_fax_cong_ty || '').trim(),
+    company: String(extracted.company || '').trim(),
+    address: String(extracted.address || '').trim(),
+    tel: String(extracted.tel || '').trim(),
+    sdt: sdtCaNhan || sdtCongTy,
+    email: emailCaNhan || emailCongTy,
+    dia_chi: diaChiCongTy,
+    trang_thai: 'Active',
+    created_time: Date.now(),
+    last_updated: nowIso
+  };
+
+  try {
+    const newCusRef = push(dbRef(database, 'khach_hang'));
+    await set(newCusRef, newKhPayload);
+    const createdObj = { id: newCusRef.key, ...newKhPayload };
+    if (!customersList.value.some((c) => c.id === createdObj.id || c.ma_khach_hang === maKHGen)) {
+      customersList.value.unshift(createdObj);
+    }
+  } catch (e) {
+    console.error('Lỗi thêm mới khách hàng tự động từ file:', e);
+    return null;
+  }
+
+  formData.value.maKH = maKHGen;
+  recordRecentCustomerCode(maKHGen);
+
+  return {
+    status: 'new',
+    maKH: maKHGen,
+    displayName: tenKhachHang || tenCongTy,
+    companyName: tenCongTy,
+    sourceLabel: extracted.sourceLabel,
+    updatedFieldsCount: 0
+  };
+};
+
+// Quét danh sách file vừa tải lên (ưu tiên File DXMH làm chuẩn chính, File Báo giá bổ sung trường trống)
+const scanAndSyncCustomerFromUploadedFiles = async (fileEntries = []) => {
+  const validEntries = (Array.isArray(fileEntries) ? fileEntries : []).filter(
+    (entry) => entry && entry.file && (entry.kind === 'mh' || entry.kind === 'bg')
+  );
+  if (validEntries.length === 0) return null;
+
+  const dxmhExtractedList = [];
+  const bgExtractedList = [];
+
+  for (const entry of validEntries) {
+    if (entry.kind === 'mh') {
+      const ex = await extractCustomerFromDxmhFile(entry.file);
+      if (ex) dxmhExtractedList.push(ex);
+    } else if (entry.kind === 'bg') {
+      const ex = await extractCustomerFromQuoteFile(entry.file);
+      if (ex) bgExtractedList.push(ex);
+    }
+  }
+
+  if (dxmhExtractedList.length === 0 && bgExtractedList.length === 0) {
+    return null;
+  }
+
+  let primaryExtracted = null;
+  const hasDxmh = dxmhExtractedList.length > 0;
+
+  if (hasDxmh) {
+    // Ưu tiên dữ liệu đầy đủ của File DXMH làm chuẩn chính, gộp thêm các trường mà DXMH còn trống từ các file khác trong cùng đợt
+    primaryExtracted = { ...dxmhExtractedList[0] };
+    const extraSources = [...dxmhExtractedList.slice(1), ...bgExtractedList];
+    for (const extra of extraSources) {
+      Object.keys(extra).forEach((k) => {
+        if (k === 'sourceKind' || k === 'sourceLabel' || k === 'fileName') return;
+        if (!String(primaryExtracted[k] || '').trim() && String(extra[k] || '').trim()) {
+          primaryExtracted[k] = extra[k];
+        }
+      });
+    }
+    if (bgExtractedList.length > 0) {
+      primaryExtracted.sourceLabel = 'DXMH & Báo giá';
+    }
+  } else {
+    // Chỉ có File Báo giá (thông tin rút gọn trên Header báo giá)
+    primaryExtracted = { ...bgExtractedList[0] };
+    for (const extra of bgExtractedList.slice(1)) {
+      Object.keys(extra).forEach((k) => {
+        if (k === 'sourceKind' || k === 'sourceLabel' || k === 'fileName') return;
+        if (!String(primaryExtracted[k] || '').trim() && String(extra[k] || '').trim()) {
+          primaryExtracted[k] = extra[k];
+        }
+      });
+    }
+  }
+
+  const syncResult = await syncExtractedCustomerToDb(primaryExtracted, hasDxmh);
+  if (syncResult) {
+    if (syncResult.status === 'new') {
+      showToast(
+        `Đã thêm KH mới "${syncResult.displayName}" (${syncResult.maKH}) từ file ${syncResult.sourceLabel}`,
+        'success',
+        3600
+      );
+    } else if (syncResult.status === 'updated') {
+      showToast(
+        `Đã chọn KH "${syncResult.displayName}" & bổ sung thông tin từ file ${syncResult.sourceLabel}`,
+        'success',
+        3600
+      );
+    } else {
+      showToast(
+        `Đã tự động chọn KH "${syncResult.displayName}" (${syncResult.maKH}) từ file ${syncResult.sourceLabel}`,
+        'success',
+        3200
+      );
+    }
+  }
+  return syncResult;
 };
 
 const onStudioDragEnter = (e) => {
@@ -9565,6 +10607,8 @@ const onStudioSmartDrop = async (e) => {
   let okImg = 0;
   let okBg = 0;
   let okMh = 0;
+  const newlyUploadedForPrompt = [];
+  const uploadedDocFilesForCustomerScan = [];
 
   try {
     if (imgFiles.length > 0) {
@@ -9577,6 +10621,7 @@ const onStudioSmartDrop = async (e) => {
         if (res.success) {
           formData.value.img_save = formData.value.img_save ? formData.value.img_save + '\n' + res.data.url : res.data.url;
           formData.value.ten_file_img = formData.value.ten_file_img ? formData.value.ten_file_img + '\n' + file.name : file.name;
+          newlyUploadedForPrompt.push({ name: file.name, kind: 'img' });
           okImg++;
         }
       }
@@ -9592,6 +10637,9 @@ const onStudioSmartDrop = async (e) => {
         if (res.secure_url) {
           formData.value.link_excel_bao_gia = formData.value.link_excel_bao_gia ? formData.value.link_excel_bao_gia + '\n' + res.secure_url : res.secure_url;
           formData.value.ten_file_bao_gia = formData.value.ten_file_bao_gia ? formData.value.ten_file_bao_gia + '\n' + file.name : file.name;
+          uploadedFileObjectsMap.set(res.secure_url, file);
+          newlyUploadedForPrompt.push({ name: file.name, kind: 'bg' });
+          uploadedDocFilesForCustomerScan.push({ file, kind: 'bg', name: file.name, url: res.secure_url });
           okBg++;
         }
       }
@@ -9607,17 +10655,28 @@ const onStudioSmartDrop = async (e) => {
         if (res.secure_url) {
           formData.value.link_excel_mua_hang = formData.value.link_excel_mua_hang ? formData.value.link_excel_mua_hang + '\n' + res.secure_url : res.secure_url;
           formData.value.ten_file_mua_hang = formData.value.ten_file_mua_hang ? formData.value.ten_file_mua_hang + '\n' + file.name : file.name;
+          uploadedFileObjectsMap.set(res.secure_url, file);
+          newlyUploadedForPrompt.push({ name: file.name, kind: 'mh' });
+          uploadedDocFilesForCustomerScan.push({ file, kind: 'mh', name: file.name, url: res.secure_url });
           okMh++;
         }
       }
     }
 
+    let scannedCusSummary = null;
+    if (uploadedDocFilesForCustomerScan.length > 0) {
+      scannedCusSummary = await scanAndSyncCustomerFromUploadedFiles(uploadedDocFilesForCustomerScan);
+    }
+
     const summary = [];
     if (okImg) summary.push(`${okImg} ảnh`);
     if (okBg) summary.push(`${okBg} báo giá`);
-    if (okMh) summary.push(`${okMh} mua hàng`);
+    if (okMh) summary.push(`${okMh} DXMH/Khác`);
     if (summary.length > 0) {
-      showToast(`Đã tải & tự phân loại: ${summary.join(' · ')}`, 'success', 3200);
+      if (!scannedCusSummary) {
+        showToast(`Đã tải & tự phân loại: ${summary.join(' · ')}`, 'success', 3200);
+      }
+      openUploadFileNamePrompt(newlyUploadedForPrompt, scannedCusSummary);
     } else {
       showToast('Không thể tải tệp kéo-thả lên, vui lòng kiểm tra định dạng tệp', 'warning');
     }
@@ -9629,10 +10688,10 @@ const onStudioSmartDrop = async (e) => {
   }
 };
 
-const swapExcelAttachmentCategory = (fromField, index) => {
+const swapExcelAttachmentCategory = async (fromField, index) => {
   const toField = fromField === 'link_excel_bao_gia' ? 'link_excel_mua_hang' : 'link_excel_bao_gia';
   const toNameField = toField.replace('link_excel_', 'ten_file_');
-  const fallbackLabel = fromField === 'link_excel_bao_gia' ? 'Báo giá' : 'Mua hàng';
+  const fallbackLabel = fromField === 'link_excel_bao_gia' ? 'Báo giá' : 'DXMH/Khác';
 
   const fromLinks = (formData.value[fromField] || '').split('\n').filter(Boolean);
   if (index < 0 || index >= fromLinks.length) return;
@@ -9654,11 +10713,18 @@ const swapExcelAttachmentCategory = (fromField, index) => {
 
   showToast(
     toField === 'link_excel_mua_hang'
-      ? `Đã chuyển "${formatCalendarFileName(movedName, 24)}" sang File Mua Hàng`
+      ? `Đã chuyển "${formatCalendarFileName(movedName, 24)}" sang File DXMH/Khác`
       : `Đã chuyển "${formatCalendarFileName(movedName, 24)}" sang File Báo Giá`,
     'info',
     2400
   );
+
+  // Nếu tệp vừa tải lên trong phiên làm việc hiện tại, tự động quét lại Khách hàng theo phân loại mới
+  const cachedFile = uploadedFileObjectsMap.get(movedUrl);
+  if (cachedFile) {
+    const newKind = toField === 'link_excel_bao_gia' ? 'bg' : 'mh';
+    await scanAndSyncCustomerFromUploadedFiles([{ file: cachedFile, kind: newKind, name: movedName, url: movedUrl }]);
+  }
 };
 
 // --- Unsaved Changes Guard (requestCloseModal) & Quick Clone to Today ---
@@ -9752,11 +10818,11 @@ const getReportFormAttachmentSummary = computed(() => {
   const imgs = formData.value.img_save ? formData.value.img_save.split('\n').filter(Boolean).length : 0;
   const bgs = formData.value.link_excel_bao_gia ? formData.value.link_excel_bao_gia.split('\n').filter(Boolean).length : 0;
   const mhs = formData.value.link_excel_mua_hang ? formData.value.link_excel_mua_hang.split('\n').filter(Boolean).length : 0;
-  if (imgs + bgs + mhs === 0) return 'Chưa có ảnh hoặc file Excel';
+  if (imgs + bgs + mhs === 0) return 'Chưa có ảnh hoặc tệp đính kèm';
   const parts = [];
   if (imgs > 0) parts.push(`${imgs} ảnh`);
   if (bgs > 0) parts.push(`${bgs} báo giá`);
-  if (mhs > 0) parts.push(`${mhs} mua hàng`);
+  if (mhs > 0) parts.push(`${mhs} DXMH/Khác`);
   return parts.join(' · ');
 });
 
@@ -10293,6 +11359,15 @@ const onBaogiaGlobalKeydown = (e) => {
 
   // Sub-modals Ctrl/Cmd + Enter quick confirm
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    if (isUploadFileNameModalOpen.value) {
+      e.preventDefault();
+      if (selectedUploadFileCount.value > 0) {
+        confirmUploadFileNameModal();
+      } else {
+        cancelUploadFileNameModal();
+      }
+      return;
+    }
     if (isStudioNoteModalOpen.value) {
       e.preventDefault();
       confirmStudioNoteModal();
@@ -10308,6 +11383,7 @@ const onBaogiaGlobalKeydown = (e) => {
   // V7.5 Studio Keyboard Shortcuts: Ctrl/Cmd + Enter (Save) & Ctrl/Cmd + Shift + Enter (Save & Continue)
   if (
     isModalOpen.value &&
+    !isUploadFileNameModalOpen.value &&
     !isStudioNoteModalOpen.value &&
     !isStudioReminderModalOpen.value &&
     !isCustomerSelectModalOpen.value &&
@@ -10350,6 +11426,9 @@ const onBaogiaGlobalKeydown = (e) => {
       selectedImage.value = null;
     } else if (isMobileAttachSheetOpen.value) {
       isMobileAttachSheetOpen.value = false;
+    } else if (isUploadFileNameModalOpen.value) {
+      e.preventDefault();
+      cancelUploadFileNameModal();
     } else if (isStudioNoteModalOpen.value) {
       e.preventDefault();
       cancelStudioNoteModal();
@@ -10747,6 +11826,7 @@ const handleImgUpload = async (e) => {
   if (!files || files.length === 0) return
   
   isUploadingFiles.value = 'img'
+  const newlyUploaded = []
   try {
     for (const file of files) {
       const fd = new FormData()
@@ -10758,10 +11838,14 @@ const handleImgUpload = async (e) => {
         formData.value.img_save = formData.value.img_save ? formData.value.img_save + '\n' + res.data.url : res.data.url
         formData.value.ten_file_img = formData.value.ten_file_img ? formData.value.ten_file_img + '\n' + file.name : file.name
         pendingStorageFiles.value.push({ name: file.name, url: res.data.url })
+        newlyUploaded.push({ name: file.name, kind: 'img' })
         showToast('Đã tải ảnh đính kèm lên', 'success')
       } else {
         alert('Lỗi tải ảnh: ' + (res.error?.message || 'Không rõ'))
       }
+    }
+    if (newlyUploaded.length > 0) {
+      openUploadFileNamePrompt(newlyUploaded)
     }
   } catch (err) {
     console.error(err)
@@ -10777,7 +11861,11 @@ const handleExcelUpload = async (e, field) => {
   const files = e.target.files
   if (!files || files.length === 0) return
   
-  isUploadingFiles.value = field === 'link_excel_bao_gia' ? 'bg' : 'mh'
+  const kind = field === 'link_excel_bao_gia' ? 'bg' : 'mh'
+  const labelKind = kind === 'bg' ? 'Báo giá' : 'DXMH/Khác'
+  isUploadingFiles.value = kind
+  const newlyUploaded = []
+  const uploadedDocFilesForCustomerScan = []
   try {
     for (const file of files) {
       const fd = new FormData()
@@ -10789,11 +11877,23 @@ const handleExcelUpload = async (e, field) => {
         formData.value[field] = formData.value[field] ? formData.value[field] + '\n' + res.secure_url : res.secure_url
         const nameField = field.replace('link_excel_', 'ten_file_')
         formData.value[nameField] = formData.value[nameField] ? formData.value[nameField] + '\n' + file.name : file.name
+        uploadedFileObjectsMap.set(res.secure_url, file)
         pendingStorageFiles.value.push({ name: file.name, url: res.secure_url })
-        showToast('Đã tải file Excel đính kèm lên', 'success')
+        newlyUploaded.push({ name: file.name, kind })
+        uploadedDocFilesForCustomerScan.push({ file, kind, name: file.name, url: res.secure_url })
       } else {
         alert('Lỗi tải file: ' + (res.error?.message || 'Không rõ'))
       }
+    }
+    let scannedCusSummary = null
+    if (uploadedDocFilesForCustomerScan.length > 0) {
+      scannedCusSummary = await scanAndSyncCustomerFromUploadedFiles(uploadedDocFilesForCustomerScan)
+    }
+    if (newlyUploaded.length > 0) {
+      if (!scannedCusSummary) {
+        showToast(`Đã tải tệp ${labelKind} đính kèm lên`, 'success')
+      }
+      openUploadFileNamePrompt(newlyUploaded, scannedCusSummary)
     }
   } catch (err) {
     console.error(err)
@@ -26886,6 +27986,142 @@ span[style*="color: #334155"] {
   color: #ffffff !important;
 }
 
+/* MODULE 3D: SUB-MODAL HỎI LẤY TÊN FILE ĐƯA VÀO NỘI DUNG */
+.bg-ufn-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.bg-ufn-quick-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bg-ufn-tool-btn {
+  width: auto !important;
+  margin: 0 !important;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  background: var(--bg-well);
+  border: 1px solid var(--bg-border-strong);
+  color: var(--bg-text-sub);
+  cursor: pointer;
+  transition: all 0.14s ease;
+}
+
+.bg-ufn-tool-btn:hover {
+  background: var(--theme-pri-bg);
+  border-color: var(--theme-pri-bd);
+  color: var(--theme-pri-bright);
+}
+
+.bg-ufn-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  max-height: 210px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.bg-ufn-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 11px;
+  border-radius: 11px;
+  background: var(--bg-well);
+  border: 1.5px solid var(--bg-border);
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.bg-ufn-item:hover {
+  border-color: var(--bg-border-strong);
+}
+
+.bg-ufn-item.is-checked {
+  background: var(--theme-pri-bg);
+  border-color: var(--theme-pri-bd);
+}
+
+.bg-ufn-check {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 1.5px solid var(--bg-border-strong);
+  background: var(--bg-surface);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #ffffff;
+  transition: all 0.14s ease;
+}
+
+.bg-ufn-check.is-checked {
+  background: var(--theme-pri-grad);
+  border-color: transparent;
+}
+
+.bg-ufn-kind-pill {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 5px;
+  flex-shrink: 0;
+  color: #ffffff;
+}
+
+.bg-ufn-kind-pill.is-emerald {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.bg-ufn-kind-pill.is-amber {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+.bg-ufn-kind-pill.is-sky {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+}
+
+.bg-ufn-name {
+  font-size: 0.81rem;
+  font-weight: 700;
+  color: var(--bg-text);
+  line-height: 1.35;
+  word-break: break-all;
+  flex: 1;
+  min-width: 0;
+}
+
+.bg-ufn-preview-box {
+  padding: 10px 12px;
+  border-radius: 11px;
+  background: var(--bg-well);
+  border: 1px dashed var(--theme-pri-bd);
+  font-size: 0.81rem;
+  font-weight: 700;
+  color: var(--bg-text);
+  line-height: 1.45;
+  word-break: break-word;
+  max-height: 110px;
+  overflow-y: auto;
+}
+
+.bg-ufn-preview-box.is-empty {
+  border-color: var(--bg-border);
+  font-weight: 500;
+  color: var(--bg-text-muted);
+}
+
 .bg-linked-current-bar {
   display: flex;
   align-items: center;
@@ -28664,5 +29900,71 @@ span[style*="color: #334155"] {
     max-width: 390px;
     margin: 0 auto;
   }
+}
+
+.bg-ufn-cus-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(16, 185, 129, 0.34);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.bg-ufn-cus-banner.is-updated {
+  border-color: rgba(14, 165, 233, 0.36);
+  background: rgba(14, 165, 233, 0.1);
+}
+
+.bg-ufn-cus-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bg-ufn-cus-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  background: rgba(16, 185, 129, 0.22);
+  color: #34d399;
+}
+
+.bg-ufn-cus-badge.is-updated {
+  background: rgba(14, 165, 233, 0.22);
+  color: #38bdf8;
+}
+
+.bg-ufn-cus-src {
+  font-size: 0.72rem;
+  opacity: 0.8;
+}
+
+.bg-ufn-cus-main {
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+
+.bg-ufn-cus-meta {
+  font-size: 0.75rem;
+  opacity: 0.86;
+}
+
+.theme-light-blue .bg-ufn-cus-badge {
+  background: rgba(16, 185, 129, 0.16);
+  color: #047857;
+}
+
+.theme-light-blue .bg-ufn-cus-badge.is-updated {
+  background: rgba(2, 132, 199, 0.15);
+  color: #0369a1;
 }
 </style>

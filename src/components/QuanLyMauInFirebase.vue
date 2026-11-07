@@ -820,6 +820,9 @@
             <button class="btn btn-emerald" @click="handleCreateListPriceTemplate">
               + Tạo mẫu Giá List
             </button>
+            <button class="btn btn-indigo" @click="handleCreateThreePriceTemplate">
+              + Tạo mẫu Đối chiếu 3 giá
+            </button>
             <button class="btn btn-blue" @click="handleCreateBlankTemplate">
               + Tạo mẫu tự thiết kế
             </button>
@@ -1396,6 +1399,7 @@ import {
   createDealRegTemplateConfig,
   createAgencyTemplateConfig,
   createListPriceTemplateConfig,
+  createThreePriceComparisonTemplateConfig,
   ensureGridHeaderPopulated,
   parseExcelBufferToTemplateConfig,
   fetchAndSyncPrintTemplates,
@@ -2870,7 +2874,12 @@ function insertTokenIntoSelectedCell(tk: TokenDef) {
     activeTpl.value.mapping_vung.dong_mau_nhom = selRow.value
   } else if (tk.group === 'item_row' || tk.token === '{{TT_TRUOC_THUE_USD}}' || (tk.group === 'agency' && !tk.token.startsWith('{{DL_TONG_'))) {
     activeTpl.value.mapping_vung.dong_mau_san_pham = selRow.value
-  } else if (tk.token.startsWith('{{DL_TONG_')) {
+  } else if (
+    tk.token.startsWith('{{DL_TONG_') ||
+    tk.token.startsWith('{{TONG_TRUOC_') ||
+    tk.token.startsWith('{{TONG_VAT_') ||
+    tk.token.startsWith('{{TONG_SAU_')
+  ) {
     if (!Array.isArray(activeTpl.value.mapping_vung.danh_sach_dong_tong)) {
       activeTpl.value.mapping_vung.danh_sach_dong_tong = []
     }
@@ -2907,10 +2916,29 @@ const livePreviewHtml = computed(() => {
     }
     mockCtx.rows.forEach(r => {
       if (r.type === 'item') {
+        r.listPrice = Number(((r.listPrice || 0) / 25400).toFixed(2))
         r.donGiaKH = Number(((r.donGiaKH || 0) / 25400).toFixed(2))
         r.truocThue = Number(((r.truocThue || 0) / 25400).toFixed(2))
         r.vatAmount = Number(((r.vatAmount || 0) / 25400).toFixed(2))
         r.sauThue = Number(((r.sauThue || 0) / 25400).toFixed(2))
+      }
+    })
+    ;[mockCtx.originRows, mockCtx.customerRows, mockCtx.contractRows].forEach(arr => {
+      arr?.forEach(r => {
+        if (r.type === 'item') {
+          r.listPrice = Number(((r.listPrice || 0) / 25400).toFixed(2))
+          r.donGiaKH = Number(((r.donGiaKH || 0) / 25400).toFixed(2))
+          r.truocThue = Number(((r.truocThue || 0) / 25400).toFixed(2))
+          r.vatAmount = Number(((r.vatAmount || 0) / 25400).toFixed(2))
+          r.sauThue = Number(((r.sauThue || 0) / 25400).toFixed(2))
+        }
+      })
+    })
+    ;[mockCtx.originTotals, mockCtx.customerTotals, mockCtx.contractTotals].forEach(tot => {
+      if (tot) {
+        tot.truoc = Number(((tot.truoc || 0) / 25400).toFixed(2))
+        tot.vat = Number(((tot.vat || 0) / 25400).toFixed(2))
+        tot.sau = Number(((tot.sau || 0) / 25400).toFixed(2))
       }
     })
   }
@@ -3240,6 +3268,20 @@ async function handleCreateListPriceTemplate() {
   selectTemplate(newTpl)
   showTemplateModal.value = false
   showToast('Đã tạo Mẫu Báo Giá List!')
+}
+
+async function handleCreateThreePriceTemplate() {
+  const existing = templates.value.find(t => t.id === 'MINTL_DOI_CHIEU_3_GIA')
+  const newId = existing ? `MINTL_DOI_CHIEU_3_GIA_${Date.now()}` : 'MINTL_DOI_CHIEU_3_GIA'
+  const newName = existing
+    ? `Mẫu in đối chiếu 3 giá (${templates.value.length + 1})`
+    : 'Mẫu in đối chiếu 3 giá (List - Khách - Hợp đồng)'
+  const newTpl = createThreePriceComparisonTemplateConfig(newId, newName)
+  await savePrintTemplateToFirebase(newTpl)
+  templates.value.unshift(newTpl)
+  selectTemplate(newTpl)
+  showTemplateModal.value = false
+  showToast('Đã tạo Mẫu in đối chiếu 3 giá (List - Khách - Hợp đồng)!')
 }
 
 async function handleCreateBlankTemplate() {

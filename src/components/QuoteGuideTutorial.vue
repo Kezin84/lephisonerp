@@ -485,7 +485,7 @@ const GUIDE_GROUPS: GuideGroup[] = [
         code: '04.5',
         title: 'Tổng hợp Tài chính & Giá trị sau thuế',
         shortLabel: 'Tổng hợp Tài chính & VAT',
-        summary: 'Đối chiếu Tổng giá thực tế, Tổng trước thuế HĐ, VAT và Sau thuế.',
+        summary: 'Đối chiếu TT trước thuế (Khách), TT trước thuế (HĐ), VAT và TT sau thuế.',
         detail: 'Tổng hợp minh bạch các chỉ số tài chính cốt lõi của báo giá kèm nút xem nhanh lịch sử biến động từng chỉ số.',
         desktopSelectors: ['[data-guide="dock-finance-panel"]', '.sidebar-dock-tabs'],
         mobileSelectors: ['.m-sum-card.is-finance']
@@ -495,8 +495,8 @@ const GUIDE_GROUPS: GuideGroup[] = [
         code: '04.6',
         title: 'Nút Điều chỉnh Tổng giá Báo giá (HĐ)',
         shortLabel: 'Điều chỉnh Tổng giá Báo giá',
-        summary: 'Chốt tổng tiền trước thuế HĐ theo % hoặc mức giá mục tiêu.',
-        detail: 'Nằm cạnh dòng Tổng trước thuế (HĐ). Cho phép tăng/giảm đồng loạt giá toàn bộ báo giá theo % hoặc chốt cứng một mức Tổng tiền hợp đồng mong muốn; hệ thống tự chia tỷ lệ đơn giá xuống toàn bộ sản phẩm và ghi nhận vào Chênh lệch giá.',
+        summary: 'Chốt TT trước thuế (HĐ) theo % hoặc mức giá mục tiêu.',
+        detail: 'Nằm cạnh dòng TT trước thuế (HĐ). Cho phép tăng/giảm đồng loạt giá toàn bộ báo giá theo % hoặc chốt cứng một mức Tổng tiền hợp đồng mong muốn; hệ thống tự chia tỷ lệ đơn giá xuống toàn bộ sản phẩm và ghi nhận vào Chênh lệch giá.',
         desktopSelectors: ['[data-guide="btn-adjust-all-quote"]', '[data-guide="dock-finance-panel"]'],
         mobileSelectors: ['[data-guide="m-btn-adjust-all-quote"]', '.m-sum-card.is-finance'],
         autoOpenTag: 'Mục Tài chính'

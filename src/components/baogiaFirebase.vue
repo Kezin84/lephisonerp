@@ -32,10 +32,15 @@ import {
   createAgencyTemplateConfig,
   createListPriceTemplateConfig,
   isListPriceTemplate,
+  createContractPriceTemplateConfig,
+  isContractPriceTemplate,
+  createThreePriceComparisonTemplateConfig,
+  isThreePriceComparisonTemplate,
   roundVndByMode,
   type VndRoundingMode,
   generateExcelBlobFromTemplate,
   exportPdfOrPrintFromTemplate,
+  exportMultiPdfOrPrintFromTemplates,
   exportPngFromTemplate,
   exportWordFromTemplate,
   exportHtmlFileFromTemplate,
@@ -77,7 +82,13 @@ import {
   analyzeCustomerOrTaxFileWithAI,
   type ExtractedCustomerFields
 } from '../utils/universalDocumentReader'
-import { uploadExcelFileToCloudinarySafe } from '../utils/vendorRefCloudinary'
+import {
+  uploadExcelFileToCloudinarySafe,
+  uploadBlobToCloudinary,
+  hydrateAcronisRefData,
+  hydrateKasRefData,
+  type VendorRefFileMeta
+} from '../utils/vendorRefCloudinary'
 
 const firebaseConfig = {
   apiKey: "AIzaSyB3fHD_sOqyqVygCxP2gZtvaipr-35a1s8",
@@ -294,11 +305,11 @@ function rowToFbHopDongTongQuat(r: any[]) {
 
 function fbHopDongChiTietToRow(item: any): any[] {
   if (Array.isArray(item)) {
-    const r = item.slice(0, 35)
-    while (r.length < 35) r.push('')
+    const r = item.slice(0, 42)
+    while (r.length < 42) r.push('')
     return r
   }
-  if (!item || typeof item !== 'object') return new Array(35).fill('')
+  if (!item || typeof item !== 'object') return new Array(42).fill('')
   return [
     String(item.ma_hop_dong ?? item.Ma_hop_dong ?? ''),
     String(item.so_hop_dong ?? item.So_hop_dong ?? ''),
@@ -334,13 +345,20 @@ function fbHopDongChiTietToRow(item: any): any[] {
     String(item.thoi_gian_bao_hanh ?? item.thoi_han_bao_hanh ?? ''),
     String(item.volume ?? ''),
     String(item.Description ?? item.description ?? ''),
-    String(item.sku_code ?? item.SKU ?? item.sku ?? item.ma_sku ?? '')
+    String(item.sku_code ?? item.SKU ?? item.sku ?? item.ma_sku ?? ''),
+    item.Don_gia_goc !== undefined && item.Don_gia_goc !== '' ? toNum(item.Don_gia_goc, 0) : '',
+    item.Don_gia_goc_USD !== undefined && item.Don_gia_goc_USD !== '' ? toNum(item.Don_gia_goc_USD, 0) : '',
+    item.muc_phan_tram_off_goc !== undefined && item.muc_phan_tram_off_goc !== '' ? toNum(item.muc_phan_tram_off_goc, 0) : '',
+    item.gia_hardware_goc !== undefined && item.gia_hardware_goc !== '' ? toNum(item.gia_hardware_goc, 0) : '',
+    item.gia_nhap_goc !== undefined && item.gia_nhap_goc !== '' ? toNum(item.gia_nhap_goc, 0) : '',
+    item.Don_gia_kho !== undefined && item.Don_gia_kho !== '' ? toNum(item.Don_gia_kho, 0) : '',
+    item.muc_phan_tram_off_kho !== undefined && item.muc_phan_tram_off_kho !== '' ? toNum(item.muc_phan_tram_off_kho, 0) : ''
   ]
 }
 
 function rowToFbHopDongChiTiet(r: any[], trangThaiHopDong: string) {
-  const row = Array.isArray(r) ? r.slice(0, 35) : []
-  while (row.length < 35) row.push('')
+  const row = Array.isArray(r) ? r.slice(0, 42) : []
+  while (row.length < 42) row.push('')
   const maHang = String(row[2] ?? '')
   const tenHang = String(row[3] ?? '')
   const mainImg = String(row[4] ?? '')
@@ -422,6 +440,13 @@ function rowToFbHopDongChiTiet(r: any[], trangThaiHopDong: string) {
     volume: String(row[32] ?? ''),
     Description: desc,
     description: desc,
+    Don_gia_goc: row[35] !== undefined && row[35] !== '' ? toNum(row[35], donGia) : donGia,
+    Don_gia_goc_USD: row[36] !== undefined && row[36] !== '' ? toNum(row[36], toNum(row[26], 0)) : toNum(row[26], 0),
+    muc_phan_tram_off_goc: row[37] !== undefined && row[37] !== '' ? toNum(row[37], mucOff) : mucOff,
+    gia_hardware_goc: row[38] !== undefined && row[38] !== '' ? toNum(row[38], toNum(row[20], 0)) : toNum(row[20], 0),
+    gia_nhap_goc: row[39] !== undefined && row[39] !== '' ? toNum(row[39], toNum(row[21], 0)) : toNum(row[21], 0),
+    Don_gia_kho: row[40] !== undefined && row[40] !== '' ? toNum(row[40], 0) : '',
+    muc_phan_tram_off_kho: row[41] !== undefined && row[41] !== '' ? toNum(row[41], 0) : '',
     ghi_chu: ''
   }
 }
@@ -905,7 +930,7 @@ type HangHoa = {
   last_updated?: string
   danh_sach_file?: ProductFileEntry[]
   _firebaseKey?: string
-  // ✅ GIÁ GỐC (snapshot)
+  // ✅ GIÁ GỐC KHÁCH THỰC TẾ (snapshot _goc)
   _gia_hardware_goc?: number
   _gia_nhap_goc?: number
   _muc_phan_tram_off_goc?: number
@@ -913,6 +938,14 @@ type HangHoa = {
   _Gia_tieu_chuan_goc?: number
   _Ti_gia_goc?: number
   _Thue_VAT_goc?: number
+  // ✅ GIÁ GỐC KHO NIÊM YẾT BAN ĐẦU (snapshot _kho)
+  _gia_hardware_kho?: number
+  _gia_nhap_kho?: number
+  _muc_phan_tram_off_kho?: number
+  _Don_gia_kho?: number
+  _Gia_tieu_chuan_kho?: number
+  _Ti_gia_kho?: number
+  _Thue_VAT_kho?: number
 }
 
 type ProductFileEntry = {
@@ -1166,7 +1199,7 @@ const tongGiaThucTe = computed(() => {
   });
   return round2(rawTotal);
 })
-const thueChenhLechPct = ref(0)
+const thueChenhLechPct = ref(25)
 const chietKhauTruocThuePct = ref(0)
 const ghiChuHopDong = ref('')
 const contentOfContractPO = ref('')
@@ -2376,6 +2409,187 @@ function checkMove(evt: any) {
 
   return true;
 }
+
+/* ======================
+   MOBILE QUOTE REORDER (PHƯƠNG ÁN 1: NÚT DI CHUYỂN LÊN / XUỐNG NHƯ PC)
+====================== */
+const activeMobileMoveTarget = ref<{ type: 'item' | 'group'; id: string } | null>(null)
+
+function getMobileItemMoveKey(item: any, idx: number): string {
+  if (item && typeof item === 'object') {
+    if (!item.uid) {
+      item.uid = Math.random().toString(36).substr(2, 9)
+    }
+    return String(item.uid)
+  }
+  return 'idx-' + String(idx)
+}
+
+function isMobileItemMoveActive(item: any, idx: number): boolean {
+  if (!activeMobileMoveTarget.value || activeMobileMoveTarget.value.type !== 'item') return false
+  return activeMobileMoveTarget.value.id === getMobileItemMoveKey(item, idx)
+}
+
+function toggleMobileItemMove(item: any, idx: number) {
+  if (guideTempTableDemoActive.value) return
+  const key = getMobileItemMoveKey(item, idx)
+  if (activeMobileMoveTarget.value?.type === 'item' && activeMobileMoveTarget.value.id === key) {
+    activeMobileMoveTarget.value = null
+  } else {
+    activeMobileMoveTarget.value = { type: 'item', id: key }
+  }
+}
+
+function getQuoteItemSameScopeIndices(idx: number): number[] {
+  const list = selectedItems.value || []
+  if (idx < 0 || idx >= list.length) return []
+  if (!quoteGroupByCategory.value) {
+    return list.map((_, i) => i)
+  }
+  const targetCatKey = normalizeQuoteCategoryKey(list[idx]?.Danh_muc || '')
+  const indices: number[] = []
+  list.forEach((it, i) => {
+    if (normalizeQuoteCategoryKey(it?.Danh_muc || '') === targetCatKey) {
+      indices.push(i)
+    }
+  })
+  return indices
+}
+
+function canMoveQuoteItem(idx: number, dir: -1 | 1): boolean {
+  if (guideTempTableDemoActive.value) return false
+  const scopeIndices = getQuoteItemSameScopeIndices(idx)
+  const pos = scopeIndices.indexOf(idx)
+  if (pos === -1) return false
+  return dir === -1 ? pos > 0 : pos < scopeIndices.length - 1
+}
+
+function moveQuoteItemStep(idx: number, dir: -1 | 1) {
+  if (!canMoveQuoteItem(idx, dir)) return
+  const scopeIndices = getQuoteItemSameScopeIndices(idx)
+  const pos = scopeIndices.indexOf(idx)
+  if (pos === -1) return
+  const targetIdx = scopeIndices[pos + dir]
+  if (targetIdx === undefined || targetIdx === idx) return
+
+  const movedItem = selectedItems.value[idx]
+  if (movedItem && !movedItem.uid) {
+    movedItem.uid = Math.random().toString(36).substr(2, 9)
+  }
+  const keepKey = getMobileItemMoveKey(movedItem, targetIdx)
+
+  isSyncingFromDrag = true
+  const next = [...selectedItems.value]
+  const temp = next[idx]
+  next[idx] = next[targetIdx]
+  next[targetIdx] = temp
+
+  selectedItems.value = next
+  syncFlatRows()
+  activeMobileMoveTarget.value = { type: 'item', id: keepKey }
+
+  nextTick(() => {
+    isSyncingFromDrag = false
+    const rowEl = document.getElementById('quote-row-' + targetIdx)
+    if (rowEl) {
+      rowEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+  })
+}
+
+function getOrderedQuoteGroupKeys(): string[] {
+  const keys: string[] = []
+  const seen = new Set<string>()
+  ;(selectedItems.value || []).forEach(it => {
+    const gKey = normalizeQuoteCategoryKey(it?.Danh_muc || '')
+    if (!seen.has(gKey)) {
+      seen.add(gKey)
+      keys.push(gKey)
+    }
+  })
+  return keys
+}
+
+function isMobileGroupMoveActive(groupKey: string): boolean {
+  if (!activeMobileMoveTarget.value || activeMobileMoveTarget.value.type !== 'group') return false
+  return activeMobileMoveTarget.value.id === String(groupKey || '')
+}
+
+function toggleMobileGroupMove(groupKey: string) {
+  if (guideTempTableDemoActive.value) return
+  const key = String(groupKey || '')
+  if (activeMobileMoveTarget.value?.type === 'group' && activeMobileMoveTarget.value.id === key) {
+    activeMobileMoveTarget.value = null
+  } else {
+    activeMobileMoveTarget.value = { type: 'group', id: key }
+  }
+}
+
+function canMoveQuoteGroup(groupKey: string, dir: -1 | 1): boolean {
+  if (guideTempTableDemoActive.value || !quoteGroupByCategory.value) return false
+  const keys = getOrderedQuoteGroupKeys()
+  const pos = keys.indexOf(String(groupKey || ''))
+  if (pos === -1) return false
+  return dir === -1 ? pos > 0 : pos < keys.length - 1
+}
+
+function moveQuoteGroupStep(groupKey: string, dir: -1 | 1) {
+  const key = String(groupKey || '')
+  if (!canMoveQuoteGroup(key, dir)) return
+  const keys = getOrderedQuoteGroupKeys()
+  const pos = keys.indexOf(key)
+  if (pos === -1) return
+  const targetPos = pos + dir
+  if (targetPos < 0 || targetPos >= keys.length) return
+
+  const tempKey = keys[pos]
+  keys[pos] = keys[targetPos]
+  keys[targetPos] = tempKey
+
+  isSyncingFromDrag = true
+  const next: any[] = []
+  keys.forEach(k => {
+    ;(selectedItems.value || []).forEach(it => {
+      if (normalizeQuoteCategoryKey(it?.Danh_muc || '') === k) {
+        next.push(it)
+      }
+    })
+  })
+
+  selectedItems.value = next
+  syncFlatRows()
+  activeMobileMoveTarget.value = { type: 'group', id: key }
+
+  nextTick(() => {
+    isSyncingFromDrag = false
+    const safeSelector = typeof CSS !== 'undefined' && CSS.escape ? `[data-quote-group-key="${CSS.escape(key)}"]` : ''
+    const groupEl = safeSelector ? (document.querySelector(safeSelector) as HTMLElement | null) : null
+    if (groupEl) {
+      groupEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+  })
+}
+
+function handleDocClickCloseMobileMove(e: MouseEvent) {
+  if (!activeMobileMoveTarget.value) return
+  const target = e.target as HTMLElement | null
+  if (target && (target.closest('.m-qcard-top-actions') || target.closest('.group-row-actions'))) {
+    return
+  }
+  activeMobileMoveTarget.value = null
+}
+
+onMounted(() => {
+  if (typeof document !== 'undefined') {
+    document.addEventListener('click', handleDocClickCloseMobileMove)
+  }
+})
+
+onUnmounted(() => {
+  if (typeof document !== 'undefined') {
+    document.removeEventListener('click', handleDocClickCloseMobileMove)
+  }
+})
 // ----------------------------
 
 /* qty realtime trong card */
@@ -4639,14 +4853,22 @@ function mapHopDongChiTietRowToItem(row: any[]) {
     gia_hardware: toNum(row?.[20], 0),
     gia_nhap: toNum(row?.[21], 0),
     muc_phan_tram_off: toNum(row?.[22], 0),
-    // ✅ snapshot giá gốc từ products catalog để giữ chênh lệch giá
-    _gia_hardware_goc: baseProduct ? toNum(baseProduct.gia_hardware, 0) : toNum(row?.[20], 0),
-    _gia_nhap_goc: baseProduct ? toNum(baseProduct.gia_nhap, 0) : toNum(row?.[21], 0),
-    _muc_phan_tram_off_goc: baseProduct ? toNum(baseProduct.muc_phan_tram_off, 0) : toNum(row?.[22], 0),
-    _Don_gia_goc: baseProduct ? toNum(baseProduct.Don_gia, 0) : toNum(row?.[14], 0),
+    // ✅ snapshot giá gốc thực tế (Báo giá khách) & giá gốc kho (Báo giá gốc)
+    _gia_hardware_goc: row?.[38] !== undefined && row?.[38] !== '' ? toNum(row[38], 0) : (baseProduct ? toNum(baseProduct.gia_hardware, 0) : toNum(row?.[20], 0)),
+    _gia_nhap_goc: row?.[39] !== undefined && row?.[39] !== '' ? toNum(row[39], 0) : (baseProduct ? toNum(baseProduct.gia_nhap, 0) : toNum(row?.[21], 0)),
+    _muc_phan_tram_off_goc: row?.[37] !== undefined && row?.[37] !== '' ? toNum(row[37], 0) : (baseProduct ? toNum(baseProduct.muc_phan_tram_off, 0) : toNum(row?.[22], 0)),
+    _Don_gia_goc: row?.[35] !== undefined && row?.[35] !== '' ? toNum(row[35], 0) : (baseProduct ? toNum(baseProduct.Don_gia, 0) : toNum(row?.[14], 0)),
     _Gia_tieu_chuan_goc: baseProduct ? toNum(baseProduct.Gia_tieu_chuan, 0) : toNum(row?.[13], 0),
     _Ti_gia_goc: baseProduct ? toNum(baseProduct.Ti_gia, 1) : toNum(row?.[16], 1),
-    _Thue_VAT_goc: baseProduct ? toNum(baseProduct.Thue_VAT, 0) : toNum(row?.[17], 0)
+    _Thue_VAT_goc: baseProduct ? toNum(baseProduct.Thue_VAT, 0) : toNum(row?.[17], 0),
+    // ✅ snapshot giá kho gốc ban đầu (Báo giá gốc)
+    _gia_hardware_kho: baseProduct ? toNum(baseProduct.gia_hardware, 0) : toNum(row?.[20], 0),
+    _gia_nhap_kho: baseProduct ? toNum(baseProduct.gia_nhap, 0) : toNum(row?.[21], 0),
+    _muc_phan_tram_off_kho: row?.[41] !== undefined && row?.[41] !== '' ? toNum(row[41], 0) : (baseProduct ? toNum(baseProduct.muc_phan_tram_off, 0) : toNum(row?.[22], 0)),
+    _Don_gia_kho: row?.[40] !== undefined && row?.[40] !== '' && toNum(row[40], 0) > 0 ? toNum(row[40], 0) : (baseProduct ? toNum(baseProduct.Don_gia, 0) : toNum(row?.[14], 0)),
+    _Gia_tieu_chuan_kho: baseProduct ? toNum(baseProduct.Gia_tieu_chuan, 0) : toNum(row?.[13], 0),
+    _Ti_gia_kho: baseProduct ? toNum(baseProduct.Ti_gia, 1) : toNum(row?.[16], 1),
+    _Thue_VAT_kho: baseProduct ? toNum(baseProduct.Thue_VAT, 0) : toNum(row?.[17], 0)
   } as any
 
   // ✅ Preserve start_date / end_date / thoi_han_bao_hanh / volume / Description / sku_code from indices 28-34
@@ -4661,16 +4883,29 @@ function mapHopDongChiTietRowToItem(row: any[]) {
   const tiGiaUSD = toNum(row?.[24], 0)
   if (tiGiaUSD > 1) {
     item.Ti_gia = tiGiaUSD
-    item.Don_gia = toNum(row?.[26], 0)          // Don_giaUS (giá USD gốc)
+    item.Don_gia = toNum(row?.[26], 0)          // Don_giaUS (giá USD hợp đồng)
     item.Gia_tieu_chuan = toNum(row?.[25], 0)   // Gia_tieu_chuanUSD (giá USD gốc)
     item.gia_nhap = toNum(row?.[27], 0)         // gia_nhapUSD (giá USD gốc)
     item.Don_vi_tien_te = 'USD'
-    // Update _goc snapshots to match restored USD values
-    if (!baseProduct) {
+    item._Ti_gia_goc = tiGiaUSD
+    item._Gia_tieu_chuan_goc = item.Gia_tieu_chuan
+    item._Ti_gia_kho = baseProduct ? toNum(baseProduct.Ti_gia, tiGiaUSD) : tiGiaUSD
+    item._Gia_tieu_chuan_kho = baseProduct ? toNum(baseProduct.Gia_tieu_chuan, item.Gia_tieu_chuan) : item.Gia_tieu_chuan
+    if (row?.[36] !== undefined && row?.[36] !== '' && toNum(row[36], 0) > 0) {
+      item._Don_gia_goc = toNum(row[36], item.Don_gia)
+    } else if (row?.[35] !== undefined && row?.[35] !== '' && toNum(row[35], 0) > 0) {
+      item._Don_gia_goc = toNum(row[35], 0) / tiGiaUSD
+    } else if (!baseProduct) {
       item._Don_gia_goc = item.Don_gia
-      item._Gia_tieu_chuan_goc = item.Gia_tieu_chuan
-      item._Ti_gia_goc = item.Ti_gia
-      item._gia_nhap_goc = item.gia_nhap
+    }
+    if (row?.[39] === undefined || row?.[39] === '') {
+      item._gia_nhap_goc = baseProduct ? toNum(baseProduct.gia_nhap, item.gia_nhap) : item.gia_nhap
+    }
+    if (row?.[40] === undefined || row?.[40] === '' || toNum(row[40], 0) <= 0) {
+      item._Don_gia_kho = baseProduct ? toNum(baseProduct.Don_gia, item.Don_gia) : item.Don_gia
+    }
+    if (!baseProduct) {
+      item._gia_nhap_kho = item.gia_nhap
     }
   }
 
@@ -4789,7 +5024,7 @@ async function loadInvoiceToFE() {
     contentOfContractPO.value = String(row?.[24] ?? '').trim()
     
     chietKhauTruocThuePct.value = toNum(row?.[26], 0)
-    thueChenhLechPct.value = toNum(row?.[28], 0)
+    thueChenhLechPct.value = row?.[28] !== undefined && row?.[28] !== '' ? toNum(row?.[28], 25) : 25
 
     // ====== load data mapping structure ======
     try {
@@ -4889,7 +5124,7 @@ async function cloneInvoiceToFE() {
 
     // Load percentages
     chietKhauTruocThuePct.value = toNum(row?.[26], 0)
-    thueChenhLechPct.value = toNum(row?.[28], 0)
+    thueChenhLechPct.value = row?.[28] !== undefined && row?.[28] !== '' ? toNum(row?.[28], 25) : 25
 
     // ====== load data mapping structure ======
     try {
@@ -5164,7 +5399,7 @@ async function loadPipelineToFE() {
     contentOfContractPO.value = String(contractRow?.[24] ?? '').trim()
     
     chietKhauTruocThuePct.value = toNum(contractRow?.[26], 0)
-    thueChenhLechPct.value = toNum(contractRow?.[28], 0)
+    thueChenhLechPct.value = contractRow?.[28] !== undefined && contractRow?.[28] !== '' ? toNum(contractRow?.[28], 25) : 25
 
     // ====== load data mapping structure ======
     try {
@@ -5413,6 +5648,1287 @@ function roundVndThousand(n: number, mode: VndRoundingMode = vndFieldRounding.do
   return roundVndByMode(n, mode)
 }
 
+/* ======================
+   ĐỐI CHIẾU HÀNG HÓA (SOPHOS / KASPERSKY / ACRONIS) -> VIEWOFFICE
+====================== */
+type RefVendorType = 'sophos' | 'kaspersky' | 'acronis'
+
+interface RefCompareOption {
+  id: string
+  vendor: RefVendorType
+  role: 'goc' | 'tg' | 'mau'
+  roleBadge: string
+  fileName: string
+  sheet: string
+  rowNum: number
+  colLetter: string
+  cellRef: string
+  sku: string
+  priceText: string
+  subNote?: string
+}
+
+const vendorRefFilesMeta = ref<Record<RefVendorType, VendorRefFileMeta | null>>({
+  sophos: null,
+  kaspersky: null,
+  acronis: null
+})
+const vendorRefLoadError = ref<Record<RefVendorType, string>>({
+  sophos: '',
+  kaspersky: '',
+  acronis: ''
+})
+
+const sophosRefData = ref<any>(null)
+let sophosRefLoadingPromise: Promise<any> | null = null
+const kasRefData = ref<any>(null)
+let kasRefLoadingPromise: Promise<any> | null = null
+const acronisRefData = ref<any>(null)
+let acronisRefLoadingPromise: Promise<any> | null = null
+
+const fetchVendorRefFilesMeta = async (force = false) => {
+  if (
+    !force &&
+    (vendorRefFilesMeta.value.sophos ||
+      vendorRefFilesMeta.value.kaspersky ||
+      vendorRefFilesMeta.value.acronis)
+  ) {
+    return vendorRefFilesMeta.value
+  }
+  try {
+    const snap = await get(dbRef(database, 'vendor_ref_files'))
+    const val = snap.val() || {}
+    vendorRefFilesMeta.value = {
+      sophos: val.sophos || null,
+      kaspersky: val.kaspersky || null,
+      acronis: val.acronis || null
+    }
+  } catch (err) {
+    console.error('Lỗi đọc vendor_ref_files từ Firebase:', err)
+  }
+  return vendorRefFilesMeta.value
+}
+
+const getVendorImportFileMeta = (vendor: RefVendorType) => {
+  const m = vendorRefFilesMeta.value?.[vendor]
+  if (!m) return null
+  if (m.import_file_name) {
+    return {
+      name: m.import_file_name,
+      url: m.import_file_url || m.index_url || '',
+      updatedAt: m.import_updated_at || m.updated_at || 0
+    }
+  }
+  if (vendor === 'sophos' && m.tg_file_name) {
+    return {
+      name: m.tg_file_name,
+      url: m.tg_file_url || m.index_url || '',
+      updatedAt: m.tg_updated_at || m.updated_at || 0
+    }
+  }
+  if ((vendor === 'kaspersky' || vendor === 'acronis') && m.mau_file_name) {
+    return {
+      name: m.mau_file_name,
+      url: m.mau_file_url || m.index_url || '',
+      updatedAt: m.mau_updated_at || m.updated_at || 0
+    }
+  }
+  if (m.goc_file_name) {
+    return {
+      name: m.goc_file_name,
+      url: m.goc_file_url || m.index_url || '',
+      updatedAt: m.goc_updated_at || m.updated_at || 0
+    }
+  }
+  return null
+}
+
+const getVendorCompareFileMeta = (vendor: RefVendorType, part: 'goc' | 'tg' = 'goc') => {
+  const m = vendorRefFilesMeta.value?.[vendor]
+  if (!m) return null
+  if (part === 'goc') {
+    if (vendor === 'sophos') {
+      const sName = m.skulist_file_name || m.goc_file_name
+      const sUrl = m.skulist_file_url || m.goc_file_url || m.index_url || ''
+      if (!sName) return null
+      return {
+        name: sName,
+        url: sUrl,
+        updatedAt: m.goc_updated_at || m.updated_at || 0
+      }
+    }
+    if (!m.goc_file_name) return null
+    return {
+      name: m.goc_file_name,
+      url: m.goc_file_url || m.index_url || '',
+      updatedAt: m.goc_updated_at || m.updated_at || 0
+    }
+  }
+  if (vendor === 'sophos') {
+    if (!m.tg_file_name) return null
+    return {
+      name: m.tg_file_name,
+      url: m.tg_file_url || m.index_url || '',
+      updatedAt: m.tg_updated_at || m.updated_at || 0
+    }
+  }
+  if (vendor === 'kaspersky' || vendor === 'acronis') {
+    if (!m.mau_file_name) return null
+    return {
+      name: m.mau_file_name,
+      url: m.mau_file_url || m.index_url || '',
+      updatedAt: m.mau_updated_at || m.updated_at || 0
+    }
+  }
+  return null
+}
+
+const loadSophosRefData = async (forceReload = false) => {
+  if (!forceReload && sophosRefData.value) return sophosRefData.value
+  if (!forceReload && sophosRefLoadingPromise) return sophosRefLoadingPromise
+  sophosRefLoadingPromise = (async () => {
+    try {
+      vendorRefLoadError.value.sophos = ''
+      const allMeta = await fetchVendorRefFilesMeta(forceReload)
+      const meta = allMeta?.sophos
+      if (!meta?.index_url) {
+        vendorRefLoadError.value.sophos =
+          'Chưa có file tham chiếu Sophos trên Cloudinary. Vui lòng upload tại trang Quản lý hàng hóa.'
+        return { gocSkus: {}, trungGianItems: [], lpSophos: [], tgSkuLocations: {} }
+      }
+      const res = await fetch(meta.index_url)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      sophosRefData.value = await res.json()
+      return sophosRefData.value
+    } catch (e: any) {
+      vendorRefLoadError.value.sophos =
+        'Không tải được dữ liệu tham chiếu Sophos từ Cloudinary: ' + (e?.message || e)
+      return { gocSkus: {}, trungGianItems: [], lpSophos: [], tgSkuLocations: {} }
+    } finally {
+      sophosRefLoadingPromise = null
+    }
+  })()
+  return sophosRefLoadingPromise
+}
+
+const loadKasRefData = async (forceReload = false) => {
+  if (!forceReload && kasRefData.value) return kasRefData.value
+  if (!forceReload && kasRefLoadingPromise) return kasRefLoadingPromise
+  kasRefLoadingPromise = (async () => {
+    try {
+      vendorRefLoadError.value.kaspersky = ''
+      const allMeta = await fetchVendorRefFilesMeta(forceReload)
+      const meta = allMeta?.kaspersky
+      if (!meta?.index_url) {
+        vendorRefLoadError.value.kaspersky =
+          'Chưa có file tham chiếu Kaspersky trên Cloudinary. Vui lòng upload tại trang Quản lý hàng hóa.'
+        return {}
+      }
+      const res = await fetch(meta.index_url)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const raw = await res.json()
+      kasRefData.value = hydrateKasRefData(raw)
+      return kasRefData.value
+    } catch (e: any) {
+      vendorRefLoadError.value.kaspersky =
+        'Không tải được dữ liệu tham chiếu Kaspersky từ Cloudinary: ' + (e?.message || e)
+      return {}
+    } finally {
+      kasRefLoadingPromise = null
+    }
+  })()
+  return kasRefLoadingPromise
+}
+
+const loadAcronisRefData = async (forceReload = false) => {
+  if (!forceReload && acronisRefData.value) return acronisRefData.value
+  if (!forceReload && acronisRefLoadingPromise) return acronisRefLoadingPromise
+  acronisRefLoadingPromise = (async () => {
+    try {
+      vendorRefLoadError.value.acronis = ''
+      const allMeta = await fetchVendorRefFilesMeta(forceReload)
+      const meta = allMeta?.acronis
+      if (!meta?.index_url) {
+        vendorRefLoadError.value.acronis =
+          'Chưa có file tham chiếu Acronis trên Cloudinary. Vui lòng upload tại trang Quản lý hàng hóa.'
+        return {}
+      }
+      const res = await fetch(meta.index_url)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const raw = await res.json()
+      acronisRefData.value = hydrateAcronisRefData(raw)
+      return acronisRefData.value
+    } catch (e: any) {
+      vendorRefLoadError.value.acronis =
+        'Không tải được dữ liệu tham chiếu Acronis từ Cloudinary: ' + (e?.message || e)
+      return {}
+    } finally {
+      acronisRefLoadingPromise = null
+    }
+  })()
+  return acronisRefLoadingPromise
+}
+
+const colIndexToLetter = (colIdx = 0) => {
+  let n = Number(colIdx) + 1
+  let s = ''
+  while (n > 0) {
+    const m = (n - 1) % 26
+    s = String.fromCharCode(65 + m) + s
+    n = Math.floor((n - 1) / 26)
+  }
+  return s || 'A'
+}
+
+const getFirewallSheetRowNumForItem = (tenHang: any, sku: any) => {
+  const fwRows = sophosRefData.value?.gocFirewallRaw
+  if (!Array.isArray(fwRows) || !fwRows.length) return null
+  const combined = `${tenHang || ''} ${sku || ''}`.toUpperCase()
+  const m = combined.match(/\bXGS?\s*(\d{2,4}W?)\b/i)
+  if (!m) return null
+  const modelToken = `XGS ${m[1].toUpperCase()}`
+  const isXstream = /^XS/i.test(String(sku || '')) || /XSTREAM/i.test(String(tenHang || ''))
+  const isStd = /^SP/i.test(String(sku || '')) || /STANDARD PROTECTION/i.test(String(tenHang || ''))
+  for (let i = 0; i < fwRows.length; i++) {
+    const r = fwRows[i] || []
+    const colH = String(r[7] || '').toUpperCase()
+    if (colH.includes(modelToken)) {
+      if (isXstream && i + 1 < fwRows.length) return i + 2
+      if (isStd && i + 2 < fwRows.length) return i + 3
+      return i + 1
+    }
+  }
+  return null
+}
+
+const enrichItemForRefCompare = (item: any) => {
+  if (!item) return null
+  const fbKey = String(item._firebaseKey || '').trim()
+  const mh = String(item.Ma_hang || '').trim()
+  const th = String(item.Ten_hang || '').trim().toLowerCase()
+  const catalogMatch =
+    products.value.find((p: any) => {
+      if (fbKey && String(p._firebaseKey || '').trim() === fbKey) return true
+      if (mh && String(p.Ma_hang || '').trim() === mh) return true
+      return false
+    }) ||
+    (th
+      ? products.value.find((p: any) => String(p.Ten_hang || '').trim().toLowerCase() === th)
+      : null)
+
+  if (!catalogMatch) return item
+  return {
+    ...catalogMatch,
+    ...item,
+    Ten_nha_cung_cap: item.Ten_nha_cung_cap || catalogMatch.Ten_nha_cung_cap || '',
+    Ma_nha_cung_cap: item.Ma_nha_cung_cap || catalogMatch.Ma_nha_cung_cap || '',
+    Danh_muc: item.Danh_muc || catalogMatch.Danh_muc || '',
+    sku_code: item.sku_code || catalogMatch.sku_code || '',
+    volume: item.volume || catalogMatch.volume || '',
+    Ghi_chu: item.Ghi_chu || catalogMatch.Ghi_chu || ''
+  }
+}
+
+const getCardVendorType = (rawItem: any): RefVendorType | null => {
+  if (!rawItem) return null
+  const item = enrichItemForRefCompare(rawItem) || rawItem
+  const ncc = String(item.Ten_nha_cung_cap || item.Ma_nha_cung_cap || '').trim().toUpperCase()
+  const dm = String(item.Danh_muc || '').trim().toUpperCase()
+  const th = String(item.Ten_hang || '').trim().toUpperCase()
+  const mh = String(item.Ma_hang || '').trim().toUpperCase()
+
+  if (ncc.includes('SOPHOS') || dm.includes('SOPHOS') || th.startsWith('SOPHOS')) {
+    return 'sophos'
+  }
+  if (
+    ncc.includes('KASPERSKY') ||
+    dm.includes('KASPERSKY') ||
+    th.startsWith('KASPERSKY') ||
+    /^KL\d{4}/i.test(mh)
+  ) {
+    return 'kaspersky'
+  }
+  if (ncc.includes('ACRONIS') || dm.includes('ACRONIS') || th.includes('ACRONIS')) {
+    return 'acronis'
+  }
+  return null
+}
+
+const resolveSophosCardCompare = async (rawItem: any) => {
+  const item = enrichItemForRefCompare(rawItem) || rawItem
+  await loadSophosRefData()
+  const sRef = sophosRefData.value || {
+    gocSkus: {},
+    trungGianItems: [],
+    lpSophos: [],
+    tgSkuLocations: {}
+  }
+  const gocMap = sRef.gocSkus || {}
+  const tgList = sRef.trungGianItems || []
+  const lpList = sRef.lpSophos || []
+  const tgLocMap = sRef.tgSkuLocations || {}
+
+  const mh = String(item.Ma_hang || '').trim().toUpperCase()
+  const itemSkuCode = String(item.sku_code || '').trim().toUpperCase()
+  const gc = String(item.Ghi_chu || '')
+  const skuFromNote = ((gc.match(/SKU:\s*([A-Z0-9]+)/i) || [])[1] || '').toUpperCase()
+
+  let sku = ''
+  if (itemSkuCode && gocMap[itemSkuCode]) sku = itemSkuCode
+  else if (gocMap[mh]) sku = mh
+  else if (skuFromNote && gocMap[skuFromNote]) sku = skuFromNote
+  else if (itemSkuCode) sku = itemSkuCode
+
+  let tgEntry =
+    tgList.find(
+      (t: any) =>
+        (sku && t.sku === sku) || t.sku === mh || (skuFromNote && t.sku === skuFromNote)
+    ) || null
+  if (!tgEntry) {
+    const dmLower = String(item.Danh_muc || '').trim().toLowerCase()
+    const thLower = String(item.Ten_hang || '').trim().replace(/:$/, '').toLowerCase()
+    tgEntry =
+      tgList.find((t: any) => {
+        const grp = String(t.group || '').trim().toLowerCase()
+        const firstLine = String(t.moTa || '')
+          .split('\n')[0]
+          .trim()
+          .replace(/:$/, '')
+          .toLowerCase()
+        return grp === dmLower && firstLine === thLower
+      }) || null
+    if (!tgEntry && dmLower && thLower) {
+      tgEntry =
+        tgList.find((t: any) => {
+          const grp = String(t.group || '').trim().toLowerCase()
+          return grp === dmLower && String(t.moTa || '').toLowerCase().includes(thLower)
+        }) || null
+    }
+    if (!tgEntry && thLower) {
+      tgEntry =
+        tgList.find((t: any) => {
+          const firstLine = String(t.moTa || '')
+            .split('\n')[0]
+            .trim()
+            .replace(/:$/, '')
+            .toLowerCase()
+          return firstLine === thLower
+        }) || null
+    }
+  }
+
+  if (tgEntry && !sku) {
+    sku = String(tgEntry.sku || '').trim().toUpperCase()
+  }
+  if (!sku && /^[A-Z0-9]{8,16}$/.test(mh) && /\d/.test(mh)) {
+    sku = mh
+  }
+
+  const gocEntry =
+    sku && gocMap[sku]
+      ? gocMap[sku]
+      : sku === 'CFRAAB12ZZCAA'
+        ? gocMap['CFRAAB12BANCAA']
+        : null
+  const gocFound = Boolean(gocEntry)
+  const gocMsrp = gocEntry ? Number(gocEntry.msrp) || 0 : 0
+  const gocRowNum = gocEntry?.rowNum || null
+  const skuListRowNum = gocEntry?.skuTabRow || null
+  const skuListHwRowNum = gocEntry?.hwRow || null
+
+  const tgLocations =
+    sku && tgLocMap[sku]
+      ? [...tgLocMap[sku]]
+      : tgEntry && tgEntry.rowNum
+        ? [
+            {
+              sheet: tgEntry.sheet,
+              rowNum: tgEntry.rowNum,
+              colIndex: 1,
+              colLetter: 'B',
+              cell: tgEntry.cell || `B${tgEntry.rowNum}`
+            }
+          ]
+        : []
+  const tgFound = Boolean(tgEntry || tgLocations.length > 0)
+  const tgMsrp = tgEntry ? Number(tgEntry.msrp) || 0 : 0
+  const tgSheet = tgEntry?.sheet || tgLocations[0]?.sheet || ''
+  const tgRowNum = tgEntry?.rowNum || tgLocations[0]?.rowNum || null
+  const tgGroup = tgEntry?.group || ''
+
+  const combinedModelText = `${item.Danh_muc || ''} ${tgGroup || ''} ${item.Ten_hang || ''}`
+  const modelMatch = combinedModelText.match(/\b(XGS?\s*\d{2,4}w?)\b/i)
+  const modelStr = modelMatch
+    ? modelMatch[1].toUpperCase().replace(/\bXGS(\d)/i, 'XGS $1').replace(/\s+/g, ' ')
+    : ''
+  const lpRow = modelStr
+    ? lpList.find((x: any) => String(x.model || '').toUpperCase() === modelStr)
+    : null
+  const lpRowNum = lpRow?.rowNum || null
+  const gocFirewallRowNum = getFirewallSheetRowNumForItem(item.Ten_hang, sku)
+
+  return {
+    vendor: 'sophos' as const,
+    item,
+    sku,
+    gocFound,
+    gocEntry,
+    gocMsrp,
+    gocRowNum,
+    skuListRowNum,
+    skuListHwRowNum,
+    gocFirewallRowNum,
+    tgFound,
+    tgEntry,
+    tgMsrp,
+    tgSheet,
+    tgRowNum,
+    tgGroup,
+    tgLocations,
+    lpRowNum
+  }
+}
+
+const resolveKasperskyCardCompare = async (rawItem: any) => {
+  const item = enrichItemForRefCompare(rawItem) || rawItem
+  await loadKasRefData()
+  const kRef = kasRefData.value || {}
+  const gocPivotMap = kRef.gocPivotBySku || {}
+  const mauPivotMap = kRef.mauPivotBySku || {}
+  const gocSaleMap = kRef.gocSaleBySkuBand || {}
+  const mauSaleMap = kRef.mauSaleBySkuBand || {}
+
+  const mh = String(item.Ma_hang || '').trim()
+  const itemSkuCode = String(item.sku_code || '').trim().toUpperCase()
+  const gc = String(item.Ghi_chu || '').trim()
+  const klTokens = [
+    ...(itemSkuCode ? [itemSkuCode] : []),
+    ...(mh.match(/KL\d{4}[A-Z0-9*]+/gi) || []),
+    ...(gc.match(/KL\d{4}[A-Z0-9*]+/gi) || [])
+  ].map((s) => s.toUpperCase())
+
+  const sku =
+    klTokens.find((t) => t.includes('*') && gocPivotMap[t]) ||
+    klTokens.find((t) => gocPivotMap[t]) ||
+    klTokens.find((t) => t.includes('*')) ||
+    klTokens[0] ||
+    ''
+
+  let band = String(item.volume || '').trim()
+  if (!band) {
+    const bandMatch =
+      mh.match(/(Band\s+[A-Z0-9]+:\s*\d+(?:-\d+|\+)?)/i) ||
+      String(item.Ten_hang || '').match(/(Band\s+[A-Z0-9]+:\s*\d+(?:-\d+|\+)?)/i)
+    if (bandMatch) band = bandMatch[1].trim()
+  }
+
+  const gocPivotEntry = (sku && gocPivotMap[sku]) || null
+  const mauPivotEntry = (sku && mauPivotMap[sku]) || null
+  const skuBandKey = `${sku}||${band}`
+  const gocSaleEntry = gocSaleMap[skuBandKey] || null
+  const mauSaleEntry = mauSaleMap[skuBandKey] || null
+
+  const posCode =
+    gocSaleEntry?.posCode ||
+    mauSaleEntry?.posCode ||
+    klTokens.find((t) => !t.includes('*') && t !== sku) ||
+    ''
+
+  const gocPivotRow = gocPivotEntry?.rowNum || null
+  const gocPivotColIdx =
+    gocPivotEntry?.bandCols && gocPivotEntry.bandCols[band] !== undefined
+      ? gocPivotEntry.bandCols[band]
+      : 9
+  const gocPivotColLetter = colIndexToLetter(gocPivotColIdx)
+  const gocSaleRow = gocSaleEntry?.rowNum || null
+  const gocPrice = Number(gocPivotEntry?.prices?.[band] ?? gocSaleEntry?.price ?? 0)
+  const gocFound = Boolean(gocPivotEntry || gocSaleEntry)
+
+  const mauPivotRow = mauPivotEntry?.rowNum || null
+  const mauPivotColIdx =
+    mauPivotEntry?.bandCols && mauPivotEntry.bandCols[band] !== undefined
+      ? mauPivotEntry.bandCols[band]
+      : gocPivotColIdx
+  const mauPivotColLetter = colIndexToLetter(mauPivotColIdx)
+  const mauSaleRow = mauSaleEntry?.rowNum || null
+  const mauPrice = Number(mauPivotEntry?.prices?.[band] ?? mauSaleEntry?.price ?? 0)
+  const mauFound = Boolean(mauPivotEntry || mauSaleEntry)
+
+  return {
+    vendor: 'kaspersky' as const,
+    item,
+    sku,
+    posCode,
+    band,
+    gocFound,
+    gocPivotRow,
+    gocPivotColLetter,
+    gocSaleRow,
+    gocPrice,
+    mauFound,
+    mauPivotRow,
+    mauPivotColLetter,
+    mauSaleRow,
+    mauPrice
+  }
+}
+
+const resolveAcronisCardCompare = async (rawItem: any) => {
+  const item = enrichItemForRefCompare(rawItem) || rawItem
+  await loadAcronisRefData()
+  const aRef = acronisRefData.value || {}
+  const gocByMaHang = aRef.gocByMaHang || {}
+  const gocBySku = aRef.gocBySku || {}
+  const gocBySkuFor = aRef.gocBySkuFor || {}
+  const gocItems = aRef.gocItems || []
+  const mauByMaHang = aRef.mauByMaHang || {}
+  const mauBySku = aRef.mauBySku || {}
+  const mauBySkuFor = aRef.mauBySkuFor || {}
+
+  const mh = String(item.Ma_hang || '').trim().toUpperCase()
+  const itemSkuCode = String(item.sku_code || '').trim().toUpperCase()
+  const thLower = String(item.Ten_hang || '').trim().toLowerCase()
+  const parts = mh
+    .split('-')
+    .map((s) => s.trim())
+    .filter(Boolean)
+
+  let gocEntry = gocByMaHang[mh] || null
+  if (!gocEntry && itemSkuCode) {
+    gocEntry = gocBySku[itemSkuCode] || gocBySkuFor[itemSkuCode] || null
+  }
+  if (!gocEntry && parts.length >= 2) {
+    gocEntry = gocBySku[parts[1]] || gocBySkuFor[parts[0]] || null
+  }
+  if (!gocEntry && parts.length === 1) {
+    gocEntry = gocBySku[parts[0]] || gocBySkuFor[parts[0]] || null
+  }
+  if (!gocEntry && thLower) {
+    gocEntry =
+      gocItems.find((x: any) => String(x.moTa || '').trim().toLowerCase() === thLower) || null
+  }
+
+  const sku = gocEntry?.sku || (parts.length >= 2 ? parts[1] : parts[0] || '')
+  const skuFor = gocEntry?.skuFor || (parts.length >= 2 ? parts[0] : '')
+  const maKey = gocEntry?.maHang ? String(gocEntry.maHang).toUpperCase() : mh
+
+  const mauEntry =
+    mauByMaHang[maKey] ||
+    (sku && mauBySku[sku.toUpperCase()]) ||
+    (skuFor && mauBySkuFor[skuFor.toUpperCase()]) ||
+    null
+
+  const gocFound = Boolean(gocEntry)
+  const gocPrice = gocEntry ? Number(gocEntry.price) || 0 : 0
+  const gocRowNum = gocEntry?.rowNum || null
+  const sheet = gocEntry?.sheet || mauEntry?.sheet || 'Protect Standard'
+
+  const mauFound = Boolean(mauEntry)
+  const mauPrice = mauEntry ? Number(mauEntry.price) || 0 : 0
+  const mauRowNum = mauEntry?.rowNum || null
+  const mauSheet = mauEntry?.sheet || sheet
+
+  return {
+    vendor: 'acronis' as const,
+    item,
+    sku,
+    skuFor,
+    sheet,
+    gocFound,
+    gocRowNum,
+    gocPrice,
+    mauFound,
+    mauRowNum,
+    mauSheet,
+    mauPrice
+  }
+}
+
+const buildVendorRefWorkbookFromCloudinary = async (
+  vendor: RefVendorType,
+  role: string,
+  fileName: string
+) => {
+  const wb = XLSX.utils.book_new()
+  if (vendor === 'acronis') {
+    const refData = await loadAcronisRefData()
+    const sheetsMap =
+      role === 'mau' || role === 'import'
+        ? refData?.mauSheetsRaw || refData?.gocSheetsRaw || {}
+        : refData?.gocSheetsRaw || refData?.mauSheetsRaw || {}
+    Object.entries(sheetsMap).forEach(([sName, rows]) => {
+      if (Array.isArray(rows)) {
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), sName.slice(0, 31))
+      }
+    })
+  } else if (vendor === 'kaspersky') {
+    const refData = await loadKasRefData()
+    const isMau = role === 'mau' || role === 'import'
+    const pivotRows = isMau
+      ? refData?.mauPivotRaw || refData?.gocPivotRaw || []
+      : refData?.gocPivotRaw || []
+    const saleList = isMau
+      ? refData?.mauSaleRows || refData?.gocSaleRows || []
+      : refData?.gocSaleRows || []
+    if (Array.isArray(pivotRows) && pivotRows.length) {
+      XLSX.utils.book_append_sheet(
+        wb,
+        XLSX.utils.aoa_to_sheet(pivotRows),
+        'SMB+Enterprise (License)'
+      )
+    }
+    if (Array.isArray(saleList) && saleList.length) {
+      const aoa = [
+        ['Row', 'PositionCode', 'SKU', 'Product', 'Term', 'Package', 'Type', 'Band', 'Price (VND)'],
+        ...saleList.map((r: any) => [
+          r.rowNum,
+          r.posCode,
+          r.sku,
+          r.product,
+          r.term,
+          r.pkg,
+          r.type,
+          r.band,
+          r.price
+        ])
+      ]
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), 'SaleListSMB+Enterprise')
+    }
+  } else if (vendor === 'sophos') {
+    const refData = await loadSophosRefData()
+    if (
+      (role === 'tg' || role === 'import') &&
+      refData?.tgSheetsRaw &&
+      Object.keys(refData.tgSheetsRaw).length
+    ) {
+      Object.entries(refData.tgSheetsRaw).forEach(([sName, rows]) => {
+        if (Array.isArray(rows)) {
+          XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), sName.slice(0, 31))
+        }
+      })
+    } else if (refData?.gocSkus && Object.keys(refData.gocSkus).length) {
+      const entries: any[] = Object.entries(refData.gocSkus).map(([sku, v]: [string, any]) => ({
+        sku,
+        ...(v || {})
+      }))
+      const sortedSkuTab = entries
+        .filter((x) => x.skuTabRow)
+        .sort((a, b) => a.skuTabRow - b.skuTabRow)
+
+      const setCell = (ws: any, r1: number, c0: number, val: any) => {
+        if (val === undefined || val === null || val === '') return
+        const addr = XLSX.utils.encode_cell({ r: r1 - 1, c: c0 })
+        ws[addr] = typeof val === 'number' ? { t: 'n', v: val } : { t: 's', v: String(val) }
+      }
+
+      if (sortedSkuTab.length) {
+        const wsSku: any = {}
+        setCell(wsSku, 1, 0, 'SOPHOS RESELLER SKU LIST (ASEAN - USD - 2026 3.0)')
+        setCell(wsSku, 6, 9, 'giá tham khảo')
+        const skuHeaders = [
+          'Changes made in Pricelist version',
+          'Change Key',
+          'Previous Description',
+          'Previous Price',
+          'SKU Availability Status',
+          'Product Code',
+          'SKU',
+          'Old SKU',
+          'Description',
+          'MSRP/RRP',
+          'Min Qty',
+          'Max Qty',
+          'Term',
+          'Sector',
+          'Transaction Type',
+          'Product Family',
+          'Product Type',
+          'HS Code',
+          'Country of Origin',
+          'Standard Authorized Reseller Cost',
+          'Registered Authorized Reseller Cost',
+          'Incumbent Authorized Reseller Cost',
+          'Standard Silver Reseller Cost',
+          'Registered Silver Reseller Cost',
+          'Standard Gold Reseller Cost',
+          'Registered Gold Reseller Cost',
+          'Standard Platinum Reseller Cost',
+          'Registered Platinum Reseller Cost'
+        ]
+        skuHeaders.forEach((h, i) => setCell(wsSku, 7, i, h))
+        sortedSkuTab.forEach((it, idx) => {
+          const r = 8 + idx
+          ;[
+            it.changeVer,
+            it.changeKey,
+            '',
+            it.prevPrice,
+            it.status || 'Available',
+            it.pc,
+            it.sku,
+            it.oldSku,
+            it.desc,
+            it.msrp,
+            1,
+            9999999,
+            it.term,
+            it.sector || 'CORP',
+            it.transType || 'New',
+            it.family || 'UTM/Network Security',
+            it.prodType,
+            it.hsCode,
+            it.coo,
+            it.stdAuth,
+            it.regAuth,
+            it.incAuth,
+            it.stdSilv,
+            it.regSilv,
+            it.stdGold,
+            it.regGold,
+            it.stdPlat,
+            it.regPlat
+          ].forEach((v, cIdx) => setCell(wsSku, r, cIdx, v))
+        })
+        wsSku['!ref'] = XLSX.utils.encode_range({
+          s: { r: 0, c: 0 },
+          e: { r: 7 + sortedSkuTab.length - 1, c: 27 }
+        })
+        XLSX.utils.book_append_sheet(wb, wsSku, 'SKU_Tab')
+      }
+
+      if (Array.isArray(refData.hwComplianceRaw) && refData.hwComplianceRaw.length) {
+        const wsHw: any = {}
+        let maxHwR = 10
+        for (const rObj of refData.hwComplianceRaw) {
+          if (rObj && rObj.rowNum >= 1) {
+            if (rObj.rowNum > maxHwR) maxHwR = rObj.rowNum
+            ;(rObj.cells || []).forEach((v: any, idx: number) => setCell(wsHw, rObj.rowNum, idx, v))
+          }
+        }
+        wsHw['!ref'] = XLSX.utils.encode_range({
+          s: { r: 0, c: 0 },
+          e: { r: maxHwR - 1, c: 15 }
+        })
+        XLSX.utils.book_append_sheet(wb, wsHw, 'HW_Compliance')
+      }
+
+      if (Array.isArray(refData.gocFirewallRaw) && refData.gocFirewallRaw.length) {
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(refData.gocFirewallRaw), 'Firewall')
+      }
+    }
+  }
+
+  if (!wb.SheetNames.length) {
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['File', fileName]]), 'Sheet1')
+  }
+  return wb
+}
+
+const ensureVendorExcelUrlOnCloudinary = async (
+  vendor: RefVendorType,
+  role: string,
+  meta: { name?: string; url?: string } | null
+) => {
+  const fileName = meta?.name || `${vendor}_${role}.xlsx`
+  const url = String(meta?.url || '').trim()
+  if (url && !url.toLowerCase().endsWith('.json')) {
+    return url
+  }
+
+  const wb = await buildVendorRefWorkbookFromCloudinary(vendor, role, fileName)
+  const outBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array', compression: true })
+  const xlsxBlob = new Blob([outBuffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  })
+  const safeName = fileName.replace(/\.(xlsb|xls|xlsx|json)$/i, '') + '_slim_viewoffice.xlsx'
+  const newExcelUrl = await uploadBlobToCloudinary(xlsxBlob, safeName)
+
+  const prevMeta = vendorRefFilesMeta.value?.[vendor] || {}
+  const nextMeta: VendorRefFileMeta = { ...prevMeta }
+  if (role === 'goc' && nextMeta.goc_file_url?.endsWith('.json')) nextMeta.goc_file_url = newExcelUrl
+  if (role === 'skulist' && nextMeta.skulist_file_url?.endsWith('.json'))
+    nextMeta.skulist_file_url = newExcelUrl
+  if ((role === 'tg' || role === 'import') && nextMeta.tg_file_url?.endsWith('.json'))
+    nextMeta.tg_file_url = newExcelUrl
+  if ((role === 'mau' || role === 'import') && nextMeta.mau_file_url?.endsWith('.json'))
+    nextMeta.mau_file_url = newExcelUrl
+  if (role === 'import' && nextMeta.import_file_url?.endsWith('.json'))
+    nextMeta.import_file_url = newExcelUrl
+  vendorRefFilesMeta.value[vendor] = nextMeta
+  set(dbRef(database, `vendor_ref_files/${vendor}`), nextMeta).catch(() => {})
+  return newExcelUrl
+}
+
+const getVendorOfficeActiveCellParam = ({
+  vendor = '' as RefVendorType | '',
+  role = 'goc',
+  sheet = '',
+  rowNum = 1,
+  colLetter = 'B',
+  sku = ''
+}) => {
+  let targetSheet = String(sheet || '').trim()
+  let targetR = Number(rowNum) || 1
+  let cleanCol = String(colLetter || 'B').trim().toUpperCase()
+  const cleanSku = String(sku || '').trim().toUpperCase()
+
+  if (vendor === 'sophos' && role !== 'tg') {
+    if (targetSheet === 'HW_Compliance') {
+      cleanCol = cleanCol || 'B'
+    } else {
+      targetSheet = 'SKU_Tab'
+      if (cleanCol === 'B' || cleanCol === 'H' || !cleanCol) {
+        cleanCol = 'G'
+      }
+      if (sophosRefData.value?.gocSkus) {
+        const directEntry = cleanSku ? sophosRefData.value.gocSkus[cleanSku] : null
+        if (directEntry?.skuTabRow) {
+          targetR = directEntry.skuTabRow
+        } else {
+          const matched: any = Object.values(sophosRefData.value.gocSkus).find(
+            (x: any) =>
+              (cleanSku && String(x?.oldSku || '').trim().toUpperCase() === cleanSku) ||
+              x?.skuTabRow === targetR ||
+              x?.rowNum === targetR
+          )
+          if (matched?.skuTabRow) {
+            targetR = matched.skuTabRow
+          }
+        }
+      }
+    }
+  }
+
+  const cellRef = `${cleanCol}${targetR}`
+  if (!targetSheet) return encodeURIComponent(cellRef)
+  const escapedSheet = targetSheet.replace(/'/g, "''")
+  return encodeURIComponent(`'${escapedSheet}'!${cellRef}`).replace(/'/g, '%27')
+}
+
+const openCompareOfficePreview = async ({
+  vendor = 'sophos' as RefVendorType,
+  role = 'goc' as 'goc' | 'tg' | 'mau',
+  sheet = '',
+  rowNum = 1,
+  colLetter = 'B',
+  sku = ''
+}) => {
+  const comparePart = role === 'tg' || role === 'mau' ? 'tg' : 'goc'
+  const meta = getVendorCompareFileMeta(vendor, comparePart) || getVendorImportFileMeta(vendor)
+  if (!meta || !meta.name) {
+    triggerToast(
+      `Chưa có file ${comparePart === 'goc' ? 'Gốc' : 'Trung Gian'} của ${vendor.toUpperCase()} trên Cloudinary để mở ViewOffice!`,
+      'warning'
+    )
+    return
+  }
+
+  const cleanSku = String(sku || '').trim().toUpperCase()
+  const cleanCol = String(colLetter || 'B').trim().toUpperCase()
+  const targetRow = Number(rowNum) || 1
+  if (cleanSku) {
+    try {
+      await navigator.clipboard.writeText(cleanSku)
+      triggerToast(`Đã copy mã ${cleanSku} — đang mở ViewOffice tại ô ${cleanCol}${targetRow}`, 'info')
+    } catch (_) {}
+  }
+
+  const rawUrl = String(meta.url || '').trim()
+  if (rawUrl && !rawUrl.toLowerCase().endsWith('.json')) {
+    if (vendor === 'sophos' && comparePart === 'goc' && !sophosRefData.value) {
+      const winWait = window.open('about:blank', '_blank')
+      await loadSophosRefData().catch(() => {})
+      const activeCellParam = getVendorOfficeActiveCellParam({
+        vendor,
+        role: comparePart,
+        sheet,
+        rowNum: targetRow,
+        colLetter: cleanCol,
+        sku: cleanSku
+      })
+      const viewUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(rawUrl)}&activeCell=${activeCellParam}`
+      if (winWait) {
+        winWait.location.href = viewUrl
+      } else {
+        window.open(viewUrl, '_blank', 'noopener,noreferrer')
+      }
+      return
+    }
+    const activeCellParam = getVendorOfficeActiveCellParam({
+      vendor,
+      role: comparePart,
+      sheet,
+      rowNum: targetRow,
+      colLetter: cleanCol,
+      sku: cleanSku
+    })
+    const viewUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(rawUrl)}&activeCell=${activeCellParam}`
+    window.open(viewUrl, '_blank', 'noopener,noreferrer')
+    return
+  }
+
+  const win = window.open('about:blank', '_blank')
+  if (win && win.document) {
+    win.document.write(
+      `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Đang mở ViewOffice - ${meta.name}</title></head><body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#0f172a;color:#e2e8f0;font-family:system-ui,sans-serif;"><div style="text-align:center;"><div style="font-size:18px;font-weight:700;color:#38bdf8;margin-bottom:8px;">Đang mở ViewOffice và nhảy tới ô ${cleanCol}${targetRow}${cleanSku ? ' (' + cleanSku + ')' : ''}...</div><div style="font-size:13px;color:#94a3b8;">${meta.name}${sheet ? ' • Sheet: ' + sheet : ''}</div></div></body></html>`
+    )
+    win.document.close()
+  }
+
+  try {
+    const excelUrl = await ensureVendorExcelUrlOnCloudinary(vendor, role, meta)
+    const activeCellParam = getVendorOfficeActiveCellParam({
+      vendor,
+      role: comparePart,
+      sheet,
+      rowNum: targetRow,
+      colLetter: cleanCol,
+      sku: cleanSku
+    })
+    const viewUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(excelUrl)}&activeCell=${activeCellParam}`
+    if (win) {
+      win.location.href = viewUrl
+    } else {
+      window.open(viewUrl, '_blank', 'noopener,noreferrer')
+    }
+  } catch (err) {
+    console.error('Lỗi mở ViewOffice tại ô sản phẩm:', err)
+    if (win) win.close()
+    triggerToast('Không thể mở ViewOffice lúc này, vui lòng thử lại!', 'error')
+  }
+}
+
+const formatRefUsdPrice = (val: any) => {
+  const num = Number(val)
+  if (!Number.isFinite(num) || num <= 0) return ''
+  return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+const formatRefVndPrice = (val: any) => {
+  const num = Number(val)
+  if (!Number.isFinite(num) || num <= 0) return ''
+  return Math.round(num).toLocaleString('vi-VN') + ' ₫'
+}
+
+const refCompareMenu = reactive<{
+  open: boolean
+  loading: boolean
+  top: number
+  left: number
+  vendor: RefVendorType | ''
+  vendorLabel: string
+  itemName: string
+  sku: string
+  band: string
+  options: RefCompareOption[]
+  errorMsg: string
+}>({
+  open: false,
+  loading: false,
+  top: 120,
+  left: 120,
+  vendor: '',
+  vendorLabel: '',
+  itemName: '',
+  sku: '',
+  band: '',
+  options: [],
+  errorMsg: ''
+})
+
+const buildRefCompareOptionsForVendor = (vendor: RefVendorType, data: any): RefCompareOption[] => {
+  const opts: RefCompareOption[] = []
+
+  if (vendor === 'sophos') {
+    const gocMeta = getVendorCompareFileMeta('sophos', 'goc') || getVendorImportFileMeta('sophos')
+    const tgMeta = getVendorCompareFileMeta('sophos', 'tg')
+    const gocFileName =
+      gocMeta?.name || 'sophos-pricelist-reseller_SKU_list-asean-usd-2026-3.0.xlsb'
+    const tgFileName = tgMeta?.name || 'file_trung_gian_SOPHOS.xlsx'
+
+    const skuRow = data.skuListRowNum || data.gocRowNum || data.gocFirewallRowNum || 8
+    opts.push({
+      id: 'sophos-goc-skutab',
+      vendor: 'sophos',
+      role: 'goc',
+      roleBadge: 'FILE GỐC',
+      fileName: gocFileName,
+      sheet: 'SKU_Tab',
+      rowNum: skuRow,
+      colLetter: 'G',
+      cellRef: `G${skuRow}`,
+      sku: data.sku || '',
+      priceText: formatRefUsdPrice(data.gocMsrp),
+      subNote: data.gocFound
+        ? `Dòng #${skuRow} • Cột G (SKU)`
+        : 'Chưa khớp dòng tự động — mở đầu bảng SKU_Tab'
+    })
+
+    if (data.skuListHwRowNum) {
+      opts.push({
+        id: 'sophos-goc-hw',
+        vendor: 'sophos',
+        role: 'goc',
+        roleBadge: 'FILE GỐC (HW)',
+        fileName: gocFileName,
+        sheet: 'HW_Compliance',
+        rowNum: data.skuListHwRowNum,
+        colLetter: 'B',
+        cellRef: `B${data.skuListHwRowNum}`,
+        sku: data.sku || '',
+        priceText: '',
+        subNote: `Dòng #${data.skuListHwRowNum} • Sheet HW_Compliance`
+      })
+    }
+
+    if (Array.isArray(data.tgLocations) && data.tgLocations.length > 0) {
+      data.tgLocations.forEach((loc: any, idx: number) => {
+        const rNum = Number(loc.rowNum) || Number(data.tgRowNum) || 5
+        const cLet = String(loc.colLetter || 'B').toUpperCase()
+        const sName = String(loc.sheet || data.tgSheet || 'XGS - 1U + 10%')
+        opts.push({
+          id: `sophos-tg-${idx}`,
+          vendor: 'sophos',
+          role: 'tg',
+          roleBadge: 'FILE TRUNG GIAN',
+          fileName: tgFileName,
+          sheet: sName,
+          rowNum: rNum,
+          colLetter: cLet,
+          cellRef: `${cLet}${rNum}`,
+          sku: data.sku || '',
+          priceText: formatRefUsdPrice(data.tgMsrp),
+          subNote: `Dòng #${rNum} • Nhóm ${data.tgGroup || sName}`
+        })
+      })
+    } else if (data.tgRowNum || tgMeta?.name) {
+      const rNum = Number(data.tgRowNum) || 5
+      const sName = String(data.tgSheet || 'XGS - 1U + 10%')
+      opts.push({
+        id: 'sophos-tg-main',
+        vendor: 'sophos',
+        role: 'tg',
+        roleBadge: 'FILE TRUNG GIAN',
+        fileName: tgFileName,
+        sheet: sName,
+        rowNum: rNum,
+        colLetter: 'B',
+        cellRef: `B${rNum}`,
+        sku: data.sku || '',
+        priceText: formatRefUsdPrice(data.tgMsrp),
+        subNote: data.tgRowNum
+          ? `Dòng #${rNum} • Sheet ${sName}`
+          : 'Mở File Trung Gian trên ViewOffice'
+      })
+    }
+    return opts
+  }
+
+  if (vendor === 'kaspersky') {
+    const gocMeta =
+      getVendorCompareFileMeta('kaspersky', 'goc') || getVendorImportFileMeta('kaspersky')
+    const tgMeta = getVendorCompareFileMeta('kaspersky', 'tg')
+    const gocFileName = gocMeta?.name || 'filegocKas.xlsx'
+    const tgFileName = tgMeta?.name || 'KASPERSKY_file_mau_import.xlsx'
+
+    if (data.gocPivotRow) {
+      const cLet = String(data.gocPivotColLetter || 'I').toUpperCase()
+      opts.push({
+        id: 'kas-goc-pivot',
+        vendor: 'kaspersky',
+        role: 'goc',
+        roleBadge: 'FILE GỐC',
+        fileName: gocFileName,
+        sheet: 'SMB+Enterprise (License)',
+        rowNum: data.gocPivotRow,
+        colLetter: cLet,
+        cellRef: `${cLet}${data.gocPivotRow}`,
+        sku: data.sku || '',
+        priceText: formatRefVndPrice(data.gocPrice),
+        subNote: `Dòng #${data.gocPivotRow}${data.band ? ' • ' + data.band : ''}`
+      })
+    }
+
+    if (data.gocSaleRow) {
+      opts.push({
+        id: 'kas-goc-salelist',
+        vendor: 'kaspersky',
+        role: 'goc',
+        roleBadge: data.gocPivotRow ? 'FILE GỐC (SALELIST)' : 'FILE GỐC',
+        fileName: gocFileName,
+        sheet: 'SaleListSMB+Enterprise',
+        rowNum: data.gocSaleRow,
+        colLetter: 'E',
+        cellRef: `E${data.gocSaleRow}`,
+        sku: data.posCode || data.sku || '',
+        priceText: formatRefVndPrice(data.gocPrice),
+        subNote: `Dòng #${data.gocSaleRow}${data.posCode ? ' • PosCode: ' + data.posCode : ''}`
+      })
+    }
+
+    if (!data.gocPivotRow && !data.gocSaleRow) {
+      opts.push({
+        id: 'kas-goc-fallback',
+        vendor: 'kaspersky',
+        role: 'goc',
+        roleBadge: 'FILE GỐC',
+        fileName: gocFileName,
+        sheet: 'SMB+Enterprise (License)',
+        rowNum: 11,
+        colLetter: 'C',
+        cellRef: 'C11',
+        sku: data.sku || '',
+        priceText: '',
+        subNote: 'Mở bảng SMB+Enterprise (License) trên ViewOffice'
+      })
+    }
+
+    if (data.mauPivotRow || data.mauSaleRow || tgMeta?.name) {
+      const isPivot = Boolean(data.mauPivotRow || !data.mauSaleRow)
+      const sName = isPivot ? 'SMB+Enterprise (License)' : 'SaleListSMB+Enterprise'
+      const rNum = Number(data.mauPivotRow || data.mauSaleRow || 6)
+      const cLet = isPivot ? String(data.mauPivotColLetter || 'I').toUpperCase() : 'E'
+      opts.push({
+        id: 'kas-mau-main',
+        vendor: 'kaspersky',
+        role: 'mau',
+        roleBadge: 'FILE TRUNG GIAN / MẪU',
+        fileName: tgFileName,
+        sheet: sName,
+        rowNum: rNum,
+        colLetter: cLet,
+        cellRef: `${cLet}${rNum}`,
+        sku: data.sku || '',
+        priceText: formatRefVndPrice(data.mauPrice),
+        subNote:
+          data.mauPivotRow || data.mauSaleRow
+            ? `Dòng #${rNum}${data.band ? ' • ' + data.band : ''}`
+            : 'Mở File Trung Gian / Mẫu trên ViewOffice'
+      })
+    }
+    return opts
+  }
+
+  if (vendor === 'acronis') {
+    const gocMeta = getVendorCompareFileMeta('acronis', 'goc') || getVendorImportFileMeta('acronis')
+    const tgMeta = getVendorCompareFileMeta('acronis', 'tg')
+    const gocFileName = gocMeta?.name || 'file_goc_acronis.xlsx'
+    const tgFileName = tgMeta?.name || 'ACRONIS_file_mau_import.xlsx'
+
+    const gRow = Number(data.gocRowNum) || 4
+    const gCol = data.gocRowNum ? 'D' : 'B'
+    const gSheet = String(data.sheet || 'Protect Standard')
+    opts.push({
+      id: 'acronis-goc',
+      vendor: 'acronis',
+      role: 'goc',
+      roleBadge: 'FILE GỐC',
+      fileName: gocFileName,
+      sheet: gSheet,
+      rowNum: gRow,
+      colLetter: gCol,
+      cellRef: `${gCol}${gRow}`,
+      sku: data.sku || data.skuFor || '',
+      priceText: formatRefVndPrice(data.gocPrice),
+      subNote: data.gocRowNum
+        ? `Dòng #${gRow} • Cột D (Đơn giá)`
+        : 'Mở Sheet ' + gSheet + ' trên ViewOffice'
+    })
+
+    if (data.mauRowNum || (tgMeta?.name && tgMeta.name !== gocFileName)) {
+      const mRow = Number(data.mauRowNum || data.gocRowNum || 4)
+      const mSheet = String(data.mauSheet || gSheet)
+      opts.push({
+        id: 'acronis-mau',
+        vendor: 'acronis',
+        role: 'mau',
+        roleBadge: 'FILE MẪU IMPORT',
+        fileName: tgFileName,
+        sheet: mSheet,
+        rowNum: mRow,
+        colLetter: 'D',
+        cellRef: `D${mRow}`,
+        sku: data.sku || data.skuFor || '',
+        priceText: formatRefVndPrice(data.mauPrice),
+        subNote: `Dòng #${mRow} • Sheet ${mSheet}`
+      })
+    }
+    return opts
+  }
+
+  return opts
+}
+
+const openRefCompareMenu = async (e: MouseEvent, rawItem: any) => {
+  const vendor = getCardVendorType(rawItem)
+  if (!vendor) return
+
+  const btn = e.currentTarget as HTMLElement | null
+  let top = 120
+  let left = 120
+  if (btn && typeof window !== 'undefined') {
+    const rect = btn.getBoundingClientRect()
+    const menuW = Math.min(390, window.innerWidth - 20)
+    const menuH = 260
+    left = Math.min(Math.max(10, rect.left), Math.max(10, window.innerWidth - menuW - 12))
+    if (rect.bottom + menuH + 12 > window.innerHeight && rect.top > menuH + 12) {
+      top = Math.max(12, rect.top - menuH - 8)
+    } else {
+      top = rect.bottom + 6
+    }
+  }
+
+  const enriched = enrichItemForRefCompare(rawItem) || rawItem
+  refCompareMenu.top = top
+  refCompareMenu.left = left
+  refCompareMenu.vendor = vendor
+  refCompareMenu.vendorLabel =
+    vendor === 'sophos' ? 'SOPHOS' : vendor === 'kaspersky' ? 'KASPERSKY' : 'ACRONIS'
+  refCompareMenu.itemName = String(enriched.Ten_hang || enriched.Ma_hang || '')
+  refCompareMenu.sku = String(enriched.sku_code || enriched.Ma_hang || '')
+  refCompareMenu.band = String(enriched.volume || '')
+  refCompareMenu.options = []
+  refCompareMenu.errorMsg = ''
+  refCompareMenu.loading = true
+  refCompareMenu.open = true
+
+  try {
+    await fetchVendorRefFilesMeta()
+    let data: any = null
+    if (vendor === 'sophos') {
+      data = await resolveSophosCardCompare(enriched)
+    } else if (vendor === 'kaspersky') {
+      data = await resolveKasperskyCardCompare(enriched)
+    } else if (vendor === 'acronis') {
+      data = await resolveAcronisCardCompare(enriched)
+    }
+    if (data) {
+      refCompareMenu.sku = data.sku || data.skuFor || refCompareMenu.sku
+      refCompareMenu.band = data.band || refCompareMenu.band
+      refCompareMenu.options = buildRefCompareOptionsForVendor(vendor, data)
+    }
+    if (vendorRefLoadError.value[vendor]) {
+      refCompareMenu.errorMsg = vendorRefLoadError.value[vendor]
+    }
+  } catch (err: any) {
+    refCompareMenu.errorMsg = 'Không thể tải dữ liệu đối chiếu: ' + (err?.message || err)
+  } finally {
+    refCompareMenu.loading = false
+  }
+}
+
+const selectRefCompareOption = async (opt: RefCompareOption) => {
+  refCompareMenu.open = false
+  await openCompareOfficePreview({
+    vendor: opt.vendor,
+    role: opt.role,
+    sheet: opt.sheet,
+    rowNum: opt.rowNum,
+    colLetter: opt.colLetter,
+    sku: opt.sku
+  })
+}
+
 function unitPrice(i: any) {
   const gia = donGiaSauOff(i)
   const tg = toNum(i.Ti_gia, 1)
@@ -5500,6 +7016,14 @@ function withOriginalPriceFields(item: HangHoa & { So_luong: number }) {
   if (it._gia_hardware_goc == null) it._gia_hardware_goc = toNum(it.gia_hardware, 0)
   if (it._gia_nhap_goc == null) it._gia_nhap_goc = toNum(it.gia_nhap, 0)
   if (it._muc_phan_tram_off_goc == null) it._muc_phan_tram_off_goc = toNum(it.muc_phan_tram_off, 0)
+
+  if (it._Don_gia_kho == null) it._Don_gia_kho = toNum(it._Don_gia_goc ?? it.Don_gia, 0)
+  if (it._Gia_tieu_chuan_kho == null) it._Gia_tieu_chuan_kho = toNum(it._Gia_tieu_chuan_goc ?? it.Gia_tieu_chuan, 0)
+  if (it._Ti_gia_kho == null) it._Ti_gia_kho = toNum(it._Ti_gia_goc ?? it.Ti_gia, 1)
+  if (it._Thue_VAT_kho == null) it._Thue_VAT_kho = toNum(it._Thue_VAT_goc ?? it.Thue_VAT, 0)
+  if (it._gia_hardware_kho == null) it._gia_hardware_kho = toNum(it._gia_hardware_goc ?? it.gia_hardware, 0)
+  if (it._gia_nhap_kho == null) it._gia_nhap_kho = toNum(it._gia_nhap_goc ?? it.gia_nhap, 0)
+  if (it._muc_phan_tram_off_kho == null) it._muc_phan_tram_off_kho = toNum(it._muc_phan_tram_off_goc ?? it.muc_phan_tram_off, 0)
   return item
 }
 
@@ -5513,7 +7037,9 @@ function cloneHang(h: HangHoa, qty = 1): HangHoa & { So_luong: number } {
 
 function getGocNumber(i: any, key: string, fallback = 0) {
   const v = i?.[key]
-  return Number.isFinite(Number(v)) ? Number(v) : fallback
+  if (v === undefined || v === null || v === '') return fallback
+  const n = Number(v)
+  return Number.isFinite(n) ? n : fallback
 }
 
 function donGiaLPGoc(i: any) {
@@ -5546,6 +7072,21 @@ function standardPriceRaw(i: any) {
   return quoteCurrency.value === 'VND' ? roundVndByMode(raw, getItemOrFieldRounding(i, 'gia_tieu_chuan')) : raw
 }
 
+function listPriceVndRaw(i: any, includeGiaNhap = false) {
+  const tg = getGocNumber(i, '_Ti_gia_goc', toNum(i.Ti_gia, 1)) || 1
+  const nhap = getGocNumber(i, '_gia_nhap_goc', toNum(i.gia_nhap, 0))
+  const base = donGiaLPGoc(i) + (includeGiaNhap ? nhap : 0)
+  const raw = round2(base * tg)
+  return quoteCurrency.value === 'VND' ? roundVndByMode(raw, getItemOrFieldRounding(i, 'list_price')) : raw
+}
+
+function giaNhapVndRaw(i: any) {
+  const tg = getGocNumber(i, '_Ti_gia_goc', toNum(i.Ti_gia, 1)) || 1
+  const nhap = getGocNumber(i, '_gia_nhap_goc', toNum(i.gia_nhap, 0))
+  const raw = round2(nhap * tg)
+  return quoteCurrency.value === 'VND' ? roundVndByMode(raw, getItemOrFieldRounding(i, 'gia_nhap')) : raw
+}
+
 function lineTruocThueRaw(i: any) {
   const raw = round2(unitPriceRaw(i) * toNum(i.So_luong, 1))
   return quoteCurrency.value === 'VND' ? roundVndByMode(raw, getItemOrFieldRounding(i, 'tt_truoc_thue')) : raw
@@ -5566,6 +7107,80 @@ function lineLoiNhuanRaw(i: any) {
   return round2((unitPriceRaw(i) - standardPriceRaw(i)) * toNum(i.So_luong, 1))
 }
 
+/* ===== BÁO GIÁ GỐC (KHO / CATALOG) HELPERS ===== */
+function donGiaLPKho(i: any) {
+  const hardware = getGocNumber(i, '_gia_hardware_kho', getGocNumber(i, '_gia_hardware_goc', toNum(i.gia_hardware, 0)))
+  const donGiaKho = getGocNumber(i, '_Don_gia_kho', getGocNumber(i, '_Don_gia_goc', toNum(i.Don_gia, 0)))
+  return hardware + donGiaKho
+}
+
+function donGiaSauOffKho(i: any) {
+  const lp = donGiaLPKho(i)
+  const pctOff = getGocNumber(i, '_muc_phan_tram_off_kho', getGocNumber(i, '_muc_phan_tram_off_goc', toNum(i.muc_phan_tram_off, 0)))
+  const discounted = lp * (1 - pctOff / 100)
+  const nhap = getGocNumber(i, '_gia_nhap_kho', getGocNumber(i, '_gia_nhap_goc', toNum(i.gia_nhap, 0)))
+  return discounted + nhap
+}
+
+function vatKho(i: any) {
+  return getGocNumber(i, '_Thue_VAT_kho', getGocNumber(i, '_Thue_VAT_goc', toNum(i.Thue_VAT, 0)))
+}
+
+function unitPriceKho(i: any) {
+  const tg = getGocNumber(i, '_Ti_gia_kho', getGocNumber(i, '_Ti_gia_goc', toNum(i.Ti_gia, 1)))
+  const raw = round2(donGiaSauOffKho(i) * tg)
+  return quoteCurrency.value === 'VND' ? roundVndByMode(raw, getItemOrFieldRounding(i, 'don_gia_kh')) : raw
+}
+
+function standardPriceKho(i: any) {
+  const tg = getGocNumber(i, '_Ti_gia_kho', getGocNumber(i, '_Ti_gia_goc', toNum(i.Ti_gia, 1)))
+  const gt = getGocNumber(i, '_Gia_tieu_chuan_kho', getGocNumber(i, '_Gia_tieu_chuan_goc', toNum(i.Gia_tieu_chuan, 0)))
+  const raw = round2(gt * tg)
+  return quoteCurrency.value === 'VND' ? roundVndByMode(raw, getItemOrFieldRounding(i, 'gia_tieu_chuan')) : raw
+}
+
+function listPriceVndKho(i: any, includeGiaNhap = false) {
+  const tg = getGocNumber(i, '_Ti_gia_kho', getGocNumber(i, '_Ti_gia_goc', toNum(i.Ti_gia, 1))) || 1
+  const nhap = getGocNumber(i, '_gia_nhap_kho', getGocNumber(i, '_gia_nhap_goc', toNum(i.gia_nhap, 0)))
+  const base = donGiaLPKho(i) + (includeGiaNhap ? nhap : 0)
+  const raw = round2(base * tg)
+  return quoteCurrency.value === 'VND' ? roundVndByMode(raw, getItemOrFieldRounding(i, 'list_price')) : raw
+}
+
+function giaNhapVndKho(i: any) {
+  const tg = getGocNumber(i, '_Ti_gia_kho', getGocNumber(i, '_Ti_gia_goc', toNum(i.Ti_gia, 1))) || 1
+  const nhap = getGocNumber(i, '_gia_nhap_kho', getGocNumber(i, '_gia_nhap_goc', toNum(i.gia_nhap, 0)))
+  const raw = round2(nhap * tg)
+  return quoteCurrency.value === 'VND' ? roundVndByMode(raw, getItemOrFieldRounding(i, 'gia_nhap')) : raw
+}
+
+function lineTruocThueKho(i: any) {
+  const raw = round2(unitPriceKho(i) * toNum(i.So_luong, 1))
+  return quoteCurrency.value === 'VND' ? roundVndByMode(raw, getItemOrFieldRounding(i, 'tt_truoc_thue')) : raw
+}
+
+function lineVATKho(i: any) {
+  const vat = vatKho(i)
+  const raw = round2((lineTruocThueKho(i) * vat) / 100)
+  return quoteCurrency.value === 'VND' ? roundVndByMode(raw, getItemOrFieldRounding(i, 'vat')) : raw
+}
+
+function lineSauThueKho(i: any) {
+  const raw = round2(lineTruocThueKho(i) + lineVATKho(i))
+  return quoteCurrency.value === 'VND' ? roundVndByMode(raw, getItemOrFieldRounding(i, 'tt_sau_thue')) : raw
+}
+
+function lineLoiNhuanKho(i: any) {
+  return round2((unitPriceKho(i) - standardPriceKho(i)) * toNum(i.So_luong, 1))
+}
+
+function lineLoiNhuanPctKho(i: any) {
+  const price = unitPriceKho(i)
+  if (price <= 0) return ''
+  const base = standardPriceKho(i)
+  return (((price - base) / price) * 100).toFixed(2)
+}
+
 /* Chênh lệch giá "hiệu dụng" trong modal chỉnh sửa:
    Chỉ đơn giản là sự khác biệt giữa Giá Báo Khách và Giá Thực Tế. */
 function itemChenhLechHieuDung(i: any) {
@@ -5583,6 +7198,67 @@ const totalsContract = computed(() => {
     const lpVnd = donGiaLPGoc(i) * tg
     const pctOff = getGocNumber(i, '_muc_phan_tram_off_goc', toNum(i.muc_phan_tram_off, 0))
     off += lpVnd * (pctOff / 100) * toNum(i.So_luong, 1)
+  })
+  return {
+    truoc: round2(truoc),
+    vat: round2(vat),
+    sau: round2(truoc + vat),
+    loi: round2(loi),
+    off: round2(off)
+  }
+})
+
+const totalsContractUSD = computed(() => {
+  let truoc = 0, vat = 0, loi = 0, off = 0
+  selectedItems.value.forEach(i => {
+    const tg = getGocNumber(i, '_Ti_gia_goc', toNum(i.Ti_gia, 1)) || 1
+    truoc += lineTruocThueRaw(i) / tg
+    vat += lineVATRaw(i) / tg
+    loi += lineLoiNhuanRaw(i) / tg
+    const lp = donGiaLPGoc(i)
+    const pctOff = getGocNumber(i, '_muc_phan_tram_off_goc', toNum(i.muc_phan_tram_off, 0))
+    off += lp * (pctOff / 100) * toNum(i.So_luong, 1)
+  })
+  return {
+    truoc: round2(truoc),
+    vat: round2(vat),
+    sau: round2(truoc + vat),
+    loi: round2(loi),
+    off: round2(off)
+  }
+})
+
+const totalsOrigin = computed(() => {
+  let truoc = 0, vat = 0, loi = 0, off = 0
+  selectedItems.value.forEach(i => {
+    truoc += lineTruocThueKho(i)
+    vat += lineVATKho(i)
+    loi += lineLoiNhuanKho(i)
+
+    const tg = getGocNumber(i, '_Ti_gia_kho', getGocNumber(i, '_Ti_gia_goc', toNum(i.Ti_gia, 1)))
+    const lpVnd = donGiaLPKho(i) * tg
+    const pctOff = getGocNumber(i, '_muc_phan_tram_off_kho', getGocNumber(i, '_muc_phan_tram_off_goc', toNum(i.muc_phan_tram_off, 0)))
+    off += lpVnd * (pctOff / 100) * toNum(i.So_luong, 1)
+  })
+  return {
+    truoc: round2(truoc),
+    vat: round2(vat),
+    sau: round2(truoc + vat),
+    loi: round2(loi),
+    off: round2(off)
+  }
+})
+
+const totalsOriginUSD = computed(() => {
+  let truoc = 0, vat = 0, loi = 0, off = 0
+  selectedItems.value.forEach(i => {
+    const tg = getGocNumber(i, '_Ti_gia_kho', getGocNumber(i, '_Ti_gia_goc', toNum(i.Ti_gia, 1))) || 1
+    truoc += lineTruocThueKho(i) / tg
+    vat += lineVATKho(i) / tg
+    loi += lineLoiNhuanKho(i) / tg
+    const lp = donGiaLPKho(i)
+    const pctOff = getGocNumber(i, '_muc_phan_tram_off_kho', getGocNumber(i, '_muc_phan_tram_off_goc', toNum(i.muc_phan_tram_off, 0)))
+    off += lp * (pctOff / 100) * toNum(i.So_luong, 1)
   })
   return {
     truoc: round2(truoc),
@@ -5889,9 +7565,17 @@ function buildHopDongTongQuatRow(
 function buildHopDongChiTietRows() {
   return selectedItems.value.map(it => {
     const tg = toNum(it.Ti_gia, 1)
+    const tgGoc = getGocNumber(it, '_Ti_gia_goc', tg)
 
     const donGiaToSave = toNum(it.Don_gia, 0) * tg
     const giaTCToSave  = toNum(it.Gia_tieu_chuan, 0) * tg
+    const donGiaGocUSD = getGocNumber(it, '_Don_gia_goc', toNum(it.Don_gia, 0))
+    const donGiaGocVND = donGiaGocUSD * tgGoc
+    const pctOffGoc = getGocNumber(it, '_muc_phan_tram_off_goc', toNum(it.muc_phan_tram_off, 0))
+    const hwGoc = getGocNumber(it, '_gia_hardware_goc', toNum(it.gia_hardware, 0))
+    const nhapGoc = getGocNumber(it, '_gia_nhap_goc', toNum(it.gia_nhap, 0))
+    const donGiaKho = getGocNumber(it, '_Don_gia_kho', donGiaGocUSD)
+    const pctOffKho = getGocNumber(it, '_muc_phan_tram_off_kho', pctOffGoc)
 
     return [
       maHopDong.value,
@@ -5908,7 +7592,7 @@ function buildHopDongChiTietRows() {
       it.License_duration || '',
       it.DVT || '',
       giaTCToSave,                 // [13] Gia_tieu_chuan (VND)
-      donGiaToSave,                // [14] Don_gia (VND)
+      donGiaToSave,                // [14] Don_gia (VND - Giá hợp đồng)
       'VND',                       // [15] Don_vi_tien_te
       1,                           // [16] Ti_gia (lưu VND thì ti_gia=1)
       toNum(it.Thue_VAT, 0),       // [17] Thue_VAT
@@ -5922,7 +7606,7 @@ function buildHopDongChiTietRows() {
       'USD',                              // [23] don_vi_tien_te_USD
       tg,                                 // [24] Ti_giaUSD
       toNum(it.Gia_tieu_chuan, 0),        // [25] Gia_tieu_chuanUSD (giá gốc USD)
-      toNum(it.Don_gia, 0),               // [26] Don_giaUS (giá gốc USD)
+      toNum(it.Don_gia, 0),               // [26] Don_giaUS (giá hợp đồng USD)
       toNum(it.gia_nhap, 0),              // [27] gia_nhapUSD (giá gốc USD)
       // ✅ 2 CỘT DATE
       (it as any).start_date || '',       // [28] start_date
@@ -5931,7 +7615,15 @@ function buildHopDongChiTietRows() {
       (it as any).thoi_han_bao_hanh || '', // [31] thoi_gian_bao_hanh
       (it as any).volume || '',            // [32] volume
       (it as any).Description || '',       // [33] Description
-      it.sku_code || ''                    // [34] sku_code
+      it.sku_code || '',                   // [34] sku_code
+      // ✅ 7 CỘT SNAPSHOT GIÁ KHÁCH (_goc) & GIÁ GỐC KHO (_kho)
+      donGiaGocVND,                        // [35] Don_gia_goc (VND)
+      donGiaGocUSD,                        // [36] Don_gia_goc_USD
+      pctOffGoc,                           // [37] muc_phan_tram_off_goc
+      hwGoc,                               // [38] gia_hardware_goc
+      nhapGoc,                             // [39] gia_nhap_goc
+      donGiaKho,                           // [40] Don_gia_kho
+      pctOffKho                            // [41] muc_phan_tram_off_kho
     ]
   })
 }
@@ -6618,7 +8310,7 @@ async function handleExternalRouteAndCloneActions() {
       if (metaRaw) {
         const meta = JSON.parse(metaRaw)
         chietKhauTruocThuePct.value = meta.chietKhauTruocThuePct || 0
-        thueChenhLechPct.value = meta.thueChenhLechPct || 0
+        thueChenhLechPct.value = meta.thueChenhLechPct !== undefined ? toNum(meta.thueChenhLechPct, 25) : 25
 
         if (meta.structure && String(meta.structure).trim().startsWith('[')) {
           try {
@@ -9809,15 +11501,20 @@ function addFromCardModal() {
     if (hadCardChanges) {
       existing.Don_gia = toNum(cardEdit.value.Don_gia, 0)
       existing._Don_gia_goc = toNum(cardEdit.value.Don_gia, 0)
+      existing._Don_gia_kho = toNum(cardEdit.value.Don_gia, 0)
       existing.Gia_tieu_chuan = toNum(cardEdit.value.Gia_tieu_chuan, 0)
       existing._Gia_tieu_chuan_goc = toNum(cardEdit.value.Gia_tieu_chuan, 0)
+      existing._Gia_tieu_chuan_kho = toNum(cardEdit.value.Gia_tieu_chuan, 0)
       existing.gia_nhap = toNum(cardEdit.value.gia_nhap, 0)
       existing._gia_nhap_goc = toNum(cardEdit.value.gia_nhap, 0)
+      existing._gia_nhap_kho = toNum(cardEdit.value.gia_nhap, 0)
       existing.Thue_VAT = toNum(cardEdit.value.Thue_VAT, 0)
       existing._Thue_VAT_goc = toNum(cardEdit.value.Thue_VAT, 0)
+      existing._Thue_VAT_kho = toNum(cardEdit.value.Thue_VAT, 0)
       existing.Don_vi_tien_te = cardEdit.value.Don_vi_tien_te || 'VND'
       existing.Ti_gia = toNum(cardEdit.value.Ti_gia, 1)
       existing._Ti_gia_goc = toNum(cardEdit.value.Ti_gia, 1)
+      existing._Ti_gia_kho = toNum(cardEdit.value.Ti_gia, 1)
       existing.danh_sach_file = normalizeProductFileHistory(cardEdit.value.danh_sach_file)
     }
     highlightIdx = foundIdx;
@@ -9830,6 +11527,13 @@ function addFromCardModal() {
     rawClone._gia_hardware_goc = toNum(rawClone.gia_hardware, 0)
     rawClone._gia_nhap_goc = toNum(rawClone.gia_nhap, 0)
     rawClone._muc_phan_tram_off_goc = toNum(rawClone.muc_phan_tram_off, 0)
+    rawClone._Don_gia_kho = toNum(rawClone.Don_gia, 0)
+    rawClone._Gia_tieu_chuan_kho = toNum(rawClone.Gia_tieu_chuan, 0)
+    rawClone._Ti_gia_kho = toNum(rawClone.Ti_gia, 1)
+    rawClone._Thue_VAT_kho = toNum(rawClone.Thue_VAT, 0)
+    rawClone._gia_hardware_kho = toNum(rawClone.gia_hardware, 0)
+    rawClone._gia_nhap_kho = toNum(rawClone.gia_nhap, 0)
+    rawClone._muc_phan_tram_off_kho = toNum(rawClone.muc_phan_tram_off, 0)
     const cloned = withOriginalPriceFields(rawClone);
     cloned.Ma_hang = resolvedMaHang;
     highlightIdx = insertItemIntoGroup(cloned);
@@ -10012,6 +11716,254 @@ const totalsUSD = computed(() => {
   }
 })
 
+/* ======================
+   ✅ CHẾ ĐỘ HIỂN THỊ BẢNG BÁO GIÁ (3 TẦNG GIÁ: GỐC KHO | KHÁCH | HỢP ĐỒNG | ĐỐI CHIẾU 3 GIÁ)
+====================== */
+type QuotePriceViewMode = 'origin' | 'customer' | 'contract' | 'compare'
+const quotePriceViewMode = ref<QuotePriceViewMode>('customer')
+const showQuotePriceViewDropdown = ref(false)
+const showMobileQuoteModeSheet = ref(false)
+
+const quotePriceViewOptions: {
+  value: QuotePriceViewMode
+  label: string
+  shortLabel: string
+  desc: string
+  badgeColor: 'amber' | 'blue' | 'emerald' | 'purple'
+}[] = [
+  {
+    value: 'origin',
+    label: 'Báo giá gốc',
+    shortLabel: 'Báo giá gốc',
+    desc: 'Giá gốc kho / Catalog ban đầu khi đưa vào báo giá',
+    badgeColor: 'amber'
+  },
+  {
+    value: 'customer',
+    label: 'Báo giá khách',
+    shortLabel: 'Báo giá khách',
+    desc: 'Giá bán thực tế cho khách hàng (Sửa giá thường)',
+    badgeColor: 'blue'
+  },
+  {
+    value: 'contract',
+    label: 'Báo giá trên hợp đồng',
+    shortLabel: 'Báo giá hợp đồng',
+    desc: 'Giá kê trên hợp đồng (Đã cộng chênh lệch / Kê giá)',
+    badgeColor: 'emerald'
+  },
+  {
+    value: 'compare',
+    label: 'Đối chiếu 3 giá (List - Khách - HĐ)',
+    shortLabel: 'Đối chiếu 3 giá',
+    desc: 'Hiển thị song song Đơn giá & Thành tiền của 3 tầng giá giống mẫu Excel',
+    badgeColor: 'purple'
+  }
+]
+
+const currentQuotePriceViewOption = computed(() =>
+  quotePriceViewOptions.find(o => o.value === quotePriceViewMode.value) || quotePriceViewOptions[1]
+)
+
+const canShowNormalEditBtn = computed(() => quotePriceViewMode.value !== 'contract')
+
+const activeDonGiaHeaderLabel = computed(() => {
+  if (quotePriceViewMode.value === 'origin') return 'ĐƠN GIÁ LIST'
+  if (quotePriceViewMode.value === 'customer' || quotePriceViewMode.value === 'compare') return 'ĐƠN GIÁ KHÁCH'
+  return 'ĐƠN GIÁ HỢP ĐỒNG'
+})
+
+const activeDonGiaFieldLabel = computed(() => {
+  if (quotePriceViewMode.value === 'origin') return 'Đơn giá LIST'
+  if (quotePriceViewMode.value === 'customer' || quotePriceViewMode.value === 'compare') return 'Đơn giá khách'
+  return 'Đơn giá hợp đồng'
+})
+
+const activeListPriceFieldLabel = computed(() => {
+  if (quotePriceViewMode.value === 'origin') return 'List Price (Báo giá gốc)'
+  if (quotePriceViewMode.value === 'customer' || quotePriceViewMode.value === 'compare') return 'List Price (Báo giá khách)'
+  return 'List Price (Hợp đồng)'
+})
+
+const activeLineTruocThueFieldLabel = computed(() => {
+  if (quotePriceViewMode.value === 'origin') return 'TT trước thuế (List)'
+  if (quotePriceViewMode.value === 'customer' || quotePriceViewMode.value === 'compare') return 'TT trước thuế (Khách)'
+  return 'TT trước thuế (HĐ)'
+})
+
+function selectQuotePriceViewMode(mode: QuotePriceViewMode) {
+  quotePriceViewMode.value = mode
+  showQuotePriceViewDropdown.value = false
+  showMobileQuoteModeSheet.value = false
+}
+
+function tableTiGiaKho(i: any) {
+  return getGocNumber(i, '_Ti_gia_kho', getGocNumber(i, '_Ti_gia_goc', toNum(i.Ti_gia, 1)))
+}
+
+function tableTiGiaKhach(i: any) {
+  return getGocNumber(i, '_Ti_gia_goc', toNum(i.Ti_gia, 1))
+}
+
+function tableTiGiaHopDong(i: any) {
+  return toNum(i.Ti_gia, 1)
+}
+
+function tableDisplayDonGiaList(i: any) {
+  return fmtPrice(unitPriceKho(i), tableTiGiaKho(i))
+}
+
+function tableDisplayThanhTienList(i: any) {
+  return fmtPrice(lineTruocThueKho(i), tableTiGiaKho(i))
+}
+
+function tableDisplayDonGiaKhach(i: any) {
+  return fmtPrice(unitPriceRaw(i), tableTiGiaKhach(i))
+}
+
+function tableDisplayThanhTienKhach(i: any) {
+  return fmtPrice(lineTruocThueRaw(i), tableTiGiaKhach(i))
+}
+
+function tableDisplayDonGiaHopDong(i: any) {
+  return fmtPrice(unitPrice(i), tableTiGiaHopDong(i))
+}
+
+function tableDisplayThanhTienHopDong(i: any) {
+  return fmtPrice(lineTruocThue(i), tableTiGiaHopDong(i))
+}
+
+function tableTiGia(i: any) {
+  if (quotePriceViewMode.value === 'origin') {
+    return tableTiGiaKho(i)
+  }
+  if (quotePriceViewMode.value === 'customer' || quotePriceViewMode.value === 'compare') {
+    return tableTiGiaKhach(i)
+  }
+  return tableTiGiaHopDong(i)
+}
+
+function tableStandardPrice(i: any) {
+  if (quotePriceViewMode.value === 'origin') return standardPriceKho(i)
+  if (quotePriceViewMode.value === 'customer' || quotePriceViewMode.value === 'compare') return standardPriceRaw(i)
+  return standardPrice(i)
+}
+
+function tableDisplayGiaTieuChuan(i: any) {
+  return fmtPrice(tableStandardPrice(i), tableTiGia(i))
+}
+
+function tableDisplayGiaTieuChuanPct(i: any) {
+  if (quotePriceViewMode.value === 'origin') {
+    const lp = donGiaLPKho(i)
+    const tc = getGocNumber(i, '_Gia_tieu_chuan_kho', toNum(i.Gia_tieu_chuan, 0))
+    if (!lp || lp === 0) return 0
+    return round2((1 - tc / lp) * 100)
+  }
+  if (quotePriceViewMode.value === 'customer' || quotePriceViewMode.value === 'compare') {
+    return displayGiaTieuChuanPctRaw(i)
+  }
+  return displayGiaTieuChuanPct(i)
+}
+
+function tableListPriceVnd(i: any, includeGiaNhap = false) {
+  if (quotePriceViewMode.value === 'origin') return listPriceVndKho(i, includeGiaNhap)
+  if (quotePriceViewMode.value === 'customer' || quotePriceViewMode.value === 'compare') return listPriceVndRaw(i, includeGiaNhap)
+  return listPriceVnd(i, includeGiaNhap)
+}
+
+function tableDisplayDonGiaLP(i: any) {
+  return fmtPrice(tableListPriceVnd(i, false), tableTiGia(i))
+}
+
+function tableGiaNhapVnd(i: any) {
+  if (quotePriceViewMode.value === 'origin') return giaNhapVndKho(i)
+  if (quotePriceViewMode.value === 'customer' || quotePriceViewMode.value === 'compare') return giaNhapVndRaw(i)
+  return giaNhapVnd(i)
+}
+
+function tableMucOffPct(i: any) {
+  if (quotePriceViewMode.value === 'origin') {
+    return getGocNumber(i, '_muc_phan_tram_off_kho', getGocNumber(i, '_muc_phan_tram_off_goc', toNum(i.muc_phan_tram_off, 0)))
+  }
+  if (quotePriceViewMode.value === 'customer' || quotePriceViewMode.value === 'compare') {
+    return getGocNumber(i, '_muc_phan_tram_off_goc', toNum(i.muc_phan_tram_off, 0))
+  }
+  return toNum(i.muc_phan_tram_off, 0)
+}
+
+function tableDisplayMucOffAmount(i: any) {
+  const tg = tableTiGia(i)
+  if (quotePriceViewMode.value === 'origin') {
+    return fmtPrice(donGiaLPKho(i) * (tableMucOffPct(i) / 100) * tg, tg)
+  }
+  if (quotePriceViewMode.value === 'customer' || quotePriceViewMode.value === 'compare') {
+    return fmtPrice(donGiaLPGoc(i) * (tableMucOffPct(i) / 100) * tg, tg)
+  }
+  return displayMucOffAmount(i)
+}
+
+function tableUnitPrice(i: any) {
+  if (quotePriceViewMode.value === 'origin') return unitPriceKho(i)
+  if (quotePriceViewMode.value === 'customer' || quotePriceViewMode.value === 'compare') return unitPriceRaw(i)
+  return unitPrice(i)
+}
+
+function tableDisplayQuoteDonGia(i: any) {
+  return fmtPrice(tableUnitPrice(i), tableTiGia(i))
+}
+
+function tableLineTruocThue(i: any) {
+  if (quotePriceViewMode.value === 'origin') return lineTruocThueKho(i)
+  if (quotePriceViewMode.value === 'customer' || quotePriceViewMode.value === 'compare') return lineTruocThueRaw(i)
+  return lineTruocThue(i)
+}
+
+function tableVatPct(i: any) {
+  if (quotePriceViewMode.value === 'origin') return vatKho(i)
+  if (quotePriceViewMode.value === 'customer' || quotePriceViewMode.value === 'compare') return vatGoc(i)
+  return toNum(i.Thue_VAT, 0)
+}
+
+function tableLineVAT(i: any) {
+  if (quotePriceViewMode.value === 'origin') return lineVATKho(i)
+  if (quotePriceViewMode.value === 'customer' || quotePriceViewMode.value === 'compare') return lineVATRaw(i)
+  return lineVAT(i)
+}
+
+function tableLineSauThue(i: any) {
+  if (quotePriceViewMode.value === 'origin') return lineSauThueKho(i)
+  if (quotePriceViewMode.value === 'customer' || quotePriceViewMode.value === 'compare') return lineSauThueRaw(i)
+  return lineSauThue(i)
+}
+
+function tableLineLoiNhuan(i: any) {
+  if (quotePriceViewMode.value === 'origin') return lineLoiNhuanKho(i)
+  if (quotePriceViewMode.value === 'customer' || quotePriceViewMode.value === 'compare') return lineLoiNhuanRaw(i)
+  return round2((unitPrice(i) - standardPrice(i)) * toNum(i.So_luong, 1))
+}
+
+function tableLineLoiNhuanPct(i: any) {
+  if (quotePriceViewMode.value === 'origin') return lineLoiNhuanPctKho(i)
+  if (quotePriceViewMode.value === 'customer' || quotePriceViewMode.value === 'compare') return lineLoiNhuanPctRaw(i)
+  const price = unitPrice(i)
+  if (price <= 0) return ''
+  const base = standardPrice(i)
+  return (((price - base) / price) * 100).toFixed(2)
+}
+
+const activeTableTotals = computed(() => {
+  if (quotePriceViewMode.value === 'origin') return totalsOrigin.value
+  if (quotePriceViewMode.value === 'customer' || quotePriceViewMode.value === 'compare') return totalsContract.value
+  return totals.value
+})
+
+const activeTableTotalsUSD = computed(() => {
+  if (quotePriceViewMode.value === 'origin') return totalsOriginUSD.value
+  if (quotePriceViewMode.value === 'customer' || quotePriceViewMode.value === 'compare') return totalsContractUSD.value
+  return totalsUSD.value
+})
+
 const chenhLechGia = computed(() => {
   const truoc = toNum(totals.value.truoc, 0)
   const thucTe = toNum(tongGiaThucTe.value, 0)
@@ -10047,6 +11999,325 @@ const conLaiRaw = computed(() => {
 const chietKhauTruocThueRaw = computed(() => {
   const pct = toNum(chietKhauTruocThuePct.value, 0)
   return round2((toNum(tongGiaThucTe.value, 0) * pct) / 100)
+})
+
+/* ======================
+   ✅ 3 KHỐI CHỈ SỐ TÀI CHÍNH & COM (CHẾ ĐỘ ĐỐI CHIẾU 3 GIÁ — TƯƠNG ĐỒNG SALEREPORT)
+====================== */
+const showCompareFinancePanel = ref(true)
+const cmpSrPriceSource = ref<'contract' | 'customer'>(
+  quotePriceViewMode.value === 'customer' ? 'customer' : 'contract'
+)
+
+watch(
+  quotePriceViewMode,
+  (mode) => {
+    if (mode === 'customer') {
+      cmpSrPriceSource.value = 'customer'
+    } else if (mode === 'contract') {
+      cmpSrPriceSource.value = 'contract'
+    }
+  },
+  { immediate: true }
+)
+
+type CmpSrOverrideBucket = {
+  doanhSoBan: number | null
+  giaMua: number | null
+  tongCP: number | null
+  grossCom: number | null
+  netCom: number | null
+  taxPct: number | null
+  predictPct: string
+  _origGross: number | null
+  _origNet: number | null
+  _hasOrigSaved: boolean
+}
+
+function createEmptyCmpSrBucket(): CmpSrOverrideBucket {
+  return {
+    doanhSoBan: null,
+    giaMua: null,
+    tongCP: null,
+    grossCom: null,
+    netCom: null,
+    taxPct: null,
+    predictPct: '',
+    _origGross: null,
+    _origNet: null,
+    _hasOrigSaved: false
+  }
+}
+
+const cmpSrOverridesMap = reactive<{
+  contract: CmpSrOverrideBucket
+  customer: CmpSrOverrideBucket
+}>({
+  contract: createEmptyCmpSrBucket(),
+  customer: createEmptyCmpSrBucket()
+})
+
+const cmpSrOverrides = computed(() => cmpSrOverridesMap[cmpSrPriceSource.value])
+
+function cmpSrRound(val: number): number {
+  const n = Number(val) || 0
+  return quoteCurrency.value === 'USD' ? round2(n) : Math.round(n)
+}
+
+const cmpSrBaseDoanhSoBan = computed(() => {
+  if (cmpSrPriceSource.value === 'customer') {
+    return quoteCurrency.value === 'USD'
+      ? round2(toNum(totalsContractUSD.value.truoc, 0))
+      : Math.round(toNum(totalsContract.value.truoc, 0))
+  }
+  return quoteCurrency.value === 'USD'
+    ? round2(toNum(totalsUSD.value.truoc, 0))
+    : Math.round(toNum(totals.value.truoc, 0))
+})
+
+const cmpSrBaseTongSauVat = computed(() => {
+  if (cmpSrPriceSource.value === 'customer') {
+    return quoteCurrency.value === 'USD'
+      ? round2(toNum(totalsContractUSD.value.sau, 0))
+      : Math.round(toNum(totalsContract.value.sau, 0))
+  }
+  return quoteCurrency.value === 'USD'
+    ? round2(toNum(totalsUSD.value.sau, 0))
+    : Math.round(toNum(totals.value.sau, 0))
+})
+
+const cmpSrBaseGiaMua = computed(() => {
+  return quoteCurrency.value === 'USD'
+    ? round2(toNum(totalsContractUSD.value.truoc, 0) - toNum(totalsContractUSD.value.loi, 0))
+    : Math.round(toNum(totalsContract.value.truoc, 0) - toNum(totalsContract.value.loi, 0))
+})
+
+const cmpSrBaseGrossCom = computed(() => {
+  if (cmpSrPriceSource.value === 'customer') {
+    const ckPct = toNum(chietKhauTruocThuePct.value, 0)
+    if (ckPct <= 0) return 0
+    return quoteCurrency.value === 'USD'
+      ? round2((toNum(totalsContractUSD.value.truoc, 0) * ckPct) / 100)
+      : Math.round((toNum(totalsContract.value.truoc, 0) * ckPct) / 100)
+  }
+  return quoteCurrency.value === 'USD'
+    ? round2(toNum(totalsUSD.value.truoc, 0) - toNum(totalsContractUSD.value.truoc, 0))
+    : Math.round(toNum(totals.value.truoc, 0) - toNum(totalsContract.value.truoc, 0))
+})
+
+const cmpSrBaseTaxPct = computed(() => {
+  return Math.max(0, toNum(thueChenhLechPct.value, 25))
+})
+
+const cmpSrDoanhSoBan = computed(() =>
+  cmpSrOverrides.value.doanhSoBan !== null ? cmpSrOverrides.value.doanhSoBan : cmpSrBaseDoanhSoBan.value
+)
+
+const cmpSrGiaMua = computed(() =>
+  cmpSrOverrides.value.giaMua !== null ? cmpSrOverrides.value.giaMua : cmpSrBaseGiaMua.value
+)
+
+const cmpSrTongCP = computed(() => {
+  if (cmpSrOverrides.value.tongCP !== null) return cmpSrOverrides.value.tongCP
+  if (cmpSrOverrides.value.giaMua !== null) return cmpSrOverrides.value.giaMua
+  return cmpSrBaseGiaMua.value
+})
+
+const cmpSrTaxPct = computed(() => cmpSrBaseTaxPct.value)
+
+const cmpSrGrossCom = computed(() =>
+  cmpSrOverrides.value.grossCom !== null ? cmpSrOverrides.value.grossCom : cmpSrBaseGrossCom.value
+)
+
+const cmpSrNetCom = computed(() => {
+  if (cmpSrOverrides.value.netCom !== null) return cmpSrOverrides.value.netCom
+  return cmpSrRound(cmpSrGrossCom.value * (1 - cmpSrTaxPct.value / 100))
+})
+
+const cmpSrTaxAmount = computed(() =>
+  cmpSrRound(cmpSrGrossCom.value * (cmpSrTaxPct.value / 100))
+)
+
+const cmpSrNetPO = computed(() =>
+  cmpSrRound(cmpSrDoanhSoBan.value - cmpSrGrossCom.value)
+)
+
+const cmpSrNetMargin = computed(() =>
+  cmpSrRound(cmpSrDoanhSoBan.value - cmpSrGrossCom.value - cmpSrTongCP.value)
+)
+
+const cmpSrTongSauVat = computed(() => {
+  if (cmpSrOverrides.value.doanhSoBan !== null) {
+    const vatVal =
+      cmpSrPriceSource.value === 'customer'
+        ? quoteCurrency.value === 'USD'
+          ? round2(toNum(totalsContractUSD.value.vat, 0))
+          : Math.round(toNum(totalsContract.value.vat, 0))
+        : quoteCurrency.value === 'USD'
+          ? round2(toNum(totalsUSD.value.vat, 0))
+          : Math.round(toNum(totals.value.vat, 0))
+    return cmpSrRound(cmpSrOverrides.value.doanhSoBan + vatVal)
+  }
+  return cmpSrBaseTongSauVat.value
+})
+
+const cmpSrNetComOnNetPoPct = computed(() =>
+  cmpSrNetPO.value !== 0 ? (cmpSrNetCom.value / cmpSrNetPO.value) * 100 : 0
+)
+
+const cmpSrNetMarginOnNetPoPct = computed(() =>
+  cmpSrNetPO.value !== 0 ? (cmpSrNetMargin.value / cmpSrNetPO.value) * 100 : 0
+)
+
+const cmpSrNetComOnDsbPct = computed(() =>
+  cmpSrDoanhSoBan.value !== 0 ? (cmpSrNetCom.value / cmpSrDoanhSoBan.value) * 100 : 0
+)
+
+const cmpSrNetMarginOnDsbPct = computed(() =>
+  cmpSrDoanhSoBan.value !== 0 ? (cmpSrNetMargin.value / cmpSrDoanhSoBan.value) * 100 : 0
+)
+
+function fmtCmpSrMoney(val: number): string {
+  return quoteCurrency.value === 'USD' ? formatUSD(val) : formatVND(Math.round(val))
+}
+
+function fmtCmpSrPct(val: number): string {
+  return (Number.isFinite(val) ? val.toFixed(1) : '0.0') + '%'
+}
+
+function onCmpSrFieldChange(
+  field: 'doanhSoBan' | 'giaMua' | 'tongCP' | 'netCom' | 'grossCom' | 'taxPct',
+  rawVal: number | string
+) {
+  const bucket = cmpSrOverrides.value
+  const numVal = toNum(rawVal, 0)
+  const nextVal = field === 'taxPct' ? Math.max(0, round2(numVal)) : cmpSrRound(numVal)
+  const currentVal =
+    field === 'doanhSoBan'
+      ? cmpSrDoanhSoBan.value
+      : field === 'giaMua'
+        ? cmpSrGiaMua.value
+        : field === 'tongCP'
+          ? cmpSrTongCP.value
+          : field === 'netCom'
+            ? cmpSrNetCom.value
+            : field === 'grossCom'
+              ? cmpSrGrossCom.value
+              : cmpSrTaxPct.value
+
+  if (Math.abs(currentVal - nextVal) < 1e-6) return
+
+  if (field === 'taxPct') {
+    thueChenhLechPct.value = nextVal
+  } else {
+    bucket[field] = nextVal
+  }
+  const pct = (field === 'taxPct' ? nextVal : cmpSrTaxPct.value) / 100
+
+  if (field === 'netCom') {
+    if (pct < 1) {
+      bucket.grossCom = cmpSrRound(nextVal / (1 - pct))
+    }
+  } else if (field === 'grossCom' || field === 'taxPct') {
+    const gc = field === 'grossCom' ? nextVal : cmpSrGrossCom.value
+    bucket.netCom = cmpSrRound(gc * (1 - pct))
+  }
+
+  bucket.predictPct = ''
+  bucket._origGross = null
+  bucket._origNet = null
+  bucket._hasOrigSaved = false
+}
+
+watch(thueChenhLechPct, newPct => {
+  const tp = Math.max(0, toNum(newPct, 0)) / 100
+  ;(['contract', 'customer'] as const).forEach(mode => {
+    const b = cmpSrOverridesMap[mode]
+    if (mode === cmpSrPriceSource.value && b.predictPct !== '') {
+      applyCmpSrPredictPct(b.predictPct)
+    } else if (b.netCom !== null) {
+      const gc = b.grossCom !== null ? b.grossCom : cmpSrBaseGrossCom.value
+      b.netCom = cmpSrRound(gc * (1 - tp))
+    }
+  })
+})
+
+function applyCmpSrPredictPct(rawStr: string) {
+  const bucket = cmpSrOverrides.value
+  bucket.predictPct = rawStr
+
+  if (rawStr === '') {
+    if (bucket._hasOrigSaved) {
+      bucket.grossCom = bucket._origGross
+      bucket.netCom = bucket._origNet
+      bucket._origGross = null
+      bucket._origNet = null
+      bucket._hasOrigSaved = false
+    }
+    return
+  }
+
+  const normalized = rawStr.replace(/,/g, '.')
+  if (normalized === '-' || normalized === '.' || normalized === '-.') return
+  const desiredPct = Number(normalized)
+  if (isNaN(desiredPct)) return
+
+  if (!bucket._hasOrigSaved) {
+    bucket._origGross = bucket.grossCom
+    bucket._origNet = bucket.netCom
+    bucket._hasOrigSaved = true
+  }
+
+  const pct = desiredPct / 100
+  const tax = cmpSrTaxPct.value / 100
+  const dsb = cmpSrDoanhSoBan.value
+  const tcp = cmpSrTongCP.value
+
+  const targetNetMargin = dsb * pct
+  const requiredGrossCom = cmpSrRound(dsb - tcp - targetNetMargin)
+  const requiredNetCom = cmpSrRound(requiredGrossCom * (1 - tax))
+
+  bucket.grossCom = requiredGrossCom
+  bucket.netCom = requiredNetCom
+}
+
+function resetCmpSrPredictPct() {
+  applyCmpSrPredictPct('')
+}
+
+function onCmpSrPredictInput(e: Event) {
+  const target = e.target as HTMLInputElement
+  const cleaned = target.value.replace(/[^0-9.,-]/g, '')
+  if (target.value !== cleaned) {
+    target.value = cleaned
+  }
+  applyCmpSrPredictPct(cleaned)
+}
+
+function resetCurrentCmpSrBucket() {
+  Object.assign(cmpSrOverridesMap[cmpSrPriceSource.value], createEmptyCmpSrBucket())
+}
+
+function resetAllCmpSrOverrides() {
+  Object.assign(cmpSrOverridesMap.contract, createEmptyCmpSrBucket())
+  Object.assign(cmpSrOverridesMap.customer, createEmptyCmpSrBucket())
+}
+
+const hasCmpSrOverrides = computed(() => {
+  const b = cmpSrOverrides.value
+  return (
+    b.doanhSoBan !== null ||
+    b.giaMua !== null ||
+    b.tongCP !== null ||
+    b.grossCom !== null ||
+    b.netCom !== null ||
+    b.taxPct !== null ||
+    b.predictPct !== ''
+  )
+})
+
+watch(quoteCurrency, () => {
+  resetAllCmpSrOverrides()
 })
 /* ======================
   PRICE DISPLAY
@@ -10497,14 +12768,17 @@ function openQuoteEdit(idx: number, focusField?: string) {
     activeQuoteEditTab.value = 'info'
   }
 
-  // Phát hiện Don_gia / gia_hardware đã bị thay đổi trước đó (ví dụ: điều chỉnh tổng/nhóm/item)
-  // → giữ lại chênh lệch, không cho saveQuoteEdit sync _goc
+  // Phát hiện Don_gia / gia_hardware / muc_phan_tram_off đã có chênh lệch trước đó
+  // → giữ lại chênh lệch, không cho saveQuoteEdit ghi đè _goc
   _adjustedFields.clear()
-  if (toNum((it as any)._Don_gia_goc, 0) !== toNum(it.Don_gia, 0)) {
+  if (getGocNumber(it, '_Don_gia_goc', toNum(it.Don_gia, 0)) !== toNum(it.Don_gia, 0)) {
     _adjustedFields.add('Don_gia')
   }
-  if (toNum((it as any)._gia_hardware_goc, 0) !== toNum(it.gia_hardware, 0)) {
+  if (getGocNumber(it, '_gia_hardware_goc', toNum(it.gia_hardware, 0)) !== toNum(it.gia_hardware, 0)) {
     _adjustedFields.add('gia_hardware')
+  }
+  if (getGocNumber(it, '_muc_phan_tram_off_goc', toNum(it.muc_phan_tram_off, 0)) !== toNum(it.muc_phan_tram_off, 0)) {
+    _adjustedFields.add('muc_phan_tram_off')
   }
 
   showQuoteEditModal.value = true
@@ -10798,23 +13072,85 @@ function saveQuoteEditRaw() {
 const quoteEditMucOffGoc = computed({
   get() {
     if (!quoteEdit.value) return 0;
-    return getGocNumber(quoteEdit.value, '_muc_phan_tram_off_goc', toNum(quoteEdit.value.muc_phan_tram_off, 0));
+    if (quotePriceViewMode.value === 'origin') {
+      return getGocNumber(quoteEdit.value, '_muc_phan_tram_off_kho', getGocNumber(quoteEdit.value, '_muc_phan_tram_off_goc', toNum(quoteEdit.value.muc_phan_tram_off, 0)));
+    }
+    if (quotePriceViewMode.value === 'customer' || quotePriceViewMode.value === 'compare') {
+      return getGocNumber(quoteEdit.value, '_muc_phan_tram_off_goc', toNum(quoteEdit.value.muc_phan_tram_off, 0));
+    }
+    return toNum(quoteEdit.value.muc_phan_tram_off, 0);
   },
   set(val) {
     if (!quoteEdit.value) return;
-    // Khi user tự gõ % off mới -> Sửa thường
-    quoteEdit.value._muc_phan_tram_off_goc = undefined;
-    quoteEdit.value._Don_gia_goc = undefined;
-    quoteEdit.value._Ti_gia_goc = undefined;
-    quoteEdit.value._gia_nhap_goc = undefined;
-    quoteEdit.value._gia_hardware_goc = undefined;
-    
-    quoteEdit.value.muc_phan_tram_off = Number(val) || 0;
+    const nextPct = Number(val) || 0;
+    if (quotePriceViewMode.value === 'contract') {
+      quoteEdit.value.muc_phan_tram_off = nextPct;
+      _adjustedFields.add('muc_phan_tram_off');
+    } else {
+      const hasExistingContractDiff = Math.abs(Math.round(lineTruocThue(quoteEdit.value) - lineTruocThueRaw(quoteEdit.value))) > 0;
+      quoteEdit.value._muc_phan_tram_off_goc = nextPct;
+      if (!hasExistingContractDiff) {
+        quoteEdit.value.muc_phan_tram_off = nextPct;
+      } else {
+        _adjustedFields.add('muc_phan_tram_off');
+      }
+      if (quotePriceViewMode.value === 'origin') {
+        quotePriceViewMode.value = 'customer';
+      }
+    }
   }
 });
 
+const quoteEditDonGiaUsdModel = computed({
+  get() {
+    if (!quoteEdit.value) return 0;
+    if (quotePriceViewMode.value === 'origin') {
+      return getGocNumber(quoteEdit.value, '_Don_gia_kho', getGocNumber(quoteEdit.value, '_Don_gia_goc', toNum(quoteEdit.value.Don_gia, 0)));
+    }
+    if (quotePriceViewMode.value === 'customer' || quotePriceViewMode.value === 'compare') {
+      return getGocNumber(quoteEdit.value, '_Don_gia_goc', toNum(quoteEdit.value.Don_gia, 0));
+    }
+    return toNum(quoteEdit.value.Don_gia, 0);
+  },
+  set(val) {
+    if (!quoteEdit.value) return;
+    const nextUsd = Math.max(0, Number(val) || 0);
+    if (quotePriceViewMode.value === 'contract') {
+      quoteEdit.value.Don_gia = nextUsd;
+      _adjustedFields.add('Don_gia');
+    } else {
+      const hasExistingContractDiff = Math.abs(Math.round(lineTruocThue(quoteEdit.value) - lineTruocThueRaw(quoteEdit.value))) > 0;
+      quoteEdit.value._Don_gia_goc = nextUsd;
+      if (!hasExistingContractDiff) {
+        quoteEdit.value.Don_gia = nextUsd;
+      }
+      _adjustedFields.add('Don_gia');
+      if (quotePriceViewMode.value === 'origin') {
+        quotePriceViewMode.value = 'customer';
+      }
+    }
+  }
+});
+
+function solveDonGiaForTargetUnitPriceVnd(
+  targetUPVnd: number,
+  tg: number,
+  hw: number,
+  nhap: number,
+  pctOff: number
+): number {
+  const safeTg = tg > 0 ? tg : 1;
+  const targetDonGiaSauOff = targetUPVnd / safeTg;
+  const offMul = 1 - pctOff / 100;
+  if (Math.abs(offMul) > 1e-6) {
+    const targetLP = (targetDonGiaSauOff - nhap) / offMul;
+    return Math.max(0, targetLP - hw);
+  }
+  return Math.max(0, targetDonGiaSauOff - hw);
+}
+
 /* ======================
-   ✅ ĐIỀU CHỈNH GIÁ LIC
+   ĐIỀU CHỈNH GIÁ LIC
 ====================== */
 const adjustPriceModal = ref({
   show: false,
@@ -10829,6 +13165,11 @@ const adjustPriceModal = ref({
   numberValue: 0,
   numberSign: 1 as 1 | -1,
   isNormalEdit: false, // true = sửa thường (cập nhật giá thực tế, không tạo chênh lệch)
+  existingCustomerTotal: 0, // Giá báo khách thực tế (Cố định khi Điều chỉnh hợp đồng)
+  existingContractTotal: 0, // Giá trên hợp đồng hiện tại (trước khi sửa)
+  existingContractDiff: 0,  // Mức chênh lệch hợp đồng hiện tại (Giá HĐ - Giá khách)
+  normalEditContractBehavior: 'keep_contract' as 'keep_contract' | 'keep_diff', // Mặc định: giữ nguyên Giá hợp đồng
+  isResetToCustomerPrice: false, // Đánh dấu thao tác "Xóa lệch (Về bằng Giá khách)" trong modal Điều chỉnh
 })
 
 const adjustPercentPresetsDecrease = [-5, -10, -15] as const
@@ -10837,6 +13178,131 @@ const adjustPercentPresetsIncrease = [5, 10, 15] as const
 const isAdjustChenhLechField = computed(() =>
   ['item_chenh_lech', 'total_chenh_lech'].includes(adjustPriceModal.value.targetField || '')
 )
+
+const adjustMetricType = computed<
+  'unit_price' | 'line_total' | 'group_total' | 'all_total' | 'list_price' | 'hardware_price' | 'import_price' | 'diff'
+>(() => {
+  const { mode, targetField } = adjustPriceModal.value
+  if (mode === 'field') {
+    if (targetField === 'unit_price_kh') return 'unit_price'
+    if (targetField === 'line_truoc_thue') return 'line_total'
+    if (targetField === 'Don_gia') return 'list_price'
+    if (targetField === 'gia_hardware') return 'hardware_price'
+    if (targetField === 'gia_nhap') return 'import_price'
+    if (targetField === 'item_chenh_lech') return 'diff'
+  }
+  if (mode === 'item') return 'line_total'
+  if (mode === 'group') return 'group_total'
+  if (mode === 'all') {
+    return targetField === 'total_chenh_lech' ? 'diff' : 'all_total'
+  }
+  return 'line_total'
+})
+
+const adjustMetricBaseNoun = computed(() => {
+  switch (adjustMetricType.value) {
+    case 'unit_price':
+      return 'Đơn giá'
+    case 'line_total':
+    case 'group_total':
+    case 'all_total':
+      return 'TT trước thuế'
+    case 'list_price':
+      return 'List Price'
+    case 'hardware_price':
+      return 'Giá Hardware'
+    case 'import_price':
+      return 'Giá nhập'
+    case 'diff':
+      return 'Chênh lệch'
+  }
+})
+
+const adjustMetricShortTag = computed(() =>
+  ['unit_price', 'list_price', 'hardware_price', 'import_price'].includes(adjustMetricType.value) ? 'ĐG' : 'TT'
+)
+
+const adjustScopeDisplayName = computed(() => {
+  const { mode, targetName, isNormalEdit } = adjustPriceModal.value
+  const isOrigin = quotePriceViewMode.value === 'origin'
+  switch (adjustMetricType.value) {
+    case 'unit_price':
+      return isNormalEdit
+        ? (isOrigin ? 'Đơn giá LIST → Đơn giá khách' : 'Đơn giá khách (1 ĐVT)')
+        : 'Đơn giá hợp đồng (1 ĐVT)'
+    case 'line_total':
+      return isNormalEdit
+        ? (isOrigin ? 'TT trước thuế (List) → TT trước thuế (Khách)' : 'TT trước thuế (Khách) (SL × Đơn giá)')
+        : 'TT trước thuế (HĐ) (SL × Đơn giá)'
+    case 'group_total':
+      return isNormalEdit
+        ? `TT trước thuế (Khách) — Nhóm: ${targetName || 'Danh mục'}`
+        : `TT trước thuế (HĐ) — Nhóm: ${targetName || 'Danh mục'}`
+    case 'all_total':
+      return isNormalEdit
+        ? 'TT trước thuế (Khách) (Toàn bộ báo giá)'
+        : 'TT trước thuế (HĐ) (Toàn bộ báo giá)'
+    case 'list_price':
+      return isNormalEdit ? 'List Price (Báo giá khách)' : 'List Price (Hợp đồng)'
+    case 'hardware_price':
+      return isNormalEdit ? 'Giá Hardware (Báo giá khách)' : 'Giá Hardware (Hợp đồng)'
+    case 'import_price':
+      return 'Giá nhập'
+    case 'diff':
+      return mode === 'all' ? 'Tổng chênh lệch giá (Toàn báo giá)' : 'Chênh lệch TT trước thuế (HĐ - Khách)'
+  }
+})
+
+const isAdjustTruocThueMetric = computed(() =>
+  ['line_total', 'group_total', 'all_total'].includes(adjustMetricType.value)
+)
+
+const adjustOrigCaption = computed(() => {
+  const { isNormalEdit } = adjustPriceModal.value
+  const isOrigin = quotePriceViewMode.value === 'origin'
+  if (isAdjustChenhLechField.value) return 'Chênh lệch hiện tại'
+  if (adjustMetricType.value === 'import_price') return 'Giá nhập hiện tại'
+  if (isAdjustTruocThueMetric.value) {
+    if (isOrigin && isNormalEdit) return 'TT trước thuế (List) hiện tại'
+    return isNormalEdit ? 'TT trước thuế (Khách) hiện tại' : 'TT trước thuế (HĐ) hiện tại'
+  }
+  const noun = adjustMetricBaseNoun.value
+  if (isOrigin && isNormalEdit) return `${noun} LIST hiện tại`
+  return isNormalEdit ? `${noun} khách hiện tại` : `${noun} HĐ hiện tại`
+})
+
+const adjustNewCaption = computed(() => {
+  const { isNormalEdit } = adjustPriceModal.value
+  if (isAdjustChenhLechField.value) return 'Chênh lệch mới'
+  if (adjustMetricType.value === 'import_price') return 'Giá nhập mới'
+  if (isAdjustTruocThueMetric.value) {
+    return isNormalEdit ? 'TT trước thuế (Khách) mới' : 'TT trước thuế (HĐ) mới'
+  }
+  const noun = adjustMetricBaseNoun.value
+  return isNormalEdit ? `${noun} khách mới` : `${noun} HĐ mới`
+})
+
+const adjustCustomerTierLabel = computed(() => {
+  const noun = adjustMetricBaseNoun.value
+  if (isAdjustTruocThueMetric.value || noun === 'Chênh lệch') return 'TT trước thuế (Khách)'
+  return `${noun} khách`
+})
+
+const adjustContractTierLabel = computed(() => {
+  const noun = adjustMetricBaseNoun.value
+  if (isAdjustTruocThueMetric.value || noun === 'Chênh lệch') return 'TT trước thuế (HĐ)'
+  return `${noun} HĐ`
+})
+
+const adjustDiffTierLabel = computed(() => `Chênh lệch (${adjustMetricShortTag.value})`)
+
+const adjustNumberInputLabel = computed(() => {
+  if (isAdjustChenhLechField.value) return 'Nhập mức Chênh lệch mong muốn'
+  const targetLabel = adjustPriceModal.value.isNormalEdit
+    ? adjustCustomerTierLabel.value
+    : adjustContractTierLabel.value
+  return `Nhập ${targetLabel} mong muốn`
+})
 
 const adjustPreviewTotal = computed(() => {
   if (adjustPriceModal.value.adjustType === 'percent') {
@@ -10848,6 +13314,52 @@ const adjustPreviewTotal = computed(() => {
 
 const adjustDeltaAmount = computed(() =>
   Math.round(adjustPreviewTotal.value) - Math.round(adjustPriceModal.value.currentTotal)
+)
+
+const hasExistingContractDiffInNormalEdit = computed(() =>
+  adjustPriceModal.value.isNormalEdit &&
+  Math.abs(Math.round(adjustPriceModal.value.existingContractDiff || 0)) > 0
+)
+
+const previewKeepContractTotal = computed(() =>
+  Math.round(adjustPriceModal.value.existingContractTotal || 0)
+)
+
+const previewKeepContractNewDiff = computed(() =>
+  previewKeepContractTotal.value - Math.round(adjustPreviewTotal.value)
+)
+
+const previewKeepDiffAmount = computed(() =>
+  Math.round(adjustPriceModal.value.existingContractDiff || 0)
+)
+
+const previewKeepDiffNewContractTotal = computed(() =>
+  Math.max(0, Math.round(adjustPreviewTotal.value) + previewKeepDiffAmount.value)
+)
+
+// Computed đối chiếu "Giá khách ↔ Chênh lệch ↔ Giá HĐ" khi mở modal Điều chỉnh (!isNormalEdit)
+const adjustModeCustomerTotal = computed(() =>
+  Math.round(adjustPriceModal.value.existingCustomerTotal || 0)
+)
+
+const adjustModePreviewContractTotal = computed(() => {
+  if (isAdjustChenhLechField.value) {
+    return Math.max(0, adjustModeCustomerTotal.value + Math.round(adjustPreviewTotal.value))
+  }
+  return Math.max(0, Math.round(adjustPreviewTotal.value))
+})
+
+const adjustModePreviewDiff = computed(() => {
+  if (isAdjustChenhLechField.value) {
+    return Math.round(adjustPreviewTotal.value)
+  }
+  return adjustModePreviewContractTotal.value - adjustModeCustomerTotal.value
+})
+
+const canClearDiffToCustomerPrice = computed(() =>
+  !adjustPriceModal.value.isNormalEdit &&
+  (Math.abs(Math.round(adjustPriceModal.value.existingContractDiff || 0)) > 0 ||
+    Math.abs(adjustModePreviewDiff.value) > 0)
 )
 
 const adjustDeltaPercent = computed<number | null>(() => {
@@ -10872,11 +13384,13 @@ const adjustDeltaPercentLabel = computed(() => {
 })
 
 const hasAdjustPriceChanged = computed(() =>
+  adjustPriceModal.value.isResetToCustomerPrice ||
   adjustDeltaAmount.value !== 0 ||
   (adjustPriceModal.value.adjustType === 'percent' && (Number(adjustPriceModal.value.percentValue) || 0) !== 0)
 )
 
 function setAdjustPercentSign(sign: 1 | -1) {
+  adjustPriceModal.value.isResetToCustomerPrice = false
   adjustPriceModal.value.percentSign = sign
   const cur = Number(adjustPriceModal.value.percentValue) || 0
   if (cur !== 0) {
@@ -10885,6 +13399,7 @@ function setAdjustPercentSign(sign: 1 | -1) {
 }
 
 function onAdjustPercentInput(val: number | string) {
+  adjustPriceModal.value.isResetToCustomerPrice = false
   const num = Number(val) || 0
   const prev = Number(adjustPriceModal.value.percentValue) || 0
   if (num === 0) {
@@ -10906,12 +13421,14 @@ function onAdjustPercentInput(val: number | string) {
 }
 
 function selectAdjustPercentPreset(pct: number) {
+  adjustPriceModal.value.isResetToCustomerPrice = false
   adjustPriceModal.value.adjustType = 'percent'
   adjustPriceModal.value.percentSign = pct < 0 ? -1 : 1
   adjustPriceModal.value.percentValue = pct
 }
 
 function setAdjustNumberSign(sign: 1 | -1) {
+  adjustPriceModal.value.isResetToCustomerPrice = false
   adjustPriceModal.value.numberSign = sign
   const cur = Number(adjustPriceModal.value.numberValue) || 0
   if (cur !== 0) {
@@ -10920,6 +13437,7 @@ function setAdjustNumberSign(sign: 1 | -1) {
 }
 
 function onAdjustNumberInput(val: number | string) {
+  adjustPriceModal.value.isResetToCustomerPrice = false
   const num = Number(val) || 0
   if (!isAdjustChenhLechField.value) {
     adjustPriceModal.value.numberSign = 1
@@ -10946,11 +13464,27 @@ function onAdjustNumberInput(val: number | string) {
 }
 
 function resetAdjustPriceToOriginal() {
+  adjustPriceModal.value.isResetToCustomerPrice = false
   const orig = adjustPriceModal.value.currentTotal
   adjustPriceModal.value.percentValue = 0
   adjustPriceModal.value.percentSign = 1
   adjustPriceModal.value.numberValue = orig
   adjustPriceModal.value.numberSign = orig < 0 ? -1 : 1
+}
+
+function clearContractDiffToCustomerPrice() {
+  adjustPriceModal.value.isResetToCustomerPrice = true
+  adjustPriceModal.value.adjustType = 'number'
+  adjustPriceModal.value.percentValue = 0
+  adjustPriceModal.value.percentSign = 1
+  if (isAdjustChenhLechField.value) {
+    adjustPriceModal.value.numberValue = 0
+    adjustPriceModal.value.numberSign = 1
+  } else {
+    const custVal = Math.max(0, Math.round(adjustPriceModal.value.existingCustomerTotal || 0))
+    adjustPriceModal.value.numberValue = custVal
+    adjustPriceModal.value.numberSign = 1
+  }
 }
 
 function onUserDismissAdjustPriceModal() {
@@ -10969,42 +13503,108 @@ function openAdjustPrice(mode: 'item'|'group'|'all'|'field', id: string, name: s
     return
   }
 
+  const isFromOriginTab = quotePriceViewMode.value === 'origin';
+
   let total = 0;
+  let existingCustomerTotal = 0;
+  let existingContractTotal = 0;
+  let existingContractDiff = 0;
+
   if (mode === 'item') {
     const item = selectedItems.value[Number(id)];
-    total = lineTruocThue(item);
+    existingCustomerTotal = lineTruocThueRaw(item);
+    existingContractTotal = lineTruocThue(item);
+    existingContractDiff = existingContractTotal - existingCustomerTotal;
+    total = isNormal
+      ? (isFromOriginTab ? lineTruocThueKho(item) : existingCustomerTotal)
+      : existingContractTotal;
   } else if (mode === 'group') {
     if (id === '__GUIDE_DEMO_CAT__' && selectedItems.value.length === 0) {
       total = 10800000;
+      existingCustomerTotal = 10800000;
+      existingContractTotal = 10800000;
+      existingContractDiff = 0;
     } else {
       const items = selectedItems.value.filter(it => {
         return normalizeQuoteCategoryKey(it.Danh_muc) === id;
       });
-      total = items.reduce((sum, it) => sum + lineTruocThue(it), 0);
+      existingCustomerTotal = items.reduce((sum, it) => sum + lineTruocThueRaw(it), 0);
+      existingContractTotal = items.reduce((sum, it) => sum + lineTruocThue(it), 0);
+      existingContractDiff = existingContractTotal - existingCustomerTotal;
+      total = items.reduce((sum, it) => sum + (isNormal ? (isFromOriginTab ? lineTruocThueKho(it) : lineTruocThueRaw(it)) : lineTruocThue(it)), 0);
     }
   } else if (mode === 'field') {
     if (!quoteEdit.value || !field) return;
     if (field === 'unit_price_kh') {
-      total = unitPrice(quoteEdit.value);
+      existingCustomerTotal = unitPriceRaw(quoteEdit.value);
+      existingContractTotal = unitPrice(quoteEdit.value);
+      existingContractDiff = existingContractTotal - existingCustomerTotal;
+      total = isNormal
+        ? (isFromOriginTab ? unitPriceKho(quoteEdit.value) : existingCustomerTotal)
+        : existingContractTotal;
     } else if (field === 'line_truoc_thue') {
-      total = lineTruocThue(quoteEdit.value);
+      existingCustomerTotal = lineTruocThueRaw(quoteEdit.value);
+      existingContractTotal = lineTruocThue(quoteEdit.value);
+      existingContractDiff = existingContractTotal - existingCustomerTotal;
+      total = isNormal
+        ? (isFromOriginTab ? lineTruocThueKho(quoteEdit.value) : existingCustomerTotal)
+        : existingContractTotal;
     } else if (field === 'item_chenh_lech') {
-      total = lineTruocThue(quoteEdit.value) - lineTruocThueRaw(quoteEdit.value);
+      existingCustomerTotal = lineTruocThueRaw(quoteEdit.value);
+      existingContractTotal = lineTruocThue(quoteEdit.value);
+      total = existingContractTotal - existingCustomerTotal;
+      existingContractDiff = total;
+    } else if (field === 'Don_gia') {
+      const tgContract = toNum(quoteEdit.value.Ti_gia, 1) || 1;
+      const tgGoc = getGocNumber(quoteEdit.value, '_Ti_gia_goc', tgContract) || 1;
+      existingCustomerTotal = getGocNumber(quoteEdit.value, '_Don_gia_goc', toNum(quoteEdit.value.Don_gia, 0)) * tgGoc;
+      existingContractTotal = toNum(quoteEdit.value.Don_gia, 0) * tgContract;
+      existingContractDiff = existingContractTotal - existingCustomerTotal;
+      if (isNormal) {
+        if (isFromOriginTab) {
+          const tgKho = getGocNumber(quoteEdit.value, '_Ti_gia_kho', tgGoc) || 1;
+          total = getGocNumber(quoteEdit.value, '_Don_gia_kho', getGocNumber(quoteEdit.value, '_Don_gia_goc', toNum(quoteEdit.value.Don_gia, 0))) * tgKho;
+        } else {
+          total = existingCustomerTotal;
+        }
+      } else {
+        total = existingContractTotal;
+      }
+    } else if (field === 'gia_hardware') {
+      const tgContract = toNum(quoteEdit.value.Ti_gia, 1) || 1;
+      const tg = getGocNumber(quoteEdit.value, '_Ti_gia_goc', tgContract) || 1;
+      existingCustomerTotal = getGocNumber(quoteEdit.value, '_gia_hardware_goc', toNum(quoteEdit.value.gia_hardware, 0)) * tg;
+      existingContractTotal = toNum(quoteEdit.value.gia_hardware, 0) * tgContract;
+      existingContractDiff = existingContractTotal - existingCustomerTotal;
+      total = isNormal ? existingCustomerTotal : existingContractTotal;
     } else {
       let tg = 1;
       if (['Don_gia', 'gia_hardware', 'gia_nhap'].includes(field)) {
         tg = toNum(quoteEdit.value.Ti_gia, 1) || 1;
       }
       total = toNum((quoteEdit.value as any)[field], 0) * tg;
+      existingCustomerTotal = total;
+      existingContractTotal = total;
+      existingContractDiff = 0;
     }
   } else if (mode === 'all') {
+    existingCustomerTotal = tongGiaThucTe.value;
+    existingContractTotal = totals.value.truoc;
+    existingContractDiff = chenhLechGia.value;
     if (field === 'total_chenh_lech') {
       total = chenhLechGia.value;
     } else {
-      total = totals.value.truoc;
+      total = isNormal
+        ? (isFromOriginTab ? totalsOrigin.value.truoc : existingCustomerTotal)
+        : existingContractTotal;
     }
   } else {
-    total = totals.value.truoc;
+    existingCustomerTotal = tongGiaThucTe.value;
+    existingContractTotal = totals.value.truoc;
+    existingContractDiff = chenhLechGia.value;
+    total = isNormal
+      ? (isFromOriginTab ? totalsOrigin.value.truoc : existingCustomerTotal)
+      : existingContractTotal;
   }
 
   const isGuideDemoNormalField =
@@ -11024,6 +13624,11 @@ function openAdjustPrice(mode: 'item'|'group'|'all'|'field', id: string, name: s
     numberValue: sampleNumberVal,
     numberSign: sampleNumberVal < 0 ? -1 : 1,
     isNormalEdit: !!isNormal,
+    existingCustomerTotal,
+    existingContractTotal,
+    existingContractDiff,
+    normalEditContractBehavior: 'keep_contract',
+    isResetToCustomerPrice: false,
   };
 
   if (isGuideDemoNormalField && activeGuideStepId.value === 'table-item-edit-price') {
@@ -11033,7 +13638,7 @@ function openAdjustPrice(mode: 'item'|'group'|'all'|'field', id: string, name: s
 }
 
 function applyAdjustPrice() {
-  const { mode, targetId, targetField, currentTotal, adjustType, percentValue, numberValue } = adjustPriceModal.value;
+  const { mode, targetId, targetField, currentTotal, adjustType, percentValue, numberValue, normalEditContractBehavior, isResetToCustomerPrice } = adjustPriceModal.value;
 
   if (mode === 'group' && targetId === '__GUIDE_DEMO_CAT__' && selectedItems.value.length === 0) {
     adjustPriceModal.value.show = false;
@@ -11048,10 +13653,15 @@ function applyAdjustPrice() {
   
   // Tính giá trị cũ trước khi thay đổi
   let oldTotal = currentTotal;
-  let actionName = ''
   let fieldLabel = ''
   if (mode === 'field') {
-    fieldLabel = targetField === 'Don_gia' ? 'Đơn giá' : targetField === 'gia_hardware' ? 'Giá Hardware' : targetField === 'line_truoc_thue' ? 'Tổng Trước Thuế' : 'Giá Nhập'
+    fieldLabel = targetField === 'Don_gia'
+      ? activeListPriceFieldLabel.value
+      : targetField === 'gia_hardware'
+      ? 'Giá Hardware'
+      : targetField === 'line_truoc_thue'
+      ? activeLineTruocThueFieldLabel.value
+      : 'Giá Nhập'
   }
 
   let factor = 1;
@@ -11081,88 +13691,76 @@ function applyAdjustPrice() {
   
   if (mode === 'field') {
     if (!quoteEdit.value) return;
+    withOriginalPriceFields(quoteEdit.value as any);
     const isDemoQuoteEdit = Boolean((quoteEdit.value as any)._isGuideDemo);
 
-    // Xử lý đặc biệt: Đơn giá (KH), Thành tiền trước thuế, và Chênh lệch giá → reverse-calc về Don_gia
+    // Xử lý đặc biệt: Đơn giá, Thành tiền trước thuế, và Chênh lệch giá → reverse-calc về Don_gia / _Don_gia_goc
     if (targetField === 'unit_price_kh' || targetField === 'line_truoc_thue' || targetField === 'item_chenh_lech') {
       const isUP = targetField === 'unit_price_kh';
       const isCL = targetField === 'item_chenh_lech';
+      const isNormal = adjustPriceModal.value.isNormalEdit;
       
-      let oldValVnd = 0;
-      if (isUP) oldValVnd = unitPrice(quoteEdit.value);
-      else if (isCL) oldValVnd = lineTruocThue(quoteEdit.value) - lineTruocThueRaw(quoteEdit.value);
-      else oldValVnd = lineTruocThue(quoteEdit.value);
+      const oldValVnd = currentTotal;
+      const newValVnd = adjustType === 'percent' ? (oldValVnd * factor) : numberValue;
 
-      let newValVnd = adjustType === 'percent' ? (oldValVnd * factor) : numberValue;
-
-      const label = isUP ? 'Đơn giá (KH)' : (isCL ? 'Chênh lệch giá' : 'Thành tiền trước thuế');
-      const editTypeLabel = adjustPriceModal.value.isNormalEdit ? '[Sửa thường]' : '[Điều chỉnh]';
+      const label = isUP ? activeDonGiaFieldLabel.value : (isCL ? 'Chênh lệch giá' : activeLineTruocThueFieldLabel.value);
+      const editTypeLabel = isNormal ? '[Sửa thường]' : '[Điều chỉnh]';
       if (!isDemoQuoteEdit) {
         addAction(`${editTypeLabel} Sửa ${label} của hàng "${quoteEdit.value.Ten_hang}" từ ${formatVND(oldValVnd)} → ${formatVND(newValVnd)}`, oldValVnd, newValVnd);
       }
       _adjustedFields.add('Don_gia');
-      _adjustedFields.add('muc_phan_tram_off');
 
-      // Ghi nhớ Don_gia cũ trước khi reverse calc thay đổi
-      const _oldDonGiaBeforeCalc = toNum(quoteEdit.value.Don_gia, 0);
-
-      // Reverse: unitPrice = donGiaSauOff * Ti_gia, donGiaSauOff = LP*(1-%off/100) + gia_nhap, LP = Don_gia + gia_hardware
-      let targetUPVnd = 0;
       const qty = Math.max(1, toNum(quoteEdit.value.So_luong, 1));
-      if (isUP) {
-        targetUPVnd = newValVnd;
-      } else if (isCL) {
-        const rawLine = lineTruocThueRaw(quoteEdit.value);
-        const newLine = rawLine + newValVnd;
-        targetUPVnd = newLine / qty;
-      } else {
-        targetUPVnd = newValVnd / qty;
-      }
       const tg = toNum(quoteEdit.value.Ti_gia, 1) || 1;
-      const newDonGiaSauOff = targetUPVnd / tg;
       const nhap = toNum(quoteEdit.value.gia_nhap, 0);
       const hw = toNum(quoteEdit.value.gia_hardware, 0);
+      const pctOff = toNum(quoteEdit.value.muc_phan_tram_off, 0);
 
-      if (adjustPriceModal.value.isNormalEdit) {
-        // Sửa thường: Giữ List Price, tự tính lại % Off Khách. XÓA Kê giá (Chênh lệch)
-        const lp = _oldDonGiaBeforeCalc + hw;
-        if (lp > 0) {
-          let newPctOff = (1 - (newDonGiaSauOff - nhap) / lp) * 100;
-          newPctOff = Number(newPctOff.toFixed(6));
-          quoteEdit.value.muc_phan_tram_off = newPctOff;
+      const tgGoc = getGocNumber(quoteEdit.value, '_Ti_gia_goc', tg) || 1;
+      const nhapGoc = getGocNumber(quoteEdit.value, '_gia_nhap_goc', nhap);
+      const hwGoc = getGocNumber(quoteEdit.value, '_gia_hardware_goc', hw);
+      const pctOffGoc = getGocNumber(quoteEdit.value, '_muc_phan_tram_off_goc', pctOff);
+
+      if (isNormal) {
+        // Sửa giá: Cập nhật Báo giá khách (_Don_gia_goc)
+        const existingDiffVnd = lineTruocThue(quoteEdit.value) - lineTruocThueRaw(quoteEdit.value);
+        const hasItemDiff = Math.abs(Math.round(existingDiffVnd)) > 0;
+        const targetActualUPVnd = isUP ? newValVnd : (newValVnd / qty);
+
+        quoteEdit.value._Don_gia_goc = solveDonGiaForTargetUnitPriceVnd(targetActualUPVnd, tgGoc, hwGoc, nhapGoc, pctOffGoc);
+
+        if (!hasItemDiff) {
+          // Chưa có kê giá hợp đồng -> đồng bộ Giá hợp đồng bằng Giá khách mới (Chênh lệch = 0)
+          quoteEdit.value.Don_gia = solveDonGiaForTargetUnitPriceVnd(targetActualUPVnd, tg, hw, nhap, pctOff);
+        } else if (normalEditContractBehavior === 'keep_diff') {
+          // Tùy chọn: Giữ nguyên mức Chênh lệch cũ -> dịch chuyển Giá hợp đồng theo Giá khách mới
+          const targetContractUPVnd = (targetActualUPVnd * qty + existingDiffVnd) / qty;
+          quoteEdit.value.Don_gia = solveDonGiaForTargetUnitPriceVnd(targetContractUPVnd, tg, hw, nhap, pctOff);
         }
-        quoteEdit.value.Don_gia = _oldDonGiaBeforeCalc;
-        
-        // Xóa Kê giá (Chênh lệch)
-        quoteEdit.value._muc_phan_tram_off_goc = undefined;
-        quoteEdit.value._Don_gia_goc = undefined;
-        quoteEdit.value._Ti_gia_goc = undefined;
-        quoteEdit.value._gia_nhap_goc = undefined;
-        quoteEdit.value._gia_hardware_goc = undefined;
+        // Nếu hasItemDiff && normalEditContractBehavior === 'keep_contract' (Mặc định):
+        // Giữ nguyên 100% quoteEdit.value.Don_gia (Giá hợp đồng không đổi, Chênh lệch tự cập nhật)
+
+        if (quotePriceViewMode.value !== 'compare') {
+          quotePriceViewMode.value = 'customer';
+        }
       } else {
-        // Kê hợp đồng: Đổi % Off Khách để thay đổi Giá Bán, giữ nguyên Giá Gốc (Giá thực tế)
-        const oldPctOff = toNum(quoteEdit.value.muc_phan_tram_off, 0);
-        
-        // Khóa giá gốc nếu chưa khóa:
-        if (quoteEdit.value._muc_phan_tram_off_goc === undefined) {
-          quoteEdit.value._muc_phan_tram_off_goc = oldPctOff;
-          quoteEdit.value._Don_gia_goc = toNum(quoteEdit.value.Don_gia, 0);
-          quoteEdit.value._Ti_gia_goc = toNum(quoteEdit.value.Ti_gia, 1);
-          quoteEdit.value._gia_nhap_goc = toNum(quoteEdit.value.gia_nhap, 0);
-          quoteEdit.value._gia_hardware_goc = toNum(quoteEdit.value.gia_hardware, 0);
+        // Điều chỉnh: Khóa 100% Báo giá gốc (_kho) & Báo giá khách (_goc), chỉ cập nhật Báo giá trên hợp đồng (Don_gia)
+        let targetContractUPVnd = 0;
+        if (isResetToCustomerPrice) {
+          targetContractUPVnd = lineTruocThueRaw(quoteEdit.value) / qty;
+        } else if (isUP) {
+          targetContractUPVnd = newValVnd;
+        } else if (isCL) {
+          const rawLine = lineTruocThueRaw(quoteEdit.value);
+          targetContractUPVnd = (rawLine + newValVnd) / qty;
+        } else {
+          targetContractUPVnd = newValVnd / qty;
         }
-
-        // Tính % off mới để Giá Bán = targetUPVnd
-        const lp = _oldDonGiaBeforeCalc + hw;
-        if (lp > 0) {
-          let newPctOff = (1 - (newDonGiaSauOff - nhap) / lp) * 100;
-          newPctOff = Number(newPctOff.toFixed(6));
-          quoteEdit.value.muc_phan_tram_off = newPctOff;
+        quoteEdit.value.Don_gia = solveDonGiaForTargetUnitPriceVnd(targetContractUPVnd, tg, hw, nhap, pctOff);
+        if (quotePriceViewMode.value !== 'compare') {
+          quotePriceViewMode.value = 'contract';
         }
-        quoteEdit.value.Don_gia = _oldDonGiaBeforeCalc;
       }
-
-
 
       quoteEdit.value = { ...quoteEdit.value };
       adjustPriceModal.value.show = false;
@@ -11179,8 +13777,8 @@ function applyAdjustPrice() {
     if (['Don_gia', 'gia_hardware', 'gia_nhap'].includes(targetField)) {
       tg = toNum(quoteEdit.value.Ti_gia, 1) || 1;
     }
-    const oldValUSD = toNum((quoteEdit.value as any)[targetField], 0);
-    const oldValVnd = oldValUSD * tg;
+    const isNormal = adjustPriceModal.value.isNormalEdit;
+    const oldValVnd = currentTotal;
     
     let newValVnd = 0;
     if (adjustType === 'percent') {
@@ -11191,7 +13789,7 @@ function applyAdjustPrice() {
     newValVnd = round2(newValVnd);
     
     // Ghi lịch sử với giá trị cũ → mới
-    const editTypeLabelField = adjustPriceModal.value.isNormalEdit ? '[Sửa thường]' : '[Điều chỉnh]';
+    const editTypeLabelField = isNormal ? '[Sửa thường]' : '[Điều chỉnh]';
     if (!isDemoQuoteEdit) {
       addAction(`${editTypeLabelField} Sửa ${fieldLabel} của hàng "${quoteEdit.value.Ten_hang}" từ ${formatVND(oldValVnd)} → ${formatVND(newValVnd)}`, oldValVnd, newValVnd)
     }
@@ -11199,19 +13797,45 @@ function applyAdjustPrice() {
 
     const newValUSD = newValVnd / tg;
 
-    // Cập nhật field mới
-    if (targetField === 'Don_gia') { quoteEdit.value.Don_gia = newValUSD; }
-    else if (targetField === 'gia_hardware') { quoteEdit.value.gia_hardware = newValUSD; }
-    else if (targetField === 'gia_nhap') { quoteEdit.value.gia_nhap = newValUSD; }
-    else { (quoteEdit.value as any)[targetField] = newValUSD; }
-
-    // Sửa thường: cập nhật _goc theo cùng delta → giữ nguyên chênh lệch cũ
-    if (adjustPriceModal.value.isNormalEdit) {
-      const deltaUSD = newValUSD - oldValUSD;
+    if (isNormal) {
       if (targetField === 'Don_gia') {
-        quoteEdit.value._Don_gia_goc = (quoteEdit.value._Don_gia_goc ?? oldValUSD) + deltaUSD;
+        const prevGocUSD = getGocNumber(quoteEdit.value, '_Don_gia_goc', toNum(quoteEdit.value.Don_gia, 0));
+        const prevContractUSD = toNum(quoteEdit.value.Don_gia, 0);
+        const hasDiffUSD = Math.abs((prevContractUSD - prevGocUSD) * tg) >= 1;
+        const deltaUSD = newValUSD - prevGocUSD;
+        quoteEdit.value._Don_gia_goc = newValUSD;
+        if (!hasDiffUSD) {
+          quoteEdit.value.Don_gia = newValUSD;
+        } else if (normalEditContractBehavior === 'keep_diff') {
+          quoteEdit.value.Don_gia = Math.max(0, prevContractUSD + deltaUSD);
+        }
       } else if (targetField === 'gia_hardware') {
-        quoteEdit.value._gia_hardware_goc = (quoteEdit.value._gia_hardware_goc ?? oldValUSD) + deltaUSD;
+        const prevHwGocUSD = getGocNumber(quoteEdit.value, '_gia_hardware_goc', toNum(quoteEdit.value.gia_hardware, 0));
+        const prevHwContractUSD = toNum(quoteEdit.value.gia_hardware, 0);
+        const hasDiffUSD = Math.abs((prevHwContractUSD - prevHwGocUSD) * tg) >= 1;
+        const deltaUSD = newValUSD - prevHwGocUSD;
+        quoteEdit.value._gia_hardware_goc = newValUSD;
+        if (!hasDiffUSD) {
+          quoteEdit.value.gia_hardware = newValUSD;
+        } else if (normalEditContractBehavior === 'keep_diff') {
+          quoteEdit.value.gia_hardware = Math.max(0, prevHwContractUSD + deltaUSD);
+        }
+      } else if (targetField === 'gia_nhap') {
+        quoteEdit.value._gia_nhap_goc = newValUSD;
+        quoteEdit.value.gia_nhap = newValUSD;
+      } else {
+        (quoteEdit.value as any)[targetField] = newValUSD;
+      }
+      if (quotePriceViewMode.value !== 'compare') {
+        quotePriceViewMode.value = 'customer';
+      }
+    } else {
+      if (targetField === 'Don_gia') { quoteEdit.value.Don_gia = newValUSD; }
+      else if (targetField === 'gia_hardware') { quoteEdit.value.gia_hardware = newValUSD; }
+      else if (targetField === 'gia_nhap') { quoteEdit.value.gia_nhap = newValUSD; }
+      else { (quoteEdit.value as any)[targetField] = newValUSD; }
+      if (quotePriceViewMode.value !== 'compare') {
+        quotePriceViewMode.value = 'contract';
       }
     }
     
@@ -11229,66 +13853,68 @@ function applyAdjustPrice() {
   }
   
   const initialTotalTruoc = totals.value.truoc;
+  const initialTotalThucTe = tongGiaThucTe.value;
   const initialCount = selectedItems.value.length;
+  const isNormal = adjustPriceModal.value.isNormalEdit;
+  const isFromOriginTab = quotePriceViewMode.value === 'origin';
 
   const adjustItem = (it: HangHoa & { So_luong: number }) => {
-     const currentLineTotal = lineTruocThue(it);
-     let newLineTotal = currentLineTotal * factor;
-     
-     if (targetField === 'total_chenh_lech') {
-       let targetDiff = adjustType === 'percent' ? (oldTotal * factor) : numberValue;
-       const delta = targetDiff - oldTotal;
-       if (initialTotalTruoc > 0) {
-         newLineTotal = currentLineTotal + delta * (currentLineTotal / initialTotalTruoc);
-       } else {
-         newLineTotal = currentLineTotal + delta / Math.max(1, initialCount);
-       }
-     } else {
-       if (adjustType === 'number' && currentTotal === 0) {
-         newLineTotal = splitAmount;
-       }
-     }
-     
+     if (!it) return;
+     withOriginalPriceFields(it);
+
      const qty = Math.max(1, toNum(it.So_luong, 1));
      const tg = toNum(it.Ti_gia, 1) || 1;
-     const requiredDonGiaSauOff = newLineTotal / (qty * tg);
      const hw = toNum(it.gia_hardware, 0);
      const nhap = toNum(it.gia_nhap, 0);
-     const oldDonGia = toNum(it.Don_gia, 0);
+     const pctOff = toNum(it.muc_phan_tram_off, 0);
 
-     if (adjustPriceModal.value.isNormalEdit) {
-       // Sửa thường: Giữ List Price, tự tính lại % Off Khách
-       const lp = oldDonGia + hw;
-       if (lp > 0) {
-         const oldPctOff = toNum(it.muc_phan_tram_off, 0);
-         let newPctOff = (1 - (requiredDonGiaSauOff - nhap) / lp) * 100;
-         newPctOff = Number(newPctOff.toFixed(6));
-         it.muc_phan_tram_off = newPctOff;
-         const _oldPctOffGoc = it._muc_phan_tram_off_goc ?? oldPctOff;
-         it._muc_phan_tram_off_goc = _oldPctOffGoc + (newPctOff - oldPctOff);
+     const tgGoc = getGocNumber(it, '_Ti_gia_goc', tg) || 1;
+     const hwGoc = getGocNumber(it, '_gia_hardware_goc', hw);
+     const nhapGoc = getGocNumber(it, '_gia_nhap_goc', nhap);
+     const pctOffGoc = getGocNumber(it, '_muc_phan_tram_off_goc', pctOff);
+
+     if (isNormal) {
+       // Sửa giá: Cập nhật Báo giá khách (_Don_gia_goc)
+       const baseLineForFactor = isFromOriginTab ? lineTruocThueKho(it) : lineTruocThueRaw(it);
+       const currentActualLine = lineTruocThueRaw(it);
+       const existingDiff = lineTruocThue(it) - currentActualLine;
+       const hasItemDiff = Math.abs(Math.round(existingDiff)) > 0;
+       const newActualLine = (adjustType === 'number' && currentTotal === 0)
+         ? splitAmount
+         : (baseLineForFactor * factor);
+
+       const targetActualUPVnd = newActualLine / qty;
+       it._Don_gia_goc = solveDonGiaForTargetUnitPriceVnd(targetActualUPVnd, tgGoc, hwGoc, nhapGoc, pctOffGoc);
+
+       if (!hasItemDiff) {
+         it.Don_gia = solveDonGiaForTargetUnitPriceVnd(targetActualUPVnd, tg, hw, nhap, pctOff);
+       } else if (normalEditContractBehavior === 'keep_diff') {
+         const targetContractUPVnd = (newActualLine + existingDiff) / qty;
+         it.Don_gia = solveDonGiaForTargetUnitPriceVnd(targetContractUPVnd, tg, hw, nhap, pctOff);
        }
-       it.Don_gia = oldDonGia;
      } else {
-       // Kê hợp đồng: Giữ Don_gia và % Off Khách nguyên
-       // Hạ _Don_gia_goc để tạo chênh lệch
-       const currentLineTotal = lineTruocThue(it);
-       const targetChenhLech = newLineTotal - currentLineTotal;
-       const targetLineTruocThueRaw = currentLineTotal - targetChenhLech;
-       const targetUPRaw = targetLineTruocThueRaw / qty;
-       
-       const tgGoc = getGocNumber(it, '_Ti_gia_goc', tg);
-       const targetDonGiaSauOffGoc = targetUPRaw / tgGoc;
-       const nhapGoc = getGocNumber(it, '_gia_nhap_goc', nhap);
-       const pctOffGoc = getGocNumber(it, '_muc_phan_tram_off_goc', toNum(it.muc_phan_tram_off, 0));
-       const hwGoc = getGocNumber(it, '_gia_hardware_goc', hw);
-       const offMulGoc = 1 - pctOffGoc / 100;
-       
-       if (offMulGoc > 0) {
-         const targetLPGoc = (targetDonGiaSauOffGoc - nhapGoc) / offMulGoc;
-         it._Don_gia_goc = targetLPGoc - hwGoc;
+       // Điều chỉnh: Khóa 100% Báo giá gốc (_kho) & Báo giá khách (_goc), chỉ cập nhật Báo giá trên hợp đồng (Don_gia)
+       const currentContractLine = lineTruocThue(it);
+       let newContractLine = currentContractLine * factor;
+
+       if (isResetToCustomerPrice) {
+         newContractLine = lineTruocThueRaw(it);
+       } else if (targetField === 'total_chenh_lech') {
+         const targetDiff = adjustType === 'percent' ? (oldTotal * factor) : numberValue;
+         const delta = targetDiff - oldTotal;
+         if (initialTotalThucTe > 0) {
+           newContractLine = currentContractLine + delta * (lineTruocThueRaw(it) / initialTotalThucTe);
+         } else if (initialTotalTruoc > 0) {
+           newContractLine = currentContractLine + delta * (currentContractLine / initialTotalTruoc);
+         } else {
+           newContractLine = currentContractLine + delta / Math.max(1, initialCount);
+         }
+       } else if (adjustType === 'number' && currentTotal === 0) {
+         newContractLine = splitAmount;
        }
-       // Don_gia giữ nguyên, % off giữ nguyên
-       it.Don_gia = oldDonGia;
+
+       const targetContractUPVnd = newContractLine / qty;
+       it.Don_gia = solveDonGiaForTargetUnitPriceVnd(targetContractUPVnd, tg, hw, nhap, pctOff);
      }
   };
 
@@ -11304,35 +13930,44 @@ function applyAdjustPrice() {
     selectedItems.value.forEach(it => adjustItem(it));
   }
 
+  // Tự động đồng bộ chế độ hiển thị bảng báo giá để người dùng nhìn thấy ngay kết quả vừa thao tác (nếu đang ở Đối chiếu 3 giá thì giữ nguyên)
+  if (quotePriceViewMode.value !== 'compare') {
+    quotePriceViewMode.value = isNormal ? 'customer' : 'contract';
+  }
+
   // Tính giá trị mới sau thay đổi
   let newTotal = 0;
   if (mode === 'item') {
-    newTotal = lineTruocThue(selectedItems.value[Number(targetId)]);
+    const item = selectedItems.value[Number(targetId)];
+    newTotal = isNormal ? lineTruocThueRaw(item) : lineTruocThue(item);
   } else if (mode === 'group') {
     selectedItems.value.forEach(it => {
-      if (normalizeQuoteCategoryKey(it.Danh_muc) === targetId) newTotal += lineTruocThue(it);
+      if (normalizeQuoteCategoryKey(it.Danh_muc) === targetId) {
+        newTotal += isNormal ? lineTruocThueRaw(it) : lineTruocThue(it);
+      }
     });
   } else {
     if (targetField === 'total_chenh_lech') {
       newTotal = totals.value.truoc - tongGiaThucTe.value;
     } else {
-      selectedItems.value.forEach(it => { newTotal += lineTruocThue(it); });
+      newTotal = isNormal ? tongGiaThucTe.value : totals.value.truoc;
     }
   }
   newTotal = round2(newTotal);
   
   // Ghi lịch sử chi tiết
+  const prefixLabel = isNormal ? '[Sửa thường]' : '[Điều chỉnh]';
   if (mode === 'item') {
     const itemName = selectedItems.value[Number(targetId)]?.Ten_hang || ''
-    addAction(`Sửa tổng giá hàng "${itemName}" từ ${formatVND(oldTotal)} → ${formatVND(newTotal)}`, oldTotal, newTotal)
+    addAction(`${prefixLabel} Sửa tổng giá hàng "${itemName}" từ ${formatVND(oldTotal)} → ${formatVND(newTotal)}`, oldTotal, newTotal)
   } else if (mode === 'group') {
     const groupLogLabel = targetId === EMPTY_CATEGORY_GROUP_KEY ? 'Danh mục trống' : targetId.split('||').join(' - ')
-    addAction(`Sửa giá nhóm "${groupLogLabel}" từ ${formatVND(oldTotal)} → ${formatVND(newTotal)}`, oldTotal, newTotal)
+    addAction(`${prefixLabel} Sửa giá nhóm "${groupLogLabel}" từ ${formatVND(oldTotal)} → ${formatVND(newTotal)}`, oldTotal, newTotal)
   } else {
     if (targetField === 'total_chenh_lech') {
-      addAction(`Sửa Tổng chênh lệch giá từ ${formatVND(oldTotal)} → ${formatVND(newTotal)}`, oldTotal, newTotal)
+      addAction(`${prefixLabel} Sửa Tổng chênh lệch giá từ ${formatVND(oldTotal)} → ${formatVND(newTotal)}`, oldTotal, newTotal)
     } else {
-      addAction(`Sửa giá Toàn bộ báo giá từ ${formatVND(oldTotal)} → ${formatVND(newTotal)}`, oldTotal, newTotal)
+      addAction(`${prefixLabel} Sửa giá Toàn bộ báo giá từ ${formatVND(oldTotal)} → ${formatVND(newTotal)}`, oldTotal, newTotal)
     }
   }
   
@@ -12666,6 +15301,7 @@ const pendingExportMappingConfig = ref<any[] | null>(null)
 ====================== */
 const printTemplates = ref<PrintTemplateConfig[]>([])
 const selectedPrintTemplateId = ref<string>('')
+const selectedPrintTemplateIds = ref<string[]>([])
 const showPrintPreviewInModal = ref<boolean>(true)
 const showPrintPreviewZoomModal = ref<boolean>(false)
 const printPreviewZoomScale = ref<number>(100)
@@ -13376,6 +16012,12 @@ async function loadPrintTemplates() {
     const def = list.find(t => t.mac_dinh) || list[0]
     if (def) selectedPrintTemplateId.value = def.id
   }
+  const validTicked = selectedPrintTemplateIds.value.filter(id => list.some(t => t.id === id))
+  if (validTicked.length > 0) {
+    selectedPrintTemplateIds.value = validTicked
+  } else if (selectedPrintTemplateId.value) {
+    selectedPrintTemplateIds.value = [selectedPrintTemplateId.value]
+  }
 }
 
 const activePrintTemplate = computed<PrintTemplateConfig | null>(() => {
@@ -13388,9 +16030,72 @@ const activePrintTemplate = computed<PrintTemplateConfig | null>(() => {
   )
 })
 
+function isPrintTemplateTicked(id: string): boolean {
+  return selectedPrintTemplateIds.value.includes(id)
+}
+
+function toggleTickPrintTemplate(id: string) {
+  const idx = selectedPrintTemplateIds.value.indexOf(id)
+  if (idx >= 0) {
+    selectedPrintTemplateIds.value = selectedPrintTemplateIds.value.filter(x => x !== id)
+    if (selectedPrintTemplateId.value === id && selectedPrintTemplateIds.value.length > 0) {
+      selectedPrintTemplateId.value = selectedPrintTemplateIds.value[0]
+    }
+  } else {
+    selectedPrintTemplateIds.value = [...selectedPrintTemplateIds.value, id]
+    selectedPrintTemplateId.value = id
+  }
+}
+
+const isAllPrintTemplatesTicked = computed<boolean>(() => {
+  return (
+    printTemplates.value.length > 0 &&
+    printTemplates.value.every(t => selectedPrintTemplateIds.value.includes(t.id))
+  )
+})
+
+function toggleSelectAllPrintTemplates() {
+  if (isAllPrintTemplatesTicked.value) {
+    selectedPrintTemplateIds.value = []
+  } else {
+    selectedPrintTemplateIds.value = printTemplates.value.map(t => t.id)
+    if (!selectedPrintTemplateId.value && printTemplates.value[0]) {
+      selectedPrintTemplateId.value = printTemplates.value[0].id
+    }
+  }
+}
+
+const selectedPrintTemplatesList = computed<PrintTemplateConfig[]>(() => {
+  if (!printTemplates.value.length) return []
+  const ticked = printTemplates.value.filter(t => selectedPrintTemplateIds.value.includes(t.id))
+  if (ticked.length > 0) return ticked
+  return activePrintTemplate.value ? [activePrintTemplate.value] : []
+})
+
+function getPrintTemplateFileSuffix(tpl: PrintTemplateConfig): string {
+  if (tpl.id === 'MINTL_CHUAN_NTS') return 'BaoGiaKhach'
+  if (tpl.id === 'MINTL_DOI_CHIEU_3_GIA' || isThreePriceComparisonTemplate(tpl)) return 'DoiChieu3Gia'
+  if (tpl.id === 'MINTL_HOP_DONG' || isContractPriceTemplate(tpl)) return 'BaoGiaHopDong'
+  if (tpl.id === 'MINTL_LIST_PRICE' || isListPriceTemplate(tpl)) return 'BaoGiaListPrice'
+  if (tpl.id === 'MINTL_DAI_LY') return 'BaoGiaDaiLy'
+  const raw = String(tpl.ten_mau || tpl.id || 'MauIn')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .replace(/[^a-zA-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+  return raw || 'MauIn'
+}
+
+function getTemplateExportFileName(baseName: string, tpl: PrintTemplateConfig, totalSelected: number): string {
+  if (totalSelected <= 1) return baseName
+  return `${baseName}_${getPrintTemplateFileSuffix(tpl)}`
+}
+
 function buildCurrentQuoteExportContext(): QuoteExportContext {
   const isUsdExport = quoteCurrency.value === 'USD'
-  const mappedRows: QuoteExportRowItem[] = quoteRowsWithSTT.value.map((r: any) => {
+  const contractRows: QuoteExportRowItem[] = quoteRowsWithSTT.value.map((r: any) => {
     if (r.type === 'group') {
       return {
         type: 'group',
@@ -13426,6 +16131,81 @@ function buildCurrentQuoteExportContext(): QuoteExportContext {
     }
   })
 
+  const customerRows: QuoteExportRowItem[] = quoteRowsWithSTT.value.map((r: any) => {
+    if (r.type === 'group') {
+      return {
+        type: 'group',
+        roman: r.roman,
+        title: r.title,
+        supplier: r.supplier || ''
+      }
+    }
+    const i = r.item
+    const tg = getGocNumber(i, '_Ti_gia_goc', toNum(i.Ti_gia, 1)) || 1
+    const donGiaVND = unitPriceRaw(i)
+    const truoc = lineTruocThueRaw(i)
+    const vat = lineVATRaw(i)
+    const sau = lineSauThueRaw(i)
+    const lpVND = listPriceVndRaw(i, true)
+    const stdVND = standardPriceRaw(i)
+    const nhapVND = giaNhapVndRaw(i)
+
+    return {
+      type: 'item',
+      stt: r.stt,
+      item: i,
+      listPrice: isUsdExport ? round2(lpVND / tg) : Number(lpVND) || 0,
+      giaTieuChuan: isUsdExport ? round2(stdVND / tg) : Number(stdVND) || 0,
+      giaNhap: isUsdExport ? round2(nhapVND / tg) : Number(nhapVND) || 0,
+      pctOffHang: displayGiaTieuChuanPctRaw(i),
+      pctOff: getGocNumber(i, '_muc_phan_tram_off_goc', toNum(i.muc_phan_tram_off, 0)),
+      donGiaKH: isUsdExport ? round2(donGiaVND / tg) : Number(donGiaVND) || 0,
+      truocThue: isUsdExport ? round2(truoc / tg) : Number(truoc) || 0,
+      pctVat: vatGoc(i),
+      vatAmount: isUsdExport ? round2(vat / tg) : Number(vat) || 0,
+      sauThue: isUsdExport ? round2(sau / tg) : Number(sau) || 0
+    }
+  })
+
+  const originRows: QuoteExportRowItem[] = quoteRowsWithSTT.value.map((r: any) => {
+    if (r.type === 'group') {
+      return {
+        type: 'group',
+        roman: r.roman,
+        title: r.title,
+        supplier: r.supplier || ''
+      }
+    }
+    const i = r.item
+    const tg = getGocNumber(i, '_Ti_gia_kho', getGocNumber(i, '_Ti_gia_goc', toNum(i.Ti_gia, 1))) || 1
+    const donGiaVND = unitPriceKho(i)
+    const truoc = lineTruocThueKho(i)
+    const vat = lineVATKho(i)
+    const sau = lineSauThueKho(i)
+    const lpVND = listPriceVndKho(i, true)
+    const stdVND = standardPriceKho(i)
+    const nhapVND = giaNhapVndKho(i)
+    const lp = donGiaLPKho(i)
+    const tc = getGocNumber(i, '_Gia_tieu_chuan_kho', toNum(i.Gia_tieu_chuan, 0))
+    const pctOffHang = (!lp || lp === 0) ? 0 : round2((1 - tc / lp) * 100)
+
+    return {
+      type: 'item',
+      stt: r.stt,
+      item: i,
+      listPrice: isUsdExport ? round2(lpVND / tg) : Number(lpVND) || 0,
+      giaTieuChuan: isUsdExport ? round2(stdVND / tg) : Number(stdVND) || 0,
+      giaNhap: isUsdExport ? round2(nhapVND / tg) : Number(nhapVND) || 0,
+      pctOffHang,
+      pctOff: getGocNumber(i, '_muc_phan_tram_off_kho', getGocNumber(i, '_muc_phan_tram_off_goc', toNum(i.muc_phan_tram_off, 0))),
+      donGiaKH: isUsdExport ? round2(donGiaVND / tg) : Number(donGiaVND) || 0,
+      truocThue: isUsdExport ? round2(truoc / tg) : Number(truoc) || 0,
+      pctVat: vatKho(i),
+      vatAmount: isUsdExport ? round2(vat / tg) : Number(vat) || 0,
+      sauThue: isUsdExport ? round2(sau / tg) : Number(sau) || 0
+    }
+  })
+
   const drRow = loadedPipelineExtraData.value?.dealReg?.[0]
   const dealRegCtx = drRow
     ? {
@@ -13454,6 +16234,25 @@ function buildCurrentQuoteExportContext(): QuoteExportContext {
     Ten_khach_hang: khach.value.Ten_khach_hang || tenKHInput.value.trim() || ''
   }
 
+  const contractTotals = {
+    truoc: isUsdExport ? Number(totalsUSD.value.truoc) || 0 : Number(totals.value.truoc) || 0,
+    vat: isUsdExport ? Number(totalsUSD.value.vat) || 0 : Number(totals.value.vat) || 0,
+    sau: isUsdExport ? Number(totalsUSD.value.sau) || 0 : Number(totals.value.sau) || 0,
+    off: isUsdExport ? Number(totalsUSD.value.off) || 0 : Number(totals.value.off) || 0
+  }
+  const customerTotals = {
+    truoc: isUsdExport ? Number(totalsContractUSD.value.truoc) || 0 : Number(totalsContract.value.truoc) || 0,
+    vat: isUsdExport ? Number(totalsContractUSD.value.vat) || 0 : Number(totalsContract.value.vat) || 0,
+    sau: isUsdExport ? Number(totalsContractUSD.value.sau) || 0 : Number(totalsContract.value.sau) || 0,
+    off: isUsdExport ? Number(totalsContractUSD.value.off) || 0 : Number(totalsContract.value.off) || 0
+  }
+  const originTotals = {
+    truoc: isUsdExport ? Number(totalsOriginUSD.value.truoc) || 0 : Number(totalsOrigin.value.truoc) || 0,
+    vat: isUsdExport ? Number(totalsOriginUSD.value.vat) || 0 : Number(totalsOrigin.value.vat) || 0,
+    sau: isUsdExport ? Number(totalsOriginUSD.value.sau) || 0 : Number(totalsOrigin.value.sau) || 0,
+    off: isUsdExport ? Number(totalsOriginUSD.value.off) || 0 : Number(totalsOrigin.value.off) || 0
+  }
+
   return {
     khach: effectiveKhach,
     maHopDong: maHopDong.value || '',
@@ -13463,14 +16262,15 @@ function buildCurrentQuoteExportContext(): QuoteExportContext {
     currency: isUsdExport ? 'USD' : 'VND',
     vndRoundingMode: vndRoundingMode.value,
     tiGia: mainTiGia.value || 1,
-    rows: mappedRows,
+    rows: customerRows,
+    totals: customerTotals,
+    contractRows,
+    contractTotals,
+    customerRows,
+    customerTotals,
+    originRows,
+    originTotals,
     itemSttFormat: quoteItemSttFormat.value,
-    totals: {
-      truoc: isUsdExport ? Number(totalsUSD.value.truoc) || 0 : Number(totals.value.truoc) || 0,
-      vat: isUsdExport ? Number(totalsUSD.value.vat) || 0 : Number(totals.value.vat) || 0,
-      sau: isUsdExport ? Number(totalsUSD.value.sau) || 0 : Number(totals.value.sau) || 0,
-      off: isUsdExport ? Number(totalsUSD.value.off) || 0 : Number(totals.value.off) || 0
-    },
     termsHtml: selectedTermId.value ? (editableTermContent.value || '') : '',
     noTerms: !selectedTermId.value,
     customDefaultFont: previewEditor.value?.getToolbarFont(),
@@ -13515,6 +16315,14 @@ function openExportWithPrintTemplate(tplId?: string) {
   syncCustomerInputsToKhach()
   if (tplId) {
     selectedPrintTemplateId.value = tplId
+    if (!selectedPrintTemplateIds.value.includes(tplId)) {
+      selectedPrintTemplateIds.value = [...selectedPrintTemplateIds.value, tplId]
+    }
+  } else if (
+    selectedPrintTemplateIds.value.length > 0 &&
+    !selectedPrintTemplateIds.value.includes(selectedPrintTemplateId.value)
+  ) {
+    selectedPrintTemplateId.value = selectedPrintTemplateIds.value[0]
   }
   maKHInput.value = khach.value.Ma_khach_hang || maKHInput.value || ''
   tenKHInput.value = khach.value.Ten_khach_hang || tenKHInput.value || ''
@@ -13608,10 +16416,10 @@ async function exportQuoteByPrintTemplate(format: 'excel' | 'word' | 'pdf' | 'pn
   if (!printTemplates.value.length) {
     await loadPrintTemplates().catch(() => {})
   }
-  const tpl = activePrintTemplate.value
+  const templatesToExport = selectedPrintTemplatesList.value
   const normalFileName = getQuoteDownloadBaseName()
 
-  if (!tpl) {
+  if (!templatesToExport.length) {
     if (format === 'excel') {
       await exportQuoteExcel(pendingExportTemplateData.value)
     }
@@ -13619,50 +16427,69 @@ async function exportQuoteByPrintTemplate(format: 'excel' | 'word' | 'pdf' | 'pn
   }
 
   const ctx = buildCurrentQuoteExportContext()
+  const totalCount = templatesToExport.length
+  const namesSummary = templatesToExport.map(t => `"${t.ten_mau}"`).join(', ')
+
   try {
-    if (format === 'excel') {
-      showAsyncLoading(`Đang xuất Excel theo mẫu "${tpl.ten_mau}"...`)
-      const blob = await generateExcelBlobFromTemplate(tpl, ctx)
-      if (isMobileOrIOSPWA()) {
-        asyncResultModal.value.show = false
+    if (format === 'pdf') {
+      exportMultiPdfOrPrintFromTemplates(templatesToExport, ctx, normalFileName)
+      return
+    }
+
+    for (let idx = 0; idx < totalCount; idx++) {
+      const tpl = templatesToExport[idx]
+      const fileName = getTemplateExportFileName(normalFileName, tpl, totalCount)
+      const stepPrefix = totalCount > 1 ? `(${idx + 1}/${totalCount}) ` : ''
+
+      if (format === 'excel') {
+        showAsyncLoading(`Đang xuất Excel ${stepPrefix}theo mẫu "${tpl.ten_mau}"...`)
+        const blob = await generateExcelBlobFromTemplate(tpl, ctx)
+        if (isMobileOrIOSPWA() && idx === totalCount - 1) {
+          asyncResultModal.value.show = false
+        }
         await deliverExportedFile(
           blob,
-          `${normalFileName}.xlsx`,
+          `${fileName}.xlsx`,
           'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
-      } else {
-        await deliverExportedFile(
-          blob,
-          `${normalFileName}.xlsx`,
-          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
-        showAsyncSuccess('Xuất Excel thành công', `Đã tải về theo mẫu "${tpl.ten_mau}".`)
+      } else if (format === 'word') {
+        showAsyncLoading(`Đang xuất Word (.doc) ${stepPrefix}theo mẫu "${tpl.ten_mau}"...`)
+        if (isMobileOrIOSPWA() && idx === totalCount - 1) {
+          asyncResultModal.value.show = false
+        }
+        await exportWordFromTemplate(tpl, ctx, fileName)
+      } else if (format === 'png') {
+        showAsyncLoading(`Đang kết xuất Ảnh (.png) ${stepPrefix}theo mẫu "${tpl.ten_mau}"...`)
+        if (isMobileOrIOSPWA() && idx === totalCount - 1) {
+          asyncResultModal.value.show = false
+        }
+        await exportPngFromTemplate(tpl, ctx, fileName)
+      } else if (format === 'html') {
+        showAsyncLoading(`Đang xuất HTML ${stepPrefix}theo mẫu "${tpl.ten_mau}"...`)
+        if (isMobileOrIOSPWA() && idx === totalCount - 1) {
+          asyncResultModal.value.show = false
+        }
+        await exportHtmlFileFromTemplate(tpl, ctx, fileName)
       }
-    } else if (format === 'word') {
-      showAsyncLoading(`Đang xuất Word (.doc) theo mẫu "${tpl.ten_mau}"...`)
-      await exportWordFromTemplate(tpl, ctx, normalFileName)
-      if (isMobileOrIOSPWA()) {
-        asyncResultModal.value.show = false
-      } else {
-        showAsyncSuccess('Xuất Word thành công', `Đã tải về file Word (.doc) theo mẫu "${tpl.ten_mau}".`)
+
+      if (idx < totalCount - 1) {
+        await new Promise(r => setTimeout(r, 280))
       }
-    } else if (format === 'pdf') {
-      exportPdfOrPrintFromTemplate(tpl, ctx, normalFileName)
-    } else if (format === 'png') {
-      showAsyncLoading(`Đang kết xuất Ảnh (.png) theo mẫu "${tpl.ten_mau}"...`)
-      await exportPngFromTemplate(tpl, ctx, normalFileName)
-      if (isMobileOrIOSPWA()) {
-        asyncResultModal.value.show = false
-      } else {
-        showAsyncSuccess('Xuất Ảnh thành công', 'File ảnh (.png) đã được tải về.')
-      }
-    } else if (format === 'html') {
-      await exportHtmlFileFromTemplate(tpl, ctx, normalFileName)
-      if (isMobileOrIOSPWA()) {
-        asyncResultModal.value.show = false
-      } else {
-        showAsyncSuccess('Xuất HTML thành công', 'File .html đã được tải về.')
-      }
+    }
+
+    if (!isMobileOrIOSPWA()) {
+      const fmtLabel =
+        format === 'excel'
+          ? 'Excel (.xlsx)'
+          : format === 'word'
+          ? 'Word (.doc)'
+          : format === 'png'
+          ? 'Ảnh (.png)'
+          : 'HTML (.html)'
+      showAsyncSuccess(
+        `Xuất ${fmtLabel} thành công (${totalCount} mẫu)`,
+        `Đã tải về ${totalCount} file theo mẫu: ${namesSummary}.`
+      )
     }
   } catch (e: any) {
     console.error('Lỗi xuất báo giá theo mẫu in:', e)
@@ -13808,6 +16635,9 @@ interface QuoteTabSession {
 const QUOTE_TABS_STORAGE_KEY = 'nts_baogia_firebase_tabs_v1'
 const quoteTabs = ref<QuoteTabSession[]>([])
 const activeQuoteTabId = ref<string>('')
+watch(activeQuoteTabId, () => {
+  resetAllCmpSrOverrides()
+})
 const quoteTabsScrollRef = ref<HTMLElement | null>(null)
 let saveTabsDebounceTimer: any = null
 
@@ -13949,7 +16779,7 @@ function createBlankTabSession(customTabNum?: number): QuoteTabSession {
     isExistingCustomer: false,
     originalKhach: null,
     hasImportedCustomerPendingSave: false,
-    thueChenhLechPct: 0,
+    thueChenhLechPct: 25,
     chietKhauTruocThuePct: 0,
     selectedTermId: defTerm.id,
     editableTermContent: defTerm.content,
@@ -14029,7 +16859,10 @@ function applyTabSessionToCurrentState(tab: QuoteTabSession) {
     maKHInput.value = tab.maKHInput ?? khach.value.Ma_khach_hang ?? ''
     tenKHInput.value = tab.tenKHInput ?? khach.value.Ten_khach_hang ?? ''
 
-    thueChenhLechPct.value = toNum(tab.thueChenhLechPct, 0)
+    thueChenhLechPct.value =
+      tab.thueChenhLechPct !== undefined && tab.thueChenhLechPct !== null
+        ? toNum(tab.thueChenhLechPct, 25)
+        : 25
     chietKhauTruocThuePct.value = toNum(tab.chietKhauTruocThuePct, 0)
 
     importedTermsHtml.value = tab.importedTermsHtml || ''
@@ -14135,6 +16968,8 @@ function restoreQuoteTabsFromStorage(): boolean {
         quoteTabs.value = parsed.tabs.map((t: any, idx: number) => ({
           ...createBlankTabSession(idx + 1),
           ...t,
+          thueChenhLechPct:
+            toNum(t.thueChenhLechPct, 0) > 0 ? toNum(t.thueChenhLechPct, 25) : 25,
           tabNumber: Number(t.tabNumber) || idx + 1
         }))
         const foundActive =
@@ -14476,7 +17311,7 @@ function resetToanBoBaoGia() {
   flatQuoteRows.value = [];
 
   chietKhauTruocThuePct.value = 0;
-  thueChenhLechPct.value = 0;
+  thueChenhLechPct.value = 25;
   ghiChuHopDong.value = '';
   contentOfContractPO.value = '';
   selectedTermId.value = '';
@@ -18441,7 +21276,25 @@ function setAllQuoteCols(visible: boolean) {
   }
 }
 
+const visibleCompareLeadingColSpan = computed(() => {
+  const compareLeadingKeys: QuoteColKey[] = [
+    'stt', 'pn', 'sku_code', 'ten_hang', 'description', 'dien_giai', 'hang', 'dvt', 'sl', 'ti_gia'
+  ]
+  let count = 0
+  for (const k of compareLeadingKeys) {
+    if (k === 'ti_gia') {
+      if (quoteCurrency.value === 'USD' && quoteColVisible.ti_gia) count++
+    } else if (quoteColVisible[k]) {
+      count++
+    }
+  }
+  return count
+})
+
 const visibleQuoteColCount = computed(() => {
+  if (quotePriceViewMode.value === 'compare') {
+    return Math.max(1, visibleCompareLeadingColSpan.value + 8 + (quoteColVisible.xoa ? 1 : 0))
+  }
   let count = 0
   for (const col of QUOTE_TABLE_COLUMNS) {
     if (col.key === 'ti_gia') {
@@ -18454,6 +21307,9 @@ const visibleQuoteColCount = computed(() => {
 })
 
 const visibleLeadingFooterColSpan = computed(() => {
+  if (quotePriceViewMode.value === 'compare') {
+    return visibleCompareLeadingColSpan.value
+  }
   const leadingKeys: QuoteColKey[] = [
     'stt', 'pn', 'sku_code', 'ten_hang', 'description', 'dien_giai', 'hang', 'dvt', 'sl',
     'ti_gia', 'gia_off_hang', 'list_price', 'gia_nhap'
@@ -19055,7 +21911,8 @@ const isAnyQuoteModalOpen = computed(() => Boolean(
   (showKasperskyImageFullscreen.value && previewImageLink.value) ||
   showVoiceQuoteModal.value ||
   (showPriceListPicker.value && isMobileQuoteViewport.value) ||
-  showMobileQuoteTabsSheet.value
+  showMobileQuoteTabsSheet.value ||
+  showMobileQuoteModeSheet.value
 ))
 
 let isBaoGiaComponentActive = false
@@ -19190,6 +22047,26 @@ onUnmounted(() => {
 
       <!-- ================== LEFT SIDEBAR ================== -->
       <aside class="product-sidebar sidebar-left" :class="{ closed: !showProductSidebar }" @scroll.passive="onProductGridScroll">
+        <!-- THANH DỌC THU GỌN KHO SẢN PHẨM (ĐỒNG BỘ VỚI CỘT CHỈ SỐ TÀI CHÍNH) -->
+        <button
+          v-if="!showProductSidebar"
+          type="button"
+          class="cmp-sr-collapsed-rail is-left-product-rail"
+          @click="showProductSidebar = true"
+          title="Nhấn để mở Kho sản phẩm & Tổng kết"
+        >
+          <span class="cmp-sr-rail-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="13 17 18 12 13 7"></polyline>
+              <polyline points="6 17 11 12 6 7"></polyline>
+            </svg>
+          </span>
+          <span class="cmp-sr-rail-label">KHO SẢN PHẨM &amp; TỔNG KẾT</span>
+          <span class="cmp-sr-rail-badge is-com-text">
+            {{ formatVND(activePriceList ? (activePriceList.items || []).length : products.length) }} SP
+          </span>
+        </button>
+
         <div class="product-catalog-sticky-head" :class="{ 'is-header-hidden': isMobileProductHeaderHidden }">
         <div class="sidebar-head sidebar-head-product" style="display: flex; flex-direction: column; align-items: stretch; gap: 6px;">
           <div style="display: flex; align-items: center; gap: 6px; width: 100%;">
@@ -19429,7 +22306,17 @@ onUnmounted(() => {
               </svg>
             </button>
 
-            <button class="icon-btn hide-on-mobile-quote" @click="showProductSidebar = false" style="width: 31px !important; height: 31px !important; min-width: 31px !important; margin: 0 !important; flex-shrink: 0;" title="Ẩn kho sản phẩm">✕</button>
+            <button
+              type="button"
+              class="product-sidebar-collapse-btn hide-on-mobile-quote"
+              @click="showProductSidebar = false"
+              title="Thu gọn Kho sản phẩm"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="11 17 6 12 11 7"></polyline>
+                <polyline points="18 17 13 12 18 7"></polyline>
+              </svg>
+            </button>
           </div>
 
           <Transition name="pl-subbar-slide">
@@ -20049,22 +22936,22 @@ onUnmounted(() => {
           <div data-guide="dock-finance-panel" class="totals-box step-summary dock-tab-panel" :class="{ 'dock-tab-active': activeLeftDockTab === 'finance' }">
             <div class="totals-body">
               <div class="totals-row">
-                <span class="totals-label">Tổng giá thực tế</span>
+                <span class="totals-label">TT trước thuế (Khách)</span>
                 <span class="totals-value">
                   {{ formatVND(tongGiaThucTe) }}
-                  <span class="history-icon" @click="openHistory('tongGiaThucTe', 'Tổng giá thực tế')"><i class="ri-history-line" style="font-size: 13px;"></i></span>
+                  <span class="history-icon" @click="openHistory('tongGiaThucTe', 'TT trước thuế (Khách)')"><i class="ri-history-line" style="font-size: 13px;"></i></span>
                 </span>
               </div>
               <div class="totals-row">
                 <span class="totals-label" style="display: flex; align-items: center; gap: 6px;">
-                  Tổng trước thuế (HĐ)
+                  TT trước thuế (HĐ)
                   <button data-guide="btn-adjust-all-quote" class="util-btn small inline-adjust" style="padding: 1px 5px !important; font-size: 10.5px !important; margin: 0 !important;" @click="openAdjustPrice('all', '', 'Toàn bộ báo giá')" title="Điều chỉnh giá toàn bộ báo giá">
                     <i class="ri-arrow-up-down-fill"></i>
                   </button>
                 </span>
                 <span class="totals-value">
                   {{ formatVND(totals.truoc) }}
-                  <span class="history-icon" @click="openHistory('truoc', 'Tổng trước thuế ( HĐ)')"><i class="ri-history-line" style="font-size: 13px;"></i></span>
+                  <span class="history-icon" @click="openHistory('truoc', 'TT trước thuế (HĐ)')"><i class="ri-history-line" style="font-size: 13px;"></i></span>
                 </span>
               </div>
               <div class="totals-row">
@@ -20075,10 +22962,10 @@ onUnmounted(() => {
                 </span>
               </div>
               <div class="totals-row totals-highlight-blue">
-                <span class="totals-label">Tổng sau thuế</span>
+                <span class="totals-label">TT sau thuế</span>
                 <span class="totals-value">
                   {{ formatVND(totals.sau) }}
-                  <span class="history-icon" @click="openHistory('sau', 'Tổng sau thuế')"><i class="ri-history-line" style="font-size: 13px;"></i></span>
+                  <span class="history-icon" @click="openHistory('sau', 'TT sau thuế')"><i class="ri-history-line" style="font-size: 13px;"></i></span>
                 </span>
               </div>
             </div>
@@ -20130,14 +23017,11 @@ onUnmounted(() => {
           </div>
         </div>
       </aside>
-      <button v-if="!showProductSidebar" class="open-tab metallic-border-btn" @mousedown="startDragFab" @touchstart="startDragFab" @click.stop="onFabClick" :style="{ left: fabPos.x + 'px', top: fabPos.y + 'px', cursor: isDraggingFab ? 'grabbing' : 'grab' }">
-        <i class="lucide-shopping-cart" style="font-size: 20px; pointer-events: none; z-index: 2;"></i> 
-        <span style="font-size: 10px; font-weight: 700; line-height: 1.15; text-align: center; white-space: normal; pointer-events: none; z-index: 2;">KHO<br>SẢN PHẨM</span>
-      </button>
 
       <!-- ================== CENTER: BẢNG BÁO GIÁ VÀ TỔNG TIỀN ================== -->
       <section class="box center quote-center">
         <div class="quote-table-container" ref="quoteTableContainerRef">
+          <div class="quote-main-table-card">
           <!-- THANH ĐA TAB BÁO GIÁ & CỤM NÚT THAO TÁC GHIM CỐ ĐỊNH TRÊN MOBILE -->
           <div class="quote-workspace-topbar">
             <button
@@ -20244,17 +23128,182 @@ onUnmounted(() => {
           </div>
 
           <div class="sidebar-head table-header-box" style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; z-index: 35;">
-            <!-- CỤM TRÁI: TIÊU ĐỀ + NÚT LÀM MỚI + THANH ĐỊNH DANH HỢP ĐỒNG GỘP GỌN -->
+            <!-- CỤM TRÁI: TOGGLE CHẾ ĐỘ BÁO GIÁ (PC) + NÚT LÀM MỚI + THANH ĐỊNH DANH HỢP ĐỒNG GỘP GỌN -->
             <div class="header-left-cluster" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0;">
-              <h3 class="quote-main-heading" style="margin: 0; white-space: nowrap; width: auto; flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                  <polyline points="14 2 14 8 20 8"></polyline>
-                  <line x1="16" y1="13" x2="8" y2="13"></line>
-                  <line x1="16" y1="17" x2="8" y2="17"></line>
-                </svg>
-                <span>Bảng báo giá chi tiết</span>
-              </h3>
+              <!-- NÚT TOGGLE CHỌN CHẾ ĐỘ HIỂN THỊ BẢNG GIÁ TRÊN PC (BÁO GIÁ GỐC | BÁO GIÁ KHÁCH | BÁO GIÁ TRÊN HỢP ĐỒNG | ĐỐI CHIẾU 3 GIÁ) -->
+              <div class="quote-price-view-switcher hide-on-mobile-quote" style="position: relative; display: inline-flex; align-items: center; flex-shrink: 0;">
+                <button
+                  type="button"
+                  class="btn-quote-price-view-toggle"
+                  @click.stop="showQuotePriceViewDropdown = !showQuotePriceViewDropdown"
+                  :style="{
+                    width: 'auto',
+                    margin: '0',
+                    height: '28px',
+                    padding: '0 10px',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    fontWeight: '700',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.18s ease',
+                    background: quotePriceViewMode === 'origin'
+                      ? (quoteThemeMode === 'light' ? '#fffbeb' : 'rgba(245, 158, 11, 0.15)')
+                      : quotePriceViewMode === 'contract'
+                      ? (quoteThemeMode === 'light' ? '#ecfdf5' : 'rgba(16, 185, 129, 0.16)')
+                      : quotePriceViewMode === 'compare'
+                      ? (quoteThemeMode === 'light' ? '#f5f3ff' : 'rgba(139, 92, 246, 0.18)')
+                      : (quoteThemeMode === 'light' ? '#eff6ff' : 'rgba(59, 130, 246, 0.16)'),
+                    color: quotePriceViewMode === 'origin'
+                      ? (quoteThemeMode === 'light' ? '#b45309' : '#fbbf24')
+                      : quotePriceViewMode === 'contract'
+                      ? (quoteThemeMode === 'light' ? '#047857' : '#34d399')
+                      : quotePriceViewMode === 'compare'
+                      ? (quoteThemeMode === 'light' ? '#6d28d9' : '#c4b5fd')
+                      : (quoteThemeMode === 'light' ? '#1d4ed8' : '#60a5fa'),
+                    border: quotePriceViewMode === 'origin'
+                      ? (quoteThemeMode === 'light' ? '1px solid #fcd34d' : '1px solid rgba(245, 158, 11, 0.45)')
+                      : quotePriceViewMode === 'contract'
+                      ? (quoteThemeMode === 'light' ? '1px solid #6ee7b7' : '1px solid rgba(16, 185, 129, 0.45)')
+                      : quotePriceViewMode === 'compare'
+                      ? (quoteThemeMode === 'light' ? '1px solid #c4b5fd' : '1px solid rgba(139, 92, 246, 0.5)')
+                      : (quoteThemeMode === 'light' ? '1px solid #93c5fd' : '1px solid rgba(59, 130, 246, 0.45)'),
+                    boxShadow: quoteThemeMode === 'light' ? '0 1px 2px rgba(15, 23, 42, 0.05)' : 'none'
+                  }"
+                  title="Chuyển đổi hiển thị: Báo giá gốc / Báo giá khách / Báo giá trên hợp đồng / Đối chiếu 3 giá"
+                >
+                  <span
+                    :style="{
+                      width: '7px',
+                      height: '7px',
+                      borderRadius: '999px',
+                      flexShrink: 0,
+                      background: quotePriceViewMode === 'origin' ? '#f59e0b' : quotePriceViewMode === 'contract' ? '#10b981' : quotePriceViewMode === 'compare' ? '#8b5cf6' : '#3b82f6',
+                      boxShadow: quotePriceViewMode === 'origin'
+                        ? '0 0 6px rgba(245, 158, 11, 0.6)'
+                        : quotePriceViewMode === 'contract'
+                        ? '0 0 6px rgba(16, 185, 129, 0.6)'
+                        : quotePriceViewMode === 'compare'
+                        ? '0 0 6px rgba(139, 92, 246, 0.65)'
+                        : '0 0 6px rgba(59, 130, 246, 0.6)'
+                    }"
+                  ></span>
+                  <span>{{ currentQuotePriceViewOption.label }}</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" :style="{ transform: showQuotePriceViewDropdown ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.18s ease', flexShrink: 0 }">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </button>
+
+                <Teleport v-if="showQuotePriceViewDropdown" to=".page" :disabled="!isMobileQuoteViewport">
+                  <div
+                    class="quote-price-view-backdrop"
+                    @click="showQuotePriceViewDropdown = false"
+                    style="position: fixed; inset: 0; z-index: 30; background: transparent;"
+                  ></div>
+                  <div
+                    class="quote-price-view-dropdown"
+                    @click.stop
+                    :style="{
+                      position: isMobileQuoteViewport ? 'fixed' : 'absolute',
+                      top: isMobileQuoteViewport ? '104px' : 'calc(100% + 6px)',
+                      left: isMobileQuoteViewport ? 'auto' : '0',
+                      right: isMobileQuoteViewport ? '12px' : 'auto',
+                      width: '325px',
+                      background: quoteThemeMode === 'light' ? '#ffffff' : '#0f172a',
+                      border: quoteThemeMode === 'light' ? '1px solid #cbd5e1' : '1px solid #334155',
+                      borderRadius: '10px',
+                      boxShadow: quoteThemeMode === 'light' ? '0 14px 34px rgba(15, 23, 42, 0.14)' : '0 14px 34px rgba(0, 0, 0, 0.65)',
+                      padding: '8px',
+                      zIndex: 130,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '5px'
+                    }"
+                  >
+                    <div :style="{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px', color: quoteThemeMode === 'light' ? '#64748b' : '#94a3b8', padding: '4px 6px 2px' }">
+                      Chế độ hiển thị bảng báo giá
+                    </div>
+                    <button
+                      v-for="opt in quotePriceViewOptions"
+                      :key="opt.value"
+                      type="button"
+                      @click.stop="selectQuotePriceViewMode(opt.value)"
+                      :style="{
+                        width: '100%',
+                        margin: '0',
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '3px',
+                        transition: 'all 0.15s ease',
+                        background: quotePriceViewMode === opt.value
+                          ? (opt.badgeColor === 'amber'
+                              ? (quoteThemeMode === 'light' ? '#fffbeb' : 'rgba(245, 158, 11, 0.14)')
+                              : opt.badgeColor === 'emerald'
+                              ? (quoteThemeMode === 'light' ? '#ecfdf5' : 'rgba(16, 185, 129, 0.14)')
+                              : opt.badgeColor === 'purple'
+                              ? (quoteThemeMode === 'light' ? '#f5f3ff' : 'rgba(139, 92, 246, 0.16)')
+                              : (quoteThemeMode === 'light' ? '#eff6ff' : 'rgba(59, 130, 246, 0.14)'))
+                          : 'transparent',
+                        border: quotePriceViewMode === opt.value
+                          ? (opt.badgeColor === 'amber'
+                              ? (quoteThemeMode === 'light' ? '1px solid #fcd34d' : '1px solid rgba(245, 158, 11, 0.45)')
+                              : opt.badgeColor === 'emerald'
+                              ? (quoteThemeMode === 'light' ? '1px solid #6ee7b7' : '1px solid rgba(16, 185, 129, 0.45)')
+                              : opt.badgeColor === 'purple'
+                              ? (quoteThemeMode === 'light' ? '1px solid #c4b5fd' : '1px solid rgba(139, 92, 246, 0.5)')
+                              : (quoteThemeMode === 'light' ? '1px solid #93c5fd' : '1px solid rgba(59, 130, 246, 0.45)'))
+                          : '1px solid transparent'
+                      }"
+                    >
+                      <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 8px;">
+                        <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 800;" :style="{ color: quoteThemeMode === 'light' ? '#0f172a' : '#f8fafc' }">
+                          <span
+                            :style="{
+                              width: '8px',
+                              height: '8px',
+                              borderRadius: '999px',
+                              background: opt.badgeColor === 'amber' ? '#f59e0b' : opt.badgeColor === 'emerald' ? '#10b981' : opt.badgeColor === 'purple' ? '#8b5cf6' : '#3b82f6'
+                            }"
+                          ></span>
+                          {{ opt.label }}
+                        </span>
+                        <span
+                          style="font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap;"
+                          :style="{
+                            color: opt.badgeColor === 'amber'
+                              ? (quoteThemeMode === 'light' ? '#b45309' : '#fbbf24')
+                              : opt.badgeColor === 'emerald'
+                              ? (quoteThemeMode === 'light' ? '#047857' : '#34d399')
+                              : opt.badgeColor === 'purple'
+                              ? (quoteThemeMode === 'light' ? '#6d28d9' : '#c4b5fd')
+                              : (quoteThemeMode === 'light' ? '#1d4ed8' : '#60a5fa')
+                          }"
+                        >
+                          {{
+                            opt.value === 'origin'
+                              ? (quoteCurrency === 'USD' ? formatUSD(totalsOriginUSD.truoc) + ' $' : formatVND(totalsOrigin.truoc) + ' ₫')
+                              : opt.value === 'customer'
+                              ? (quoteCurrency === 'USD' ? formatUSD(totalsContractUSD.truoc) + ' $' : formatVND(totalsContract.truoc) + ' ₫')
+                              : opt.value === 'contract'
+                              ? (quoteCurrency === 'USD' ? formatUSD(totalsUSD.truoc) + ' $' : formatVND(totals.truoc) + ' ₫')
+                              : '3 TẦNG GIÁ'
+                          }}
+                        </span>
+                      </div>
+                      <div :style="{ fontSize: '11px', fontWeight: '500', color: quoteThemeMode === 'light' ? '#64748b' : '#94a3b8', lineHeight: 1.35, paddingLeft: '14px' }">
+                        {{ opt.desc }}
+                      </div>
+                    </button>
+                  </div>
+                </Teleport>
+              </div>
 
               <button type="button" class="btn-reset-quote" @click="resetToanBoBaoGia" style="background: #ef4444; color: #ffffff; border: none; padding: 0 10px; height: 28px; margin: 0; border-radius: 6px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; transition: all 0.2s; box-shadow: 0 1px 3px rgba(239, 68, 68, 0.4); font-size: 12px; white-space: nowrap; flex-shrink: 0; width: max-content; cursor: pointer;" title="Xóa toàn bộ hàng hóa trong báo giá">
                 <svg class="btn-reset-ico" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;" aria-hidden="true">
@@ -20283,6 +23332,7 @@ onUnmounted(() => {
 
             <!-- CỤM PHẢI: TIỀN TỆ + THIẾT LẬP HIỂN THỊ + HƯỚNG DẪN -->
             <div class="header-right-cluster" style="margin-left: auto; display: inline-flex; align-items: center; gap: 6px; flex-wrap: nowrap; flex-shrink: 0;">
+
               <div class="vip-currency-switch" @click="quoteCurrency = quoteCurrency === 'VND' ? 'USD' : 'VND'" style="display: inline-flex; align-items: center; background: #0f172a; padding: 3px; border-radius: 30px; position: relative; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5), 0 1px 1px rgba(255,255,255,0.05); cursor: pointer; user-select: none; border: 1px solid #1e293b; height: 28px; box-sizing: border-box;">
                 <div :style="{ position: 'absolute', top: '2px', bottom: '2px', width: '44px', background: quoteCurrency === 'VND' ? 'linear-gradient(135deg, #10b981, #059669)' : 'linear-gradient(135deg, #3b82f6, #2563eb)', borderRadius: '24px', transition: 'all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)', left: quoteCurrency === 'VND' ? '3px' : '47px', boxShadow: '0 2px 4px rgba(0,0,0,0.4)' }"></div>
                 <div :style="{ position: 'relative', width: '44px', textAlign: 'center', fontSize: '11px', fontWeight: 800, color: quoteCurrency === 'VND' ? '#ffffff' : '#64748b', transition: 'color 0.25s', zIndex: 2, letterSpacing: '0.4px' }">VND</div>
@@ -20876,7 +23926,7 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <table>
+            <table :class="{ 'is-compare-3price-table': quotePriceViewMode === 'compare' }">
               <thead>
                 <tr style="color: #ffffff !important; font-weight: 800 !important;">
                   <th v-if="quoteColVisible.stt" class="col-stt" style="border-top-left-radius: 6px;">STT</th>
@@ -20889,15 +23939,27 @@ onUnmounted(() => {
                   <th v-if="quoteColVisible.dvt" class="col-dvt">ĐVT</th>
                   <th v-if="quoteColVisible.sl" class="col-sl">SL</th>
                   <th v-if="quoteCurrency === 'USD' && quoteColVisible.ti_gia" class="col-dg" style="min-width: 70px;">TỈ GIÁ</th>
-                  <th v-if="quoteColVisible.gia_off_hang" class="col-dg">GIÁ VỐN / GIÁ OFF HÃNG</th>
-                  <th v-if="quoteColVisible.list_price" class="col-dg">LIST PRICE</th>
-                  <th v-if="quoteColVisible.gia_nhap" class="col-dg">GIÁ NHẬP</th>
-                  <th v-if="quoteColVisible.muc_off" class="col-dg">MỨC OFF</th>
-                  <th v-if="quoteColVisible.don_gia_kh" class="col-dg">ĐƠN GIÁ (KH)</th>
-                  <th v-if="quoteColVisible.tt_truoc_thue" class="col-tt">TT trước thuế ({{ quoteCurrency }})</th>
-                  <th v-if="quoteColVisible.vat" class="col-vat">VAT</th>
-                  <th v-if="quoteColVisible.tt_sau_thue" class="col-tt">TT sau thuế ({{ quoteCurrency }})</th>
-                  <th v-if="quoteColVisible.net_margin" class="col-tt" style="color: #ffffff !important;">Net Margin</th>
+                  <template v-if="quotePriceViewMode === 'compare'">
+                    <th class="col-dg th-compare-col th-compare-list-dg">ĐƠN GIÁ LIST</th>
+                    <th class="col-tt th-compare-col th-compare-list-tt">THÀNH TIỀN LIST ({{ quoteCurrency }})</th>
+                    <th class="col-dg th-compare-col th-compare-cust-dg">ĐƠN GIÁ KHÁCH</th>
+                    <th class="col-tt th-compare-col th-compare-cust-tt">THÀNH TIỀN KHÁCH ({{ quoteCurrency }})</th>
+                    <th class="col-dg th-compare-col th-compare-cont-dg">ĐƠN GIÁ HỢP ĐỒNG</th>
+                    <th class="col-tt th-compare-col th-compare-cont-tt">THÀNH TIỀN HỢP ĐỒNG ({{ quoteCurrency }})</th>
+                    <th class="col-dg th-compare-col th-compare-off-hang">GIÁ VỐN / GIÁ OFF HÃNG</th>
+                    <th class="col-tt th-compare-col th-compare-net-margin">NET MARGIN</th>
+                  </template>
+                  <template v-else>
+                    <th v-if="quoteColVisible.gia_off_hang" class="col-dg">GIÁ VỐN / GIÁ OFF HÃNG</th>
+                    <th v-if="quoteColVisible.list_price" class="col-dg">LIST PRICE</th>
+                    <th v-if="quoteColVisible.gia_nhap" class="col-dg">GIÁ NHẬP</th>
+                    <th v-if="quoteColVisible.muc_off" class="col-dg">MỨC OFF</th>
+                    <th v-if="quoteColVisible.don_gia_kh" class="col-dg">{{ activeDonGiaHeaderLabel }}</th>
+                    <th v-if="quoteColVisible.tt_truoc_thue" class="col-tt">TT trước thuế ({{ quoteCurrency }})</th>
+                    <th v-if="quoteColVisible.vat" class="col-vat">VAT</th>
+                    <th v-if="quoteColVisible.tt_sau_thue" class="col-tt">TT sau thuế ({{ quoteCurrency }})</th>
+                    <th v-if="quoteColVisible.net_margin" class="col-tt" style="color: #ffffff !important;">Net Margin</th>
+                  </template>
                   <th v-if="quoteColVisible.xoa" class="col-del" style="border-top-right-radius: 6px;">Xóa</th>
                 </tr>
               </thead>
@@ -20920,7 +23982,7 @@ onUnmounted(() => {
                 @end="onFlatDragEnd"
               >
                 <template #item="{ element: r }">
-                  <tr v-if="r.type === 'group'" :class="['group-row', (isMobileDevice || guideTempTableDemoActive) ? '' : 'drag-handle']" style="cursor: grab;" title="Kéo thả danh mục">
+                  <tr v-if="r.type === 'group'" :data-quote-group-key="r.key" :class="['group-row', (isMobileDevice || guideTempTableDemoActive) ? '' : 'drag-handle', isMobileGroupMoveActive(r.key) ? 'is-move-active' : '']" style="cursor: grab;" title="Kéo thả danh mục">
                     <td v-if="quoteColVisible.stt" class="group-stt">
                       <div style="display: flex; align-items: center; justify-content: center; gap: 4px; white-space: nowrap;">
                         <i class="lucide-grip-vertical" style="opacity: 0.5;"></i> {{ r.roman }}
@@ -20929,14 +23991,56 @@ onUnmounted(() => {
                     <td :colspan="Math.max(1, visibleQuoteColCount - (quoteColVisible.stt ? 1 : 0))" class="group-title">
                       <div class="group-title-bar">
                         <span class="group-title-text">{{ r.title }}</span>
-                        <div data-guide="group-adjust-actions" class="group-row-actions">
-                          <button type="button" data-guide="group-btn-edit-price" class="util-btn small inline-normal-edit" @click.stop="openAdjustPrice('group', r.key, r.title, undefined, true)" title="Sửa thường - cập nhật giá thực tế">
+                        <div data-guide="group-adjust-actions" class="group-row-actions" @click.stop>
+                          <Transition name="m-qcard-move-slide">
+                            <div v-if="isMobileGroupMoveActive(r.key)" class="m-qcard-move-stepper is-group-stepper">
+                              <button
+                                type="button"
+                                class="m-qcard-move-step-btn"
+                                :disabled="!canMoveQuoteGroup(r.key, -1)"
+                                title="Di chuyển danh mục lên"
+                                aria-label="Di chuyển danh mục lên"
+                                @click.stop="moveQuoteGroupStep(r.key, -1)"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                                  <polyline points="18 15 12 9 6 15"></polyline>
+                                </svg>
+                              </button>
+                              <button
+                                type="button"
+                                class="m-qcard-move-step-btn"
+                                :disabled="!canMoveQuoteGroup(r.key, 1)"
+                                title="Di chuyển danh mục xuống"
+                                aria-label="Di chuyển danh mục xuống"
+                                @click.stop="moveQuoteGroupStep(r.key, 1)"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                                  <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                              </button>
+                            </div>
+                          </Transition>
+                          <button v-if="canShowNormalEditBtn" type="button" data-guide="group-btn-edit-price" class="util-btn small inline-normal-edit" @click.stop="openAdjustPrice('group', r.key, r.title, undefined, true)" title="Sửa thường - cập nhật giá thực tế">
                             <i class="ri-edit-line"></i>
                             <span>Sửa giá</span>
                           </button>
                           <button type="button" data-guide="group-btn-adjust-diff" class="util-btn small inline-adjust" @click.stop="openAdjustPrice('group', r.key, r.title)" title="Điều chỉnh chênh lệch giá">
                             <i class="ri-arrow-up-down-fill"></i>
                             <span>Điều chỉnh</span>
+                          </button>
+                          <button
+                            type="button"
+                            class="util-btn small m-group-move-toggle"
+                            :class="{ 'is-active': isMobileGroupMoveActive(r.key) }"
+                            title="Di chuyển danh mục lên/xuống"
+                            aria-label="Di chuyển danh mục lên/xuống"
+                            @click.stop="toggleMobileGroupMove(r.key)"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                              <polyline points="8 18 12 22 16 18"></polyline>
+                              <polyline points="8 6 12 2 16 6"></polyline>
+                              <line x1="12" y1="2" x2="12" y2="22"></line>
+                            </svg>
                           </button>
                         </div>
                       </div>
@@ -20968,33 +24072,54 @@ onUnmounted(() => {
                     <td v-if="quoteColVisible.dvt" data-label="ĐVT" class="col-dvt-cell" :title="r.item.DVT" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'DVT')">{{ r.item.DVT }}</td>
                     <td v-if="quoteColVisible.sl" data-label="SL" class="center" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'So_luong')">{{ r.item.So_luong }}</td>
                     <td data-label="Tỉ giá" v-if="quoteCurrency === 'USD' && quoteColVisible.ti_gia" class="center" style="line-height: 1.3;" @click.stop="openQuoteEdit(r.idx, 'Ti_gia')">
-                      <div style="color: #fbbf24; font-weight: 800; font-size: 13px;">{{ formatVND(toNum(r.item.Ti_gia, 1)) }}</div>
+                      <div style="color: #fbbf24; font-weight: 800; font-size: 13px;">{{ formatVND(tableTiGia(r.item)) }}</div>
                       <div style="font-size: 10px; color: #94a3b8; font-weight: 700;">USD</div>
                     </td>
-                    <td v-if="quoteColVisible.gia_off_hang" data-label="Giá vốn / Giá off hãng" class="right" style="line-height: 1.3; font-weight: 700; color: #10b981;" @click.stop="openQuoteEdit(r.idx, 'Gia_tieu_chuan')">
-                      <div>{{ displayGiaTieuChuan(r.item) }}</div>
-                      <div class="muted" style="font-size: 11px; margin-top: 2px; color: #10b981 !important;">({{ displayGiaTieuChuanPct(r.item) }}%)</div>
-                    </td>
-                    <td v-if="quoteColVisible.list_price" data-label="List Price" class="right" style="color: #10b981; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Don_gia')">{{ displayDonGiaLP(r.item) }}</td> 
-                    <td v-if="quoteColVisible.gia_nhap" data-label="Giá nhập" class="right" style="color: #ef4444; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'gia_nhap')">{{ fmtPrice(giaNhapVnd(r.item), toNum(r.item.Ti_gia, 1)) }}</td>
-                    <td v-if="quoteColVisible.muc_off" data-label="Mức off" class="right" style="line-height: 1.3; font-weight: 700; color: #ef4444;" @click.stop="openQuoteEdit(r.idx, 'muc_phan_tram_off')">
-                      <div>{{ displayMucOffAmount(r.item) }}</div>
-                      <div class="muted" style="font-size: 11px; margin-top: 2px; color: #ef4444 !important;">(-{{ toNum(r.item.muc_phan_tram_off, 0) }}%)</div>
-                    </td>
-                    <td v-if="quoteColVisible.don_gia_kh" data-label="Đơn giá (KH)" class="right" style="color: #10b981; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'unit_price_kh')">{{ fmtPrice(unitPrice(r.item), toNum(r.item.Ti_gia, 1)) }}</td>
-                    <td v-if="quoteColVisible.tt_truoc_thue" data-label="TT trước thuế" class="right" style="color: #10b981; font-weight: 800;" @click.stop="openQuoteEdit(r.idx, 'line_truoc_thue')">{{ fmtPrice(lineTruocThue(r.item), toNum(r.item.Ti_gia, 1)) }}</td>
-                    <td v-if="quoteColVisible.vat" data-label="VAT" class="right" style="line-height: 1.3; color: #10b981; font-weight: 800;" @click.stop="openQuoteEdit(r.idx, 'Thue_VAT')">
-                      <div>{{ fmtPrice(lineVAT(r.item), toNum(r.item.Ti_gia, 1)) }}</div>
-                      <div class="muted" style="font-size: 11px; margin-top: 2px; color: #34d399 !important;">({{ toNum(r.item.Thue_VAT, 0) }}%)</div>
-                    </td>
-                    <td v-if="quoteColVisible.tt_sau_thue" data-label="TT sau thuế" class="right" style="color: #10b981; font-weight: 800;" @click.stop="openQuoteEdit(r.idx, 'Thue_VAT')">{{ fmtPrice(lineSauThue(r.item), toNum(r.item.Ti_gia, 1)) }}</td>
-                    <td v-if="quoteColVisible.net_margin" data-label="Net Margin" class="right" :style="{ color: lineLoiNhuan(r.item) >= 0 ? '#10b981' : '#ef4444', fontWeight: 800 }">
-                      <div style="display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
-                        <span v-if="lineLoiNhuan(r.item) >= 0" style="font-size: 12px; margin-right: 2px;">▲</span>
-                        <span v-else style="font-size: 12px; margin-right: 2px;">▼</span>
-                        {{ fmtPrice(Math.abs(lineLoiNhuan(r.item)), toNum(r.item.Ti_gia, 1)) }}
-                      </div>
-                    </td>
+                    <template v-if="quotePriceViewMode === 'compare'">
+                      <td data-label="Đơn giá List" class="right td-compare-cell td-compare-list-dg" @click.stop="openQuoteEdit(r.idx, 'unit_price_kh')">{{ tableDisplayDonGiaList(r.item) }}</td>
+                      <td data-label="Thành tiền List" class="right td-compare-cell td-compare-list-tt" @click.stop="openQuoteEdit(r.idx, 'line_truoc_thue')">{{ tableDisplayThanhTienList(r.item) }}</td>
+                      <td data-label="Đơn giá khách" class="right td-compare-cell td-compare-cust-dg" @click.stop="openQuoteEdit(r.idx, 'unit_price_kh')">{{ tableDisplayDonGiaKhach(r.item) }}</td>
+                      <td data-label="Thành tiền khách" class="right td-compare-cell td-compare-cust-tt" @click.stop="openQuoteEdit(r.idx, 'line_truoc_thue')">{{ tableDisplayThanhTienKhach(r.item) }}</td>
+                      <td data-label="Đơn giá hợp đồng" class="right td-compare-cell td-compare-cont-dg" @click.stop="openQuoteEdit(r.idx, 'unit_price_kh')">{{ tableDisplayDonGiaHopDong(r.item) }}</td>
+                      <td data-label="Thành tiền hợp đồng" class="right td-compare-cell td-compare-cont-tt" @click.stop="openQuoteEdit(r.idx, 'line_truoc_thue')">{{ tableDisplayThanhTienHopDong(r.item) }}</td>
+                      <td data-label="Giá vốn / Giá off hãng" class="right td-compare-cell td-compare-off-hang" style="line-height: 1.3; font-weight: 700; color: #10b981;" @click.stop="openQuoteEdit(r.idx, 'Gia_tieu_chuan')">
+                        <div>{{ tableDisplayGiaTieuChuan(r.item) }}</div>
+                        <div class="muted" style="font-size: 11px; margin-top: 2px; color: #10b981 !important;">({{ tableDisplayGiaTieuChuanPct(r.item) }}%)</div>
+                      </td>
+                      <td data-label="Net Margin" class="right td-compare-cell td-compare-net-margin" :class="lineLoiNhuanRaw(r.item) >= 0 ? 'is-margin-pos' : 'is-margin-neg'" :style="{ color: lineLoiNhuanRaw(r.item) >= 0 ? '#10b981' : '#ef4444', fontWeight: 800 }" @click.stop="openQuoteEdit(r.idx, 'Gia_tieu_chuan')">
+                        <div style="display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
+                          <span v-if="lineLoiNhuanRaw(r.item) >= 0" style="font-size: 12px; margin-right: 2px;">▲</span>
+                          <span v-else style="font-size: 12px; margin-right: 2px;">▼</span>
+                          {{ fmtPrice(Math.abs(lineLoiNhuanRaw(r.item)), tableTiGiaKhach(r.item)) }}
+                        </div>
+                      </td>
+                    </template>
+                    <template v-else>
+                      <td v-if="quoteColVisible.gia_off_hang" data-label="Giá vốn / Giá off hãng" class="right" style="line-height: 1.3; font-weight: 700; color: #10b981;" @click.stop="openQuoteEdit(r.idx, 'Gia_tieu_chuan')">
+                        <div>{{ tableDisplayGiaTieuChuan(r.item) }}</div>
+                        <div class="muted" style="font-size: 11px; margin-top: 2px; color: #10b981 !important;">({{ tableDisplayGiaTieuChuanPct(r.item) }}%)</div>
+                      </td>
+                      <td v-if="quoteColVisible.list_price" data-label="List Price" class="right" style="color: #10b981; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Don_gia')">{{ tableDisplayDonGiaLP(r.item) }}</td> 
+                      <td v-if="quoteColVisible.gia_nhap" data-label="Giá nhập" class="right" style="color: #ef4444; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'gia_nhap')">{{ fmtPrice(tableGiaNhapVnd(r.item), tableTiGia(r.item)) }}</td>
+                      <td v-if="quoteColVisible.muc_off" data-label="Mức off" class="right" style="line-height: 1.3; font-weight: 700; color: #ef4444;" @click.stop="openQuoteEdit(r.idx, 'muc_phan_tram_off')">
+                        <div>{{ tableDisplayMucOffAmount(r.item) }}</div>
+                        <div class="muted" style="font-size: 11px; margin-top: 2px; color: #ef4444 !important;">(-{{ tableMucOffPct(r.item) }}%)</div>
+                      </td>
+                      <td v-if="quoteColVisible.don_gia_kh" :data-label="activeDonGiaFieldLabel" class="right" style="color: #10b981; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'unit_price_kh')">{{ tableDisplayQuoteDonGia(r.item) }}</td>
+                      <td v-if="quoteColVisible.tt_truoc_thue" data-label="TT trước thuế" class="right" style="color: #10b981; font-weight: 800;" @click.stop="openQuoteEdit(r.idx, 'line_truoc_thue')">{{ fmtPrice(tableLineTruocThue(r.item), tableTiGia(r.item)) }}</td>
+                      <td v-if="quoteColVisible.vat" data-label="VAT" class="right" style="line-height: 1.3; color: #10b981; font-weight: 800;" @click.stop="openQuoteEdit(r.idx, 'Thue_VAT')">
+                        <div>{{ fmtPrice(tableLineVAT(r.item), tableTiGia(r.item)) }}</div>
+                        <div class="muted" style="font-size: 11px; margin-top: 2px; color: #34d399 !important;">({{ tableVatPct(r.item) }}%)</div>
+                      </td>
+                      <td v-if="quoteColVisible.tt_sau_thue" data-label="TT sau thuế" class="right" style="color: #10b981; font-weight: 800;" @click.stop="openQuoteEdit(r.idx, 'Thue_VAT')">{{ fmtPrice(tableLineSauThue(r.item), tableTiGia(r.item)) }}</td>
+                      <td v-if="quoteColVisible.net_margin" data-label="Net Margin" class="right" :class="tableLineLoiNhuan(r.item) >= 0 ? 'is-margin-pos' : 'is-margin-neg'" :style="{ color: tableLineLoiNhuan(r.item) >= 0 ? '#10b981' : '#ef4444', fontWeight: 800 }">
+                        <div style="display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
+                          <span v-if="tableLineLoiNhuan(r.item) >= 0" style="font-size: 12px; margin-right: 2px;">▲</span>
+                          <span v-else style="font-size: 12px; margin-right: 2px;">▼</span>
+                          {{ fmtPrice(Math.abs(tableLineLoiNhuan(r.item)), tableTiGia(r.item)) }}
+                        </div>
+                      </td>
+                    </template>
                     <td v-if="quoteColVisible.xoa" data-label="Thao tác" class="center">
                       <div style="display: flex; gap: 4px; justify-content: center;">
                         <button class="btn-del" @click.stop="removeSelected(r.idx)" title="Xóa">✕</button>
@@ -21003,16 +24128,68 @@ onUnmounted(() => {
 
                     <!-- MOBILE COMPACT ITEM CARD (Mobile <= 1100px) -->
                     <td class="mobile-quote-item-cell" :colspan="Math.max(1, visibleQuoteColCount)">
-                      <div class="m-qcard">
-                        <!-- Dòng 1: Tên hàng căn thẳng lề trái + Nút xóa -->
+                      <div class="m-qcard" :class="{ 'is-move-active': isMobileItemMoveActive(r.item, r.idx) }">
+                        <!-- Dòng 1: Badge tên chế độ báo giá phía trên Tên hàng + Nút xóa & Nút di chuyển -->
                         <div class="m-qcard-top">
-                          <div class="m-qcard-title">{{ r.item.Ten_hang || 'Chưa có tên hàng' }}</div>
-                          <button type="button" class="m-qcard-del" @click.stop="removeSelected(r.idx)" title="Xóa sản phẩm">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                              <polyline points="3 6 5 6 21 6"></polyline>
-                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                            </svg>
-                          </button>
+                          <div class="m-qcard-head-col">
+                            <div class="m-qcard-mode-row">
+                              <span class="m-qcard-mode-badge" :class="'is-mode-' + quotePriceViewMode">
+                                <span class="m-qcard-mode-dot"></span>
+                                <span>{{ currentQuotePriceViewOption.shortLabel }}</span>
+                              </span>
+                            </div>
+                            <div class="m-qcard-title">{{ r.item.Ten_hang || 'Chưa có tên hàng' }}</div>
+                          </div>
+                          <div class="m-qcard-top-actions" @click.stop>
+                            <Transition name="m-qcard-move-slide">
+                              <div v-if="isMobileItemMoveActive(r.item, r.idx)" class="m-qcard-move-stepper">
+                                <button
+                                  type="button"
+                                  class="m-qcard-move-step-btn"
+                                  :disabled="!canMoveQuoteItem(r.idx, -1)"
+                                  title="Di chuyển lên"
+                                  aria-label="Di chuyển lên"
+                                  @click.stop="moveQuoteItemStep(r.idx, -1)"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="18 15 12 9 6 15"></polyline>
+                                  </svg>
+                                </button>
+                                <button
+                                  type="button"
+                                  class="m-qcard-move-step-btn"
+                                  :disabled="!canMoveQuoteItem(r.idx, 1)"
+                                  title="Di chuyển xuống"
+                                  aria-label="Di chuyển xuống"
+                                  @click.stop="moveQuoteItemStep(r.idx, 1)"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                  </svg>
+                                </button>
+                              </div>
+                            </Transition>
+                            <button type="button" class="m-qcard-del" @click.stop="removeSelected(r.idx)" title="Xóa sản phẩm">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              class="m-qcard-move-toggle"
+                              :class="{ 'is-active': isMobileItemMoveActive(r.item, r.idx) }"
+                              title="Di chuyển vị trí lên/xuống"
+                              aria-label="Di chuyển vị trí lên/xuống"
+                              @click.stop="toggleMobileItemMove(r.item, r.idx)"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="8 18 12 22 16 18"></polyline>
+                                <polyline points="8 6 12 2 16 6"></polyline>
+                                <line x1="12" y1="2" x2="12" y2="22"></line>
+                              </svg>
+                            </button>
+                          </div>
                         </div>
 
                         <!-- Dòng 2: Badge Mã (tự ẩn nếu trùng Tên hàng) và SKU -->
@@ -21024,16 +24201,16 @@ onUnmounted(() => {
                         <!-- Dòng 3: ĐVT nằm ngay dưới badge Mã / SKU (kèm VAT & % Off nếu có) -->
                         <div class="m-qcard-dvt-row">
                           <span class="m-qcard-dvt-txt">ĐVT: <b>{{ r.item.DVT || 'ĐV' }}</b></span>
-                          <template v-if="toNum(r.item.Thue_VAT, 0) > 0">
+                          <template v-if="tableVatPct(r.item) > 0">
                             <span class="m-qcard-meta-dot">•</span>
-                            <span class="m-qcard-vat-tag" @click.stop="openQuoteEdit(r.idx, 'Thue_VAT')">VAT: <b>{{ toNum(r.item.Thue_VAT, 0) }}%</b></span>
+                            <span class="m-qcard-vat-tag" @click.stop="openQuoteEdit(r.idx, 'Thue_VAT')">VAT: <b>{{ tableVatPct(r.item) }}%</b></span>
                           </template>
                           <span
-                            v-if="toNum(r.item.muc_phan_tram_off, 0) > 0"
+                            v-if="tableMucOffPct(r.item) > 0"
                             class="m-qcard-off-tag"
                             @click.stop="openQuoteEdit(r.idx, 'muc_phan_tram_off')"
                           >
-                            -{{ toNum(r.item.muc_phan_tram_off, 0) }}% Off
+                            -{{ tableMucOffPct(r.item) }}% Off
                           </span>
                         </div>
 
@@ -21075,11 +24252,64 @@ onUnmounted(() => {
 
                             <div class="m-qcard-unit-inline" title="Chạm để sửa đơn giá" @click.stop="openQuoteEdit(r.idx, 'unit_price_kh')">
                               <span class="m-qcard-x">×</span>
-                              <span class="m-qcard-unit">{{ fmtPrice(unitPrice(r.item), toNum(r.item.Ti_gia, 1)) }}</span>
+                              <span class="m-qcard-unit">{{ tableDisplayQuoteDonGia(r.item) }}</span>
                             </div>
                           </div>
 
-                          <div class="m-qcard-total">{{ fmtPrice(lineSauThue(r.item), toNum(r.item.Ti_gia, 1)) }}</div>
+                          <div class="m-qcard-total">{{ fmtPrice(tableLineSauThue(r.item), tableTiGia(r.item)) }}</div>
+                        </div>
+
+                        <!-- Bảng đối chiếu 3 tầng giá xếp dọc + Hàng Giá vốn/Off & Net Margin trên Mobile Card -->
+                        <div v-if="quotePriceViewMode === 'compare'" class="m-qcard-compare-grid">
+                          <div class="m-qcard-cmp-col is-list" @click.stop="openQuoteEdit(r.idx, 'unit_price_kh')">
+                            <span class="m-qcard-cmp-lbl">Giá list</span>
+                            <div class="m-qcard-cmp-line">
+                              <span class="m-qcard-cmp-k">Đơn giá :</span>
+                              <b class="m-qcard-cmp-dg">{{ tableDisplayDonGiaList(r.item) }}</b>
+                            </div>
+                            <div class="m-qcard-cmp-line">
+                              <span class="m-qcard-cmp-k">Thành tiền trước thuế :</span>
+                              <b class="m-qcard-cmp-tt">{{ tableDisplayThanhTienList(r.item) }}</b>
+                            </div>
+                          </div>
+                          <div class="m-qcard-cmp-col is-cust" @click.stop="openQuoteEdit(r.idx, 'unit_price_kh')">
+                            <span class="m-qcard-cmp-lbl">Giá khách</span>
+                            <div class="m-qcard-cmp-line">
+                              <span class="m-qcard-cmp-k">Đơn giá :</span>
+                              <b class="m-qcard-cmp-dg">{{ tableDisplayDonGiaKhach(r.item) }}</b>
+                            </div>
+                            <div class="m-qcard-cmp-line">
+                              <span class="m-qcard-cmp-k">Thành tiền trước thuế :</span>
+                              <b class="m-qcard-cmp-tt">{{ tableDisplayThanhTienKhach(r.item) }}</b>
+                            </div>
+                          </div>
+                          <div class="m-qcard-cmp-col is-cont" @click.stop="openQuoteEdit(r.idx, 'unit_price_kh')">
+                            <span class="m-qcard-cmp-lbl">Giá hợp đồng</span>
+                            <div class="m-qcard-cmp-line">
+                              <span class="m-qcard-cmp-k">Đơn giá :</span>
+                              <b class="m-qcard-cmp-dg">{{ tableDisplayDonGiaHopDong(r.item) }}</b>
+                            </div>
+                            <div class="m-qcard-cmp-line">
+                              <span class="m-qcard-cmp-k">Thành tiền trước thuế :</span>
+                              <b class="m-qcard-cmp-tt">{{ tableDisplayThanhTienHopDong(r.item) }}</b>
+                            </div>
+                          </div>
+                          <div class="m-qcard-cmp-bottom-metrics" @click.stop="openQuoteEdit(r.idx, 'Gia_tieu_chuan')">
+                            <div class="m-qcard-cmp-metric is-cost">
+                              <span class="m-qcard-cmp-metric-lbl">GIÁ VỐN / OFF HÃNG</span>
+                              <span class="m-qcard-cmp-metric-val">
+                                {{ tableDisplayGiaTieuChuan(r.item) }}
+                                <em class="m-qcard-cmp-metric-pct">({{ tableDisplayGiaTieuChuanPct(r.item) }}%)</em>
+                              </span>
+                            </div>
+                            <div class="m-qcard-cmp-metric is-margin" :class="lineLoiNhuanRaw(r.item) >= 0 ? 'is-pos' : 'is-neg'">
+                              <span class="m-qcard-cmp-metric-lbl">NET MARGIN</span>
+                              <span class="m-qcard-cmp-metric-val">
+                                <span class="m-qcard-cmp-arrow">{{ lineLoiNhuanRaw(r.item) >= 0 ? '▲' : '▼' }}</span>
+                                {{ fmtPrice(Math.abs(lineLoiNhuanRaw(r.item)), tableTiGiaKhach(r.item)) }}
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -21089,34 +24319,378 @@ onUnmounted(() => {
                   <tr class="spacer-row"><td :colspan="visibleQuoteColCount" style="padding: 0; border: none; background: transparent;"></td></tr>
                 </template>
               </draggable>
-              <tfoot>
-                <tr class="table-footer-sticky" style="background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%); font-weight: 700; color: #f8fafc; white-space: nowrap;">
-                  <td v-if="visibleLeadingFooterColSpan > 0" :colspan="visibleLeadingFooterColSpan" class="center" style="font-size: 13.5px; color: #34d399; font-weight: 800; letter-spacing: 0.5px;">TỔNG CỘNG + THUẾ</td>
-                  <td v-if="quoteColVisible.muc_off" class="right">
-                    <span class="fast-tooltip-container" data-tooltip="Tổng Mức OFF" style="display: inline-block; color: #f87171; font-size: 13px; font-weight: 800; white-space: nowrap;">-{{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.off) : formatVND(totals.off) }}</span>
-                  </td>
-                  <td v-if="quoteColVisible.don_gia_kh"></td>
-                  <td v-if="quoteColVisible.tt_truoc_thue" class="right">
-                    <span class="fast-tooltip-container" data-tooltip="Tổng TT trước thuế" style="display: inline-block; color: #f8fafc; font-size: 13px; font-weight: 800; white-space: nowrap;">{{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.truoc) : formatVND(totals.truoc) }}</span>
-                  </td>
-                  <td v-if="quoteColVisible.vat" class="right">
-                    <span class="fast-tooltip-container" data-tooltip="Tổng VAT" style="display: inline-block; color: #38bdf8; font-size: 13px; font-weight: 800; white-space: nowrap;">{{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.vat) : formatVND(totals.vat) }}</span>
-                  </td>
-                  <td v-if="quoteColVisible.tt_sau_thue" class="right">
-                    <span class="fast-tooltip-container" data-tooltip="Tổng TT sau thuế" style="display: inline-block; color: #10b981; font-size: 13.5px; font-weight: 900; white-space: nowrap;">{{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.sau) : formatVND(totals.sau) }}</span>
-                  </td>
-                  <td v-if="quoteColVisible.net_margin" class="right">
-                    <div class="fast-tooltip-container" data-tooltip="Tổng Net Margin" :style="{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px', padding: '3px 8px', borderRadius: '999px', background: totals.loi >= 0 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)', border: totals.loi >= 0 ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(239, 68, 68, 0.4)', color: totals.loi >= 0 ? '#34d399' : '#f87171', fontSize: '12px', fontWeight: 800, whiteSpace: 'nowrap' }">
-                      <span v-if="totals.loi >= 0" style="font-size: 10px;">▲</span>
-                      <span v-else style="font-size: 10px;">▼</span>
-                      {{ quoteCurrency === 'USD' ? formatUSD(Math.abs(totalsUSD.loi)) : formatVND(Math.abs(totals.loi)) }}
-                    </div>
-                  </td>
-                  <td v-if="quoteColVisible.xoa"></td>
-                </tr>
+              <tfoot :class="{ 'compare-tfoot': quotePriceViewMode === 'compare' }">
+                <template v-if="quotePriceViewMode === 'compare'">
+                  <tr class="compare-footer-row compare-footer-subtotal">
+                    <td v-if="visibleLeadingFooterColSpan > 0" :colspan="visibleLeadingFooterColSpan" class="right compare-footer-label">
+                      TỔNG CỘNG TRƯỚC THUẾ ({{ quoteCurrency }})
+                    </td>
+                    <td class="td-compare-foot-empty td-compare-list-dg"></td>
+                    <td class="right td-compare-foot-val td-compare-list-tt">
+                      {{ quoteCurrency === 'USD' ? formatUSD(totalsOriginUSD.truoc) : formatVND(totalsOrigin.truoc) }}
+                    </td>
+                    <td class="td-compare-foot-empty td-compare-cust-dg"></td>
+                    <td class="right td-compare-foot-val td-compare-cust-tt">
+                      {{ quoteCurrency === 'USD' ? formatUSD(totalsContractUSD.truoc) : formatVND(totalsContract.truoc) }}
+                    </td>
+                    <td class="td-compare-foot-empty td-compare-cont-dg"></td>
+                    <td class="right td-compare-foot-val td-compare-cont-tt">
+                      {{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.truoc) : formatVND(totals.truoc) }}
+                    </td>
+                    <td class="td-compare-foot-empty"></td>
+                    <td class="right td-compare-foot-val">
+                      <div class="fast-tooltip-container net-margin-footer-pill" :class="totalsContract.loi >= 0 ? 'is-margin-pos' : 'is-margin-neg'" data-tooltip="Tổng Net Margin (Khách - Off hãng)" :style="{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px', padding: '2px 8px', borderRadius: '999px', background: totalsContract.loi >= 0 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)', border: totalsContract.loi >= 0 ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(239, 68, 68, 0.4)', color: totalsContract.loi >= 0 ? '#34d399' : '#f87171', fontSize: '12px', fontWeight: 800, whiteSpace: 'nowrap' }">
+                        <span v-if="totalsContract.loi >= 0" style="font-size: 10px;">▲</span>
+                        <span v-else style="font-size: 10px;">▼</span>
+                        {{ quoteCurrency === 'USD' ? formatUSD(Math.abs(totalsContractUSD.loi)) : formatVND(Math.abs(totalsContract.loi)) }}
+                      </div>
+                    </td>
+                    <td v-if="quoteColVisible.xoa" class="td-compare-foot-empty"></td>
+                  </tr>
+                  <tr class="compare-footer-row compare-footer-vat">
+                    <td v-if="visibleLeadingFooterColSpan > 0" :colspan="visibleLeadingFooterColSpan" class="right compare-footer-label">
+                      THUẾ VAT ({{ quoteCurrency }})
+                    </td>
+                    <td class="td-compare-foot-empty td-compare-list-dg"></td>
+                    <td class="right td-compare-foot-val td-compare-list-tt">
+                      {{ quoteCurrency === 'USD' ? formatUSD(totalsOriginUSD.vat) : formatVND(totalsOrigin.vat) }}
+                    </td>
+                    <td class="td-compare-foot-empty td-compare-cust-dg"></td>
+                    <td class="right td-compare-foot-val td-compare-cust-tt">
+                      {{ quoteCurrency === 'USD' ? formatUSD(totalsContractUSD.vat) : formatVND(totalsContract.vat) }}
+                    </td>
+                    <td class="td-compare-foot-empty td-compare-cont-dg"></td>
+                    <td class="right td-compare-foot-val td-compare-cont-tt">
+                      {{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.vat) : formatVND(totals.vat) }}
+                    </td>
+                    <td class="td-compare-foot-empty"></td>
+                    <td class="td-compare-foot-empty"></td>
+                    <td v-if="quoteColVisible.xoa" class="td-compare-foot-empty"></td>
+                  </tr>
+                  <tr class="compare-footer-row compare-footer-grandtotal">
+                    <td v-if="visibleLeadingFooterColSpan > 0" :colspan="visibleLeadingFooterColSpan" class="right compare-footer-label is-grand">
+                      TỔNG CỘNG SAU THUẾ ({{ quoteCurrency }})
+                    </td>
+                    <td class="td-compare-foot-empty td-compare-list-dg is-grand"></td>
+                    <td class="right td-compare-foot-val td-compare-list-tt is-grand">
+                      {{ quoteCurrency === 'USD' ? formatUSD(totalsOriginUSD.sau) : formatVND(totalsOrigin.sau) }}
+                    </td>
+                    <td class="td-compare-foot-empty td-compare-cust-dg is-grand"></td>
+                    <td class="right td-compare-foot-val td-compare-cust-tt is-grand">
+                      {{ quoteCurrency === 'USD' ? formatUSD(totalsContractUSD.sau) : formatVND(totalsContract.sau) }}
+                    </td>
+                    <td class="td-compare-foot-empty td-compare-cont-dg is-grand"></td>
+                    <td class="right td-compare-foot-val td-compare-cont-tt is-grand">
+                      {{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.sau) : formatVND(totals.sau) }}
+                    </td>
+                    <td class="td-compare-foot-empty is-grand"></td>
+                    <td class="td-compare-foot-empty is-grand"></td>
+                    <td v-if="quoteColVisible.xoa" class="td-compare-foot-empty is-grand"></td>
+                  </tr>
+                </template>
+                <template v-else>
+                  <tr class="table-footer-sticky" style="background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%); font-weight: 700; color: #f8fafc; white-space: nowrap;">
+                    <td v-if="visibleLeadingFooterColSpan > 0" :colspan="visibleLeadingFooterColSpan" class="center" style="font-size: 13.5px; color: #34d399; font-weight: 800; letter-spacing: 0.5px;">
+                      TỔNG CỘNG + THUẾ ({{ currentQuotePriceViewOption.label.toUpperCase() }})
+                    </td>
+                    <td v-if="quoteColVisible.muc_off" class="right">
+                      <span class="fast-tooltip-container" data-tooltip="Tổng Mức OFF" style="display: inline-block; color: #f87171; font-size: 13px; font-weight: 800; white-space: nowrap;">-{{ quoteCurrency === 'USD' ? formatUSD(activeTableTotalsUSD.off) : formatVND(activeTableTotals.off) }}</span>
+                    </td>
+                    <td v-if="quoteColVisible.don_gia_kh"></td>
+                    <td v-if="quoteColVisible.tt_truoc_thue" class="right">
+                      <span class="fast-tooltip-container" data-tooltip="Tổng TT trước thuế" style="display: inline-block; color: #f8fafc; font-size: 13px; font-weight: 800; white-space: nowrap;">{{ quoteCurrency === 'USD' ? formatUSD(activeTableTotalsUSD.truoc) : formatVND(activeTableTotals.truoc) }}</span>
+                    </td>
+                    <td v-if="quoteColVisible.vat" class="right">
+                      <span class="fast-tooltip-container" data-tooltip="Tổng VAT" style="display: inline-block; color: #38bdf8; font-size: 13px; font-weight: 800; white-space: nowrap;">{{ quoteCurrency === 'USD' ? formatUSD(activeTableTotalsUSD.vat) : formatVND(activeTableTotals.vat) }}</span>
+                    </td>
+                    <td v-if="quoteColVisible.tt_sau_thue" class="right">
+                      <span class="fast-tooltip-container" data-tooltip="Tổng TT sau thuế" style="display: inline-block; color: #10b981; font-size: 13.5px; font-weight: 900; white-space: nowrap;">{{ quoteCurrency === 'USD' ? formatUSD(activeTableTotalsUSD.sau) : formatVND(activeTableTotals.sau) }}</span>
+                    </td>
+                    <td v-if="quoteColVisible.net_margin" class="right">
+                      <div class="fast-tooltip-container net-margin-footer-pill" :class="activeTableTotals.loi >= 0 ? 'is-margin-pos' : 'is-margin-neg'" data-tooltip="Tổng Net Margin" :style="{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px', padding: '3px 8px', borderRadius: '999px', background: activeTableTotals.loi >= 0 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)', border: activeTableTotals.loi >= 0 ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(239, 68, 68, 0.4)', color: activeTableTotals.loi >= 0 ? '#34d399' : '#f87171', fontSize: '12px', fontWeight: 800, whiteSpace: 'nowrap' }">
+                        <span v-if="activeTableTotals.loi >= 0" style="font-size: 10px;">▲</span>
+                        <span v-else style="font-size: 10px;">▼</span>
+                        {{ quoteCurrency === 'USD' ? formatUSD(Math.abs(activeTableTotalsUSD.loi)) : formatVND(Math.abs(activeTableTotals.loi)) }}
+                      </div>
+                    </td>
+                    <td v-if="quoteColVisible.xoa"></td>
+                  </tr>
+                </template>
               </tfoot>
             </table>
+
+            <!-- KHỐI TỔNG CỘNG ĐỐI CHIẾU 4 CHỈ SỐ NẰM RIÊNG TRÊN MOBILE (KHI Ở CHẾ ĐỘ ĐỐI CHIẾU 3 GIÁ) -->
+            <div v-if="quotePriceViewMode === 'compare' && (selectedItems.length > 0 || guideTempTableDemoActive)" class="m-compare-totals-card">
+              <div class="m-compare-totals-head">
+                <span class="m-compare-totals-title">TỔNG CỘNG ĐỐI CHIẾU</span>
+                <span class="m-compare-totals-curr">{{ quoteCurrency }}</span>
+              </div>
+              <div class="m-compare-totals-body">
+                <div class="m-compare-tot-row is-list">
+                  <span class="m-compare-tot-lbl">TỔNG GIÁ LIST</span>
+                  <div class="m-compare-tot-vals">
+                    <span class="m-compare-tot-sub">Trước thuế: <b>{{ quoteCurrency === 'USD' ? formatUSD(totalsOriginUSD.truoc) : formatVND(totalsOrigin.truoc) }}</b></span>
+                    <span class="m-compare-tot-main">Sau thuế: <b>{{ quoteCurrency === 'USD' ? formatUSD(totalsOriginUSD.sau) : formatVND(totalsOrigin.sau) }}</b></span>
+                  </div>
+                </div>
+                <div class="m-compare-tot-row is-cust">
+                  <span class="m-compare-tot-lbl">TỔNG GIÁ KHÁCH</span>
+                  <div class="m-compare-tot-vals">
+                    <span class="m-compare-tot-sub">Trước thuế: <b>{{ quoteCurrency === 'USD' ? formatUSD(totalsContractUSD.truoc) : formatVND(totalsContract.truoc) }}</b></span>
+                    <span class="m-compare-tot-main">Sau thuế: <b>{{ quoteCurrency === 'USD' ? formatUSD(totalsContractUSD.sau) : formatVND(totalsContract.sau) }}</b></span>
+                  </div>
+                </div>
+                <div class="m-compare-tot-row is-cont">
+                  <span class="m-compare-tot-lbl">TỔNG GIÁ HỢP ĐỒNG</span>
+                  <div class="m-compare-tot-vals">
+                    <span class="m-compare-tot-sub">Trước thuế: <b>{{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.truoc) : formatVND(totals.truoc) }}</b></span>
+                    <span class="m-compare-tot-main">Sau thuế: <b>{{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.sau) : formatVND(totals.sau) }}</b></span>
+                  </div>
+                </div>
+                <div class="m-compare-tot-row is-margin" :class="totalsContract.loi >= 0 ? 'is-pos' : 'is-neg'">
+                  <span class="m-compare-tot-lbl">TỔNG NET MARGIN</span>
+                  <div class="m-compare-tot-margin-val">
+                    <span class="m-qcard-cmp-arrow">{{ totalsContract.loi >= 0 ? '▲' : '▼' }}</span>
+                    <span>{{ quoteCurrency === 'USD' ? formatUSD(Math.abs(totalsContractUSD.loi)) : formatVND(Math.abs(totalsContract.loi)) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
+          </div>
+
+          <!-- CỘT CHỈ SỐ TÀI CHÍNH, COM, THUẾ & TỈ SUẤT ĐỘC LẬP NHƯ KHO SẢN PHẨM (HIỂN THỊ Ở BÁO GIÁ KHÁCH, BÁO GIÁ HỢP ĐỒNG & ĐỐI CHIẾU 3 GIÁ) -->
+          <aside
+            v-if="quotePriceViewMode !== 'origin'"
+            class="cmp-sr-finance-wrap"
+            :class="{ 'is-collapsed': !showCompareFinancePanel }"
+          >
+            <!-- THANH THU GỌN (HIỆN KHI ĐANG ĐÓNG: DẢI DỌC BÊN PHẢI TRÊN PC / THANH NGANG GỌN TRÊN MOBILE) -->
+            <button
+              v-if="!showCompareFinancePanel"
+              type="button"
+              class="cmp-sr-collapsed-rail"
+              @click="showCompareFinancePanel = true"
+              title="Nhấn để mở cột Chỉ số tài chính & COM"
+            >
+              <span class="cmp-sr-rail-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="11 17 6 12 11 7"></polyline>
+                  <polyline points="18 17 13 12 18 7"></polyline>
+                </svg>
+              </span>
+              <span class="cmp-sr-rail-label">CHỈ SỐ TÀI CHÍNH &amp; COM</span>
+              <span class="cmp-sr-rail-badge" :class="cmpSrNetMarginOnDsbPct >= 0 ? 'is-com-text' : 'is-debt-text'">
+                {{ fmtCmpSrPct(cmpSrNetMarginOnDsbPct) }}
+              </span>
+            </button>
+
+            <div v-else class="cmp-sr-po1-blocks">
+              <!-- HEADER CHỌN NGUỒN GIÁ TÍNH CHỈ SỐ (GIÁ HỢP ĐỒNG | GIÁ KHÁCH) + NÚT THU GỌN -->
+              <div class="cmp-sr-source-bar">
+                <div class="cmp-sr-source-pills">
+                  <button
+                    type="button"
+                    class="cmp-sr-source-pill is-contract"
+                    :class="{ active: cmpSrPriceSource === 'contract' }"
+                    @click="cmpSrPriceSource = 'contract'"
+                    title="Tính chỉ số theo bảng Giá Hợp đồng"
+                  >
+                    <span>Giá Hợp đồng</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="cmp-sr-source-pill is-customer"
+                    :class="{ active: cmpSrPriceSource === 'customer' }"
+                    @click="cmpSrPriceSource = 'customer'"
+                    title="Tính chỉ số theo bảng Giá Khách"
+                  >
+                    <span>Giá Khách</span>
+                  </button>
+                </div>
+                <div class="cmp-sr-head-actions">
+                  <button
+                    v-if="hasCmpSrOverrides"
+                    type="button"
+                    class="cmp-sr-source-reset-btn"
+                    @click="resetCurrentCmpSrBucket"
+                    title="Khôi phục chỉ số mặc định của chế độ giá đang chọn"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                      <path d="M3 3v5h5"></path>
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    class="cmp-sr-source-collapse-btn"
+                    @click="showCompareFinancePanel = false"
+                    title="Thu gọn cột Chỉ số tài chính & COM"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="13 17 18 12 13 7"></polyline>
+                      <polyline points="6 17 11 12 6 7"></polyline>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <!-- KHỐI 1: Doanh số & Chi phí -->
+              <div class="cmp-sr-po1-block">
+                <div class="cmp-sr-block-title is-blue-head">
+                  <span>Doanh số &amp; Chi phí</span>
+                  <span class="cmp-sr-block-mode-tag">{{ cmpSrPriceSource === 'customer' ? 'GIÁ KHÁCH' : 'GIÁ HĐ' }}</span>
+                </div>
+                <div class="cmp-sr-b-row is-primary">
+                  <span class="cmp-sr-b-lbl">Doanh số bán</span>
+                  <FormattedInput
+                    :modelValue="cmpSrDoanhSoBan"
+                    @update:modelValue="val => onCmpSrFieldChange('doanhSoBan', val)"
+                    :decimals="quoteCurrency === 'USD' ? 2 : 0"
+                    :allowNegative="true"
+                    placeholder="0"
+                    class="cmp-sr-b-input is-com-text is-primary-input"
+                  />
+                </div>
+                <div class="cmp-sr-b-row">
+                  <span class="cmp-sr-b-lbl">Giá mua</span>
+                  <FormattedInput
+                    :modelValue="cmpSrGiaMua"
+                    @update:modelValue="val => onCmpSrFieldChange('giaMua', val)"
+                    :decimals="quoteCurrency === 'USD' ? 2 : 0"
+                    :allowNegative="true"
+                    placeholder="0"
+                    class="cmp-sr-b-input is-debt-text"
+                  />
+                </div>
+                <div class="cmp-sr-b-row">
+                  <span class="cmp-sr-b-lbl">Tổng CP đơn hàng</span>
+                  <FormattedInput
+                    :modelValue="cmpSrTongCP"
+                    @update:modelValue="val => onCmpSrFieldChange('tongCP', val)"
+                    :decimals="quoteCurrency === 'USD' ? 2 : 0"
+                    :allowNegative="true"
+                    placeholder="0"
+                    class="cmp-sr-b-input is-debt-text"
+                  />
+                </div>
+                <div class="cmp-sr-b-row is-sub-divider">
+                  <span class="cmp-sr-b-lbl">Tổng tiền sau VAT</span>
+                  <strong class="cmp-sr-b-val is-com-text">{{ fmtCmpSrMoney(cmpSrTongSauVat) }}</strong>
+                </div>
+              </div>
+
+              <!-- KHỐI 2: COM, Thuế & Margin -->
+              <div class="cmp-sr-po1-block">
+                <div class="cmp-sr-block-title is-green-head">
+                  <span>COM, Thuế &amp; Margin</span>
+                </div>
+                <div class="cmp-sr-b-row is-primary">
+                  <span class="cmp-sr-b-lbl">Net COM</span>
+                  <FormattedInput
+                    :modelValue="cmpSrNetCom"
+                    @update:modelValue="val => onCmpSrFieldChange('netCom', val)"
+                    :decimals="quoteCurrency === 'USD' ? 2 : 0"
+                    :allowNegative="true"
+                    placeholder="0"
+                    class="cmp-sr-b-input is-com-text is-primary-input"
+                  />
+                </div>
+                <div class="cmp-sr-b-row">
+                  <span class="cmp-sr-b-lbl">Gross COM</span>
+                  <FormattedInput
+                    :modelValue="cmpSrGrossCom"
+                    @update:modelValue="val => onCmpSrFieldChange('grossCom', val)"
+                    :decimals="quoteCurrency === 'USD' ? 2 : 0"
+                    :allowNegative="true"
+                    placeholder="0"
+                    class="cmp-sr-b-input is-com-text"
+                  />
+                </div>
+                <div class="cmp-sr-b-row">
+                  <span class="cmp-sr-b-lbl cmp-sr-tax-lbl-wrap">
+                    <span>Thuế</span>
+                    <FormattedInput
+                      :modelValue="cmpSrTaxPct"
+                      @update:modelValue="val => onCmpSrFieldChange('taxPct', val)"
+                      :decimals="2"
+                      placeholder="25"
+                      class="cmp-sr-tax-pct-input"
+                    />
+                    <span>%</span>
+                  </span>
+                  <span class="cmp-sr-b-val is-debt-text">{{ fmtCmpSrMoney(cmpSrTaxAmount) }}</span>
+                </div>
+                <div class="cmp-sr-b-row">
+                  <span class="cmp-sr-b-lbl">Net PO</span>
+                  <span class="cmp-sr-b-val is-com-text">{{ fmtCmpSrMoney(cmpSrNetPO) }}</span>
+                </div>
+                <div class="cmp-sr-b-row is-sub-divider">
+                  <span class="cmp-sr-b-lbl">Net Margin</span>
+                  <strong class="cmp-sr-b-val" :class="cmpSrNetMargin >= 0 ? 'is-com-text' : 'is-debt-text'">
+                    {{ fmtCmpSrMoney(cmpSrNetMargin) }}
+                  </strong>
+                </div>
+              </div>
+
+              <!-- KHỐI 3: Tỉ suất (%) & Chỉ số Net Margin/DSB mong muốn -->
+              <div class="cmp-sr-po1-block">
+                <div class="cmp-sr-block-title is-green-head">
+                  <span>Tỉ suất (%)</span>
+                </div>
+                <div class="cmp-sr-b-row">
+                  <span class="cmp-sr-b-lbl">Net COM / Net PO</span>
+                  <strong class="cmp-sr-b-val is-com-text">{{ fmtCmpSrPct(cmpSrNetComOnNetPoPct) }}</strong>
+                </div>
+                <div class="cmp-sr-b-row">
+                  <span class="cmp-sr-b-lbl">Net Margin / Net PO</span>
+                  <strong class="cmp-sr-b-val" :class="cmpSrNetMarginOnNetPoPct >= 0 ? 'is-com-text' : 'is-debt-text'">
+                    {{ fmtCmpSrPct(cmpSrNetMarginOnNetPoPct) }}
+                  </strong>
+                </div>
+                <div class="cmp-sr-b-row is-sub-divider">
+                  <span class="cmp-sr-b-lbl">Net COM / Doanh số bán</span>
+                  <strong class="cmp-sr-b-val is-com-text">{{ fmtCmpSrPct(cmpSrNetComOnDsbPct) }}</strong>
+                </div>
+                <div class="cmp-sr-b-row">
+                  <span class="cmp-sr-b-lbl">Net Margin / Doanh số bán</span>
+                  <strong class="cmp-sr-b-val" :class="cmpSrNetMarginOnDsbPct >= 0 ? 'is-com-text' : 'is-debt-text'">
+                    {{ fmtCmpSrPct(cmpSrNetMarginOnDsbPct) }}
+                  </strong>
+                </div>
+
+                <!-- CHỈ SỐ NET MARGIN/DSB MONG MUỐN -->
+                <div class="cmp-sr-predict-card" :class="{ 'is-active': cmpSrOverrides.predictPct !== '' }">
+                  <div class="cmp-sr-predict-head">
+                    <label class="cmp-sr-predict-lbl">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                      <span>CHỈ SỐ NET MARGIN/DSB MONG MUỐN</span>
+                    </label>
+                    <button
+                      v-if="cmpSrOverrides.predictPct !== ''"
+                      type="button"
+                      class="cmp-sr-predict-reset-btn"
+                      @click="resetCmpSrPredictPct"
+                      title="Khôi phục Gross COM & Net COM gốc"
+                    >
+                      Hoàn tác
+                    </button>
+                  </div>
+                  <div class="cmp-sr-predict-input-wrap">
+                    <input
+                      type="text"
+                      inputmode="decimal"
+                      placeholder="Nhập % mong muốn..."
+                      :value="cmpSrOverrides.predictPct"
+                      @input="onCmpSrPredictInput"
+                      class="cmp-sr-predict-input"
+                    />
+                    <span class="cmp-sr-predict-pct">%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </aside>
 
           <!-- ================== MOBILE SCREEN 3: TRANG TỔNG KẾT (CHIẾT KHẤU & TÀI CHÍNH) ================== -->
           <div class="mobile-quote-summary-card">
@@ -21237,16 +24811,16 @@ onUnmounted(() => {
 
               <div class="m-sum-body">
                 <div class="m-sum-row">
-                  <span class="m-sum-label">Tổng giá thực tế</span>
+                  <span class="m-sum-label">TT trước thuế (Khách)</span>
                   <span class="m-sum-val">
                     <span class="m-sum-num">{{ formatVND(tongGiaThucTe) }}</span>
-                    <button type="button" class="m-sum-hist" @click="openHistory('tongGiaThucTe', 'Tổng giá thực tế')" title="Xem lịch sử"><i class="ri-history-line"></i></button>
+                    <button type="button" class="m-sum-hist" @click="openHistory('tongGiaThucTe', 'TT trước thuế (Khách)')" title="Xem lịch sử"><i class="ri-history-line"></i></button>
                   </span>
                 </div>
 
                 <div class="m-sum-row">
                   <span class="m-sum-label">
-                    <span>Tổng trước thuế (HĐ)</span>
+                    <span>TT trước thuế (HĐ)</span>
                     <button
                       type="button"
                       data-guide="m-btn-adjust-all-quote"
@@ -21260,7 +24834,7 @@ onUnmounted(() => {
                   </span>
                   <span class="m-sum-val">
                     <span class="m-sum-num">{{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.truoc) : formatVND(totals.truoc) }}</span>
-                    <button type="button" class="m-sum-hist" @click="openHistory('truoc', 'Tổng trước thuế ( HĐ)')" title="Xem lịch sử"><i class="ri-history-line"></i></button>
+                    <button type="button" class="m-sum-hist" @click="openHistory('truoc', 'TT trước thuế (HĐ)')" title="Xem lịch sử"><i class="ri-history-line"></i></button>
                   </span>
                 </div>
 
@@ -21275,16 +24849,33 @@ onUnmounted(() => {
                 <div class="m-sum-highlight-box m-sum-grand-total">
                   <div class="m-sum-hl-left">
                     <span class="m-sum-hl-sub">Đã bao gồm VAT ({{ quoteCurrency }})</span>
-                    <span class="m-sum-label">Tổng thanh toán</span>
+                    <span class="m-sum-label">TT sau thuế</span>
                   </div>
                   <span class="m-sum-val">
                     <span class="m-sum-num">{{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.sau) : formatVND(totals.sau) }}</span>
-                    <button type="button" class="m-sum-hist" @click="openHistory('sau', 'Tổng sau thuế')" title="Xem lịch sử"><i class="ri-history-line"></i></button>
+                    <button type="button" class="m-sum-hist" @click="openHistory('sau', 'TT sau thuế')" title="Xem lịch sử"><i class="ri-history-line"></i></button>
                   </span>
                 </div>
               </div>
             </div>
           </div>
+
+          <!-- ================== DOCK NHỎ CHỌN CHẾ ĐỘ XEM BÁO GIÁ (KIỂU A: NẰM PHÍA TRÊN DOCK CHA Ở BƯỚC 2: BÁO GIÁ) ================== -->
+          <button
+            v-if="mobileStep === 2"
+            type="button"
+            class="m-quote-mode-mini-dock"
+            :class="['is-mode-' + quotePriceViewMode, { 'is-modal-hidden': isAnyQuoteModalOpen }]"
+            @click.stop="showMobileQuoteModeSheet = true"
+            title="Nhấn để đổi chế độ hiển thị báo giá"
+          >
+            <span class="m-qmd-dot"></span>
+            <span class="m-qmd-prefix">Đang xem:</span>
+            <span class="m-qmd-label">{{ currentQuotePriceViewOption.shortLabel }}</span>
+            <svg class="m-qmd-chevron" xmlns="http://www.w3.org/2000/svg" width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="18 15 12 9 6 15"></polyline>
+            </svg>
+          </button>
 
           <!-- ================== DOCK QUY TRÌNH BÁO GIÁ TRÊN MOBILE (SCREEN 2 & SCREEN 3) ================== -->
           <div class="mobile-screen2-action-bar" :class="{ 'is-modal-hidden': isAnyQuoteModalOpen }">
@@ -22989,20 +26580,32 @@ onUnmounted(() => {
         <div class="export-vip-body">
           <!-- CỘT 1: Chọn Mẫu In từ `mau_in_thiet_lap` -->
           <div class="export-vip-col export-vip-col-upload">
-            <div class="export-tpl-head-row" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 8px; flex-wrap: nowrap; flex-shrink: 0;">
-              <div class="export-vip-col-label" style="margin-bottom: 0; padding-bottom: 0; border-bottom: none;">
+            <div class="export-tpl-head-row" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 8px; flex-wrap: wrap; flex-shrink: 0;">
+              <div class="export-vip-col-label" style="margin-bottom: 0; padding-bottom: 0; border-bottom: none; display: inline-flex; align-items: center; gap: 7px; flex-wrap: wrap;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-                <span>Chọn Mẫu In ({{ printTemplates.length }} mẫu)</span>
+                <span>Chọn Mẫu In</span>
+                <span class="export-tpl-selected-count-badge">
+                  Đã chọn {{ selectedPrintTemplatesList.length }}/{{ printTemplates.length }}
+                </span>
               </div>
-              <button
-                type="button"
-                class="export-tpl-setup-btn"
-                @click="showExportInfoModal = false; router.push('/mau-in-firebase')"
-                style="background: linear-gradient(135deg, #10b981, #059669); color: #ffffff; border: none; border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 3px 10px rgba(16,185,129,0.25); width: auto; flex-shrink: 0;"
-              >
-                <span class="dt-lbl">Thiết lập / Tạo mẫu in mới</span>
-                <span class="mb-lbl">+ Tạo / Sửa mẫu</span>
-              </button>
+              <div style="display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                <button
+                  type="button"
+                  class="export-tpl-select-all-btn"
+                  @click="toggleSelectAllPrintTemplates"
+                >
+                  {{ isAllPrintTemplatesTicked ? 'Bỏ chọn hết' : 'Chọn tất cả' }}
+                </button>
+                <button
+                  type="button"
+                  class="export-tpl-setup-btn"
+                  @click="showExportInfoModal = false; router.push('/mau-in-firebase')"
+                  style="background: linear-gradient(135deg, #10b981, #059669); color: #ffffff; border: none; border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 3px 10px rgba(16,185,129,0.25); width: auto; flex-shrink: 0;"
+                >
+                  <span class="dt-lbl">Thiết lập / Tạo mẫu in mới</span>
+                  <span class="mb-lbl">+ Tạo / Sửa mẫu</span>
+                </button>
+              </div>
             </div>
 
             <div class="export-tpl-list-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; margin-bottom: 12px; flex: 1; min-height: 0; overflow-y: auto; align-content: start; padding-right: 4px;">
@@ -23010,29 +26613,44 @@ onUnmounted(() => {
                 v-for="pt in printTemplates"
                 :key="pt.id"
                 class="export-tpl-loaded export-tpl-card-item"
-                :class="{ 'is-selected': selectedPrintTemplateId === pt.id }"
+                :class="{ 'is-selected': isPrintTemplateTicked(pt.id) }"
                 :style="{
                   marginBottom: '0',
                   display: 'flex',
                   flexDirection: 'column',
                   cursor: 'pointer',
-                  border: selectedPrintTemplateId === pt.id ? '2px solid #10b981' : '1px solid rgba(255,255,255,0.1)',
-                  background: selectedPrintTemplateId === pt.id ? 'linear-gradient(135deg, rgba(16,185,129,0.16), rgba(15,23,42,0.92))' : 'rgba(15,23,42,0.6)',
-                  boxShadow: selectedPrintTemplateId === pt.id ? '0 6px 18px rgba(16,185,129,0.22)' : 'none'
+                  border: isPrintTemplateTicked(pt.id) ? '2px solid #10b981' : '1px solid rgba(255,255,255,0.1)',
+                  background: isPrintTemplateTicked(pt.id) ? 'linear-gradient(135deg, rgba(16,185,129,0.16), rgba(15,23,42,0.92))' : 'rgba(15,23,42,0.6)',
+                  boxShadow: isPrintTemplateTicked(pt.id) ? '0 6px 18px rgba(16,185,129,0.22)' : 'none'
                 }"
-                @click="selectedPrintTemplateId = pt.id"
+                @click="toggleTickPrintTemplate(pt.id)"
               >
-                <!-- Chấm tròn Radio hiển thị trên Mobile -->
-                <div class="export-tpl-radio-dot" :class="{ active: selectedPrintTemplateId === pt.id }">
-                  <span class="export-tpl-radio-inner"></span>
+                <!-- Nút Tick Checkbox hiển thị bên trái trên Mobile -->
+                <div
+                  class="export-tpl-radio-dot export-tpl-mob-tick"
+                  :class="{ active: isPrintTemplateTicked(pt.id) }"
+                  @click.stop="toggleTickPrintTemplate(pt.id)"
+                >
+                  <svg v-if="isPrintTemplateTicked(pt.id)" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 </div>
 
                 <!-- Nội dung chính của Mẫu In -->
                 <div class="export-tpl-card-content" style="width: 100%; min-width: 0; display: flex; flex-direction: column;">
-                  <div class="export-tpl-badges-top" style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 6px;">
-                    <span style="font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px;" :style="pt.loai_mau === 'imported_excel' ? 'background: rgba(16,185,129,0.18); color: #34d399;' : 'background: rgba(59,130,246,0.18); color: #60a5fa;'">
-                      {{ pt.loai_mau === 'imported_excel' ? 'Excel Import' : 'Web Studio' }}
-                    </span>
+                  <div class="export-tpl-badges-top" style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 8px; gap: 6px;">
+                    <div style="display: inline-flex; align-items: center; gap: 7px;">
+                      <!-- Nút Tick Checkbox ở góc trái trên Card Mẫu In -->
+                      <div
+                        class="export-tpl-tick-box"
+                        :class="{ 'is-ticked': isPrintTemplateTicked(pt.id) }"
+                        :title="isPrintTemplateTicked(pt.id) ? 'Bỏ chọn mẫu in này' : 'Tick chọn mẫu in này để xuất'"
+                        @click.stop="toggleTickPrintTemplate(pt.id)"
+                      >
+                        <svg v-if="isPrintTemplateTicked(pt.id)" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      </div>
+                      <span style="font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px;" :style="pt.loai_mau === 'imported_excel' ? 'background: rgba(16,185,129,0.18); color: #34d399;' : 'background: rgba(59,130,246,0.18); color: #60a5fa;'">
+                        {{ pt.loai_mau === 'imported_excel' ? 'Excel Import' : 'Web Studio' }}
+                      </span>
+                    </div>
                     <span v-if="pt.mac_dinh" style="font-size: 10px; font-weight: 800; color: #fbbf24; background: rgba(245,158,11,0.18); padding: 2px 7px; border-radius: 999px; border: 1px solid rgba(245,158,11,0.35);">
                       Mặc định
                     </span>
@@ -23064,9 +26682,9 @@ onUnmounted(() => {
                     class="export-tpl-change-btn"
                     style="flex: 1; padding: 7px 8px; background: rgba(16,185,129,0.18); border-color: #10b981; color: #34d399;"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    <b class="dt-lbl">Chọn &amp; Xuất</b>
-                    <b class="mb-lbl">Xuất</b>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <b class="dt-lbl">Xem &amp; Xuất</b>
+                    <b class="mb-lbl">Xem</b>
                   </button>
                 </div>
               </div>
@@ -23074,7 +26692,12 @@ onUnmounted(() => {
 
             <div class="export-tpl-note">
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-              Mẫu đang chọn: <b style="color: #34d399; margin-left: 4px;">{{ activePrintTemplate?.ten_mau || 'Mẫu Báo Giá Chuẩn NTS' }}</b>
+              <span>
+                Đã tick chọn ({{ selectedPrintTemplatesList.length }} mẫu):
+                <b style="color: #34d399; margin-left: 4px;">
+                  {{ selectedPrintTemplatesList.map(t => t.ten_mau).join(' • ') || 'Chưa chọn mẫu nào' }}
+                </b>
+              </span>
             </div>
           </div>
 
@@ -23082,19 +26705,87 @@ onUnmounted(() => {
           <div class="export-vip-col export-vip-col-actions">
             <div class="export-vip-col-label">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M8 5H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-4"/></svg>
-              Xuất file
+              Xuất file ({{ selectedPrintTemplatesList.length }} mẫu đã tick)
             </div>
 
-            <div class="export-vip-actions-list" style="display: flex; flex-direction: column; gap: 14px;">
-              <button class="export-vip-btn export-vip-btn-excel" @click="showExportInfoModal = false; openExportWithPrintTemplate(selectedPrintTemplateId)" style="margin-bottom: 0 !important;">
-                <div class="export-vip-btn-icon">
-                  <img src="/excel-icon.png" alt="Excel" style="width: 26px; height: 26px;" />
+            <div class="export-vip-actions-list" style="display: flex; flex-direction: column; gap: 12px;">
+              <!-- CÁCH 1: XUẤT NHANH TRỰC TIẾP CÁC MẪU ĐÃ TICK -->
+              <div class="export-quick-batch-box">
+                <button
+                  type="button"
+                  class="export-vip-btn export-vip-btn-excel"
+                  @click="showExportInfoModal = false; requestExportWithSaveConfirm('excel')"
+                  style="margin-bottom: 0 !important;"
+                >
+                  <div class="export-vip-btn-icon">
+                    <img src="/excel-icon.png" alt="Excel" style="width: 26px; height: 26px;" />
+                  </div>
+                  <div class="export-vip-btn-text">
+                    <span class="export-vip-btn-label">
+                      Xuất nhanh Excel ({{ selectedPrintTemplatesList.length }} mẫu đã chọn)
+                    </span>
+                    <span class="export-vip-btn-desc">
+                      Tải ngay: {{ selectedPrintTemplatesList.map(t => t.ten_mau).join(' + ') }}
+                    </span>
+                  </div>
+                  <svg class="export-vip-btn-arrow" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </button>
+
+                <div class="export-quick-fmt-strip">
+                  <button
+                    type="button"
+                    class="export-quick-fmt-pill fmt-pdf"
+                    @click="showExportInfoModal = false; requestExportWithSaveConfirm('pdf')"
+                  >
+                    <i class="ri-printer-line"></i>
+                    <span>In / PDF ({{ selectedPrintTemplatesList.length }})</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="export-quick-fmt-pill fmt-word"
+                    @click="showExportInfoModal = false; requestExportWithSaveConfirm('word')"
+                  >
+                    <i class="ri-file-word-2-line"></i>
+                    <span>Word .doc ({{ selectedPrintTemplatesList.length }})</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="export-quick-fmt-pill fmt-png"
+                    @click="showExportInfoModal = false; requestExportWithSaveConfirm('png')"
+                  >
+                    <i class="ri-image-line"></i>
+                    <span>Ảnh .png ({{ selectedPrintTemplatesList.length }})</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="export-quick-fmt-pill fmt-html"
+                    @click="showExportInfoModal = false; requestExportWithSaveConfirm('html')"
+                  >
+                    <i class="ri-code-s-slash-line"></i>
+                    <span>HTML ({{ selectedPrintTemplatesList.length }})</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- CÁCH 2: XEM TRƯỚC & TÙY CHỈNH BẢN IN ĐA ĐỊNH DẠNG -->
+              <button
+                type="button"
+                class="export-vip-btn export-vip-btn-preview"
+                @click="showExportInfoModal = false; openExportWithPrintTemplate()"
+                style="margin-bottom: 0 !important;"
+              >
+                <div class="export-vip-btn-icon" style="background: rgba(14, 165, 233, 0.14) !important; color: #38bdf8 !important;">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
                 </div>
                 <div class="export-vip-btn-text">
-                  <span class="export-vip-btn-label">Xuất theo Mẫu In</span>
-                  <span class="export-vip-btn-desc">{{ activePrintTemplate?.ten_mau || 'Mẫu chuẩn' }} • Excel, PDF/In, Ảnh, HTML</span>
+                  <span class="export-vip-btn-label" style="color: #38bdf8 !important;">
+                    Xem trước &amp; Xuất đa định dạng ({{ selectedPrintTemplatesList.length }} mẫu)
+                  </span>
+                  <span class="export-vip-btn-desc" style="color: #bae6fd !important;">
+                    Xem bản in, sửa trực tiếp ô / điều khoản &amp; xuất {{ selectedPrintTemplatesList.length }} mẫu đã chọn
+                  </span>
                 </div>
-                <svg class="export-vip-btn-arrow" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <svg class="export-vip-btn-arrow" style="color: #38bdf8 !important;" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
               </button>
 
               <button class="export-vip-btn export-vip-btn-agency" @click="showExportInfoModal = false; requestExportWithSaveConfirm('agency_excel')">
@@ -23434,6 +27125,21 @@ onUnmounted(() => {
               <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
                 <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                   <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px; margin: 0;">ĐƠN GIÁ BÁN ({{ itemForm.Don_vi_tien_te || 'VND' }})</label>
+                  <button
+                    v-if="getCardVendorType(itemForm)"
+                    type="button"
+                    class="ref-compare-chip-btn"
+                    :class="'is-' + getCardVendorType(itemForm)"
+                    @click.stop="openRefCompareMenu($event, itemForm)"
+                    title="Đối chiếu giá với file hãng đã upload (ViewOffice)"
+                  >
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                      <polyline points="14 2 14 8 20 8"></polyline>
+                      <line x1="9" y1="15" x2="15" y2="15"></line>
+                    </svg>
+                    <span>Đối chiếu</span>
+                  </button>
                 </div>
                 <span
                   v-if="toNum(itemForm.Gia_tieu_chuan, 0) > 0 && toNum(itemForm.Don_gia, 0) > 0"
@@ -24063,6 +27769,21 @@ onUnmounted(() => {
                   <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px; margin: 0;">
                     ĐƠN GIÁ BÁN ({{ (cardEdit.Don_vi_tien_te && cardEdit.Don_vi_tien_te.toUpperCase() === 'USD' && Number(cardEdit.Ti_gia || 1) <= 1) ? 'USD' : 'VND' }})
                   </label>
+                  <button
+                    v-if="getCardVendorType(cardEdit)"
+                    type="button"
+                    class="ref-compare-chip-btn"
+                    :class="'is-' + getCardVendorType(cardEdit)"
+                    @click.stop="openRefCompareMenu($event, cardEdit)"
+                    title="Đối chiếu giá với file hãng đã upload (ViewOffice)"
+                  >
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                      <polyline points="14 2 14 8 20 8"></polyline>
+                      <line x1="9" y1="15" x2="15" y2="15"></line>
+                    </svg>
+                    <span>Đối chiếu</span>
+                  </button>
                 </div>
                 <span
                   v-if="toNum(cardEdit.Gia_tieu_chuan, 0) > 0 && toNum(cardEdit.Don_gia, 0) > 0"
@@ -25205,15 +28926,59 @@ onUnmounted(() => {
                     <button class="btn-del" @click.stop="removeSelected(r.idx)">✕</button>
                   </td>
                   <td class="mobile-quote-item-cell" colspan="16">
-                    <div class="m-qcard">
+                    <div class="m-qcard" :class="{ 'is-move-active': isMobileItemMoveActive(r.item, r.idx) }">
                       <div class="m-qcard-top">
                         <div class="m-qcard-title">{{ r.item.Ten_hang || 'Chưa có tên hàng' }}</div>
-                        <button type="button" class="m-qcard-del" @click.stop="removeSelected(r.idx)" title="Xóa sản phẩm">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="3 6 5 6 21 6"></polyline>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                          </svg>
-                        </button>
+                        <div class="m-qcard-top-actions" @click.stop>
+                          <Transition name="m-qcard-move-slide">
+                            <div v-if="isMobileItemMoveActive(r.item, r.idx)" class="m-qcard-move-stepper">
+                              <button
+                                type="button"
+                                class="m-qcard-move-step-btn"
+                                :disabled="!canMoveQuoteItem(r.idx, -1)"
+                                title="Di chuyển lên"
+                                aria-label="Di chuyển lên"
+                                @click.stop="moveQuoteItemStep(r.idx, -1)"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                                  <polyline points="18 15 12 9 6 15"></polyline>
+                                </svg>
+                              </button>
+                              <button
+                                type="button"
+                                class="m-qcard-move-step-btn"
+                                :disabled="!canMoveQuoteItem(r.idx, 1)"
+                                title="Di chuyển xuống"
+                                aria-label="Di chuyển xuống"
+                                @click.stop="moveQuoteItemStep(r.idx, 1)"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                                  <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                              </button>
+                            </div>
+                          </Transition>
+                          <button type="button" class="m-qcard-del" @click.stop="removeSelected(r.idx)" title="Xóa sản phẩm">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                              <polyline points="3 6 5 6 21 6"></polyline>
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                          </button>
+                          <button
+                            type="button"
+                            class="m-qcard-move-toggle"
+                            :class="{ 'is-active': isMobileItemMoveActive(r.item, r.idx) }"
+                            title="Di chuyển vị trí lên/xuống"
+                            aria-label="Di chuyển vị trí lên/xuống"
+                            @click.stop="toggleMobileItemMove(r.item, r.idx)"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                              <polyline points="8 18 12 22 16 18"></polyline>
+                              <polyline points="8 6 12 2 16 6"></polyline>
+                              <line x1="12" y1="2" x2="12" y2="22"></line>
+                            </svg>
+                          </button>
+                        </div>
                       </div>
                       <div v-if="shouldShowQuoteCardCodePill(r.item) || r.item.sku_code" class="m-qcard-pills">
                         <span v-if="shouldShowQuoteCardCodePill(r.item)" class="m-qcard-pill"><b>Mã:</b> {{ r.item.Ma_hang }}</span>
@@ -25339,30 +29104,94 @@ onUnmounted(() => {
           <button class="x" @click="closeQuoteEdit()" style="color: #fff; transition: all 0.2s; position: absolute; right: 20px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.15); border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;" onmouseover="this.style.background='rgba(0,0,0,0.3)'" onmouseout="this.style.background='rgba(0,0,0,0.15)'">✕</button>
         </div>
 
-        <!-- THANH ĐIỀU HƯỚNG 2 TAB + TÓM TẮT NHANH -->
-        <div class="quote-edit-tabbar" style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 24px; background: rgba(15, 23, 42, 0.75); border-bottom: 1px solid rgba(255, 255, 255, 0.08); flex-shrink: 0; flex-wrap: wrap;">
-          <div class="quote-edit-tab-group" style="display: flex; align-items: center; gap: 10px;">
-            <button
-              type="button"
-              class="quote-edit-tab-btn"
-              :class="{ active: activeQuoteEditTab === 'info' }"
-              @click="activeQuoteEditTab = 'info'"
-            >
-              <i class="ri-box-3-line" style="font-size: 16px;"></i>
-              <span>Thông tin hàng</span>
-              <small>(Thông tin chung &amp; Kỹ thuật)</small>
-            </button>
+        <!-- THANH ĐIỀU HƯỚNG 2 TAB + CHẾ ĐỘ XEM GIÁ + TÓM TẮT NHANH -->
+        <div class="quote-edit-tabbar" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 24px; background: rgba(15, 23, 42, 0.75); border-bottom: 1px solid rgba(255, 255, 255, 0.08); flex-shrink: 0; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <div class="quote-edit-tab-group" style="display: flex; align-items: center; gap: 10px;">
+              <button
+                type="button"
+                class="quote-edit-tab-btn"
+                :class="{ active: activeQuoteEditTab === 'info' }"
+                @click="activeQuoteEditTab = 'info'"
+              >
+                <i class="ri-box-3-line" style="font-size: 16px;"></i>
+                <span>Thông tin hàng</span>
+                <small>(Thông tin chung &amp; Kỹ thuật)</small>
+              </button>
 
-            <button
-              type="button"
-              class="quote-edit-tab-btn"
-              :class="{ active: activeQuoteEditTab === 'price' }"
-              @click="activeQuoteEditTab = 'price'"
-            >
-              <i class="ri-coins-line" style="font-size: 16px;"></i>
-              <span>Thông tin giá</span>
-              <small>(Giá mua, Chi phí &amp; Lợi nhuận)</small>
-            </button>
+              <button
+                type="button"
+                class="quote-edit-tab-btn"
+                :class="{ active: activeQuoteEditTab === 'price' }"
+                @click="activeQuoteEditTab = 'price'"
+              >
+                <i class="ri-coins-line" style="font-size: 16px;"></i>
+                <span>Thông tin giá</span>
+                <small>(Giá mua, Chi phí &amp; Lợi nhuận)</small>
+              </button>
+            </div>
+
+            <!-- 3-Tier Price View Switcher synced with table header -->
+            <div style="display: inline-flex; align-items: center; gap: 4px; background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(148, 163, 184, 0.22); border-radius: 8px; padding: 3px; flex-wrap: wrap;">
+              <button
+                v-for="opt in quotePriceViewOptions"
+                :key="'qe-mode-' + opt.value"
+                type="button"
+                @click="selectQuotePriceViewMode(opt.value)"
+                :style="{
+                  width: 'auto',
+                  margin: '0',
+                  padding: '5px 10px',
+                  borderRadius: '6px',
+                  fontSize: '11.5px',
+                  fontWeight: '700',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.16s ease',
+                  background: quotePriceViewMode === opt.value
+                    ? (opt.badgeColor === 'amber'
+                        ? 'rgba(245, 158, 11, 0.2)'
+                        : opt.badgeColor === 'emerald'
+                        ? 'rgba(16, 185, 129, 0.2)'
+                        : opt.badgeColor === 'purple'
+                        ? 'rgba(139, 92, 246, 0.22)'
+                        : 'rgba(59, 130, 246, 0.22)')
+                    : 'transparent',
+                  color: quotePriceViewMode === opt.value
+                    ? (opt.badgeColor === 'amber'
+                        ? '#fbbf24'
+                        : opt.badgeColor === 'emerald'
+                        ? '#34d399'
+                        : opt.badgeColor === 'purple'
+                        ? '#c4b5fd'
+                        : '#60a5fa')
+                    : '#94a3b8',
+                  border: quotePriceViewMode === opt.value
+                    ? (opt.badgeColor === 'amber'
+                        ? '1px solid rgba(245, 158, 11, 0.5)'
+                        : opt.badgeColor === 'emerald'
+                        ? '1px solid rgba(16, 185, 129, 0.5)'
+                        : opt.badgeColor === 'purple'
+                        ? '1px solid rgba(139, 92, 246, 0.55)'
+                        : '1px solid rgba(59, 130, 246, 0.5)')
+                    : '1px solid transparent'
+                }"
+                :title="opt.desc"
+              >
+                <span
+                  :style="{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '999px',
+                    background: opt.badgeColor === 'amber' ? '#f59e0b' : opt.badgeColor === 'emerald' ? '#10b981' : opt.badgeColor === 'purple' ? '#8b5cf6' : '#3b82f6'
+                  }"
+                ></span>
+                <span>{{ opt.shortLabel }}</span>
+              </button>
+            </div>
           </div>
 
           <!-- Quick Summary Pills -->
@@ -25373,15 +29202,15 @@ onUnmounted(() => {
             </div>
             <div class="qe-pill">
               <span class="qe-pill-label">List Price:</span>
-              <strong class="qe-pill-val">{{ formatVND((quoteEdit.Don_gia || 0) * (Number(quoteEdit.Ti_gia) || 1)) }} ₫</strong>
+              <strong class="qe-pill-val">{{ formatVND(tableListPriceVnd(quoteEdit, false)) }} ₫</strong>
             </div>
             <div class="qe-pill">
-              <span class="qe-pill-label">Đơn giá KH:</span>
-              <strong class="qe-pill-val highlight-emerald">{{ formatVND(unitPrice(quoteEdit)) }} ₫</strong>
+              <span class="qe-pill-label">{{ activeDonGiaFieldLabel }}:</span>
+              <strong class="qe-pill-val highlight-emerald">{{ formatVND(tableUnitPrice(quoteEdit)) }} ₫</strong>
             </div>
             <div class="qe-pill">
               <span class="qe-pill-label">TT Trước thuế:</span>
-              <strong class="qe-pill-val highlight-sky">{{ formatVND(lineTruocThue(quoteEdit)) }} ₫</strong>
+              <strong class="qe-pill-val highlight-sky">{{ formatVND(tableLineTruocThue(quoteEdit)) }} ₫</strong>
             </div>
           </div>
         </div>
@@ -25737,15 +29566,30 @@ onUnmounted(() => {
               <!-- List Price -->
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap;">
-                  <div style="display: flex; align-items: center; gap: 6px;">
-                    <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">List Price</span>
+                  <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                    <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">{{ activeListPriceFieldLabel }}</span>
+                    <button
+                      v-if="getCardVendorType(quoteEdit)"
+                      type="button"
+                      class="ref-compare-chip-btn"
+                      :class="'is-' + getCardVendorType(quoteEdit)"
+                      @click.stop="openRefCompareMenu($event, quoteEdit)"
+                      title="Đối chiếu giá với file hãng đã upload (ViewOffice)"
+                    >
+                      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="9" y1="15" x2="15" y2="15"></line>
+                      </svg>
+                      <span>Đối chiếu</span>
+                    </button>
                   </div>
                   <div style="display: flex; gap: 6px;">
-                    <button type="button" data-guide="qe-btn-edit-list-price" class="util-btn small inline-normal-edit" :class="{ 'is-guide-pulse': activeGuideStepId === 'table-item-edit-price' }" @click="openAdjustPrice('field', '', 'Đơn giá', 'Don_gia', true)" title="Sửa thường - cập nhật giá thực tế">
+                    <button v-if="canShowNormalEditBtn" type="button" data-guide="qe-btn-edit-list-price" class="util-btn small inline-normal-edit" :class="{ 'is-guide-pulse': activeGuideStepId === 'table-item-edit-price' }" @click="openAdjustPrice('field', '', activeListPriceFieldLabel, 'Don_gia', true)" title="Sửa thường - cập nhật giá thực tế">
                       <i class="ri-edit-line"></i>
                       <span>Sửa giá</span>
                     </button>
-                    <button type="button" class="util-btn small inline-adjust" @click="openAdjustPrice('field', '', 'Đơn giá', 'Don_gia')" title="Điều chỉnh - tạo chênh lệch giá">
+                    <button type="button" class="util-btn small inline-adjust" @click="openAdjustPrice('field', '', activeListPriceFieldLabel, 'Don_gia')" title="Điều chỉnh - tạo chênh lệch giá">
                       <i class="ri-arrow-up-down-fill"></i>
                       <span>Điều chỉnh</span>
                     </button>
@@ -25753,14 +29597,14 @@ onUnmounted(() => {
                 </label>
                 <div style="display: flex; align-items: center; gap: 8px;">
                   <div class="qe-has-left-icon qe-has-right-unit" style="position: relative; flex: 1;">
-                    <FormattedInput id="qe-Don_gia" :decimals="0" :modelValue="listPriceVnd(quoteEdit, false)" @update:modelValue="quoteEdit.Don_gia = $event / (Number(quoteEdit.Ti_gia) || 1)" @input="ensureNumberField(quoteEdit, 'Don_gia')" :readonly="true" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
+                    <FormattedInput id="qe-Don_gia" :decimals="0" :modelValue="tableListPriceVnd(quoteEdit, false)" :readonly="true" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
                     <i class="lucide-tag" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
                     <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #10b981; pointer-events: none;">₫</span>
                   </div>
                   <template v-if="quoteEdit.Don_vi_tien_te && quoteEdit.Don_vi_tien_te.toUpperCase() !== 'VND' && quoteEdit.Ti_gia > 1">
                     <span style="font-size: 12px; color: #10b981; font-weight: 600;">≈</span>
                     <div class="qe-has-right-unit" style="position: relative; width: 130px;">
-                      <FormattedInput id="qe-Don_gia_usd" v-model="quoteEdit.Don_gia" @input="ensureNumberField(quoteEdit, 'Don_gia')" style="width: 100%; padding: 10px 10px; padding-right: 36px; border-radius: 8px; font-weight: 600; font-size: 13px; border: 1px dashed rgba(16,185,129,0.3); background: rgba(16,185,129,0.05); color: #10b981;" />
+                      <FormattedInput id="qe-Don_gia_usd" v-model="quoteEditDonGiaUsdModel" style="width: 100%; padding: 10px 10px; padding-right: 36px; border-radius: 8px; font-weight: 600; font-size: 13px; border: 1px dashed rgba(16,185,129,0.3); background: rgba(16,185,129,0.05); color: #10b981;" />
                       <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #10b981; pointer-events: none;">{{ quoteEdit.Don_vi_tien_te }}</span>
                     </div>
                   </template>
@@ -25782,11 +29626,22 @@ onUnmounted(() => {
 
             <!-- CỘT PHẢI TAB GIÁ: BÁN HÀNG & LỢI NHUẬN -->
             <div data-guide="qe-sales-price-group" class="modal-group" style="margin: 0; display: flex; flex-direction: column; gap: 18px; background: rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
-              <div class="modal-banner-header modal-banner-profit" style="padding: 14px 18px; border-radius: 15px 15px 0 0; margin: -20px -20px 0 -20px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+              <div class="modal-banner-header modal-banner-profit" style="padding: 14px 18px; border-radius: 15px 15px 0 0; margin: -20px -20px 0 -20px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
                 <div style="display: flex; align-items: center; gap: 8px;">
                   <i class="ri-pie-chart-line" style="font-size: 17px; flex-shrink: 0;"></i>
                   <span style="font-size: 14px; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px;">Bán hàng &amp; Lợi nhuận</span>
                 </div>
+                <span style="font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: rgba(0,0,0,0.22); color: #fff; display: inline-flex; align-items: center; gap: 5px;">
+                  <span
+                    :style="{
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '999px',
+                      background: quotePriceViewMode === 'origin' ? '#fbbf24' : quotePriceViewMode === 'contract' ? '#34d399' : '#60a5fa'
+                    }"
+                  ></span>
+                  <span>{{ currentQuotePriceViewOption.label }}</span>
+                </span>
               </div>
 
               <!-- % Off khách & Thuế VAT -->
@@ -25816,7 +29671,7 @@ onUnmounted(() => {
                     <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 600; color: #3b82f6; pointer-events: none;">%</span>
                   </div>
                   <div v-if="quoteCurrency === 'VND'" class="muted" style="font-size: 11px; color: #60a5fa; text-align: right;">
-                    Tiền VAT: <b>{{ formatVND(lineVAT(quoteEdit)) }} ₫</b>
+                    Tiền VAT: <b>{{ formatVND(tableLineVAT(quoteEdit)) }} ₫</b>
                   </div>
                 </div>
               </div>
@@ -25838,38 +29693,46 @@ onUnmounted(() => {
                   </button>
                 </div>
 
-                <!-- Đơn giá (KH) -->
+                <!-- Đơn giá theo Tab đang chọn (Đơn giá LIST / Đơn giá khách / Đơn giá hợp đồng) -->
                 <div style="display: flex; flex-direction: column; gap: 6px;">
                   <label style="display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap;">
                     <div style="display: flex; align-items: center; gap: 6px;">
-                      <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Đơn giá (KH)</span>
+                      <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">{{ activeDonGiaFieldLabel }}</span>
                       <button
                         v-if="quoteCurrency === 'VND'"
                         type="button"
                         class="vnd-round-chip-btn"
                         :class="'mode-' + getItemOrFieldRounding(quoteEdit, 'don_gia_kh')"
-                        title="Làm tròn chẵn .000đ cho Đơn giá (KH)"
-                        @click.stop="openVndRoundingMenu($event, 'quoteEdit', 'don_gia_kh', 'Đơn giá (KH)')"
+                        :title="'Làm tròn chẵn .000đ cho ' + activeDonGiaFieldLabel"
+                        @click.stop="openVndRoundingMenu($event, 'quoteEdit', 'don_gia_kh', activeDonGiaFieldLabel)"
                       >{{ getRoundingBtnLabel(getItemOrFieldRounding(quoteEdit, 'don_gia_kh')) }}</button>
                     </div>
                     <div style="display: flex; gap: 6px;">
-                      <button type="button" data-guide="qe-btn-edit-unit-price" class="util-btn small inline-normal-edit" :class="{ 'is-guide-pulse': activeGuideStepId === 'table-item-edit-price' }" @click="openAdjustPrice('field', '', 'Đơn giá (KH)', 'unit_price_kh', true)" title="Sửa thường">
+                      <button v-if="canShowNormalEditBtn" type="button" data-guide="qe-btn-edit-unit-price" class="util-btn small inline-normal-edit" :class="{ 'is-guide-pulse': activeGuideStepId === 'table-item-edit-price' }" @click="openAdjustPrice('field', '', activeDonGiaFieldLabel, 'unit_price_kh', true)" title="Sửa thường">
                         <i class="ri-edit-line"></i>
                         <span>Sửa giá</span>
                       </button>
-                      <button type="button" class="util-btn small inline-adjust" @click="openAdjustPrice('field', '', 'Đơn giá (KH)', 'unit_price_kh')" title="Điều chỉnh">
+                      <button type="button" class="util-btn small inline-adjust" @click="openAdjustPrice('field', '', activeDonGiaFieldLabel, 'unit_price_kh')" title="Điều chỉnh">
                         <i class="ri-arrow-up-down-fill"></i>
                         <span>Điều chỉnh</span>
                       </button>
                     </div>
                   </label>
                   <div class="qe-has-left-icon qe-has-right-unit" style="position: relative;">
-                    <FormattedInput id="qe-unit_price_kh" :modelValue="unitPrice(quoteEdit)" :decimals="quoteCurrency === 'USD' ? 2 : 0" :readonly="true" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
+                    <FormattedInput id="qe-unit_price_kh" :modelValue="tableUnitPrice(quoteEdit)" :decimals="quoteCurrency === 'USD' ? 2 : 0" :readonly="true" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
                     <i class="lucide-tag" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
                     <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #10b981; pointer-events: none;">₫</span>
                   </div>
                   <div class="muted" style="font-size: 11px; margin-top: 2px; color: #94a3b8; text-align: right; width: 100%;">
-                    (Giá gốc: {{ formatVND(unitPriceRaw(quoteEdit)) }} ₫)
+                    <template v-if="quotePriceViewMode === 'origin'">
+                      (Đơn giá LIST gốc từ kho sản phẩm)
+                    </template>
+                    <template v-else-if="quotePriceViewMode === 'customer'">
+                      (Đơn giá LIST: {{ formatVND(unitPriceKho(quoteEdit)) }} ₫)
+                    </template>
+                    <template v-else>
+                      (Đơn giá khách: {{ formatVND(unitPriceRaw(quoteEdit)) }} ₫ • Đơn giá LIST: {{ formatVND(unitPriceKho(quoteEdit)) }} ₫)
+                    </template>
                   </div>
                 </div>
 
@@ -25877,34 +29740,42 @@ onUnmounted(() => {
                 <div style="display: flex; flex-direction: column; gap: 6px;">
                   <label style="display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap;">
                     <div style="display: flex; align-items: center; gap: 6px;">
-                      <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">TT Trước thuế</span>
+                      <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">{{ activeLineTruocThueFieldLabel }}</span>
                       <button
                         v-if="quoteCurrency === 'VND'"
                         type="button"
                         class="vnd-round-chip-btn"
                         :class="'mode-' + getItemOrFieldRounding(quoteEdit, 'tt_truoc_thue')"
-                        title="Làm tròn chẵn .000đ cho TT Trước thuế"
-                        @click.stop="openVndRoundingMenu($event, 'quoteEdit', 'tt_truoc_thue', 'TT Trước thuế')"
+                        :title="'Làm tròn chẵn .000đ cho ' + activeLineTruocThueFieldLabel"
+                        @click.stop="openVndRoundingMenu($event, 'quoteEdit', 'tt_truoc_thue', activeLineTruocThueFieldLabel)"
                       >{{ getRoundingBtnLabel(getItemOrFieldRounding(quoteEdit, 'tt_truoc_thue')) }}</button>
                     </div>
                     <div style="display: flex; gap: 6px;">
-                      <button type="button" data-guide="qe-btn-edit-line-total" class="util-btn small inline-normal-edit" :class="{ 'is-guide-pulse': activeGuideStepId === 'table-item-edit-price' }" @click="openAdjustPrice('field', '', 'Thành tiền trước thuế', 'line_truoc_thue', true)" title="Sửa thường">
+                      <button v-if="canShowNormalEditBtn" type="button" data-guide="qe-btn-edit-line-total" class="util-btn small inline-normal-edit" :class="{ 'is-guide-pulse': activeGuideStepId === 'table-item-edit-price' }" @click="openAdjustPrice('field', '', activeLineTruocThueFieldLabel, 'line_truoc_thue', true)" title="Sửa thường">
                         <i class="ri-edit-line"></i>
                         <span>Sửa giá</span>
                       </button>
-                      <button type="button" class="util-btn small inline-adjust" @click="openAdjustPrice('field', '', 'Thành tiền trước thuế', 'line_truoc_thue')" title="Điều chỉnh">
+                      <button type="button" class="util-btn small inline-adjust" @click="openAdjustPrice('field', '', activeLineTruocThueFieldLabel, 'line_truoc_thue')" title="Điều chỉnh">
                         <i class="ri-arrow-up-down-fill"></i>
                         <span>Điều chỉnh</span>
                       </button>
                     </div>
                   </label>
                   <div class="qe-has-left-icon qe-has-right-unit" style="position: relative;">
-                    <FormattedInput id="qe-line_truoc_thue" :modelValue="lineTruocThue(quoteEdit)" :decimals="quoteCurrency === 'USD' ? 2 : 0" :readonly="true" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
+                    <FormattedInput id="qe-line_truoc_thue" :modelValue="tableLineTruocThue(quoteEdit)" :decimals="quoteCurrency === 'USD' ? 2 : 0" :readonly="true" style="width: 100%; padding: 10px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 15px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
                     <i class="lucide-calculator" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
                     <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #10b981; pointer-events: none;">₫</span>
                   </div>
                   <div class="muted" style="font-size: 11px; margin-top: 2px; color: #94a3b8; text-align: right; width: 100%;">
-                    (Tổng gốc: {{ formatVND(lineTruocThueRaw(quoteEdit)) }} ₫)
+                    <template v-if="quotePriceViewMode === 'origin'">
+                      (TT trước thuế (List) gốc từ kho sản phẩm)
+                    </template>
+                    <template v-else-if="quotePriceViewMode === 'customer'">
+                      (TT trước thuế (List): {{ formatVND(lineTruocThueKho(quoteEdit)) }} ₫)
+                    </template>
+                    <template v-else>
+                      (TT trước thuế (Khách): {{ formatVND(lineTruocThueRaw(quoteEdit)) }} ₫ • TT trước thuế (List): {{ formatVND(lineTruocThueKho(quoteEdit)) }} ₫)
+                    </template>
                   </div>
                 </div>
               </div>
@@ -26015,6 +29886,95 @@ onUnmounted(() => {
               <span class="vnd-round-opt-text">
                 <strong>Khôi phục số gốc</strong>
                 <small>Giữ nguyên số tiền chi tiết chưa làm tròn</small>
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- ================== POPOVER ĐỐI CHIẾU FILE HÃNG (VIEWOFFICE) ================== -->
+    <Teleport to="body">
+      <div
+        v-if="refCompareMenu.open"
+        class="ref-compare-backdrop"
+        :class="{ 'is-light': quoteThemeMode === 'light' }"
+        @click="refCompareMenu.open = false"
+      >
+        <div
+          class="ref-compare-popover"
+          :class="refCompareMenu.vendor ? 'is-' + refCompareMenu.vendor : ''"
+          :style="{ top: refCompareMenu.top + 'px', left: refCompareMenu.left + 'px' }"
+          @click.stop
+        >
+          <div class="ref-compare-popover-head">
+            <div class="ref-compare-popover-title-wrap">
+              <span class="ref-compare-vendor-pill" :class="'is-' + refCompareMenu.vendor">
+                {{ refCompareMenu.vendorLabel }}
+              </span>
+              <span class="ref-compare-popover-title">Đối chiếu bằng ViewOffice</span>
+            </div>
+            <button type="button" class="ref-compare-popover-close" @click="refCompareMenu.open = false" aria-label="Đóng">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+
+          <div class="ref-compare-popover-sub">
+            <div v-if="refCompareMenu.sku || refCompareMenu.band" class="ref-compare-meta-tags">
+              <span v-if="refCompareMenu.sku" class="ref-compare-meta-code">SKU: {{ refCompareMenu.sku }}</span>
+              <span v-if="refCompareMenu.band" class="ref-compare-meta-band">{{ refCompareMenu.band }}</span>
+            </div>
+            <div class="ref-compare-hint">Chọn file bên dưới để mở Microsoft ViewOffice và nhảy thẳng tới đúng ô dữ liệu:</div>
+          </div>
+
+          <div v-if="refCompareMenu.loading" class="ref-compare-loading">
+            <span class="ref-compare-spinner"></span>
+            <span>Đang tra cứu vị trí dòng &amp; ô trong file...</span>
+          </div>
+
+          <div v-else-if="refCompareMenu.errorMsg && !refCompareMenu.options.length" class="ref-compare-error">
+            {{ refCompareMenu.errorMsg }}
+          </div>
+
+          <div v-else class="ref-compare-popover-list">
+            <button
+              v-for="opt in refCompareMenu.options"
+              :key="opt.id"
+              type="button"
+              class="ref-compare-opt"
+              :class="'role-' + opt.role"
+              @click="selectRefCompareOption(opt)"
+            >
+              <span class="ref-compare-opt-icon" :class="'role-' + opt.role">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="8" y1="13" x2="16" y2="13"></line>
+                  <line x1="8" y1="17" x2="16" y2="17"></line>
+                </svg>
+              </span>
+              <span class="ref-compare-opt-body">
+                <span class="ref-compare-opt-top">
+                  <span class="ref-compare-role-tag" :class="'role-' + opt.role">{{ opt.roleBadge }}</span>
+                  <span v-if="opt.priceText" class="ref-compare-price-badge">{{ opt.priceText }}</span>
+                </span>
+                <strong class="ref-compare-file-name" :title="opt.fileName">{{ opt.fileName }}</strong>
+                <span class="ref-compare-cell-meta">
+                  <span>Sheet: <b>{{ opt.sheet }}</b></span>
+                  <span class="ref-compare-dot">•</span>
+                  <span>Ô <b>{{ opt.cellRef }}</b></span>
+                </span>
+                <small v-if="opt.subNote" class="ref-compare-subnote">{{ opt.subNote }}</small>
+              </span>
+              <span class="ref-compare-opt-arrow" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                  <polyline points="15 3 21 3 21 9"></polyline>
+                  <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
               </span>
             </button>
           </div>
@@ -26204,7 +30164,24 @@ onUnmounted(() => {
       </div>
 
       <div>
-        <label>ĐƠN GIÁ GỐC (VND)</label>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap; margin-bottom: 4px;">
+          <label style="margin: 0;">ĐƠN GIÁ GỐC (VND)</label>
+          <button
+            v-if="getCardVendorType(quoteEditRaw)"
+            type="button"
+            class="ref-compare-chip-btn"
+            :class="'is-' + getCardVendorType(quoteEditRaw)"
+            @click.stop="openRefCompareMenu($event, quoteEditRaw)"
+            title="Đối chiếu giá với file hãng đã upload (ViewOffice)"
+          >
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="9" y1="15" x2="15" y2="15"></line>
+            </svg>
+            <span>Đối chiếu</span>
+          </button>
+        </div>
         <FormattedInput
           id="qeraw-Don_gia_goc"
           :decimals="0"
@@ -26597,9 +30574,9 @@ onUnmounted(() => {
           <p class="invoice-customer">Tên khách hàng: {{ r.tenKH }}</p>
           
           <div class="invoice-totals">
-            <p style="color: #ef4444;">Tổng giá thực tế: <span>{{ formatVND(r.tongGiaThucTe) }}</span></p>
-            <p>Tổng tiền trước thuế: <span>{{ formatVND(r.truocThue) }}</span></p>
-            <p class="highlight" style="border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 8px; margin-bottom: 4px;">Tổng tiền sau thuế: <span>{{ formatVND(r.sauThue) }}</span></p>
+            <p style="color: #ef4444;">TT trước thuế (Khách): <span>{{ formatVND(r.tongGiaThucTe) }}</span></p>
+            <p>TT trước thuế (HĐ): <span>{{ formatVND(r.truocThue) }}</span></p>
+            <p class="highlight" style="border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 8px; margin-bottom: 4px;">TT sau thuế: <span>{{ formatVND(r.sauThue) }}</span></p>
             <p>Chênh lệch giá: <span style="color: #10b981">{{ r.chenhLechGia > 0 ? '+' : '' }}{{ formatVND(r.chenhLechGia) }}</span></p>
             <p>Còn lại: <span>{{ formatVND(r.conLai) }}</span></p>
             <p style="color: #eab308; margin-top: 4px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.2);">Tổng chiết khấu: <span>{{ formatVND(r.tongChietKhau) }}</span></p>
@@ -27114,9 +31091,9 @@ onUnmounted(() => {
 
         <!-- TOP QUICK ACTION TOOLBAR -->
         <div class="cust-top-toolbar export-multi-top-toolbar" style="padding: 12px 32px; border-bottom: 1px solid rgba(148,163,184,0.16); background: rgba(15,23,42,0.35); display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; flex-shrink: 0;">
-          <div class="export-multi-tpl-left" style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 320px; flex-wrap: wrap;">
+          <div class="export-multi-tpl-left" style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 320px; flex-wrap: wrap;">
             <div class="export-multi-tpl-head-row">
-              <span class="export-multi-tpl-label" style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: #10b981; white-space: nowrap; letter-spacing: 0.4px;">Mẫu in áp dụng:</span>
+              <span class="export-multi-tpl-label" style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: #10b981; white-space: nowrap; letter-spacing: 0.4px;">Đang xem trước:</span>
               <button
                 type="button"
                 class="export-multi-setup-mobile-btn"
@@ -27128,14 +31105,43 @@ onUnmounted(() => {
             <select
               v-model="selectedPrintTemplateId"
               class="export-multi-tpl-select"
-              style="min-width: 260px; max-width: 420px; padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.5); font-weight: 700; font-size: 13px; cursor: pointer; margin: 0;"
+              style="min-width: 240px; max-width: 380px; padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.5); font-weight: 700; font-size: 13px; cursor: pointer; margin: 0;"
             >
               <option v-for="pt in printTemplates" :key="pt.id" :value="pt.id">
-                {{ pt.mac_dinh ? '[Mặc định] ' : '' }}{{ pt.ten_mau }} ({{ pt.cau_hinh_trang?.kho_giay || 'A4' }} - {{ pt.cau_hinh_trang?.huong_giay === 'portrait' ? 'Dọc' : 'Ngang' }})
+                {{ isPrintTemplateTicked(pt.id) ? '[Đã chọn] ' : '' }}{{ pt.mac_dinh ? '[Mặc định] ' : '' }}{{ pt.ten_mau }} ({{ pt.cau_hinh_trang?.kho_giay || 'A4' }} - {{ pt.cau_hinh_trang?.huong_giay === 'portrait' ? 'Dọc' : 'Ngang' }})
               </option>
             </select>
+
+            <!-- THANH TICK CHỌN NHIỀU MẪU IN ĐỂ XUẤT CÙNG LÚC -->
+            <div class="export-multi-tpl-chips">
+              <span class="export-multi-chips-title">Xuất ({{ selectedPrintTemplatesList.length }}):</span>
+              <div
+                v-for="pt in printTemplates"
+                :key="'chip-' + pt.id"
+                class="export-multi-tpl-chip"
+                :class="{
+                  'is-ticked': isPrintTemplateTicked(pt.id),
+                  'is-previewing': selectedPrintTemplateId === pt.id
+                }"
+                :title="`Click ô vuông để tick/bỏ tick xuất • Click tên để xem trước ${pt.ten_mau}`"
+                @click="selectedPrintTemplateId = pt.id"
+              >
+                <span
+                  class="export-multi-chip-check"
+                  :class="{ active: isPrintTemplateTicked(pt.id) }"
+                  @click.stop="toggleTickPrintTemplate(pt.id)"
+                >
+                  <svg v-if="isPrintTemplateTicked(pt.id)" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </span>
+                <span class="export-multi-chip-name">{{ pt.ten_mau }}</span>
+              </div>
+            </div>
+
             <span class="export-multi-filename-note" style="font-size: 12px; font-weight: 700; opacity: 0.9; display: inline-flex; align-items: center; gap: 5px;">
-              • Tên file xuất: <strong style="color: #0284c7; word-break: break-all;">{{ exportFileNamePreview }}{{ currentPreviewFormatInfo.badge }}</strong>
+              • Tên file xuất:
+              <strong style="color: #0284c7; word-break: break-all;">
+                {{ exportFileNamePreview }}{{ selectedPrintTemplatesList.length > 1 ? ` (+${selectedPrintTemplatesList.length} mẫu)` : '' }}{{ currentPreviewFormatInfo.badge }}
+              </strong>
             </span>
           </div>
 
@@ -27646,7 +31652,7 @@ onUnmounted(() => {
               }"
               @click="requestExportWithSaveConfirm('excel')"
             >
-              Xuất Excel (.xlsx)
+              Xuất Excel (.xlsx){{ selectedPrintTemplatesList.length > 1 ? ` (${selectedPrintTemplatesList.length})` : '' }}
             </button>
             <button
               type="button"
@@ -27658,7 +31664,7 @@ onUnmounted(() => {
               }"
               @click="requestExportWithSaveConfirm('word')"
             >
-              Xuất Word (.doc)
+              Xuất Word (.doc){{ selectedPrintTemplatesList.length > 1 ? ` (${selectedPrintTemplatesList.length})` : '' }}
             </button>
             <button
               type="button"
@@ -27670,7 +31676,7 @@ onUnmounted(() => {
               }"
               @click="requestExportWithSaveConfirm('pdf')"
             >
-              In / Xuất PDF
+              In / Xuất PDF{{ selectedPrintTemplatesList.length > 1 ? ` (${selectedPrintTemplatesList.length})` : '' }}
             </button>
             <button
               type="button"
@@ -27682,7 +31688,7 @@ onUnmounted(() => {
               }"
               @click="requestExportWithSaveConfirm('png')"
             >
-              Xuất Ảnh (.png)
+              Xuất Ảnh (.png){{ selectedPrintTemplatesList.length > 1 ? ` (${selectedPrintTemplatesList.length})` : '' }}
             </button>
             <button
               type="button"
@@ -27694,7 +31700,7 @@ onUnmounted(() => {
               }"
               @click="requestExportWithSaveConfirm('html')"
             >
-              Xuất HTML (.html)
+              Xuất HTML (.html){{ selectedPrintTemplatesList.length > 1 ? ` (${selectedPrintTemplatesList.length})` : '' }}
             </button>
           </div>
         </div>
@@ -28005,7 +32011,7 @@ onUnmounted(() => {
               }"
               @click="showPrintPreviewZoomModal = false; requestExportWithSaveConfirm('excel')"
             >
-              Xuất Excel (.xlsx)
+              Xuất Excel (.xlsx){{ selectedPrintTemplatesList.length > 1 ? ` (${selectedPrintTemplatesList.length})` : '' }}
             </button>
             <button
               type="button"
@@ -28017,7 +32023,7 @@ onUnmounted(() => {
               }"
               @click="showPrintPreviewZoomModal = false; requestExportWithSaveConfirm('word')"
             >
-              Xuất Word (.doc)
+              Xuất Word (.doc){{ selectedPrintTemplatesList.length > 1 ? ` (${selectedPrintTemplatesList.length})` : '' }}
             </button>
             <button
               type="button"
@@ -28029,7 +32035,7 @@ onUnmounted(() => {
               }"
               @click="showPrintPreviewZoomModal = false; requestExportWithSaveConfirm('pdf')"
             >
-              In / Xuất PDF
+              In / Xuất PDF{{ selectedPrintTemplatesList.length > 1 ? ` (${selectedPrintTemplatesList.length})` : '' }}
             </button>
             <button
               type="button"
@@ -28041,7 +32047,7 @@ onUnmounted(() => {
               }"
               @click="showPrintPreviewZoomModal = false; requestExportWithSaveConfirm('png')"
             >
-              Xuất Ảnh (.png)
+              Xuất Ảnh (.png){{ selectedPrintTemplatesList.length > 1 ? ` (${selectedPrintTemplatesList.length})` : '' }}
             </button>
             <button
               type="button"
@@ -28053,7 +32059,7 @@ onUnmounted(() => {
               }"
               @click="showPrintPreviewZoomModal = false; requestExportWithSaveConfirm('html')"
             >
-              Xuất HTML (.html)
+              Xuất HTML (.html){{ selectedPrintTemplatesList.length > 1 ? ` (${selectedPrintTemplatesList.length})` : '' }}
             </button>
           </div>
         </div>
@@ -28315,13 +32321,13 @@ onUnmounted(() => {
               <i :class="adjustPriceModal.isNormalEdit ? 'ri-edit-line' : 'ri-arrow-up-down-fill'"></i>
             </span>
             <span class="adj-dt-head-text">
-              <span class="adj-dt-title">{{ adjustPriceModal.isNormalEdit ? 'Sửa Thường' : 'Điều Chỉnh Giá' }}</span>
-              <span class="adj-dt-sub">{{ adjustPriceModal.targetName || (adjustPriceModal.mode === 'all' ? 'Áp dụng toàn bộ báo giá' : 'Cập nhật đơn giá') }}</span>
+              <span class="adj-dt-title">{{ adjustPriceModal.isNormalEdit ? 'Sửa Giá Báo Khách' : 'Điều Chỉnh Giá Hợp Đồng' }}</span>
+              <span class="adj-dt-sub">{{ adjustScopeDisplayName }}</span>
             </span>
           </h3>
           <div class="m-grab-head-stack">
-            <span class="m-grab-eyebrow">{{ adjustPriceModal.targetName || (adjustPriceModal.mode === 'all' ? 'Áp dụng toàn bộ báo giá' : 'Cập nhật đơn giá') }}</span>
-            <span class="m-grab-title">{{ adjustPriceModal.isNormalEdit ? 'Sửa giá thực tế' : 'Điều chỉnh giá bán' }}</span>
+            <span class="m-grab-eyebrow">{{ adjustScopeDisplayName }}</span>
+            <span class="m-grab-title">{{ adjustPriceModal.isNormalEdit ? 'Sửa giá báo khách' : 'Điều chỉnh giá hợp đồng' }}</span>
           </div>
           <button type="button" class="x" @click="onUserDismissAdjustPriceModal()">✕</button>
         </div>
@@ -28332,10 +32338,20 @@ onUnmounted(() => {
           <div class="adj-mode-pill">
             <i class="ri-information-line"></i>
             <span v-if="adjustPriceModal.isNormalEdit">
-              Sửa thường: Cập nhật <b>giá thực tế</b>, không tạo chênh lệch giá
+              Sửa giá: Cập nhật <b>{{ adjustCustomerTierLabel }}</b>
+              <template v-if="hasExistingContractDiffInNormalEdit">
+                ({{
+                  adjustPriceModal.normalEditContractBehavior === 'keep_diff'
+                    ? 'giữ mức Chênh lệch, ' + adjustContractTierLabel + ' tự tịnh tiến'
+                    : 'mặc định giữ nguyên ' + adjustContractTierLabel
+                }})
+              </template>
+              <template v-else>
+                (giữ nguyên Báo giá gốc LIST từ kho)
+              </template>
             </span>
             <span v-else>
-              Điều chỉnh: Thay đổi <b>giá bán</b>, giữ nguyên giá thực tế để tạo chênh lệch
+              Điều chỉnh: Kê / chỉnh <b>{{ adjustContractTierLabel }}</b> (giữ nguyên Báo giá gốc &amp; {{ adjustCustomerTierLabel }})
             </span>
           </div>
 
@@ -28352,19 +32368,23 @@ onUnmounted(() => {
           <div class="adj-compare-card">
             <div class="adj-compare-scope">
               <span class="adj-scope-label">Phạm vi áp dụng</span>
-              <span class="adj-scope-name">{{ adjustPriceModal.targetName || (adjustPriceModal.mode === 'all' ? 'Toàn bộ báo giá' : 'Đơn giá mục tiêu') }}</span>
+              <span class="adj-scope-name">{{ adjustScopeDisplayName }}</span>
             </div>
 
             <div class="adj-compare-prices">
               <div class="adj-price-col is-orig">
-                <span class="adj-price-caption">Giá trị gốc</span>
+                <span class="adj-price-caption">
+                  {{ adjustOrigCaption }}
+                </span>
                 <span class="adj-price-val">{{ formatVND(adjustPriceModal.currentTotal) }}<small>₫</small></span>
               </div>
               <div class="adj-price-arrow" aria-hidden="true">
                 <i class="ri-arrow-right-line"></i>
               </div>
               <div class="adj-price-col is-new" :class="{ 'is-changed': hasAdjustPriceChanged }">
-                <span class="adj-price-caption">Giá mới dự kiến</span>
+                <span class="adj-price-caption">
+                  {{ adjustNewCaption }}
+                </span>
                 <span class="adj-price-val">{{ formatVND(adjustPreviewTotal) }}<small>₫</small></span>
               </div>
             </div>
@@ -28383,7 +32403,7 @@ onUnmounted(() => {
                   <em v-if="adjustDeltaPercentLabel">({{ adjustDeltaPercentLabel }})</em>
                 </template>
                 <template v-else>
-                  <span>Giữ nguyên giá gốc</span>
+                  <span>Giữ nguyên {{ adjustMetricBaseNoun === 'TT trước thuế' ? 'TT trước thuế' : adjustMetricBaseNoun.toLowerCase() }}</span>
                 </template>
               </div>
 
@@ -28394,8 +32414,105 @@ onUnmounted(() => {
                 @click="resetAdjustPriceToOriginal()"
               >
                 <i class="ri-restart-line"></i>
-                <span>Về giá gốc</span>
+                <span>Về {{ adjustMetricBaseNoun === 'TT trước thuế' ? 'TT trước thuế' : adjustMetricBaseNoun.toLowerCase() }} cũ</span>
               </button>
+            </div>
+          </div>
+
+          <!-- Tuỳ chọn xử lý Giá hợp đồng khi mục này đã có Chênh lệch kê giá (Hướng 2) -->
+          <div v-if="hasExistingContractDiffInNormalEdit" class="adj-contract-behavior-box">
+            <div class="adj-cb-head">
+              <span class="adj-cb-title">
+                <i class="ri-shield-keyhole-line"></i>
+                <span>Xử lý {{ adjustContractTierLabel }} &amp; Chênh lệch</span>
+              </span>
+              <span class="adj-cb-current-tag">
+                Đang lệch {{ previewKeepDiffAmount >= 0 ? '+' : '' }}{{ formatVND(previewKeepDiffAmount) }} ₫
+              </span>
+            </div>
+
+            <div class="adj-cb-grid" role="radiogroup" aria-label="Cách xử lý Giá hợp đồng khi sửa giá khách">
+              <button
+                type="button"
+                class="adj-cb-option"
+                :class="{ active: adjustPriceModal.normalEditContractBehavior !== 'keep_diff' }"
+                @click="adjustPriceModal.normalEditContractBehavior = 'keep_contract'"
+              >
+                <div class="adj-cb-opt-top">
+                  <i class="ri-lock-2-line adj-cb-opt-icon"></i>
+                  <span class="adj-cb-opt-name">Giữ {{ adjustContractTierLabel }}</span>
+                  <span class="adj-cb-opt-badge">Mặc định</span>
+                </div>
+                <div class="adj-cb-opt-main">
+                  {{ adjustContractTierLabel }}: <b>{{ formatVND(previewKeepContractTotal) }} ₫</b>
+                </div>
+                <div class="adj-cb-opt-sub">
+                  Lệch mới: <span>{{ previewKeepContractNewDiff >= 0 ? '+' : '' }}{{ formatVND(previewKeepContractNewDiff) }} ₫</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                class="adj-cb-option"
+                :class="{ active: adjustPriceModal.normalEditContractBehavior === 'keep_diff' }"
+                @click="adjustPriceModal.normalEditContractBehavior = 'keep_diff'"
+              >
+                <div class="adj-cb-opt-top">
+                  <i class="ri-scales-3-line adj-cb-opt-icon"></i>
+                  <span class="adj-cb-opt-name">Giữ mức Chênh lệch</span>
+                </div>
+                <div class="adj-cb-opt-main">
+                  Lệch: <b>{{ previewKeepDiffAmount >= 0 ? '+' : '' }}{{ formatVND(previewKeepDiffAmount) }} ₫</b>
+                </div>
+                <div class="adj-cb-opt-sub">
+                  {{ adjustContractTierLabel }} mới: <span>{{ formatVND(previewKeepDiffNewContractTotal) }} ₫</span>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Bảng đối chiếu 3 cột "Giá khách ↔ Chênh lệch ↔ Giá HĐ" + nút "Xóa lệch" trong modal Điều chỉnh -->
+          <div v-else-if="!adjustPriceModal.isNormalEdit" class="adj-contract-summary-strip">
+            <div class="adj-cs-head">
+              <span class="adj-cs-title">
+                <i class="ri-scales-3-line"></i>
+                <span>Đối chiếu {{ adjustCustomerTierLabel }} ↔ {{ adjustDiffTierLabel }} ↔ {{ adjustContractTierLabel }}</span>
+              </span>
+              <button
+                v-if="canClearDiffToCustomerPrice"
+                type="button"
+                class="adj-clear-diff-btn"
+                :class="{ 'is-active-zero': adjustPriceModal.isResetToCustomerPrice || adjustModePreviewDiff === 0 }"
+                @click="clearContractDiffToCustomerPrice()"
+              >
+                <i class="ri-eraser-line"></i>
+                <span>Xóa lệch (Về bằng {{ adjustCustomerTierLabel }})</span>
+              </button>
+            </div>
+
+            <div class="adj-cs-trio">
+              <div class="adj-cs-col is-customer">
+                <span class="adj-cs-label">
+                  <i class="ri-lock-2-line"></i>
+                  <span>{{ adjustCustomerTierLabel }}</span>
+                </span>
+                <strong class="adj-cs-val">{{ formatVND(adjustModeCustomerTotal) }}<small>₫</small></strong>
+              </div>
+
+              <div class="adj-cs-col is-diff">
+                <span class="adj-cs-label">{{ adjustDiffTierLabel }}</span>
+                <strong
+                  class="adj-cs-val"
+                  :class="adjustModePreviewDiff > 0 ? 'is-pos' : adjustModePreviewDiff < 0 ? 'is-neg' : 'is-zero'"
+                >
+                  {{ adjustModePreviewDiff > 0 ? '+' : '' }}{{ formatVND(adjustModePreviewDiff) }}<small>₫</small>
+                </strong>
+              </div>
+
+              <div class="adj-cs-col is-contract">
+                <span class="adj-cs-label">{{ adjustContractTierLabel }}</span>
+                <strong class="adj-cs-val">{{ formatVND(adjustModePreviewContractTotal) }}<small>₫</small></strong>
+              </div>
             </div>
           </div>
 
@@ -28425,7 +32542,7 @@ onUnmounted(() => {
           <div class="adj-input-section">
             <div v-if="adjustPriceModal.adjustType === 'percent'" class="adj-tab-pane">
               <div class="adj-field-head">
-                <label class="adj-field-label">Mức điều chỉnh phần trăm</label>
+                <label class="adj-field-label">Mức điều chỉnh phần trăm ({{ adjustMetricBaseNoun }})</label>
               </div>
 
               <div class="adj-percent-row">
@@ -28492,7 +32609,7 @@ onUnmounted(() => {
 
             <div v-else class="adj-tab-pane">
               <div class="adj-field-head">
-                <label class="adj-field-label">Nhập giá trị mong muốn</label>
+                <label class="adj-field-label">{{ adjustNumberInputLabel }}</label>
                 <div
                   v-if="isAdjustChenhLechField"
                   class="adj-sign-toggle is-inline"
@@ -30523,6 +34640,67 @@ onUnmounted(() => {
       </div>
     </Transition>
 
+    <!-- MOBILE BOTTOM SHEET CHỌN 4 CHẾ ĐỘ HIỂN THỊ BÁO GIÁ (<= 1100px) -->
+    <Transition name="pl-sheet">
+      <div
+        v-if="showMobileQuoteModeSheet"
+        class="qmode-mobile-sheet-overlay"
+        @click.self="showMobileQuoteModeSheet = false"
+      >
+        <div class="qmode-mobile-sheet" @click.stop>
+          <div class="pl-sheet-grabber-wrap" @click="showMobileQuoteModeSheet = false">
+            <span class="pl-sheet-grabber"></span>
+          </div>
+
+          <div class="qtabs-sheet-head">
+            <div class="qtabs-sheet-head-txt">
+              <h4>Chế độ hiển thị báo giá</h4>
+              <p>Chọn chế độ xem danh sách hàng hóa</p>
+            </div>
+            <div class="qtabs-sheet-head-actions">
+              <button
+                type="button"
+                class="pl-sheet-close-btn"
+                aria-label="Đóng"
+                @click="showMobileQuoteModeSheet = false"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="qmode-sheet-list">
+            <button
+              v-for="opt in quotePriceViewOptions"
+              :key="'m-qmode-opt-' + opt.value"
+              type="button"
+              class="qmode-sheet-card"
+              :class="[
+                'is-tone-' + opt.badgeColor,
+                { 'is-active': quotePriceViewMode === opt.value }
+              ]"
+              @click="selectQuotePriceViewMode(opt.value)"
+            >
+              <div class="qmode-card-top">
+                <div class="qmode-card-title-group">
+                  <span class="qmode-card-radio">
+                    <svg v-if="quotePriceViewMode === opt.value" xmlns="http://www.w3.org/2000/svg" width="10.5" height="10.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  </span>
+                  <span class="qmode-card-dot"></span>
+                  <span class="qmode-card-title">{{ opt.label }}</span>
+                </div>
+                <span v-if="quotePriceViewMode === opt.value" class="qmode-card-active-badge">Đang xem</span>
+              </div>
+              <div class="qmode-card-desc">{{ opt.desc }}</div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
     <!-- ================== MODAL HỘP THOẠI THÔNG BÁO & XÁC NHẬN CHUẨN TEMPLATE (ALERT / CONFIRM) ================== -->
     <Transition name="async-modal">
       <div
@@ -31382,9 +35560,61 @@ onUnmounted(() => {
   min-width: 380px;
   overflow: hidden;
 }
-.sidebar-left { transition: margin-left .25s ease, opacity .25s ease; }
+.sidebar-left { transition: width .22s ease, min-width .22s ease, padding .22s ease, background .22s ease; }
 .sidebar-right { transition: margin-right .25s ease, opacity .25s ease; overflow-y: auto; }
-.sidebar-left.closed { margin-left: -400px; opacity: 0; pointer-events: none; }
+.sidebar-left.closed {
+  width: 48px !important;
+  min-width: 48px !important;
+  padding: 0 !important;
+  margin-left: 0 !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.sidebar-left.closed > :not(.is-left-product-rail) {
+  display: none !important;
+}
+.product-sidebar-collapse-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 31px !important;
+  height: 31px !important;
+  min-width: 31px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  flex-shrink: 0 !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(56, 189, 248, 0.35) !important;
+  background: rgba(14, 165, 233, 0.14) !important;
+  color: #38bdf8 !important;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.product-sidebar-collapse-btn:hover {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+  border-color: #38bdf8 !important;
+  color: #ffffff !important;
+}
+.page.theme-light-blue .product-sidebar-collapse-btn {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #0284c7 !important;
+}
+.page.theme-light-blue .product-sidebar-collapse-btn:hover {
+  background: #0284c7 !important;
+  border-color: #0284c7 !important;
+  color: #ffffff !important;
+}
+.page.theme-light-blue .sidebar-left.closed {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
 .sidebar-right.closed { margin-right: -400px; opacity: 0; pointer-events: none; }
 
 .sidebar-head {
@@ -32301,7 +36531,9 @@ hr { border: none; border-top: 1px solid #1e293b; margin: 12px 0; }
     inset 0 1px 0 rgba(255,255,255,0.06);
 }
 .quote-table-wrap {
-  flex: 1;
+  flex: 1 1 0%;
+  min-width: 0;
+  min-height: 0;
   overflow: auto;
   display: flex;
   flex-direction: column;
@@ -32518,6 +36750,10 @@ td.dvt { font-family: inherit; white-space: normal; }
   gap: 6px;
   margin-left: auto;
   flex-shrink: 0;
+}
+.group-row-actions .m-group-move-toggle,
+.group-row-actions .m-qcard-move-stepper.is-group-stepper {
+  display: none;
 }
 
 /* ===== COLUMN WIDTHS (table-layout: fixed) ===== */
@@ -34456,6 +38692,8 @@ td.dvt { font-family: inherit; white-space: normal; }
 .mobile-quote-item-cell,
 .mobile-quote-summary-card,
 .mobile-screen2-action-bar,
+.m-quote-mode-mini-dock,
+.qmode-mobile-sheet-overlay,
 .card-mobile-top-meta,
 .cust-mobile-mini-actions,
 .cust-import-btn .mb-lbl,
@@ -34836,6 +39074,136 @@ td.dvt { font-family: inherit; white-space: normal; }
     bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
+  /* DOCK NHỎ KIỂU A (FLOATING PILL) NẰM NGAY PHÍA TRÊN DOCK CHA Ở BƯỚC 2: BÁO GIÁ */
+  #app .page button.m-quote-mode-mini-dock {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    position: fixed !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    bottom: calc(130px + env(safe-area-inset-bottom, 0px)) !important;
+    width: max-content !important;
+    max-width: calc(100vw - 32px) !important;
+    height: 30px !important;
+    min-height: 30px !important;
+    margin: 0 !important;
+    padding: 0 13px !important;
+    border-radius: 999px !important;
+    z-index: 952 !important;
+    background: rgba(15, 23, 42, 0.88) !important;
+    border: 1px solid rgba(148, 163, 184, 0.32) !important;
+    color: #f8fafc !important;
+    font-size: 11.5px !important;
+    font-weight: 800 !important;
+    white-space: nowrap !important;
+    cursor: pointer !important;
+    box-shadow:
+      0 8px 20px rgba(2, 6, 23, 0.48),
+      inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
+    backdrop-filter: blur(20px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+    transition:
+      bottom 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.24s ease,
+      border-color 0.2s ease !important;
+  }
+
+  #app .page button.m-quote-mode-mini-dock:active {
+    transform: translateX(-50%) scale(0.95) !important;
+  }
+
+  #app .page button.m-quote-mode-mini-dock.is-modal-hidden,
+  .page.has-open-modal #app .page button.m-quote-mode-mini-dock,
+  #app .page.has-open-modal button.m-quote-mode-mini-dock {
+    transform: translateX(-50%) translateY(calc(100% + 140px + env(safe-area-inset-bottom, 0px))) scale(0.95) !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  #app .app-layout.mobile-nav-hidden .page button.m-quote-mode-mini-dock,
+  .app-layout.mobile-nav-hidden .page button.m-quote-mode-mini-dock {
+    bottom: calc(66px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .m-quote-mode-mini-dock .m-qmd-dot {
+    width: 7.5px !important;
+    height: 7.5px !important;
+    border-radius: 999px !important;
+    flex-shrink: 0 !important;
+    background: #3b82f6 !important;
+    box-shadow: 0 0 6px rgba(59, 130, 246, 0.65) !important;
+  }
+
+  .m-quote-mode-mini-dock .m-qmd-prefix {
+    font-size: 10.5px !important;
+    font-weight: 600 !important;
+    color: #94a3b8 !important;
+  }
+
+  .m-quote-mode-mini-dock .m-qmd-label {
+    font-size: 11.5px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.15px !important;
+  }
+
+  .m-quote-mode-mini-dock .m-qmd-chevron {
+    flex-shrink: 0 !important;
+    opacity: 0.85 !important;
+  }
+
+  /* Màu nhấn theo 4 chế độ trên Mini Dock */
+  #app .page button.m-quote-mode-mini-dock.is-mode-origin {
+    border-color: rgba(245, 158, 11, 0.5) !important;
+  }
+  #app .page button.m-quote-mode-mini-dock.is-mode-origin .m-qmd-dot {
+    background: #f59e0b !important;
+    box-shadow: 0 0 6px rgba(245, 158, 11, 0.65) !important;
+  }
+  #app .page button.m-quote-mode-mini-dock.is-mode-origin .m-qmd-label,
+  #app .page button.m-quote-mode-mini-dock.is-mode-origin .m-qmd-chevron {
+    color: #fbbf24 !important;
+  }
+
+  #app .page button.m-quote-mode-mini-dock.is-mode-customer {
+    border-color: rgba(59, 130, 246, 0.5) !important;
+  }
+  #app .page button.m-quote-mode-mini-dock.is-mode-customer .m-qmd-dot {
+    background: #3b82f6 !important;
+    box-shadow: 0 0 6px rgba(59, 130, 246, 0.65) !important;
+  }
+  #app .page button.m-quote-mode-mini-dock.is-mode-customer .m-qmd-label,
+  #app .page button.m-quote-mode-mini-dock.is-mode-customer .m-qmd-chevron {
+    color: #60a5fa !important;
+  }
+
+  #app .page button.m-quote-mode-mini-dock.is-mode-contract {
+    border-color: rgba(16, 185, 129, 0.5) !important;
+  }
+  #app .page button.m-quote-mode-mini-dock.is-mode-contract .m-qmd-dot {
+    background: #10b981 !important;
+    box-shadow: 0 0 6px rgba(16, 185, 129, 0.65) !important;
+  }
+  #app .page button.m-quote-mode-mini-dock.is-mode-contract .m-qmd-label,
+  #app .page button.m-quote-mode-mini-dock.is-mode-contract .m-qmd-chevron {
+    color: #34d399 !important;
+  }
+
+  #app .page button.m-quote-mode-mini-dock.is-mode-compare {
+    border-color: rgba(139, 92, 246, 0.55) !important;
+  }
+  #app .page button.m-quote-mode-mini-dock.is-mode-compare .m-qmd-dot {
+    background: #8b5cf6 !important;
+    box-shadow: 0 0 6px rgba(139, 92, 246, 0.65) !important;
+  }
+  #app .page button.m-quote-mode-mini-dock.is-mode-compare .m-qmd-label,
+  #app .page button.m-quote-mode-mini-dock.is-mode-compare .m-qmd-chevron {
+    color: #c4b5fd !important;
+  }
+
   @media (min-width: 769px) and (max-width: 1100px) {
     .mobile-screen1-cart-bar,
     .mobile-screen2-action-bar {
@@ -34845,6 +39213,12 @@ td.dvt { font-family: inherit; white-space: normal; }
       width: auto !important;
       max-width: none !important;
       border-radius: 0 !important;
+    }
+    #app .page button.m-quote-mode-mini-dock,
+    #app .app-layout.mobile-nav-hidden .page button.m-quote-mode-mini-dock,
+    .app-layout.mobile-nav-hidden .page button.m-quote-mode-mini-dock {
+      bottom: 56px !important;
+      left: calc(50% + 36px) !important;
     }
   }
 
@@ -35155,6 +39529,11 @@ td.dvt { font-family: inherit; white-space: normal; }
     box-shadow: none !important;
   }
 
+  .table-header-box .quote-price-view-switcher {
+    display: none !important;
+  }
+
+  .table-header-box .btn-quote-price-view-toggle,
   .table-header-box .btn-quote-col-setting,
   .table-header-box .btn-quote-guide {
     height: 30px !important;
@@ -35168,6 +39547,8 @@ td.dvt { font-family: inherit; white-space: normal; }
 
   .table-header-box .unified-contract-pill {
     order: 1 !important;
+    flex: 0 1 auto !important;
+    min-width: 0 !important;
     margin: 0 !important;
     padding: 0 9px !important;
     height: 30px !important;
@@ -35628,12 +40009,25 @@ td.dvt { font-family: inherit; white-space: normal; }
     word-break: break-word !important;
   }
 
+  .m-qcard.is-move-active {
+    border-color: rgba(56, 189, 248, 0.72) !important;
+    box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.28), 0 6px 18px rgba(2, 132, 199, 0.22) !important;
+  }
+
+  .m-qcard-top-actions {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    flex-shrink: 0 !important;
+    margin: -2px -2px 0 0 !important;
+  }
+
   .m-qcard-del {
     width: 28px !important;
     min-width: 28px !important;
     height: 28px !important;
     padding: 0 !important;
-    margin: -2px -2px 0 0 !important;
+    margin: 0 !important;
     border-radius: 7px !important;
     background: rgba(239, 68, 68, 0.14) !important;
     border: 1px solid rgba(239, 68, 68, 0.35) !important;
@@ -35644,6 +40038,88 @@ td.dvt { font-family: inherit; white-space: normal; }
     flex-shrink: 0 !important;
     cursor: pointer !important;
     box-shadow: none !important;
+  }
+
+  .m-qcard-move-toggle {
+    width: 28px !important;
+    min-width: 28px !important;
+    height: 28px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 7px !important;
+    background: rgba(56, 189, 248, 0.14) !important;
+    border: 1px solid rgba(56, 189, 248, 0.38) !important;
+    color: #38bdf8 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+    cursor: pointer !important;
+    box-shadow: none !important;
+    transition: all 0.16s ease !important;
+  }
+
+  .m-qcard-move-toggle.is-active {
+    background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+    border-color: #7dd3fc !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 8px rgba(14, 165, 233, 0.38) !important;
+  }
+
+  .m-qcard-move-stepper {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 3px !important;
+    padding: 2px !important;
+    border-radius: 8px !important;
+    background: rgba(15, 23, 42, 0.94) !important;
+    border: 1px solid rgba(56, 189, 248, 0.48) !important;
+    box-shadow: 0 3px 10px rgba(2, 6, 23, 0.35) !important;
+  }
+
+  button.m-qcard-move-step-btn {
+    width: 24px !important;
+    min-width: 24px !important;
+    height: 24px !important;
+    min-height: 24px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 6px !important;
+    background: rgba(56, 189, 248, 0.18) !important;
+    border: 1px solid rgba(56, 189, 248, 0.38) !important;
+    color: #7dd3fc !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    box-shadow: none !important;
+    transition: all 0.14s ease !important;
+  }
+
+  button.m-qcard-move-step-btn:active:not(:disabled) {
+    background: #0284c7 !important;
+    border-color: #38bdf8 !important;
+    color: #ffffff !important;
+    transform: scale(0.92) !important;
+  }
+
+  button.m-qcard-move-step-btn:disabled {
+    opacity: 0.32 !important;
+    cursor: not-allowed !important;
+    background: rgba(51, 65, 85, 0.35) !important;
+    border-color: rgba(71, 85, 105, 0.35) !important;
+    color: #64748b !important;
+  }
+
+  .m-qcard-move-slide-enter-active,
+  .m-qcard-move-slide-leave-active {
+    transition: opacity 0.15s ease, transform 0.15s ease !important;
+  }
+
+  .m-qcard-move-slide-enter-from,
+  .m-qcard-move-slide-leave-to {
+    opacity: 0 !important;
+    transform: translateX(6px) scale(0.92) !important;
   }
 
   .m-qcard-meta {
@@ -35816,6 +40292,31 @@ td.dvt { font-family: inherit; white-space: normal; }
   }
   .quote-table-wrap tr.group-row .group-row-actions button span {
     display: none !important;
+  }
+  .quote-table-wrap tr.group-row .group-row-actions button.m-group-move-toggle {
+    display: inline-flex !important;
+    background: rgba(56, 189, 248, 0.16) !important;
+    border: 1px solid rgba(56, 189, 248, 0.42) !important;
+    color: #38bdf8 !important;
+  }
+  .quote-table-wrap tr.group-row .group-row-actions button.m-group-move-toggle.is-active {
+    background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+    border-color: #7dd3fc !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 8px rgba(14, 165, 233, 0.38) !important;
+  }
+  .quote-table-wrap tr.group-row .group-row-actions .m-qcard-move-stepper.is-group-stepper {
+    display: inline-flex !important;
+  }
+  .quote-table-wrap tr.group-row .group-row-actions .m-qcard-move-stepper.is-group-stepper button.m-qcard-move-step-btn {
+    width: 23px !important;
+    min-width: 23px !important;
+    height: 23px !important;
+    min-height: 23px !important;
+  }
+  .quote-table-wrap tr.group-row.is-move-active {
+    border-color: rgba(56, 189, 248, 0.75) !important;
+    box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.28) !important;
   }
 
   /* KHỐI TỔNG KẾT MOBILE: TÁCH 2 CARD ĐỘC LẬP (CHIẾT KHẤU & TÀI CHÍNH) (.mobile-quote-summary-card) */
@@ -36497,6 +40998,55 @@ td.dvt { font-family: inherit; white-space: normal; }
     -webkit-backdrop-filter: blur(22px) saturate(185%) !important;
   }
 
+  #app .page.theme-light-blue button.m-quote-mode-mini-dock {
+    background: rgba(255, 255, 255, 0.94) !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+    box-shadow:
+      0 6px 18px rgba(15, 23, 42, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.95) !important;
+  }
+
+  #app .page.theme-light-blue button.m-quote-mode-mini-dock .m-qmd-prefix {
+    color: #64748b !important;
+  }
+
+  #app .page.theme-light-blue button.m-quote-mode-mini-dock.is-mode-origin {
+    background: rgba(255, 251, 235, 0.96) !important;
+    border-color: #fcd34d !important;
+  }
+  #app .page.theme-light-blue button.m-quote-mode-mini-dock.is-mode-origin .m-qmd-label,
+  #app .page.theme-light-blue button.m-quote-mode-mini-dock.is-mode-origin .m-qmd-chevron {
+    color: #b45309 !important;
+  }
+
+  #app .page.theme-light-blue button.m-quote-mode-mini-dock.is-mode-customer {
+    background: rgba(239, 246, 255, 0.96) !important;
+    border-color: #93c5fd !important;
+  }
+  #app .page.theme-light-blue button.m-quote-mode-mini-dock.is-mode-customer .m-qmd-label,
+  #app .page.theme-light-blue button.m-quote-mode-mini-dock.is-mode-customer .m-qmd-chevron {
+    color: #1d4ed8 !important;
+  }
+
+  #app .page.theme-light-blue button.m-quote-mode-mini-dock.is-mode-contract {
+    background: rgba(236, 253, 245, 0.96) !important;
+    border-color: #6ee7b7 !important;
+  }
+  #app .page.theme-light-blue button.m-quote-mode-mini-dock.is-mode-contract .m-qmd-label,
+  #app .page.theme-light-blue button.m-quote-mode-mini-dock.is-mode-contract .m-qmd-chevron {
+    color: #047857 !important;
+  }
+
+  #app .page.theme-light-blue button.m-quote-mode-mini-dock.is-mode-compare {
+    background: rgba(245, 243, 255, 0.96) !important;
+    border-color: #c4b5fd !important;
+  }
+  #app .page.theme-light-blue button.m-quote-mode-mini-dock.is-mode-compare .m-qmd-label,
+  #app .page.theme-light-blue button.m-quote-mode-mini-dock.is-mode-compare .m-qmd-chevron {
+    color: #6d28d9 !important;
+  }
+
   .page.theme-light-blue .m-dock-back-btn {
     background: #f1f5f9 !important;
     border-color: #cbd5e1 !important;
@@ -36571,6 +41121,62 @@ td.dvt { font-family: inherit; white-space: normal; }
 
   .page.theme-light-blue .m-qcard {
     border-left: 3px solid #2563eb !important;
+  }
+
+  .page.theme-light-blue .m-qcard.is-move-active {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25), 0 6px 16px rgba(37, 99, 235, 0.14) !important;
+  }
+
+  .page.theme-light-blue .m-qcard-del {
+    background: #fef2f2 !important;
+    border-color: #fecaca !important;
+    color: #dc2626 !important;
+  }
+
+  .page.theme-light-blue .m-qcard-move-toggle,
+  .page.theme-light-blue .quote-table-wrap tr.group-row .group-row-actions button.m-group-move-toggle {
+    background: #eff6ff !important;
+    border-color: #93c5fd !important;
+    color: #2563eb !important;
+  }
+
+  .page.theme-light-blue .m-qcard-move-toggle.is-active,
+  .page.theme-light-blue .quote-table-wrap tr.group-row .group-row-actions button.m-group-move-toggle.is-active {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+    border-color: #1d4ed8 !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3) !important;
+  }
+
+  .page.theme-light-blue .m-qcard-move-stepper {
+    background: #f8fafc !important;
+    border-color: #93c5fd !important;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.12) !important;
+  }
+
+  .page.theme-light-blue button.m-qcard-move-step-btn {
+    background: #dbeafe !important;
+    border-color: #93c5fd !important;
+    color: #1d4ed8 !important;
+  }
+
+  .page.theme-light-blue button.m-qcard-move-step-btn:active:not(:disabled) {
+    background: #2563eb !important;
+    border-color: #1d4ed8 !important;
+    color: #ffffff !important;
+  }
+
+  .page.theme-light-blue button.m-qcard-move-step-btn:disabled {
+    background: #f1f5f9 !important;
+    border-color: #e2e8f0 !important;
+    color: #94a3b8 !important;
+    opacity: 0.45 !important;
+  }
+
+  .page.theme-light-blue .quote-table-wrap tr.group-row.is-move-active {
+    border-color: #2563eb !important;
+    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.24) !important;
   }
 
   .page.theme-light-blue .m-qcard-stt {
@@ -37860,6 +42466,30 @@ td.dvt { font-family: inherit; white-space: normal; }
   color: #dc2626 !important;
 }
 
+.page.theme-light-blue tbody tr.quote-item-row td.is-margin-pos,
+.page.theme-light-blue tbody tr.quote-item-row td.is-margin-pos * {
+  color: #059669 !important;
+}
+
+.page.theme-light-blue tbody tr.quote-item-row td.is-margin-neg,
+.page.theme-light-blue tbody tr.quote-item-row td.is-margin-neg * {
+  color: #dc2626 !important;
+}
+
+.page.theme-light-blue tfoot .net-margin-footer-pill.is-margin-pos,
+.page.theme-light-blue tfoot .net-margin-footer-pill.is-margin-pos * {
+  color: #047857 !important;
+  background: rgba(16, 185, 129, 0.16) !important;
+  border-color: rgba(5, 150, 105, 0.45) !important;
+}
+
+.page.theme-light-blue tfoot .net-margin-footer-pill.is-margin-neg,
+.page.theme-light-blue tfoot .net-margin-footer-pill.is-margin-neg * {
+  color: #b91c1c !important;
+  background: rgba(239, 68, 68, 0.16) !important;
+  border-color: rgba(220, 38, 38, 0.45) !important;
+}
+
 .page.theme-light-blue tfoot td,
 .page.theme-light-blue tfoot tr.table-footer-sticky {
   background: linear-gradient(180deg, #f0f7ff 0%, #e0ecff 100%) !important;
@@ -37886,6 +42516,1664 @@ td.dvt { font-family: inherit; white-space: normal; }
 
 .page.theme-light-blue tfoot tr.table-footer-sticky [data-tooltip="Tổng TT sau thuế"] {
   color: #1d4ed8 !important;
+}
+
+/* ===== CHẾ ĐỘ ĐỐI CHIẾU 3 GIÁ (LIST - KHÁCH - HỢP ĐỒNG) GIỐNG EXCEL ===== */
+thead th.th-compare-col,
+.page.theme-light-blue thead th.th-compare-col {
+  font-weight: 800 !important;
+  font-size: 11px !important;
+  text-align: center !important;
+  letter-spacing: 0.3px;
+  padding: 8px 6px !important;
+}
+
+thead th.th-compare-list-dg,
+thead th.th-compare-list-tt,
+.page.theme-light-blue thead th.th-compare-list-dg,
+.page.theme-light-blue thead th.th-compare-list-tt {
+  background: #dbeafe !important;
+  color: #1e3a8a !important;
+  border-bottom: 2px solid #3b82f6 !important;
+}
+thead th.th-compare-list-dg,
+.page.theme-light-blue thead th.th-compare-list-dg {
+  border-left: 1px solid #93c5fd !important;
+}
+thead th.th-compare-list-tt,
+.page.theme-light-blue thead th.th-compare-list-tt {
+  border-right: 1px solid #93c5fd !important;
+}
+
+thead th.th-compare-cust-dg,
+thead th.th-compare-cust-tt,
+.page.theme-light-blue thead th.th-compare-cust-dg,
+.page.theme-light-blue thead th.th-compare-cust-tt {
+  background: #dcfce7 !important;
+  color: #14532d !important;
+  border-bottom: 2px solid #22c55e !important;
+}
+thead th.th-compare-cust-tt,
+.page.theme-light-blue thead th.th-compare-cust-tt {
+  border-right: 1px solid #86efac !important;
+}
+
+thead th.th-compare-cont-dg,
+thead th.th-compare-cont-tt,
+.page.theme-light-blue thead th.th-compare-cont-dg,
+.page.theme-light-blue thead th.th-compare-cont-tt {
+  background: #fef3c7 !important;
+  color: #78350f !important;
+  border-bottom: 2px solid #f59e0b !important;
+}
+thead th.th-compare-cont-tt,
+.page.theme-light-blue thead th.th-compare-cont-tt {
+  border-right: 1px solid #fcd34d !important;
+}
+
+/* Ô dữ liệu 3 cặp Đơn giá & Thành tiền đồng màu theo nhóm (Dark Mode) */
+tbody tr.quote-item-row td.td-compare-cell {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+tbody tr.quote-item-row td.td-compare-list-dg,
+tbody tr.quote-item-row td.td-compare-list-tt {
+  background: rgba(59, 130, 246, 0.12) !important;
+  color: #93c5fd !important;
+  font-weight: 700 !important;
+}
+tbody tr.quote-item-row td.td-compare-list-dg {
+  border-left: 1px solid rgba(59, 130, 246, 0.25) !important;
+}
+tbody tr.quote-item-row td.td-compare-list-tt {
+  font-weight: 800 !important;
+  border-right: 1px solid rgba(59, 130, 246, 0.3) !important;
+}
+
+tbody tr.quote-item-row td.td-compare-cust-dg,
+tbody tr.quote-item-row td.td-compare-cust-tt {
+  background: rgba(16, 185, 129, 0.12) !important;
+  color: #6ee7b7 !important;
+  font-weight: 700 !important;
+}
+tbody tr.quote-item-row td.td-compare-cust-tt {
+  font-weight: 800 !important;
+  border-right: 1px solid rgba(16, 185, 129, 0.3) !important;
+}
+
+tbody tr.quote-item-row td.td-compare-cont-dg,
+tbody tr.quote-item-row td.td-compare-cont-tt {
+  background: rgba(245, 158, 11, 0.12) !important;
+  color: #fcd34d !important;
+  font-weight: 700 !important;
+}
+tbody tr.quote-item-row td.td-compare-cont-tt {
+  font-weight: 800 !important;
+  border-right: 1px solid rgba(245, 158, 11, 0.3) !important;
+}
+
+/* Ô dữ liệu 3 cặp Đơn giá & Thành tiền đồng màu theo nhóm (Light Mode) */
+.page.theme-light-blue tbody tr.quote-item-row td.td-compare-list-dg,
+.page.theme-light-blue tbody tr.quote-item-row td.td-compare-list-tt {
+  background: #eff6ff !important;
+  color: #1e3a8a !important;
+}
+.page.theme-light-blue tbody tr.quote-item-row td.td-compare-list-dg {
+  border-left: 1px solid #bfdbfe !important;
+}
+.page.theme-light-blue tbody tr.quote-item-row td.td-compare-list-tt {
+  border-right: 1px solid #93c5fd !important;
+}
+
+.page.theme-light-blue tbody tr.quote-item-row td.td-compare-cust-dg,
+.page.theme-light-blue tbody tr.quote-item-row td.td-compare-cust-tt {
+  background: #f0fdf4 !important;
+  color: #14532d !important;
+}
+.page.theme-light-blue tbody tr.quote-item-row td.td-compare-cust-tt {
+  border-right: 1px solid #86efac !important;
+}
+
+.page.theme-light-blue tbody tr.quote-item-row td.td-compare-cont-dg,
+.page.theme-light-blue tbody tr.quote-item-row td.td-compare-cont-tt {
+  background: #fffbeb !important;
+  color: #78350f !important;
+}
+.page.theme-light-blue tbody tr.quote-item-row td.td-compare-cont-tt {
+  border-right: 1px solid #fcd34d !important;
+}
+
+/* Footer 3 hàng tổng cộng giống mẫu in Excel */
+tfoot.compare-tfoot {
+  position: sticky;
+  bottom: 0;
+  z-index: 6;
+  box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.5);
+}
+tfoot.compare-tfoot td {
+  position: static !important;
+  box-shadow: none !important;
+  padding: 6px 8px !important;
+  font-size: 12px !important;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  border-top: 1px solid rgba(148, 163, 184, 0.2) !important;
+}
+tfoot.compare-tfoot tr.compare-footer-subtotal td {
+  border-top: 2px solid #38bdf8 !important;
+  background: #0f172a !important;
+}
+tfoot.compare-tfoot tr.compare-footer-vat td {
+  background: #131c31 !important;
+}
+tfoot.compare-tfoot tr.compare-footer-grandtotal td {
+  background: #1e293b !important;
+  border-top: 1.5px solid rgba(251, 191, 36, 0.45) !important;
+  font-size: 13px !important;
+}
+tfoot.compare-tfoot td.compare-footer-label {
+  color: #e2e8f0 !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.3px;
+  padding-right: 14px !important;
+}
+tfoot.compare-tfoot td.compare-footer-label.is-grand {
+  color: #fbbf24 !important;
+  font-size: 13px !important;
+}
+tfoot.compare-tfoot td.td-compare-list-dg,
+tfoot.compare-tfoot td.td-compare-list-tt {
+  background: rgba(30, 58, 138, 0.35) !important;
+  color: #93c5fd !important;
+  font-weight: 800 !important;
+}
+tfoot.compare-tfoot td.td-compare-list-dg {
+  border-left: 1px solid rgba(59, 130, 246, 0.28) !important;
+}
+tfoot.compare-tfoot td.td-compare-list-tt {
+  border-right: 1px solid rgba(59, 130, 246, 0.35) !important;
+}
+tfoot.compare-tfoot td.td-compare-list-dg.is-grand,
+tfoot.compare-tfoot td.td-compare-list-tt.is-grand {
+  background: rgba(30, 58, 138, 0.35) !important;
+  color: #dbeafe !important;
+  font-weight: 900 !important;
+}
+
+tfoot.compare-tfoot td.td-compare-cust-dg,
+tfoot.compare-tfoot td.td-compare-cust-tt {
+  background: rgba(20, 83, 45, 0.35) !important;
+  color: #6ee7b7 !important;
+  font-weight: 800 !important;
+}
+tfoot.compare-tfoot td.td-compare-cust-tt {
+  border-right: 1px solid rgba(16, 185, 129, 0.35) !important;
+}
+tfoot.compare-tfoot td.td-compare-cust-dg.is-grand,
+tfoot.compare-tfoot td.td-compare-cust-tt.is-grand {
+  background: rgba(20, 83, 45, 0.35) !important;
+  color: #dcfce7 !important;
+  font-weight: 900 !important;
+}
+
+tfoot.compare-tfoot td.td-compare-cont-dg,
+tfoot.compare-tfoot td.td-compare-cont-tt {
+  background: rgba(120, 53, 15, 0.35) !important;
+  color: #fcd34d !important;
+  font-weight: 800 !important;
+}
+tfoot.compare-tfoot td.td-compare-cont-tt {
+  border-right: 1px solid rgba(245, 158, 11, 0.35) !important;
+}
+tfoot.compare-tfoot td.td-compare-cont-dg.is-grand,
+tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
+  background: rgba(120, 53, 15, 0.35) !important;
+  color: #fef3c7 !important;
+  font-weight: 900 !important;
+}
+
+/* Light Mode cho Footer 3 hàng tổng cộng */
+.page.theme-light-blue tfoot.compare-tfoot {
+  box-shadow: 0 -4px 14px rgba(15, 23, 42, 0.1) !important;
+}
+.page.theme-light-blue tfoot.compare-tfoot tr.compare-footer-subtotal td {
+  border-top: 2px solid #2563eb !important;
+  background: #f8fafc !important;
+}
+.page.theme-light-blue tfoot.compare-tfoot tr.compare-footer-vat td {
+  background: #f1f5f9 !important;
+  border-top: 1px solid #cbd5e1 !important;
+}
+.page.theme-light-blue tfoot.compare-tfoot tr.compare-footer-grandtotal td {
+  background: #e2e8f0 !important;
+  border-top: 1.5px solid #94a3b8 !important;
+}
+.page.theme-light-blue tfoot.compare-tfoot td.compare-footer-label {
+  color: #1e293b !important;
+}
+.page.theme-light-blue tfoot.compare-tfoot td.compare-footer-label.is-grand {
+  color: #0f172a !important;
+}
+.page.theme-light-blue tfoot.compare-tfoot td.td-compare-list-dg,
+.page.theme-light-blue tfoot.compare-tfoot td.td-compare-list-tt,
+.page.theme-light-blue tfoot.compare-tfoot td.td-compare-list-dg.is-grand,
+.page.theme-light-blue tfoot.compare-tfoot td.td-compare-list-tt.is-grand {
+  background: #dbeafe !important;
+  color: #1e3a8a !important;
+}
+.page.theme-light-blue tfoot.compare-tfoot td.td-compare-list-dg {
+  border-left: 1px solid #93c5fd !important;
+}
+.page.theme-light-blue tfoot.compare-tfoot td.td-compare-list-tt {
+  border-right: 1px solid #93c5fd !important;
+}
+
+.page.theme-light-blue tfoot.compare-tfoot td.td-compare-cust-dg,
+.page.theme-light-blue tfoot.compare-tfoot td.td-compare-cust-tt,
+.page.theme-light-blue tfoot.compare-tfoot td.td-compare-cust-dg.is-grand,
+.page.theme-light-blue tfoot.compare-tfoot td.td-compare-cust-tt.is-grand {
+  background: #dcfce7 !important;
+  color: #14532d !important;
+}
+.page.theme-light-blue tfoot.compare-tfoot td.td-compare-cust-tt {
+  border-right: 1px solid #86efac !important;
+}
+
+.page.theme-light-blue tfoot.compare-tfoot td.td-compare-cont-dg,
+.page.theme-light-blue tfoot.compare-tfoot td.td-compare-cont-tt,
+.page.theme-light-blue tfoot.compare-tfoot td.td-compare-cont-dg.is-grand,
+.page.theme-light-blue tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
+  background: #fef3c7 !important;
+  color: #78350f !important;
+}
+.page.theme-light-blue tfoot.compare-tfoot td.td-compare-cont-tt {
+  border-right: 1px solid #fcd34d !important;
+}
+
+/* Mobile Card Mode Badge Above Product Name & Vertical 3-Price Comparison */
+.m-qcard-head-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  flex: 1;
+  min-width: 0;
+}
+.m-qcard-mode-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.m-qcard-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.m-qcard-mode-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.m-qcard-mode-badge.is-mode-origin {
+  background: rgba(245, 158, 11, 0.16);
+  border: 1px solid rgba(245, 158, 11, 0.42);
+  color: #fbbf24;
+}
+.m-qcard-mode-badge.is-mode-origin .m-qcard-mode-dot {
+  background: #f59e0b;
+  box-shadow: 0 0 5px rgba(245, 158, 11, 0.6);
+}
+.m-qcard-mode-badge.is-mode-customer {
+  background: rgba(59, 130, 246, 0.16);
+  border: 1px solid rgba(59, 130, 246, 0.42);
+  color: #60a5fa;
+}
+.m-qcard-mode-badge.is-mode-customer .m-qcard-mode-dot {
+  background: #3b82f6;
+  box-shadow: 0 0 5px rgba(59, 130, 246, 0.6);
+}
+.m-qcard-mode-badge.is-mode-contract {
+  background: rgba(16, 185, 129, 0.16);
+  border: 1px solid rgba(16, 185, 129, 0.42);
+  color: #34d399;
+}
+.m-qcard-mode-badge.is-mode-contract .m-qcard-mode-dot {
+  background: #10b981;
+  box-shadow: 0 0 5px rgba(16, 185, 129, 0.6);
+}
+.m-qcard-mode-badge.is-mode-compare {
+  background: rgba(139, 92, 246, 0.18);
+  border: 1px solid rgba(139, 92, 246, 0.48);
+  color: #c4b5fd;
+}
+.m-qcard-mode-badge.is-mode-compare .m-qcard-mode-dot {
+  background: #8b5cf6;
+  box-shadow: 0 0 5px rgba(139, 92, 246, 0.65);
+}
+
+.page.theme-light-blue .m-qcard-mode-badge.is-mode-origin {
+  background: #fffbeb;
+  border-color: #fcd34d;
+  color: #b45309;
+}
+.page.theme-light-blue .m-qcard-mode-badge.is-mode-customer {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+.page.theme-light-blue .m-qcard-mode-badge.is-mode-contract {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+  color: #047857;
+}
+.page.theme-light-blue .m-qcard-mode-badge.is-mode-compare {
+  background: #f5f3ff;
+  border-color: #c4b5fd;
+  color: #6d28d9;
+}
+
+.m-qcard-compare-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(148, 163, 184, 0.25);
+}
+.m-qcard-cmp-col {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  padding: 7px 10px;
+  border-radius: 7px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.m-qcard-cmp-col.is-list {
+  background: rgba(59, 130, 246, 0.14);
+  border: 1px solid rgba(59, 130, 246, 0.32);
+}
+.m-qcard-cmp-col.is-cust {
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.32);
+}
+.m-qcard-cmp-col.is-cont {
+  background: rgba(245, 158, 11, 0.14);
+  border: 1px solid rgba(245, 158, 11, 0.32);
+}
+.m-qcard-cmp-lbl {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  margin-bottom: 1px;
+}
+.m-qcard-cmp-col.is-list .m-qcard-cmp-lbl { color: #93c5fd; }
+.m-qcard-cmp-col.is-cust .m-qcard-cmp-lbl { color: #6ee7b7; }
+.m-qcard-cmp-col.is-cont .m-qcard-cmp-lbl { color: #fcd34d; }
+.m-qcard-cmp-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+.m-qcard-cmp-k {
+  font-size: 11px;
+  font-weight: 600;
+  color: #cbd5e1;
+  white-space: nowrap;
+}
+.m-qcard-cmp-dg {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #e2e8f0;
+  white-space: nowrap;
+}
+.m-qcard-cmp-tt {
+  font-size: 12px;
+  font-weight: 800;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.m-qcard-cmp-bottom-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  cursor: pointer;
+}
+.m-qcard-cmp-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 9px;
+  border-radius: 7px;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(71, 85, 105, 0.5);
+  font-variant-numeric: tabular-nums;
+}
+.m-qcard-cmp-metric.is-margin {
+  align-items: flex-end;
+  text-align: right;
+}
+.m-qcard-cmp-metric.is-margin.is-pos {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.35);
+}
+.m-qcard-cmp-metric.is-margin.is-neg {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+.m-qcard-cmp-metric-lbl {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  color: #94a3b8;
+}
+.m-qcard-cmp-metric-val {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #10b981;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+.m-qcard-cmp-metric-pct {
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 700;
+  color: #34d399;
+}
+.m-qcard-cmp-metric.is-margin.is-pos .m-qcard-cmp-metric-val {
+  color: #34d399;
+}
+.m-qcard-cmp-metric.is-margin.is-neg .m-qcard-cmp-metric-val {
+  color: #f87171;
+}
+.m-qcard-cmp-arrow {
+  font-size: 10px;
+}
+
+.page.theme-light-blue .m-qcard-cmp-col.is-list {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+.page.theme-light-blue .m-qcard-cmp-col.is-cust {
+  background: #dcfce7;
+  border-color: #86efac;
+}
+.page.theme-light-blue .m-qcard-cmp-col.is-cont {
+  background: #fef3c7;
+  border-color: #fcd34d;
+}
+.page.theme-light-blue .m-qcard-cmp-col.is-list .m-qcard-cmp-lbl,
+.page.theme-light-blue .m-qcard-cmp-col.is-list .m-qcard-cmp-k,
+.page.theme-light-blue .m-qcard-cmp-col.is-list .m-qcard-cmp-dg,
+.page.theme-light-blue .m-qcard-cmp-col.is-list .m-qcard-cmp-tt {
+  color: #1e3a8a;
+}
+.page.theme-light-blue .m-qcard-cmp-col.is-cust .m-qcard-cmp-lbl,
+.page.theme-light-blue .m-qcard-cmp-col.is-cust .m-qcard-cmp-k,
+.page.theme-light-blue .m-qcard-cmp-col.is-cust .m-qcard-cmp-dg,
+.page.theme-light-blue .m-qcard-cmp-col.is-cust .m-qcard-cmp-tt {
+  color: #14532d;
+}
+.page.theme-light-blue .m-qcard-cmp-col.is-cont .m-qcard-cmp-lbl,
+.page.theme-light-blue .m-qcard-cmp-col.is-cont .m-qcard-cmp-k,
+.page.theme-light-blue .m-qcard-cmp-col.is-cont .m-qcard-cmp-dg,
+.page.theme-light-blue .m-qcard-cmp-col.is-cont .m-qcard-cmp-tt {
+  color: #78350f;
+}
+.page.theme-light-blue .m-qcard-cmp-metric {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+.page.theme-light-blue .m-qcard-cmp-metric-lbl {
+  color: #475569;
+}
+.page.theme-light-blue .m-qcard-cmp-metric.is-cost .m-qcard-cmp-metric-val,
+.page.theme-light-blue .m-qcard-cmp-metric.is-cost .m-qcard-cmp-metric-pct {
+  color: #059669;
+}
+.page.theme-light-blue .m-qcard-cmp-metric.is-margin.is-pos {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+}
+.page.theme-light-blue .m-qcard-cmp-metric.is-margin.is-pos .m-qcard-cmp-metric-val {
+  color: #059669;
+}
+.page.theme-light-blue .m-qcard-cmp-metric.is-margin.is-neg {
+  background: #fef2f2;
+  border-color: #fca5a5;
+}
+.page.theme-light-blue .m-qcard-cmp-metric.is-margin.is-neg .m-qcard-cmp-metric-val {
+  color: #dc2626;
+}
+
+/* Standalone Mobile 4-Indicator Comparison Totals Card */
+.m-compare-totals-card {
+  display: none;
+}
+@media (max-width: 1100px) {
+  .m-compare-totals-card {
+    display: flex;
+    flex-direction: column;
+    margin: 4px 0 14px 0;
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.92);
+    border: 1px solid rgba(139, 92, 246, 0.45);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+    overflow: hidden;
+  }
+  .m-compare-totals-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 12px;
+    background: linear-gradient(90deg, rgba(139, 92, 246, 0.22) 0%, rgba(30, 41, 59, 0.85) 100%);
+    border-bottom: 1px solid rgba(139, 92, 246, 0.32);
+  }
+  .m-compare-totals-title {
+    font-size: 11.5px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+    color: #ddd6fe;
+  }
+  .m-compare-totals-curr {
+    font-size: 10.5px;
+    font-weight: 800;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: rgba(139, 92, 246, 0.22);
+    border: 1px solid rgba(167, 139, 250, 0.45);
+    color: #c4b5fd;
+  }
+  .m-compare-totals-body {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+  }
+  .m-compare-tot-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    font-variant-numeric: tabular-nums;
+  }
+  .m-compare-tot-row.is-list {
+    background: rgba(59, 130, 246, 0.14);
+    border: 1px solid rgba(59, 130, 246, 0.32);
+  }
+  .m-compare-tot-row.is-cust {
+    background: rgba(16, 185, 129, 0.14);
+    border: 1px solid rgba(16, 185, 129, 0.32);
+  }
+  .m-compare-tot-row.is-cont {
+    background: rgba(245, 158, 11, 0.14);
+    border: 1px solid rgba(245, 158, 11, 0.32);
+  }
+  .m-compare-tot-row.is-margin.is-pos {
+    background: rgba(16, 185, 129, 0.16);
+    border: 1px solid rgba(16, 185, 129, 0.42);
+  }
+  .m-compare-tot-row.is-margin.is-neg {
+    background: rgba(239, 68, 68, 0.16);
+    border: 1px solid rgba(239, 68, 68, 0.42);
+  }
+  .m-compare-tot-lbl {
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .m-compare-tot-row.is-list .m-compare-tot-lbl { color: #93c5fd; }
+  .m-compare-tot-row.is-cust .m-compare-tot-lbl { color: #6ee7b7; }
+  .m-compare-tot-row.is-cont .m-compare-tot-lbl { color: #fcd34d; }
+  .m-compare-tot-row.is-margin.is-pos .m-compare-tot-lbl { color: #6ee7b7; }
+  .m-compare-tot-row.is-margin.is-neg .m-compare-tot-lbl { color: #fca5a5; }
+  .m-compare-tot-vals {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    text-align: right;
+  }
+  .m-compare-tot-sub {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: #cbd5e1;
+  }
+  .m-compare-tot-sub b {
+    font-weight: 700;
+    color: #e2e8f0;
+  }
+  .m-compare-tot-main {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #f8fafc;
+  }
+  .m-compare-tot-main b {
+    font-weight: 800;
+    color: #ffffff;
+  }
+  .m-compare-tot-margin-val {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    font-weight: 800;
+  }
+  .m-compare-tot-row.is-margin.is-pos .m-compare-tot-margin-val {
+    color: #34d399;
+  }
+  .m-compare-tot-row.is-margin.is-neg .m-compare-tot-margin-val {
+    color: #f87171;
+  }
+
+  .page.theme-light-blue .m-compare-totals-card {
+    background: #ffffff;
+    border-color: #c4b5fd;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.08);
+  }
+  .page.theme-light-blue .m-compare-totals-head {
+    background: linear-gradient(90deg, #f5f3ff 0%, #eff6ff 100%);
+    border-bottom-color: #ddd6fe;
+  }
+  .page.theme-light-blue .m-compare-totals-title {
+    color: #5b21b6;
+  }
+  .page.theme-light-blue .m-compare-totals-curr {
+    background: #ede9fe;
+    border-color: #c4b5fd;
+    color: #6d28d9;
+  }
+  .page.theme-light-blue .m-compare-tot-row.is-list {
+    background: #dbeafe;
+    border-color: #93c5fd;
+  }
+  .page.theme-light-blue .m-compare-tot-row.is-cust {
+    background: #dcfce7;
+    border-color: #86efac;
+  }
+  .page.theme-light-blue .m-compare-tot-row.is-cont {
+    background: #fef3c7;
+    border-color: #fcd34d;
+  }
+  .page.theme-light-blue .m-compare-tot-row.is-list .m-compare-tot-lbl,
+  .page.theme-light-blue .m-compare-tot-row.is-list .m-compare-tot-sub,
+  .page.theme-light-blue .m-compare-tot-row.is-list .m-compare-tot-sub b,
+  .page.theme-light-blue .m-compare-tot-row.is-list .m-compare-tot-main,
+  .page.theme-light-blue .m-compare-tot-row.is-list .m-compare-tot-main b {
+    color: #1e3a8a;
+  }
+  .page.theme-light-blue .m-compare-tot-row.is-cust .m-compare-tot-lbl,
+  .page.theme-light-blue .m-compare-tot-row.is-cust .m-compare-tot-sub,
+  .page.theme-light-blue .m-compare-tot-row.is-cust .m-compare-tot-sub b,
+  .page.theme-light-blue .m-compare-tot-row.is-cust .m-compare-tot-main,
+  .page.theme-light-blue .m-compare-tot-row.is-cust .m-compare-tot-main b {
+    color: #14532d;
+  }
+  .page.theme-light-blue .m-compare-tot-row.is-cont .m-compare-tot-lbl,
+  .page.theme-light-blue .m-compare-tot-row.is-cont .m-compare-tot-sub,
+  .page.theme-light-blue .m-compare-tot-row.is-cont .m-compare-tot-sub b,
+  .page.theme-light-blue .m-compare-tot-row.is-cont .m-compare-tot-main,
+  .page.theme-light-blue .m-compare-tot-row.is-cont .m-compare-tot-main b {
+    color: #78350f;
+  }
+  .page.theme-light-blue .m-compare-tot-row.is-margin.is-pos {
+    background: #ecfdf5;
+    border-color: #6ee7b7;
+  }
+  .page.theme-light-blue .m-compare-tot-row.is-margin.is-pos .m-compare-tot-lbl,
+  .page.theme-light-blue .m-compare-tot-row.is-margin.is-pos .m-compare-tot-margin-val {
+    color: #059669;
+  }
+  .page.theme-light-blue .m-compare-tot-row.is-margin.is-neg {
+    background: #fef2f2;
+    border-color: #fca5a5;
+  }
+  .page.theme-light-blue .m-compare-tot-row.is-margin.is-neg .m-compare-tot-lbl,
+  .page.theme-light-blue .m-compare-tot-row.is-margin.is-neg .m-compare-tot-margin-val {
+    color: #dc2626;
+  }
+}
+
+/* 3 KHỐI CHỈ SỐ TÀI CHÍNH, COM, THUẾ & TỈ SUẤT — TÁCH CỘT ĐỘC LẬP BÊN PHẢI NHƯ KHO SẢN PHẨM TRÊN PC */
+@media (min-width: 1101px) {
+  #app .page .quote-center > .quote-table-container {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+
+  #app .page .quote-center > .quote-table-container:hover {
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  #app .page .quote-main-table-card {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    background: linear-gradient(160deg, rgba(0, 61, 77, 0.25) 0%, rgba(15, 23, 34, 0.75) 100%) !important;
+    border-radius: 20px !important;
+    box-shadow:
+      0 20px 40px -10px rgba(0, 0, 0, 0.6),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.08) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    overflow: hidden !important;
+    transition: border-color 0.35s ease, box-shadow 0.35s ease !important;
+  }
+
+  #app .page .quote-main-table-card:hover {
+    border-color: rgba(56, 189, 248, 0.12) !important;
+    box-shadow:
+      0 20px 50px -10px rgba(0, 0, 0, 0.7),
+      0 0 30px rgba(56, 189, 248, 0.04),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+  }
+
+  #app .page.theme-light-blue .quote-main-table-card,
+  #app .page.theme-light-blue .quote-main-table-card:hover {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.07) !important;
+  }
+
+  #app .page .quote-main-table-card > .quote-table-wrap {
+    display: block !important;
+    flex: 1 1 0% !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    overflow: auto !important;
+  }
+}
+
+.cmp-sr-finance-wrap {
+  width: 316px;
+  min-width: 316px;
+  max-width: 316px;
+  flex-shrink: 0;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: 1px solid rgba(56, 189, 248, 0.2);
+  border-left: 1px solid rgba(56, 189, 248, 0.2);
+  background: linear-gradient(160deg, rgba(15, 23, 42, 0.75) 0%, rgba(30, 41, 59, 0.85) 100%);
+  box-shadow:
+    0 20px 40px -10px rgba(0, 0, 0, 0.8),
+    inset 0 0 30px rgba(56, 189, 248, 0.05);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: width 0.22s ease, min-width 0.22s ease, max-width 0.22s ease, padding 0.22s ease, background 0.22s ease;
+}
+
+.cmp-sr-finance-wrap.is-collapsed,
+.page.theme-light-blue .cmp-sr-finance-wrap.is-collapsed {
+  width: 48px !important;
+  min-width: 48px !important;
+  max-width: 48px !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  overflow: hidden !important;
+}
+
+.btn-toggle-cmp-sr-panel {
+  width: auto !important;
+  margin: 0 !important;
+  height: 28px;
+  padding: 0 10px !important;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.18s ease;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  color: #94a3b8;
+}
+
+.btn-toggle-cmp-sr-panel.is-open {
+  background: rgba(16, 185, 129, 0.16);
+  border-color: rgba(16, 185, 129, 0.45);
+  color: #34d399;
+}
+
+.btn-toggle-cmp-sr-panel:hover {
+  border-color: #10b981;
+  color: #34d399;
+}
+
+.cmp-sr-collapsed-rail {
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 12px 4px !important;
+  border: 1px solid rgba(148, 163, 184, 0.22) !important;
+  border-radius: 12px !important;
+  background: rgba(15, 23, 42, 0.85) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+  color: #cbd5e1 !important;
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.cmp-sr-collapsed-rail:hover {
+  background: rgba(14, 165, 233, 0.16) !important;
+  border-color: rgba(56, 189, 248, 0.45) !important;
+  color: #ffffff !important;
+}
+
+.cmp-sr-rail-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.35);
+}
+
+.cmp-sr-rail-label {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+.cmp-sr-collapsed-rail:hover .cmp-sr-rail-label {
+  color: #e2e8f0;
+}
+
+.cmp-sr-rail-badge {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-size: 11px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  padding: 6px 3px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.cmp-sr-rail-badge.is-com-text {
+  color: #34d399 !important;
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.cmp-sr-rail-badge.is-debt-text {
+  color: #f87171 !important;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.cmp-sr-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.cmp-sr-head-collapse-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px !important;
+  height: 20px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff !important;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease;
+}
+
+.cmp-sr-head-collapse-btn:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.cmp-sr-po1-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.cmp-sr-source-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 5px 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.88);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+}
+
+.cmp-sr-source-pills {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 2px;
+  border-radius: 7px;
+  background: rgba(9, 14, 26, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.cmp-sr-source-pill {
+  height: 25px !important;
+  padding: 0 8px !important;
+  margin: 0 !important;
+  width: 100% !important;
+  border-radius: 5px !important;
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  color: #94a3b8 !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  white-space: nowrap;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.16s ease;
+}
+
+.cmp-sr-source-pill:hover:not(.active) {
+  color: #e2e8f0 !important;
+  background: rgba(148, 163, 184, 0.1) !important;
+}
+
+.cmp-sr-source-pill.is-contract.active {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
+  border-color: rgba(52, 211, 153, 0.45) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.28);
+}
+
+.cmp-sr-source-pill.is-customer.active {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+  border-color: rgba(56, 189, 248, 0.45) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.28);
+}
+
+.cmp-sr-source-reset-btn,
+.cmp-sr-source-collapse-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px !important;
+  height: 26px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 6px !important;
+  border: 1px solid rgba(148, 163, 184, 0.28) !important;
+  background: rgba(30, 41, 59, 0.75) !important;
+  color: #cbd5e1 !important;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.cmp-sr-source-reset-btn {
+  border-color: rgba(56, 189, 248, 0.4) !important;
+  background: rgba(14, 165, 233, 0.16) !important;
+  color: #38bdf8 !important;
+}
+
+.cmp-sr-source-reset-btn:hover {
+  background: #0284c7 !important;
+  color: #ffffff !important;
+}
+
+.cmp-sr-source-collapse-btn:hover {
+  border-color: #38bdf8 !important;
+  background: rgba(14, 165, 233, 0.22) !important;
+  color: #ffffff !important;
+}
+
+.cmp-sr-block-mode-tag {
+  font-size: 9.5px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  color: #ffffff;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.cmp-sr-po1-block {
+  padding: 11px 12px 12px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.84);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.cmp-sr-po1-block:last-child {
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.cmp-sr-block-title {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #ffffff !important;
+  padding: 6px 10px;
+  margin-bottom: 4px;
+  border-radius: 8px;
+  border-bottom: none;
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.14);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.cmp-sr-block-title.is-blue-head {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+  color: #ffffff !important;
+}
+
+.cmp-sr-block-title.is-green-head {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
+  color: #ffffff !important;
+}
+
+.cmp-sr-head-reset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px !important;
+  margin: 0 !important;
+  width: auto !important;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff !important;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+
+.cmp-sr-head-reset-btn:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.cmp-sr-b-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 24px;
+}
+
+.cmp-sr-b-row.is-primary .cmp-sr-b-lbl {
+  color: #cbd5e1;
+  font-weight: 600;
+}
+
+.cmp-sr-b-row.is-sub-divider {
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(148, 163, 184, 0.18);
+}
+
+.cmp-sr-b-lbl {
+  font-size: 12.5px;
+  font-weight: 400;
+  color: #94a3b8;
+  line-height: 1.35;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.cmp-sr-tax-lbl-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.cmp-sr-b-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: #e2e8f0;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.cmp-sr-b-row.is-primary .cmp-sr-b-val {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.cmp-sr-b-val.is-com-text,
+.cmp-sr-b-input.is-com-text {
+  color: #34d399 !important;
+}
+
+.cmp-sr-b-val.is-debt-text,
+.cmp-sr-b-input.is-debt-text {
+  color: #f87171 !important;
+}
+
+.cmp-sr-b-input {
+  width: 132px !important;
+  max-width: 55%;
+  height: 25px !important;
+  padding: 2px 7px !important;
+  margin: 0 !important;
+  box-sizing: border-box;
+  border-radius: 5px !important;
+  border: 1px solid rgba(148, 163, 184, 0.22) !important;
+  background: rgba(15, 23, 42, 0.55) !important;
+  text-align: right !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.cmp-sr-b-input.is-primary-input {
+  font-size: 13.5px !important;
+}
+
+.cmp-sr-b-input:hover {
+  border-color: rgba(56, 189, 248, 0.45) !important;
+  background: rgba(15, 23, 42, 0.85) !important;
+}
+
+.cmp-sr-b-input:focus {
+  border-color: #38bdf8 !important;
+  background: rgba(15, 23, 42, 0.95) !important;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.18) !important;
+  outline: none;
+}
+
+.cmp-sr-tax-pct-input {
+  width: 46px !important;
+  height: 22px !important;
+  padding: 1px 4px !important;
+  margin: 0 !important;
+  box-sizing: border-box;
+  border-radius: 5px !important;
+  border: 1px solid rgba(56, 189, 248, 0.4) !important;
+  background: rgba(15, 23, 42, 0.8) !important;
+  color: #f8fafc !important;
+  text-align: center !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.cmp-sr-tax-pct-input:focus {
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.18) !important;
+  outline: none;
+}
+
+.cmp-sr-predict-card {
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: rgba(14, 165, 233, 0.07);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+
+.cmp-sr-predict-card.is-active {
+  border-color: rgba(16, 185, 129, 0.5);
+  background: rgba(16, 185, 129, 0.09);
+}
+
+.cmp-sr-predict-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.cmp-sr-predict-lbl {
+  color: #38bdf8 !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 5px;
+  margin: 0 !important;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.cmp-sr-predict-card.is-active .cmp-sr-predict-lbl {
+  color: #34d399 !important;
+}
+
+.cmp-sr-predict-reset-btn {
+  padding: 2px 8px !important;
+  margin: 0 !important;
+  width: auto !important;
+  border-radius: 5px;
+  border: 1px solid rgba(56, 189, 248, 0.42);
+  background: rgba(14, 165, 233, 0.16);
+  color: #38bdf8;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.cmp-sr-predict-reset-btn:hover {
+  background: rgba(14, 165, 233, 0.32);
+  color: #ffffff;
+}
+
+.cmp-sr-predict-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.cmp-sr-predict-input {
+  width: 100% !important;
+  flex: 1;
+  height: 28px !important;
+  padding: 3px 26px 3px 10px !important;
+  margin: 0 !important;
+  box-sizing: border-box;
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  background: rgba(15, 23, 42, 0.85) !important;
+  border: 1px solid rgba(56, 189, 248, 0.42) !important;
+  border-radius: 7px !important;
+  color: #38bdf8 !important;
+}
+
+.cmp-sr-predict-input:focus {
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.18) !important;
+  outline: none;
+}
+
+.cmp-sr-predict-card.is-active .cmp-sr-predict-input {
+  border-color: rgba(16, 185, 129, 0.55) !important;
+  background: rgba(6, 78, 59, 0.25) !important;
+  color: #34d399 !important;
+}
+
+.cmp-sr-predict-pct {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  font-weight: 800;
+  color: #38bdf8;
+  pointer-events: none;
+}
+
+.cmp-sr-predict-card.is-active .cmp-sr-predict-pct {
+  color: #34d399;
+}
+
+/* Light Mode (.page.theme-light-blue) — Giống 100% SaleReport Light Mode */
+.page.theme-light-blue .btn-toggle-cmp-sr-panel {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+.page.theme-light-blue .btn-toggle-cmp-sr-panel.is-open {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+  color: #047857;
+}
+
+.page.theme-light-blue .cmp-sr-collapsed-rail {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05) !important;
+  color: #334155 !important;
+}
+
+.page.theme-light-blue .cmp-sr-collapsed-rail:hover {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #0f172a !important;
+}
+
+.page.theme-light-blue .cmp-sr-rail-label {
+  color: #475569;
+}
+
+.page.theme-light-blue .cmp-sr-rail-badge {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+.page.theme-light-blue .cmp-sr-rail-badge.is-com-text {
+  color: #059669 !important;
+  border-color: #6ee7b7;
+}
+
+.page.theme-light-blue .cmp-sr-rail-badge.is-debt-text {
+  color: #dc2626 !important;
+  border-color: #fca5a5;
+}
+
+.page.theme-light-blue .cmp-sr-finance-wrap {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.07);
+}
+
+.page.theme-light-blue .cmp-sr-source-bar {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+}
+
+.page.theme-light-blue .cmp-sr-source-pills {
+  background: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
+}
+
+.page.theme-light-blue .cmp-sr-source-pill:not(.active),
+.page.theme-light-blue .cmp-sr-source-pill:not(.active) span {
+  color: #334155 !important;
+  background: transparent !important;
+}
+
+.page.theme-light-blue .cmp-sr-source-pill:hover:not(.active),
+.page.theme-light-blue .cmp-sr-source-pill:hover:not(.active) span {
+  color: #0f172a !important;
+  background: rgba(255, 255, 255, 0.78) !important;
+}
+
+.page.theme-light-blue .cmp-sr-source-pill.is-contract.active {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
+  border-color: #047857 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.3) !important;
+}
+
+.page.theme-light-blue .cmp-sr-source-pill.is-customer.active {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+  border-color: #1d4ed8 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3) !important;
+}
+
+.page.theme-light-blue .cmp-sr-source-pill.active span {
+  color: #ffffff !important;
+}
+
+.page.theme-light-blue .cmp-sr-source-reset-btn {
+  background: #e0f2fe !important;
+  border-color: #7dd3fc !important;
+  color: #0284c7 !important;
+}
+
+.page.theme-light-blue .cmp-sr-source-reset-btn:hover {
+  background: #0284c7 !important;
+  color: #ffffff !important;
+}
+
+.page.theme-light-blue .cmp-sr-source-collapse-btn {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #475569 !important;
+}
+
+.page.theme-light-blue .cmp-sr-source-collapse-btn:hover {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #0284c7 !important;
+}
+
+.page.theme-light-blue .cmp-sr-po1-block,
+.page.theme-light-blue .cmp-sr-po1-block:last-child {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+}
+
+.page.theme-light-blue .cmp-sr-b-row.is-primary .cmp-sr-b-lbl {
+  color: #0f172a;
+}
+
+.page.theme-light-blue .cmp-sr-b-row.is-sub-divider {
+  border-top-color: #cbd5e1;
+}
+
+.page.theme-light-blue .cmp-sr-b-lbl {
+  color: #475569;
+}
+
+.page.theme-light-blue .cmp-sr-b-val {
+  color: #0f172a;
+}
+
+.page.theme-light-blue .cmp-sr-b-val.is-com-text,
+.page.theme-light-blue .cmp-sr-b-input.is-com-text {
+  color: #059669 !important;
+}
+
+.page.theme-light-blue .cmp-sr-b-val.is-debt-text,
+.page.theme-light-blue .cmp-sr-b-input.is-debt-text {
+  color: #dc2626 !important;
+}
+
+.page.theme-light-blue .cmp-sr-b-input {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+
+.page.theme-light-blue .cmp-sr-b-input:hover {
+  background: #ffffff !important;
+  border-color: #94a3b8 !important;
+}
+
+.page.theme-light-blue .cmp-sr-b-input:focus {
+  background: #ffffff !important;
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15) !important;
+}
+
+.page.theme-light-blue .cmp-sr-tax-pct-input {
+  background: #ffffff !important;
+  border-color: #0284c7 !important;
+  color: #0f172a !important;
+}
+
+.page.theme-light-blue .cmp-sr-predict-card {
+  background: #f0f9ff !important;
+  border-color: #7dd3fc !important;
+}
+
+.page.theme-light-blue .cmp-sr-predict-card.is-active {
+  background: #ecfdf5 !important;
+  border-color: #6ee7b7 !important;
+}
+
+.page.theme-light-blue .cmp-sr-predict-lbl,
+.page.theme-light-blue .cmp-sr-predict-pct {
+  color: #0369a1 !important;
+}
+
+.page.theme-light-blue .cmp-sr-predict-card.is-active .cmp-sr-predict-lbl,
+.page.theme-light-blue .cmp-sr-predict-card.is-active .cmp-sr-predict-pct {
+  color: #047857 !important;
+}
+
+.page.theme-light-blue .cmp-sr-predict-reset-btn {
+  background: #e0f2fe;
+  border-color: #38bdf8;
+  color: #0369a1;
+}
+
+.page.theme-light-blue .cmp-sr-predict-reset-btn:hover {
+  background: #0284c7;
+  color: #ffffff;
+}
+
+.page.theme-light-blue .cmp-sr-predict-input {
+  background: #ffffff !important;
+  border-color: #38bdf8 !important;
+  color: #0369a1 !important;
+}
+
+.page.theme-light-blue .cmp-sr-predict-card.is-active .cmp-sr-predict-input {
+  background: #ffffff !important;
+  border-color: #10b981 !important;
+  color: #047857 !important;
+}
+
+@media (max-width: 1100px) {
+  .quote-main-table-card {
+    display: contents !important;
+  }
+
+  .main-grid.mobile-step-3 .quote-center .cmp-sr-finance-wrap {
+    display: none !important;
+  }
+
+  .cmp-sr-finance-wrap,
+  .cmp-sr-finance-wrap.is-collapsed,
+  .page.theme-light-blue .cmp-sr-finance-wrap,
+  .page.theme-light-blue .cmp-sr-finance-wrap.is-collapsed {
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: auto !important;
+    padding: 0 !important;
+    margin: 0 12px 24px 12px !important;
+    border-radius: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .cmp-sr-collapsed-rail {
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    padding: 10px 14px !important;
+    height: auto !important;
+    border-radius: 12px !important;
+  }
+
+  .cmp-sr-rail-label,
+  .cmp-sr-rail-badge {
+    writing-mode: horizontal-tb !important;
+    text-orientation: initial !important;
+  }
+
+  .cmp-sr-rail-badge {
+    padding: 3px 9px !important;
+  }
+
+  .cmp-sr-rail-icon svg {
+    transform: rotate(-90deg);
+  }
+
+  .cmp-sr-head-collapse-btn svg,
+  .cmp-sr-source-collapse-btn svg {
+    transform: rotate(-90deg);
+  }
 }
 
 @media (max-width: 1100px) {
@@ -43815,6 +50103,294 @@ td.dvt { font-family: inherit; white-space: normal; }
   color: #ffffff !important;
 }
 
+/* Hộp chọn xử lý Giá hợp đồng & Chênh lệch khi sửa Giá khách (Hướng 2) */
+#app .page .adjust-price-modal-card .adj-contract-behavior-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 11px 12px;
+  border-radius: 13px;
+  background: rgba(15, 23, 42, 0.58);
+  border: 1px solid rgba(56, 189, 248, 0.22);
+}
+
+#app .page .adjust-price-modal-card .adj-cb-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+#app .page .adjust-price-modal-card .adj-cb-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #cbd5e1;
+  letter-spacing: 0.2px;
+}
+
+#app .page .adjust-price-modal-card .adj-cb-title i {
+  font-size: 14px;
+  color: var(--adj-accent-text);
+}
+
+#app .page .adjust-price-modal-card .adj-cb-current-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.28);
+  color: #34d399;
+  font-variant-numeric: tabular-nums;
+}
+
+#app .page .adjust-price-modal-card .adj-cb-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+}
+
+#app .page .adjust-price-modal-card button.adj-cb-option {
+  width: 100% !important;
+  height: auto !important;
+  min-height: 70px !important;
+  margin: 0 !important;
+  padding: 9px 10px !important;
+  border-radius: 10px !important;
+  background: rgba(30, 41, 59, 0.65) !important;
+  border: 1.5px solid rgba(148, 163, 184, 0.16) !important;
+  color: #94a3b8 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 4px !important;
+  text-align: left !important;
+  cursor: pointer;
+  box-shadow: none !important;
+  transition: all 0.18s ease;
+}
+
+#app .page .adjust-price-modal-card button.adj-cb-option:hover {
+  border-color: rgba(148, 163, 184, 0.34) !important;
+  background: rgba(30, 41, 59, 0.88) !important;
+}
+
+#app .page .adjust-price-modal-card button.adj-cb-option.active {
+  background: var(--adj-accent-soft) !important;
+  border-color: var(--adj-accent) !important;
+  color: #f8fafc !important;
+  box-shadow: 0 4px 12px rgba(2, 6, 23, 0.25) !important;
+}
+
+#app .page .adjust-price-modal-card .adj-cb-opt-top {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+#app .page .adjust-price-modal-card .adj-cb-opt-icon {
+  font-size: 13.5px;
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+#app .page .adjust-price-modal-card button.adj-cb-option.active .adj-cb-opt-icon {
+  color: var(--adj-accent-text);
+}
+
+#app .page .adjust-price-modal-card .adj-cb-opt-name {
+  font-size: 12px;
+  font-weight: 800;
+  color: #e2e8f0;
+  line-height: 1.25;
+}
+
+#app .page .adjust-price-modal-card button.adj-cb-option.active .adj-cb-opt-name {
+  color: #ffffff;
+}
+
+#app .page .adjust-price-modal-card .adj-cb-opt-badge {
+  margin-left: auto;
+  font-size: 9.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: rgba(59, 130, 246, 0.22);
+  color: #93c5fd;
+}
+
+#app .page .adjust-price-modal-card .adj-cb-opt-main {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #cbd5e1;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+}
+
+#app .page .adjust-price-modal-card .adj-cb-opt-main b {
+  font-weight: 800;
+  color: #f8fafc;
+}
+
+#app .page .adjust-price-modal-card .adj-cb-opt-sub {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+}
+
+#app .page .adjust-price-modal-card button.adj-cb-option.active .adj-cb-opt-sub span {
+  color: var(--adj-accent-text);
+  font-weight: 800;
+}
+
+/* Bảng đối chiếu 3 cột "Giá khách ↔ Chênh lệch ↔ Giá HĐ" trong modal Điều chỉnh */
+#app .page .adjust-price-modal-card .adj-contract-summary-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 11px 12px;
+  border-radius: 13px;
+  background: rgba(15, 23, 42, 0.58);
+  border: 1px solid rgba(16, 185, 129, 0.24);
+}
+
+#app .page .adjust-price-modal-card .adj-cs-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+#app .page .adjust-price-modal-card .adj-cs-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #cbd5e1;
+  letter-spacing: 0.2px;
+}
+
+#app .page .adjust-price-modal-card .adj-cs-title i {
+  font-size: 14px;
+  color: var(--adj-accent-text);
+}
+
+#app .page .adjust-price-modal-card button.adj-clear-diff-btn {
+  width: auto !important;
+  min-width: max-content !important;
+  height: 27px !important;
+  min-height: 27px !important;
+  padding: 0 9px !important;
+  margin: 0 !important;
+  border-radius: 7px !important;
+  background: rgba(245, 158, 11, 0.14) !important;
+  border: 1px solid rgba(245, 158, 11, 0.34) !important;
+  color: #fbbf24 !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  cursor: pointer;
+  box-shadow: none !important;
+  transition: all 0.18s ease;
+}
+
+#app .page .adjust-price-modal-card button.adj-clear-diff-btn:hover {
+  background: rgba(245, 158, 11, 0.24) !important;
+  border-color: rgba(245, 158, 11, 0.55) !important;
+  color: #fde68a !important;
+}
+
+#app .page .adjust-price-modal-card button.adj-clear-diff-btn.is-active-zero {
+  background: rgba(16, 185, 129, 0.16) !important;
+  border-color: rgba(16, 185, 129, 0.36) !important;
+  color: #34d399 !important;
+}
+
+#app .page .adjust-price-modal-card .adj-cs-trio {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+#app .page .adjust-price-modal-card .adj-cs-col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 7px 9px;
+  border-radius: 9px;
+  background: rgba(30, 41, 59, 0.62);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  min-width: 0;
+}
+
+#app .page .adjust-price-modal-card .adj-cs-col.is-contract {
+  background: var(--adj-accent-faint);
+  border-color: var(--adj-accent-border);
+}
+
+#app .page .adjust-price-modal-card .adj-cs-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+#app .page .adjust-price-modal-card .adj-cs-label i {
+  font-size: 11.5px;
+  color: #60a5fa;
+}
+
+#app .page .adjust-price-modal-card .adj-cs-val {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #f8fafc;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+#app .page .adjust-price-modal-card .adj-cs-val small {
+  font-size: 10.5px;
+  font-weight: 700;
+  margin-left: 2px;
+  opacity: 0.85;
+}
+
+#app .page .adjust-price-modal-card .adj-cs-val.is-pos {
+  color: #34d399;
+}
+
+#app .page .adjust-price-modal-card .adj-cs-val.is-neg {
+  color: #fb7185;
+}
+
+#app .page .adjust-price-modal-card .adj-cs-val.is-zero {
+  color: #94a3b8;
+}
+
+#app .page .adjust-price-modal-card .adj-cs-col.is-contract .adj-cs-val {
+  color: var(--adj-accent-text);
+}
+
 /* Segmented Control (2 Tabs ngang) */
 #app .page .adjust-price-modal-card .adj-segmented {
   display: grid !important;
@@ -44209,6 +50785,123 @@ td.dvt { font-family: inherit; white-space: normal; }
   background: #f1f5f9 !important;
   border-color: #cbd5e1 !important;
   color: #334155 !important;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card .adj-contract-behavior-box {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.04) !important;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card .adj-cb-title {
+  color: #1e293b;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card .adj-cb-current-tag {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #047857;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card button.adj-cb-option {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #475569 !important;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card button.adj-cb-option:hover {
+  background: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card button.adj-cb-option.active {
+  background: #eff6ff !important;
+  border-color: #2563eb !important;
+  color: #0f172a !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1) !important;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card .adj-cb-opt-name {
+  color: #334155;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card button.adj-cb-option.active .adj-cb-opt-name {
+  color: #1e40af;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card .adj-cb-opt-badge {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card .adj-cb-opt-main {
+  color: #475569;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card .adj-cb-opt-main b {
+  color: #0f172a;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card .adj-cb-opt-sub {
+  color: #64748b;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card .adj-contract-summary-strip {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.04) !important;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card .adj-cs-title {
+  color: #1e293b;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card button.adj-clear-diff-btn {
+  background: #fffbeb !important;
+  border-color: #fde68a !important;
+  color: #b45309 !important;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card button.adj-clear-diff-btn:hover {
+  background: #fef3c7 !important;
+  border-color: #f59e0b !important;
+  color: #92400e !important;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card button.adj-clear-diff-btn.is-active-zero {
+  background: #ecfdf5 !important;
+  border-color: #a7f3d0 !important;
+  color: #047857 !important;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card .adj-cs-col {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card .adj-cs-col.is-contract {
+  background: #ecfdf5;
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card .adj-cs-label {
+  color: #64748b;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card .adj-cs-val {
+  color: #0f172a;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card .adj-cs-val.is-pos {
+  color: #047857;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card .adj-cs-val.is-neg {
+  color: #e11d48;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card .adj-cs-val.is-zero {
+  color: #64748b;
 }
 
 #app .page.theme-light-blue .adjust-price-modal-card .adj-segmented,
@@ -48576,6 +55269,267 @@ td.dvt { font-family: inherit; white-space: normal; }
   }
 
   /* =========================================================================
+     BOTTOM SHEET CHỌN 4 CHẾ ĐỘ HIỂN THỊ BÁO GIÁ (MOBILE <= 1100PX)
+     ========================================================================= */
+  .pl-sheet-enter-active .qmode-mobile-sheet,
+  .pl-sheet-leave-active .qmode-mobile-sheet {
+    transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .pl-sheet-enter-from .qmode-mobile-sheet,
+  .pl-sheet-leave-to .qmode-mobile-sheet {
+    transform: translateY(100%);
+  }
+
+  #app .page .qmode-mobile-sheet-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 12650 !important;
+    background: rgba(2, 6, 23, 0.62) !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+    display: flex !important;
+    align-items: flex-end !important;
+    justify-content: center !important;
+    padding: 0 !important;
+  }
+
+  #app .page .qmode-mobile-sheet {
+    width: 100% !important;
+    max-width: 540px !important;
+    max-height: 82dvh !important;
+    background: #0f172a !important;
+    border-top: 1px solid rgba(51, 65, 85, 0.95) !important;
+    border-radius: 20px 20px 0 0 !important;
+    box-shadow: 0 -16px 40px rgba(2, 6, 23, 0.6) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+
+  #app .page .qmode-sheet-list {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    padding: 12px 14px calc(18px + env(safe-area-inset-bottom, 0px)) !important;
+    overflow-y: auto !important;
+  }
+
+  #app .page button.qmode-sheet-card {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 11px 13px !important;
+    border-radius: 12px !important;
+    background: rgba(30, 41, 59, 0.65) !important;
+    border: 1px solid rgba(71, 85, 105, 0.5) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 4px !important;
+    text-align: left !important;
+    cursor: pointer !important;
+    box-shadow: none !important;
+    transition: all 0.16s ease !important;
+  }
+
+  #app .page button.qmode-sheet-card:active {
+    transform: scale(0.985) !important;
+  }
+
+  #app .page .qmode-card-top {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  #app .page .qmode-card-title-group {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+  }
+
+  #app .page .qmode-card-radio {
+    width: 17px !important;
+    height: 17px !important;
+    min-width: 17px !important;
+    border-radius: 999px !important;
+    border: 1.5px solid rgba(148, 163, 184, 0.45) !important;
+    background: rgba(15, 23, 42, 0.6) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: #ffffff !important;
+    flex-shrink: 0 !important;
+  }
+
+  #app .page .qmode-card-dot {
+    width: 8px !important;
+    height: 8px !important;
+    border-radius: 999px !important;
+    flex-shrink: 0 !important;
+    background: #3b82f6 !important;
+  }
+
+  #app .page .qmode-card-title {
+    font-size: 13.5px !important;
+    font-weight: 800 !important;
+    color: #f8fafc !important;
+    line-height: 1.3 !important;
+  }
+
+  #app .page .qmode-card-active-badge {
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    padding: 2px 8px !important;
+    border-radius: 999px !important;
+    letter-spacing: 0.2px !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+
+  #app .page .qmode-card-desc {
+    font-size: 11.5px !important;
+    font-weight: 500 !important;
+    color: #94a3b8 !important;
+    line-height: 1.38 !important;
+    padding-left: 25px !important;
+  }
+
+  /* Màu từng chế độ trong Bottom Sheet (Dark Mode) */
+  #app .page button.qmode-sheet-card.is-tone-amber .qmode-card-dot { background: #f59e0b !important; }
+  #app .page button.qmode-sheet-card.is-tone-blue .qmode-card-dot { background: #3b82f6 !important; }
+  #app .page button.qmode-sheet-card.is-tone-emerald .qmode-card-dot { background: #10b981 !important; }
+  #app .page button.qmode-sheet-card.is-tone-purple .qmode-card-dot { background: #8b5cf6 !important; }
+
+  #app .page button.qmode-sheet-card.is-tone-amber.is-active {
+    background: rgba(245, 158, 11, 0.14) !important;
+    border-color: rgba(245, 158, 11, 0.55) !important;
+  }
+  #app .page button.qmode-sheet-card.is-tone-amber.is-active .qmode-card-radio {
+    background: #f59e0b !important;
+    border-color: #fbbf24 !important;
+  }
+  #app .page button.qmode-sheet-card.is-tone-amber.is-active .qmode-card-active-badge {
+    background: rgba(245, 158, 11, 0.2) !important;
+    border: 1px solid rgba(251, 191, 36, 0.45) !important;
+    color: #fbbf24 !important;
+  }
+
+  #app .page button.qmode-sheet-card.is-tone-blue.is-active {
+    background: rgba(59, 130, 246, 0.15) !important;
+    border-color: rgba(59, 130, 246, 0.55) !important;
+  }
+  #app .page button.qmode-sheet-card.is-tone-blue.is-active .qmode-card-radio {
+    background: #2563eb !important;
+    border-color: #60a5fa !important;
+  }
+  #app .page button.qmode-sheet-card.is-tone-blue.is-active .qmode-card-active-badge {
+    background: rgba(59, 130, 246, 0.2) !important;
+    border: 1px solid rgba(96, 165, 250, 0.45) !important;
+    color: #60a5fa !important;
+  }
+
+  #app .page button.qmode-sheet-card.is-tone-emerald.is-active {
+    background: rgba(16, 185, 129, 0.14) !important;
+    border-color: rgba(16, 185, 129, 0.55) !important;
+  }
+  #app .page button.qmode-sheet-card.is-tone-emerald.is-active .qmode-card-radio {
+    background: #059669 !important;
+    border-color: #34d399 !important;
+  }
+  #app .page button.qmode-sheet-card.is-tone-emerald.is-active .qmode-card-active-badge {
+    background: rgba(16, 185, 129, 0.2) !important;
+    border: 1px solid rgba(52, 211, 153, 0.45) !important;
+    color: #34d399 !important;
+  }
+
+  #app .page button.qmode-sheet-card.is-tone-purple.is-active {
+    background: rgba(139, 92, 246, 0.16) !important;
+    border-color: rgba(139, 92, 246, 0.55) !important;
+  }
+  #app .page button.qmode-sheet-card.is-tone-purple.is-active .qmode-card-radio {
+    background: #7c3aed !important;
+    border-color: #a78bfa !important;
+  }
+  #app .page button.qmode-sheet-card.is-tone-purple.is-active .qmode-card-active-badge {
+    background: rgba(139, 92, 246, 0.22) !important;
+    border: 1px solid rgba(167, 139, 250, 0.45) !important;
+    color: #c4b5fd !important;
+  }
+
+  /* Light Mode (.page.theme-light-blue) cho Bottom Sheet Chọn chế độ báo giá */
+  #app .page.theme-light-blue .qmode-mobile-sheet-overlay {
+    background: rgba(15, 23, 42, 0.42) !important;
+  }
+
+  #app .page.theme-light-blue .qmode-mobile-sheet {
+    background: #ffffff !important;
+    border-top: 1px solid #bfdbfe !important;
+    box-shadow: 0 -16px 40px rgba(15, 23, 42, 0.18) !important;
+  }
+
+  #app .page.theme-light-blue button.qmode-sheet-card {
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+  }
+
+  #app .page.theme-light-blue .qmode-card-radio {
+    background: #ffffff !important;
+    border-color: #94a3b8 !important;
+  }
+
+  #app .page.theme-light-blue .qmode-card-title {
+    color: #0f172a !important;
+  }
+
+  #app .page.theme-light-blue .qmode-card-desc {
+    color: #64748b !important;
+  }
+
+  #app .page.theme-light-blue button.qmode-sheet-card.is-tone-amber.is-active {
+    background: #fffbeb !important;
+    border: 1.5px solid #f59e0b !important;
+  }
+  #app .page.theme-light-blue button.qmode-sheet-card.is-tone-amber.is-active .qmode-card-active-badge {
+    background: #fef3c7 !important;
+    border-color: #fcd34d !important;
+    color: #b45309 !important;
+  }
+
+  #app .page.theme-light-blue button.qmode-sheet-card.is-tone-blue.is-active {
+    background: #eff6ff !important;
+    border: 1.5px solid #2563eb !important;
+  }
+  #app .page.theme-light-blue button.qmode-sheet-card.is-tone-blue.is-active .qmode-card-active-badge {
+    background: #dbeafe !important;
+    border-color: #93c5fd !important;
+    color: #1d4ed8 !important;
+  }
+
+  #app .page.theme-light-blue button.qmode-sheet-card.is-tone-emerald.is-active {
+    background: #ecfdf5 !important;
+    border: 1.5px solid #059669 !important;
+  }
+  #app .page.theme-light-blue button.qmode-sheet-card.is-tone-emerald.is-active .qmode-card-active-badge {
+    background: #d1fae5 !important;
+    border-color: #6ee7b7 !important;
+    color: #047857 !important;
+  }
+
+  #app .page.theme-light-blue button.qmode-sheet-card.is-tone-purple.is-active {
+    background: #f5f3ff !important;
+    border: 1.5px solid #7c3aed !important;
+  }
+  #app .page.theme-light-blue button.qmode-sheet-card.is-tone-purple.is-active .qmode-card-active-badge {
+    background: #ede9fe !important;
+    border-color: #c4b5fd !important;
+    color: #6d28d9 !important;
+  }
+
+  /* =========================================================================
      MOBILE QUOTE CARD V2 (.m-qcard) & CATALOG CARD STEPPER (PHƯƠNG ÁN 1):
      CAPSULE PILL + NÚT TRÒN ÔM SÁT SỐ + (× ĐƠN GIÁ) CÙNG HÀNG BÊN CẠNH SL
      ========================================================================= */
@@ -52881,5 +59835,829 @@ button.vnd-round-opt.active {
 
 .vnd-round-backdrop.is-light .vnd-round-opt-text small {
   color: #64748b !important;
+}
+
+/* ================== NÚT & POPOVER ĐỐI CHIẾU HÀNG HÓA (VIEWOFFICE) ================== */
+#app .page .modal-card button.ref-compare-chip-btn,
+button.ref-compare-chip-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  width: auto !important;
+  min-width: max-content !important;
+  height: 22px !important;
+  min-height: 22px !important;
+  max-height: 22px !important;
+  padding: 0 8px !important;
+  margin: 0 !important;
+  border-radius: 6px !important;
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.01em !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  background: rgba(56, 189, 248, 0.14) !important;
+  border: 1px solid rgba(56, 189, 248, 0.42) !important;
+  color: #38bdf8 !important;
+  box-shadow: none !important;
+  transition: all 0.15s ease !important;
+}
+
+#app .page .modal-card button.ref-compare-chip-btn:hover,
+button.ref-compare-chip-btn:hover {
+  background: rgba(56, 189, 248, 0.24) !important;
+  border-color: #38bdf8 !important;
+  color: #e0f2fe !important;
+  transform: translateY(-1px);
+}
+
+#app .page .modal-card button.ref-compare-chip-btn.is-kaspersky,
+button.ref-compare-chip-btn.is-kaspersky {
+  background: rgba(16, 185, 129, 0.14) !important;
+  border-color: rgba(16, 185, 129, 0.45) !important;
+  color: #34d399 !important;
+}
+
+#app .page .modal-card button.ref-compare-chip-btn.is-kaspersky:hover,
+button.ref-compare-chip-btn.is-kaspersky:hover {
+  background: rgba(16, 185, 129, 0.24) !important;
+  border-color: #10b981 !important;
+  color: #ecfdf5 !important;
+}
+
+#app .page .modal-card button.ref-compare-chip-btn.is-acronis,
+button.ref-compare-chip-btn.is-acronis {
+  background: rgba(99, 102, 241, 0.16) !important;
+  border-color: rgba(129, 140, 248, 0.48) !important;
+  color: #a5b4fc !important;
+}
+
+#app .page .modal-card button.ref-compare-chip-btn.is-acronis:hover,
+button.ref-compare-chip-btn.is-acronis:hover {
+  background: rgba(99, 102, 241, 0.28) !important;
+  border-color: #818cf8 !important;
+  color: #eef2ff !important;
+}
+
+#app .page.theme-light-blue .modal-card button.ref-compare-chip-btn,
+#app .page.theme-light-blue button.ref-compare-chip-btn {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #1d4ed8 !important;
+}
+
+#app .page.theme-light-blue .modal-card button.ref-compare-chip-btn:hover,
+#app .page.theme-light-blue button.ref-compare-chip-btn:hover {
+  background: #dbeafe !important;
+  border-color: #3b82f6 !important;
+  color: #1e40af !important;
+}
+
+#app .page.theme-light-blue .modal-card button.ref-compare-chip-btn.is-kaspersky,
+#app .page.theme-light-blue button.ref-compare-chip-btn.is-kaspersky {
+  background: #ecfdf5 !important;
+  border-color: #6ee7b7 !important;
+  color: #047857 !important;
+}
+
+#app .page.theme-light-blue .modal-card button.ref-compare-chip-btn.is-kaspersky:hover,
+#app .page.theme-light-blue button.ref-compare-chip-btn.is-kaspersky:hover {
+  background: #d1fae5 !important;
+  border-color: #10b981 !important;
+  color: #065f46 !important;
+}
+
+#app .page.theme-light-blue .modal-card button.ref-compare-chip-btn.is-acronis,
+#app .page.theme-light-blue button.ref-compare-chip-btn.is-acronis {
+  background: #eef2ff !important;
+  border-color: #a5b4fc !important;
+  color: #4338ca !important;
+}
+
+#app .page.theme-light-blue .modal-card button.ref-compare-chip-btn.is-acronis:hover,
+#app .page.theme-light-blue button.ref-compare-chip-btn.is-acronis:hover {
+  background: #e0e7ff !important;
+  border-color: #6366f1 !important;
+  color: #3730a3 !important;
+}
+
+.ref-compare-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 999999 !important;
+  background: transparent !important;
+}
+
+.ref-compare-popover {
+  position: fixed !important;
+  width: min(384px, calc(100vw - 20px)) !important;
+  background: #0f172a !important;
+  border: 1px solid rgba(56, 189, 248, 0.45) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 20px 44px rgba(2, 6, 23, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.06) !important;
+  padding: 12px !important;
+  color: #f8fafc !important;
+  z-index: 1000000 !important;
+  animation: vndRoundPopoverIn 0.14s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box !important;
+}
+
+.ref-compare-popover.is-kaspersky {
+  border-color: rgba(16, 185, 129, 0.45) !important;
+}
+
+.ref-compare-popover.is-acronis {
+  border-color: rgba(129, 140, 248, 0.5) !important;
+}
+
+.ref-compare-popover-head {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  padding: 0 2px 6px !important;
+}
+
+.ref-compare-popover-title-wrap {
+  display: flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  min-width: 0 !important;
+}
+
+.ref-compare-vendor-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 2px 7px !important;
+  border-radius: 5px !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.04em !important;
+  background: rgba(56, 189, 248, 0.18) !important;
+  color: #38bdf8 !important;
+  border: 1px solid rgba(56, 189, 248, 0.38) !important;
+}
+
+.ref-compare-vendor-pill.is-kaspersky {
+  background: rgba(16, 185, 129, 0.18) !important;
+  color: #34d399 !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+}
+
+.ref-compare-vendor-pill.is-acronis {
+  background: rgba(99, 102, 241, 0.2) !important;
+  color: #a5b4fc !important;
+  border-color: rgba(129, 140, 248, 0.45) !important;
+}
+
+.ref-compare-popover-title {
+  font-size: 12.5px !important;
+  font-weight: 800 !important;
+  color: #f8fafc !important;
+  line-height: 1.3 !important;
+}
+
+button.ref-compare-popover-close {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 24px !important;
+  min-width: 24px !important;
+  max-width: 24px !important;
+  height: 24px !important;
+  min-height: 24px !important;
+  max-height: 24px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  flex: 0 0 24px !important;
+  background: rgba(148, 163, 184, 0.12) !important;
+  border: none !important;
+  color: #94a3b8 !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+}
+
+button.ref-compare-popover-close:hover {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #fca5a5 !important;
+}
+
+.ref-compare-popover-sub {
+  padding: 0 2px 8px !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16) !important;
+  margin-bottom: 8px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 5px !important;
+}
+
+.ref-compare-meta-tags {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 5px !important;
+}
+
+.ref-compare-meta-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  padding: 2px 6px !important;
+  border-radius: 5px !important;
+  background: rgba(30, 41, 59, 0.9) !important;
+  border: 1px solid rgba(148, 163, 184, 0.25) !important;
+  color: #e2e8f0 !important;
+}
+
+.ref-compare-meta-band {
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  padding: 2px 6px !important;
+  border-radius: 5px !important;
+  background: rgba(245, 158, 11, 0.16) !important;
+  border: 1px solid rgba(245, 158, 11, 0.35) !important;
+  color: #fbbf24 !important;
+}
+
+.ref-compare-hint {
+  font-size: 11px !important;
+  color: #94a3b8 !important;
+  line-height: 1.35 !important;
+}
+
+.ref-compare-loading {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 14px 8px !important;
+  font-size: 12px !important;
+  color: #cbd5e1 !important;
+}
+
+.ref-compare-spinner {
+  width: 15px !important;
+  height: 15px !important;
+  border-radius: 50% !important;
+  border: 2px solid rgba(56, 189, 248, 0.25) !important;
+  border-top-color: #38bdf8 !important;
+  animation: refCompareSpin 0.7s linear infinite !important;
+  flex-shrink: 0 !important;
+}
+
+@keyframes refCompareSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ref-compare-error {
+  padding: 10px 12px !important;
+  border-radius: 8px !important;
+  background: rgba(239, 68, 68, 0.14) !important;
+  border: 1px solid rgba(239, 68, 68, 0.4) !important;
+  color: #fca5a5 !important;
+  font-size: 11.5px !important;
+  line-height: 1.4 !important;
+}
+
+.ref-compare-popover-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  max-height: 290px !important;
+  overflow-y: auto !important;
+}
+
+button.ref-compare-opt {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  width: 100% !important;
+  min-height: 0 !important;
+  height: auto !important;
+  text-align: left !important;
+  padding: 9px 10px !important;
+  margin: 0 !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(148, 163, 184, 0.18) !important;
+  background: rgba(30, 41, 59, 0.68) !important;
+  color: #e2e8f0 !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+  transition: all 0.15s ease !important;
+}
+
+button.ref-compare-opt:hover {
+  background: rgba(30, 58, 138, 0.35) !important;
+  border-color: rgba(56, 189, 248, 0.55) !important;
+  transform: translateY(-1px);
+}
+
+button.ref-compare-opt.role-goc:hover {
+  background: rgba(6, 78, 59, 0.35) !important;
+  border-color: rgba(16, 185, 129, 0.55) !important;
+}
+
+.ref-compare-opt-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 8px !important;
+  flex-shrink: 0 !important;
+  margin-top: 1px !important;
+  background: rgba(56, 189, 248, 0.16) !important;
+  color: #38bdf8 !important;
+}
+
+.ref-compare-opt-icon.role-goc {
+  background: rgba(16, 185, 129, 0.18) !important;
+  color: #34d399 !important;
+}
+
+.ref-compare-opt-body {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 3px !important;
+  min-width: 0 !important;
+  flex: 1 !important;
+}
+
+.ref-compare-opt-top {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 6px !important;
+}
+
+.ref-compare-role-tag {
+  font-size: 9.5px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.04em !important;
+  padding: 1.5px 6px !important;
+  border-radius: 4px !important;
+  background: rgba(56, 189, 248, 0.16) !important;
+  color: #38bdf8 !important;
+}
+
+.ref-compare-role-tag.role-goc {
+  background: rgba(16, 185, 129, 0.18) !important;
+  color: #34d399 !important;
+}
+
+.ref-compare-price-badge {
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  color: #fbbf24 !important;
+}
+
+.ref-compare-file-name {
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: #f8fafc !important;
+  line-height: 1.3 !important;
+  word-break: break-all !important;
+}
+
+.ref-compare-cell-meta {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 4px !important;
+  font-size: 11px !important;
+  color: #94a3b8 !important;
+}
+
+.ref-compare-cell-meta b {
+  color: #38bdf8 !important;
+  font-weight: 700 !important;
+}
+
+.ref-compare-dot {
+  opacity: 0.55 !important;
+}
+
+.ref-compare-subnote {
+  font-size: 10px !important;
+  color: #64748b !important;
+  line-height: 1.25 !important;
+}
+
+.ref-compare-opt-arrow {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #64748b !important;
+  flex-shrink: 0 !important;
+  margin-top: 4px !important;
+  transition: color 0.15s ease, transform 0.15s ease !important;
+}
+
+button.ref-compare-opt:hover .ref-compare-opt-arrow {
+  color: #38bdf8 !important;
+  transform: translate(1px, -1px);
+}
+
+/* Light Mode cho Popover Đối Chiếu */
+.ref-compare-backdrop.is-light .ref-compare-popover {
+  background: #ffffff !important;
+  border-color: #93c5fd !important;
+  box-shadow: 0 20px 44px rgba(15, 23, 42, 0.18), 0 4px 12px rgba(37, 99, 235, 0.08) !important;
+  color: #0f172a !important;
+}
+
+.ref-compare-backdrop.is-light .ref-compare-popover-title {
+  color: #0f172a !important;
+}
+
+.ref-compare-backdrop.is-light .ref-compare-vendor-pill {
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+  border-color: #93c5fd !important;
+}
+
+.ref-compare-backdrop.is-light .ref-compare-vendor-pill.is-kaspersky {
+  background: #ecfdf5 !important;
+  color: #047857 !important;
+  border-color: #6ee7b7 !important;
+}
+
+.ref-compare-backdrop.is-light .ref-compare-vendor-pill.is-acronis {
+  background: #eef2ff !important;
+  color: #4338ca !important;
+  border-color: #a5b4fc !important;
+}
+
+.ref-compare-backdrop.is-light button.ref-compare-popover-close {
+  background: #f1f5f9 !important;
+  color: #64748b !important;
+}
+
+.ref-compare-backdrop.is-light button.ref-compare-popover-close:hover {
+  background: #fee2e2 !important;
+  color: #dc2626 !important;
+}
+
+.ref-compare-backdrop.is-light .ref-compare-popover-sub {
+  border-bottom-color: #e2e8f0 !important;
+}
+
+.ref-compare-backdrop.is-light .ref-compare-meta-code {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+.ref-compare-backdrop.is-light .ref-compare-meta-band {
+  background: #fffbeb !important;
+  border-color: #fcd34d !important;
+  color: #b45309 !important;
+}
+
+.ref-compare-backdrop.is-light .ref-compare-hint {
+  color: #64748b !important;
+}
+
+.ref-compare-backdrop.is-light .ref-compare-loading {
+  color: #334155 !important;
+}
+
+.ref-compare-backdrop.is-light button.ref-compare-opt {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+.ref-compare-backdrop.is-light button.ref-compare-opt:hover {
+  background: #eff6ff !important;
+  border-color: #60a5fa !important;
+}
+
+.ref-compare-backdrop.is-light button.ref-compare-opt.role-goc:hover {
+  background: #ecfdf5 !important;
+  border-color: #34d399 !important;
+}
+
+.ref-compare-backdrop.is-light .ref-compare-opt-icon {
+  background: #dbeafe !important;
+  color: #1d4ed8 !important;
+}
+
+.ref-compare-backdrop.is-light .ref-compare-opt-icon.role-goc {
+  background: #d1fae5 !important;
+  color: #047857 !important;
+}
+
+.ref-compare-backdrop.is-light .ref-compare-role-tag {
+  background: #dbeafe !important;
+  color: #1d4ed8 !important;
+}
+
+.ref-compare-backdrop.is-light .ref-compare-role-tag.role-goc {
+  background: #d1fae5 !important;
+  color: #047857 !important;
+}
+
+.ref-compare-backdrop.is-light .ref-compare-price-badge {
+  color: #b45309 !important;
+}
+
+.ref-compare-backdrop.is-light .ref-compare-file-name {
+  color: #0f172a !important;
+}
+
+.ref-compare-backdrop.is-light .ref-compare-cell-meta {
+  color: #475569 !important;
+}
+
+.ref-compare-backdrop.is-light .ref-compare-cell-meta b {
+  color: #1d4ed8 !important;
+}
+
+.ref-compare-backdrop.is-light .ref-compare-subnote {
+  color: #64748b !important;
+}
+
+/* ================== MULTI-TEMPLATE TICK & BATCH EXPORT UI ================== */
+.export-tpl-selected-count-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.16);
+  border: 1px solid rgba(16, 185, 129, 0.42);
+  white-space: nowrap;
+}
+
+#app .page .modal-card button.export-tpl-select-all-btn,
+button.export-tpl-select-all-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: auto !important;
+  min-width: max-content !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  padding: 0 10px !important;
+  margin: 0 !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(56, 189, 248, 0.45) !important;
+  background: rgba(14, 165, 233, 0.14) !important;
+  color: #38bdf8 !important;
+  font-size: 11.5px !important;
+  font-weight: 800 !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+  transition: all 0.16s ease !important;
+  white-space: nowrap !important;
+}
+
+#app .page .modal-card button.export-tpl-select-all-btn:hover,
+button.export-tpl-select-all-btn:hover {
+  background: rgba(14, 165, 233, 0.26) !important;
+  border-color: #38bdf8 !important;
+  color: #ffffff !important;
+}
+
+.export-tpl-tick-box {
+  width: 21px;
+  height: 21px;
+  min-width: 21px;
+  border-radius: 6px;
+  border: 2px solid rgba(148, 163, 184, 0.55);
+  background: rgba(15, 23, 42, 0.78);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.export-tpl-card-item:hover .export-tpl-tick-box:not(.is-ticked) {
+  border-color: #34d399;
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.export-tpl-tick-box.is-ticked {
+  border-color: #10b981;
+  background: linear-gradient(135deg, #10b981, #059669);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.42);
+}
+
+.export-quick-batch-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.export-quick-fmt-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+#app .page .modal-card button.export-quick-fmt-pill,
+button.export-quick-fmt-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  width: 100% !important;
+  height: 33px !important;
+  min-height: 33px !important;
+  padding: 0 8px !important;
+  margin: 0 !important;
+  border-radius: 9px !important;
+  font-size: 11.5px !important;
+  font-weight: 800 !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+  white-space: nowrap !important;
+  transition: all 0.16s ease !important;
+}
+
+button.export-quick-fmt-pill.fmt-pdf {
+  background: rgba(14, 165, 233, 0.16) !important;
+  border: 1px solid rgba(56, 189, 248, 0.42) !important;
+  color: #38bdf8 !important;
+}
+button.export-quick-fmt-pill.fmt-pdf:hover {
+  background: #0284c7 !important;
+  color: #ffffff !important;
+}
+
+button.export-quick-fmt-pill.fmt-word {
+  background: rgba(37, 99, 235, 0.16) !important;
+  border: 1px solid rgba(96, 165, 250, 0.42) !important;
+  color: #60a5fa !important;
+}
+button.export-quick-fmt-pill.fmt-word:hover {
+  background: #2563eb !important;
+  color: #ffffff !important;
+}
+
+button.export-quick-fmt-pill.fmt-png {
+  background: rgba(245, 158, 11, 0.16) !important;
+  border: 1px solid rgba(251, 191, 36, 0.42) !important;
+  color: #fbbf24 !important;
+}
+button.export-quick-fmt-pill.fmt-png:hover {
+  background: #d97706 !important;
+  color: #ffffff !important;
+}
+
+button.export-quick-fmt-pill.fmt-html {
+  background: rgba(139, 92, 246, 0.16) !important;
+  border: 1px solid rgba(167, 139, 250, 0.42) !important;
+  color: #a78bfa !important;
+}
+button.export-quick-fmt-pill.fmt-html:hover {
+  background: #7c3aed !important;
+  color: #ffffff !important;
+}
+
+.export-vip-btn-preview {
+  border-color: rgba(56, 189, 248, 0.24) !important;
+}
+.export-vip-btn-preview:hover {
+  border-color: rgba(56, 189, 248, 0.55) !important;
+  box-shadow: 0 12px 30px rgba(14, 165, 233, 0.16) !important;
+}
+
+/* Multi-template chips inside showExportExcelModal */
+.export-multi-tpl-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.export-multi-chips-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: #94a3b8;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.export-multi-tpl-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px 4px 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  background: rgba(15, 23, 42, 0.65);
+  color: #cbd5e1;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.export-multi-tpl-chip:hover {
+  border-color: rgba(56, 189, 248, 0.5);
+}
+
+.export-multi-tpl-chip.is-ticked {
+  border-color: rgba(16, 185, 129, 0.55);
+  background: rgba(16, 185, 129, 0.14);
+  color: #f8fafc;
+}
+
+.export-multi-tpl-chip.is-previewing {
+  box-shadow: 0 0 0 1.5px #38bdf8;
+}
+
+.export-multi-chip-check {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  border-radius: 4px;
+  border: 1.5px solid rgba(148, 163, 184, 0.6);
+  background: rgba(15, 23, 42, 0.9);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.export-multi-chip-check.active {
+  border-color: #10b981;
+  background: #10b981;
+}
+
+.export-multi-chip-name {
+  max-width: 165px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.page.theme-light-blue .export-multi-tpl-chip {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+.page.theme-light-blue .export-multi-tpl-chip.is-ticked {
+  background: #ecfdf5 !important;
+  border-color: #10b981 !important;
+  color: #065f46 !important;
+}
+
+.page.theme-light-blue .export-multi-chip-check:not(.active) {
+  background: #f8fafc !important;
+  border-color: #94a3b8 !important;
+}
+
+@media (max-width: 1100px) {
+  .export-vip-modal.modal-fullscreen-card.export-data-modal .export-tpl-radio-dot.export-tpl-mob-tick {
+    width: 20px !important;
+    height: 20px !important;
+    min-width: 20px !important;
+    border-radius: 6px !important;
+    border: 2px solid #475569 !important;
+    background: rgba(15, 23, 42, 0.85) !important;
+    color: #ffffff !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .export-vip-modal.modal-fullscreen-card.export-data-modal .export-tpl-radio-dot.export-tpl-mob-tick.active {
+    border-color: #10b981 !important;
+    background: linear-gradient(135deg, #10b981, #059669) !important;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4) !important;
+  }
+
+  .export-quick-fmt-strip {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .export-multi-tpl-chips {
+    display: flex !important;
+    width: 100% !important;
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    padding-bottom: 2px !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .export-multi-tpl-chip {
+    flex-shrink: 0 !important;
+  }
 }
 </style>

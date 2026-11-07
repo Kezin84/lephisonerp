@@ -1737,11 +1737,11 @@ function rowToFbHopDongTongQuat(r: any[]) {
 
 function fbHopDongChiTietToRow(item: any): any[] {
   if (Array.isArray(item)) {
-    const r = item.slice(0, 35)
-    while (r.length < 35) r.push('')
+    const r = item.slice(0, 42)
+    while (r.length < 42) r.push('')
     return r
   }
-  if (!item || typeof item !== 'object') return new Array(35).fill('')
+  if (!item || typeof item !== 'object') return new Array(42).fill('')
   return [
     String(item.ma_hop_dong ?? item.Ma_hop_dong ?? ''),
     String(item.so_hop_dong ?? item.So_hop_dong ?? ''),
@@ -1777,13 +1777,20 @@ function fbHopDongChiTietToRow(item: any): any[] {
     String(item.thoi_gian_bao_hanh ?? item.thoi_han_bao_hanh ?? ''),
     String(item.volume ?? ''),
     String(item.Description ?? item.description ?? ''),
-    String(item.sku_code ?? item.SKU ?? item.sku ?? item.ma_sku ?? '')
+    String(item.sku_code ?? item.SKU ?? item.sku ?? item.ma_sku ?? ''),
+    item.Don_gia_goc !== undefined && item.Don_gia_goc !== '' ? toNum(item.Don_gia_goc, 0) : '',
+    item.Don_gia_goc_USD !== undefined && item.Don_gia_goc_USD !== '' ? toNum(item.Don_gia_goc_USD, 0) : '',
+    item.muc_phan_tram_off_goc !== undefined && item.muc_phan_tram_off_goc !== '' ? toNum(item.muc_phan_tram_off_goc, 0) : '',
+    item.gia_hardware_goc !== undefined && item.gia_hardware_goc !== '' ? toNum(item.gia_hardware_goc, 0) : '',
+    item.gia_nhap_goc !== undefined && item.gia_nhap_goc !== '' ? toNum(item.gia_nhap_goc, 0) : '',
+    item.Don_gia_kho !== undefined && item.Don_gia_kho !== '' ? toNum(item.Don_gia_kho, 0) : '',
+    item.muc_phan_tram_off_kho !== undefined && item.muc_phan_tram_off_kho !== '' ? toNum(item.muc_phan_tram_off_kho, 0) : ''
   ]
 }
 
 function rowToFbHopDongChiTiet(r: any[], trangThaiHopDong: string) {
-  const row = Array.isArray(r) ? r.slice(0, 35) : []
-  while (row.length < 35) row.push('')
+  const row = Array.isArray(r) ? r.slice(0, 42) : []
+  while (row.length < 42) row.push('')
   const maHang = String(row[2] ?? '')
   const tenHang = String(row[3] ?? '')
   const mainImg = String(row[4] ?? '')
@@ -1865,6 +1872,13 @@ function rowToFbHopDongChiTiet(r: any[], trangThaiHopDong: string) {
     volume: String(row[32] ?? ''),
     Description: desc,
     description: desc,
+    Don_gia_goc: row[35] !== undefined && row[35] !== '' ? toNum(row[35], donGia) : donGia,
+    Don_gia_goc_USD: row[36] !== undefined && row[36] !== '' ? toNum(row[36], toNum(row[26], 0)) : toNum(row[26], 0),
+    muc_phan_tram_off_goc: row[37] !== undefined && row[37] !== '' ? toNum(row[37], mucOff) : mucOff,
+    gia_hardware_goc: row[38] !== undefined && row[38] !== '' ? toNum(row[38], toNum(row[20], 0)) : toNum(row[20], 0),
+    gia_nhap_goc: row[39] !== undefined && row[39] !== '' ? toNum(row[39], toNum(row[21], 0)) : toNum(row[21], 0),
+    Don_gia_kho: row[40] !== undefined && row[40] !== '' ? toNum(row[40], 0) : '',
+    muc_phan_tram_off_kho: row[41] !== undefined && row[41] !== '' ? toNum(row[41], 0) : '',
     ghi_chu: ''
   }
 }

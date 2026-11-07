@@ -302,10 +302,10 @@ const GUIDE_GROUPS: GuideGroup[] = [
       {
         id: 'studio-attachments',
         code: '03.6',
-        title: 'Kho Tệp đính kèm: Ảnh minh hoạ, Báo giá & Mua hàng',
-        shortLabel: 'Tải Ảnh, Excel Báo giá & Mua hàng',
-        summary: 'Tải lên hoặc kéo thả Ảnh, file Excel Báo giá / Mua hàng và hoán đổi phân loại tệp 1 chạm.',
-        detail: 'Hỗ trợ tải lên nhiều Ảnh minh hoạ, file Excel Báo giá và Mua hàng, hoặc kéo thả tệp trực tiếp vào cửa sổ. Tệp sau khi tải có thể xem trước qua Office Online, tải xuống hoặc bấm nút ⇄ để đổi nhanh nhóm Báo giá ⇄ Mua hàng.',
+        title: 'Kho Tệp đính kèm: Ảnh minh hoạ, Báo giá & DXMH/Khác',
+        shortLabel: 'Tải Ảnh, Báo giá & DXMH/Khác',
+        summary: 'Tải lên hoặc kéo thả Ảnh, file Báo giá / DXMH/Khác, tự động quét Khách hàng và hoán đổi phân loại tệp 1 chạm.',
+        detail: 'Hỗ trợ tải lên nhiều Ảnh minh hoạ, file Báo giá và DXMH/Khác (đầy đủ mọi định dạng), hoặc kéo thả tệp trực tiếp vào cửa sổ. Hệ thống tự động quét thông tin khách hàng từ file để thêm mới/cập nhật DB, và hỗ trợ bấm nút ⇄ để đổi nhanh nhóm Báo giá ⇄ DXMH/Khác.',
         desktopSelectors: ['[data-guide="studio-upload-vault"]', '.bg-studio-right-files'],
         mobileSelectors: ['[data-guide="studio-upload-buttons"]', '[data-guide="studio-upload-vault"]', '.bg-studio-right-files'],
         autoOpenTag: 'Bàn soạn báo cáo'
