@@ -355,14 +355,14 @@
                 Khách đã thanh toán / Tổng tiền sau VAT
                 <span v-if="overduePoCount > 0" class="sr-sb-overdue-inline">({{ overduePoCount }} quá hạn)</span>
               </span>
-              <strong class="sr-sb-foot-val money-blue">{{ sumCol('tongSauVat') > 0 ? pctFmt((sumCol('daThanhToan') / sumCol('tongSauVat')) * 100) : '0%' }}</strong>
+              <strong class="sr-sb-foot-val money-blue">{{ sumCol('tongSauVatHd') > 0 ? pctFmt((sumCol('daThanhToan') / sumCol('tongSauVatHd')) * 100) : '0%' }}</strong>
             </div>
           </div>
 
           <div class="sr-sb-bottom-progress" aria-hidden="true">
             <div
               class="sr-sb-bottom-progress-fill"
-              :style="{ width: (sumCol('tongSauVat') > 0 ? Math.min(100, Math.max(0, (sumCol('daThanhToan') / sumCol('tongSauVat')) * 100)) : 0) + '%' }"
+              :style="{ width: (sumCol('tongSauVatHd') > 0 ? Math.min(100, Math.max(0, (sumCol('daThanhToan') / sumCol('tongSauVatHd')) * 100)) : 0) + '%' }"
             ></div>
           </div>
         </article>
@@ -1358,7 +1358,7 @@
                           Khách đã thanh toán / Tổng tiền sau VAT
                           <span v-if="getGroupOverduePoCount(group) > 0" class="sr-sb-overdue-inline">({{ getGroupOverduePoCount(group) }} quá hạn)</span>
                         </span>
-                        <strong class="sr-sb-foot-val money-blue">{{ getGroupTongSauVat(group) > 0 ? pctFmt(getGroupPaidPct(group)) : '0%' }}</strong>
+                        <strong class="sr-sb-foot-val money-blue">{{ getGroupTongSauVatHd(group) > 0 ? pctFmt(getGroupPaidPct(group)) : '0%' }}</strong>
                       </div>
                     </div>
 
@@ -1441,9 +1441,9 @@
                         <template v-else>
                           <span
                             class="sr-po1-plain-status"
-                            :class="congNo(r) <= 0 && tongSauVat(r) > 0 ? 'is-com-text' : 'is-debt-text'"
+                            :class="congNo(r) <= 0 && tongSauVatHd(r) > 0 ? 'is-com-text' : 'is-debt-text'"
                           >
-                            {{ congNo(r) <= 0 && tongSauVat(r) > 0 ? 'Đã tất toán' : (daThanhToan(r) > 0 && congNo(r) > 0 ? 'Thanh toán 1 phần' : 'Chưa thanh toán') }}
+                            {{ congNo(r) <= 0 && tongSauVatHd(r) > 0 ? 'Đã tất toán' : (daThanhToan(r) > 0 && congNo(r) > 0 ? 'Thanh toán 1 phần' : 'Chưa thanh toán') }}
                           </span>
                           <template v-if="congNo(r) > 0 && getPoDueInfo(r).dueBadgeText">
                             <span class="sr-po1-sep">•</span>
@@ -1709,7 +1709,7 @@
                       <div class="sr-po1-block-title is-red-head">Thanh toán &amp; Công nợ</div>
                       <div class="sr-po1-b-row is-primary">
                         <span class="sr-po1-b-lbl"><span class="sr-hide-mob">Tổng tiền sau VAT</span><span class="sr-show-mob-inline">Tổng sau VAT</span></span>
-                        <strong class="sr-po1-b-val is-com-text">{{ fmt(tongSauVat(r)) }}</strong>
+                        <strong class="sr-po1-b-val is-com-text">{{ fmt(tongSauVatHd(r)) }}</strong>
                       </div>
                       <div class="sr-po1-b-row sr-fin-row-clickable" @click.stop="openPaymentModal(r)" title="Nhấp để ghi nhận/xem lịch sử thanh toán">
                         <span class="sr-po1-b-lbl">Đã thanh toán</span>
@@ -3338,9 +3338,9 @@
                               <!-- KHỐI 4: THANH TOÁN & CÔNG NỢ (1 KHỐI DỌC ĐỒNG BỘ — Chỉ hiện ở Bản Chính Thức) -->
                               <div v-if="srDataMode !== 'craft'" class="sr-modal-fin-col is-debt-col">
                                 <div class="sr-fin-inline-row">
-                                  <span class="sr-fin-inline-lbl">Tổng tiền sau VAT ({{ getModalPriceMode(item) === 'khach' ? 'Khách' : 'HĐ' }})</span>
+                                  <span class="sr-fin-inline-lbl">Tổng tiền sau VAT (HĐ)</span>
                                   <strong class="sr-fin-inline-val text-green">
-                                    {{ fmt(getModalItemTtSau(item)) }}
+                                    {{ fmt(getModalItemTtSauHd(item)) }}
                                   </strong>
                                 </div>
 
@@ -3372,9 +3372,9 @@
                                   <span class="sr-fin-inline-lbl">Công nợ còn lại</span>
                                   <strong
                                     class="sr-fin-inline-val"
-                                    :class="Math.max(0, getModalItemTtSau(item) - (multiEditModal.mode === 'create' ? (item.soTienDaThanhToan || 0) : (item.row ? daThanhToan(item.row) : 0))) > 0 ? 'text-red' : 'text-green'"
+                                    :class="Math.max(0, getModalItemTtSauHd(item) - (multiEditModal.mode === 'create' ? (item.soTienDaThanhToan || 0) : (item.row ? daThanhToan(item.row) : 0))) > 0 ? 'text-red' : 'text-green'"
                                   >
-                                    {{ fmt(Math.max(0, getModalItemTtSau(item) - (multiEditModal.mode === 'create' ? (item.soTienDaThanhToan || 0) : (item.row ? daThanhToan(item.row) : 0)))) }}
+                                    {{ fmt(Math.max(0, getModalItemTtSauHd(item) - (multiEditModal.mode === 'create' ? (item.soTienDaThanhToan || 0) : (item.row ? daThanhToan(item.row) : 0)))) }}
                                   </strong>
                                 </div>
 
@@ -5045,9 +5045,9 @@
                               </div>
                               <span
                                 class="sr-mm-status-tag"
-                                :class="congNo(r) <= 0 && tongSauVat(r) > 0 ? 'is-settled' : (getPoDueInfo(r).dueStatus === 'qua_han' ? 'is-overdue' : 'is-debt')"
+                                :class="congNo(r) <= 0 && tongSauVatHd(r) > 0 ? 'is-settled' : (getPoDueInfo(r).dueStatus === 'qua_han' ? 'is-overdue' : 'is-debt')"
                               >
-                                {{ congNo(r) <= 0 && tongSauVat(r) > 0 ? 'Đã tất toán' : (getPoDueInfo(r).dueBadgeText || 'Còn nợ') }}
+                                {{ congNo(r) <= 0 && tongSauVatHd(r) > 0 ? 'Đã tất toán' : (getPoDueInfo(r).dueBadgeText || 'Còn nợ') }}
                               </span>
                             </div>
 
@@ -5294,9 +5294,9 @@
                                   </div>
                                   <span
                                     class="sr-mm-status-tag"
-                                    :class="congNo(r) <= 0 && tongSauVat(r) > 0 ? 'is-settled' : (getPoDueInfo(r).dueStatus === 'qua_han' ? 'is-overdue' : 'is-debt')"
+                                    :class="congNo(r) <= 0 && tongSauVatHd(r) > 0 ? 'is-settled' : (getPoDueInfo(r).dueStatus === 'qua_han' ? 'is-overdue' : 'is-debt')"
                                   >
-                                    {{ congNo(r) <= 0 && tongSauVat(r) > 0 ? 'Đã tất toán' : (getPoDueInfo(r).dueBadgeText || 'Còn nợ') }}
+                                    {{ congNo(r) <= 0 && tongSauVatHd(r) > 0 ? 'Đã tất toán' : (getPoDueInfo(r).dueBadgeText || 'Còn nợ') }}
                                   </span>
                                 </div>
 
@@ -5852,9 +5852,9 @@
                             </div>
                             <span
                               class="sr-mm-status-tag"
-                              :class="congNo(r) <= 0 && tongSauVat(r) > 0 ? 'is-settled' : (getPoDueInfo(r).dueStatus === 'qua_han' ? 'is-overdue' : 'is-debt')"
+                              :class="congNo(r) <= 0 && tongSauVatHd(r) > 0 ? 'is-settled' : (getPoDueInfo(r).dueStatus === 'qua_han' ? 'is-overdue' : 'is-debt')"
                             >
-                              {{ congNo(r) <= 0 && tongSauVat(r) > 0 ? 'Đã tất toán' : (getPoDueInfo(r).dueBadgeText || 'Còn nợ') }}
+                              {{ congNo(r) <= 0 && tongSauVatHd(r) > 0 ? 'Đã tất toán' : (getPoDueInfo(r).dueBadgeText || 'Còn nợ') }}
                             </span>
                           </div>
 
@@ -7271,7 +7271,7 @@
                               </div>
                             </td>
                             <td style="text-align: center;">{{ fmtDateShort(poRow.created_time) }}</td>
-                            <td style="text-align: right; font-weight: 700;">{{ fmt(tongSauVat(poRow)) }} đ</td>
+                            <td style="text-align: right; font-weight: 700;">{{ fmt(tongSauVatHd(poRow)) }} đ</td>
                             <td style="text-align: right;" class="sr-rank-val text-green">{{ fmt(daThanhToan(poRow)) }} đ</td>
                             <td style="text-align: right;" class="sr-rank-val" :class="congNo(poRow) > 0 ? 'text-red' : 'text-green'">
                               {{ fmt(congNo(poRow)) }} đ
@@ -7282,12 +7282,12 @@
                                   <div
                                     class="sr-rank-share-fill"
                                     :style="{
-                                      width: (tongSauVat(poRow) > 0 ? Math.min(100, Math.max(0, (daThanhToan(poRow) / tongSauVat(poRow)) * 100)) : (congNo(poRow) <= 0 ? 100 : 0)) + '%'
+                                      width: (tongSauVatHd(poRow) > 0 ? Math.min(100, Math.max(0, (daThanhToan(poRow) / tongSauVatHd(poRow)) * 100)) : (congNo(poRow) <= 0 ? 100 : 0)) + '%'
                                     }"
                                   ></div>
                                 </div>
                                 <span class="sr-rank-share-text">
-                                  {{ tongSauVat(poRow) > 0 ? Math.min(100, (daThanhToan(poRow) / tongSauVat(poRow)) * 100).toFixed(0) + '%' : (congNo(poRow) <= 0 ? '100%' : '0%') }}
+                                  {{ tongSauVatHd(poRow) > 0 ? Math.min(100, (daThanhToan(poRow) / tongSauVatHd(poRow)) * 100).toFixed(0) + '%' : (congNo(poRow) <= 0 ? '100%' : '0%') }}
                                 </span>
                               </div>
                             </td>
@@ -8363,7 +8363,7 @@
                   {{ paymentModal.row ? 'Tổng tiền sau VAT (PO)' : 'Tổng phải thu toàn KH' }}
                 </div>
                 <div style="font-size: 19px; font-weight: 900; color: #38bdf8; margin-top: 4px;">
-                  {{ fmt(paymentModal.row ? tongSauVat(paymentModal.row) : getCustomerDebtSummary(paymentModal.customer).tongSauVat) }} đ
+                  {{ fmt(paymentModal.row ? tongSauVatHd(paymentModal.row) : getCustomerDebtSummary(paymentModal.customer).tongSauVat) }} đ
                 </div>
               </div>
 
@@ -8473,7 +8473,7 @@
                     </div>
                     <div class="sr-debt-po-side-row" style="display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; color: #cbd5e1;">
                       <span>Tổng sau VAT:</span>
-                      <strong class="sr-debt-po-vat-val" style="color: #10b981;">{{ fmt(tongSauVat(po)) }} đ</strong>
+                      <strong class="sr-debt-po-vat-val" style="color: #10b981;">{{ fmt(tongSauVatHd(po)) }} đ</strong>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; color: #cbd5e1;">
                       <span>Còn nợ:</span>
@@ -8671,7 +8671,7 @@
                 <div class="m-debt-kpi-tile is-sky">
                   <div class="m-debt-kpi-lbl">{{ paymentModal.row ? 'Tổng sau VAT (PO)' : 'Tổng phải thu KH' }}</div>
                   <div class="m-debt-kpi-val">
-                    {{ fmt(paymentModal.row ? tongSauVat(paymentModal.row) : getCustomerDebtSummary(paymentModal.customer).tongSauVat) }} đ
+                    {{ fmt(paymentModal.row ? tongSauVatHd(paymentModal.row) : getCustomerDebtSummary(paymentModal.customer).tongSauVat) }} đ
                   </div>
                 </div>
 
@@ -8893,7 +8893,7 @@
                 Thiết lập Kế hoạch &amp; Mốc hạn thanh toán — {{ getPoContractContent(paymentModal.row, 52) }}
               </h4>
               <div style="font-size: 12px; color: #ffffff; opacity: 0.9; margin-top: 2px;">
-                Tổng giá trị PO sau VAT: <strong>{{ fmt(tongSauVat(paymentModal.row)) }} đ</strong>
+                Tổng giá trị PO sau VAT: <strong>{{ fmt(tongSauVatHd(paymentModal.row)) }} đ</strong>
                 • Đã thu: <strong>{{ fmt(daThanhToan(paymentModal.row)) }} đ</strong>
               </div>
             </div>
@@ -9042,9 +9042,9 @@
               <div class="debt-sub-balance-row" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 12px; color: #94a3b8;">
                 <div>
                   Tổng tỷ lệ: <strong :style="{ color: Math.abs(modalScheduleTotalPct - 100) < 0.1 ? '#10b981' : '#fbbf24' }">{{ modalScheduleTotalPct }}%</strong>
-                  • Tổng tiền kế hoạch: <strong>{{ fmt(modalScheduleTotalAmount) }} / {{ fmt(tongSauVat(paymentModal.row)) }} đ</strong>
+                  • Tổng tiền kế hoạch: <strong>{{ fmt(modalScheduleTotalAmount) }} / {{ fmt(tongSauVatHd(paymentModal.row)) }} đ</strong>
                 </div>
-                <button v-if="Math.abs(modalScheduleTotalAmount - tongSauVat(paymentModal.row)) > 1" type="button" class="debt-sub-balance-btn" @click="balanceLastInstallment" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 700; cursor: pointer;">
+                <button v-if="Math.abs(modalScheduleTotalAmount - tongSauVatHd(paymentModal.row)) > 1" type="button" class="debt-sub-balance-btn" @click="balanceLastInstallment" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 700; cursor: pointer;">
                   Tự động cân bằng đợt cuối cho khớp 100%
                 </button>
               </div>
@@ -12338,7 +12338,7 @@ const getPoDueInfo = (r: any) => {
       dueBadgeText: ''
     }
   }
-  const totalSau = tongSauVat(r)
+  const totalSau = tongSauVatHd(r)
   const paid = daThanhToan(r)
   const cn = congNo(r)
   const mode: 'mot_lan' | 'nhieu_dot' =
@@ -13497,6 +13497,9 @@ const getGroupNetPO = (groupOrItems: any) => {
 const getGroupTongSauVat = (groupOrItems: any) => {
   return getGroupItemsArray(groupOrItems).reduce((s: number, r: any) => s + tongSauVat(r), 0)
 }
+const getGroupTongSauVatHd = (groupOrItems: any) => {
+  return getGroupItemsArray(groupOrItems).reduce((s: number, r: any) => s + tongSauVatHd(r), 0)
+}
 const getGroupGrossCom = (groupOrItems: any) => {
   return getGroupItemsArray(groupOrItems).reduce((s: number, r: any) => s + grossCom(r), 0)
 }
@@ -13535,7 +13538,7 @@ const getGroupOverduePoCount = (groupOrItems: any) => {
   return getGroupItemsArray(groupOrItems).filter((r: any) => congNo(r) > 0 && getPoDueInfo(r).dueStatus === 'qua_han').length
 }
 const getGroupPaidPct = (groupOrItems: any) => {
-  const totalSau = getGroupTongSauVat(groupOrItems)
+  const totalSau = getGroupTongSauVatHd(groupOrItems)
   return totalSau > 0 ? (getGroupDaThanhToan(groupOrItems) / totalSau) * 100 : 0
 }
 
@@ -14007,7 +14010,7 @@ const getCustomerDebtSummary = (kh: any) => {
     ? paymentModal.value.customerPOs
     : getCustomerPOsForDebtModal(kh || paymentModal.value.row)
   if (pos.length > 0) {
-    const tongSau = pos.reduce((s, r) => s + tongSauVat(r), 0)
+    const tongSau = pos.reduce((s, r) => s + tongSauVatHd(r), 0)
     const daTT = pos.reduce((s, r) => s + daThanhToan(r), 0)
     const cn = pos.reduce((s, r) => s + congNo(r), 0)
     const progressPct = tongSau > 0 ? Math.min(100, Math.round((daTT / tongSau) * 100)) : (cn <= 0 ? 100 : 0)
@@ -14023,7 +14026,7 @@ const getCustomerTotalCongNo = (r: any) => {
 
 const modalDebtProgressPct = computed(() => {
   const m = paymentModal.value
-  const total = m.row ? tongSauVat(m.row) : getCustomerDebtSummary(m.customer).tongSauVat
+  const total = m.row ? tongSauVatHd(m.row) : getCustomerDebtSummary(m.customer).tongSauVat
   const paid = m.row ? daThanhToan(m.row) : getCustomerDebtSummary(m.customer).daThanhToan
   if (total <= 0) return paid > 0 ? 100 : 0
   return Math.min(100, Math.max(0, Math.round((paid / total) * 1000) / 10))
@@ -14054,7 +14057,7 @@ function setupModalForPO(row: any) {
     paymentModal.value.amountStr = '0'
     return
   }
-  const totalSau = tongSauVat(row)
+  const totalSau = tongSauVatHd(row)
   const existingMode: 'mot_lan' | 'nhieu_dot' =
     row.loai_thanh_toan === 'nhieu_dot' || (Array.isArray(row.ke_hoach_thanh_toan) && row.ke_hoach_thanh_toan.length > 1)
       ? 'nhieu_dot'
@@ -14211,7 +14214,7 @@ const modalEvaluatedInstallments = computed(() => {
   const m = paymentModal.value
   if (!m.row) return []
   return evaluateInstallmentSchedule(
-    tongSauVat(m.row),
+    tongSauVatHd(m.row),
     daThanhToan(m.row),
     m.scheduleMode,
     m.singleDueDate,
@@ -14228,7 +14231,7 @@ const modalScheduleTotalPct = computed(() => {
 const modalScheduleTotalAmount = computed(() => {
   const m = paymentModal.value
   if (!m.row) return 0
-  if (m.scheduleMode === 'mot_lan') return tongSauVat(m.row)
+  if (m.scheduleMode === 'mot_lan') return tongSauVatHd(m.row)
   return m.scheduleItems.reduce((s, it) => s + toNum(it.so_tien_phai_thu), 0)
 })
 
@@ -14236,7 +14239,7 @@ function setScheduleMode(mode: 'mot_lan' | 'nhieu_dot') {
   const m = paymentModal.value
   if (!m.row) return
   m.scheduleMode = mode
-  const totalSau = tongSauVat(m.row)
+  const totalSau = tongSauVatHd(m.row)
   if (mode === 'mot_lan') {
     if (!m.singleDueDate && m.scheduleItems.length > 0) {
       m.singleDueDate = m.scheduleItems[0].han_thanh_toan || ''
@@ -14279,7 +14282,7 @@ function applySchedulePreset(pcts: number[], labels?: string[]) {
   const m = paymentModal.value
   if (!m.row) return
   m.scheduleMode = 'nhieu_dot'
-  const totalSau = tongSauVat(m.row)
+  const totalSau = tongSauVatHd(m.row)
   const baseStr = m.row.created_time || getFormattedNow()
   let allocated = 0
 
@@ -14301,7 +14304,7 @@ function applySchedulePreset(pcts: number[], labels?: string[]) {
 function addScheduleInstallment() {
   const m = paymentModal.value
   if (!m.row) return
-  const totalSau = tongSauVat(m.row)
+  const totalSau = tongSauVatHd(m.row)
   const currentPct = m.scheduleItems.reduce((s, it) => s + toNum(it.ty_le_pct), 0)
   const remainPct = Math.max(0, Math.round((100 - currentPct) * 100) / 100)
   const currentAmt = m.scheduleItems.reduce((s, it) => s + toNum(it.so_tien_phai_thu), 0)
@@ -14332,7 +14335,7 @@ function onInstallmentPctValueChange(idx: number, val: number) {
   if (!m.row || !m.scheduleItems[idx]) return
   const pct = Math.max(0, Math.min(100, Number(val) || 0))
   if (Math.abs((Number(m.scheduleItems[idx].ty_le_pct) || 0) - pct) < 1e-6) return
-  const totalSau = tongSauVat(m.row)
+  const totalSau = tongSauVatHd(m.row)
   m.scheduleItems[idx].ty_le_pct = pct
   m.scheduleItems[idx].so_tien_phai_thu = Math.round(totalSau * (pct / 100))
 }
@@ -14342,7 +14345,7 @@ function onInstallmentAmountValueChange(idx: number, val: number) {
   if (!m.row || !m.scheduleItems[idx]) return
   const amt = Math.max(0, Math.round(Number(val) || 0))
   if (Math.round(Number(m.scheduleItems[idx].so_tien_phai_thu) || 0) === amt) return
-  const totalSau = tongSauVat(m.row)
+  const totalSau = tongSauVatHd(m.row)
   m.scheduleItems[idx].so_tien_phai_thu = amt
   m.scheduleItems[idx].ty_le_pct = totalSau > 0 ? Math.round((amt / totalSau) * 10000) / 100 : 0
 }
@@ -14358,7 +14361,7 @@ function onInstallmentPctChange(idx: number, e: Event) {
   if (!m.row || !m.scheduleItems[idx]) return
   const target = e.target as HTMLInputElement
   const pct = Math.max(0, Math.min(100, Number(target.value) || 0))
-  const totalSau = tongSauVat(m.row)
+  const totalSau = tongSauVatHd(m.row)
   m.scheduleItems[idx].ty_le_pct = pct
   m.scheduleItems[idx].so_tien_phai_thu = Math.round(totalSau * (pct / 100))
 }
@@ -14375,7 +14378,7 @@ function onInstallmentAmountInput(idx: number, e: Event) {
     const raw = target.value.replace(/[^0-9]/g, '')
     amt = raw ? Number(raw) : 0
   }
-  const totalSau = tongSauVat(m.row)
+  const totalSau = tongSauVatHd(m.row)
   m.scheduleItems[idx].so_tien_phai_thu = amt
   m.scheduleItems[idx].ty_le_pct = totalSau > 0 ? Math.round((amt / totalSau) * 10000) / 100 : 0
   target.value = amt > 0 ? amt.toLocaleString('vi-VN') : ''
@@ -14389,7 +14392,7 @@ function onInstallmentAmountPaste(idx: number, e: ClipboardEvent) {
   const pasted = e.clipboardData?.getData('text') ?? ''
   if (!pasted) return
   const amt = Math.max(0, parsePastedNumber(pasted, 0, false))
-  const totalSau = tongSauVat(m.row)
+  const totalSau = tongSauVatHd(m.row)
   m.scheduleItems[idx].so_tien_phai_thu = amt
   m.scheduleItems[idx].ty_le_pct = totalSau > 0 ? Math.round((amt / totalSau) * 10000) / 100 : 0
   target.value = amt > 0 ? amt.toLocaleString('vi-VN') : ''
@@ -14405,7 +14408,7 @@ function onInstallmentDatePickerChange(idx: number, e: Event) {
 function balanceLastInstallment() {
   const m = paymentModal.value
   if (!m.row || m.scheduleItems.length === 0) return
-  const totalSau = tongSauVat(m.row)
+  const totalSau = tongSauVatHd(m.row)
   const lastIdx = m.scheduleItems.length - 1
   let sumOtherAmt = 0
   let sumOtherPct = 0
@@ -14425,7 +14428,7 @@ function selectInstallmentToPay(evalInst: any) {
 
 function buildSchedulePayloadForRow(r: any, paidAmountOverride?: number) {
   const m = paymentModal.value
-  const totalSau = tongSauVat(r)
+  const totalSau = tongSauVatHd(r)
   const paid = paidAmountOverride !== undefined ? paidAmountOverride : daThanhToan(r)
   const mode = m.scheduleMode
 
@@ -14510,7 +14513,7 @@ async function savePaymentScheduleOnly() {
 function setPaymentQuickPct(pct: number) {
   if (!paymentModal.value.row) return
   const remaining = congNo(paymentModal.value.row)
-  const base = remaining > 0 ? remaining : tongSauVat(paymentModal.value.row)
+  const base = remaining > 0 ? remaining : tongSauVatHd(paymentModal.value.row)
   const val = Math.round(base * (pct / 100))
   paymentModal.value.amount = val
   paymentModal.value.amountStr = val > 0 ? val.toLocaleString('vi-VN') : '0'
@@ -14568,7 +14571,7 @@ async function submitPayment() {
     const tenCongTy = String(r.Ten_cong_ty || r.ten_cong_ty || '').trim()
     const payTime = (m.paymentTime || '').trim() || getFormattedNow()
 
-    const totalSau = tongSauVat(r)
+    const totalSau = tongSauVatHd(r)
     const currentPaid = daThanhToan(r)
     const newPaid = currentPaid + payAmt
     const newCongNo = Math.max(0, totalSau - newPaid)
@@ -14683,7 +14686,7 @@ async function deletePaymentHistoryItem(h: any) {
 
     const remainingHistory = getPaymentHistoryForPO(r)
     const newPaid = remainingHistory.reduce((s, item) => s + toNum(item.so_tien_thanh_toan), 0)
-    const totalSau = tongSauVat(r)
+    const totalSau = tongSauVatHd(r)
     const newCongNo = Math.max(0, totalSau - newPaid)
     const latestTime = remainingHistory.length > 0 ? (remainingHistory[0].thoi_gian_thanh_toan || '') : ''
     const schedulePayload = buildSchedulePayloadForRow(r, newPaid)
@@ -14801,7 +14804,7 @@ const netMarginDsbPct = (r: any) => {
 // ─── Totals ───
 const sumCol = (fn: string) => {
   const fns: Record<string, (r: any) => number> = {
-    doanhSoBan, tongSauVat, daThanhToan, congNo, giaMua, tongCP, grossCom, thue, netCom, netPO, netMargin
+    doanhSoBan, tongSauVat, tongSauVatHd, daThanhToan, congNo, giaMua, tongCP, grossCom, thue, netCom, netPO, netMargin
   }
   return filteredRows.value.reduce((s, r) => s + (fns[fn]?.(r) || 0), 0)
 }
@@ -14828,7 +14831,7 @@ const totalNetMarginDsbPct = computed(() => {
 
 const getTopCustomerData = (metric: string) => {
   const fns: Record<string, (r: any) => number> = {
-    doanhSoBan, tongSauVat, daThanhToan, congNo, giaMua, tongCP, grossCom, thue, netCom, netPO, netMargin
+    doanhSoBan, tongSauVat, tongSauVatHd, daThanhToan, congNo, giaMua, tongCP, grossCom, thue, netCom, netPO, netMargin
   }
   const fn = fns[metric]
   if (!fn) return null
@@ -14936,7 +14939,7 @@ const prevFilteredRows = computed(() => {
 
 const sumColPrev = (fn: string) => {
   const fns: Record<string, (r: any) => number> = {
-    doanhSoBan, tongSauVat, daThanhToan, congNo, giaMua, tongCP, grossCom, thue, netCom, netPO, netMargin
+    doanhSoBan, tongSauVat, tongSauVatHd, daThanhToan, congNo, giaMua, tongCP, grossCom, thue, netCom, netPO, netMargin
   }
   return prevFilteredRows.value.reduce((s, r) => s + (fns[fn]?.(r) || 0), 0)
 }
@@ -17090,7 +17093,7 @@ function setActivePreviewTab(item: ImportItem | null | undefined, tab: 'bg' | 'm
 
 function setFullInitialPayment(item: ImportItem | null | undefined) {
   if (!item) return
-  const totalSauVat = Number(item.goodsTotal?.ttSau || item.doanhSoBan || 0)
+  const totalSauVat = getModalItemTtSauHd(item)
   item.soTienDaThanhToan = Math.max(0, Math.round(totalSauVat))
   isModalDirty.value = true
 }
@@ -17243,6 +17246,11 @@ function getModalItemTtSau(item: ImportItem | null | undefined): number {
     }
     return dsbK
   }
+  return Number(item.goodsTotal?.ttSau || (item.row ? tongSauVatHd(item.row) : item.doanhSoBan)) || 0
+}
+
+function getModalItemTtSauHd(item: ImportItem | null | undefined): number {
+  if (!item) return 0
   return Number(item.goodsTotal?.ttSau || (item.row ? tongSauVatHd(item.row) : item.doanhSoBan)) || 0
 }
 
@@ -18028,7 +18036,7 @@ function getDbCustomerLiveDebtSummary(cus: any) {
   }
   const pos = getCustomerPOsForDebtModal(cus)
   if (pos.length > 0) {
-    const tongSau = pos.reduce((s, r) => s + tongSauVat(r), 0)
+    const tongSau = pos.reduce((s, r) => s + tongSauVatHd(r), 0)
     const daTT = pos.reduce((s, r) => s + daThanhToan(r), 0)
     const cn = pos.reduce((s, r) => s + congNo(r), 0)
     const progressPct = tongSau > 0 ? Math.min(100, Math.round((daTT / tongSau) * 100)) : (cn <= 0 ? 100 : 0)
@@ -29904,6 +29912,7 @@ const mindmapScopeSummary = computed(() => {
   let dsb = 0
   let netPo = 0
   let tongSauVatVal = 0
+  let tongSauVatHdVal = 0
   let giaMuaVal = 0
   let tongCpVal = 0
   let grossComVal = 0
@@ -29923,6 +29932,7 @@ const mindmapScopeSummary = computed(() => {
     const rDsb = doanhSoBan(r)
     const rNp = netPO(r)
     const rSauVat = tongSauVat(r)
+    const rSauVatHd = tongSauVatHd(r)
     const rGm = giaMua(r)
     const rCp = tongCP(r)
     const rGc = grossCom(r)
@@ -29935,6 +29945,7 @@ const mindmapScopeSummary = computed(() => {
     dsb += rDsb
     netPo += rNp
     tongSauVatVal += rSauVat
+    tongSauVatHdVal += rSauVatHd
     giaMuaVal += rGm
     tongCpVal += rCp
     grossComVal += rGc
@@ -29990,7 +30001,7 @@ const mindmapScopeSummary = computed(() => {
     netMarginDsbPct: dsb !== 0 ? (netMarginVal / dsb) * 100 : 0,
     daThanhToan: daThanhToanVal,
     congNo: congNoVal,
-    paidPct: tongSauVatVal > 0 ? (daThanhToanVal / tongSauVatVal) * 100 : 0,
+    paidPct: tongSauVatHdVal > 0 ? (daThanhToanVal / tongSauVatHdVal) * 100 : 0,
     unpaidPoCount: unpaidPoCountVal,
     overduePoCount: overduePoCountVal,
     dueSoonPoCount: dueSoonPoCountVal,
@@ -30116,7 +30127,7 @@ const mindmapTourSteps = computed(() => {
       const poCode = r.So_PO || String(rIdx + 1)
       const contractTitle = String(r.content_of_contract_PO || 'Đơn hàng chưa ghi nội dung hợp đồng').trim()
       const nccName = String(r.Ten_nha_cung_cap || 'chưa gắn nhà cung cấp').trim()
-      const statusSpeech = congNo(r) <= 0 && tongSauVat(r) > 0
+      const statusSpeech = congNo(r) <= 0 && tongSauVatHd(r) > 0
         ? 'Đã tất toán hết nợ'
         : (getPoDueInfo(r).dueBadgeText || 'Đang còn công nợ')
 

@@ -7901,6 +7901,7 @@ const saveQuoteFileConfigModal = reactive<{
   visible: boolean
   saveMode: 'temp' | 'official'
   fromSaveModal: boolean
+  previewingSlot: 'hd' | 'khach' | null
   hdMode: QuoteFileSlotMode
   hdTemplateId: string
   hdCustomFile: File | null
@@ -7911,6 +7912,7 @@ const saveQuoteFileConfigModal = reactive<{
   visible: false,
   saveMode: 'temp',
   fromSaveModal: false,
+  previewingSlot: null,
   hdMode: 'template',
   hdTemplateId: 'MINTL_HOP_DONG',
   hdCustomFile: null,
@@ -7937,6 +7939,7 @@ async function openSaveQuoteFileConfigModal(saveMode: 'temp' | 'official', fromS
 
   saveQuoteFileConfigModal.saveMode = saveMode
   saveQuoteFileConfigModal.fromSaveModal = fromSaveModal
+  saveQuoteFileConfigModal.previewingSlot = null
   saveQuoteFileConfigModal.hdMode = 'template'
   saveQuoteFileConfigModal.hdTemplateId = defaultHdTpl?.id || 'MINTL_HOP_DONG'
   saveQuoteFileConfigModal.hdCustomFile = null
@@ -7944,6 +7947,47 @@ async function openSaveQuoteFileConfigModal(saveMode: 'temp' | 'official', fromS
   saveQuoteFileConfigModal.khachTemplateId = defaultKhachTpl?.id || 'MINTL_CHUAN_NTS'
   saveQuoteFileConfigModal.khachCustomFile = null
   saveQuoteFileConfigModal.visible = true
+}
+
+function openPreviewFromSaveQuoteFileSlot(slot: 'hd' | 'khach') {
+  const tplId = slot === 'hd' ? saveQuoteFileConfigModal.hdTemplateId : saveQuoteFileConfigModal.khachTemplateId
+  saveQuoteFileConfigModal.previewingSlot = slot
+  saveQuoteFileConfigModal.visible = false
+  syncCustomerInputsToKhach()
+  if (tplId) {
+    selectedPrintTemplateId.value = tplId
+    selectedPrintTemplateIds.value = [tplId]
+  }
+  maKHInput.value = khach.value.Ma_khach_hang || maKHInput.value || ''
+  tenKHInput.value = khach.value.Ten_khach_hang || tenKHInput.value || ''
+  // Mở thẳng vào tab 'preview' trên mobile để thấy tờ báo giá ngay
+  mobileExportModalTab.value = 'preview'
+  showPrintPreviewInModal.value = true
+  showExportExcelModal.value = true
+  previewRenderTick.value++
+  loadPrintTemplates().catch(() => {})
+  fetchDieuKhoanFromFirebase().then(dkRows => {
+    termsRaw.value = Array.isArray(dkRows) ? dkRows : []
+  }).catch(e => console.error('Lỗi refresh dieu_khoan khi mở modal xuất:', e))
+}
+
+function closeExportExcelModal(skipReopenAttachModal = false) {
+  const slot = saveQuoteFileConfigModal.previewingSlot
+  if (slot && selectedPrintTemplateId.value) {
+    if (slot === 'hd') {
+      saveQuoteFileConfigModal.hdTemplateId = selectedPrintTemplateId.value
+    } else {
+      saveQuoteFileConfigModal.khachTemplateId = selectedPrintTemplateId.value
+    }
+  }
+  if (skipReopenAttachModal) {
+    saveQuoteFileConfigModal.previewingSlot = null
+  }
+  showExportExcelModal.value = false
+  if (slot && !skipReopenAttachModal) {
+    saveQuoteFileConfigModal.previewingSlot = null
+    saveQuoteFileConfigModal.visible = true
+  }
 }
 
 function triggerPickCustomQuoteFile(slot: 'hd' | 'khach') {
@@ -17191,6 +17235,30 @@ function buildCurrentQuoteExportContext(): QuoteExportContext {
     off: isUsdExport ? Number(totalsOriginUSD.value.off) || 0 : Number(totalsOrigin.value.off) || 0
   }
 
+  const forcedSlot = saveQuoteFileConfigModal.previewingSlot
+  const activeTpl = activePrintTemplate.value
+  const isSpecialTpl = activeTpl ? (isThreePriceComparisonTemplate(activeTpl) || isListPriceTemplate(activeTpl)) : false
+  const effectiveRows =
+    !isSpecialTpl && forcedSlot === 'hd'
+      ? contractRows
+      : !isSpecialTpl && forcedSlot === 'khach'
+      ? customerRows
+      : customerRows
+  const effectiveTotals =
+    !isSpecialTpl && forcedSlot === 'hd'
+      ? contractTotals
+      : !isSpecialTpl && forcedSlot === 'khach'
+      ? customerTotals
+      : customerTotals
+  const effectiveContractRows =
+    !isSpecialTpl && forcedSlot === 'khach' ? customerRows : contractRows
+  const effectiveContractTotals =
+    !isSpecialTpl && forcedSlot === 'khach' ? customerTotals : contractTotals
+  const effectiveCustomerRows =
+    !isSpecialTpl && forcedSlot === 'hd' ? contractRows : customerRows
+  const effectiveCustomerTotals =
+    !isSpecialTpl && forcedSlot === 'hd' ? contractTotals : customerTotals
+
   return {
     khach: effectiveKhach,
     maHopDong: maHopDong.value || '',
@@ -17200,12 +17268,12 @@ function buildCurrentQuoteExportContext(): QuoteExportContext {
     currency: isUsdExport ? 'USD' : 'VND',
     vndRoundingMode: vndRoundingMode.value,
     tiGia: mainTiGia.value || 1,
-    rows: customerRows,
-    totals: customerTotals,
-    contractRows,
-    contractTotals,
-    customerRows,
-    customerTotals,
+    rows: effectiveRows,
+    totals: effectiveTotals,
+    contractRows: effectiveContractRows,
+    contractTotals: effectiveContractTotals,
+    customerRows: effectiveCustomerRows,
+    customerTotals: effectiveCustomerTotals,
     originRows,
     originTotals,
     itemSttFormat: quoteItemSttFormat.value,
@@ -17249,7 +17317,32 @@ watch(
   }
 )
 
+watch(selectedPrintTemplateId, (newTplId) => {
+  if (!newTplId || !saveQuoteFileConfigModal.previewingSlot) return
+  if (saveQuoteFileConfigModal.previewingSlot === 'hd') {
+    saveQuoteFileConfigModal.hdTemplateId = newTplId
+  } else if (saveQuoteFileConfigModal.previewingSlot === 'khach') {
+    saveQuoteFileConfigModal.khachTemplateId = newTplId
+  }
+})
+
+watch(showExportExcelModal, (isOpen) => {
+  if (!isOpen && saveQuoteFileConfigModal.previewingSlot) {
+    const slot = saveQuoteFileConfigModal.previewingSlot
+    if (selectedPrintTemplateId.value) {
+      if (slot === 'hd') {
+        saveQuoteFileConfigModal.hdTemplateId = selectedPrintTemplateId.value
+      } else {
+        saveQuoteFileConfigModal.khachTemplateId = selectedPrintTemplateId.value
+      }
+    }
+    saveQuoteFileConfigModal.previewingSlot = null
+    saveQuoteFileConfigModal.visible = true
+  }
+})
+
 function openExportWithPrintTemplate(tplId?: string) {
+  saveQuoteFileConfigModal.previewingSlot = null
   syncCustomerInputsToKhach()
   if (tplId) {
     selectedPrintTemplateId.value = tplId
@@ -17274,6 +17367,7 @@ function openExportWithPrintTemplate(tplId?: string) {
 }
 
 function openExportExcelModal(templateData?: string, mappingConfig?: any[]) {
+  saveQuoteFileConfigModal.previewingSlot = null
   syncCustomerInputsToKhach()
   maKHInput.value = khach.value.Ma_khach_hang || maKHInput.value || '';
   tenKHInput.value = khach.value.Ten_khach_hang || tenKHInput.value || '';
@@ -17289,6 +17383,10 @@ function openExportExcelModal(templateData?: string, mappingConfig?: any[]) {
 }
 
 function requestExportWithSaveConfirm(format: ExportFormatType) {
+  if (saveQuoteFileConfigModal.previewingSlot) {
+    executeExportByFormat(format)
+    return
+  }
   pendingExportFormat.value = format
   showExportSaveConfirmModal.value = true
 }
@@ -32054,22 +32152,28 @@ onUnmounted(() => {
     <!-- ================== MODAL: CHỌN FILE BÁO GIÁ ĐÍNH KÈM VÀO SALE REPORT (HĐ & KHÁCH) ================== -->
     <div
       v-if="saveQuoteFileConfigModal.visible"
-      class="modal vip-modal-overlay save-quote-file-cfg-overlay"
+      class="modal vip-modal-overlay modal-fullscreen-overlay save-quote-file-cfg-overlay"
       style="z-index: 10025;"
       @click.self="cancelSaveQuoteFileConfigModal"
     >
-      <div class="modal-card vip-modal-card save-quote-file-cfg-modal">
+      <div class="modal-card modal-wide vip-modal-card modal-fullscreen-card save-quote-file-cfg-modal">
         <div
           class="modal-head modal-head-themed sqfc-head"
           :class="saveQuoteFileConfigModal.saveMode === 'official' ? 'is-official' : 'is-temp'"
         >
-          <div class="sqfc-head-left">
+          <div class="sqfc-head-left dt-only-head">
             <span class="sqfc-eyebrow">
               {{ saveQuoteFileConfigModal.saveMode === 'official' ? 'CHỐT DEAL & LƯU CHÍNH THỨC • SALE REPORT' : 'LƯU TẠM & CHỜ DUYỆT • PHƯƠNG ÁN TẠM' }}
             </span>
             <h3 class="sqfc-title">Đính Kèm File Báo Giá Vào Sale Report</h3>
           </div>
-          <button type="button" class="sqfc-close-btn" @click="cancelSaveQuoteFileConfigModal" title="Đóng">✕</button>
+          <div class="m-grab-head-stack">
+            <span class="m-grab-eyebrow">
+              {{ saveQuoteFileConfigModal.saveMode === 'official' ? 'Chốt Deal & Lưu chính thức • Sale Report' : 'Lưu tạm & Chờ duyệt • Phương án tạm' }}
+            </span>
+            <span class="m-grab-title">Đính kèm file báo giá</span>
+          </div>
+          <button type="button" class="x sqfc-close-btn" @click="cancelSaveQuoteFileConfigModal" title="Đóng">✕</button>
         </div>
 
         <div class="modal-body sqfc-body">
@@ -32144,11 +32248,22 @@ onUnmounted(() => {
 
               <div v-if="saveQuoteFileConfigModal.hdMode === 'template'" class="sqfc-panel">
                 <label class="sqfc-field-label">Chọn mẫu in để lưu cho Hợp đồng (Áp dụng Giá Hợp Đồng):</label>
-                <select v-model="saveQuoteFileConfigModal.hdTemplateId" class="sqfc-select">
-                  <option v-for="pt in printTemplates" :key="'hd-' + pt.id" :value="pt.id">
-                    {{ pt.ten_mau }} ({{ pt.cau_hinh_trang?.kho_giay || 'A4' }} - {{ pt.cau_hinh_trang?.huong_giay === 'portrait' ? 'Dọc' : 'Ngang' }})
-                  </option>
-                </select>
+                <div class="sqfc-select-row">
+                  <select v-model="saveQuoteFileConfigModal.hdTemplateId" class="sqfc-select">
+                    <option v-for="pt in printTemplates" :key="'hd-' + pt.id" :value="pt.id">
+                      {{ pt.ten_mau }} ({{ pt.cau_hinh_trang?.kho_giay || 'A4' }} - {{ pt.cau_hinh_trang?.huong_giay === 'portrait' ? 'Dọc' : 'Ngang' }})
+                    </option>
+                  </select>
+                  <button
+                    type="button"
+                    class="sqfc-preview-tpl-btn is-hd"
+                    @click="openPreviewFromSaveQuoteFileSlot('hd')"
+                    title="Xem trước tờ báo giá Hợp đồng, chỉnh sửa khách hàng / điều khoản & xuất báo giá"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <span>Xem trước</span>
+                  </button>
+                </div>
                 <div class="sqfc-file-preview-note">
                   <span>Tên file sẽ tạo:</span>
                   <b>{{ exportFileNamePreview }}_BaoGiaHopDong.xlsx</b>
@@ -32220,11 +32335,22 @@ onUnmounted(() => {
 
               <div v-if="saveQuoteFileConfigModal.khachMode === 'template'" class="sqfc-panel">
                 <label class="sqfc-field-label">Chọn mẫu in để lưu cho Khách hàng (Áp dụng Giá Khách):</label>
-                <select v-model="saveQuoteFileConfigModal.khachTemplateId" class="sqfc-select">
-                  <option v-for="pt in printTemplates" :key="'khach-' + pt.id" :value="pt.id">
-                    {{ pt.ten_mau }} ({{ pt.cau_hinh_trang?.kho_giay || 'A4' }} - {{ pt.cau_hinh_trang?.huong_giay === 'portrait' ? 'Dọc' : 'Ngang' }})
-                  </option>
-                </select>
+                <div class="sqfc-select-row">
+                  <select v-model="saveQuoteFileConfigModal.khachTemplateId" class="sqfc-select">
+                    <option v-for="pt in printTemplates" :key="'khach-' + pt.id" :value="pt.id">
+                      {{ pt.ten_mau }} ({{ pt.cau_hinh_trang?.kho_giay || 'A4' }} - {{ pt.cau_hinh_trang?.huong_giay === 'portrait' ? 'Dọc' : 'Ngang' }})
+                    </option>
+                  </select>
+                  <button
+                    type="button"
+                    class="sqfc-preview-tpl-btn is-khach"
+                    @click="openPreviewFromSaveQuoteFileSlot('khach')"
+                    title="Xem trước tờ báo giá Khách hàng, chỉnh sửa khách hàng / điều khoản & xuất báo giá"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <span>Xem trước</span>
+                  </button>
+                </div>
                 <div class="sqfc-file-preview-note">
                   <span>Tên file sẽ tạo:</span>
                   <b>{{ exportFileNamePreview }}_BaoGiaKhach.xlsx</b>
@@ -32273,19 +32399,27 @@ onUnmounted(() => {
     </div>
 
     <!-- ================== MODAL: CHỌN MẪU IN & XUẤT BÁO GIÁ ĐA ĐỊNH DẠNG ================== -->
-    <div v-if="showExportExcelModal" class="modal vip-modal-overlay modal-fullscreen-overlay" @click.self="showExportExcelModal = false">
+    <div v-if="showExportExcelModal" class="modal vip-modal-overlay modal-fullscreen-overlay" @click.self="closeExportExcelModal()">
       <div class="modal-card modal-wide vip-modal-card modal-fullscreen-card export-multi-format-modal">
         <div class="modal-head modal-head-themed export-multi-head" style="justify-content: center; position: relative; margin-bottom: 0; padding: 14px 24px; border-bottom: none; border-radius: 0; flex-shrink: 0;">
           <div class="export-multi-head-title dt-only-head" style="color: #ffffff; text-transform: uppercase; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
             <i class="lucide-file-spreadsheet"></i>
-            <span class="dt-lbl">CHỌN MẪU IN, KHÁCH HÀNG &amp; XUẤT BÁO GIÁ</span>
+            <span class="dt-lbl">
+              CHỌN MẪU IN, KHÁCH HÀNG &amp; XUẤT BÁO GIÁ
+              <template v-if="saveQuoteFileConfigModal.previewingSlot === 'hd'"> — [HĐ • GIÁ HỢP ĐỒNG]</template>
+              <template v-else-if="saveQuoteFileConfigModal.previewingSlot === 'khach'"> — [KHÁCH • GIÁ KHÁCH HÀNG]</template>
+            </span>
             <span class="mb-lbl">CHỌN MẪU IN &amp; XUẤT BÁO GIÁ</span>
           </div>
           <div class="m-grab-head-stack">
-            <span class="m-grab-eyebrow">{{ activePrintTemplate?.ten_mau ? 'Mẫu in • ' + activePrintTemplate.ten_mau : 'Xuất bản tài liệu' }}</span>
+            <span class="m-grab-eyebrow">
+              <template v-if="saveQuoteFileConfigModal.previewingSlot === 'hd'">Mục [HĐ] Giá Hợp Đồng • {{ activePrintTemplate?.ten_mau || 'Mẫu in' }}</template>
+              <template v-else-if="saveQuoteFileConfigModal.previewingSlot === 'khach'">Mục [Khách] Giá Khách • {{ activePrintTemplate?.ten_mau || 'Mẫu in' }}</template>
+              <template v-else>{{ activePrintTemplate?.ten_mau ? 'Mẫu in • ' + activePrintTemplate.ten_mau : 'Xuất bản tài liệu' }}</template>
+            </span>
             <span class="m-grab-title">Chọn mẫu in &amp; Xuất báo giá</span>
           </div>
-          <button class="x" @click="showExportExcelModal = false" style="color: #fff; position: absolute; right: 18px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.15); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;">✕</button>
+          <button class="x" @click="closeExportExcelModal()" style="color: #fff; position: absolute; right: 18px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.15); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;">✕</button>
         </div>
 
         <!-- TOP QUICK ACTION TOOLBAR -->
@@ -32293,10 +32427,17 @@ onUnmounted(() => {
           <div class="export-multi-tpl-left" style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 320px; flex-wrap: wrap;">
             <div class="export-multi-tpl-head-row">
               <span class="export-multi-tpl-label" style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: #10b981; white-space: nowrap; letter-spacing: 0.4px;">Đang xem trước:</span>
+              <span
+                v-if="saveQuoteFileConfigModal.previewingSlot"
+                class="sqfc-active-slot-pill"
+                :class="saveQuoteFileConfigModal.previewingSlot === 'hd' ? 'is-hd' : 'is-khach'"
+              >
+                {{ saveQuoteFileConfigModal.previewingSlot === 'hd' ? 'Chế độ [HĐ] • Giá Hợp Đồng' : 'Chế độ [Khách] • Giá Khách' }}
+              </span>
               <button
                 type="button"
                 class="export-multi-setup-mobile-btn"
-                @click="showExportExcelModal = false; router.push('/mau-in-firebase')"
+                @click="closeExportExcelModal(true); router.push('/mau-in-firebase')"
               >
                 + Tạo / Sửa mẫu
               </button>
@@ -32346,6 +32487,14 @@ onUnmounted(() => {
 
           <div class="export-multi-dt-btns" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
             <button
+              v-if="saveQuoteFileConfigModal.previewingSlot"
+              type="button"
+              class="sqfc-return-btn"
+              @click="closeExportExcelModal()"
+            >
+              ✓ Chọn mẫu này &amp; Quay lại Đính kèm file
+            </button>
+            <button
               type="button"
               @click="showPrintPreviewInModal = !showPrintPreviewInModal"
               style="padding: 8px 14px; border-radius: 7px; border: none; background: #0284c7; color: #ffffff; font-weight: 800; font-size: 11.5px; text-transform: uppercase; cursor: pointer; width: fit-content; margin: 0; box-shadow: 0 2px 6px rgba(2,132,199,0.28);"
@@ -32354,7 +32503,7 @@ onUnmounted(() => {
             </button>
             <button
               type="button"
-              @click="showExportExcelModal = false; router.push('/mau-in-firebase')"
+              @click="closeExportExcelModal(true); router.push('/mau-in-firebase')"
               style="padding: 8px 14px; border-radius: 7px; border: none; background: #2563eb; color: #ffffff; font-weight: 800; font-size: 11.5px; text-transform: uppercase; cursor: pointer; width: fit-content; margin: 0; box-shadow: 0 2px 6px rgba(37,99,235,0.28);"
             >
               Thiết lập / Tạo mẫu in
@@ -32830,10 +32979,10 @@ onUnmounted(() => {
             <button
               type="button"
               class="modal-btn-secondary"
-              @click="showExportExcelModal = false"
+              @click="closeExportExcelModal()"
               style="padding: 10px 20px; border-radius: 8px; font-weight: 700; font-size: 13px; color: #fff; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); cursor: pointer; width: fit-content; margin: 0;"
             >
-              Đóng
+              {{ saveQuoteFileConfigModal.previewingSlot ? '← Quay lại Đính kèm file' : 'Đóng' }}
             </button>
             <span v-if="previewOverrideCount > 0" style="font-size: 11.5px; font-weight: 700; color: #38bdf8; background: rgba(56,189,248,0.12); border: 1px solid rgba(56,189,248,0.3); padding: 5px 11px; border-radius: 7px;">
               Đã chỉnh sửa {{ previewOverrideCount }} mục trên bản in (Tự động đồng bộ khi xuất file)
@@ -32910,7 +33059,7 @@ onUnmounted(() => {
     <div v-if="showPrintPreviewZoomModal" class="modal vip-modal-overlay modal-fullscreen-overlay" style="z-index: 10045;" @click.self="showPrintPreviewZoomModal = false">
       <div class="modal-card modal-wide vip-modal-card export-vip-modal modal-fullscreen-card export-zoom-preview-modal">
         <div class="modal-head modal-head-themed export-zoom-head" style="justify-content: space-between; position: relative; margin-bottom: 0; padding: 10px 24px; border-bottom: none; border-radius: 0; flex-shrink: 0;">
-          <button type="button" class="m-grab-back-only" @click="showExportPreviewZoomModal = false" aria-label="Quay lại"></button>
+          <button type="button" class="m-grab-back-only" @click="showPrintPreviewZoomModal = false" aria-label="Quay lại"></button>
           <div class="export-zoom-title-wrap dt-only-head" style="color: #ffffff; text-transform: uppercase; font-weight: 900; font-size: 14px; letter-spacing: 0.5px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
             <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
             <span class="dt-lbl">XEM TRƯỚC &amp; CHỈNH SỬA BẢN IN — {{ activePrintTemplate?.ten_mau || 'Mẫu chuẩn' }} (Khổ {{ activePrintTemplate?.cau_hinh_trang?.kho_giay || 'A4' }} • {{ activePrintTemplate?.cau_hinh_trang?.huong_giay === 'portrait' ? 'Dọc' : 'Ngang' }})</span>
@@ -62096,34 +62245,61 @@ button.export-quick-fmt-pill.fmt-html:hover {
 
 /* ================== MODAL CHỌN FILE BÁO GIÁ ĐÍNH KÈM VÀO SALE REPORT (HĐ & KHÁCH) ================== */
 .save-quote-file-cfg-modal {
-  width: min(940px, 95vw) !important;
-  max-width: 940px !important;
   padding: 0 !important;
-  border-radius: 16px !important;
   overflow: hidden !important;
   background: #0f172a !important;
   border: 1px solid rgba(148, 163, 184, 0.22) !important;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65) !important;
   display: flex !important;
   flex-direction: column !important;
-  max-height: 90vh !important;
 }
 
-.sqfc-head {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  padding: 16px 22px !important;
-  margin: 0 !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
-}
+@media (min-width: 1101px) {
+  .save-quote-file-cfg-modal {
+    width: min(960px, 95vw) !important;
+    max-width: 960px !important;
+    border-radius: 16px !important;
+    max-height: 90vh !important;
+  }
 
-.sqfc-head.is-temp {
-  background: linear-gradient(135deg, #1d4ed8, #0284c7) !important;
-}
+  .sqfc-head {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 16px 22px !important;
+    margin: 0 !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  }
 
-.sqfc-head.is-official {
-  background: linear-gradient(135deg, #059669, #0d9488) !important;
+  .sqfc-head.is-temp {
+    background: linear-gradient(135deg, #1d4ed8, #0284c7) !important;
+  }
+
+  .sqfc-head.is-official {
+    background: linear-gradient(135deg, #059669, #0d9488) !important;
+  }
+
+  .sqfc-head .m-grab-head-stack {
+    display: none !important;
+  }
+
+  #app .page .modal-card button.sqfc-close-btn {
+    width: 30px !important;
+    min-width: 30px !important;
+    height: 30px !important;
+    min-height: 30px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    background: rgba(0, 0, 0, 0.22) !important;
+    border: 1px solid rgba(255, 255, 255, 0.22) !important;
+    color: #ffffff !important;
+    font-size: 14px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer;
+  }
 }
 
 .sqfc-head-left {
@@ -62148,30 +62324,14 @@ button.export-quick-fmt-pill.fmt-html:hover {
   letter-spacing: 0.2px;
 }
 
-#app .page .modal-card button.sqfc-close-btn {
-  width: 30px !important;
-  min-width: 30px !important;
-  height: 30px !important;
-  min-height: 30px !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border-radius: 50% !important;
-  background: rgba(0, 0, 0, 0.22) !important;
-  border: 1px solid rgba(255, 255, 255, 0.22) !important;
-  color: #ffffff !important;
-  font-size: 14px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  cursor: pointer;
-}
-
 .sqfc-body {
   padding: 18px 22px !important;
   overflow-y: auto !important;
   display: flex;
   flex-direction: column;
   gap: 14px;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .sqfc-intro-banner {
@@ -62345,10 +62505,20 @@ button.export-quick-fmt-pill.fmt-html:hover {
   color: #cbd5e1;
 }
 
+.sqfc-select-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+}
+
 #app .page .modal-card select.sqfc-select {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
   width: 100% !important;
   height: 38px !important;
   min-height: 38px !important;
+  margin: 0 !important;
   padding: 0 12px !important;
   border-radius: 8px !important;
   background: rgba(15, 23, 42, 0.85) !important;
@@ -62356,6 +62526,89 @@ button.export-quick-fmt-pill.fmt-html:hover {
   color: #f8fafc !important;
   font-size: 12.5px !important;
   font-weight: 700 !important;
+}
+
+#app .page .modal-card button.sqfc-preview-tpl-btn {
+  width: auto !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  margin: 0 !important;
+  padding: 0 13px !important;
+  border-radius: 8px !important;
+  font-size: 12.5px !important;
+  font-weight: 800 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+#app .page .modal-card button.sqfc-preview-tpl-btn.is-hd {
+  background: rgba(59, 130, 246, 0.18) !important;
+  border: 1px solid rgba(59, 130, 246, 0.55) !important;
+  color: #60a5fa !important;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.18) !important;
+}
+
+#app .page .modal-card button.sqfc-preview-tpl-btn.is-hd:hover {
+  background: rgba(59, 130, 246, 0.28) !important;
+  color: #ffffff !important;
+}
+
+#app .page .modal-card button.sqfc-preview-tpl-btn.is-khach {
+  background: rgba(16, 185, 129, 0.18) !important;
+  border: 1px solid rgba(16, 185, 129, 0.55) !important;
+  color: #34d399 !important;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.18) !important;
+}
+
+#app .page .modal-card button.sqfc-preview-tpl-btn.is-khach:hover {
+  background: rgba(16, 185, 129, 0.28) !important;
+  color: #ffffff !important;
+}
+
+.sqfc-active-slot-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.sqfc-active-slot-pill.is-hd {
+  background: rgba(59, 130, 246, 0.2);
+  border: 1px solid rgba(59, 130, 246, 0.5);
+  color: #93c5fd;
+}
+
+.sqfc-active-slot-pill.is-khach {
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(16, 185, 129, 0.5);
+  color: #6ee7b7;
+}
+
+#app .page .modal-card button.sqfc-return-btn {
+  width: auto !important;
+  height: 33px !important;
+  min-height: 33px !important;
+  margin: 0 !important;
+  padding: 0 14px !important;
+  border-radius: 7px !important;
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  border: none !important;
+  color: #ffffff !important;
+  font-size: 11.5px !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  cursor: pointer;
+  white-space: nowrap !important;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3) !important;
 }
 
 .sqfc-file-preview-note {
@@ -62448,6 +62701,7 @@ button.export-quick-fmt-pill.fmt-html:hover {
   border-top: 1px solid rgba(148, 163, 184, 0.16);
   background: rgba(15, 23, 42, 0.95);
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 #app .page .modal-card button.sqfc-btn {
@@ -62566,6 +62820,40 @@ button.export-quick-fmt-pill.fmt-html:hover {
   color: #0f172a !important;
 }
 
+#app .page.theme-light-blue .modal-card button.sqfc-preview-tpl-btn.is-hd {
+  background: #eff6ff !important;
+  border-color: #60a5fa !important;
+  color: #1d4ed8 !important;
+}
+
+#app .page.theme-light-blue .modal-card button.sqfc-preview-tpl-btn.is-hd:hover {
+  background: #2563eb !important;
+  color: #ffffff !important;
+}
+
+#app .page.theme-light-blue .modal-card button.sqfc-preview-tpl-btn.is-khach {
+  background: #ecfdf5 !important;
+  border-color: #34d399 !important;
+  color: #047857 !important;
+}
+
+#app .page.theme-light-blue .modal-card button.sqfc-preview-tpl-btn.is-khach:hover {
+  background: #059669 !important;
+  color: #ffffff !important;
+}
+
+.page.theme-light-blue .sqfc-active-slot-pill.is-hd {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #1d4ed8 !important;
+}
+
+.page.theme-light-blue .sqfc-active-slot-pill.is-khach {
+  background: #ecfdf5 !important;
+  border-color: #6ee7b7 !important;
+  color: #047857 !important;
+}
+
 .page.theme-light-blue .sqfc-file-preview-note {
   background: #ffffff !important;
   border-color: #cbd5e1 !important;
@@ -62612,17 +62900,49 @@ button.export-quick-fmt-pill.fmt-html:hover {
   color: #b45309 !important;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1100px) {
+  .modal .modal-card.save-quote-file-cfg-modal {
+    padding: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    border-radius: 0 !important;
+    border: none !important;
+    overflow: hidden !important;
+  }
+
+  .sqfc-body {
+    flex: 1 1 0% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 12px 14px 18px 14px !important;
+    gap: 12px !important;
+  }
+
   .sqfc-grid {
     grid-template-columns: 1fr !important;
+    gap: 12px !important;
   }
+
   .sqfc-footer {
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px)) 14px !important;
+    flex-shrink: 0 !important;
   }
+
   #app .page .modal-card button.sqfc-btn {
     width: 100% !important;
+    height: 40px !important;
+    min-height: 40px !important;
   }
+
   #app .page .modal-card button.sqfc-btn.is-confirm {
     grid-column: 1 / -1 !important;
   }
