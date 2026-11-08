@@ -29,6 +29,7 @@ import { callDeepSeek, DEEPSEEK_MODEL } from '../services/deepseek'
 import {
   fetchAndSyncPrintTemplates,
   deletePrintTemplateFromFirebase,
+  createStarterTemplateConfig,
   createAgencyTemplateConfig,
   createListPriceTemplateConfig,
   isListPriceTemplate,
@@ -187,18 +188,20 @@ const vAutoGrow = {
 ====================== */
 function fbHopDongTongQuatToRow(item: any, fbKey = ''): any[] {
   if (Array.isArray(item)) {
-    const r = item.slice(0, 37)
-    while (r.length < 37) r.push('')
+    const r = item.slice(0, 46)
+    while (r.length < 46) r.push('')
     return r
   }
-  if (!item || typeof item !== 'object') return new Array(37).fill('')
+  if (!item || typeof item !== 'object') return new Array(46).fill('')
+  const truocHD = toNum(item.Tong_tien_truoc_thueVAT ?? item.tong_truoc_vat ?? item.tong_tien, 0)
+  const truocKhach = toNum(item.Tong_gia_thuc_te ?? item.Tong_tien_truoc_thueVAT_khach ?? item.tong_truoc_vat_khach ?? item.tong_gia_thuc_te ?? item.tong_truoc_vat_goc, truocHD)
   return [
     String(item.ma_hop_dong ?? item.Ma_hop_dong ?? fbKey ?? ''),
     String(item.so_hop_dong ?? item.So_hop_dong ?? ''),
     String(item.ma_khach_hang ?? item.Ma_khach_hang ?? ''),
     String(item.ten_khach_hang ?? item.Ten_khach_hang ?? ''),
     String(item.ngay_tao_hop_dong ?? item.ngay_tao ?? item.ngay_tao_date ?? item.ngay_ky ?? ''),
-    toNum(item.Tong_tien_truoc_thueVAT ?? item.tong_truoc_vat ?? item.tong_truoc_vat_goc ?? item.tong_tien, 0),
+    truocHD,
     toNum(item.Tong_thueVAT ?? item.tong_vat, 0),
     toNum(item.Tong_tien_sau_thueVAT ?? item.tong_sau_vat ?? item.tong_tien, 0),
     toNum(item.Tong_giam_gia, 0),
@@ -213,7 +216,7 @@ function fbHopDongTongQuatToRow(item: any, fbKey = ''): any[] {
     String(item.Don_vi_tien_te ?? item.don_vi_tien_te ?? 'VND'),
     toNum(item.Ti_gia ?? item.ti_gia, 1),
     String(item.ma_hop_dong_cu ?? ''),
-    toNum(item.Tong_gia_thuc_te ?? item.tong_gia_thuc_te, 0),
+    truocKhach,
     String(item.created_time ?? ''),
     String(item.So_PO ?? item.so_po ?? ''),
     String(item.Ten_PO ?? item.ten_po ?? item.po_content ?? ''),
@@ -227,21 +230,40 @@ function fbHopDongTongQuatToRow(item: any, fbKey = ''): any[] {
     toNum(item.tong_chiet_khau, 0),
     String(item.ma_hop_dong_goc ?? item.ma_hop_dong ?? fbKey ?? ''),
     item.isCompleted === true || String(item.isCompleted).toUpperCase() === 'TRUE',
-    String(item.ten_file ?? ''),
-    String(item.link_file ?? ''),
-    String(item.structure ?? '')
+    String(item.ten_file ?? item.ten_file_bao_gia ?? item.ten_file_bao_gia_hd ?? ''),
+    String(item.link_file ?? item.link_excel_bao_gia ?? item.link_excel_bao_gia_hd ?? ''),
+    String(item.structure ?? ''),
+    toNum(item.Tong_thueVAT_khach ?? item.tong_vat_khach, 0),
+    toNum(item.Tong_tien_sau_thueVAT_khach ?? item.tong_sau_vat_khach, 0),
+    toNum(item.Tong_tien_truoc_thueVAT_list ?? item.tong_truoc_vat_list, 0),
+    toNum(item.Tong_thanh_tien_chua_VAT_mua_hang ?? item.giaMua ?? item.gia_mua ?? item.tong_gia_von_mua_hang, 0),
+    String(item.id_sale_report_craft ?? ''),
+    String(item.id_sale_report ?? ''),
+    String(item.ten_file_khach ?? item.ten_file_bao_gia_khach ?? ''),
+    String(item.link_file_khach ?? item.link_excel_bao_gia_khach ?? ''),
+    toNum(item.Tong_CP_don_hang ?? item.tongCP ?? item.tong_cp ?? item.Tong_thanh_tien_chua_VAT_mua_hang ?? item.giaMua ?? item.gia_mua ?? item.tong_gia_von_mua_hang, 0)
   ]
 }
 
 function rowToFbHopDongTongQuat(r: any[]) {
-  const row = Array.isArray(r) ? r.slice(0, 37) : []
-  while (row.length < 37) row.push('')
+  const row = Array.isArray(r) ? r.slice(0, 46) : []
+  while (row.length < 46) row.push('')
   const isCompletedBool = row[33] === true || String(row[33]).toUpperCase() === 'TRUE'
   const truoc = toNum(row[5], 0)
   const vat = toNum(row[6], 0)
   const sau = toNum(row[7], 0)
   const daTT = toNum(row[10], 0)
+  const truocKhach = toNum(row[20], truoc)
+  const vatKhach = toNum(row[37], vat)
+  const sauKhach = toNum(row[38], truocKhach + vatKhach)
+  const truocList = toNum(row[39], truocKhach)
+  const giaMuaVnd = toNum(row[40], 0)
+  const tongCpVnd = toNum(row[45], giaMuaVnd) || giaMuaVnd
   const contentVal = String(row[24] ?? '')
+  const tenFileHD = String(row[34] ?? '')
+  const linkFileHD = String(row[35] ?? '')
+  const tenFileKhach = String(row[43] ?? '')
+  const linkFileKhach = String(row[44] ?? '')
   return {
     ma_hop_dong: String(row[0] ?? ''),
     so_hop_dong: String(row[1] ?? ''),
@@ -251,7 +273,7 @@ function rowToFbHopDongTongQuat(r: any[]) {
     ngay_tao: String(row[4] ?? ''),
     Tong_tien_truoc_thueVAT: truoc,
     tong_truoc_vat: truoc,
-    tong_truoc_vat_goc: truoc,
+    tong_truoc_vat_goc: truocKhach,
     Tong_thueVAT: vat,
     tong_vat: vat,
     Tong_tien_sau_thueVAT: sau,
@@ -275,7 +297,15 @@ function rowToFbHopDongTongQuat(r: any[]) {
     Ti_gia: toNum(row[18], 1),
     ti_gia: toNum(row[18], 1),
     ma_hop_dong_cu: String(row[19] ?? ''),
-    Tong_gia_thuc_te: toNum(row[20], 0),
+    Tong_gia_thuc_te: truocKhach,
+    Tong_tien_truoc_thueVAT_khach: truocKhach,
+    Tong_thueVAT_khach: vatKhach,
+    Tong_tien_sau_thueVAT_khach: sauKhach,
+    Tong_tien_truoc_thueVAT_list: truocList,
+    Tong_thanh_tien_chua_VAT_mua_hang: giaMuaVnd,
+    giaMua: giaMuaVnd,
+    Tong_CP_don_hang: tongCpVnd,
+    tongCP: tongCpVnd,
     created_time: String(row[21] ?? ''),
     So_PO: String(row[22] ?? ''),
     so_po: String(row[22] ?? ''),
@@ -286,7 +316,8 @@ function rowToFbHopDongTongQuat(r: any[]) {
     content_po: contentVal,
     content: contentVal,
     chiet_khau_tong_truoc_thue: toNum(row[25], 0),
-    gross_com: toNum(row[25], 0),
+    gross_com: toNum(row[25], 0) || toNum(row[29], 0),
+    grossCom: toNum(row[25], 0) || toNum(row[29], 0),
     phan_tram_chiet_khau_tong_truoc_thue: toNum(row[26], 0),
     phan_tram_chiet_khau: toNum(row[26], 0),
     thue_chenh_lech_gia: toNum(row[27], 0),
@@ -294,22 +325,34 @@ function rowToFbHopDongTongQuat(r: any[]) {
     phan_tram_thue: toNum(row[28], 0),
     chenh_lech_gia: toNum(row[29], 0),
     con_lai: toNum(row[30], 0),
+    net_com: toNum(row[30], 0),
+    netCom: toNum(row[30], 0),
     tong_chiet_khau: toNum(row[31], 0),
     ma_hop_dong_goc: String(row[32] || row[0] || ''),
     isCompleted: isCompletedBool,
-    ten_file: String(row[34] ?? ''),
-    link_file: String(row[35] ?? ''),
-    structure: String(row[36] ?? '')
+    ten_file: tenFileHD,
+    link_file: linkFileHD,
+    ten_file_bao_gia: tenFileHD,
+    link_excel_bao_gia: linkFileHD,
+    ten_file_bao_gia_hd: tenFileHD,
+    link_excel_bao_gia_hd: linkFileHD,
+    ten_file_khach: tenFileKhach,
+    link_file_khach: linkFileKhach,
+    ten_file_bao_gia_khach: tenFileKhach,
+    link_excel_bao_gia_khach: linkFileKhach,
+    structure: String(row[36] ?? ''),
+    id_sale_report_craft: String(row[41] ?? ''),
+    id_sale_report: String(row[42] ?? '')
   }
 }
 
 function fbHopDongChiTietToRow(item: any): any[] {
   if (Array.isArray(item)) {
-    const r = item.slice(0, 42)
-    while (r.length < 42) r.push('')
+    const r = item.slice(0, 52)
+    while (r.length < 52) r.push('')
     return r
   }
-  if (!item || typeof item !== 'object') return new Array(42).fill('')
+  if (!item || typeof item !== 'object') return new Array(52).fill('')
   return [
     String(item.ma_hop_dong ?? item.Ma_hop_dong ?? ''),
     String(item.so_hop_dong ?? item.So_hop_dong ?? ''),
@@ -346,19 +389,29 @@ function fbHopDongChiTietToRow(item: any): any[] {
     String(item.volume ?? ''),
     String(item.Description ?? item.description ?? ''),
     String(item.sku_code ?? item.SKU ?? item.sku ?? item.ma_sku ?? ''),
-    item.Don_gia_goc !== undefined && item.Don_gia_goc !== '' ? toNum(item.Don_gia_goc, 0) : '',
+    item.Don_gia_goc !== undefined && item.Don_gia_goc !== '' ? toNum(item.Don_gia_goc, 0) : (item.don_gia_goc !== undefined && item.don_gia_goc !== '' ? toNum(item.don_gia_goc, 0) : (item.don_gia_khach !== undefined && item.don_gia_khach !== '' ? toNum(item.don_gia_khach, 0) : '')),
     item.Don_gia_goc_USD !== undefined && item.Don_gia_goc_USD !== '' ? toNum(item.Don_gia_goc_USD, 0) : '',
     item.muc_phan_tram_off_goc !== undefined && item.muc_phan_tram_off_goc !== '' ? toNum(item.muc_phan_tram_off_goc, 0) : '',
     item.gia_hardware_goc !== undefined && item.gia_hardware_goc !== '' ? toNum(item.gia_hardware_goc, 0) : '',
     item.gia_nhap_goc !== undefined && item.gia_nhap_goc !== '' ? toNum(item.gia_nhap_goc, 0) : '',
     item.Don_gia_kho !== undefined && item.Don_gia_kho !== '' ? toNum(item.Don_gia_kho, 0) : '',
-    item.muc_phan_tram_off_kho !== undefined && item.muc_phan_tram_off_kho !== '' ? toNum(item.muc_phan_tram_off_kho, 0) : ''
+    item.muc_phan_tram_off_kho !== undefined && item.muc_phan_tram_off_kho !== '' ? toNum(item.muc_phan_tram_off_kho, 0) : '',
+    item.List_price_vnd !== undefined && item.List_price_vnd !== '' ? toNum(item.List_price_vnd, 0) : '',
+    item.Don_gia_hop_dong !== undefined && item.Don_gia_hop_dong !== '' ? toNum(item.Don_gia_hop_dong, 0) : (item.don_gia_hop_dong !== undefined && item.don_gia_hop_dong !== '' ? toNum(item.don_gia_hop_dong, 0) : ''),
+    item.Thanh_tien_truoc_thue_hop_dong !== undefined && item.Thanh_tien_truoc_thue_hop_dong !== '' ? toNum(item.Thanh_tien_truoc_thue_hop_dong, 0) : (item.thanh_tien_truoc_thue !== undefined && item.thanh_tien_truoc_thue !== '' ? toNum(item.thanh_tien_truoc_thue, 0) : ''),
+    item.Tien_thue_vat_hop_dong !== undefined && item.Tien_thue_vat_hop_dong !== '' ? toNum(item.Tien_thue_vat_hop_dong, 0) : (item.tien_thue_vat !== undefined && item.tien_thue_vat !== '' ? toNum(item.tien_thue_vat, 0) : ''),
+    item.Thanh_tien_sau_thue_hop_dong !== undefined && item.Thanh_tien_sau_thue_hop_dong !== '' ? toNum(item.Thanh_tien_sau_thue_hop_dong, 0) : (item.thanh_tien_sau_thue !== undefined && item.thanh_tien_sau_thue !== '' ? toNum(item.thanh_tien_sau_thue, 0) : ''),
+    item.Don_gia_khach !== undefined && item.Don_gia_khach !== '' ? toNum(item.Don_gia_khach, 0) : (item.don_gia_khach !== undefined && item.don_gia_khach !== '' ? toNum(item.don_gia_khach, 0) : ''),
+    item.Thanh_tien_truoc_thue_khach !== undefined && item.Thanh_tien_truoc_thue_khach !== '' ? toNum(item.Thanh_tien_truoc_thue_khach, 0) : (item.thanh_tien_truoc_thue_khach !== undefined && item.thanh_tien_truoc_thue_khach !== '' ? toNum(item.thanh_tien_truoc_thue_khach, 0) : ''),
+    item.Tien_thue_vat_khach !== undefined && item.Tien_thue_vat_khach !== '' ? toNum(item.Tien_thue_vat_khach, 0) : (item.tien_thue_vat_khach !== undefined && item.tien_thue_vat_khach !== '' ? toNum(item.tien_thue_vat_khach, 0) : ''),
+    item.Thanh_tien_sau_thue_khach !== undefined && item.Thanh_tien_sau_thue_khach !== '' ? toNum(item.Thanh_tien_sau_thue_khach, 0) : (item.thanh_tien_sau_thue_khach !== undefined && item.thanh_tien_sau_thue_khach !== '' ? toNum(item.thanh_tien_sau_thue_khach, 0) : ''),
+    item.Chenh_lech_truoc_thue !== undefined && item.Chenh_lech_truoc_thue !== '' ? toNum(item.Chenh_lech_truoc_thue, 0) : ''
   ]
 }
 
 function rowToFbHopDongChiTiet(r: any[], trangThaiHopDong: string) {
-  const row = Array.isArray(r) ? r.slice(0, 42) : []
-  while (row.length < 42) row.push('')
+  const row = Array.isArray(r) ? r.slice(0, 52) : []
+  while (row.length < 52) row.push('')
   const maHang = String(row[2] ?? '')
   const tenHang = String(row[3] ?? '')
   const mainImg = String(row[4] ?? '')
@@ -380,6 +433,7 @@ function rowToFbHopDongChiTiet(r: any[], trangThaiHopDong: string) {
   const mucOff = toNum(row[22], 0)
   const desc = String(row[33] ?? '')
   const skuCode = String(row[34] ?? '')
+  const donGiaGocVnd = row[35] !== undefined && row[35] !== '' ? toNum(row[35], donGia) : donGia
   return {
     ma_hop_dong: String(row[0] ?? ''),
     so_hop_dong: String(row[1] ?? ''),
@@ -440,13 +494,23 @@ function rowToFbHopDongChiTiet(r: any[], trangThaiHopDong: string) {
     volume: String(row[32] ?? ''),
     Description: desc,
     description: desc,
-    Don_gia_goc: row[35] !== undefined && row[35] !== '' ? toNum(row[35], donGia) : donGia,
+    Don_gia_goc: donGiaGocVnd,
     Don_gia_goc_USD: row[36] !== undefined && row[36] !== '' ? toNum(row[36], toNum(row[26], 0)) : toNum(row[26], 0),
     muc_phan_tram_off_goc: row[37] !== undefined && row[37] !== '' ? toNum(row[37], mucOff) : mucOff,
     gia_hardware_goc: row[38] !== undefined && row[38] !== '' ? toNum(row[38], toNum(row[20], 0)) : toNum(row[20], 0),
     gia_nhap_goc: row[39] !== undefined && row[39] !== '' ? toNum(row[39], toNum(row[21], 0)) : toNum(row[21], 0),
     Don_gia_kho: row[40] !== undefined && row[40] !== '' ? toNum(row[40], 0) : '',
     muc_phan_tram_off_kho: row[41] !== undefined && row[41] !== '' ? toNum(row[41], 0) : '',
+    List_price_vnd: row[42] !== undefined && row[42] !== '' ? toNum(row[42], 0) : donGiaGocVnd,
+    Don_gia_hop_dong: row[43] !== undefined && row[43] !== '' ? toNum(row[43], donGia) : donGia,
+    Thanh_tien_truoc_thue_hop_dong: row[44] !== undefined && row[44] !== '' ? toNum(row[44], donGia * soLuong) : donGia * soLuong,
+    Tien_thue_vat_hop_dong: row[45] !== undefined && row[45] !== '' ? toNum(row[45], 0) : 0,
+    Thanh_tien_sau_thue_hop_dong: row[46] !== undefined && row[46] !== '' ? toNum(row[46], 0) : 0,
+    Don_gia_khach: row[47] !== undefined && row[47] !== '' ? toNum(row[47], donGiaGocVnd) : donGiaGocVnd,
+    Thanh_tien_truoc_thue_khach: row[48] !== undefined && row[48] !== '' ? toNum(row[48], donGiaGocVnd * soLuong) : donGiaGocVnd * soLuong,
+    Tien_thue_vat_khach: row[49] !== undefined && row[49] !== '' ? toNum(row[49], 0) : 0,
+    Thanh_tien_sau_thue_khach: row[50] !== undefined && row[50] !== '' ? toNum(row[50], 0) : 0,
+    Chenh_lech_truoc_thue: row[51] !== undefined && row[51] !== '' ? toNum(row[51], 0) : 0,
     ghi_chu: ''
   }
 }
@@ -3506,6 +3570,47 @@ function formatTargetCostDiffBadge(target: any): string {
   return `${sign}${formatCurrency(Math.abs(diff), cur)} (${sign}${pct}% vs Giá vốn)`
 }
 
+function getTargetVendorOffPct(target: any): number {
+  if (!target) return 0
+  const lp = donGiaLP(target)
+  const tc = toNum(target.Gia_tieu_chuan, 0)
+  if (lp <= 0 || tc <= 0) return 0
+  return round2((1 - tc / lp) * 100)
+}
+
+function onTargetVendorOffPctInput(target: any, pctVal: number, rule: CostMarkupRule) {
+  if (!target) return
+  const pct = toNum(pctVal, 0)
+  const lp = donGiaLP(target)
+  const hw = toNum(target.gia_hardware, 0)
+  const cur = target.Don_vi_tien_te
+  if (lp > 0) {
+    target.Gia_tieu_chuan = roundPriceByCurrency(Math.max(0, lp * (1 - pct / 100)), cur)
+  } else {
+    const tc = toNum(target.Gia_tieu_chuan, 0)
+    const factor = 1 - pct / 100
+    if (tc > 0 && factor > 1e-6) {
+      const nextLp = roundPriceByCurrency(Math.max(0, tc / factor), cur)
+      target.Don_gia = Math.max(0, nextLp - hw)
+    }
+  }
+  syncCostMarkupFromPrices(rule, target.Gia_tieu_chuan, target.Don_gia)
+}
+
+function formatTargetCustomerAfterOffPrice(target: any): string {
+  if (!target) return ''
+  const afterOff = donGiaSauOff(target)
+  const isUsdDisplay =
+    target.Don_vi_tien_te &&
+    String(target.Don_vi_tien_te).trim().toUpperCase() === 'USD' &&
+    toNum(target.Ti_gia, 1) <= 1
+  if (isUsdDisplay) {
+    return `${formatUSD(afterOff)} USD`
+  }
+  const tg = toNum(target.Ti_gia, 1) || 1
+  return `${formatVND(afterOff * tg)} ₫`
+}
+
 function getManualFormFileHistory(): ProductFileEntry[] {
   return normalizeProductFileHistory(itemForm.value?.danh_sach_file)
 }
@@ -4840,7 +4945,7 @@ function mapHopDongChiTietRowToItem(row: any[]) {
     License_duration: String(row?.[11] ?? ''),
     DVT: String(row?.[12] ?? ''),
     Gia_tieu_chuan: toNum(row?.[13], 0),
-    Don_gia: toNum(row?.[14], 0),
+    Don_gia: row?.[43] !== undefined && row?.[43] !== '' && toNum(row[43], 0) > 0 ? toNum(row[43], 0) : toNum(row?.[14], 0),
     Trang_thai: 'Hiển thị',
     Don_vi_tien_te: String(row?.[15] ?? 'VND'),
     Ti_gia: toNum(row?.[16], 1),
@@ -4857,8 +4962,8 @@ function mapHopDongChiTietRowToItem(row: any[]) {
     _gia_hardware_goc: row?.[38] !== undefined && row?.[38] !== '' ? toNum(row[38], 0) : (baseProduct ? toNum(baseProduct.gia_hardware, 0) : toNum(row?.[20], 0)),
     _gia_nhap_goc: row?.[39] !== undefined && row?.[39] !== '' ? toNum(row[39], 0) : (baseProduct ? toNum(baseProduct.gia_nhap, 0) : toNum(row?.[21], 0)),
     _muc_phan_tram_off_goc: row?.[37] !== undefined && row?.[37] !== '' ? toNum(row[37], 0) : (baseProduct ? toNum(baseProduct.muc_phan_tram_off, 0) : toNum(row?.[22], 0)),
-    _Don_gia_goc: row?.[35] !== undefined && row?.[35] !== '' ? toNum(row[35], 0) : (baseProduct ? toNum(baseProduct.Don_gia, 0) : toNum(row?.[14], 0)),
-    _Gia_tieu_chuan_goc: baseProduct ? toNum(baseProduct.Gia_tieu_chuan, 0) : toNum(row?.[13], 0),
+    _Don_gia_goc: row?.[47] !== undefined && row?.[47] !== '' && toNum(row[47], 0) > 0 ? toNum(row[47], 0) : (row?.[35] !== undefined && row?.[35] !== '' ? toNum(row[35], 0) : (baseProduct ? toNum(baseProduct.Don_gia, 0) : toNum(row?.[14], 0))),
+    _Gia_tieu_chuan_goc: toNum(row?.[13], 0) > 0 ? toNum(row?.[13], 0) : (baseProduct ? toNum(baseProduct.Gia_tieu_chuan, 0) : 0),
     _Ti_gia_goc: baseProduct ? toNum(baseProduct.Ti_gia, 1) : toNum(row?.[16], 1),
     _Thue_VAT_goc: baseProduct ? toNum(baseProduct.Thue_VAT, 0) : toNum(row?.[17], 0),
     // ✅ snapshot giá kho gốc ban đầu (Báo giá gốc)
@@ -4866,7 +4971,7 @@ function mapHopDongChiTietRowToItem(row: any[]) {
     _gia_nhap_kho: baseProduct ? toNum(baseProduct.gia_nhap, 0) : toNum(row?.[21], 0),
     _muc_phan_tram_off_kho: row?.[41] !== undefined && row?.[41] !== '' ? toNum(row[41], 0) : (baseProduct ? toNum(baseProduct.muc_phan_tram_off, 0) : toNum(row?.[22], 0)),
     _Don_gia_kho: row?.[40] !== undefined && row?.[40] !== '' && toNum(row[40], 0) > 0 ? toNum(row[40], 0) : (baseProduct ? toNum(baseProduct.Don_gia, 0) : toNum(row?.[14], 0)),
-    _Gia_tieu_chuan_kho: baseProduct ? toNum(baseProduct.Gia_tieu_chuan, 0) : toNum(row?.[13], 0),
+    _Gia_tieu_chuan_kho: toNum(row?.[13], 0) > 0 ? toNum(row?.[13], 0) : (baseProduct ? toNum(baseProduct.Gia_tieu_chuan, 0) : 0),
     _Ti_gia_kho: baseProduct ? toNum(baseProduct.Ti_gia, 1) : toNum(row?.[16], 1),
     _Thue_VAT_kho: baseProduct ? toNum(baseProduct.Thue_VAT, 0) : toNum(row?.[17], 0)
   } as any
@@ -4890,9 +4995,11 @@ function mapHopDongChiTietRowToItem(row: any[]) {
     item._Ti_gia_goc = tiGiaUSD
     item._Gia_tieu_chuan_goc = item.Gia_tieu_chuan
     item._Ti_gia_kho = baseProduct ? toNum(baseProduct.Ti_gia, tiGiaUSD) : tiGiaUSD
-    item._Gia_tieu_chuan_kho = baseProduct ? toNum(baseProduct.Gia_tieu_chuan, item.Gia_tieu_chuan) : item.Gia_tieu_chuan
+    item._Gia_tieu_chuan_kho = item.Gia_tieu_chuan > 0 ? item.Gia_tieu_chuan : (baseProduct ? toNum(baseProduct.Gia_tieu_chuan, 0) : 0)
     if (row?.[36] !== undefined && row?.[36] !== '' && toNum(row[36], 0) > 0) {
       item._Don_gia_goc = toNum(row[36], item.Don_gia)
+    } else if (row?.[47] !== undefined && row?.[47] !== '' && toNum(row[47], 0) > 0) {
+      item._Don_gia_goc = toNum(row[47], 0) / tiGiaUSD
     } else if (row?.[35] !== undefined && row?.[35] !== '' && toNum(row[35], 0) > 0) {
       item._Don_gia_goc = toNum(row[35], 0) / tiGiaUSD
     } else if (!baseProduct) {
@@ -4927,6 +5034,17 @@ function findContractRow() {
   }
   return contractsRaw.value.find(r => String(r?.[0] ?? '').trim() === key) || null
 }
+
+function isContractRowOfficial(r: any[] | null | undefined): boolean {
+  if (!r || !Array.isArray(r)) return false
+  const status = String(r?.[15] ?? '').trim().toLowerCase()
+  if (status === 'chính thức' || status === 'chinh thuc') return true
+  if (r?.[33] === true || String(r?.[33] ?? '').toUpperCase() === 'TRUE') return true
+  return false
+}
+
+const selectedLoadContractRow = computed(() => findContractRow())
+const isSelectedLoadContractOfficial = computed(() => isContractRowOfficial(selectedLoadContractRow.value))
 
 async function openLoadInvoiceModal() {
   loadSortBy.value = 'desc';
@@ -4982,6 +5100,12 @@ async function loadInvoiceToFE() {
   if (!row) {
     loadMsg.value = '❌ Không tìm thấy hóa đơn/hợp đồng theo mã/số đã chọn.'
     showAsyncError('Lỗi', 'Không tìm thấy hóa đơn/hợp đồng theo mã/số đã chọn.')
+    return
+  }
+
+  if (isContractRowOfficial(row)) {
+    loadMsg.value = '⚠️ PO chính thức chỉ cho phép Nhân bản, không cho phép chỉnh sửa.'
+    showAsyncError('Không thể chỉnh sửa', 'PO chính thức đã chốt, chỉ cho phép Nhân bản.')
     return
   }
 
@@ -5058,6 +5182,8 @@ async function loadInvoiceToFE() {
     selectedItems.value.forEach(it => {
       if (it.Ma_hang) qtyMap[it.Ma_hang] = Math.max(1, toNum(it.So_luong, 1))
     })
+
+    restoreCmpSrOverridesFromContractRow(row)
 
     syncFlatRows()
     flushQuoteTabsToStorageNow()
@@ -5154,6 +5280,8 @@ async function cloneInvoiceToFE() {
     selectedItems.value.forEach(it => {
       if (it.Ma_hang) qtyMap[it.Ma_hang] = Math.max(1, toNum(it.So_luong, 1))
     })
+
+    restoreCmpSrOverridesFromContractRow(row)
 
     syncFlatRows()
     showLoadInvoiceModal.value = false
@@ -5425,6 +5553,8 @@ async function loadPipelineToFE() {
     selectedItems.value.forEach(it => {
       if (it.Ma_hang) qtyMap[it.Ma_hang] = Math.max(1, toNum(it.So_luong, 1))
     })
+
+    restoreCmpSrOverridesFromContractRow(contractRow)
 
     loadedPipelineExtraData.value = {
       po: poRow,
@@ -7195,7 +7325,7 @@ const totalsContract = computed(() => {
     loi += lineLoiNhuanRaw(i)
 
     const tg = getGocNumber(i, '_Ti_gia_goc', toNum(i.Ti_gia, 1))
-    const lpVnd = donGiaLPGoc(i) * tg
+    const lpVnd = donGiaLPKho(i) * tg
     const pctOff = getGocNumber(i, '_muc_phan_tram_off_goc', toNum(i.muc_phan_tram_off, 0))
     off += lpVnd * (pctOff / 100) * toNum(i.So_luong, 1)
   })
@@ -7215,7 +7345,7 @@ const totalsContractUSD = computed(() => {
     truoc += lineTruocThueRaw(i) / tg
     vat += lineVATRaw(i) / tg
     loi += lineLoiNhuanRaw(i) / tg
-    const lp = donGiaLPGoc(i)
+    const lp = donGiaLPKho(i)
     const pctOff = getGocNumber(i, '_muc_phan_tram_off_goc', toNum(i.muc_phan_tram_off, 0))
     off += lp * (pctOff / 100) * toNum(i.So_luong, 1)
   })
@@ -7278,8 +7408,8 @@ const saveMsg = ref('')
 
 async function postApi(action: string, payload: any) {
   if (action === 'save_contract_temp') {
-    const hdRow = Array.isArray(payload?.hd_tong_quat_row) ? payload.hd_tong_quat_row.slice(0, 37) : []
-    while (hdRow.length < 37) hdRow.push('')
+    const hdRow = Array.isArray(payload?.hd_tong_quat_row) ? payload.hd_tong_quat_row.slice(0, 46) : []
+    while (hdRow.length < 46) hdRow.push('')
     const ctRows = Array.isArray(payload?.hd_chi_tiet_rows) ? payload.hd_chi_tiet_rows : []
     if (!hdRow.length) throw new Error('Thiếu hd_tong_quat_row')
 
@@ -7317,12 +7447,12 @@ async function postApi(action: string, payload: any) {
       })
       await update(dbRef(database), ctUpdates)
     }
-    return { ok: true, status: 'success' }
+    return { ok: true, status: 'success', maGoc }
   }
 
   if (action === 'save_contract_official') {
-    const hdRow = Array.isArray(payload?.hd_tong_quat_row) ? payload.hd_tong_quat_row.slice(0, 37) : []
-    while (hdRow.length < 37) hdRow.push('')
+    const hdRow = Array.isArray(payload?.hd_tong_quat_row) ? payload.hd_tong_quat_row.slice(0, 46) : []
+    while (hdRow.length < 46) hdRow.push('')
     const ctRows = Array.isArray(payload?.hd_chi_tiet_rows) ? payload.hd_chi_tiet_rows : []
     const maKH = String(payload?.ma_khach_hang || hdRow[2] || '').trim()
     const tongSau = toNum(payload?.tong_sau_thue ?? hdRow[7], 0)
@@ -7379,7 +7509,7 @@ async function postApi(action: string, payload: any) {
       })
       await update(dbRef(database), ctUpdates)
     }
-    return { ok: true, status: 'success' }
+    return { ok: true, status: 'success', maGoc }
   }
 
   if (action === 'addHangHoa') {
@@ -7474,6 +7604,514 @@ function formatCreatedTimeVN(d = new Date()) {
   return `${hh}:${mm}, ${DD}/${MM}/${YYYY}`
 }
 
+function calcTotalGiaMuaChuaVatVnd(): number {
+  return round2(
+    selectedItems.value.reduce((acc, it) => {
+      const sl = Math.max(1, toNum(it.So_luong, 1))
+      const tg = toNum(it.Ti_gia, 1)
+      const giaMuaVnd = toNum(it.Gia_tieu_chuan, 0) * tg
+      return acc + giaMuaVnd * sl
+    }, 0)
+  )
+}
+
+function cmpSrValToVnd(val: number | null | undefined): number | null {
+  if (val === null || val === undefined) return null
+  const num = Number(val)
+  if (!Number.isFinite(num)) return null
+  if (quoteCurrency.value === 'USD') {
+    const tg = Math.max(1, toNum(mainTiGia.value, 1))
+    return Math.round(num * tg)
+  }
+  return Math.round(num)
+}
+
+function buildQuoteSaleReportGoodsAndTotals(existingCraft?: any) {
+  const t = totals.value
+  const tKhach = totalsContract.value
+  const tOrigin = totalsOrigin.value
+  const baseGiaMuaVnd = calcTotalGiaMuaChuaVatVnd()
+
+  // Ưu tiên Giá mua & Tổng CP đơn hàng từ Box "Chỉ số tài chính & COM" (nếu người dùng có chỉnh sửa),
+  // mặc định lấy từ Giá vốn (Gia_tieu_chuan * Ti_gia * So_luong) của bảng hàng hóa.
+  const rawOverrideGiaMua =
+    cmpSrOverridesMap[cmpSrPriceSource.value].giaMua ??
+    cmpSrOverridesMap.contract.giaMua ??
+    cmpSrOverridesMap.customer.giaMua
+  const overrideGiaMuaVnd = cmpSrValToVnd(rawOverrideGiaMua)
+  const tongMuaChuaVat = overrideGiaMuaVnd !== null ? overrideGiaMuaVnd : baseGiaMuaVnd
+
+  const rawOverrideTongCP =
+    cmpSrOverridesMap[cmpSrPriceSource.value].tongCP ??
+    cmpSrOverridesMap.contract.tongCP ??
+    cmpSrOverridesMap.customer.tongCP
+  const overrideTongCpVnd = cmpSrValToVnd(rawOverrideTongCP)
+
+  let tongCpDonHang = tongMuaChuaVat
+  if (overrideTongCpVnd !== null) {
+    tongCpDonHang = overrideTongCpVnd
+  } else if (overrideGiaMuaVnd !== null) {
+    tongCpDonHang = tongMuaChuaVat
+  } else if (existingCraft && typeof existingCraft === 'object') {
+    const prevCp = toNum(existingCraft.Tong_CP_don_hang ?? existingCraft.tongCP, 0)
+    const prevMua = toNum(existingCraft.Tong_thanh_tien_chua_VAT_mua_hang ?? existingCraft.giaMua, 0)
+    if (prevCp > 0 && Math.abs(prevCp - prevMua) > 1) {
+      tongCpDonHang = prevCp
+    }
+  }
+
+  const goodsList = selectedItems.value.map((it, idx) => {
+    const sl = Math.max(1, toNum((it as any).So_luong, 1))
+    const tg = toNum(it.Ti_gia, 1)
+    const tgGoc = getGocNumber(it, '_Ti_gia_goc', tg)
+    const vatPct = toNum(it.Thue_VAT, 0)
+    const vatPctGoc = getGocNumber(it, '_Thue_VAT_goc', vatPct)
+
+    // Giá vốn / Mua hàng (chưa VAT, VND)
+    const giaMuaUnitVnd = round2(toNum(it.Gia_tieu_chuan, 0) * tg)
+    const thanhTienMuaChuaVat = round2(giaMuaUnitVnd * sl)
+
+    // List Price (VND) & % Off hãng
+    const donGiaKhachUSD = getGocNumber(it, '_Don_gia_goc', toNum(it.Don_gia, 0))
+    const pctOffKhach = getGocNumber(it, '_muc_phan_tram_off_goc', toNum(it.muc_phan_tram_off, 0))
+    const donGiaKho = getGocNumber(it, '_Don_gia_kho', donGiaKhachUSD)
+    const pctOffKho = getGocNumber(it, '_muc_phan_tram_off_kho', pctOffKhach)
+    const listPriceVnd = round2(donGiaKho * tgGoc)
+
+    // Giá Hợp Đồng (VND)
+    const donGiaHopDongVnd = round2(toNum(it.Don_gia, 0) * tg)
+    const ttTruocHopDong = round2(donGiaHopDongVnd * sl)
+    const tienVatHopDong = round2(ttTruocHopDong * (vatPct / 100))
+    const ttSauHopDong = round2(ttTruocHopDong + tienVatHopDong)
+
+    // Giá Khách / Thực tế (VND)
+    const donGiaKhachVnd = round2(donGiaKhachUSD * tgGoc)
+    const ttTruocKhach = round2(donGiaKhachVnd * sl)
+    const tienVatKhach = round2(ttTruocKhach * (vatPctGoc / 100))
+    const ttSauKhach = round2(ttTruocKhach + tienVatKhach)
+
+    // Chênh lệch dòng trước thuế (HĐ - Khách)
+    const chenhLechTruocVat = round2(ttTruocHopDong - ttTruocKhach)
+    const dienGiaiStr = String((it as any).Description || it.Mo_ta_chung || it.Ten_hang || '').trim()
+
+    return {
+      stt: idx + 1,
+      // Chuẩn camelCase (SaleReportFirebase.vue)
+      maHang: it.Ma_hang || '',
+      danhMuc: it.Danh_muc || it.Ten_nha_cung_cap || '',
+      ten: it.Ten_hang || '',
+      dienGiai: dienGiaiStr,
+      dvt: it.DVT || '',
+      sl,
+      donGia: donGiaHopDongVnd,
+      ttTruoc: ttTruocHopDong,
+      vat: tienVatHopDong,
+      ttSau: ttSauHopDong,
+      vatPct: String(vatPct),
+      // Chuẩn snake_case (QuanLyFile.vue & pipeline)
+      ma_hang_hoa: it.Ma_hang || '',
+      sku_code: it.sku_code || '',
+      ten_hang_hoa: it.Ten_hang || '',
+      hang: it.Ten_nha_cung_cap || it.Danh_muc || '',
+      don_gia: donGiaHopDongVnd,
+      thanh_tien_truoc_vat: ttTruocHopDong,
+      vat_pct: vatPct,
+      tien_vat: tienVatHopDong,
+      thanh_tien_sau_vat: ttSauHopDong,
+      // Tường minh Giá Hợp Đồng (VND)
+      don_gia_hop_dong: donGiaHopDongVnd,
+      thanh_tien_truoc_vat_hop_dong: ttTruocHopDong,
+      tien_vat_hop_dong: tienVatHopDong,
+      thanh_tien_sau_vat_hop_dong: ttSauHopDong,
+      // Tường minh Giá Khách / Thực tế (VND)
+      don_gia_khach: donGiaKhachVnd,
+      thanh_tien_truoc_vat_khach: ttTruocKhach,
+      tien_vat_khach: tienVatKhach,
+      thanh_tien_sau_vat_khach: ttSauKhach,
+      // Giá gốc List & Giá vốn Mua hàng (VND) + % Off + Chênh lệch
+      list_price_vnd: listPriceVnd,
+      gia_tieu_chuan_vnd: giaMuaUnitVnd,
+      thanh_tien_mua_chua_vat: thanhTienMuaChuaVat,
+      muc_phan_tram_off_kho: pctOffKho,
+      muc_phan_tram_off_khach: pctOffKhach,
+      muc_phan_tram_off_hop_dong: toNum(it.muc_phan_tram_off, 0),
+      chenh_lech_truoc_vat: chenhLechTruocVat
+    }
+  })
+
+  const baseTruocHD = round2(t.truoc)
+  const baseTruocKhach = round2(toNum(tongGiaThucTe.value, tKhach.truoc))
+  const isSameBasePrice = Math.abs(baseTruocHD - baseTruocKhach) <= 1
+
+  const rawDsbHD = cmpSrValToVnd(cmpSrOverridesMap.contract.doanhSoBan)
+  const rawDsbKhach = cmpSrValToVnd(cmpSrOverridesMap.customer.doanhSoBan)
+  const overrideDsbHD = isSameBasePrice ? (rawDsbHD ?? rawDsbKhach) : rawDsbHD
+  const overrideDsbKhach = isSameBasePrice ? (rawDsbKhach ?? rawDsbHD) : rawDsbKhach
+
+  const truocHD = overrideDsbHD !== null ? overrideDsbHD : baseTruocHD
+  const vatHD = round2(t.vat)
+  const sauHD = overrideDsbHD !== null ? round2(truocHD + vatHD) : round2(t.sau)
+  const truocKhach = overrideDsbKhach !== null ? overrideDsbKhach : baseTruocKhach
+  const vatKhach = round2(tKhach.vat)
+  const sauKhach = overrideDsbKhach !== null ? round2(truocKhach + vatKhach) : round2(tKhach.sau)
+  const truocList = round2(tOrigin.truoc)
+  const chenhLechTongTruocVat = round2(truocHD - truocKhach)
+
+  // Chỉ số COM / Chiết khấu / Thuế chênh lệch (ưu tiên Box Chỉ số tài chính nếu người dùng sửa)
+  const thueCLPct = Math.max(0, toNum(thueChenhLechPct.value, 25))
+  const ckTruocThuePct = toNum(chietKhauTruocThuePct.value, 0)
+  const baseCkTruocThue = toNum(chietKhauTruocThue.value, 0)
+  const baseClGia = toNum(chenhLechGia.value, 0)
+  const baseGrossCom = baseCkTruocThue || baseClGia
+
+  const activeB = cmpSrOverridesMap[cmpSrPriceSource.value]
+  const otherB = cmpSrOverridesMap[cmpSrPriceSource.value === 'contract' ? 'customer' : 'contract']
+  const comBucket =
+    activeB.grossCom !== null || activeB.netCom !== null
+      ? activeB
+      : otherB.grossCom !== null || otherB.netCom !== null
+        ? otherB
+        : null
+
+  let grossComVal = baseGrossCom
+  let netComVal = 0
+  let thueCL = 0
+  let conLaiVal = 0
+  let tongCKVal = 0
+  let ckTruocThue = baseCkTruocThue
+  let clGia = baseClGia
+
+  if (comBucket) {
+    grossComVal = cmpSrValToVnd(comBucket.grossCom) ?? baseGrossCom
+    netComVal = cmpSrValToVnd(comBucket.netCom) ?? Math.round(grossComVal * (1 - thueCLPct / 100))
+    thueCL = Math.max(0, Math.round(grossComVal - netComVal))
+    conLaiVal = netComVal
+    tongCKVal = netComVal
+    if (baseClGia === 0 && ckTruocThuePct > 0) {
+      ckTruocThue = grossComVal
+      clGia = 0
+    } else {
+      clGia = grossComVal
+    }
+  } else {
+    grossComVal = baseGrossCom
+    thueCL = baseClGia !== 0 ? toNum(thueChenhLech.value, 0) : Math.round((grossComVal * thueCLPct) / 100)
+    netComVal = baseClGia !== 0 ? toNum(conLai.value, 0) : Math.round(grossComVal - thueCL)
+    conLaiVal = baseClGia !== 0 ? toNum(conLai.value, 0) : netComVal
+    tongCKVal = toNum(tongChietKhau.value, 0) || netComVal
+    ckTruocThue = baseCkTruocThue
+    clGia = baseClGia
+  }
+
+  const goodsTotal = {
+    // Chuẩn camelCase (SaleReportFirebase.vue)
+    ttTruoc: truocHD,
+    vat: vatHD,
+    ttSau: sauHD,
+    // Chuẩn snake_case (QuanLyFile.vue)
+    truoc_vat: truocHD,
+    sau_vat: sauHD,
+    // Tường minh Giá Hợp Đồng
+    truoc_vat_hop_dong: truocHD,
+    vat_hop_dong: vatHD,
+    sau_vat_hop_dong: sauHD,
+    // Tường minh Giá Khách
+    truoc_vat_khach: truocKhach,
+    vat_khach: vatKhach,
+    sau_vat_khach: sauKhach,
+    // Giá List & Giá vốn Mua hàng & Chênh lệch
+    truoc_vat_list: truocList,
+    tong_mua_hang_chua_vat: tongMuaChuaVat,
+    tong_cp_don_hang: tongCpDonHang,
+    chenh_lech_truoc_vat: chenhLechTongTruocVat
+  }
+
+  return {
+    goodsList,
+    goodsTotal,
+    truocHD,
+    vatHD,
+    sauHD,
+    truocKhach,
+    vatKhach,
+    sauKhach,
+    truocList,
+    tongMuaChuaVat,
+    tongCpDonHang,
+    chenhLechTongTruocVat,
+    ckTruocThue,
+    ckTruocThuePct,
+    thueCL,
+    thueCLPct,
+    clGia,
+    grossComVal,
+    conLaiVal,
+    tongCKVal,
+    netComVal
+  }
+}
+
+async function findExistingSaleReportCraftInfo(
+  maMoi: string,
+  maCu: string | null,
+  maGoc: string | null
+): Promise<{ craftKey: string; existingData: any | null }> {
+  const candidates = new Set(
+    [maMoi, maCu || '', maGoc || ''].map(s => String(s || '').trim()).filter(Boolean)
+  )
+  try {
+    // 1) Kiểm tra id_sale_report_craft đã gắn trên hop_dong_tong_quat của bản cũ/gốc (nếu có)
+    for (const code of candidates) {
+      const hdSnap = await get(dbRef(database, `hop_dong_tong_quat/${code}`))
+      if (hdSnap.exists()) {
+        const hdVal = hdSnap.val()
+        const linkedCraftId = String(hdVal?.id_sale_report_craft || '').trim()
+        if (linkedCraftId) {
+          const craftSnap = await get(dbRef(database, `sale_report_craft/${linkedCraftId}`))
+          if (craftSnap.exists()) {
+            return { craftKey: linkedCraftId, existingData: craftSnap.val() }
+          }
+          return { craftKey: linkedCraftId, existingData: null }
+        }
+      }
+    }
+
+    // 2) Quét trong sale_report_craft theo ma_hop_dong hoặc ma_hop_dong_goc
+    const allCraftSnap = await get(dbRef(database, 'sale_report_craft'))
+    if (allCraftSnap.exists()) {
+      const allCrafts = allCraftSnap.val() || {}
+      for (const [k, v] of Object.entries(allCrafts) as [string, any][]) {
+        if (!v || typeof v !== 'object') continue
+        const mhd = String(v.ma_hop_dong || '').trim()
+        const mhdGoc = String(v.ma_hop_dong_goc || '').trim()
+        if ((mhd && candidates.has(mhd)) || (mhdGoc && candidates.has(mhdGoc))) {
+          return { craftKey: k, existingData: v }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Không tìm được sale_report_craft cũ, tạo mới:', e)
+  }
+  const newKey = push(dbRef(database, 'sale_report_craft')).key || `CRAFT_${Date.now()}`
+  return { craftKey: newKey, existingData: null }
+}
+
+type QuoteFileSlotMode = 'template' | 'upload' | 'skip'
+const saveQuoteFileConfigModal = reactive<{
+  visible: boolean
+  saveMode: 'temp' | 'official'
+  fromSaveModal: boolean
+  hdMode: QuoteFileSlotMode
+  hdTemplateId: string
+  hdCustomFile: File | null
+  khachMode: QuoteFileSlotMode
+  khachTemplateId: string
+  khachCustomFile: File | null
+}>({
+  visible: false,
+  saveMode: 'temp',
+  fromSaveModal: false,
+  hdMode: 'template',
+  hdTemplateId: 'MINTL_HOP_DONG',
+  hdCustomFile: null,
+  khachMode: 'template',
+  khachTemplateId: 'MINTL_CHUAN_NTS',
+  khachCustomFile: null
+})
+const hdCustomFileInputRef = ref<HTMLInputElement | null>(null)
+const khachCustomFileInputRef = ref<HTMLInputElement | null>(null)
+
+async function openSaveQuoteFileConfigModal(saveMode: 'temp' | 'official', fromSaveModal = false) {
+  if (!printTemplates.value.length) {
+    await loadPrintTemplates().catch(() => {})
+  }
+  const list = printTemplates.value
+  const defaultHdTpl =
+    list.find(t => t.id === 'MINTL_HOP_DONG') ||
+    list.find(t => isContractPriceTemplate(t)) ||
+    list[0]
+  const defaultKhachTpl =
+    list.find(t => t.id === 'MINTL_CHUAN_NTS') ||
+    list.find(t => !isContractPriceTemplate(t) && !isListPriceTemplate(t) && !isThreePriceComparisonTemplate(t)) ||
+    list[0]
+
+  saveQuoteFileConfigModal.saveMode = saveMode
+  saveQuoteFileConfigModal.fromSaveModal = fromSaveModal
+  saveQuoteFileConfigModal.hdMode = 'template'
+  saveQuoteFileConfigModal.hdTemplateId = defaultHdTpl?.id || 'MINTL_HOP_DONG'
+  saveQuoteFileConfigModal.hdCustomFile = null
+  saveQuoteFileConfigModal.khachMode = 'template'
+  saveQuoteFileConfigModal.khachTemplateId = defaultKhachTpl?.id || 'MINTL_CHUAN_NTS'
+  saveQuoteFileConfigModal.khachCustomFile = null
+  saveQuoteFileConfigModal.visible = true
+}
+
+function triggerPickCustomQuoteFile(slot: 'hd' | 'khach') {
+  if (slot === 'hd') {
+    saveQuoteFileConfigModal.hdMode = 'upload'
+    hdCustomFileInputRef.value?.click()
+  } else {
+    saveQuoteFileConfigModal.khachMode = 'upload'
+    khachCustomFileInputRef.value?.click()
+  }
+}
+
+function onCustomQuoteFilePicked(slot: 'hd' | 'khach', e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input?.files?.[0] || null
+  if (!file) return
+  if (slot === 'hd') {
+    saveQuoteFileConfigModal.hdCustomFile = file
+    saveQuoteFileConfigModal.hdMode = 'upload'
+  } else {
+    saveQuoteFileConfigModal.khachCustomFile = file
+    saveQuoteFileConfigModal.khachMode = 'upload'
+  }
+  if (input) input.value = ''
+}
+
+function cancelSaveQuoteFileConfigModal() {
+  const reopenSaveModal = saveQuoteFileConfigModal.fromSaveModal
+  saveQuoteFileConfigModal.visible = false
+  if (reopenSaveModal) {
+    showSaveModal.value = true
+  }
+}
+
+async function skipAllFilesAndSaveQuoteNow() {
+  saveQuoteFileConfigModal.hdMode = 'skip'
+  saveQuoteFileConfigModal.khachMode = 'skip'
+  saveQuoteFileConfigModal.visible = false
+  if (saveQuoteFileConfigModal.saveMode === 'temp') {
+    await saveContractTemp(true, true)
+  } else {
+    await saveContractOfficialAndSaleReport(true, true)
+  }
+}
+
+async function confirmSaveQuoteWithConfiguredFiles() {
+  if (saveQuoteFileConfigModal.hdMode === 'upload' && !saveQuoteFileConfigModal.hdCustomFile) {
+    showAsyncError('⚠️ Chưa chọn file Hợp đồng [HĐ]', 'Vui lòng chọn file từ máy tính cho mục Hợp Đồng [HĐ], hoặc chuyển sang Chọn mẫu in / Bỏ qua.')
+    return
+  }
+  if (saveQuoteFileConfigModal.khachMode === 'upload' && !saveQuoteFileConfigModal.khachCustomFile) {
+    showAsyncError('⚠️ Chưa chọn file Khách hàng [Khách]', 'Vui lòng chọn file từ máy tính cho mục Khách Hàng [Khách], hoặc chuyển sang Chọn mẫu in / Bỏ qua.')
+    return
+  }
+  saveQuoteFileConfigModal.visible = false
+  if (saveQuoteFileConfigModal.saveMode === 'temp') {
+    await saveContractTemp(true, true)
+  } else {
+    await saveContractOfficialAndSaleReport(true, true)
+  }
+}
+
+async function uploadBlobOrFileToCloudinary(fileOrBlob: Blob | File, fileName: string): Promise<string> {
+  try {
+    const formData = new FormData()
+    formData.append('upload_preset', 'upload_file')
+    formData.append('file', fileOrBlob, fileName)
+    const uploadRes = await fetch('https://api.cloudinary.com/v1_1/db6fzs3rh/auto/upload', {
+      method: 'POST',
+      body: formData
+    }).then(r => r.json())
+    return uploadRes?.secure_url || ''
+  } catch (e) {
+    console.error('Lỗi upload file báo giá lên Cloudinary:', e)
+    return ''
+  }
+}
+
+async function generateQuoteExcelBlobForMode(mode: 'hd' | 'khach', tplId: string): Promise<{ blob: Blob; fileName: string }> {
+  if (!printTemplates.value.length) {
+    await loadPrintTemplates().catch(() => {})
+  }
+  const fallbackTpl = mode === 'hd'
+    ? createContractPriceTemplateConfig('MINTL_HOP_DONG', 'Mẫu Báo Giá Hợp Đồng')
+    : createStarterTemplateConfig('MINTL_CHUAN_NTS', 'Mẫu Báo Giá Chuẩn NTS')
+  const tpl = printTemplates.value.find(t => t.id === tplId) || fallbackTpl
+  const baseCtx = buildCurrentQuoteExportContext()
+  const customFont = previewEditor.value?.getToolbarFont()
+  if (customFont) baseCtx.customDefaultFont = customFont
+
+  const isSpecialTpl = isThreePriceComparisonTemplate(tpl) || isListPriceTemplate(tpl)
+  const targetRows = mode === 'hd' ? baseCtx.contractRows : baseCtx.customerRows
+  const targetTotals = mode === 'hd' ? baseCtx.contractTotals : baseCtx.customerTotals
+
+  const finalCtx: QuoteExportContext = isSpecialTpl
+    ? baseCtx
+    : {
+        ...baseCtx,
+        rows: targetRows || baseCtx.rows,
+        totals: targetTotals || baseCtx.totals,
+        contractRows: targetRows || baseCtx.contractRows,
+        contractTotals: targetTotals || baseCtx.contractTotals,
+        customerRows: targetRows || baseCtx.customerRows,
+        customerTotals: targetTotals || baseCtx.customerTotals
+      }
+
+  const blob = await generateExcelBlobFromTemplate(tpl, finalCtx)
+  const baseName = getQuoteDownloadBaseName()
+  const suffix = mode === 'hd' ? 'BaoGiaHopDong' : 'BaoGiaKhach'
+  const fileName = `${baseName}_${suffix}.xlsx`
+  return { blob, fileName }
+}
+
+async function resolveAndUploadConfiguredQuoteFiles(): Promise<{
+  tenFileHD: string
+  linkFileHD: string
+  tenFileKhach: string
+  linkFileKhach: string
+}> {
+  const cfg = saveQuoteFileConfigModal
+  const tasks: Promise<void>[] = []
+  let tenFileHD = ''
+  let linkFileHD = ''
+  let tenFileKhach = ''
+  let linkFileKhach = ''
+
+  if (cfg.hdMode === 'template') {
+    tasks.push((async () => {
+      const { blob, fileName } = await generateQuoteExcelBlobForMode('hd', cfg.hdTemplateId)
+      tenFileHD = fileName
+      linkFileHD = await uploadBlobOrFileToCloudinary(blob, fileName)
+    })())
+  } else if (cfg.hdMode === 'upload' && cfg.hdCustomFile) {
+    const f = cfg.hdCustomFile
+    tasks.push((async () => {
+      tenFileHD = f.name
+      linkFileHD = await uploadBlobOrFileToCloudinary(f, f.name)
+    })())
+  }
+
+  if (cfg.khachMode === 'template') {
+    tasks.push((async () => {
+      const { blob, fileName } = await generateQuoteExcelBlobForMode('khach', cfg.khachTemplateId)
+      tenFileKhach = fileName
+      linkFileKhach = await uploadBlobOrFileToCloudinary(blob, fileName)
+    })())
+  } else if (cfg.khachMode === 'upload' && cfg.khachCustomFile) {
+    const f = cfg.khachCustomFile
+    tasks.push((async () => {
+      tenFileKhach = f.name
+      linkFileKhach = await uploadBlobOrFileToCloudinary(f, f.name)
+    })())
+  }
+
+  await Promise.all(tasks)
+  return { tenFileHD, linkFileHD, tenFileKhach, linkFileKhach }
+}
+
+async function uploadQuoteExcelToCloudinary(tenFileBaoGia: string): Promise<string> {
+  try {
+    const blob = await generateQuoteExcelBlob(undefined, undefined, previewEditor.value?.getToolbarFont())
+    return await uploadBlobOrFileToCloudinary(blob, tenFileBaoGia)
+  } catch (e) {
+    console.error('Lỗi upload file báo giá lên Cloudinary:', e)
+    return ''
+  }
+}
+
 function buildHopDongTongQuatRow(
   statusHopDong: 'Tạm' | 'Chính thức',
   maHopDongCu: string | null,
@@ -7481,17 +8119,28 @@ function buildHopDongTongQuatRow(
   tenPO: string = '',
   maHopDongGoc: string | null = null,
   tenFileBaoGia: string = '',
-  linkBaoGia: string = ''
+  linkBaoGia: string = '',
+  idSaleReportCraft: string = '',
+  idSaleReport: string = '',
+  tenFileBaoGiaKhach: string = '',
+  linkBaoGiaKhach: string = '',
+  srMetricsOverride?: ReturnType<typeof buildQuoteSaleReportGoodsAndTotals>
 ) {
   syncCustomerInputsToKhach()
   const ngay = formatDateTimeVN(new Date())
 
-  // ✅ totals: theo VND
-  const t = totals.value
+  const srMetrics = srMetricsOverride || buildQuoteSaleReportGoodsAndTotals()
 
-  const truoc = round2(t.truoc)
-  const vat   = round2(t.vat)
-  const sau   = round2(t.sau)
+  const truoc = srMetrics.truocHD
+  const vat   = srMetrics.vatHD
+  const sau   = srMetrics.sauHD
+
+  const truocKhach = srMetrics.truocKhach
+  const vatKhach   = srMetrics.vatKhach
+  const sauKhach   = srMetrics.sauKhach
+  const truocList  = srMetrics.truocList
+  const tongMuaChuaVat = srMetrics.tongMuaChuaVat
+  const tongCpDonHang = srMetrics.tongCpDonHang
 
   const tongGiamGia = 0
   const tongCong = sau
@@ -7530,52 +8179,72 @@ function buildHopDongTongQuatRow(
     donVi,
     tiGia,
       maHopDongCu || ''  ,   // ✅ CỘT index 19
-      toNum(tongGiaThucTe.value, 0),  // ✅ index 20 - tong_gia_thuc_te
+      truocKhach,                      // ✅ index 20 - tong_gia_thuc_te (Tổng trước thuế Giá Khách)
       formatCreatedTimeVN(new Date()), // ✅ index 21 - created_time
       soPO,                            // ✅ index 22 - So_PO
       tenPO,                           // ✅ index 23 - Ten_PO
       contentOfContractPO.value.trim(),    // ✅ index 24 - content_of_contract_po
-      toNum(chietKhauTruocThue.value, 0),       // 25
-      toNum(chietKhauTruocThuePct.value, 0),    // 26
-      toNum(thueChenhLech.value, 0),            // 27
-      toNum(thueChenhLechPct.value, 0),         // 28
-      toNum(chenhLechGia.value, 0),             // 29
-      toNum(conLai.value, 0),                   // 30
-      toNum(tongChietKhau.value, 0),            // 31
+      srMetrics.ckTruocThue,                    // 25 - chiet_khau_tong_truoc_thue
+      srMetrics.ckTruocThuePct,                 // 26 - phan_tram_chiet_khau_tong_truoc_thue
+      srMetrics.thueCL,                         // 27 - thue_chenh_lech_gia
+      srMetrics.thueCLPct,                      // 28 - phan_tram_thue_chenh_lech_gia
+      srMetrics.clGia,                          // 29 - chenh_lech_gia
+      srMetrics.conLaiVal,                      // 30 - con_lai / net_com
+      srMetrics.tongCKVal,                      // 31 - tong_chiet_khau
       goc,                                      // ✅ index 32 - ma_hop_dong_goc
       statusHopDong === 'Chính thức' ? 'TRUE' : 'FALSE', // ✅ index 33 - isCompleted
-      tenFileBaoGia,                            // ✅ index 34 - ten_file
-      linkBaoGia,                               // ✅ index 35 - link_file
-      JSON.stringify(excelMappingConfig.value)  // ✅ index 36 - structure
+      tenFileBaoGia,                            // ✅ index 34 - ten_file (HĐ)
+      linkBaoGia,                               // ✅ index 35 - link_file (HĐ)
+      JSON.stringify(excelMappingConfig.value), // ✅ index 36 - structure
+      vatKhach,                                 // ✅ index 37 - Tong_thueVAT_khach
+      sauKhach,                                 // ✅ index 38 - Tong_tien_sau_thueVAT_khach
+      truocList,                                // ✅ index 39 - Tong_tien_truoc_thueVAT_list
+      tongMuaChuaVat,                           // ✅ index 40 - Tong_thanh_tien_chua_VAT_mua_hang
+      idSaleReportCraft,                        // ✅ index 41 - id_sale_report_craft
+      idSaleReport,                             // ✅ index 42 - id_sale_report
+      tenFileBaoGiaKhach,                       // ✅ index 43 - ten_file_khach
+      linkBaoGiaKhach,                          // ✅ index 44 - link_file_khach
+      tongCpDonHang                             // ✅ index 45 - Tong_CP_don_hang
   ]
 }
 
 
-/** hop_dong_chi_tiet (18 cột)
+/** hop_dong_chi_tiet (18 cột + mở rộng 52 cột)
  *  ma_hop_dong, so_hop_dong,
  *  Ma_hang, Ten_hang, Main_img,
  *  Ma_nha_cung_cap, Ten_nha_cung_cap,
  *  Mo_ta_chung, Mo_ta_chi_tiet, Features, Danh_muc,
  *  License_duration, DVT, Gia_tieu_chuan, Don_gia,
  *  Don_vi_tien_te, Ti_gia, Thue_VAT
- *
- *  (sheet này CHƯA có So_luong theo schema mày gửi)
- *  => nếu muốn lưu số lượng thì phải thêm cột So_luong trong sheet + update BE.
  */
 function buildHopDongChiTietRows() {
   return selectedItems.value.map(it => {
+    const sl = Math.max(1, toNum((it as any).So_luong, 1))
     const tg = toNum(it.Ti_gia, 1)
     const tgGoc = getGocNumber(it, '_Ti_gia_goc', tg)
+    const vatPct = toNum(it.Thue_VAT, 0)
+    const vatPctGoc = getGocNumber(it, '_Thue_VAT_goc', vatPct)
 
-    const donGiaToSave = toNum(it.Don_gia, 0) * tg
-    const giaTCToSave  = toNum(it.Gia_tieu_chuan, 0) * tg
+    const donGiaToSave = round2(toNum(it.Don_gia, 0) * tg)
+    const giaTCToSave  = round2(toNum(it.Gia_tieu_chuan, 0) * tg)
     const donGiaGocUSD = getGocNumber(it, '_Don_gia_goc', toNum(it.Don_gia, 0))
-    const donGiaGocVND = donGiaGocUSD * tgGoc
+    const donGiaGocVND = round2(donGiaGocUSD * tgGoc)
     const pctOffGoc = getGocNumber(it, '_muc_phan_tram_off_goc', toNum(it.muc_phan_tram_off, 0))
     const hwGoc = getGocNumber(it, '_gia_hardware_goc', toNum(it.gia_hardware, 0))
     const nhapGoc = getGocNumber(it, '_gia_nhap_goc', toNum(it.gia_nhap, 0))
     const donGiaKho = getGocNumber(it, '_Don_gia_kho', donGiaGocUSD)
     const pctOffKho = getGocNumber(it, '_muc_phan_tram_off_kho', pctOffGoc)
+
+    // ✅ Tường minh thành tiền / thuế dòng theo Giá HĐ & Giá Khách (VND)
+    const listPriceVnd = round2(donGiaKho * tgGoc)
+    const ttTruocHopDong = round2(donGiaToSave * sl)
+    const tienVatHopDong = round2(ttTruocHopDong * (vatPct / 100))
+    const ttSauHopDong = round2(ttTruocHopDong + tienVatHopDong)
+
+    const ttTruocKhach = round2(donGiaGocVND * sl)
+    const tienVatKhach = round2(ttTruocKhach * (vatPctGoc / 100))
+    const ttSauKhach = round2(ttTruocKhach + tienVatKhach)
+    const chenhLechTruocThue = round2(ttTruocHopDong - ttTruocKhach)
 
     return [
       maHopDong.value,
@@ -7595,8 +8264,8 @@ function buildHopDongChiTietRows() {
       donGiaToSave,                // [14] Don_gia (VND - Giá hợp đồng)
       'VND',                       // [15] Don_vi_tien_te
       1,                           // [16] Ti_gia (lưu VND thì ti_gia=1)
-      toNum(it.Thue_VAT, 0),       // [17] Thue_VAT
-      Math.max(1, toNum((it as any).So_luong, 1)), // [18] So_luong
+      vatPct,                      // [17] Thue_VAT
+      sl,                          // [18] So_luong
       '',                          // [19] Trang_thai_hop_dong
       // ✅ 3 CỘT MỚI
       toNum(it.gia_hardware, 0),   // [20] gia_hardware
@@ -7623,7 +8292,18 @@ function buildHopDongChiTietRows() {
       hwGoc,                               // [38] gia_hardware_goc
       nhapGoc,                             // [39] gia_nhap_goc
       donGiaKho,                           // [40] Don_gia_kho
-      pctOffKho                            // [41] muc_phan_tram_off_kho
+      pctOffKho,                           // [41] muc_phan_tram_off_kho
+      // ✅ 10 CỘT TƯỜNG MINH GIÁ LIST, GIÁ HỢP ĐỒNG, GIÁ KHÁCH & CHÊNH LỆCH (VND)
+      listPriceVnd,                        // [42] List_price_vnd
+      donGiaToSave,                        // [43] Don_gia_hop_dong
+      ttTruocHopDong,                      // [44] Thanh_tien_truoc_thue_hop_dong
+      tienVatHopDong,                      // [45] Tien_thue_vat_hop_dong
+      ttSauHopDong,                        // [46] Thanh_tien_sau_thue_hop_dong
+      donGiaGocVND,                        // [47] Don_gia_khach
+      ttTruocKhach,                        // [48] Thanh_tien_truoc_thue_khach
+      tienVatKhach,                        // [49] Tien_thue_vat_khach
+      ttSauKhach,                          // [50] Thanh_tien_sau_thue_khach
+      chenhLechTruocThue                   // [51] Chenh_lech_truoc_thue
     ]
   })
 }
@@ -7687,7 +8367,7 @@ const exportFileNamePreview = computed(() => {
   })
 })
 
-async function saveContractTemp(force = false) {
+async function saveContractTemp(force = false, skipFileModal = false, fromSaveModal = false) {
   saveMsg.value = ''
   const err = canSaveContractBasic()
   if (err) {
@@ -7704,41 +8384,166 @@ async function saveContractTemp(force = false) {
     return
   }
 
-  // Optimistic: show success immediately
-  const tenFileBaoGia = `${getQuoteDownloadBaseName()}.xlsx`
-  const payload = {
-    hd_tong_quat_row: buildHopDongTongQuatRow(
-      'Tạm',
-      loadedMaHopDong.value,
-      currentPO.value || '',
-      soHopDong.value || '',
-      loadedMaHopDongGoc.value,
-      tenFileBaoGia,
-      ''
-    ),
-    hd_chi_tiet_rows: buildHopDongChiTietRows()
+  if (!skipFileModal) {
+    await openSaveQuoteFileConfigModal('temp', fromSaveModal)
+    return
   }
 
   const savingTabId = activeQuoteTabId.value
   saveMsg.value = '✅ Đã lưu Hợp đồng TẠM thành công!'
-  showAsyncLoading('Đang đồng bộ lưu tạm...')
+  showAsyncLoading('Đang đồng bộ lưu tạm & Sale Report Craft...')
 
-  // Fire-and-forget POST
-  postApi('save_contract_temp', payload)
-    .then(async () => {
-      isDataSaved.value = true
-      showSaveModal.value = false
-      showAsyncSuccess('Lưu tạm thành công', 'Dữ liệu đã được đồng bộ và tự động đóng tab báo giá.')
-      await closeQuoteTabAfterSave(savingTabId)
-    })
-    .catch((e: any) => {
-      showAsyncError('Lưu tạm thất bại', 'Lỗi: ' + String(e?.message || e) + '. Vui lòng thử lại.')
-    })
+  ;(async () => {
+    const [fileRes, craftInfo] = await Promise.all([
+      resolveAndUploadConfiguredQuoteFiles(),
+      findExistingSaleReportCraftInfo(
+        maHopDong.value,
+        loadedMaHopDong.value,
+        loadedMaHopDongGoc.value
+      )
+    ])
+
+    const { tenFileHD, linkFileHD, tenFileKhach, linkFileKhach } = fileRes
+    const craftKey = craftInfo.craftKey
+    const existingCraft = craftInfo.existingData || {}
+    const existingSoPo = String(existingCraft.So_PO || existingCraft.soPO || currentPO.value || '').trim()
+
+    // Tính chỉ số tài chính & hàng hóa đồng bộ từ Bảng hàng hóa + Box Chỉ số tài chính
+    const srMetrics = buildQuoteSaleReportGoodsAndTotals(existingCraft)
+
+    const payload = {
+      hd_tong_quat_row: buildHopDongTongQuatRow(
+        'Tạm',
+        loadedMaHopDong.value,
+        existingSoPo,
+        soHopDong.value || '',
+        loadedMaHopDongGoc.value,
+        tenFileHD,
+        linkFileHD,
+        craftKey,
+        '',
+        tenFileKhach,
+        linkFileKhach,
+        srMetrics
+      ),
+      hd_chi_tiet_rows: buildHopDongChiTietRows()
+    }
+
+    const postRes = await postApi('save_contract_temp', payload)
+    const maGocFinal = String(postRes?.maGoc || loadedMaHopDongGoc.value || maHopDong.value).trim()
+
+    // Lưu / cập nhật bản ghi tương ứng vào sale_report_craft
+    const firstItem = selectedItems.value[0] || ({} as any)
+    const contentPoStr = contentOfContractPO.value.trim() || soHopDong.value
+    const nowSr = new Date()
+    const padSr = (n: number) => String(n).padStart(2, '0')
+    const nowSrStr = `${padSr(nowSr.getDate())}/${padSr(nowSr.getMonth() + 1)}/${nowSr.getFullYear()} ${padSr(nowSr.getHours())}:${padSr(nowSr.getMinutes())}:${padSr(nowSr.getSeconds())}`
+
+    const craftPayload = {
+      ...existingCraft,
+      ID: craftKey,
+      created_time: String(existingCraft.created_time || '').trim() || nowSrStr,
+      updated_at: Date.now(),
+      ma_hop_dong: maHopDong.value,
+      so_hop_dong: soHopDong.value,
+      ma_hop_dong_goc: maGocFinal,
+      So_PO: existingSoPo,
+      soPO: existingSoPo,
+      content_of_contract_po: contentPoStr,
+      content_of_contract_PO: contentPoStr,
+      content: contentPoStr,
+      Ma_khach_hang: (khach.value.Ma_khach_hang || '').trim(),
+      Ten_khach_hang: (khach.value.Ten_khach_hang || '').trim(),
+      Ma_cong_ty: (khach.value.Ma_cong_ty || '').trim(),
+      Ten_cong_ty: (khach.value.Ten_cong_ty || '').trim(),
+      customer: (khach.value.Ten_cong_ty || khach.value.Ten_khach_hang || '').trim(),
+      recipient: (khach.value.Ten_khach_hang || '').trim(),
+      MST: (khach.value.MST || '').trim(),
+      mst: (khach.value.MST || '').trim(),
+      Ma_nha_cung_cap: firstItem.Ma_nha_cung_cap || '',
+      Ten_nha_cung_cap: firstItem.Ten_nha_cung_cap || '',
+      productType: firstItem.Ten_nha_cung_cap || firstItem.Danh_muc || '',
+      ghi_chu: (ghiChuHopDong.value || '').trim(),
+      ghiChu: (ghiChuHopDong.value || '').trim(),
+      // Tổng Giá Hợp Đồng
+      Tong_tien_truoc_thueVAT: srMetrics.truocHD,
+      Tong_thueVAT: srMetrics.vatHD,
+      Tong_tien_sau_thueVAT: srMetrics.sauHD,
+      doanhSoBan: srMetrics.truocHD,
+      // Tổng Giá Khách / Thực tế
+      Tong_gia_thuc_te: srMetrics.truocKhach,
+      Tong_tien_truoc_thueVAT_khach: srMetrics.truocKhach,
+      tong_truoc_vat_goc: srMetrics.truocKhach,
+      Tong_thueVAT_khach: srMetrics.vatKhach,
+      Tong_tien_sau_thueVAT_khach: srMetrics.sauKhach,
+      doanhSoBan_khach: srMetrics.truocKhach,
+      // Tổng Giá List & Giá vốn Mua hàng & Tổng CP đơn hàng
+      Tong_tien_truoc_thueVAT_list: srMetrics.truocList,
+      Tong_thanh_tien_chua_VAT_mua_hang: srMetrics.tongMuaChuaVat,
+      giaMua: srMetrics.tongMuaChuaVat,
+      Tong_CP_don_hang: srMetrics.tongCpDonHang,
+      tongCP: srMetrics.tongCpDonHang,
+      // Chiết khấu / Chênh lệch / COM
+      chiet_khau_tong_truoc_thue: srMetrics.ckTruocThue,
+      phan_tram_chiet_khau_tong_truoc_thue: srMetrics.ckTruocThuePct,
+      thue_chenh_lech_gia: srMetrics.thueCL,
+      phan_tram_thue_chenh_lech_gia: srMetrics.thueCLPct,
+      taxPct: srMetrics.thueCLPct,
+      chenh_lech_gia: srMetrics.clGia,
+      gross_com: srMetrics.grossComVal,
+      grossCom: srMetrics.grossComVal,
+      con_lai: srMetrics.conLaiVal,
+      tong_chiet_khau: srMetrics.tongCKVal,
+      net_com: srMetrics.netComVal,
+      netCom: srMetrics.netComVal,
+      account_manager_name: String(existingCraft.account_manager_name || 'LÊ PHI SƠN'),
+      am: String(existingCraft.am || 'LÊ PHI SƠN'),
+      link_excel_bao_gia: linkFileHD,
+      link_excel_bao_gia_hd: linkFileHD,
+      linkBaoGia: linkFileHD,
+      ten_file_bao_gia: tenFileHD,
+      ten_file_bao_gia_hd: tenFileHD,
+      tenFileBG: tenFileHD,
+      link_excel_bao_gia_khach: linkFileKhach,
+      linkBaoGiaKhach: linkFileKhach,
+      ten_file_bao_gia_khach: tenFileKhach,
+      tenFileBGKhach: tenFileKhach,
+      cong_no: Math.max(0, srMetrics.sauHD - toNum(existingCraft.so_tien_da_thanh_toan, 0)),
+      so_tien_da_thanh_toan: toNum(existingCraft.so_tien_da_thanh_toan, 0),
+      thoi_gian_thanh_toan: String(existingCraft.thoi_gian_thanh_toan || ''),
+      loai_thanh_toan: String(existingCraft.loai_thanh_toan || 'mot_lan'),
+      han_thanh_toan: String(existingCraft.han_thanh_toan || ''),
+      ke_hoach_thanh_toan: Array.isArray(existingCraft.ke_hoach_thanh_toan) ? existingCraft.ke_hoach_thanh_toan : [],
+      goodsList: srMetrics.goodsList,
+      goodsTotal: srMetrics.goodsTotal,
+      is_craft: true,
+      chotDeal: false
+    }
+
+    await set(dbRef(database, `sale_report_craft/${craftKey}`), craftPayload)
+
+    const existingFileId = String(existingCraft.id_quanlyfile || existingCraft.id_quan_ly_file || '').trim()
+    if (existingFileId) {
+      await update(dbRef(database, `quan_ly_file/${existingFileId}`), {
+        link_excel_bao_gia: linkFileHD,
+        ten_file_bao_gia: tenFileHD,
+        link_excel_bao_gia_khach: linkFileKhach,
+        ten_file_bao_gia_khach: tenFileKhach
+      }).catch(() => {})
+    }
+
+    isDataSaved.value = true
+    showSaveModal.value = false
+    showAsyncSuccess('Lưu tạm thành công', 'Hợp đồng tạm & Phương án tạm (Sale Report Craft) đã được đồng bộ.')
+    await closeQuoteTabAfterSave(savingTabId)
+  })().catch((e: any) => {
+    showAsyncError('Lưu tạm thất bại', 'Lỗi: ' + String(e?.message || e) + '. Vui lòng thử lại.')
+  })
 }
 
 
 
-async function saveContractOfficialAndSaleReport(force = false) {
+async function saveContractOfficialAndSaleReport(force = false, skipFileModal = false, fromSaveModal = false) {
   saveMsg.value = ''
   const err = canSaveContractBasic()
   if (err) {
@@ -7752,6 +8557,11 @@ async function saveContractOfficialAndSaleReport(force = false) {
   if (!force && (!khach.value.Ma_khach_hang?.trim() || (!khach.value.Ten_khach_hang?.trim() && !khach.value.Ten_cong_ty?.trim()))) {
     pendingSaveAction.value = 'official'
     showConfirmSaveEmptyCustomer.value = true
+    return
+  }
+
+  if (!skipFileModal) {
+    await openSaveQuoteFileConfigModal('official', fromSaveModal)
     return
   }
 
@@ -7775,22 +8585,24 @@ async function saveContractOfficialAndSaleReport(force = false) {
       nextPO = String(maxPO + 1)
     } catch {}
 
-    // Upload file báo giá lên Cloudinary trước khi lưu
-    let linkBaoGia = ''
-    const tenFileBaoGia = `${getQuoteDownloadBaseName()}.xlsx`
-    try {
-      const blob = await generateQuoteExcelBlob(undefined, undefined, previewEditor.value?.getToolbarFont())
-      const formData = new FormData()
-      formData.append('upload_preset', 'upload_file')
-      formData.append('file', blob, tenFileBaoGia)
-      const uploadRes = await fetch('https://api.cloudinary.com/v1_1/db6fzs3rh/auto/upload', {
-        method: 'POST',
-        body: formData
-      }).then(r => r.json())
-      linkBaoGia = uploadRes.secure_url || ''
-    } catch (e) {
-      console.error('Lỗi upload file báo giá lên Cloudinary:', e)
-    }
+    // Upload file báo giá lên Cloudinary & tìm sale_report_craft tương ứng trước khi lưu
+    const [fileRes, craftInfo] = await Promise.all([
+      resolveAndUploadConfiguredQuoteFiles(),
+      findExistingSaleReportCraftInfo(
+        maHopDong.value,
+        loadedMaHopDong.value,
+        loadedMaHopDongGoc.value
+      )
+    ])
+
+    const { tenFileHD, linkFileHD, tenFileKhach, linkFileKhach } = fileRes
+    const craftKey = craftInfo.craftKey
+    const existingCraft = craftInfo.existingData || {}
+    const srKey = push(dbRef(database, 'sale_report')).key || `SR_${Date.now()}`
+
+    // Tính chỉ số tài chính & hàng hóa đồng bộ từ Bảng hàng hóa + Box Chỉ số tài chính
+    const srMetrics = buildQuoteSaleReportGoodsAndTotals(existingCraft)
+    const tongSauThueFinal = srMetrics.sauHD || tongSauThue
 
     const payload = {
       hd_tong_quat_row: buildHopDongTongQuatRow(
@@ -7799,21 +8611,25 @@ async function saveContractOfficialAndSaleReport(force = false) {
         nextPO,
         soHopDong.value,
         loadedMaHopDongGoc.value,
-        tenFileBaoGia,
-        linkBaoGia
+        tenFileHD,
+        linkFileHD,
+        craftKey,
+        srKey,
+        tenFileKhach,
+        linkFileKhach,
+        srMetrics
       ),
       hd_chi_tiet_rows: buildHopDongChiTietRows(),
       ma_khach_hang: (khach.value.Ma_khach_hang || '').trim(),
-      tong_sau_thue: tongSauThue
+      tong_sau_thue: tongSauThueFinal
     }
 
-    // 1) Lưu chính thức
-    await postApi('save_contract_official', payload)
+    // 1) Lưu chính thức vào hop_dong_tong_quat & hop_dong_chi_tiet
+    const postRes = await postApi('save_contract_official', payload)
+    const maGocFinal = String(postRes?.maGoc || loadedMaHopDongGoc.value || maHopDong.value).trim()
 
-    // 2) Lưu vào sale_report (dùng format giống pipeline)
-    const t = totals.value
-    const firstItem = selectedItems.value[0] || {} as any
-    const srKey = push(dbRef(database, 'sale_report')).key || `SR_${Date.now()}`
+    // 2) Lưu vào sale_report & đồng bộ trạng thái chốt deal bên sale_report_craft
+    const firstItem = selectedItems.value[0] || ({} as any)
     const contentPoStr = contentOfContractPO.value.trim() || soHopDong.value
     const nowSr = new Date()
     const padSr = (n: number) => String(n).padStart(2, '0')
@@ -7824,6 +8640,7 @@ async function saveContractOfficialAndSaleReport(force = false) {
       created_time: nowSrStr,
       ma_hop_dong: maHopDong.value,
       so_hop_dong: soHopDong.value,
+      ma_hop_dong_goc: maGocFinal,
       So_PO: nextPO,
       content_of_contract_po: contentPoStr,
       content_of_contract_PO: contentPoStr,
@@ -7834,30 +8651,93 @@ async function saveContractOfficialAndSaleReport(force = false) {
       MST: (khach.value.MST || '').trim(),
       Ma_nha_cung_cap: firstItem.Ma_nha_cung_cap || '',
       Ten_nha_cung_cap: firstItem.Ten_nha_cung_cap || '',
-      Tong_tien_truoc_thueVAT: round2(t.truoc),
-      Tong_thueVAT: round2(t.vat),
-      Tong_tien_sau_thueVAT: round2(t.sau),
-      chiet_khau_tong_truoc_thue: toNum(chietKhauTruocThue.value, 0),
-      phan_tram_chiet_khau_tong_truoc_thue: toNum(chietKhauTruocThuePct.value, 0),
-      thue_chenh_lech_gia: toNum(thueChenhLech.value, 0),
-      phan_tram_thue_chenh_lech_gia: toNum(thueChenhLechPct.value, 0),
-      chenh_lech_gia: toNum(chenhLechGia.value, 0),
-      con_lai: toNum(conLai.value, 0),
-      tong_chiet_khau: toNum(tongChietKhau.value, 0),
-      Tong_thanh_tien_chua_VAT_mua_hang: 0,
-      Tong_CP_don_hang: 0,
+      ghi_chu: (ghiChuHopDong.value || '').trim(),
+      // Tổng Giá Hợp Đồng
+      Tong_tien_truoc_thueVAT: srMetrics.truocHD,
+      Tong_thueVAT: srMetrics.vatHD,
+      Tong_tien_sau_thueVAT: srMetrics.sauHD,
+      doanhSoBan: srMetrics.truocHD,
+      // Tổng Giá Khách / Thực tế
+      Tong_gia_thuc_te: srMetrics.truocKhach,
+      Tong_tien_truoc_thueVAT_khach: srMetrics.truocKhach,
+      tong_truoc_vat_goc: srMetrics.truocKhach,
+      Tong_thueVAT_khach: srMetrics.vatKhach,
+      Tong_tien_sau_thueVAT_khach: srMetrics.sauKhach,
+      doanhSoBan_khach: srMetrics.truocKhach,
+      // Tổng Giá List & Giá vốn Mua hàng & Tổng CP đơn hàng
+      Tong_tien_truoc_thueVAT_list: srMetrics.truocList,
+      Tong_thanh_tien_chua_VAT_mua_hang: srMetrics.tongMuaChuaVat,
+      giaMua: srMetrics.tongMuaChuaVat,
+      Tong_CP_don_hang: srMetrics.tongCpDonHang,
+      tongCP: srMetrics.tongCpDonHang,
+      // Chiết khấu / Chênh lệch / COM
+      chiet_khau_tong_truoc_thue: srMetrics.ckTruocThue,
+      phan_tram_chiet_khau_tong_truoc_thue: srMetrics.ckTruocThuePct,
+      thue_chenh_lech_gia: srMetrics.thueCL,
+      phan_tram_thue_chenh_lech_gia: srMetrics.thueCLPct,
+      taxPct: srMetrics.thueCLPct,
+      chenh_lech_gia: srMetrics.clGia,
+      gross_com: srMetrics.grossComVal,
+      grossCom: srMetrics.grossComVal,
+      con_lai: srMetrics.conLaiVal,
+      tong_chiet_khau: srMetrics.tongCKVal,
+      net_com: srMetrics.netComVal,
+      netCom: srMetrics.netComVal,
       account_manager_name: 'LÊ PHI SƠN',
-      link_excel_bao_gia: linkBaoGia,
-      ten_file_bao_gia: tenFileBaoGia,
-      cong_no: round2(t.sau),
+      link_excel_bao_gia: linkFileHD,
+      link_excel_bao_gia_hd: linkFileHD,
+      linkBaoGia: linkFileHD,
+      ten_file_bao_gia: tenFileHD,
+      ten_file_bao_gia_hd: tenFileHD,
+      tenFileBG: tenFileHD,
+      link_excel_bao_gia_khach: linkFileKhach,
+      linkBaoGiaKhach: linkFileKhach,
+      ten_file_bao_gia_khach: tenFileKhach,
+      tenFileBGKhach: tenFileKhach,
+      cong_no: srMetrics.sauHD,
       so_tien_da_thanh_toan: 0,
       thoi_gian_thanh_toan: '',
       loai_thanh_toan: 'mot_lan',
       han_thanh_toan: '',
-      ke_hoach_thanh_toan: []
+      ke_hoach_thanh_toan: [],
+      goodsList: srMetrics.goodsList,
+      goodsTotal: srMetrics.goodsTotal,
+      from_craft: craftKey,
+      is_craft: false
     }
 
-    await set(dbRef(database, `sale_report/${srKey}`), srPayload)
+    const craftChotPayload = {
+      ...existingCraft,
+      ...srPayload,
+      ID: craftKey,
+      created_time: String(existingCraft.created_time || '').trim() || nowSrStr,
+      updated_at: Date.now(),
+      is_craft: true,
+      chotDeal: true,
+      chotDealTime: Date.now(),
+      id_sale_report: srKey,
+      So_PO: nextPO,
+      soPO: nextPO,
+      ma_hop_dong: maHopDong.value,
+      so_hop_dong: soHopDong.value,
+      ma_hop_dong_goc: maGocFinal
+    }
+
+    const officialUpdates: Record<string, any> = {
+      [`sale_report/${srKey}`]: srPayload,
+      [`sale_report_craft/${craftKey}`]: craftChotPayload
+    }
+    const existingFileId = String(existingCraft.id_quanlyfile || existingCraft.id_quan_ly_file || '').trim()
+    if (existingFileId) {
+      officialUpdates[`quan_ly_file/${existingFileId}/link_excel_bao_gia`] = linkFileHD
+      officialUpdates[`quan_ly_file/${existingFileId}/ten_file_bao_gia`] = tenFileHD
+      officialUpdates[`quan_ly_file/${existingFileId}/link_excel_bao_gia_khach`] = linkFileKhach
+      officialUpdates[`quan_ly_file/${existingFileId}/ten_file_bao_gia_khach`] = tenFileKhach
+      officialUpdates[`quan_ly_file/${existingFileId}/craft_chotDeal`] = true
+      officialUpdates[`quan_ly_file/${existingFileId}/id_sale_report`] = srKey
+      officialUpdates[`quan_ly_file/${existingFileId}/trangThaiBaoGia`] = 'Thành công'
+    }
+    await update(dbRef(database), officialUpdates)
 
     // 3) Lưu vào PO_DXMH
     if (contentOfContractPO.value.trim()) {
@@ -8145,6 +9025,7 @@ const contractCards = computed(() => {
       truocThue: toNum(r?.[5], 0),
       sauThue: toNum(r?.[7], 0),
       trangThai: String(r?.[15] ?? 'Không rõ'),
+      isOfficial: isContractRowOfficial(r),
       soPO: String(r?.[22] ?? ''),
       mst: c ? c.MST : '',
       tenCongTy: c ? c.Ten_cong_ty : '',
@@ -8837,6 +9718,7 @@ function applyPriceListToCurrentQuote() {
         const newPrice = toNum(entry.gia_ban_moi, it.Don_gia)
         it.Don_gia = newPrice
         it._Don_gia_goc = newPrice
+        it._Don_gia_kho = newPrice
         updatedCount++
       }
     })
@@ -8851,6 +9733,7 @@ function applyPriceListToCurrentQuote() {
       if (sysProd) {
         it.Don_gia = toNum(sysProd.Don_gia, it.Don_gia)
         it._Don_gia_goc = toNum(sysProd.Don_gia, it.Don_gia)
+        it._Don_gia_kho = toNum(sysProd.Don_gia, it.Don_gia)
         updatedCount++
       }
     })
@@ -9571,6 +10454,7 @@ function addItemFromCard(rawP: HangHoa) {
     selectedItems.value[foundIdx].So_luong += qty
     selectedItems.value[foundIdx].Don_gia = p.Don_gia
     ;(selectedItems.value[foundIdx] as any)._Don_gia_goc = p.Don_gia
+    ;(selectedItems.value[foundIdx] as any)._Don_gia_kho = p.Don_gia
     highlightIdx = foundIdx;
   } else {
     const cloned = cloneHang(p, qty);
@@ -11580,23 +12464,23 @@ function displayGiaTieuChuanRaw(i: any) {
 }
 
 function displayGiaTieuChuanPct(i: any) {
-  const lp = donGiaLP(i)
+  const lp = donGiaLPKho(i)
   const tc = toNum(i.Gia_tieu_chuan, 0)
   if (!lp || lp === 0) return 0
   return round2((1 - tc / lp) * 100)
 }
 
 function displayGiaTieuChuanPctRaw(i: any) {
-  const lp = donGiaLPGoc(i)
+  const lp = donGiaLPKho(i)
   const tc = toNum(i.Gia_tieu_chuan, 0)
   if (!lp || lp === 0) return 0
   return round2((1 - tc / lp) * 100)
 }
 
-/* ✅ Hiển thị Đơn giá LP (theo mode VND) */
+/* ✅ Hiển thị Đơn giá LP (cố định theo Giá List gốc kho chung cho cả 3 chế độ) */
 function displayDonGiaLP(i: any) {
-  const tg = toNum(i.Ti_gia, 1)
-  return fmtPrice(listPriceVnd(i, false), tg)
+  const tg = getGocNumber(i, '_Ti_gia_kho', getGocNumber(i, '_Ti_gia_goc', toNum(i.Ti_gia, 1)))
+  return fmtPrice(listPriceVndKho(i, false), tg)
 }
 
 /* ✅ Hiển thị Đơn giá sau Off (theo mode VND) */
@@ -11605,9 +12489,7 @@ function displayQuoteDonGia(i: any) {
   return fmtPrice(unitPrice(i), tg)
 }
 function displayDonGiaLPRaw(i: any) {
-  const tg = getGocNumber(i, '_Ti_gia_goc', toNum(i.Ti_gia, 1))
-  const lpVnd = round2(donGiaLPGoc(i) * tg)
-  return formatVND(roundVndByMode(lpVnd, getItemOrFieldRounding(i, 'list_price')))
+  return formatVND(listPriceVndKho(i, false))
 }
 
 function displayQuoteDonGiaRaw(i: any) {
@@ -11615,7 +12497,7 @@ function displayQuoteDonGiaRaw(i: any) {
 }
 
 function displayMucOffAmount(i: any) {
-  const lp = donGiaLP(i)
+  const lp = donGiaLPKho(i)
   const pctOff = toNum(i.muc_phan_tram_off, 0)
   const tg = toNum(i.Ti_gia, 1)
   return fmtPrice(lp * (pctOff / 100) * tg, tg)
@@ -11623,7 +12505,7 @@ function displayMucOffAmount(i: any) {
 
 function displayMucOffAmountRaw(i: any) {
   const tg = getGocNumber(i, '_Ti_gia_goc', toNum(i.Ti_gia, 1))
-  const lpVnd = donGiaLPGoc(i) * tg
+  const lpVnd = donGiaLPKho(i) * tg
   const pctOff = getGocNumber(i, '_muc_phan_tram_off_goc', toNum(i.muc_phan_tram_off, 0))
   return formatVND(lpVnd * (pctOff / 100))
 }
@@ -11676,7 +12558,7 @@ const totals = computed(() => {
     vat += lineVAT(i)
     loi += lineLoiNhuan(i)
 
-    const lp = donGiaLP(i)
+    const lp = donGiaLPKho(i)
     const pctOff = toNum(i.muc_phan_tram_off, 0)
     const tg = toNum(i.Ti_gia, 1)
     off += lp * (pctOff / 100) * tg * toNum(i.So_luong, 1)
@@ -11703,7 +12585,7 @@ const totalsUSD = computed(() => {
     truoc += lineTruocThue(i) / tg
     vat += lineVAT(i) / tg
     loi += lineLoiNhuan(i) / tg
-    const lp = donGiaLP(i)
+    const lp = donGiaLPKho(i)
     const pctOff = toNum(i.muc_phan_tram_off, 0)
     off += lp * (pctOff / 100) * toNum(i.So_luong, 1)
   })
@@ -11765,6 +12647,18 @@ const currentQuotePriceViewOption = computed(() =>
   quotePriceViewOptions.find(o => o.value === quotePriceViewMode.value) || quotePriceViewOptions[1]
 )
 
+const quoteEditPriceViewOptions = computed(() =>
+  quotePriceViewOptions.filter(o => o.value !== 'compare')
+)
+
+const effectiveQuoteEditPriceViewMode = computed<QuotePriceViewMode>(() =>
+  quotePriceViewMode.value === 'compare' ? 'customer' : quotePriceViewMode.value
+)
+
+const currentQuoteEditPriceViewOption = computed(() =>
+  quotePriceViewOptions.find(o => o.value === effectiveQuoteEditPriceViewMode.value) || quotePriceViewOptions[1]
+)
+
 const canShowNormalEditBtn = computed(() => quotePriceViewMode.value !== 'contract')
 
 const activeDonGiaHeaderLabel = computed(() => {
@@ -11779,11 +12673,7 @@ const activeDonGiaFieldLabel = computed(() => {
   return 'Đơn giá hợp đồng'
 })
 
-const activeListPriceFieldLabel = computed(() => {
-  if (quotePriceViewMode.value === 'origin') return 'List Price (Báo giá gốc)'
-  if (quotePriceViewMode.value === 'customer' || quotePriceViewMode.value === 'compare') return 'List Price (Báo giá khách)'
-  return 'List Price (Hợp đồng)'
-})
+const activeListPriceFieldLabel = computed(() => 'List Price (VND)')
 
 const activeLineTruocThueFieldLabel = computed(() => {
   if (quotePriceViewMode.value === 'origin') return 'TT trước thuế (List)'
@@ -11844,8 +12734,6 @@ function tableTiGia(i: any) {
 }
 
 function tableStandardPrice(i: any) {
-  if (quotePriceViewMode.value === 'origin') return standardPriceKho(i)
-  if (quotePriceViewMode.value === 'customer' || quotePriceViewMode.value === 'compare') return standardPriceRaw(i)
   return standardPrice(i)
 }
 
@@ -11854,26 +12742,15 @@ function tableDisplayGiaTieuChuan(i: any) {
 }
 
 function tableDisplayGiaTieuChuanPct(i: any) {
-  if (quotePriceViewMode.value === 'origin') {
-    const lp = donGiaLPKho(i)
-    const tc = getGocNumber(i, '_Gia_tieu_chuan_kho', toNum(i.Gia_tieu_chuan, 0))
-    if (!lp || lp === 0) return 0
-    return round2((1 - tc / lp) * 100)
-  }
-  if (quotePriceViewMode.value === 'customer' || quotePriceViewMode.value === 'compare') {
-    return displayGiaTieuChuanPctRaw(i)
-  }
   return displayGiaTieuChuanPct(i)
 }
 
 function tableListPriceVnd(i: any, includeGiaNhap = false) {
-  if (quotePriceViewMode.value === 'origin') return listPriceVndKho(i, includeGiaNhap)
-  if (quotePriceViewMode.value === 'customer' || quotePriceViewMode.value === 'compare') return listPriceVndRaw(i, includeGiaNhap)
-  return listPriceVnd(i, includeGiaNhap)
+  return listPriceVndKho(i, includeGiaNhap)
 }
 
 function tableDisplayDonGiaLP(i: any) {
-  return fmtPrice(tableListPriceVnd(i, false), tableTiGia(i))
+  return fmtPrice(tableListPriceVnd(i, false), tableTiGiaKho(i))
 }
 
 function tableGiaNhapVnd(i: any) {
@@ -11894,13 +12771,7 @@ function tableMucOffPct(i: any) {
 
 function tableDisplayMucOffAmount(i: any) {
   const tg = tableTiGia(i)
-  if (quotePriceViewMode.value === 'origin') {
-    return fmtPrice(donGiaLPKho(i) * (tableMucOffPct(i) / 100) * tg, tg)
-  }
-  if (quotePriceViewMode.value === 'customer' || quotePriceViewMode.value === 'compare') {
-    return fmtPrice(donGiaLPGoc(i) * (tableMucOffPct(i) / 100) * tg, tg)
-  }
-  return displayMucOffAmount(i)
+  return fmtPrice(donGiaLPKho(i) * (tableMucOffPct(i) / 100) * tg, tg)
 }
 
 function tableUnitPrice(i: any) {
@@ -12093,16 +12964,22 @@ const cmpSrBaseGiaMua = computed(() => {
 })
 
 const cmpSrBaseGrossCom = computed(() => {
+  const ckPct = toNum(chietKhauTruocThuePct.value, 0)
   if (cmpSrPriceSource.value === 'customer') {
-    const ckPct = toNum(chietKhauTruocThuePct.value, 0)
     if (ckPct <= 0) return 0
+    return quoteCurrency.value === 'USD'
+      ? round2((toNum(totalsContractUSD.value.truoc, 0) * ckPct) / 100)
+      : Math.round((toNum(totalsContract.value.truoc, 0) * ckPct) / 100)
+  }
+  const diffVnd = Math.round(toNum(totals.value.truoc, 0) - toNum(totalsContract.value.truoc, 0))
+  if (diffVnd === 0 && ckPct > 0) {
     return quoteCurrency.value === 'USD'
       ? round2((toNum(totalsContractUSD.value.truoc, 0) * ckPct) / 100)
       : Math.round((toNum(totalsContract.value.truoc, 0) * ckPct) / 100)
   }
   return quoteCurrency.value === 'USD'
     ? round2(toNum(totalsUSD.value.truoc, 0) - toNum(totalsContractUSD.value.truoc, 0))
-    : Math.round(toNum(totals.value.truoc, 0) - toNum(totalsContract.value.truoc, 0))
+    : diffVnd
 })
 
 const cmpSrBaseTaxPct = computed(() => {
@@ -12209,6 +13086,9 @@ function onCmpSrFieldChange(
 
   if (field === 'taxPct') {
     thueChenhLechPct.value = nextVal
+  } else if (field === 'giaMua' || field === 'tongCP') {
+    cmpSrOverridesMap.contract[field] = nextVal
+    cmpSrOverridesMap.customer[field] = nextVal
   } else {
     bucket[field] = nextVal
   }
@@ -12296,11 +13176,55 @@ function onCmpSrPredictInput(e: Event) {
 
 function resetCurrentCmpSrBucket() {
   Object.assign(cmpSrOverridesMap[cmpSrPriceSource.value], createEmptyCmpSrBucket())
+  const otherMode = cmpSrPriceSource.value === 'contract' ? 'customer' : 'contract'
+  cmpSrOverridesMap[otherMode].giaMua = null
+  cmpSrOverridesMap[otherMode].tongCP = null
 }
 
 function resetAllCmpSrOverrides() {
   Object.assign(cmpSrOverridesMap.contract, createEmptyCmpSrBucket())
   Object.assign(cmpSrOverridesMap.customer, createEmptyCmpSrBucket())
+}
+
+function restoreCmpSrOverridesFromContractRow(row: any[]) {
+  resetAllCmpSrOverrides()
+  if (!Array.isArray(row)) return
+  const baseGiaMua = Math.round(calcTotalGiaMuaChuaVatVnd())
+  const savedGiaMua = Math.round(toNum(row?.[40], 0))
+  const savedTongCP = Math.round(toNum(row?.[45], 0))
+
+  if (savedGiaMua > 0 && Math.abs(savedGiaMua - baseGiaMua) > 1) {
+    cmpSrOverridesMap.contract.giaMua = savedGiaMua
+    cmpSrOverridesMap.customer.giaMua = savedGiaMua
+  }
+  const giaMuaRef = savedGiaMua > 0 ? savedGiaMua : baseGiaMua
+  if (savedTongCP > 0 && Math.abs(savedTongCP - giaMuaRef) > 1) {
+    cmpSrOverridesMap.contract.tongCP = savedTongCP
+    cmpSrOverridesMap.customer.tongCP = savedTongCP
+  }
+
+  const savedTruocHD = Math.round(toNum(row?.[5], 0))
+  const savedTruocKhach = Math.round(toNum(row?.[20], savedTruocHD))
+  const baseTruocHD = Math.round(toNum(totals.value.truoc, 0))
+  const baseTruocKhach = Math.round(toNum(totalsContract.value.truoc, 0))
+  if (savedTruocHD > 0 && Math.abs(savedTruocHD - baseTruocHD) > 1) {
+    cmpSrOverridesMap.contract.doanhSoBan = savedTruocHD
+  }
+  if (savedTruocKhach > 0 && Math.abs(savedTruocKhach - baseTruocKhach) > 1) {
+    cmpSrOverridesMap.customer.doanhSoBan = savedTruocKhach
+  }
+
+  const savedGross = Math.round(toNum(row?.[25], 0) || toNum(row?.[29], 0))
+  const savedNet = Math.round(toNum(row?.[30], 0) || toNum(row?.[31], 0))
+  const baseGross = Math.round(toNum(chietKhauTruocThue.value, 0) || toNum(chenhLechGia.value, 0))
+  if (savedGross > 0 && Math.abs(savedGross - baseGross) > 1) {
+    cmpSrOverridesMap.contract.grossCom = savedGross
+    if (savedNet > 0) cmpSrOverridesMap.contract.netCom = savedNet
+    if (Math.round(toNum(chenhLechGia.value, 0)) === 0) {
+      cmpSrOverridesMap.customer.grossCom = savedGross
+      if (savedNet > 0) cmpSrOverridesMap.customer.netCom = savedNet
+    }
+  }
 }
 
 const hasCmpSrOverrides = computed(() => {
@@ -12317,6 +13241,7 @@ const hasCmpSrOverrides = computed(() => {
 })
 
 watch(quoteCurrency, () => {
+  if (isApplyingTabStateSync || isSwitchingQuoteTab.value) return
   resetAllCmpSrOverrides()
 })
 /* ======================
@@ -12545,16 +13470,28 @@ function getAttachedFileViewHref(fEntry: any): string {
 
 function applyFilePriceToModalTarget(target: any, fEntry: ProductFileEntry) {
   if (!target || !fEntry) return
-  if (fEntry.gia_von > 0) target.Gia_tieu_chuan = fEntry.gia_von
-  if (fEntry.don_gia > 0) target.Don_gia = fEntry.don_gia
-  if (fEntry.gia_nhap > 0) target.gia_nhap = fEntry.gia_nhap
+  if (fEntry.gia_von > 0) {
+    target.Gia_tieu_chuan = fEntry.gia_von
+    target._Gia_tieu_chuan_goc = fEntry.gia_von
+    target._Gia_tieu_chuan_kho = fEntry.gia_von
+  }
+  if (fEntry.don_gia > 0) {
+    target.Don_gia = fEntry.don_gia
+    target._Don_gia_goc = fEntry.don_gia
+    target._Don_gia_kho = fEntry.don_gia
+  }
+  if (fEntry.gia_nhap > 0) {
+    target.gia_nhap = fEntry.gia_nhap
+    target._gia_nhap_goc = fEntry.gia_nhap
+    target._gia_nhap_kho = fEntry.gia_nhap
+  }
   if (fEntry.don_vi_tien_te) target.Don_vi_tien_te = fEntry.don_vi_tien_te
   triggerToast(`Đã áp giá từ file "${fEntry.file_name}"`)
 }
 
 const quoteEditTieuChuanPct = computed(() => {
   if (!quoteEdit.value) return 0;
-  const lp = donGiaLP(quoteEdit.value);
+  const lp = donGiaLPKho(quoteEdit.value);
   const tc = toNum(quoteEdit.value.Gia_tieu_chuan, 0);
   if (!lp || lp === 0) return 0;
   return round2((1 - tc / lp) * 100);
@@ -12562,8 +13499,11 @@ const quoteEditTieuChuanPct = computed(() => {
 
 function updateTieuChuanPct(val: number) {
   if (!quoteEdit.value) return;
-  const lp = donGiaLP(quoteEdit.value);
-  quoteEdit.value.Gia_tieu_chuan = lp * (1 - val / 100);
+  const lp = donGiaLPKho(quoteEdit.value);
+  const nextTc = lp * (1 - val / 100);
+  quoteEdit.value.Gia_tieu_chuan = nextTc;
+  quoteEdit.value._Gia_tieu_chuan_goc = nextTc;
+  quoteEdit.value._Gia_tieu_chuan_kho = nextTc;
   quoteEdit.value = { ...quoteEdit.value };
 }
 
@@ -12926,6 +13866,8 @@ function saveQuoteEdit() {
   if (!_adjustedFields.has('gia_hardware')) {
     quoteEdit.value._gia_hardware_goc = toNum(quoteEdit.value.gia_hardware, 0)
   }
+  quoteEdit.value._Gia_tieu_chuan_goc = toNum(quoteEdit.value.Gia_tieu_chuan, 0)
+  quoteEdit.value._Gia_tieu_chuan_kho = toNum(quoteEdit.value.Gia_tieu_chuan, 0)
   quoteEdit.value._gia_nhap_goc = toNum(quoteEdit.value.gia_nhap, 0)
   if (!_adjustedFields.has('muc_phan_tram_off')) {
     quoteEdit.value._muc_phan_tram_off_goc = toNum(quoteEdit.value.muc_phan_tram_off, 0)
@@ -13104,31 +14046,29 @@ const quoteEditMucOffGoc = computed({
 const quoteEditDonGiaUsdModel = computed({
   get() {
     if (!quoteEdit.value) return 0;
-    if (quotePriceViewMode.value === 'origin') {
-      return getGocNumber(quoteEdit.value, '_Don_gia_kho', getGocNumber(quoteEdit.value, '_Don_gia_goc', toNum(quoteEdit.value.Don_gia, 0)));
-    }
-    if (quotePriceViewMode.value === 'customer' || quotePriceViewMode.value === 'compare') {
-      return getGocNumber(quoteEdit.value, '_Don_gia_goc', toNum(quoteEdit.value.Don_gia, 0));
-    }
-    return toNum(quoteEdit.value.Don_gia, 0);
+    return getGocNumber(quoteEdit.value, '_Don_gia_kho', getGocNumber(quoteEdit.value, '_Don_gia_goc', toNum(quoteEdit.value.Don_gia, 0)));
   },
   set(val) {
     if (!quoteEdit.value) return;
     const nextUsd = Math.max(0, Number(val) || 0);
-    if (quotePriceViewMode.value === 'contract') {
-      quoteEdit.value.Don_gia = nextUsd;
-      _adjustedFields.add('Don_gia');
-    } else {
-      const hasExistingContractDiff = Math.abs(Math.round(lineTruocThue(quoteEdit.value) - lineTruocThueRaw(quoteEdit.value))) > 0;
+    const prevKhoUsd = getGocNumber(quoteEdit.value, '_Don_gia_kho', getGocNumber(quoteEdit.value, '_Don_gia_goc', toNum(quoteEdit.value.Don_gia, 0)));
+    const prevGocUsd = getGocNumber(quoteEdit.value, '_Don_gia_goc', toNum(quoteEdit.value.Don_gia, 0));
+    const prevContractUsd = toNum(quoteEdit.value.Don_gia, 0);
+    const hasExistingContractDiff = Math.abs(Math.round(lineTruocThue(quoteEdit.value) - lineTruocThueRaw(quoteEdit.value))) > 0;
+    const hasExistingCustDiff = Math.abs(prevGocUsd - prevKhoUsd) > 1e-6;
+
+    quoteEdit.value._Don_gia_kho = nextUsd;
+    if (!hasExistingCustDiff) {
       quoteEdit.value._Don_gia_goc = nextUsd;
-      if (!hasExistingContractDiff) {
-        quoteEdit.value.Don_gia = nextUsd;
-      }
-      _adjustedFields.add('Don_gia');
-      if (quotePriceViewMode.value === 'origin') {
-        quotePriceViewMode.value = 'customer';
-      }
     }
+    if (!hasExistingContractDiff && !hasExistingCustDiff) {
+      quoteEdit.value.Don_gia = nextUsd;
+    } else if (!hasExistingContractDiff) {
+      quoteEdit.value.Don_gia = quoteEdit.value._Don_gia_goc;
+    } else {
+      quoteEdit.value.Don_gia = prevContractUsd;
+    }
+    _adjustedFields.add('Don_gia');
   }
 });
 
@@ -13243,7 +14183,7 @@ const adjustScopeDisplayName = computed(() => {
         ? 'TT trước thuế (Khách) (Toàn bộ báo giá)'
         : 'TT trước thuế (HĐ) (Toàn bộ báo giá)'
     case 'list_price':
-      return isNormalEdit ? 'List Price (Báo giá khách)' : 'List Price (Hợp đồng)'
+      return 'List Price (Giá niêm yết gốc)'
     case 'hardware_price':
       return isNormalEdit ? 'Giá Hardware (Báo giá khách)' : 'Giá Hardware (Hợp đồng)'
     case 'import_price':
@@ -13262,6 +14202,7 @@ const adjustOrigCaption = computed(() => {
   const isOrigin = quotePriceViewMode.value === 'origin'
   if (isAdjustChenhLechField.value) return 'Chênh lệch hiện tại'
   if (adjustMetricType.value === 'import_price') return 'Giá nhập hiện tại'
+  if (adjustMetricType.value === 'list_price') return 'List Price hiện tại'
   if (isAdjustTruocThueMetric.value) {
     if (isOrigin && isNormalEdit) return 'TT trước thuế (List) hiện tại'
     return isNormalEdit ? 'TT trước thuế (Khách) hiện tại' : 'TT trước thuế (HĐ) hiện tại'
@@ -13275,6 +14216,7 @@ const adjustNewCaption = computed(() => {
   const { isNormalEdit } = adjustPriceModal.value
   if (isAdjustChenhLechField.value) return 'Chênh lệch mới'
   if (adjustMetricType.value === 'import_price') return 'Giá nhập mới'
+  if (adjustMetricType.value === 'list_price') return 'List Price mới'
   if (isAdjustTruocThueMetric.value) {
     return isNormalEdit ? 'TT trước thuế (Khách) mới' : 'TT trước thuế (HĐ) mới'
   }
@@ -13283,6 +14225,7 @@ const adjustNewCaption = computed(() => {
 })
 
 const adjustCustomerTierLabel = computed(() => {
+  if (adjustMetricType.value === 'list_price') return 'List Price'
   const noun = adjustMetricBaseNoun.value
   if (isAdjustTruocThueMetric.value || noun === 'Chênh lệch') return 'TT trước thuế (Khách)'
   return `${noun} khách`
@@ -13318,6 +14261,7 @@ const adjustDeltaAmount = computed(() =>
 
 const hasExistingContractDiffInNormalEdit = computed(() =>
   adjustPriceModal.value.isNormalEdit &&
+  adjustMetricType.value !== 'list_price' &&
   Math.abs(Math.round(adjustPriceModal.value.existingContractDiff || 0)) > 0
 )
 
@@ -13557,19 +14501,12 @@ function openAdjustPrice(mode: 'item'|'group'|'all'|'field', id: string, name: s
     } else if (field === 'Don_gia') {
       const tgContract = toNum(quoteEdit.value.Ti_gia, 1) || 1;
       const tgGoc = getGocNumber(quoteEdit.value, '_Ti_gia_goc', tgContract) || 1;
+      const tgKho = getGocNumber(quoteEdit.value, '_Ti_gia_kho', tgGoc) || 1;
+      const lpKhoVnd = getGocNumber(quoteEdit.value, '_Don_gia_kho', getGocNumber(quoteEdit.value, '_Don_gia_goc', toNum(quoteEdit.value.Don_gia, 0))) * tgKho;
       existingCustomerTotal = getGocNumber(quoteEdit.value, '_Don_gia_goc', toNum(quoteEdit.value.Don_gia, 0)) * tgGoc;
       existingContractTotal = toNum(quoteEdit.value.Don_gia, 0) * tgContract;
       existingContractDiff = existingContractTotal - existingCustomerTotal;
-      if (isNormal) {
-        if (isFromOriginTab) {
-          const tgKho = getGocNumber(quoteEdit.value, '_Ti_gia_kho', tgGoc) || 1;
-          total = getGocNumber(quoteEdit.value, '_Don_gia_kho', getGocNumber(quoteEdit.value, '_Don_gia_goc', toNum(quoteEdit.value.Don_gia, 0))) * tgKho;
-        } else {
-          total = existingCustomerTotal;
-        }
-      } else {
-        total = existingContractTotal;
-      }
+      total = isNormal ? lpKhoVnd : existingContractTotal;
     } else if (field === 'gia_hardware') {
       const tgContract = toNum(quoteEdit.value.Ti_gia, 1) || 1;
       const tg = getGocNumber(quoteEdit.value, '_Ti_gia_goc', tgContract) || 1;
@@ -13803,6 +14740,7 @@ function applyAdjustPrice() {
         const prevContractUSD = toNum(quoteEdit.value.Don_gia, 0);
         const hasDiffUSD = Math.abs((prevContractUSD - prevGocUSD) * tg) >= 1;
         const deltaUSD = newValUSD - prevGocUSD;
+        quoteEdit.value._Don_gia_kho = newValUSD;
         quoteEdit.value._Don_gia_goc = newValUSD;
         if (!hasDiffUSD) {
           quoteEdit.value.Don_gia = newValUSD;
@@ -16110,7 +17048,7 @@ function buildCurrentQuoteExportContext(): QuoteExportContext {
     const truoc = lineTruocThue(i)
     const vat = lineVAT(i)
     const sau = lineSauThue(i)
-    const lpVND = listPriceVnd(i, true)
+    const lpVND = listPriceVndKho(i, true)
     const stdVND = standardPrice(i)
     const nhapVND = giaNhapVnd(i)
 
@@ -16146,7 +17084,7 @@ function buildCurrentQuoteExportContext(): QuoteExportContext {
     const truoc = lineTruocThueRaw(i)
     const vat = lineVATRaw(i)
     const sau = lineSauThueRaw(i)
-    const lpVND = listPriceVndRaw(i, true)
+    const lpVND = listPriceVndKho(i, true)
     const stdVND = standardPriceRaw(i)
     const nhapVND = giaNhapVndRaw(i)
 
@@ -16628,6 +17566,10 @@ interface QuoteTabSession {
   importedTermsHtml: string
   excelMappingConfig: any[]
   loadedPipelineExtraData: any
+  cmpSrOverridesMap?: {
+    contract: CmpSrOverrideBucket
+    customer: CmpSrOverrideBucket
+  }
   historyLogs: Record<string, { time: string, oldVal: number, newVal: number }[]>
   actionHistory: { time: string, reason: string, oldVal?: number, newVal?: number }[]
 }
@@ -16635,9 +17577,6 @@ interface QuoteTabSession {
 const QUOTE_TABS_STORAGE_KEY = 'nts_baogia_firebase_tabs_v1'
 const quoteTabs = ref<QuoteTabSession[]>([])
 const activeQuoteTabId = ref<string>('')
-watch(activeQuoteTabId, () => {
-  resetAllCmpSrOverrides()
-})
 const quoteTabsScrollRef = ref<HTMLElement | null>(null)
 let saveTabsDebounceTimer: any = null
 
@@ -16786,6 +17725,10 @@ function createBlankTabSession(customTabNum?: number): QuoteTabSession {
     importedTermsHtml: '',
     excelMappingConfig: JSON.parse(JSON.stringify(defaultExcelConfig)),
     loadedPipelineExtraData: null,
+    cmpSrOverridesMap: {
+      contract: createEmptyCmpSrBucket(),
+      customer: createEmptyCmpSrBucket()
+    },
     historyLogs: createEmptyHistoryLogs(),
     actionHistory: []
   }
@@ -16818,6 +17761,10 @@ function snapshotCurrentStateToTab(tab: QuoteTabSession) {
   tab.loadedPipelineExtraData = loadedPipelineExtraData.value
     ? JSON.parse(JSON.stringify(loadedPipelineExtraData.value))
     : null
+  tab.cmpSrOverridesMap = {
+    contract: JSON.parse(JSON.stringify(cmpSrOverridesMap.contract || createEmptyCmpSrBucket())),
+    customer: JSON.parse(JSON.stringify(cmpSrOverridesMap.customer || createEmptyCmpSrBucket()))
+  }
   tab.historyLogs = JSON.parse(JSON.stringify(historyLogs.value || createEmptyHistoryLogs()))
   tab.actionHistory = JSON.parse(JSON.stringify(actionHistory.value || []))
 }
@@ -16883,6 +17830,21 @@ function applyTabSessionToCurrentState(tab: QuoteTabSession) {
     loadedPipelineExtraData.value = tab.loadedPipelineExtraData
       ? JSON.parse(JSON.stringify(tab.loadedPipelineExtraData))
       : null
+
+    Object.assign(
+      cmpSrOverridesMap.contract,
+      createEmptyCmpSrBucket(),
+      tab.cmpSrOverridesMap?.contract
+        ? JSON.parse(JSON.stringify(tab.cmpSrOverridesMap.contract))
+        : {}
+    )
+    Object.assign(
+      cmpSrOverridesMap.customer,
+      createEmptyCmpSrBucket(),
+      tab.cmpSrOverridesMap?.customer
+        ? JSON.parse(JSON.stringify(tab.cmpSrOverridesMap.customer))
+        : {}
+    )
 
     historyLogs.value = tab.historyLogs
       ? { ...createEmptyHistoryLogs(), ...JSON.parse(JSON.stringify(tab.historyLogs)) }
@@ -17298,7 +18260,8 @@ watch(
     selectedTermId,
     editableTermContent,
     importedTermsHtml,
-    excelMappingConfig
+    excelMappingConfig,
+    cmpSrOverridesMap
   ],
   () => {
     scheduleSaveQuoteTabsToStorage()
@@ -17309,6 +18272,7 @@ watch(
 function resetToanBoBaoGia() {
   selectedItems.value = [];
   flatQuoteRows.value = [];
+  resetAllCmpSrOverrides();
 
   chietKhauTruocThuePct.value = 0;
   thueChenhLechPct.value = 25;
@@ -21012,6 +21976,7 @@ function confirmAddVoiceItemsToQuote() {
       selectedItems.value[foundIdx].So_luong += qty
       selectedItems.value[foundIdx].Don_gia = p.Don_gia
       ;(selectedItems.value[foundIdx] as any)._Don_gia_goc = p.Don_gia
+      ;(selectedItems.value[foundIdx] as any)._Don_gia_kho = p.Don_gia
       lastHighlightIdx = foundIdx
     } else {
       const cloned = cloneHang(p, qty)
@@ -21892,6 +22857,7 @@ const isAnyQuoteModalOpen = computed(() => Boolean(
   showPickCompareModal.value ||
   showCompareModal.value ||
   showSaveModal.value ||
+  saveQuoteFileConfigModal.visible ||
   showExportSaveConfirmModal.value ||
   showExportExcelModal.value ||
   showPrintPreviewZoomModal.value ||
@@ -24020,13 +24986,13 @@ onUnmounted(() => {
                               </button>
                             </div>
                           </Transition>
-                          <button v-if="canShowNormalEditBtn" type="button" data-guide="group-btn-edit-price" class="util-btn small inline-normal-edit" @click.stop="openAdjustPrice('group', r.key, r.title, undefined, true)" title="Sửa thường - cập nhật giá thực tế">
+                          <button v-if="canShowNormalEditBtn" type="button" data-guide="group-btn-edit-price" class="util-btn small inline-normal-edit" @click.stop="openAdjustPrice('group', r.key, r.title, undefined, true)" title="Sửa Khách - cập nhật giá thực tế báo khách">
                             <i class="ri-edit-line"></i>
-                            <span>Sửa giá</span>
+                            <span>Sửa Khách</span>
                           </button>
-                          <button type="button" data-guide="group-btn-adjust-diff" class="util-btn small inline-adjust" @click.stop="openAdjustPrice('group', r.key, r.title)" title="Điều chỉnh chênh lệch giá">
+                          <button type="button" data-guide="group-btn-adjust-diff" class="util-btn small inline-adjust" @click.stop="openAdjustPrice('group', r.key, r.title)" title="Sửa HĐ - điều chỉnh giá hợp đồng">
                             <i class="ri-arrow-up-down-fill"></i>
-                            <span>Điều chỉnh</span>
+                            <span>Sửa HĐ</span>
                           </button>
                           <button
                             type="button"
@@ -24761,10 +25727,10 @@ onUnmounted(() => {
                       data-guide="m-btn-adjust-total-diff"
                       class="m-sum-inline-adj-pill"
                       @click="openAdjustPrice('all', '', 'Tổng chênh lệch giá', 'total_chenh_lech')"
-                      title="Điều chỉnh tổng chênh lệch giá"
+                      title="Sửa giá hợp đồng / tổng chênh lệch giá"
                     >
                       <i class="ri-arrow-up-down-fill"></i>
-                      <span>Điều chỉnh</span>
+                      <span>Sửa HĐ</span>
                     </button>
                   </span>
                   <span class="m-sum-val" :class="chenhLechGia > 0 ? 'pos' : chenhLechGia < 0 ? 'neg' : ''">
@@ -24826,10 +25792,10 @@ onUnmounted(() => {
                       data-guide="m-btn-adjust-all-quote"
                       class="m-sum-inline-adj-pill is-emerald"
                       @click="openAdjustPrice('all', '', 'Toàn bộ báo giá')"
-                      title="Điều chỉnh toàn bộ báo giá"
+                      title="Sửa giá hợp đồng toàn bộ báo giá"
                     >
                       <i class="ri-arrow-up-down-fill"></i>
-                      <span>Điều chỉnh</span>
+                      <span>Sửa HĐ</span>
                     </button>
                   </span>
                   <span class="m-sum-val">
@@ -27124,7 +28090,7 @@ onUnmounted(() => {
             <div style="display: flex; flex-direction: column; gap: 6px;">
               <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
                 <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                  <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px; margin: 0;">ĐƠN GIÁ BÁN ({{ itemForm.Don_vi_tien_te || 'VND' }})</label>
+                  <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px; margin: 0;">ĐƠN GIÁ BÁN / LIST PRICE ({{ itemForm.Don_vi_tien_te || 'VND' }})</label>
                   <button
                     v-if="getCardVendorType(itemForm)"
                     type="button"
@@ -27155,13 +28121,13 @@ onUnmounted(() => {
                   :decimals="0"
                   :modelValue="(itemForm.Don_gia || 0) * (Number(itemForm.Ti_gia) || 1)"
                   @update:modelValue="itemForm.Don_gia = $event / (Number(itemForm.Ti_gia) || 1); onTargetDonGiaInput(itemForm, manualCostMarkup)"
-                  placeholder="Nhập đơn giá xuất..."
+                  placeholder="Nhập đơn giá xuất / List price..."
                   style="width: 100%; padding: 12px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 16px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
                 <FormattedInput
                   v-else
                   :modelValue="itemForm.Don_gia"
                   @update:modelValue="itemForm.Don_gia = $event; onTargetDonGiaInput(itemForm, manualCostMarkup)"
-                  placeholder="Nhập đơn giá xuất..."
+                  placeholder="Nhập đơn giá xuất / List price..."
                   style="width: 100%; padding: 12px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 16px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
                 <i class="lucide-tag" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
                 <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #10b981; pointer-events: none;">{{ (!itemForm.Don_vi_tien_te || itemForm.Don_vi_tien_te.toUpperCase() === 'VND') ? '₫' : '$' }}</span>
@@ -27172,9 +28138,24 @@ onUnmounted(() => {
             </div>
             
             <div style="display: flex; flex-direction: column; gap: 6px;">
-              <label>
-                <span style="font-size: 11px; text-transform: uppercase; color: #fbbf24; font-weight: 600; letter-spacing: 0.5px;">Giá vốn / Giá off hãng ({{ itemForm.Don_vi_tien_te || 'VND' }})</span>
-              </label>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+                <label style="margin: 0;">
+                  <span style="font-size: 11px; text-transform: uppercase; color: #fbbf24; font-weight: 600; letter-spacing: 0.5px;">Giá vốn / Giá off hãng ({{ itemForm.Don_vi_tien_te || 'VND' }})</span>
+                </label>
+                <div class="vendor-off-inline-chip" title="Nhập % Off hãng để tính Giá vốn từ List Price">
+                  <span class="vendor-off-inline-label">% Off hãng:</span>
+                  <div class="vendor-off-inline-input-wrap">
+                    <FormattedInput
+                      :modelValue="getTargetVendorOffPct(itemForm)"
+                      :decimals="2"
+                      @update:modelValue="onTargetVendorOffPctInput(itemForm, $event, manualCostMarkup)"
+                      class="vendor-off-inline-input"
+                      placeholder="0"
+                    />
+                    <span class="vendor-off-inline-unit">%</span>
+                  </div>
+                </div>
+              </div>
               <div style="position: relative;">
                 <FormattedInput
                   v-if="!itemForm.Don_vi_tien_te || itemForm.Don_vi_tien_te.toUpperCase() === 'VND'"
@@ -27195,47 +28176,36 @@ onUnmounted(() => {
                 ≈ {{ ((itemForm.Gia_tieu_chuan || 0) * (Number(itemForm.Ti_gia) || 1)).toLocaleString('vi-VN') }} VND
               </div>
 
-              <!-- KHUNG TÍNH NHANH ĐƠN GIÁ BÁN TỪ GIÁ VỐN -->
+              <!-- KHUNG TÍNH NHANH ĐƠN GIÁ BÁN TỪ GIÁ VỐN (1 DÒNG GỌN) -->
               <div class="cost-markup-quick-box">
                 <span class="cost-markup-quick-label">
-                  <i class="ri-percent-line"></i> Tính giá bán từ Giá vốn:
+                  <i class="ri-percent-line"></i> Giá vốn → Giá bán:
                 </span>
                 <div class="cost-markup-quick-controls">
                   <select
                     v-model="manualCostMarkup.direction"
                     @change="applyCostMarkupToTarget(itemForm, manualCostMarkup)"
-                    class="cost-markup-select"
+                    class="cost-markup-select is-dir"
                     :class="manualCostMarkup.direction === 'decrease' ? 'is-down' : 'is-up'"
                   >
-                    <option value="increase">+ Tăng (Lãi)</option>
-                    <option value="decrease">- Giảm (Off)</option>
+                    <option value="increase">+ Lãi</option>
+                    <option value="decrease">- Giảm</option>
                   </select>
-                  <select
-                    v-model="manualCostMarkup.type"
-                    @change="applyCostMarkupToTarget(itemForm, manualCostMarkup)"
-                    class="cost-markup-select"
-                  >
-                    <option value="percent">% (Phần trăm)</option>
-                    <option value="amount">Số tiền ({{ itemForm.Don_vi_tien_te || 'VND' }})</option>
-                  </select>
-                  <div v-if="manualCostMarkup.type === 'percent'" style="position: relative; display: inline-flex; align-items: center;">
+                  <div class="cost-markup-input-group cost-markup-num-wrap">
                     <FormattedInput
                       :modelValue="manualCostMarkup.value"
-                      :decimals="2"
+                      :decimals="manualCostMarkup.type === 'percent' ? 2 : ((!itemForm.Don_vi_tien_te || itemForm.Don_vi_tien_te.toUpperCase() === 'VND') ? 0 : 2)"
                       @update:modelValue="manualCostMarkup.value = $event; applyCostMarkupToTarget(itemForm, manualCostMarkup)"
                       class="cost-markup-num-input"
-                      style="width: 82px; padding: 5px 22px 5px 8px; border-radius: 6px; font-weight: 700; font-size: 12.5px; text-align: right;"
                     />
-                    <span style="position: absolute; right: 7px; font-size: 11.5px; color: #94a3b8; font-weight: 700; pointer-events: none;">%</span>
-                  </div>
-                  <div v-else style="width: 124px;">
-                    <FormattedInput
-                      :modelValue="manualCostMarkup.value"
-                      :decimals="(!itemForm.Don_vi_tien_te || itemForm.Don_vi_tien_te.toUpperCase() === 'VND') ? 0 : 2"
-                      @update:modelValue="manualCostMarkup.value = $event; applyCostMarkupToTarget(itemForm, manualCostMarkup)"
-                      class="cost-markup-num-input"
-                      style="width: 100%; padding: 5px 8px; border-radius: 6px; font-weight: 700; font-size: 12.5px; text-align: right;"
-                    />
+                    <select
+                      v-model="manualCostMarkup.type"
+                      @change="applyCostMarkupToTarget(itemForm, manualCostMarkup)"
+                      class="cost-markup-select is-unit"
+                    >
+                      <option value="percent">%</option>
+                      <option value="amount">{{ (itemForm.Don_vi_tien_te && itemForm.Don_vi_tien_te.toUpperCase() === 'USD') ? 'USD' : '₫' }}</option>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -27267,7 +28237,7 @@ onUnmounted(() => {
             
             <div style="display: flex; flex-direction: column; gap: 16px;">
               <div v-if="false" style="display: flex; flex-direction: column; gap: 6px;">
-                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Mức % Off</label>
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">% Off Khách</label>
                 <div style="position: relative;">
                   <FormattedInput v-model="itemForm.muc_phan_tram_off" placeholder="0" style="width: 100%; padding: 10px 14px; padding-right: 30px; border-radius: 8px; color: #f59e0b;" />
                   <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 600; color: #f59e0b; pointer-events: none;">%</span>
@@ -27767,7 +28737,7 @@ onUnmounted(() => {
               <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
                 <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                   <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px; margin: 0;">
-                    ĐƠN GIÁ BÁN ({{ (cardEdit.Don_vi_tien_te && cardEdit.Don_vi_tien_te.toUpperCase() === 'USD' && Number(cardEdit.Ti_gia || 1) <= 1) ? 'USD' : 'VND' }})
+                    ĐƠN GIÁ BÁN / LIST PRICE ({{ (cardEdit.Don_vi_tien_te && cardEdit.Don_vi_tien_te.toUpperCase() === 'USD' && Number(cardEdit.Ti_gia || 1) <= 1) ? 'USD' : 'VND' }})
                   </label>
                   <button
                     v-if="getCardVendorType(cardEdit)"
@@ -27799,14 +28769,14 @@ onUnmounted(() => {
                   :decimals="2"
                   :modelValue="cardEdit.Don_gia"
                   @update:modelValue="cardEdit.Don_gia = $event; onTargetDonGiaInput(cardEdit, cardCostMarkup)"
-                  placeholder="Nhập đơn giá xuất..."
+                  placeholder="Nhập đơn giá xuất / List price..."
                   style="width: 100%; padding: 12px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 16px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
                 <FormattedInput
                   v-else
                   :decimals="0"
                   :modelValue="(cardEdit.Don_gia || 0) * (Number(cardEdit.Ti_gia) || 1)"
                   @update:modelValue="cardEdit.Don_gia = $event / (Number(cardEdit.Ti_gia) || 1); onTargetDonGiaInput(cardEdit, cardCostMarkup)"
-                  placeholder="Nhập đơn giá xuất..."
+                  placeholder="Nhập đơn giá xuất / List price..."
                   style="width: 100%; padding: 12px 14px; padding-left: 36px; border-radius: 8px; font-weight: 700; font-size: 16px; color: #10b981; border-color: rgba(16,185,129,0.3) !important; background: rgba(16,185,129,0.05) !important;" />
                 <i class="lucide-tag" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #10b981; pointer-events: none;"></i>
                 <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #10b981; pointer-events: none;">{{ (cardEdit.Don_vi_tien_te && cardEdit.Don_vi_tien_te.toUpperCase() === 'USD' && Number(cardEdit.Ti_gia || 1) <= 1) ? '$' : '₫' }}</span>
@@ -27817,11 +28787,26 @@ onUnmounted(() => {
             </div>
             
             <div style="display: flex; flex-direction: column; gap: 6px;">
-              <label>
-                <span style="font-size: 11px; text-transform: uppercase; color: #fbbf24; font-weight: 600; letter-spacing: 0.5px;">
-                  Giá vốn / Giá off hãng ({{ (cardEdit.Don_vi_tien_te && cardEdit.Don_vi_tien_te.toUpperCase() === 'USD' && Number(cardEdit.Ti_gia || 1) <= 1) ? 'USD' : 'VND' }})
-                </span>
-              </label>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+                <label style="margin: 0;">
+                  <span style="font-size: 11px; text-transform: uppercase; color: #fbbf24; font-weight: 600; letter-spacing: 0.5px;">
+                    Giá vốn / Giá off hãng ({{ (cardEdit.Don_vi_tien_te && cardEdit.Don_vi_tien_te.toUpperCase() === 'USD' && Number(cardEdit.Ti_gia || 1) <= 1) ? 'USD' : 'VND' }})
+                  </span>
+                </label>
+                <div class="vendor-off-inline-chip" title="Nhập % Off hãng để tính Giá vốn từ List Price">
+                  <span class="vendor-off-inline-label">% Off hãng:</span>
+                  <div class="vendor-off-inline-input-wrap">
+                    <FormattedInput
+                      :modelValue="getTargetVendorOffPct(cardEdit)"
+                      :decimals="2"
+                      @update:modelValue="onTargetVendorOffPctInput(cardEdit, $event, cardCostMarkup)"
+                      class="vendor-off-inline-input"
+                      placeholder="0"
+                    />
+                    <span class="vendor-off-inline-unit">%</span>
+                  </div>
+                </div>
+              </div>
               <div style="position: relative;">
                 <FormattedInput
                   v-if="cardEdit.Don_vi_tien_te && cardEdit.Don_vi_tien_te.toUpperCase() === 'USD' && Number(cardEdit.Ti_gia || 1) <= 1"
@@ -27843,47 +28828,36 @@ onUnmounted(() => {
                 ≈ {{ Number(cardEdit.Gia_tieu_chuan || 0).toLocaleString('vi-VN') }} {{ cardEdit.Don_vi_tien_te }}
               </div>
 
-              <!-- KHUNG TÍNH NHANH ĐƠN GIÁ BÁN TỪ GIÁ VỐN -->
+              <!-- KHUNG TÍNH NHANH ĐƠN GIÁ BÁN TỪ GIÁ VỐN (1 DÒNG GỌN) -->
               <div class="cost-markup-quick-box">
                 <span class="cost-markup-quick-label">
-                  <i class="ri-percent-line"></i> Tính giá bán từ Giá vốn:
+                  <i class="ri-percent-line"></i> Giá vốn → Giá bán:
                 </span>
                 <div class="cost-markup-quick-controls">
                   <select
                     v-model="cardCostMarkup.direction"
                     @change="applyCostMarkupToTarget(cardEdit, cardCostMarkup)"
-                    class="cost-markup-select"
+                    class="cost-markup-select is-dir"
                     :class="cardCostMarkup.direction === 'decrease' ? 'is-down' : 'is-up'"
                   >
-                    <option value="increase">+ Tăng (Lãi)</option>
-                    <option value="decrease">- Giảm (Off)</option>
+                    <option value="increase">+ Lãi</option>
+                    <option value="decrease">- Giảm</option>
                   </select>
-                  <select
-                    v-model="cardCostMarkup.type"
-                    @change="applyCostMarkupToTarget(cardEdit, cardCostMarkup)"
-                    class="cost-markup-select"
-                  >
-                    <option value="percent">% (Phần trăm)</option>
-                    <option value="amount">Số tiền ({{ cardEdit.Don_vi_tien_te || 'VND' }})</option>
-                  </select>
-                  <div v-if="cardCostMarkup.type === 'percent'" style="position: relative; display: inline-flex; align-items: center;">
+                  <div class="cost-markup-input-group cost-markup-num-wrap">
                     <FormattedInput
                       :modelValue="cardCostMarkup.value"
-                      :decimals="2"
+                      :decimals="cardCostMarkup.type === 'percent' ? 2 : ((!cardEdit.Don_vi_tien_te || cardEdit.Don_vi_tien_te.toUpperCase() === 'VND') ? 0 : 2)"
                       @update:modelValue="cardCostMarkup.value = $event; applyCostMarkupToTarget(cardEdit, cardCostMarkup)"
                       class="cost-markup-num-input"
-                      style="width: 82px; padding: 5px 22px 5px 8px; border-radius: 6px; font-weight: 700; font-size: 12.5px; text-align: right;"
                     />
-                    <span style="position: absolute; right: 7px; font-size: 11.5px; color: #94a3b8; font-weight: 700; pointer-events: none;">%</span>
-                  </div>
-                  <div v-else style="width: 124px;">
-                    <FormattedInput
-                      :modelValue="cardCostMarkup.value"
-                      :decimals="(!cardEdit.Don_vi_tien_te || cardEdit.Don_vi_tien_te.toUpperCase() === 'VND') ? 0 : 2"
-                      @update:modelValue="cardCostMarkup.value = $event; applyCostMarkupToTarget(cardEdit, cardCostMarkup)"
-                      class="cost-markup-num-input"
-                      style="width: 100%; padding: 5px 8px; border-radius: 6px; font-weight: 700; font-size: 12.5px; text-align: right;"
-                    />
+                    <select
+                      v-model="cardCostMarkup.type"
+                      @change="applyCostMarkupToTarget(cardEdit, cardCostMarkup)"
+                      class="cost-markup-select is-unit"
+                    >
+                      <option value="percent">%</option>
+                      <option value="amount">{{ (cardEdit.Don_vi_tien_te && cardEdit.Don_vi_tien_te.toUpperCase() === 'USD') ? 'USD' : '₫' }}</option>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -27918,10 +28892,13 @@ onUnmounted(() => {
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
               <div style="display: flex; flex-direction: column; gap: 6px;">
-                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Mức % Off</label>
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">% Off Khách</label>
                 <div style="position: relative;">
                   <FormattedInput v-model="cardEdit.muc_phan_tram_off" placeholder="0" style="width: 100%; padding: 10px 14px; padding-right: 30px; border-radius: 8px; color: #f59e0b;" />
                   <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 600; color: #f59e0b; pointer-events: none;">%</span>
+                </div>
+                <div v-if="toNum(cardEdit.muc_phan_tram_off, 0) > 0" style="font-size: 11px; color: #f59e0b; font-weight: 600; margin-top: 1px; font-variant-numeric: tabular-nums;">
+                  Giá khách: <b>{{ formatTargetCustomerAfterOffPrice(cardEdit) }}</b>
                 </div>
               </div>
               <div style="display: flex; flex-direction: column; gap: 6px;">
@@ -28695,7 +29672,7 @@ onUnmounted(() => {
             <div class="read-price-field">
               <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
                 <label class="read-price-field-label" style="margin: 0;">
-                  Đơn giá bán đưa vào modal ({{ fileReadPriceModal.editCurrency }})
+                  Đơn giá bán / List Price đưa vào modal ({{ fileReadPriceModal.editCurrency }})
                 </label>
                 <span
                   v-if="toNum(fileReadPriceModal.editGiaVon, 0) > 0 && toNum(fileReadPriceModal.editDonGia, 0) > 0"
@@ -28741,44 +29718,33 @@ onUnmounted(() => {
 
               <div class="cost-markup-quick-box">
                 <span class="cost-markup-quick-label">
-                  <i class="ri-percent-line"></i> Tính giá bán từ Giá vốn:
+                  <i class="ri-percent-line"></i> Giá vốn → Giá bán:
                 </span>
                 <div class="cost-markup-quick-controls">
                   <select
                     v-model="fileReadPriceModal.markupDirection"
                     @change="applyReadModalInlineMarkup()"
-                    class="cost-markup-select"
+                    class="cost-markup-select is-dir"
                     :class="fileReadPriceModal.markupDirection === 'decrease' ? 'is-down' : 'is-up'"
                   >
-                    <option value="increase">+ Tăng (Lãi)</option>
-                    <option value="decrease">- Giảm (Off)</option>
+                    <option value="increase">+ Lãi</option>
+                    <option value="decrease">- Giảm</option>
                   </select>
-                  <select
-                    v-model="fileReadPriceModal.markupType"
-                    @change="applyReadModalInlineMarkup()"
-                    class="cost-markup-select"
-                  >
-                    <option value="percent">% (Phần trăm)</option>
-                    <option value="amount">Số tiền ({{ fileReadPriceModal.editCurrency }})</option>
-                  </select>
-                  <div v-if="fileReadPriceModal.markupType === 'percent'" class="cost-markup-num-wrap" style="position: relative; display: inline-flex; align-items: center;">
+                  <div class="cost-markup-input-group cost-markup-num-wrap">
                     <FormattedInput
                       :modelValue="fileReadPriceModal.markupValue"
-                      :decimals="2"
+                      :decimals="fileReadPriceModal.markupType === 'percent' ? 2 : (fileReadPriceModal.editCurrency === 'VND' ? 0 : 2)"
                       @update:modelValue="fileReadPriceModal.markupValue = $event; applyReadModalInlineMarkup()"
                       class="cost-markup-num-input"
-                      style="width: 86px; padding: 5px 22px 5px 8px; border-radius: 6px; font-weight: 700; font-size: 12.5px; text-align: right;"
                     />
-                    <span style="position: absolute; right: 7px; font-size: 11.5px; color: #94a3b8; font-weight: 700; pointer-events: none;">%</span>
-                  </div>
-                  <div v-else class="cost-markup-num-wrap" style="width: 132px;">
-                    <FormattedInput
-                      :modelValue="fileReadPriceModal.markupValue"
-                      :decimals="fileReadPriceModal.editCurrency === 'VND' ? 0 : 2"
-                      @update:modelValue="fileReadPriceModal.markupValue = $event; applyReadModalInlineMarkup()"
-                      class="cost-markup-num-input"
-                      style="width: 100%; padding: 5px 8px; border-radius: 6px; font-weight: 700; font-size: 12.5px; text-align: right;"
-                    />
+                    <select
+                      v-model="fileReadPriceModal.markupType"
+                      @change="applyReadModalInlineMarkup()"
+                      class="cost-markup-select is-unit"
+                    >
+                      <option value="percent">%</option>
+                      <option value="amount">{{ fileReadPriceModal.editCurrency === 'USD' ? 'USD' : '₫' }}</option>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -29131,12 +30097,14 @@ onUnmounted(() => {
               </button>
             </div>
 
-            <!-- 3-Tier Price View Switcher synced with table header -->
-            <div style="display: inline-flex; align-items: center; gap: 4px; background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(148, 163, 184, 0.22); border-radius: 8px; padding: 3px; flex-wrap: wrap;">
+            <!-- 3-Tier Price View Switcher synced with table header (3 modes only: origin, customer, contract) -->
+            <div class="quote-edit-mode-switcher" style="display: inline-flex; align-items: center; gap: 4px; background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(148, 163, 184, 0.22); border-radius: 8px; padding: 3px; flex-wrap: wrap;">
               <button
-                v-for="opt in quotePriceViewOptions"
+                v-for="opt in quoteEditPriceViewOptions"
                 :key="'qe-mode-' + opt.value"
                 type="button"
+                class="qe-mode-switch-btn"
+                :class="['is-tone-' + opt.badgeColor, { 'is-active': effectiveQuoteEditPriceViewMode === opt.value }]"
                 @click="selectQuotePriceViewMode(opt.value)"
                 :style="{
                   width: 'auto',
@@ -29151,31 +30119,25 @@ onUnmounted(() => {
                   cursor: 'pointer',
                   whiteSpace: 'nowrap',
                   transition: 'all 0.16s ease',
-                  background: quotePriceViewMode === opt.value
+                  background: effectiveQuoteEditPriceViewMode === opt.value
                     ? (opt.badgeColor === 'amber'
                         ? 'rgba(245, 158, 11, 0.2)'
                         : opt.badgeColor === 'emerald'
                         ? 'rgba(16, 185, 129, 0.2)'
-                        : opt.badgeColor === 'purple'
-                        ? 'rgba(139, 92, 246, 0.22)'
                         : 'rgba(59, 130, 246, 0.22)')
                     : 'transparent',
-                  color: quotePriceViewMode === opt.value
+                  color: effectiveQuoteEditPriceViewMode === opt.value
                     ? (opt.badgeColor === 'amber'
                         ? '#fbbf24'
                         : opt.badgeColor === 'emerald'
                         ? '#34d399'
-                        : opt.badgeColor === 'purple'
-                        ? '#c4b5fd'
                         : '#60a5fa')
                     : '#94a3b8',
-                  border: quotePriceViewMode === opt.value
+                  border: effectiveQuoteEditPriceViewMode === opt.value
                     ? (opt.badgeColor === 'amber'
                         ? '1px solid rgba(245, 158, 11, 0.5)'
                         : opt.badgeColor === 'emerald'
                         ? '1px solid rgba(16, 185, 129, 0.5)'
-                        : opt.badgeColor === 'purple'
-                        ? '1px solid rgba(139, 92, 246, 0.55)'
                         : '1px solid rgba(59, 130, 246, 0.5)')
                     : '1px solid transparent'
                 }"
@@ -29186,7 +30148,7 @@ onUnmounted(() => {
                     width: '6px',
                     height: '6px',
                     borderRadius: '999px',
-                    background: opt.badgeColor === 'amber' ? '#f59e0b' : opt.badgeColor === 'emerald' ? '#10b981' : opt.badgeColor === 'purple' ? '#8b5cf6' : '#3b82f6'
+                    background: opt.badgeColor === 'amber' ? '#f59e0b' : opt.badgeColor === 'emerald' ? '#10b981' : '#3b82f6'
                   }"
                 ></span>
                 <span>{{ opt.shortLabel }}</span>
@@ -29585,13 +30547,9 @@ onUnmounted(() => {
                     </button>
                   </div>
                   <div style="display: flex; gap: 6px;">
-                    <button v-if="canShowNormalEditBtn" type="button" data-guide="qe-btn-edit-list-price" class="util-btn small inline-normal-edit" :class="{ 'is-guide-pulse': activeGuideStepId === 'table-item-edit-price' }" @click="openAdjustPrice('field', '', activeListPriceFieldLabel, 'Don_gia', true)" title="Sửa thường - cập nhật giá thực tế">
+                    <button type="button" data-guide="qe-btn-edit-list-price" class="util-btn small inline-normal-edit" :class="{ 'is-guide-pulse': activeGuideStepId === 'table-item-edit-price' }" @click="openAdjustPrice('field', '', activeListPriceFieldLabel, 'Don_gia', true)" title="Sửa List Price (Giá niêm yết gốc)">
                       <i class="ri-edit-line"></i>
                       <span>Sửa giá</span>
-                    </button>
-                    <button type="button" class="util-btn small inline-adjust" @click="openAdjustPrice('field', '', activeListPriceFieldLabel, 'Don_gia')" title="Điều chỉnh - tạo chênh lệch giá">
-                      <i class="ri-arrow-up-down-fill"></i>
-                      <span>Điều chỉnh</span>
                     </button>
                   </div>
                 </label>
@@ -29637,10 +30595,10 @@ onUnmounted(() => {
                       width: '6px',
                       height: '6px',
                       borderRadius: '999px',
-                      background: quotePriceViewMode === 'origin' ? '#fbbf24' : quotePriceViewMode === 'contract' ? '#34d399' : '#60a5fa'
+                      background: effectiveQuoteEditPriceViewMode === 'origin' ? '#fbbf24' : effectiveQuoteEditPriceViewMode === 'contract' ? '#34d399' : '#60a5fa'
                     }"
                   ></span>
-                  <span>{{ currentQuotePriceViewOption.label }}</span>
+                  <span>{{ currentQuoteEditPriceViewOption.label }}</span>
                 </span>
               </div>
 
@@ -29708,13 +30666,13 @@ onUnmounted(() => {
                       >{{ getRoundingBtnLabel(getItemOrFieldRounding(quoteEdit, 'don_gia_kh')) }}</button>
                     </div>
                     <div style="display: flex; gap: 6px;">
-                      <button v-if="canShowNormalEditBtn" type="button" data-guide="qe-btn-edit-unit-price" class="util-btn small inline-normal-edit" :class="{ 'is-guide-pulse': activeGuideStepId === 'table-item-edit-price' }" @click="openAdjustPrice('field', '', activeDonGiaFieldLabel, 'unit_price_kh', true)" title="Sửa thường">
+                      <button v-if="canShowNormalEditBtn" type="button" data-guide="qe-btn-edit-unit-price" class="util-btn small inline-normal-edit" :class="{ 'is-guide-pulse': activeGuideStepId === 'table-item-edit-price' }" @click="openAdjustPrice('field', '', activeDonGiaFieldLabel, 'unit_price_kh', true)" title="Sửa giá báo khách">
                         <i class="ri-edit-line"></i>
-                        <span>Sửa giá</span>
+                        <span>Sửa Khách</span>
                       </button>
-                      <button type="button" class="util-btn small inline-adjust" @click="openAdjustPrice('field', '', activeDonGiaFieldLabel, 'unit_price_kh')" title="Điều chỉnh">
+                      <button type="button" class="util-btn small inline-adjust" @click="openAdjustPrice('field', '', activeDonGiaFieldLabel, 'unit_price_kh')" title="Sửa giá hợp đồng (tạo chênh lệch)">
                         <i class="ri-arrow-up-down-fill"></i>
-                        <span>Điều chỉnh</span>
+                        <span>Sửa HĐ</span>
                       </button>
                     </div>
                   </label>
@@ -29724,10 +30682,10 @@ onUnmounted(() => {
                     <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #10b981; pointer-events: none;">₫</span>
                   </div>
                   <div class="muted" style="font-size: 11px; margin-top: 2px; color: #94a3b8; text-align: right; width: 100%;">
-                    <template v-if="quotePriceViewMode === 'origin'">
+                    <template v-if="effectiveQuoteEditPriceViewMode === 'origin'">
                       (Đơn giá LIST gốc từ kho sản phẩm)
                     </template>
-                    <template v-else-if="quotePriceViewMode === 'customer'">
+                    <template v-else-if="effectiveQuoteEditPriceViewMode === 'customer'">
                       (Đơn giá LIST: {{ formatVND(unitPriceKho(quoteEdit)) }} ₫)
                     </template>
                     <template v-else>
@@ -29751,13 +30709,13 @@ onUnmounted(() => {
                       >{{ getRoundingBtnLabel(getItemOrFieldRounding(quoteEdit, 'tt_truoc_thue')) }}</button>
                     </div>
                     <div style="display: flex; gap: 6px;">
-                      <button v-if="canShowNormalEditBtn" type="button" data-guide="qe-btn-edit-line-total" class="util-btn small inline-normal-edit" :class="{ 'is-guide-pulse': activeGuideStepId === 'table-item-edit-price' }" @click="openAdjustPrice('field', '', activeLineTruocThueFieldLabel, 'line_truoc_thue', true)" title="Sửa thường">
+                      <button v-if="canShowNormalEditBtn" type="button" data-guide="qe-btn-edit-line-total" class="util-btn small inline-normal-edit" :class="{ 'is-guide-pulse': activeGuideStepId === 'table-item-edit-price' }" @click="openAdjustPrice('field', '', activeLineTruocThueFieldLabel, 'line_truoc_thue', true)" title="Sửa TT trước thuế báo khách">
                         <i class="ri-edit-line"></i>
-                        <span>Sửa giá</span>
+                        <span>Sửa Khách</span>
                       </button>
-                      <button type="button" class="util-btn small inline-adjust" @click="openAdjustPrice('field', '', activeLineTruocThueFieldLabel, 'line_truoc_thue')" title="Điều chỉnh">
+                      <button type="button" class="util-btn small inline-adjust" @click="openAdjustPrice('field', '', activeLineTruocThueFieldLabel, 'line_truoc_thue')" title="Sửa TT trước thuế hợp đồng (tạo chênh lệch)">
                         <i class="ri-arrow-up-down-fill"></i>
-                        <span>Điều chỉnh</span>
+                        <span>Sửa HĐ</span>
                       </button>
                     </div>
                   </label>
@@ -29767,10 +30725,10 @@ onUnmounted(() => {
                     <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #10b981; pointer-events: none;">₫</span>
                   </div>
                   <div class="muted" style="font-size: 11px; margin-top: 2px; color: #94a3b8; text-align: right; width: 100%;">
-                    <template v-if="quotePriceViewMode === 'origin'">
+                    <template v-if="effectiveQuoteEditPriceViewMode === 'origin'">
                       (TT trước thuế (List) gốc từ kho sản phẩm)
                     </template>
-                    <template v-else-if="quotePriceViewMode === 'customer'">
+                    <template v-else-if="effectiveQuoteEditPriceViewMode === 'customer'">
                       (TT trước thuế (List): {{ formatVND(lineTruocThueKho(quoteEdit)) }} ₫)
                     </template>
                     <template v-else>
@@ -29785,9 +30743,9 @@ onUnmounted(() => {
                 <label style="display: flex; justify-content: space-between; align-items: center;">
                   <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Chênh lệch</span>
                   <div style="display: flex; gap: 6px;">
-                    <button type="button" class="util-btn small inline-adjust" @click="openAdjustPrice('field', '', 'Chênh lệch giá', 'item_chenh_lech')" title="Điều chỉnh">
+                    <button type="button" class="util-btn small inline-adjust" @click="openAdjustPrice('field', '', 'Chênh lệch giá', 'item_chenh_lech')" title="Sửa mức chênh lệch hợp đồng">
                       <i class="ri-arrow-up-down-fill"></i>
-                      <span>Điều chỉnh</span>
+                      <span>Sửa HĐ</span>
                     </button>
                   </div>
                 </label>
@@ -29803,8 +30761,22 @@ onUnmounted(() => {
           </div>
 
         </div>
-        
 
+        <!-- ================== MINI DOCK CHỌN 3 CHẾ ĐỘ XEM GIÁ TRÊN MOBILE TRONG MODAL CHỈNH SỬA HÀNG HÓA ================== -->
+        <button
+          type="button"
+          class="m-quote-mode-mini-dock is-in-quote-edit-modal"
+          :class="'is-mode-' + effectiveQuoteEditPriceViewMode"
+          @click.stop="showMobileQuoteModeSheet = true"
+          title="Nhấn để đổi chế độ hiển thị giá (Báo giá gốc / Báo giá khách / Báo giá hợp đồng)"
+        >
+          <span class="m-qmd-dot"></span>
+          <span class="m-qmd-prefix">Đang xem:</span>
+          <span class="m-qmd-label">{{ currentQuoteEditPriceViewOption.shortLabel }}</span>
+          <svg class="m-qmd-chevron" xmlns="http://www.w3.org/2000/svg" width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="18 15 12 9 6 15"></polyline>
+          </svg>
+        </button>
 
         <div class="modal-actions fullscreen-modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; align-items: center; padding: 14px 24px; border-top: 1px solid rgba(255,255,255,0.08); margin-top: 0; flex-shrink: 0;">
           <button class="btn-del" @click="removeSelected(quoteEditIdx)" style="width: auto !important; margin: 0 auto 0 0 !important; background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 10px 24px; border-radius: 8px; font-weight: 700; cursor: pointer;">✕ Xóa item</button>
@@ -30557,7 +31529,7 @@ onUnmounted(() => {
         class="invoice-card"
         :class="{ 'selected': loadMode === 'MA' && loadKey === r.maHD }"
         @click="loadMode = 'MA'; loadKey = r.maHD;"
-        @dblclick="loadMode = 'MA'; loadKey = r.maHD; loadInvoiceToFE()"
+        @dblclick="loadMode = 'MA'; loadKey = r.maHD; r.isOfficial ? cloneInvoiceToFE() : loadInvoiceToFE()"
       >
         <div class="invoice-card-header">
           <span class="invoice-ma-hd"><i class="lucide-file-text" style="width: 14px; height: 14px;"></i> {{ r.maHD || 'Chưa có Mã HĐ' }}</span>
@@ -30603,7 +31575,13 @@ onUnmounted(() => {
       <button class="btn-load-fe btn-load-clone" :disabled="loadingInvoice || !loadKey" @click="cloneInvoiceToFE" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
         {{ loadingInvoice ? 'Đang nhân bản...' : 'Nhân bản' }}
       </button>
-      <button class="btn-load-fe btn-load-edit" :disabled="loadingInvoice || !loadKey" @click="loadInvoiceToFE" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+      <button
+        v-if="!isSelectedLoadContractOfficial && loadStatusFilter !== 'Chính thức'"
+        class="btn-load-fe btn-load-edit"
+        :disabled="loadingInvoice || !loadKey"
+        @click="loadInvoiceToFE"
+        style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);"
+      >
         {{ loadingInvoice ? 'Đang load...' : 'Chỉnh sửa báo giá' }}
       </button>
     </div>
@@ -31053,11 +32031,11 @@ onUnmounted(() => {
           <button class="modal-btn-secondary" @click="handleExportSaveConfirmChoice('cancel')" style="padding: 12px 20px; border-radius: 8px; font-weight: 700; font-size: 14px; color: #f8fafc; background: #334155; border: 1px solid rgba(255,255,255,0.15); cursor: pointer; transition: all 0.25s; letter-spacing: 0.3px;">Hủy (Chỉ xuất file)</button>
         </div>
         <div v-else class="save-modal-actions save-modal-actions-3btn cust-modal-footer fullscreen-modal-footer" style="padding: 16px 32px; border-top: 1px solid rgba(255,255,255,0.08); background: rgba(15, 23, 42, 0.95); display: grid; grid-template-columns: 1fr 1.15fr 1fr; gap: 12px; flex-shrink: 0; border-radius: 0 !important;">
-          <button class="btn-save-temp" @click="() => { showSaveModal = false; saveContractTemp(); }" style="padding: 12px 16px; border-radius: 8px; font-weight: 700; font-size: 13.5px; color: #fff; background: linear-gradient(135deg, #3b82f6, #2563eb); border: none; cursor: pointer; transition: all 0.25s; letter-spacing: 0.3px; box-shadow: 0 2px 8px rgba(59,130,246,0.25); display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+          <button class="btn-save-temp" @click="() => { showSaveModal = false; saveContractTemp(false, false, true); }" style="padding: 12px 16px; border-radius: 8px; font-weight: 700; font-size: 13.5px; color: #fff; background: linear-gradient(135deg, #3b82f6, #2563eb); border: none; cursor: pointer; transition: all 0.25s; letter-spacing: 0.3px; box-shadow: 0 2px 8px rgba(59,130,246,0.25); display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
             <i class="lucide-save" style="font-size: 14px;"></i>
             <span>Lưu tạm &amp; chờ duyệt</span>
           </button>
-          <button class="btn-save-deal" @click="() => { showSaveModal = false; saveContractOfficialAndSaleReport(); }" style="padding: 12px 16px; border-radius: 8px; font-weight: 800; font-size: 13.5px; text-transform: uppercase; color: #fff; background: linear-gradient(135deg, #10b981, #059669); border: none; cursor: pointer; transition: all 0.25s; letter-spacing: 0.4px; box-shadow: 0 2px 8px rgba(16,185,129,0.28); display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+          <button class="btn-save-deal" @click="() => { showSaveModal = false; saveContractOfficialAndSaleReport(false, false, true); }" style="padding: 12px 16px; border-radius: 8px; font-weight: 800; font-size: 13.5px; text-transform: uppercase; color: #fff; background: linear-gradient(135deg, #10b981, #059669); border: none; cursor: pointer; transition: all 0.25s; letter-spacing: 0.4px; box-shadow: 0 2px 8px rgba(16,185,129,0.28); display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
             <i class="lucide-check-circle" style="font-size: 14px;"></i>
             <span>CHỐT DEAL &amp; SALE REPORT</span>
           </button>
@@ -31068,6 +32046,227 @@ onUnmounted(() => {
               <rect x="6" y="14" width="12" height="8"></rect>
             </svg>
             <span>XUẤT &amp; IN BÁO GIÁ</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================== MODAL: CHỌN FILE BÁO GIÁ ĐÍNH KÈM VÀO SALE REPORT (HĐ & KHÁCH) ================== -->
+    <div
+      v-if="saveQuoteFileConfigModal.visible"
+      class="modal vip-modal-overlay save-quote-file-cfg-overlay"
+      style="z-index: 10025;"
+      @click.self="cancelSaveQuoteFileConfigModal"
+    >
+      <div class="modal-card vip-modal-card save-quote-file-cfg-modal">
+        <div
+          class="modal-head modal-head-themed sqfc-head"
+          :class="saveQuoteFileConfigModal.saveMode === 'official' ? 'is-official' : 'is-temp'"
+        >
+          <div class="sqfc-head-left">
+            <span class="sqfc-eyebrow">
+              {{ saveQuoteFileConfigModal.saveMode === 'official' ? 'CHỐT DEAL & LƯU CHÍNH THỨC • SALE REPORT' : 'LƯU TẠM & CHỜ DUYỆT • PHƯƠNG ÁN TẠM' }}
+            </span>
+            <h3 class="sqfc-title">Đính Kèm File Báo Giá Vào Sale Report</h3>
+          </div>
+          <button type="button" class="sqfc-close-btn" @click="cancelSaveQuoteFileConfigModal" title="Đóng">✕</button>
+        </div>
+
+        <div class="modal-body sqfc-body">
+          <div class="sqfc-intro-banner">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>
+            <span>
+              Tùy chọn đính kèm file Báo giá cho từng chế độ <b>[HĐ]</b> và <b>[Khách]</b> bên trang Sale Report. Bạn có thể chọn mẫu in để xuất tự động theo đúng giá trên web, tự tải file từ máy tính, hoặc bỏ qua.
+            </span>
+          </div>
+
+          <input
+            ref="hdCustomFileInputRef"
+            type="file"
+            accept=".xlsx,.xls,.pdf,.doc,.docx,.png,.jpg,.jpeg,.webp"
+            style="display: none;"
+            @change="onCustomQuoteFilePicked('hd', $event)"
+          />
+          <input
+            ref="khachCustomFileInputRef"
+            type="file"
+            accept=".xlsx,.xls,.pdf,.doc,.docx,.png,.jpg,.jpeg,.webp"
+            style="display: none;"
+            @change="onCustomQuoteFilePicked('khach', $event)"
+          />
+
+          <div class="sqfc-grid">
+            <!-- KHUNG 1: FILE BÁO GIÁ HỢP ĐỒNG [HĐ] -->
+            <div class="sqfc-slot-card is-hd">
+              <div class="sqfc-slot-head">
+                <div class="sqfc-slot-title-wrap">
+                  <span class="sqfc-mode-pill is-hd">HĐ</span>
+                  <div>
+                    <div class="sqfc-slot-title">File Báo Giá Hợp Đồng</div>
+                    <div class="sqfc-slot-sub">Hiển thị khi chọn chế độ [HĐ] bên Sale Report</div>
+                  </div>
+                </div>
+                <div class="sqfc-slot-price-badge is-hd">
+                  <span>Sau thuế HĐ:</span>
+                  <b>{{ formatVND(totals.sau) }} ₫</b>
+                </div>
+              </div>
+
+              <div class="sqfc-mode-tabs">
+                <button
+                  type="button"
+                  class="sqfc-mode-btn"
+                  :class="{ active: saveQuoteFileConfigModal.hdMode === 'template' }"
+                  @click="saveQuoteFileConfigModal.hdMode = 'template'"
+                >
+                  Xuất theo mẫu in
+                </button>
+                <button
+                  type="button"
+                  class="sqfc-mode-btn"
+                  :class="{ active: saveQuoteFileConfigModal.hdMode === 'upload' }"
+                  @click="saveQuoteFileConfigModal.hdMode = 'upload'"
+                >
+                  Tự tải file lên
+                </button>
+                <button
+                  type="button"
+                  class="sqfc-mode-btn is-skip"
+                  :class="{ active: saveQuoteFileConfigModal.hdMode === 'skip' }"
+                  @click="saveQuoteFileConfigModal.hdMode = 'skip'"
+                >
+                  Bỏ qua
+                </button>
+              </div>
+
+              <div v-if="saveQuoteFileConfigModal.hdMode === 'template'" class="sqfc-panel">
+                <label class="sqfc-field-label">Chọn mẫu in để lưu cho Hợp đồng (Áp dụng Giá Hợp Đồng):</label>
+                <select v-model="saveQuoteFileConfigModal.hdTemplateId" class="sqfc-select">
+                  <option v-for="pt in printTemplates" :key="'hd-' + pt.id" :value="pt.id">
+                    {{ pt.ten_mau }} ({{ pt.cau_hinh_trang?.kho_giay || 'A4' }} - {{ pt.cau_hinh_trang?.huong_giay === 'portrait' ? 'Dọc' : 'Ngang' }})
+                  </option>
+                </select>
+                <div class="sqfc-file-preview-note">
+                  <span>Tên file sẽ tạo:</span>
+                  <b>{{ exportFileNamePreview }}_BaoGiaHopDong.xlsx</b>
+                </div>
+              </div>
+
+              <div v-else-if="saveQuoteFileConfigModal.hdMode === 'upload'" class="sqfc-panel">
+                <label class="sqfc-field-label">Tải file Báo giá Hợp đồng từ máy tính:</label>
+                <div class="sqfc-upload-box" @click="triggerPickCustomQuoteFile('hd')">
+                  <div class="sqfc-upload-info">
+                    <span class="sqfc-upload-name">
+                      {{ saveQuoteFileConfigModal.hdCustomFile ? saveQuoteFileConfigModal.hdCustomFile.name : 'Chưa chọn file từ máy tính...' }}
+                    </span>
+                    <span class="sqfc-upload-hint">Hỗ trợ Excel, PDF, Word, Hình ảnh</span>
+                  </div>
+                  <button type="button" class="sqfc-pick-btn" @click.stop="triggerPickCustomQuoteFile('hd')">
+                    {{ saveQuoteFileConfigModal.hdCustomFile ? 'Đổi file' : 'Chọn file' }}
+                  </button>
+                </div>
+              </div>
+
+              <div v-else class="sqfc-panel sqfc-panel-skip">
+                <span>Không đính kèm file Báo giá Hợp đồng. Tab [HĐ] bên Sale Report sẽ để trống để có thể tải lên sau.</span>
+              </div>
+            </div>
+
+            <!-- KHUNG 2: FILE BÁO GIÁ KHÁCH HÀNG [KHÁCH] -->
+            <div class="sqfc-slot-card is-khach">
+              <div class="sqfc-slot-head">
+                <div class="sqfc-slot-title-wrap">
+                  <span class="sqfc-mode-pill is-khach">Khách</span>
+                  <div>
+                    <div class="sqfc-slot-title">File Báo Giá Khách Hàng</div>
+                    <div class="sqfc-slot-sub">Hiển thị khi chọn chế độ [Khách] bên Sale Report</div>
+                  </div>
+                </div>
+                <div class="sqfc-slot-price-badge is-khach">
+                  <span>Sau thuế Khách:</span>
+                  <b>{{ formatVND(totalsContract.sau) }} ₫</b>
+                </div>
+              </div>
+
+              <div class="sqfc-mode-tabs">
+                <button
+                  type="button"
+                  class="sqfc-mode-btn"
+                  :class="{ active: saveQuoteFileConfigModal.khachMode === 'template' }"
+                  @click="saveQuoteFileConfigModal.khachMode = 'template'"
+                >
+                  Xuất theo mẫu in
+                </button>
+                <button
+                  type="button"
+                  class="sqfc-mode-btn"
+                  :class="{ active: saveQuoteFileConfigModal.khachMode === 'upload' }"
+                  @click="saveQuoteFileConfigModal.khachMode = 'upload'"
+                >
+                  Tự tải file lên
+                </button>
+                <button
+                  type="button"
+                  class="sqfc-mode-btn is-skip"
+                  :class="{ active: saveQuoteFileConfigModal.khachMode === 'skip' }"
+                  @click="saveQuoteFileConfigModal.khachMode = 'skip'"
+                >
+                  Bỏ qua
+                </button>
+              </div>
+
+              <div v-if="saveQuoteFileConfigModal.khachMode === 'template'" class="sqfc-panel">
+                <label class="sqfc-field-label">Chọn mẫu in để lưu cho Khách hàng (Áp dụng Giá Khách):</label>
+                <select v-model="saveQuoteFileConfigModal.khachTemplateId" class="sqfc-select">
+                  <option v-for="pt in printTemplates" :key="'khach-' + pt.id" :value="pt.id">
+                    {{ pt.ten_mau }} ({{ pt.cau_hinh_trang?.kho_giay || 'A4' }} - {{ pt.cau_hinh_trang?.huong_giay === 'portrait' ? 'Dọc' : 'Ngang' }})
+                  </option>
+                </select>
+                <div class="sqfc-file-preview-note">
+                  <span>Tên file sẽ tạo:</span>
+                  <b>{{ exportFileNamePreview }}_BaoGiaKhach.xlsx</b>
+                </div>
+              </div>
+
+              <div v-else-if="saveQuoteFileConfigModal.khachMode === 'upload'" class="sqfc-panel">
+                <label class="sqfc-field-label">Tải file Báo giá Khách hàng từ máy tính:</label>
+                <div class="sqfc-upload-box" @click="triggerPickCustomQuoteFile('khach')">
+                  <div class="sqfc-upload-info">
+                    <span class="sqfc-upload-name">
+                      {{ saveQuoteFileConfigModal.khachCustomFile ? saveQuoteFileConfigModal.khachCustomFile.name : 'Chưa chọn file từ máy tính...' }}
+                    </span>
+                    <span class="sqfc-upload-hint">Hỗ trợ Excel, PDF, Word, Hình ảnh</span>
+                  </div>
+                  <button type="button" class="sqfc-pick-btn" @click.stop="triggerPickCustomQuoteFile('khach')">
+                    {{ saveQuoteFileConfigModal.khachCustomFile ? 'Đổi file' : 'Chọn file' }}
+                  </button>
+                </div>
+              </div>
+
+              <div v-else class="sqfc-panel sqfc-panel-skip">
+                <span>Không đính kèm file Báo giá Khách hàng. Tab [Khách] bên Sale Report sẽ để trống để có thể tải lên sau.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sqfc-footer">
+          <button type="button" class="sqfc-btn is-back" @click="cancelSaveQuoteFileConfigModal">
+            Quay lại
+          </button>
+          <button type="button" class="sqfc-btn is-skip-all" @click="skipAllFilesAndSaveQuoteNow">
+            Bỏ qua file &amp; Lưu ngay
+          </button>
+          <button
+            type="button"
+            class="sqfc-btn is-confirm"
+            :class="saveQuoteFileConfigModal.saveMode === 'official' ? 'is-official' : 'is-temp'"
+            @click="confirmSaveQuoteWithConfiguredFiles"
+          >
+            {{ saveQuoteFileConfigModal.saveMode === 'official' ? 'Xác nhận & Chốt Deal' : 'Xác nhận & Lưu Tạm' }}
           </button>
         </div>
       </div>
@@ -32321,13 +33520,13 @@ onUnmounted(() => {
               <i :class="adjustPriceModal.isNormalEdit ? 'ri-edit-line' : 'ri-arrow-up-down-fill'"></i>
             </span>
             <span class="adj-dt-head-text">
-              <span class="adj-dt-title">{{ adjustPriceModal.isNormalEdit ? 'Sửa Giá Báo Khách' : 'Điều Chỉnh Giá Hợp Đồng' }}</span>
+              <span class="adj-dt-title">{{ adjustMetricType === 'list_price' ? 'Sửa List Price (Giá Gốc)' : (adjustPriceModal.isNormalEdit ? 'Sửa Giá Báo Khách' : 'Sửa Giá Hợp Đồng') }}</span>
               <span class="adj-dt-sub">{{ adjustScopeDisplayName }}</span>
             </span>
           </h3>
           <div class="m-grab-head-stack">
             <span class="m-grab-eyebrow">{{ adjustScopeDisplayName }}</span>
-            <span class="m-grab-title">{{ adjustPriceModal.isNormalEdit ? 'Sửa giá báo khách' : 'Điều chỉnh giá hợp đồng' }}</span>
+            <span class="m-grab-title">{{ adjustMetricType === 'list_price' ? 'Sửa List Price (Giá gốc)' : (adjustPriceModal.isNormalEdit ? 'Sửa giá báo khách' : 'Sửa giá hợp đồng') }}</span>
           </div>
           <button type="button" class="x" @click="onUserDismissAdjustPriceModal()">✕</button>
         </div>
@@ -32337,8 +33536,11 @@ onUnmounted(() => {
           <!-- Mode Note Pill -->
           <div class="adj-mode-pill">
             <i class="ri-information-line"></i>
-            <span v-if="adjustPriceModal.isNormalEdit">
-              Sửa giá: Cập nhật <b>{{ adjustCustomerTierLabel }}</b>
+            <span v-if="adjustMetricType === 'list_price'">
+              Sửa giá: Cập nhật <b>List Price (Giá niêm yết gốc)</b> dùng chung cho cả 3 chế độ
+            </span>
+            <span v-else-if="adjustPriceModal.isNormalEdit">
+              Sửa Khách: Cập nhật <b>{{ adjustCustomerTierLabel }}</b>
               <template v-if="hasExistingContractDiffInNormalEdit">
                 ({{
                   adjustPriceModal.normalEditContractBehavior === 'keep_diff'
@@ -32351,7 +33553,7 @@ onUnmounted(() => {
               </template>
             </span>
             <span v-else>
-              Điều chỉnh: Kê / chỉnh <b>{{ adjustContractTierLabel }}</b> (giữ nguyên Báo giá gốc &amp; {{ adjustCustomerTierLabel }})
+              Sửa HĐ: Kê / chỉnh <b>{{ adjustContractTierLabel }}</b> (giữ nguyên Báo giá gốc &amp; {{ adjustCustomerTierLabel }})
             </span>
           </div>
 
@@ -34655,7 +35857,7 @@ onUnmounted(() => {
           <div class="qtabs-sheet-head">
             <div class="qtabs-sheet-head-txt">
               <h4>Chế độ hiển thị báo giá</h4>
-              <p>Chọn chế độ xem danh sách hàng hóa</p>
+              <p>{{ showQuoteEditModal ? 'Chọn chế độ xem & chỉnh sửa giá mặt hàng' : 'Chọn chế độ xem danh sách hàng hóa' }}</p>
             </div>
             <div class="qtabs-sheet-head-actions">
               <button
@@ -34674,25 +35876,25 @@ onUnmounted(() => {
 
           <div class="qmode-sheet-list">
             <button
-              v-for="opt in quotePriceViewOptions"
+              v-for="opt in (showQuoteEditModal ? quoteEditPriceViewOptions : quotePriceViewOptions)"
               :key="'m-qmode-opt-' + opt.value"
               type="button"
               class="qmode-sheet-card"
               :class="[
                 'is-tone-' + opt.badgeColor,
-                { 'is-active': quotePriceViewMode === opt.value }
+                { 'is-active': (showQuoteEditModal ? effectiveQuoteEditPriceViewMode : quotePriceViewMode) === opt.value }
               ]"
               @click="selectQuotePriceViewMode(opt.value)"
             >
               <div class="qmode-card-top">
                 <div class="qmode-card-title-group">
                   <span class="qmode-card-radio">
-                    <svg v-if="quotePriceViewMode === opt.value" xmlns="http://www.w3.org/2000/svg" width="10.5" height="10.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <svg v-if="(showQuoteEditModal ? effectiveQuoteEditPriceViewMode : quotePriceViewMode) === opt.value" xmlns="http://www.w3.org/2000/svg" width="10.5" height="10.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                   </span>
                   <span class="qmode-card-dot"></span>
                   <span class="qmode-card-title">{{ opt.label }}</span>
                 </div>
-                <span v-if="quotePriceViewMode === opt.value" class="qmode-card-active-badge">Đang xem</span>
+                <span v-if="(showQuoteEditModal ? effectiveQuoteEditPriceViewMode : quotePriceViewMode) === opt.value" class="qmode-card-active-badge">Đang xem</span>
               </div>
               <div class="qmode-card-desc">{{ opt.desc }}</div>
             </button>
@@ -39116,16 +40318,16 @@ td.dvt { font-family: inherit; white-space: normal; }
   }
 
   #app .page button.m-quote-mode-mini-dock.is-modal-hidden,
-  .page.has-open-modal #app .page button.m-quote-mode-mini-dock,
-  #app .page.has-open-modal button.m-quote-mode-mini-dock {
+  .page.has-open-modal #app .page button.m-quote-mode-mini-dock:not(.is-in-quote-edit-modal),
+  #app .page.has-open-modal button.m-quote-mode-mini-dock:not(.is-in-quote-edit-modal) {
     transform: translateX(-50%) translateY(calc(100% + 140px + env(safe-area-inset-bottom, 0px))) scale(0.95) !important;
     opacity: 0 !important;
     visibility: hidden !important;
     pointer-events: none !important;
   }
 
-  #app .app-layout.mobile-nav-hidden .page button.m-quote-mode-mini-dock,
-  .app-layout.mobile-nav-hidden .page button.m-quote-mode-mini-dock {
+  #app .app-layout.mobile-nav-hidden .page button.m-quote-mode-mini-dock:not(.is-in-quote-edit-modal),
+  .app-layout.mobile-nav-hidden .page button.m-quote-mode-mini-dock:not(.is-in-quote-edit-modal) {
     bottom: calc(66px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
@@ -39214,9 +40416,9 @@ td.dvt { font-family: inherit; white-space: normal; }
       max-width: none !important;
       border-radius: 0 !important;
     }
-    #app .page button.m-quote-mode-mini-dock,
-    #app .app-layout.mobile-nav-hidden .page button.m-quote-mode-mini-dock,
-    .app-layout.mobile-nav-hidden .page button.m-quote-mode-mini-dock {
+    #app .page button.m-quote-mode-mini-dock:not(.is-in-quote-edit-modal),
+    #app .app-layout.mobile-nav-hidden .page button.m-quote-mode-mini-dock:not(.is-in-quote-edit-modal),
+    .app-layout.mobile-nav-hidden .page button.m-quote-mode-mini-dock:not(.is-in-quote-edit-modal) {
       bottom: 56px !important;
       left: calc(50% + 36px) !important;
     }
@@ -45088,6 +46290,33 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
   color: #334155 !important;
 }
 
+.page.theme-light-blue .quote-edit-mode-switcher {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+.page.theme-light-blue .quote-edit-mode-switcher .qe-mode-switch-btn:not(.is-active) {
+  color: #475569 !important;
+}
+
+.page.theme-light-blue .quote-edit-mode-switcher .qe-mode-switch-btn.is-tone-amber.is-active {
+  background: #fffbeb !important;
+  color: #b45309 !important;
+  border-color: #fcd34d !important;
+}
+
+.page.theme-light-blue .quote-edit-mode-switcher .qe-mode-switch-btn.is-tone-blue.is-active {
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+  border-color: #93c5fd !important;
+}
+
+.page.theme-light-blue .quote-edit-mode-switcher .qe-mode-switch-btn.is-tone-emerald.is-active {
+  background: #ecfdf5 !important;
+  color: #047857 !important;
+  border-color: #6ee7b7 !important;
+}
+
 .page.theme-light-blue .qe-pill-label {
   color: #64748b !important;
 }
@@ -45391,43 +46620,106 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
 }
 
 .cost-markup-quick-box {
-  margin-top: 4px;
-  padding: 8px 10px;
-  border-radius: 8px;
+  margin-top: 2px;
+  padding: 4px 8px;
+  border-radius: 7px;
   background: rgba(15, 23, 42, 0.45);
-  border: 1px dashed rgba(148, 163, 184, 0.3);
+  border: 1px dashed rgba(148, 163, 184, 0.28);
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
   gap: 6px;
+  flex-wrap: wrap;
 }
 
 .cost-markup-quick-label {
   font-size: 11px;
   font-weight: 700;
-  color: #cbd5e1;
+  color: #94a3b8;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
+  white-space: nowrap;
 }
 
 .cost-markup-quick-controls {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
+  gap: 5px;
+  flex-wrap: nowrap;
+  margin-left: auto;
 }
 
-.cost-markup-select {
-  padding: 5px 8px !important;
+#app .page .modal-card .cost-markup-select.is-dir {
+  height: 26px !important;
+  min-height: 26px !important;
+  padding: 0 6px !important;
   border-radius: 6px !important;
   background: rgba(30, 41, 59, 0.9) !important;
   border: 1px solid rgba(148, 163, 184, 0.28) !important;
   color: #f8fafc !important;
-  font-size: 12px !important;
+  font-size: 11.5px !important;
   font-weight: 700 !important;
   cursor: pointer;
   width: auto !important;
   margin: 0 !important;
+}
+
+#app .page .modal-card .cost-markup-select.is-dir.is-up {
+  color: #34d399 !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+  background: rgba(16, 185, 129, 0.1) !important;
+}
+
+#app .page .modal-card .cost-markup-select.is-dir.is-down {
+  color: #fb7185 !important;
+  border-color: rgba(244, 63, 94, 0.35) !important;
+  background: rgba(244, 63, 94, 0.1) !important;
+}
+
+.cost-markup-input-group {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  background: rgba(30, 41, 59, 0.9);
+  overflow: hidden;
+}
+
+#app .page .modal-card .cost-markup-input-group input.cost-markup-num-input {
+  width: 76px !important;
+  height: 24px !important;
+  min-height: 24px !important;
+  padding: 0 6px !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: #f8fafc !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  text-align: right !important;
+  font-variant-numeric: tabular-nums !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+}
+
+#app .page .modal-card .cost-markup-input-group select.cost-markup-select.is-unit {
+  width: auto !important;
+  height: 24px !important;
+  min-height: 24px !important;
+  padding: 0 5px !important;
+  border: none !important;
+  border-left: 1px solid rgba(148, 163, 184, 0.25) !important;
+  border-radius: 0 !important;
+  background: rgba(15, 23, 42, 0.5) !important;
+  color: #cbd5e1 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  cursor: pointer;
+  margin: 0 !important;
+  box-shadow: none !important;
 }
 
 .cost-markup-select option {
@@ -45435,10 +46727,53 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
   color: #f8fafc;
 }
 
-.cost-markup-num-input {
-  background: rgba(30, 41, 59, 0.9) !important;
-  border: 1px solid rgba(148, 163, 184, 0.32) !important;
-  color: #f8fafc !important;
+/* Inline % Off Hãng Chip trên hàng Giá vốn */
+.vendor-off-inline-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.38);
+}
+
+.vendor-off-inline-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #c4b5fd;
+  white-space: nowrap;
+}
+
+.vendor-off-inline-input-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+#app .page .modal-card .vendor-off-inline-chip input.vendor-off-inline-input {
+  width: 54px !important;
+  height: 21px !important;
+  min-height: 21px !important;
+  padding: 0 15px 0 5px !important;
+  border-radius: 4px !important;
+  background: rgba(15, 23, 42, 0.65) !important;
+  border: 1px solid rgba(139, 92, 246, 0.4) !important;
+  color: #a78bfa !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  text-align: right !important;
+  font-variant-numeric: tabular-nums !important;
+  margin: 0 !important;
+}
+
+.vendor-off-inline-unit {
+  position: absolute;
+  right: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #a78bfa;
+  pointer-events: none;
 }
 
 .page.theme-light-blue .cost-diff-pill.is-up {
@@ -45465,19 +46800,64 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
 }
 
 .page.theme-light-blue .cost-markup-quick-label {
-  color: #334155 !important;
+  color: #475569 !important;
 }
 
-.page.theme-light-blue .cost-markup-select,
-.page.theme-light-blue .cost-markup-num-input {
+#app .page.theme-light-blue .modal-card .cost-markup-select.is-dir {
   background: #ffffff !important;
   border: 1px solid #cbd5e1 !important;
   color: #0f172a !important;
 }
 
+#app .page.theme-light-blue .modal-card .cost-markup-select.is-dir.is-up {
+  background: #ecfdf5 !important;
+  border-color: #6ee7b7 !important;
+  color: #047857 !important;
+}
+
+#app .page.theme-light-blue .modal-card .cost-markup-select.is-dir.is-down {
+  background: #fff1f2 !important;
+  border-color: #fda4af !important;
+  color: #be123c !important;
+}
+
+.page.theme-light-blue .cost-markup-input-group {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+#app .page.theme-light-blue .modal-card .cost-markup-input-group input.cost-markup-num-input {
+  background: transparent !important;
+  border: none !important;
+  color: #0f172a !important;
+}
+
+#app .page.theme-light-blue .modal-card .cost-markup-input-group select.cost-markup-select.is-unit {
+  background: #f1f5f9 !important;
+  border: none !important;
+  border-left: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+}
+
 .page.theme-light-blue .cost-markup-select option {
   background: #ffffff;
   color: #0f172a;
+}
+
+.page.theme-light-blue .vendor-off-inline-chip {
+  background: #f5f3ff !important;
+  border-color: #c4b5fd !important;
+}
+
+.page.theme-light-blue .vendor-off-inline-label,
+.page.theme-light-blue .vendor-off-inline-unit {
+  color: #6d28d9 !important;
+}
+
+#app .page.theme-light-blue .modal-card .vendor-off-inline-chip input.vendor-off-inline-input {
+  background: #ffffff !important;
+  border-color: #a78bfa !important;
+  color: #6d28d9 !important;
 }
 
 /* ==========================================================================
@@ -49584,13 +50964,18 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
     overflow: hidden !important;
   }
 
-  #app .page .quote-edit-modal-card .quote-edit-quick-pills {
+  #app .page .quote-edit-modal-card .quote-edit-quick-pills,
+  #app .page .quote-edit-modal-card .quote-edit-mode-switcher {
     display: none !important;
   }
 
   #app .page .quote-edit-modal-card .quote-edit-tabbar {
     padding: 8px 12px !important;
     gap: 0 !important;
+  }
+
+  #app .page .quote-edit-modal-card .quote-edit-tabbar > div:first-child {
+    width: 100% !important;
   }
 
   #app .page .quote-edit-modal-card .quote-edit-tab-group {
@@ -49634,12 +51019,43 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
 
   /* 3. Thân cuộn & Tách triệt để 2 Tab (không bao giờ đè chồng) */
   #app .page .quote-edit-modal-card > .quote-edit-body-scroll {
-    padding: 12px !important;
+    padding: 12px 12px 52px 12px !important;
     gap: 12px !important;
     flex: 1 1 0% !important;
     min-height: 0 !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* Mini-Dock 3 chế độ nổi ngay trên Footer của Modal Chỉnh sửa hàng hóa trên Mobile */
+  #app .page .quote-edit-modal-card button.m-quote-mode-mini-dock.is-in-quote-edit-modal {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    position: fixed !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    bottom: calc(68px + env(safe-area-inset-bottom, 0px)) !important;
+    width: max-content !important;
+    max-width: calc(100vw - 32px) !important;
+    height: 30px !important;
+    min-height: 30px !important;
+    margin: 0 !important;
+    padding: 0 13px !important;
+    border-radius: 999px !important;
+    z-index: 10015 !important;
+    font-size: 11.5px !important;
+    font-weight: 800 !important;
+    white-space: nowrap !important;
+    line-height: 1 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+  }
+
+  #app .page .quote-edit-modal-card button.m-quote-mode-mini-dock.is-in-quote-edit-modal:active {
+    transform: translateX(-50%) scale(0.95) !important;
   }
 
   #app .page .quote-edit-modal-card .quote-edit-tab-panel {
@@ -57518,31 +58934,48 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
     gap: 10px !important;
   }
 
-  #app .page .modal-card.read-price-fullscreen-card .cost-markup-quick-controls {
-    display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
-    gap: 8px !important;
-    width: 100% !important;
+  #app .page .modal-card .cost-markup-quick-box {
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 5px 8px !important;
+    gap: 6px !important;
   }
 
-  #app .page .modal-card.read-price-fullscreen-card .cost-markup-select {
-    width: 100% !important;
-    height: 36px !important;
-    min-height: 36px !important;
-    font-size: 12.5px !important;
+  #app .page .modal-card .cost-markup-quick-controls {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    width: auto !important;
+    margin-left: auto !important;
   }
 
-  #app .page .modal-card.read-price-fullscreen-card .cost-markup-num-wrap {
-    grid-column: 1 / -1 !important;
-    width: 100% !important;
+  #app .page .modal-card .cost-markup-select.is-dir {
+    width: auto !important;
+    height: 30px !important;
+    min-height: 30px !important;
+    padding: 0 7px !important;
+    font-size: 12px !important;
   }
 
-  #app .page .modal-card.read-price-fullscreen-card .cost-markup-num-wrap .cost-markup-num-input,
-  #app .page .modal-card.read-price-fullscreen-card .cost-markup-num-wrap input {
-    width: 100% !important;
-    height: 38px !important;
-    min-height: 38px !important;
-    font-size: 16px !important;
+  #app .page .modal-card .cost-markup-input-group {
+    height: 30px !important;
+    width: auto !important;
+  }
+
+  #app .page .modal-card .cost-markup-input-group input.cost-markup-num-input {
+    width: 78px !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    font-size: 13px !important;
+  }
+
+  #app .page .modal-card .cost-markup-input-group select.cost-markup-select.is-unit {
+    width: auto !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    padding: 0 6px !important;
+    font-size: 11.5px !important;
   }
 
   #app .page .modal-card.read-price-fullscreen-card .read-price-mob-inline-note {
@@ -60658,6 +62091,540 @@ button.export-quick-fmt-pill.fmt-html:hover {
 
   .export-multi-tpl-chip {
     flex-shrink: 0 !important;
+  }
+}
+
+/* ================== MODAL CHỌN FILE BÁO GIÁ ĐÍNH KÈM VÀO SALE REPORT (HĐ & KHÁCH) ================== */
+.save-quote-file-cfg-modal {
+  width: min(940px, 95vw) !important;
+  max-width: 940px !important;
+  padding: 0 !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  background: #0f172a !important;
+  border: 1px solid rgba(148, 163, 184, 0.22) !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  max-height: 90vh !important;
+}
+
+.sqfc-head {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 16px 22px !important;
+  margin: 0 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.sqfc-head.is-temp {
+  background: linear-gradient(135deg, #1d4ed8, #0284c7) !important;
+}
+
+.sqfc-head.is-official {
+  background: linear-gradient(135deg, #059669, #0d9488) !important;
+}
+
+.sqfc-head-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sqfc-eyebrow {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.sqfc-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 0.2px;
+}
+
+#app .page .modal-card button.sqfc-close-btn {
+  width: 30px !important;
+  min-width: 30px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  background: rgba(0, 0, 0, 0.22) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+  font-size: 14px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer;
+}
+
+.sqfc-body {
+  padding: 18px 22px !important;
+  overflow-y: auto !important;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sqfc-intro-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  color: #e2e8f0;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.sqfc-intro-banner svg {
+  flex-shrink: 0;
+  color: #38bdf8;
+}
+
+.sqfc-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.sqfc-slot-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgba(30, 41, 59, 0.65);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  min-width: 0;
+}
+
+.sqfc-slot-card.is-hd {
+  border-top: 3px solid #3b82f6;
+}
+
+.sqfc-slot-card.is-khach {
+  border-top: 3px solid #10b981;
+}
+
+.sqfc-slot-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sqfc-slot-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sqfc-mode-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.sqfc-mode-pill.is-hd {
+  background: rgba(59, 130, 246, 0.18);
+  border: 1px solid rgba(59, 130, 246, 0.45);
+  color: #60a5fa;
+}
+
+.sqfc-mode-pill.is-khach {
+  background: rgba(16, 185, 129, 0.18);
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  color: #34d399;
+}
+
+.sqfc-slot-title {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #f8fafc;
+}
+
+.sqfc-slot-sub {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.sqfc-slot-price-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sqfc-slot-price-badge.is-hd {
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #93c5fd;
+}
+
+.sqfc-slot-price-badge.is-khach {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #6ee7b7;
+}
+
+.sqfc-mode-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  padding: 4px;
+  border-radius: 9px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+#app .page .modal-card button.sqfc-mode-btn {
+  width: 100% !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  margin: 0 !important;
+  padding: 0 8px !important;
+  border-radius: 6px !important;
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  color: #94a3b8 !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  cursor: pointer;
+  white-space: nowrap !important;
+  box-shadow: none !important;
+}
+
+#app .page .modal-card button.sqfc-mode-btn.active {
+  background: rgba(59, 130, 246, 0.2) !important;
+  border-color: rgba(59, 130, 246, 0.5) !important;
+  color: #ffffff !important;
+}
+
+#app .page .modal-card .sqfc-slot-card.is-khach button.sqfc-mode-btn.active:not(.is-skip) {
+  background: rgba(16, 185, 129, 0.2) !important;
+  border-color: rgba(16, 185, 129, 0.5) !important;
+  color: #ffffff !important;
+}
+
+#app .page .modal-card button.sqfc-mode-btn.is-skip.active {
+  background: rgba(245, 158, 11, 0.18) !important;
+  border-color: rgba(245, 158, 11, 0.5) !important;
+  color: #fcd34d !important;
+}
+
+.sqfc-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sqfc-field-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #cbd5e1;
+}
+
+#app .page .modal-card select.sqfc-select {
+  width: 100% !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 0 12px !important;
+  border-radius: 8px !important;
+  background: rgba(15, 23, 42, 0.85) !important;
+  border: 1px solid rgba(148, 163, 184, 0.3) !important;
+  color: #f8fafc !important;
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+}
+
+.sqfc-file-preview-note {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px dashed rgba(148, 163, 184, 0.28);
+  font-size: 11.5px;
+  color: #94a3b8;
+  word-break: break-all;
+}
+
+.sqfc-file-preview-note b {
+  color: #38bdf8;
+  font-weight: 700;
+}
+
+.sqfc-slot-card.is-khach .sqfc-file-preview-note b {
+  color: #34d399;
+}
+
+.sqfc-upload-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px dashed rgba(56, 189, 248, 0.45);
+  cursor: pointer;
+}
+
+.sqfc-upload-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sqfc-upload-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #f8fafc;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sqfc-upload-hint {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+#app .page .modal-card button.sqfc-pick-btn {
+  width: auto !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  margin: 0 !important;
+  padding: 0 12px !important;
+  border-radius: 7px !important;
+  background: linear-gradient(135deg, #0284c7, #2563eb) !important;
+  border: none !important;
+  color: #ffffff !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  white-space: nowrap !important;
+  flex-shrink: 0;
+}
+
+.sqfc-panel-skip {
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px dashed rgba(245, 158, 11, 0.35);
+  color: #fde68a;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.sqfc-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 22px;
+  border-top: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(15, 23, 42, 0.95);
+  flex-wrap: wrap;
+}
+
+#app .page .modal-card button.sqfc-btn {
+  width: auto !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  margin: 0 !important;
+  padding: 0 18px !important;
+  border-radius: 9px !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  cursor: pointer;
+  white-space: nowrap !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+#app .page .modal-card button.sqfc-btn.is-back {
+  background: #334155 !important;
+  border: 1px solid rgba(148, 163, 184, 0.25) !important;
+  color: #f8fafc !important;
+  margin-right: auto !important;
+}
+
+#app .page .modal-card button.sqfc-btn.is-skip-all {
+  background: rgba(245, 158, 11, 0.16) !important;
+  border: 1px solid rgba(245, 158, 11, 0.45) !important;
+  color: #fbbf24 !important;
+}
+
+#app .page .modal-card button.sqfc-btn.is-confirm.is-temp {
+  background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+  border: none !important;
+  color: #ffffff !important;
+}
+
+#app .page .modal-card button.sqfc-btn.is-confirm.is-official {
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  border: none !important;
+  color: #ffffff !important;
+}
+
+/* Light theme (.theme-light-blue) overrides for sqfc modal */
+.page.theme-light-blue .save-quote-file-cfg-modal {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.18) !important;
+}
+
+.page.theme-light-blue .sqfc-intro-banner {
+  background: #f0f9ff !important;
+  border-color: #bae6fd !important;
+  color: #0f172a !important;
+}
+
+.page.theme-light-blue .sqfc-slot-card {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+
+.page.theme-light-blue .sqfc-slot-title {
+  color: #0f172a !important;
+}
+
+.page.theme-light-blue .sqfc-slot-sub {
+  color: #64748b !important;
+}
+
+.page.theme-light-blue .sqfc-slot-price-badge.is-hd {
+  background: #eff6ff !important;
+  border-color: #bfdbfe !important;
+  color: #1d4ed8 !important;
+}
+
+.page.theme-light-blue .sqfc-slot-price-badge.is-khach {
+  background: #ecfdf5 !important;
+  border-color: #a7f3d0 !important;
+  color: #047857 !important;
+}
+
+.page.theme-light-blue .sqfc-mode-tabs {
+  background: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
+}
+
+#app .page.theme-light-blue .modal-card button.sqfc-mode-btn {
+  color: #475569 !important;
+}
+
+#app .page.theme-light-blue .modal-card button.sqfc-mode-btn.active {
+  background: #2563eb !important;
+  border-color: #1d4ed8 !important;
+  color: #ffffff !important;
+}
+
+#app .page.theme-light-blue .modal-card .sqfc-slot-card.is-khach button.sqfc-mode-btn.active:not(.is-skip) {
+  background: #059669 !important;
+  border-color: #047857 !important;
+  color: #ffffff !important;
+}
+
+#app .page.theme-light-blue .modal-card button.sqfc-mode-btn.is-skip.active {
+  background: #fef3c7 !important;
+  border-color: #f59e0b !important;
+  color: #b45309 !important;
+}
+
+.page.theme-light-blue .sqfc-field-label {
+  color: #334155 !important;
+}
+
+#app .page.theme-light-blue .modal-card select.sqfc-select {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+.page.theme-light-blue .sqfc-file-preview-note {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #475569 !important;
+}
+
+.page.theme-light-blue .sqfc-file-preview-note b {
+  color: #0284c7 !important;
+}
+
+.page.theme-light-blue .sqfc-slot-card.is-khach .sqfc-file-preview-note b {
+  color: #059669 !important;
+}
+
+.page.theme-light-blue .sqfc-upload-box {
+  background: #ffffff !important;
+  border-color: #93c5fd !important;
+}
+
+.page.theme-light-blue .sqfc-upload-name {
+  color: #0f172a !important;
+}
+
+.page.theme-light-blue .sqfc-panel-skip {
+  background: #fffbeb !important;
+  border-color: #fcd34d !important;
+  color: #92400e !important;
+}
+
+.page.theme-light-blue .sqfc-footer {
+  background: #f8fafc !important;
+  border-top-color: #e2e8f0 !important;
+}
+
+#app .page.theme-light-blue .modal-card button.sqfc-btn.is-back {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+#app .page.theme-light-blue .modal-card button.sqfc-btn.is-skip-all {
+  background: #fffbeb !important;
+  border-color: #f59e0b !important;
+  color: #b45309 !important;
+}
+
+@media (max-width: 768px) {
+  .sqfc-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .sqfc-footer {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+  }
+  #app .page .modal-card button.sqfc-btn {
+    width: 100% !important;
+  }
+  #app .page .modal-card button.sqfc-btn.is-confirm {
+    grid-column: 1 / -1 !important;
   }
 }
 </style>

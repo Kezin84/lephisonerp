@@ -58,6 +58,28 @@
           <span class="sr-ctt-mode-count">{{ craftRows.length }}</span>
         </button>
       </div>
+      <div class="sr-ctt-mode-switcher is-mobile-full is-price-row" role="tablist" aria-label="Chế độ hiển thị giá">
+        <button
+          type="button"
+          class="sr-ctt-mode-btn is-price-hd"
+          :class="{ active: analyticsPriceMode === 'hd' }"
+          @click.stop="analyticsPriceMode = 'hd'"
+          title="Hiển thị các chỉ số theo Giá hợp đồng (bao gồm chênh lệch COM)"
+        >
+          <svg class="sr-ctt-mode-icon" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span class="sr-ctt-mode-label">Giá hợp đồng</span>
+        </button>
+        <button
+          type="button"
+          class="sr-ctt-mode-btn is-price-khach"
+          :class="{ active: analyticsPriceMode === 'khach' }"
+          @click.stop="analyticsPriceMode = 'khach'"
+          title="Hiển thị các chỉ số theo Giá khách (giá gốc thực tế chưa nâng giá COM)"
+        >
+          <svg class="sr-ctt-mode-icon" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span class="sr-ctt-mode-label">Giá khách</span>
+        </button>
+      </div>
     </div>
 
     <input type="file" ref="reportUploadInput" accept=".xlsx, .xls" multiple style="display: none" @change="onReportFilesSelected" />
@@ -798,6 +820,28 @@
                   <svg class="sr-ctt-mode-icon" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
                   <span class="sr-ctt-mode-label">Phương Án Tạm</span>
                   <span class="sr-ctt-mode-count">{{ craftRows.length }}</span>
+                </button>
+              </div>
+              <div class="sr-ctt-mode-switcher is-price-row" role="tablist" aria-label="Chế độ hiển thị giá">
+                <button
+                  type="button"
+                  class="sr-ctt-mode-btn is-price-hd"
+                  :class="{ active: analyticsPriceMode === 'hd' }"
+                  @click.stop="analyticsPriceMode = 'hd'"
+                  title="Hiển thị các chỉ số theo Giá hợp đồng (bao gồm chênh lệch COM)"
+                >
+                  <svg class="sr-ctt-mode-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  <span class="sr-ctt-mode-label">Giá hợp đồng</span>
+                </button>
+                <button
+                  type="button"
+                  class="sr-ctt-mode-btn is-price-khach"
+                  :class="{ active: analyticsPriceMode === 'khach' }"
+                  @click.stop="analyticsPriceMode = 'khach'"
+                  title="Hiển thị các chỉ số theo Giá khách (giá gốc thực tế chưa nâng giá COM)"
+                >
+                  <svg class="sr-ctt-mode-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  <span class="sr-ctt-mode-label">Giá khách</span>
                 </button>
               </div>
             </div>
@@ -2283,7 +2327,7 @@
                       >
                         <svg v-if="hasItemBgPreview(item)" class="sr-doc-tick-circle" width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#10b981"/><polyline points="16.5 9 10.5 15 7.5 12" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
                         <span v-else class="sr-doc-dot"></span>
-                        <span>Báo giá</span>
+                        <span>Báo giá ({{ getModalPriceMode(item) === 'khach' ? 'Khách' : 'HĐ' }})</span>
                       </button>
                       <button
                         type="button"
@@ -2334,20 +2378,22 @@
                         <div class="sr-po-doc-toolbar is-emerald">
                           <div class="sr-po-doc-meta" @click="triggerImport(item, 'update_item_bao_gia')">
                             <div class="sr-po-doc-icon">
-                              <img v-if="(item.rawFileBaoGia?.name || item.row?.ten_file_bao_gia)?.toLowerCase().endsWith('.pdf')" src="/pdf-icon.png" style="width: 20px; height: 20px; object-fit: contain;" />
+                              <img v-if="getItemActiveBgDisplayName(item).toLowerCase().endsWith('.pdf')" src="/pdf-icon.png" style="width: 20px; height: 20px; object-fit: contain;" />
                               <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
                             </div>
                             <div class="sr-po-doc-info">
-                              <div class="sr-po-doc-label">File Báo Giá Khách Hàng</div>
-                              <div class="sr-po-doc-filename" :title="item.rawFileBaoGia?.name || item.row?.ten_file_bao_gia || ''">
-                                {{ item.rawFileBaoGia?.name || item.row?.ten_file_bao_gia || 'Chưa đính kèm file Báo giá' }}
+                              <div class="sr-po-doc-label">
+                                {{ getModalPriceMode(item) === 'khach' ? 'File Báo Giá (Giá Khách)' : 'File Báo Giá (Giá Hợp Đồng)' }}
+                              </div>
+                              <div class="sr-po-doc-filename" :title="getItemActiveBgDisplayName(item)">
+                                {{ getItemActiveBgDisplayName(item) || (getModalPriceMode(item) === 'khach' ? 'Chưa đính kèm file Báo giá (Khách)' : 'Chưa đính kèm file Báo giá (HĐ)') }}
                               </div>
                             </div>
                           </div>
                           <div class="sr-po-doc-actions">
                             <a
-                              v-if="item.previewUrlBG || (item.row?.link_excel_bao_gia && !item.rawFileBaoGia)"
-                              :href="getDocOpenHref(item.previewUrlBG, item.row?.link_excel_bao_gia, item.rawFileBaoGia?.name || item.row?.ten_file_bao_gia)"
+                              v-if="getItemActiveBgPreviewUrl(item) || (getItemActiveBgSavedLink(item) && !getItemActiveBgRawFile(item))"
+                              :href="getDocOpenHref(getItemActiveBgPreviewUrl(item), getItemActiveBgSavedLink(item), getItemActiveBgDisplayName(item))"
                               target="_blank"
                               class="sr-po-doc-btn is-open"
                               title="Mở rộng sang tab mới"
@@ -2355,37 +2401,38 @@
                               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
                               <span>Mở rộng</span>
                             </a>
-                            <button type="button" class="sr-po-doc-btn is-upload" @click="triggerImport(item, 'update_item_bao_gia')">
+                            <button type="button" class="sr-po-doc-btn is-upload" @click="triggerImport(item, 'update_item_bao_gia')" title="Chọn file hoặc nhấn Ctrl + V để dán trực tiếp">
                               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                              <span>{{ (item.rawFileBaoGia?.name || item.row?.ten_file_bao_gia) ? 'Đổi file' : 'Chọn file' }}</span>
+                              <span>{{ (getItemActiveBgDisplayName(item) || getItemActiveBgSavedLink(item)) ? 'Đổi file' : 'Chọn file' }}</span>
                             </button>
                           </div>
                         </div>
 
                         <div class="sr-po-doc-stage">
                           <div
-                            v-if="(item.previewUrlBG || (item.row?.link_excel_bao_gia && !item.rawFileBaoGia)) && isPreviewDocImage(item.rawFileBaoGia?.name || item.row?.ten_file_bao_gia || item.previewUrlBG || item.row?.link_excel_bao_gia)"
+                            v-if="(getItemActiveBgPreviewUrl(item) || (getItemActiveBgSavedLink(item) && !getItemActiveBgRawFile(item))) && isPreviewDocImage(getItemActiveBgDisplayName(item) || getItemActiveBgPreviewUrl(item) || getItemActiveBgSavedLink(item))"
                             class="sr-po-img-stage"
                           >
-                            <img :src="item.previewUrlBG || item.row?.link_excel_bao_gia" alt="Báo giá" />
+                            <img :src="getItemActiveBgPreviewUrl(item) || getItemActiveBgSavedLink(item)" alt="Báo giá" />
                           </div>
                           <iframe
-                            v-else-if="(item.previewUrlBG || (item.row?.link_excel_bao_gia && !item.rawFileBaoGia)) && (!item.previewHtmlBG || isPreviewDocPdf(item.rawFileBaoGia?.name || item.row?.ten_file_bao_gia || item.previewUrlBG || item.row?.link_excel_bao_gia) || isPreviewDocOfficeEmbeddable(item.rawFileBaoGia?.name || item.row?.ten_file_bao_gia, item.previewUrlBG || item.row?.link_excel_bao_gia))"
-                            :src="getDocEmbedSrc(item.previewUrlBG, item.row?.link_excel_bao_gia, item.rawFileBaoGia?.name || item.row?.ten_file_bao_gia)"
+                            v-else-if="(getItemActiveBgPreviewUrl(item) || (getItemActiveBgSavedLink(item) && !getItemActiveBgRawFile(item))) && (!getItemActiveBgPreviewHtml(item) || isPreviewDocPdf(getItemActiveBgDisplayName(item) || getItemActiveBgPreviewUrl(item) || getItemActiveBgSavedLink(item)) || isPreviewDocOfficeEmbeddable(getItemActiveBgDisplayName(item), getItemActiveBgPreviewUrl(item) || getItemActiveBgSavedLink(item)))"
+                            :src="getDocEmbedSrc(getItemActiveBgPreviewUrl(item), getItemActiveBgSavedLink(item), getItemActiveBgDisplayName(item))"
                             class="sr-po-preview-iframe"
                           ></iframe>
                           <div
-                            v-else-if="item.previewHtmlBG"
+                            v-else-if="getItemActiveBgPreviewHtml(item)"
                             class="sr-po-preview-html custom-scrollbar"
-                            v-html="item.previewHtmlBG"
+                            v-html="getItemActiveBgPreviewHtml(item)"
                           ></div>
                           <div v-else class="sr-po-doc-empty" @click="triggerImport(item, 'update_item_bao_gia')">
                             <div class="sr-po-doc-empty-icon is-emerald">
                               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
                             </div>
-                            <h5>Chưa có File Báo Giá</h5>
-                            <p>Bấm để chọn file Báo giá (Ảnh, PDF, Excel, Word mọi định dạng) và tự động trích xuất Doanh số bán, thông tin Khách hàng &amp; Bảng hàng hóa (hỗ trợ AI quét).</p>
-                            <span class="sr-po-doc-empty-cta">+ Tải lên File Báo Giá</span>
+                            <h5>{{ getModalPriceMode(item) === 'khach' ? 'Chưa có File Báo Giá (Giá Khách)' : 'Chưa có File Báo Giá (Giá Hợp Đồng)' }}</h5>
+                            <p>Bấm để chọn file Báo giá ({{ getModalPriceMode(item) === 'khach' ? 'chế độ Khách' : 'chế độ Hợp Đồng' }}) — hỗ trợ Ảnh, PDF, Excel, Word mọi định dạng và tự động trích xuất Doanh số bán &amp; Bảng hàng hóa.</p>
+                            <span class="sr-po-doc-empty-cta">{{ getModalPriceMode(item) === 'khach' ? '+ Tải lên File Báo Giá (Khách)' : '+ Tải lên File Báo Giá (HĐ)' }}</span>
+                            <div class="sr-po-paste-hint">Hoặc nhấn <kbd>Ctrl</kbd> + <kbd>V</kbd> để dán file / ảnh</div>
                           </div>
                         </div>
                       </template>
@@ -2416,7 +2463,7 @@
                               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
                               <span>Mở rộng</span>
                             </a>
-                            <button type="button" class="sr-po-doc-btn is-upload" @click="triggerImport(item, 'update_item_mua_hang')">
+                            <button type="button" class="sr-po-doc-btn is-upload" @click="triggerImport(item, 'update_item_mua_hang')" title="Chọn file hoặc nhấn Ctrl + V để dán trực tiếp">
                               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                               <span>{{ (item.rawFileMuaHang?.name || item.row?.ten_file_mua_hang) ? 'Đổi file' : 'Chọn file' }}</span>
                             </button>
@@ -2447,6 +2494,7 @@
                             <h5>Chưa có File Mua Hàng</h5>
                             <p>Bấm để chọn file Mua hàng (Ảnh, PDF, Excel, Word mọi định dạng) và tự động trích xuất Giá mua &amp; Tổng chi phí đơn hàng (hỗ trợ AI quét).</p>
                             <span class="sr-po-doc-empty-cta">+ Tải lên File Mua Hàng</span>
+                            <div class="sr-po-paste-hint">Hoặc nhấn <kbd>Ctrl</kbd> + <kbd>V</kbd> để dán file / ảnh</div>
                           </div>
                         </div>
                       </template>
@@ -2476,7 +2524,7 @@
                               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
                               <span>Mở rộng</span>
                             </a>
-                            <button type="button" class="sr-po-doc-btn is-upload" @click="triggerDxmhImport(item)">
+                            <button type="button" class="sr-po-doc-btn is-upload" @click="triggerDxmhImport(item)" title="Chọn file hoặc nhấn Ctrl + V để dán trực tiếp">
                               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                               <span>{{ (item.rawFileDxmh?.name || item.tenFileDxmh || item.row?.ten_file_dxmh) ? 'Đổi file' : 'Chọn file' }}</span>
                             </button>
@@ -2507,6 +2555,7 @@
                             <h5>Chưa có File DXMH</h5>
                             <p>Bấm để chọn file Đề xuất mua hàng (Ảnh, PDF, Excel, Word mọi định dạng) và tự động trích xuất Số PO, NCC, Công ty &amp; Người nhận (hỗ trợ AI quét).</p>
                             <span class="sr-po-doc-empty-cta">+ Tải lên File DXMH</span>
+                            <div class="sr-po-paste-hint">Hoặc nhấn <kbd>Ctrl</kbd> + <kbd>V</kbd> để dán file / ảnh</div>
                           </div>
                         </div>
                       </template>
@@ -2536,7 +2585,7 @@
                               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
                               <span>Mở rộng</span>
                             </a>
-                            <button type="button" class="sr-po-doc-btn is-upload" @click="triggerScan(item)">
+                            <button type="button" class="sr-po-doc-btn is-upload" @click="triggerScan(item)" title="Chọn file hoặc nhấn Ctrl + V để dán trực tiếp">
                               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
                               <span>{{ hasItemImgPreview(item) ? 'Đổi file / Quét lại' : 'Tải & Quét COM' }}</span>
                             </button>
@@ -2567,6 +2616,7 @@
                             <h5>Chưa có Chứng Từ COM</h5>
                             <p>Bấm để tải lên chứng từ COM (Ảnh, PDF, Excel, Word mọi định dạng) và tự động quét các chỉ số Nâng giá (Gross COM), Thuế % và Còn lại (Net COM) (hỗ trợ AI quét).</p>
                             <span class="sr-po-doc-empty-cta">+ Chọn File &amp; Quét COM</span>
+                            <div class="sr-po-paste-hint">Hoặc nhấn <kbd>Ctrl</kbd> + <kbd>V</kbd> để dán file / ảnh</div>
                           </div>
                         </div>
                       </template>
@@ -2612,7 +2662,7 @@
                               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                               <span>Xóa</span>
                             </button>
-                            <button type="button" class="sr-po-doc-btn is-upload" @click="triggerOtherFilesUpload(item)">
+                            <button type="button" class="sr-po-doc-btn is-upload" @click="triggerOtherFilesUpload(item)" title="Chọn file hoặc nhấn Ctrl + V để dán trực tiếp">
                               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                               <span>Thêm file</span>
                             </button>
@@ -2682,6 +2732,7 @@
                             <h5>Chưa có Tài Liệu Khác</h5>
                             <p>Đính kèm không giới hạn Hợp đồng, Biên bản bàn giao, PDF, Word, Excel, ZIP hoặc hình ảnh bổ sung cho PO này.</p>
                             <span class="sr-po-doc-empty-cta">+ Thêm Tài Liệu Đính Kèm</span>
+                            <div class="sr-po-paste-hint">Hoặc nhấn <kbd>Ctrl</kbd> + <kbd>V</kbd> để dán file / ảnh</div>
                           </div>
                         </div>
 
@@ -2842,9 +2893,9 @@
                                   class="sr-po-cust-status is-diff"
                                   :title="'Mã KH vẫn giữ cố định: ' + getCustomerDbMatchState(item).matchedCus.ma_khach_hang"
                                 >
-                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                                  <span>Khác dữ liệu DB ({{ getCustomerDbMatchState(item).diffs.length }} trường)</span>
-                                  <span v-if="item._approvedDbNameUpdate" class="sr-po-cust-approved-tag">✓ Sẽ cập nhật DB</span>
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                  <span>Khác dữ liệu DB ({{ getCustomerDbMatchState(item).activeDiffCount }} mục)</span>
+                                  <span v-if="item._approvedDbNameUpdate && getCustomerDbMatchState(item).activeDiffCount > 0" class="sr-po-cust-approved-tag">✓ Cập nhật DB</span>
                                 </span>
 
                                 <!-- TRẠNG THÁI 3: KHÁCH HÀNG MỚI -->
@@ -2889,58 +2940,71 @@
                               </div>
                             </div>
 
-                            <!-- THANH ĐỐI CHIẾU THÔNG MINH KHI CÓ KHÁC BIỆT GIỮA PO/FILE VÀ DB -->
+                            <!-- KHUNG ĐỐI CHIẾU GỌN THEO TỪNG MỤC KHI CÓ KHÁC BIỆT GIỮA DB VÀ HIỆN TẠI -->
                             <div
-                              v-if="(getCustomerDbMatchState(item).status === 'diff' && getCustomerDbMatchState(item).diffs.length > 0) || hasItemCustomerDiffWithQuote(item)"
+                              v-if="getCustomerDbMatchState(item).diffs.length > 0"
                               class="sr-po-cust-diff-strip"
+                              :class="{ 'is-resolved-db': getCustomerDbMatchState(item).activeDiffCount === 0 }"
                             >
-                              <div class="sr-po-cust-diff-items">
-                                <div
-                                  v-for="(dItem, dIdx) in getCustomerDbMatchState(item).diffs"
-                                  :key="dIdx"
-                                  class="sr-po-cust-diff-pill"
-                                >
-                                  <span class="sr-po-diff-lbl">{{ dItem.label }}:</span>
-                                  <span class="sr-po-diff-db" :title="dItem.dbVal">DB: "{{ dItem.dbVal }}"</span>
-                                  <span class="sr-po-diff-arrow">⇄</span>
-                                  <span class="sr-po-diff-po" :title="dItem.poVal">Đang nhập: "{{ dItem.poVal }}"</span>
-                                </div>
-                                <span
-                                  v-if="getCustomerDbMatchState(item).diffs.length === 0 && hasItemCustomerDiffWithQuote(item)"
-                                  class="sr-po-cust-diff-pill"
-                                >
-                                  <span class="sr-po-diff-lbl">File {{ item.extractedSourceLabel || 'Báo giá' }}:</span>
-                                  <span class="sr-po-diff-po">"{{ item.extractedCompany || item.extractedRecipient }}"</span>
+                              <div class="sr-po-cust-diff-head">
+                                <span class="sr-po-cust-diff-head-lbl">
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                  <span>Đối chiếu dữ liệu khác với Database</span>
                                 </span>
+                                <label
+                                  v-if="getCustomerDbMatchState(item).activeDiffCount > 0"
+                                  class="sr-po-cust-update-db-check"
+                                  :class="{ 'is-checked': item._approvedDbNameUpdate }"
+                                  title="Tick chọn để khi Lưu PO sẽ tự động cập nhật các thông tin (Hiện tại) đang dùng vào hồ sơ Khách hàng trong Database"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    :checked="Boolean(item._approvedDbNameUpdate)"
+                                    @change="toggleApproveCustomerDbUpdate(item, ($event.target as HTMLInputElement).checked)"
+                                  />
+                                  <span>Cập nhật vào DB</span>
+                                </label>
                               </div>
-                              <div class="sr-po-cust-diff-actions">
-                                <button
-                                  type="button"
-                                  class="sr-po-cust-chip is-sky"
-                                  @click="applyCustomerMatchResolution(item, 'use_db')"
-                                  title="Khôi phục thông tin theo đúng hồ sơ đang lưu trong Database"
+
+                              <div class="sr-po-cust-diff-list">
+                                <div
+                                  v-for="dItem in getCustomerDbMatchState(item).diffs"
+                                  :key="dItem.field"
+                                  class="sr-po-cust-diff-group"
                                 >
-                                  Dùng theo DB
-                                </button>
-                                <button
-                                  v-if="hasItemCustomerDiffWithQuote(item) && getCustomerDbMatchState(item).diffs.length === 0"
-                                  type="button"
-                                  class="sr-po-cust-chip is-purple"
-                                  @click="applyItemCustomerSource(item, 'quote')"
-                                  :title="'Áp dụng tên từ file ' + (item.extractedSourceLabel || 'Báo giá')"
-                                >
-                                  Dùng tên {{ item.extractedSourceLabel || 'Báo giá' }}
-                                </button>
-                                <button
-                                  v-else
-                                  type="button"
-                                  class="sr-po-cust-chip is-emerald"
-                                  :class="{ active: item._approvedDbNameUpdate }"
-                                  @click="applyCustomerMatchResolution(item, 'update_db')"
-                                  title="Giữ nguyên thông tin đang nhập trên PO và tự động cập nhật vào hồ sơ DB khi lưu"
-                                >
-                                  {{ item._approvedDbNameUpdate ? '✓ Đã chọn Cập nhật vào DB' : 'Cập nhật vào DB' }}
-                                </button>
+                                  <div
+                                    class="sr-po-cust-diff-row is-db"
+                                    :class="{ 'is-active': dItem.activeSource === 'db' }"
+                                    @click="selectCustomerDiffFieldValue(item, dItem.field, 'db')"
+                                  >
+                                    <span class="sr-po-diff-row-lbl">{{ dItem.label }} <em>(Database)</em> :</span>
+                                    <span class="sr-po-diff-row-val" :title="dItem.dbVal">{{ dItem.dbVal }}</span>
+                                    <button
+                                      type="button"
+                                      class="sr-po-diff-row-btn"
+                                      :class="{ 'is-selected': dItem.activeSource === 'db' }"
+                                      @click.stop="selectCustomerDiffFieldValue(item, dItem.field, 'db')"
+                                    >
+                                      {{ dItem.activeSource === 'db' ? '✓ Đã chọn' : 'Chọn' }}
+                                    </button>
+                                  </div>
+                                  <div
+                                    class="sr-po-cust-diff-row is-po"
+                                    :class="{ 'is-active': dItem.activeSource === 'po' }"
+                                    @click="selectCustomerDiffFieldValue(item, dItem.field, 'po')"
+                                  >
+                                    <span class="sr-po-diff-row-lbl">{{ dItem.label }} <em>(Hiện tại)</em> :</span>
+                                    <span class="sr-po-diff-row-val" :title="dItem.poVal">{{ dItem.poVal }}</span>
+                                    <button
+                                      type="button"
+                                      class="sr-po-diff-row-btn is-po-btn"
+                                      :class="{ 'is-selected': dItem.activeSource === 'po' }"
+                                      @click.stop="selectCustomerDiffFieldValue(item, dItem.field, 'po')"
+                                    >
+                                      {{ dItem.activeSource === 'po' ? '✓ Đã chọn' : 'Chọn' }}
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -2948,7 +3012,7 @@
                           <div class="sr-form-group sr-col-2">
                             <label class="sr-modal-label">MST</label>
                             <div class="sr-cust-input-with-picker">
-                              <input type="text" v-model="item.mst" @input="onItemCustomerFieldInput(item)" class="sr-modal-input text-left is-mono has-picker-btn" placeholder="Mã số thuế..." />
+                              <input type="text" v-model="item.mst" @input="onItemCustomerFieldInput(item, 'mst', item.mst)" class="sr-modal-input text-left is-mono has-picker-btn" placeholder="Mã số thuế..." />
                               <button
                                 type="button"
                                 class="sr-cust-inline-picker-btn"
@@ -2959,10 +3023,10 @@
                               </button>
                             </div>
                           </div>
-                          <div class="sr-form-group sr-col-4">
+                          <div class="sr-form-group sr-col-5">
                             <label class="sr-modal-label">Customer (Tên công ty)</label>
                             <div class="sr-cust-input-with-picker">
-                              <input type="text" v-model="item.customer" @input="onItemCustomerFieldInput(item)" class="sr-modal-input text-left has-picker-btn" placeholder="Tên công ty khách hàng..." />
+                              <input type="text" v-model="item.customer" @input="onItemCustomerFieldInput(item, 'ten_cong_ty', item.customer)" class="sr-modal-input text-left has-picker-btn" placeholder="Tên công ty khách hàng..." />
                               <button
                                 type="button"
                                 class="sr-cust-inline-picker-btn"
@@ -2973,10 +3037,10 @@
                               </button>
                             </div>
                           </div>
-                          <div class="sr-form-group sr-col-2">
+                          <div class="sr-form-group sr-col-5">
                             <label class="sr-modal-label">Người nhận (Tên KH)</label>
                             <div class="sr-cust-input-with-picker">
-                              <input type="text" v-model="item.recipient" @input="onItemCustomerFieldInput(item)" class="sr-modal-input text-left has-picker-btn" placeholder="Tên người đại diện / nhận hàng..." />
+                              <input type="text" v-model="item.recipient" @input="onItemCustomerFieldInput(item, 'ten_khach_hang', item.recipient)" class="sr-modal-input text-left has-picker-btn" placeholder="Tên người đại diện / nhận hàng..." />
                               <button
                                 type="button"
                                 class="sr-cust-inline-picker-btn"
@@ -2987,7 +3051,17 @@
                               </button>
                             </div>
                           </div>
-                          <div class="sr-form-group sr-col-2">
+                          <div class="sr-form-group sr-col-6">
+                            <label class="sr-modal-label">Địa chỉ</label>
+                            <input
+                              type="text"
+                              :value="getDisplayAddressForModalItem(item)"
+                              @input="onItemAddressInput(item, ($event.target as HTMLInputElement).value)"
+                              class="sr-modal-input text-left"
+                              placeholder="Địa chỉ công ty / nhận hàng..."
+                            />
+                          </div>
+                          <div class="sr-form-group sr-col-3">
                             <label class="sr-modal-label">Ngành hàng</label>
                             <div class="sr-cust-input-with-picker">
                               <input
@@ -3007,7 +3081,7 @@
                               </button>
                             </div>
                           </div>
-                          <div class="sr-form-group sr-col-2">
+                          <div class="sr-form-group sr-col-3">
                             <label class="sr-modal-label">Nhóm khách hàng</label>
                             <div class="sr-cust-input-with-picker">
                               <input
@@ -3032,7 +3106,40 @@
                     </div>
 
                     <!-- CARD 2: CHỈ SỐ TÀI CHÍNH, CÔNG NỢ & BẢNG HÀNG HÓA -->
-                    <div class="sr-po-tabs-card">
+                    <div
+                      class="sr-po-tabs-card"
+                      :class="getModalPriceMode(item) === 'khach' ? 'is-mode-khach' : 'is-mode-hd'"
+                    >
+                      <!-- HÀNG 1: CHUYỂN ĐỔI GIÁ HỢP ĐỒNG / GIÁ KHÁCH -->
+                      <div class="sr-po-price-mode-bar" title="Chuyển đổi hiển thị và chỉnh sửa giữa Giá hợp đồng và Giá khách">
+                        <div class="sr-po-price-mode-seg">
+                          <button
+                            type="button"
+                            class="sr-po-price-mode-btn is-hd"
+                            :class="{ active: getModalPriceMode(item) === 'hd' }"
+                            @click="setModalPriceMode(item, 'hd')"
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                            <span>Giá hợp đồng</span>
+                          </button>
+                          <button
+                            type="button"
+                            class="sr-po-price-mode-btn is-khach"
+                            :class="{ active: getModalPriceMode(item) === 'khach' }"
+                            @click="setModalPriceMode(item, 'khach')"
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            <span>Giá khách</span>
+                            <span
+                              v-if="hasModalPriceDiff(item)"
+                              class="sr-po-price-diff-dot"
+                              title="Giá hợp đồng đang có chênh lệch so với Giá khách"
+                            ></span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- HÀNG 2: TAB CHỈ SỐ TÀI CHÍNH / BẢNG HÀNG HÓA -->
                       <div class="sr-po-tabs-head">
                         <div class="sr-po-tabs-btn-group">
                           <button
@@ -3060,15 +3167,29 @@
                         <!-- TAB 1: 4 KHỐI CHỈ SỐ TÀI CHÍNH & CÔNG NỢ ĐỒNG BỘ -->
                         <div v-if="item.activeTab !== 'goods'">
                           <template v-if="multiEditModal.mode === 'create' || item.row">
-                            <div class="sr-modal-finance-grid" :class="{ 'is-craft-3cols': srDataMode === 'craft' }">
+                            <div
+                              class="sr-modal-finance-grid"
+                              :class="[
+                                { 'is-craft-3cols': srDataMode === 'craft' },
+                                getModalPriceMode(item) === 'khach' ? 'is-mode-khach' : 'is-mode-hd'
+                              ]"
+                            >
                               <!-- KHỐI 1: DOANH SỐ BÁN, GIÁ MUA, TỔNG CP ĐƠN HÀNG -->
                               <div class="sr-modal-fin-col">
                                 <div class="sr-form-group">
-                                  <label class="sr-modal-label">Doanh số bán</label>
+                                  <label class="sr-modal-label">
+                                    Doanh số bán
+                                    <span
+                                      class="sr-po-fin-mode-tag"
+                                      :class="getModalPriceMode(item) === 'khach' ? 'is-khach' : 'is-hd'"
+                                    >
+                                      {{ getModalPriceMode(item) === 'khach' ? 'Khách' : 'HĐ' }}
+                                    </span>
+                                  </label>
                                   <FormattedInput
                                     :id="'input-doanhSoBan-' + item.id"
-                                    :modelValue="item.doanhSoBan"
-                                    @update:modelValue="val => onFinancialValueChange(item, 'doanhSoBan', val, true)"
+                                    :modelValue="getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : item.doanhSoBan"
+                                    @update:modelValue="val => onFinancialValueChange(item, getModalPriceMode(item) === 'khach' ? 'doanhSoBanKhach' : 'doanhSoBan', val, true)"
                                     :decimals="0"
                                     :allowNegative="true"
                                     placeholder="0"
@@ -3100,9 +3221,9 @@
                                   />
                                 </div>
                                 <div v-if="srDataMode === 'craft'" class="sr-fin-inline-row is-dashed-top" style="margin-top: 4px;">
-                                  <span class="sr-fin-inline-lbl">Tổng tiền sau VAT</span>
+                                  <span class="sr-fin-inline-lbl">Tổng tiền sau VAT ({{ getModalPriceMode(item) === 'khach' ? 'Khách' : 'HĐ' }})</span>
                                   <strong class="sr-fin-inline-val text-green">
-                                    {{ fmt(item.goodsTotal?.ttSau || (item.row ? tongSauVat(item.row) : item.doanhSoBan)) }}
+                                    {{ fmt(getModalItemTtSau(item)) }}
                                   </strong>
                                 </div>
                               </div>
@@ -3113,24 +3234,28 @@
                                   <label class="sr-modal-label">Net COM</label>
                                   <FormattedInput
                                     :id="'input-netCom-' + item.id"
-                                    :modelValue="item.netCom"
+                                    :modelValue="getModalPriceMode(item) === 'khach' ? 0 : item.netCom"
                                     @update:modelValue="val => onFinancialValueChange(item, 'netCom', val, true)"
+                                    :disabled="getModalPriceMode(item) === 'khach'"
                                     :decimals="0"
                                     :allowNegative="true"
                                     placeholder="0"
                                     class="sr-modal-input text-right is-fin-num is-emerald-highlight"
+                                    :title="getModalPriceMode(item) === 'khach' ? 'Chế độ Giá Khách thuần: Net COM = 0 (Chuyển sang HĐ để sửa COM)' : ''"
                                   />
                                 </div>
                                 <div class="sr-form-group">
                                   <label class="sr-modal-label">Gross COM</label>
                                   <FormattedInput
                                     :id="'input-grossCom-' + item.id"
-                                    :modelValue="item.grossCom"
+                                    :modelValue="getModalPriceMode(item) === 'khach' ? 0 : item.grossCom"
                                     @update:modelValue="val => onFinancialValueChange(item, 'grossCom', val, true)"
+                                    :disabled="getModalPriceMode(item) === 'khach'"
                                     :decimals="0"
                                     :allowNegative="true"
                                     placeholder="0"
                                     class="sr-modal-input text-right is-fin-num"
+                                    :title="getModalPriceMode(item) === 'khach' ? 'Chế độ Giá Khách thuần: Gross COM = 0 (Chuyển sang HĐ để sửa COM)' : ''"
                                   />
                                 </div>
                                 <div class="sr-fin-inline-row" style="margin-top: 2px;">
@@ -3146,15 +3271,15 @@
                                     />
                                     <span style="font-size: 12px; color: #64748b;">%</span>
                                   </div>
-                                  <strong class="sr-fin-inline-val">{{ fmt(item.grossCom * ((item.taxPct || 0) / 100)) }}</strong>
+                                  <strong class="sr-fin-inline-val">{{ fmt(getModalPriceMode(item) === 'khach' ? 0 : (item.grossCom * ((item.taxPct || 0) / 100))) }}</strong>
                                 </div>
                                 <div class="sr-fin-inline-row">
                                   <span class="sr-fin-inline-lbl">Net PO</span>
-                                  <strong class="sr-fin-inline-val text-white">{{ fmt(item.doanhSoBan - item.grossCom) }}</strong>
+                                  <strong class="sr-fin-inline-val text-white">{{ fmt(getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : (item.doanhSoBan - item.grossCom)) }}</strong>
                                 </div>
                                 <div class="sr-fin-inline-row is-dashed-top">
                                   <span class="sr-fin-inline-lbl">Net Margin</span>
-                                  <strong class="sr-fin-inline-val" :class="(item.doanhSoBan - item.grossCom - item.tongCP) >= 0 ? 'text-green' : 'text-red'">{{ fmt(item.doanhSoBan - item.grossCom - item.tongCP) }}</strong>
+                                  <strong class="sr-fin-inline-val" :class="((getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : (item.doanhSoBan - item.grossCom)) - item.tongCP) >= 0 ? 'text-green' : 'text-red'">{{ fmt((getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : (item.doanhSoBan - item.grossCom)) - item.tongCP) }}</strong>
                                 </div>
                               </div>
 
@@ -3162,35 +3287,35 @@
                               <div class="sr-modal-fin-col highlight-col">
                                 <div class="sr-fin-inline-row">
                                   <span class="sr-fin-inline-lbl">Net COM / Net PO</span>
-                                  <strong class="sr-fin-inline-val text-green">{{ pctFmt(item.doanhSoBan - item.grossCom !== 0 ? (item.netCom / (item.doanhSoBan - item.grossCom)) * 100 : 0) }}</strong>
+                                  <strong class="sr-fin-inline-val text-green">{{ pctFmt(getModalPriceMode(item) === 'khach' ? 0 : (item.doanhSoBan - item.grossCom !== 0 ? (item.netCom / (item.doanhSoBan - item.grossCom)) * 100 : 0)) }}</strong>
                                 </div>
                                 <div class="sr-fin-inline-row">
                                   <span class="sr-fin-inline-lbl">Net Margin / Net PO</span>
-                                  <strong class="sr-fin-inline-val" :class="(item.doanhSoBan - item.grossCom) !== 0 && (item.doanhSoBan - item.grossCom - item.tongCP) / (item.doanhSoBan - item.grossCom) >= 0 ? 'text-green' : 'text-red'">{{ pctFmt(item.doanhSoBan - item.grossCom !== 0 ? ((item.doanhSoBan - item.grossCom - item.tongCP) / (item.doanhSoBan - item.grossCom)) * 100 : 0) }}</strong>
+                                  <strong class="sr-fin-inline-val" :class="(getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : (item.doanhSoBan - item.grossCom)) !== 0 && ((getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : (item.doanhSoBan - item.grossCom)) - item.tongCP) / (getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : (item.doanhSoBan - item.grossCom)) >= 0 ? 'text-green' : 'text-red'">{{ pctFmt((getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : (item.doanhSoBan - item.grossCom)) !== 0 ? (((getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : (item.doanhSoBan - item.grossCom)) - item.tongCP) / (getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : (item.doanhSoBan - item.grossCom))) * 100 : 0) }}</strong>
                                 </div>
                                 <div class="sr-fin-solid-divider"></div>
                                 <div class="sr-fin-inline-row">
                                   <span class="sr-fin-inline-lbl">Net COM / DSB</span>
-                                  <strong class="sr-fin-inline-val text-green">{{ pctFmt(item.doanhSoBan !== 0 ? (item.netCom / item.doanhSoBan) * 100 : 0) }}</strong>
+                                  <strong class="sr-fin-inline-val text-green">{{ pctFmt(getModalPriceMode(item) === 'khach' ? 0 : (item.doanhSoBan !== 0 ? (item.netCom / item.doanhSoBan) * 100 : 0)) }}</strong>
                                 </div>
                                 <div class="sr-fin-inline-row">
                                   <span class="sr-fin-inline-lbl">Net Margin / DSB</span>
-                                  <strong class="sr-fin-inline-val" :class="item.doanhSoBan !== 0 && (item.doanhSoBan - item.grossCom - item.tongCP) / item.doanhSoBan >= 0 ? 'text-green' : 'text-red'">{{ pctFmt(item.doanhSoBan !== 0 ? ((item.doanhSoBan - item.grossCom - item.tongCP) / item.doanhSoBan) * 100 : 0) }}</strong>
+                                  <strong class="sr-fin-inline-val" :class="(getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : item.doanhSoBan) !== 0 && ((getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : (item.doanhSoBan - item.grossCom)) - item.tongCP) / (getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : item.doanhSoBan) >= 0 ? 'text-green' : 'text-red'">{{ pctFmt((getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : item.doanhSoBan) !== 0 ? (((getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : (item.doanhSoBan - item.grossCom)) - item.tongCP) / (getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : item.doanhSoBan)) * 100 : 0) }}</strong>
                                 </div>
 
                                 <!-- CHỈ SỐ NET MARGIN/DSB MONG MUỐN -->
-                                <div class="sr-fin-predict-card" :class="{ 'is-active': item.predictPct !== undefined && item.predictPct !== '' }">
+                                <div class="sr-fin-predict-card" :class="{ 'is-active': getModalPriceMode(item) === 'khach' ? (item.predictPctKhach !== undefined && item.predictPctKhach !== '') : (item.predictPct !== undefined && item.predictPct !== '') }">
                                   <div class="sr-fin-predict-head">
                                     <label class="sr-modal-label sr-fin-predict-lbl">
                                       <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
                                       <span>CHỈ SỐ NET MARGIN/DSB MONG MUỐN</span>
                                     </label>
                                     <button
-                                      v-if="item.predictPct !== undefined && item.predictPct !== ''"
+                                      v-if="getModalPriceMode(item) === 'khach' ? (item.predictPctKhach !== undefined && item.predictPctKhach !== '') : (item.predictPct !== undefined && item.predictPct !== '')"
                                       type="button"
                                       class="sr-fin-micro-btn is-predict-reset"
                                       @click="resetPredictPct(item)"
-                                      title="Khôi phục Gross COM & Net COM gốc"
+                                      :title="getModalPriceMode(item) === 'khach' ? 'Khôi phục Doanh số bán (Khách) gốc' : 'Khôi phục Gross COM & Net COM gốc'"
                                     >
                                       Hoàn tác
                                     </button>
@@ -3200,7 +3325,7 @@
                                       type="text"
                                       inputmode="decimal"
                                       placeholder="Nhập % mong muốn..."
-                                      :value="item.predictPct ?? ''"
+                                      :value="getModalPriceMode(item) === 'khach' ? (item.predictPctKhach ?? '') : (item.predictPct ?? '')"
                                       @input="e => onPredictInput(e, item)"
                                       @paste="e => onPredictPaste(e, item)"
                                       class="sr-modal-input text-right is-fin-num is-predict-input"
@@ -3213,9 +3338,9 @@
                               <!-- KHỐI 4: THANH TOÁN & CÔNG NỢ (1 KHỐI DỌC ĐỒNG BỘ — Chỉ hiện ở Bản Chính Thức) -->
                               <div v-if="srDataMode !== 'craft'" class="sr-modal-fin-col is-debt-col">
                                 <div class="sr-fin-inline-row">
-                                  <span class="sr-fin-inline-lbl">Tổng tiền sau VAT</span>
+                                  <span class="sr-fin-inline-lbl">Tổng tiền sau VAT ({{ getModalPriceMode(item) === 'khach' ? 'Khách' : 'HĐ' }})</span>
                                   <strong class="sr-fin-inline-val text-green">
-                                    {{ fmt(item.goodsTotal?.ttSau || (item.row ? tongSauVat(item.row) : item.doanhSoBan)) }}
+                                    {{ fmt(getModalItemTtSau(item)) }}
                                   </strong>
                                 </div>
 
@@ -3247,9 +3372,9 @@
                                   <span class="sr-fin-inline-lbl">Công nợ còn lại</span>
                                   <strong
                                     class="sr-fin-inline-val"
-                                    :class="Math.max(0, (item.goodsTotal?.ttSau || (item.row ? tongSauVat(item.row) : item.doanhSoBan)) - (multiEditModal.mode === 'create' ? (item.soTienDaThanhToan || 0) : (item.row ? daThanhToan(item.row) : 0))) > 0 ? 'text-red' : 'text-green'"
+                                    :class="Math.max(0, getModalItemTtSau(item) - (multiEditModal.mode === 'create' ? (item.soTienDaThanhToan || 0) : (item.row ? daThanhToan(item.row) : 0))) > 0 ? 'text-red' : 'text-green'"
                                   >
-                                    {{ fmt(Math.max(0, (item.goodsTotal?.ttSau || (item.row ? tongSauVat(item.row) : item.doanhSoBan)) - (multiEditModal.mode === 'create' ? (item.soTienDaThanhToan || 0) : (item.row ? daThanhToan(item.row) : 0)))) }}
+                                    {{ fmt(Math.max(0, getModalItemTtSau(item) - (multiEditModal.mode === 'create' ? (item.soTienDaThanhToan || 0) : (item.row ? daThanhToan(item.row) : 0)))) }}
                                   </strong>
                                 </div>
 
@@ -3289,7 +3414,16 @@
                         <div v-if="item.activeTab === 'goods'" class="sr-po-goods-pane">
                           <div class="sr-po-goods-toolbar">
                             <div class="sr-po-goods-title-group">
-                              <span class="sr-po-goods-subtitle">Danh sách hàng hóa / dịch vụ của PO ({{ item.goodsList?.length || 0 }} dòng)</span>
+                              <span class="sr-po-goods-subtitle">
+                                Danh sách hàng hóa / dịch vụ của PO ({{ item.goodsList?.length || 0 }} dòng)
+                                <span
+                                  class="sr-po-fin-mode-tag"
+                                  :class="getModalPriceMode(item) === 'khach' ? 'is-khach' : 'is-hd'"
+                                  style="margin-left: 6px;"
+                                >
+                                  Đang xem &amp; sửa: {{ getModalPriceMode(item) === 'khach' ? 'Giá Khách' : 'Giá HĐ' }}
+                                </span>
+                              </span>
                               <div v-if="srDataMode !== 'craft' && hangHoaCatalogLoaded && item.goodsList && item.goodsList.length > 0" class="sr-po-goods-db-pills">
                                 <span v-if="getPoGoodsDbStats(item).newCount > 0" class="sr-po-db-pill is-new">
                                   Chưa có DB: {{ getPoGoodsDbStats(item).newCount }}
@@ -3327,13 +3461,13 @@
                                 </span>
                               </button>
                               <button
-                                v-if="item.goodsTotal?.ttTruoc"
+                                v-if="getModalPriceMode(item) === 'khach' ? (item.goodsTotal?.ttTruocKhach ?? item.goodsTotal?.ttTruoc) : item.goodsTotal?.ttTruoc"
                                 type="button"
                                 class="sr-po-goods-sync-btn"
                                 @click="syncGoodsTotalToDSB(item)"
                                 title="Đồng bộ Tổng TT Trước thuế sang ô Doanh số bán"
                               >
-                                Đồng bộ TT Trước thuế ➔ DSB ({{ fmt(item.goodsTotal.ttTruoc) }} đ)
+                                Đồng bộ TT Trước thuế ({{ getModalPriceMode(item) === 'khach' ? 'Khách' : 'HĐ' }}) ➔ DSB ({{ fmt(getModalPriceMode(item) === 'khach' ? (item.goodsTotal?.ttTruocKhach ?? item.goodsTotal?.ttTruoc ?? 0) : (item.goodsTotal?.ttTruoc || 0)) }} đ)
                               </button>
                               <button type="button" class="sr-po-goods-add-btn" @click="addGoodsRow(item)">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -3363,10 +3497,10 @@
                                   <th class="text-left">DIỄN GIẢI / QUY CÁCH</th>
                                   <th class="text-center">ĐVT</th>
                                   <th class="text-center">S.L</th>
-                                  <th class="text-right">ĐƠN GIÁ</th>
-                                  <th class="text-right">TT TRƯỚC THUẾ</th>
+                                  <th class="text-right">ĐƠN GIÁ ({{ getModalPriceMode(item) === 'khach' ? 'KHÁCH' : 'HĐ' }})</th>
+                                  <th class="text-right">TT TRƯỚC THUẾ ({{ getModalPriceMode(item) === 'khach' ? 'KHÁCH' : 'HĐ' }})</th>
                                   <th class="text-right">THUẾ VAT (% &amp; TIỀN)</th>
-                                  <th class="text-right">TT SAU THUẾ</th>
+                                  <th class="text-right">TT SAU THUẾ ({{ getModalPriceMode(item) === 'khach' ? 'KHÁCH' : 'HĐ' }})</th>
                                   <th class="text-center"></th>
                                 </tr>
                               </thead>
@@ -3431,14 +3565,14 @@
                                     </td>
                                     <td class="text-right">
                                       <FormattedInput
-                                        :modelValue="g.donGia"
-                                        @update:modelValue="val => onGoodsValueChange(item, g, 'donGia', val)"
+                                        :modelValue="getModalPriceMode(item) === 'khach' ? (g.donGiaKhach ?? g.donGia) : g.donGia"
+                                        @update:modelValue="val => onGoodsValueChange(item, g, getModalPriceMode(item) === 'khach' ? 'donGiaKhach' : 'donGia', val)"
                                         :decimals="0"
                                         placeholder="0"
                                         class="sr-modal-input text-right sr-goods-cell-input sr-goods-price-input"
                                       />
                                     </td>
-                                    <td class="text-right is-mono-cell">{{ fmtInput(g.ttTruoc) || '0' }}</td>
+                                    <td class="text-right is-mono-cell">{{ fmtInput(getModalPriceMode(item) === 'khach' ? (g.ttTruocKhach ?? g.ttTruoc) : g.ttTruoc) || '0' }}</td>
                                     <td class="text-right">
                                       <div class="sr-goods-vat-group">
                                         <div class="sr-goods-vat-pct-box">
@@ -3452,15 +3586,15 @@
                                           <span class="sr-goods-vat-pct-unit">%</span>
                                         </div>
                                         <FormattedInput
-                                          :modelValue="g.vat"
-                                          @update:modelValue="val => onGoodsValueChange(item, g, 'vat', val)"
+                                          :modelValue="getModalPriceMode(item) === 'khach' ? (g.vatKhach ?? g.vat) : g.vat"
+                                          @update:modelValue="val => onGoodsValueChange(item, g, getModalPriceMode(item) === 'khach' ? 'vatKhach' : 'vat', val)"
                                           :decimals="0"
                                           placeholder="0"
                                           class="sr-modal-input text-right sr-goods-vat-amt-input"
                                         />
                                       </div>
                                     </td>
-                                    <td class="text-right is-mono-cell is-emerald-cell">{{ fmtInput(g.ttSau) || '0' }}</td>
+                                    <td class="text-right is-mono-cell is-emerald-cell">{{ fmtInput(getModalPriceMode(item) === 'khach' ? (g.ttSauKhach ?? g.ttSau) : g.ttSau) || '0' }}</td>
                                     <td class="text-center">
                                       <button type="button" @click="removeGoodsRow(item, i)" class="sr-goods-del-btn" title="Xóa hàng hóa">
                                         <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
@@ -3472,10 +3606,10 @@
                               <tfoot v-if="item.goodsTotal || (item.goodsList && item.goodsList.length > 0)">
                                 <tr class="sr-po-goods-tfoot">
                                   <td></td>
-                                  <td colspan="5" class="text-left">TỔNG CỘNG HÀNG HÓA</td>
-                                  <td class="text-right">{{ fmtInput(item.goodsTotal?.ttTruoc || 0) || '0' }}</td>
-                                  <td class="text-right">{{ fmtInput(item.goodsTotal?.vat || 0) || '0' }}</td>
-                                  <td class="text-right is-grand">{{ fmtInput(item.goodsTotal?.ttSau || 0) || '0' }}</td>
+                                  <td colspan="5" class="text-left">TỔNG CỘNG HÀNG HÓA ({{ getModalPriceMode(item) === 'khach' ? 'GIÁ KHÁCH' : 'GIÁ HỢP ĐỒNG' }})</td>
+                                  <td class="text-right">{{ fmtInput(getModalPriceMode(item) === 'khach' ? (item.goodsTotal?.ttTruocKhach ?? item.goodsTotal?.ttTruoc ?? 0) : (item.goodsTotal?.ttTruoc || 0)) || '0' }}</td>
+                                  <td class="text-right">{{ fmtInput(getModalPriceMode(item) === 'khach' ? (item.goodsTotal?.vatKhach ?? item.goodsTotal?.vat ?? 0) : (item.goodsTotal?.vat || 0)) || '0' }}</td>
+                                  <td class="text-right is-grand">{{ fmtInput(getModalPriceMode(item) === 'khach' ? (item.goodsTotal?.ttSauKhach ?? item.goodsTotal?.ttSau ?? 0) : (item.goodsTotal?.ttSau || 0)) || '0' }}</td>
                                   <td></td>
                                 </tr>
                               </tfoot>
@@ -3524,6 +3658,7 @@
             </div>
             <div class="sr-po-footer-center">
               <button
+                v-if="hasUnsavedPoModalChanges() || savingModal"
                 type="button"
                 class="sr-btn sr-btn-save sr-po-btn-save"
                 @click="saveMultiModal"
@@ -3974,6 +4109,143 @@
           <div class="sr-add-choice-footer">
             <span class="sr-add-choice-hint">Chọn chế độ phù hợp với mục đích tải file của bạn</span>
             <button type="button" class="sr-add-choice-cancel" @click="cancelUploadModeChoice">Hủy bỏ</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Modal Chọn Thông Tin Khách Hàng Khi Khác Biệt Giữa Các File Import (Chọn khung + Nhấn Xác nhận) -->
+    <Teleport to="body">
+      <div
+        v-if="importCustConflictModal.show"
+        class="sr-modal-overlay"
+        :class="{ 'theme-light-blue': uiTheme === 'light' }"
+        @click.self="resolveImportCustConflict('existing')"
+        style="z-index: 1000260; padding: 20px; background: rgba(2, 6, 23, 0.78);"
+      >
+        <div
+          class="sr-add-choice-modal sr-cust-conflict-modal"
+          :class="{ 'is-light': uiTheme === 'light' }"
+        >
+          <div class="sr-add-choice-header">
+            <div class="sr-add-choice-header-left">
+              <span class="sr-add-choice-header-icon is-amber">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              </span>
+              <div class="sr-add-choice-title-wrap">
+                <div class="sr-add-choice-title-row">
+                  <h3 class="sr-add-choice-title">Khác biệt thông tin Khách hàng giữa các file</h3>
+                  <span class="sr-add-choice-badge is-amber">CHỌN KHUNG &amp; XÁC NHẬN</span>
+                </div>
+                <p class="sr-add-choice-sub">
+                  Thông tin khách hàng giữa <strong>{{ importCustConflictModal.existing.sourceLabel }}</strong> và <strong>{{ importCustConflictModal.incoming.sourceLabel }}</strong> có sự khác biệt. Vui lòng chọn khung muốn dùng rồi nhấn <strong>Xác nhận</strong>:
+                </p>
+              </div>
+            </div>
+            <button type="button" class="sr-add-choice-close" @click="resolveImportCustConflict('existing')" title="Đóng và giữ thông tin hiện tại">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+
+          <div class="sr-cust-conflict-grid">
+            <!-- Khung 1: Thông tin đang có trên PO -->
+            <button
+              type="button"
+              class="sr-cust-conflict-card is-existing"
+              :class="{ 'is-selected': importCustConflictModal.selectedChoice === 'existing' }"
+              @click="importCustConflictModal.selectedChoice = 'existing'"
+            >
+              <div class="sr-cust-conflict-card-head">
+                <div class="sr-cust-conflict-source">
+                  <span class="sr-cust-conflict-tag is-blue">ĐANG CÓ TRÊN PO</span>
+                  <strong class="sr-cust-conflict-title">{{ importCustConflictModal.existing.sourceLabel }}</strong>
+                </div>
+                <span
+                  class="sr-cust-conflict-pick-pill is-blue"
+                  :class="{ 'is-active': importCustConflictModal.selectedChoice === 'existing' }"
+                >
+                  <svg v-if="importCustConflictModal.selectedChoice === 'existing'" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span>{{ importCustConflictModal.selectedChoice === 'existing' ? 'Đang chọn' : 'Chọn khung này' }}</span>
+                </span>
+              </div>
+
+              <div class="sr-cust-conflict-fields">
+                <div class="sr-cust-conflict-row" :class="{ 'is-diff': importCustConflictModal.diffFlags.company }">
+                  <span class="sr-cust-conflict-lbl">Tên Công ty</span>
+                  <span class="sr-cust-conflict-val">{{ importCustConflictModal.existing.company || '—' }}</span>
+                </div>
+                <div class="sr-cust-conflict-row" :class="{ 'is-diff': importCustConflictModal.diffFlags.recipient }">
+                  <span class="sr-cust-conflict-lbl">Người nhận</span>
+                  <span class="sr-cust-conflict-val">{{ importCustConflictModal.existing.recipient || '—' }}</span>
+                </div>
+                <div class="sr-cust-conflict-row" :class="{ 'is-diff': importCustConflictModal.diffFlags.address }">
+                  <span class="sr-cust-conflict-lbl">Địa chỉ</span>
+                  <span class="sr-cust-conflict-val">{{ importCustConflictModal.existing.address || '—' }}</span>
+                </div>
+                <div class="sr-cust-conflict-row" :class="{ 'is-diff': importCustConflictModal.diffFlags.mst }">
+                  <span class="sr-cust-conflict-lbl">Mã số thuế</span>
+                  <span class="sr-cust-conflict-val">{{ importCustConflictModal.existing.mst || '—' }}</span>
+                </div>
+              </div>
+            </button>
+
+            <!-- Khung 2: Thông tin từ file vừa Import -->
+            <button
+              type="button"
+              class="sr-cust-conflict-card is-incoming"
+              :class="{ 'is-selected': importCustConflictModal.selectedChoice === 'incoming' }"
+              @click="importCustConflictModal.selectedChoice = 'incoming'"
+            >
+              <div class="sr-cust-conflict-card-head">
+                <div class="sr-cust-conflict-source">
+                  <span class="sr-cust-conflict-tag is-emerald">FILE VỪA IMPORT</span>
+                  <strong class="sr-cust-conflict-title">{{ importCustConflictModal.incoming.sourceLabel }}</strong>
+                </div>
+                <span
+                  class="sr-cust-conflict-pick-pill is-emerald"
+                  :class="{ 'is-active': importCustConflictModal.selectedChoice === 'incoming' }"
+                >
+                  <svg v-if="importCustConflictModal.selectedChoice === 'incoming'" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span>{{ importCustConflictModal.selectedChoice === 'incoming' ? 'Đang chọn' : 'Chọn khung này' }}</span>
+                </span>
+              </div>
+
+              <div class="sr-cust-conflict-fields">
+                <div class="sr-cust-conflict-row" :class="{ 'is-diff': importCustConflictModal.diffFlags.company }">
+                  <span class="sr-cust-conflict-lbl">Tên Công ty</span>
+                  <span class="sr-cust-conflict-val">{{ importCustConflictModal.incoming.company || '—' }}</span>
+                </div>
+                <div class="sr-cust-conflict-row" :class="{ 'is-diff': importCustConflictModal.diffFlags.recipient }">
+                  <span class="sr-cust-conflict-lbl">Người nhận</span>
+                  <span class="sr-cust-conflict-val">{{ importCustConflictModal.incoming.recipient || '—' }}</span>
+                </div>
+                <div class="sr-cust-conflict-row" :class="{ 'is-diff': importCustConflictModal.diffFlags.address }">
+                  <span class="sr-cust-conflict-lbl">Địa chỉ</span>
+                  <span class="sr-cust-conflict-val">{{ importCustConflictModal.incoming.address || '—' }}</span>
+                </div>
+                <div class="sr-cust-conflict-row" :class="{ 'is-diff': importCustConflictModal.diffFlags.mst }">
+                  <span class="sr-cust-conflict-lbl">Mã số thuế</span>
+                  <span class="sr-cust-conflict-val">{{ importCustConflictModal.incoming.mst || '—' }}</span>
+                </div>
+              </div>
+            </button>
+          </div>
+
+          <div class="sr-cust-conflict-footer">
+            <span class="sr-cust-conflict-foot-hint">
+              Đang chọn:
+              <strong>
+                {{ importCustConflictModal.selectedChoice === 'incoming' ? importCustConflictModal.incoming.sourceLabel : importCustConflictModal.existing.sourceLabel }}
+              </strong>
+            </span>
+            <button
+              type="button"
+              class="sr-cust-conflict-confirm-btn"
+              @click="confirmImportCustConflict()"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>Xác nhận</span>
+            </button>
           </div>
         </div>
       </div>
@@ -6414,6 +6686,26 @@
             <!-- CỘT TRÁI: Chọn 12 Chỉ Số + 4 Thẻ KPI Tóm Tắt -->
             <aside class="sr-analytics-sidebar custom-scrollbar">
               <div class="sr-analytics-side-section">
+                <div class="sr-analytics-price-mode-bar" role="group" aria-label="Chế độ giá biểu đồ">
+                  <button
+                    type="button"
+                    class="sr-analytics-price-mode-btn"
+                    :class="{ active: analyticsPriceMode === 'hd' }"
+                    @click="analyticsPriceMode = 'hd'"
+                    title="Hiển thị các chỉ số theo Giá hợp đồng (bao gồm chênh lệch COM)"
+                  >
+                    <span>Giá hợp đồng</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="sr-analytics-price-mode-btn is-khach"
+                    :class="{ active: analyticsPriceMode === 'khach' }"
+                    @click="analyticsPriceMode = 'khach'"
+                    title="Hiển thị các chỉ số theo Giá khách (giá gốc thực tế chưa nâng giá COM)"
+                  >
+                    <span>Giá khách</span>
+                  </button>
+                </div>
                 <div class="sr-analytics-side-heading is-with-toggle">
                   <span>Chỉ số phân tích (12)</span>
                   <button
@@ -6779,7 +7071,7 @@
                   </div>
                   <div class="sr-analytics-chart-canvas-wrap">
                     <Bar
-                      :key="'tl-' + (chartModal.companyScope?.maCongTy || 'all') + '-' + activeChartMetric + '-' + resolvedGranularity + '-' + chartLineMode + '-' + uiTheme"
+                      :key="'tl-' + (chartModal.companyScope?.maCongTy || 'all') + '-' + activeChartMetric + '-' + analyticsPriceMode + '-' + resolvedGranularity + '-' + chartLineMode + '-' + uiTheme"
                       :data="chartData"
                       :options="chartOptions"
                     />
@@ -6800,7 +7092,7 @@
                       </div>
                       <div class="sr-analytics-doughnut-wrap">
                         <Doughnut
-                          :key="'dn-' + (chartModal.companyScope?.maCongTy || 'all') + '-' + analyticsActiveTab + '-' + companyProductSubMode + '-' + activeChartMetric + '-' + analyticsTopLimit + '-' + analyticsSortDir + '-' + uiTheme"
+                          :key="'dn-' + (chartModal.companyScope?.maCongTy || 'all') + '-' + analyticsActiveTab + '-' + companyProductSubMode + '-' + activeChartMetric + '-' + analyticsPriceMode + '-' + analyticsTopLimit + '-' + analyticsSortDir + '-' + uiTheme"
                           :data="activeRankingPieData"
                           :options="activeRankingPieOptions"
                         />
@@ -6866,7 +7158,7 @@
                           }"
                         >
                           <Bar
-                            :key="'rkbar-' + (isMobile ? 'mob-h' : 'pc-v') + '-' + (chartModal.companyScope?.maCongTy || 'all') + '-' + analyticsActiveTab + '-' + companyProductSubMode + '-' + activeChartMetric + '-' + analyticsTopLimit + '-' + analyticsSortDir + '-' + uiTheme"
+                            :key="'rkbar-' + (isMobile ? 'mob-h' : 'pc-v') + '-' + (chartModal.companyScope?.maCongTy || 'all') + '-' + analyticsActiveTab + '-' + companyProductSubMode + '-' + activeChartMetric + '-' + analyticsPriceMode + '-' + analyticsTopLimit + '-' + analyticsSortDir + '-' + uiTheme"
                             :data="activeRankingBarData"
                             :options="activeRankingBarOptions"
                           />
@@ -7016,7 +7308,7 @@
                                 <button
                                   type="button"
                                   class="sr-rank-filter-btn"
-                                  @click="chartModal.show = false; openDetailModal(poRow)"
+                                  @click="chartModal.show = false; openMultiEditModal(poRow)"
                                 >
                                   Mở PO
                                 </button>
@@ -7035,7 +7327,7 @@
                         Bảng chi tiết xếp hạng {{ activeEntityLabel }} (Top {{ Math.min(activeRankingRawData.sorted.length, Number(analyticsTopLimit) || 10) }} / {{ activeRankingRawData.sorted.length }})
                       </h4>
                       <span class="sr-analytics-panel-sub">
-                        {{ chartModal.companyScope && analyticsActiveTab === 'po' ? 'Nhấn "Mở PO" để xem chi tiết đơn hàng hoặc "Lọc PO" để lọc trên bảng' : 'Nhấn "Lọc PO" để đóng biểu đồ và xem danh sách đơn hàng của đối tượng đó' }}
+                        {{ analyticsActiveTab === 'po' ? 'Nhấn vào đơn hàng hoặc nút "Mở PO" để xem chi tiết PO, hoặc "Lọc PO" để lọc trên bảng' : 'Nhấn "Lọc PO" để đóng biểu đồ và xem danh sách đơn hàng của đối tượng đó' }}
                       </span>
                     </div>
                     <div class="sr-analytics-table-scroll custom-scrollbar">
@@ -7060,7 +7352,12 @@
                                 {{ rIdx + 1 }}
                               </span>
                             </td>
-                            <td class="sr-rank-name" :title="entryName">
+                            <td
+                              class="sr-rank-name"
+                              :title="entryName"
+                              :style="analyticsActiveTab === 'po' ? 'cursor: pointer;' : ''"
+                              @click="analyticsActiveTab === 'po' ? openPoDetailByEntryName(entryName) : undefined"
+                            >
                               <div>{{ entryName }}</div>
                               <div
                                 v-if="activeRankingRawData.subMap && activeRankingRawData.subMap.get(entryName)"
@@ -7093,7 +7390,7 @@
                             <td style="text-align: right;">
                               <div style="display: inline-flex; gap: 6px; justify-content: flex-end;">
                                 <button
-                                  v-if="chartModal.companyScope && analyticsActiveTab === 'po'"
+                                  v-if="analyticsActiveTab === 'po'"
                                   type="button"
                                   class="sr-rank-filter-btn"
                                   @click="openPoDetailByEntryName(entryName)"
@@ -8154,15 +8451,25 @@
                           Ngày tạo: {{ getPoCreatedDateShort(po) }}
                         </span>
                       </div>
-                      <span
-                        style="padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 800; flex-shrink: 0; white-space: nowrap;"
-                        :style="{
-                          background: congNo(po) > 0 ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.16)',
-                          color: congNo(po) > 0 ? '#ef4444' : '#10b981'
-                        }"
-                      >
-                        {{ congNo(po) > 0 ? 'Còn nợ' : 'Đã tất toán' }}
-                      </span>
+                      <div style="display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;">
+                        <button
+                          type="button"
+                          title="Mở chi tiết PO"
+                          style="padding: 2px 7px; border-radius: 6px; font-size: 10.5px; font-weight: 800; border: 1px solid rgba(16, 185, 129, 0.45); background: rgba(16, 185, 129, 0.14); color: #10b981; cursor: pointer; white-space: nowrap;"
+                          @click.stop="paymentModal.show = false; openMultiEditModal(po)"
+                        >
+                          Mở PO
+                        </button>
+                        <span
+                          style="padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 800; flex-shrink: 0; white-space: nowrap;"
+                          :style="{
+                            background: congNo(po) > 0 ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.16)',
+                            color: congNo(po) > 0 ? '#ef4444' : '#10b981'
+                          }"
+                        >
+                          {{ congNo(po) > 0 ? 'Còn nợ' : 'Đã tất toán' }}
+                        </span>
+                      </div>
                     </div>
                     <div class="sr-debt-po-side-row" style="display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; color: #cbd5e1;">
                       <span>Tổng sau VAT:</span>
@@ -9515,7 +9822,11 @@
       >
         <div
           class="sr-dialog-card"
-          :class="['is-variant-' + srDialog.variant, 'is-mode-' + srDialog.mode, { 'is-light': uiTheme === 'light' }]"
+          :class="[
+            'is-variant-' + srDialog.variant,
+            'is-mode-' + srDialog.mode,
+            { 'is-light': uiTheme === 'light', 'has-aux-action': Boolean(srDialog.auxActionText) }
+          ]"
           role="dialog"
           aria-modal="true"
           :aria-label="srDialog.title"
@@ -9525,6 +9836,7 @@
             <div class="sr-dialog-dt-head">
               <span class="sr-dialog-head-ico">
                 <svg v-if="srDialog.variant === 'danger'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                <svg v-else-if="srDialog.variant === 'error' && srDialog.mode === 'confirm'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                 <svg v-else-if="srDialog.variant === 'error'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
                 <svg v-else-if="srDialog.variant === 'success'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                 <svg v-else-if="srDialog.variant === 'warning'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -9556,6 +9868,7 @@
             <div v-if="srDialog.highlightValue" class="sr-dialog-target-card">
               <div class="sr-dialog-target-icon">
                 <svg v-if="srDialog.variant === 'danger'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                <svg v-else-if="srDialog.variant === 'error' && srDialog.mode === 'confirm'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                 <svg v-else-if="srDialog.variant === 'error'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
                 <svg v-else-if="srDialog.variant === 'success'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -9570,7 +9883,7 @@
 
             <div class="sr-dialog-msg-box">
               <div class="sr-dialog-msg-icon">
-                <svg v-if="srDialog.variant === 'danger'" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <svg v-if="srDialog.variant === 'danger' || (srDialog.variant === 'error' && srDialog.mode === 'confirm')" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                 <svg v-else-if="srDialog.variant === 'error'" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
                 <svg v-else-if="srDialog.variant === 'success'" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                 <svg v-else-if="srDialog.variant === 'warning'" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -9598,6 +9911,16 @@
               @click="resolveSrDialog(false)"
             >
               <span>{{ srDialog.cancelText }}</span>
+            </button>
+
+            <button
+              v-if="srDialog.auxActionText"
+              type="button"
+              class="sr-dlg-btn sr-dlg-aux-action"
+              @click="triggerSrDialogAuxAction()"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              <span>{{ srDialog.auxActionText }}</span>
             </button>
 
             <button
@@ -9941,6 +10264,26 @@
             <aside class="sr-analytics-sidebar custom-scrollbar">
               <!-- MỤC 1: CHỌN 10 CHỈ SỐ PHÂN TÍCH KPI -->
               <div class="sr-analytics-side-section">
+                <div class="sr-analytics-price-mode-bar" role="group" aria-label="Chế độ giá ma trận và biểu đồ">
+                  <button
+                    type="button"
+                    class="sr-analytics-price-mode-btn"
+                    :class="{ active: analyticsPriceMode === 'hd' }"
+                    @click="analyticsPriceMode = 'hd'"
+                    title="Hiển thị các chỉ số theo Giá hợp đồng (bao gồm chênh lệch COM)"
+                  >
+                    <span>Giá hợp đồng</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="sr-analytics-price-mode-btn is-khach"
+                    :class="{ active: analyticsPriceMode === 'khach' }"
+                    @click="analyticsPriceMode = 'khach'"
+                    title="Hiển thị các chỉ số theo Giá khách (giá gốc thực tế chưa nâng giá COM)"
+                  >
+                    <span>Giá khách</span>
+                  </button>
+                </div>
                 <div class="sr-analytics-side-heading is-with-toggle">
                   <span>Chỉ số biểu đồ (3 Nhóm Card PO)</span>
                   <button
@@ -10141,7 +10484,7 @@
                       </div>
                       <div class="sr-analytics-doughnut-wrap">
                         <Doughnut
-                          :key="'ccm-dn-' + craftCompareChartMetric + '-' + craftCompareChartSort + '-' + effectiveCraftCompareRows.length + '-' + uiTheme"
+                          :key="'ccm-dn-' + craftCompareChartMetric + '-' + analyticsPriceMode + '-' + craftCompareChartSort + '-' + effectiveCraftCompareRows.length + '-' + uiTheme"
                           :data="craftComparePieData"
                           :options="craftComparePieOptions"
                         />
@@ -10174,7 +10517,7 @@
                           }"
                         >
                           <Bar
-                            :key="'ccm-bar-' + (isMobile ? 'mob-h' : 'pc-v') + '-' + craftCompareChartMetric + '-' + craftCompareChartSort + '-' + effectiveCraftCompareRows.length + '-' + uiTheme"
+                            :key="'ccm-bar-' + (isMobile ? 'mob-h' : 'pc-v') + '-' + craftCompareChartMetric + '-' + analyticsPriceMode + '-' + craftCompareChartSort + '-' + effectiveCraftCompareRows.length + '-' + uiTheme"
                             :data="craftCompareBarData"
                             :options="craftCompareBarOptions"
                           />
@@ -10229,14 +10572,14 @@
                                 <template v-if="item.row.Ten_nha_cung_cap"> • NCC: {{ item.row.Ten_nha_cung_cap }}</template>
                               </div>
                             </td>
-                            <td style="text-align: right; font-weight: 700; font-variant-numeric: tabular-nums;">{{ fmt(doanhSoBan(item.row)) }} đ</td>
+                            <td style="text-align: right; font-weight: 700; font-variant-numeric: tabular-nums;">{{ fmt(analyticsDoanhSoBan(item.row)) }} đ</td>
                             <td style="text-align: right; font-weight: 700; font-variant-numeric: tabular-nums;">
                               {{ fmt(netCom(item.row)) }} đ
-                              <small style="display: block; font-size: 10px; opacity: 0.72;">({{ pct(netCom(item.row), doanhSoBan(item.row)) }}% DSB)</small>
+                              <small style="display: block; font-size: 10px; opacity: 0.72;">({{ pct(netCom(item.row), analyticsDoanhSoBan(item.row)) }}% DSB)</small>
                             </td>
                             <td style="text-align: right; font-variant-numeric: tabular-nums;" class="sr-rank-val" :class="netMargin(item.row) < 0 ? 'text-red' : 'text-green'">
                               {{ fmt(netMargin(item.row)) }} đ
-                              <small style="display: block; font-size: 10px; opacity: 0.72;">({{ pct(netMargin(item.row), doanhSoBan(item.row)) }}% DSB)</small>
+                              <small style="display: block; font-size: 10px; opacity: 0.72;">({{ pct(netMargin(item.row), analyticsDoanhSoBan(item.row)) }}% DSB)</small>
                             </td>
                             <td
                               v-if="craftCompareChartMetric !== 'triple_kpi'"
@@ -10395,13 +10738,14 @@
                               <td
                                 v-for="(r, colIdx) in effectiveCraftCompareRows"
                                 :key="(getPoRowKey(r) || colIdx) + '_' + mDef.key"
-                                class="sr-ccm-val-td is-editable-cell"
+                                class="sr-ccm-val-td"
                                 :class="{
+                                  'is-editable-cell': srDataMode === 'craft',
                                   'is-baseline-col': isCraftBaselineRow(r),
                                   'is-editing-cell': isEditingMatrixCell(r, mDef)
                                 }"
-                                :title="mDef.key === 'thue_com' ? 'Click để sửa % Thuế COM' : 'Click để sửa nhanh chỉ số này'"
-                                @click.stop="startEditMatrixCell(r, mDef)"
+                                :title="srDataMode === 'craft' ? (mDef.key === 'thue_com' ? 'Click để sửa % Thuế COM' : 'Click để sửa nhanh chỉ số này') : ''"
+                                @click.stop="srDataMode === 'craft' && startEditMatrixCell(r, mDef)"
                               >
                                 <div class="sr-ccm-cell-main is-right-aligned">
                                   <input
@@ -10422,7 +10766,7 @@
                                     :class="{
                                       'is-neg-val': mDef.isNumeric && mDef.getNumeric(r) < 0
                                     }"
-                                    @click.stop="startEditMatrixCell(r, mDef, 'main')"
+                                    @click.stop="srDataMode === 'craft' && startEditMatrixCell(r, mDef, 'main')"
                                   >
                                     {{ mDef.format(r) }}
                                   </span>
@@ -10473,16 +10817,16 @@
                                   >
                                     <span
                                       class="sr-ccm-delta-part"
-                                      title="Click để sửa trực tiếp số tăng/giảm cụ thể so với Bản gốc"
-                                      @click.stop="startEditMatrixCell(r, mDef, 'delta_abs')"
+                                      :title="srDataMode === 'craft' ? 'Click để sửa trực tiếp số tăng/giảm cụ thể so với Bản gốc' : ''"
+                                      @click.stop="srDataMode === 'craft' && startEditMatrixCell(r, mDef, 'delta_abs')"
                                     >
                                       {{ getCraftMetricDelta(mDef, r, colIdx, effectiveCraftCompareRows)?.deltaText }}
                                     </span>
                                     <span
                                       v-if="getCraftMetricDelta(mDef, r, colIdx, effectiveCraftCompareRows)?.pctText"
                                       class="sr-ccm-delta-part is-pct-part"
-                                      title="Click để sửa trực tiếp % tăng/giảm so với Bản gốc"
-                                      @click.stop="startEditMatrixCell(r, mDef, 'delta_pct')"
+                                      :title="srDataMode === 'craft' ? 'Click để sửa trực tiếp % tăng/giảm so với Bản gốc' : ''"
+                                      @click.stop="srDataMode === 'craft' && startEditMatrixCell(r, mDef, 'delta_pct')"
                                     >
                                       ({{ getCraftMetricDelta(mDef, r, colIdx, effectiveCraftCompareRows)?.pctText }})
                                     </span>
@@ -10635,13 +10979,14 @@
                             <td
                               v-for="mDef in filteredCraftCompareMetricDefs"
                               :key="mDef.key"
-                              class="sr-ccm-val-td is-editable-cell"
+                              class="sr-ccm-val-td"
                               :class="{
+                                'is-editable-cell': srDataMode === 'craft',
                                 'is-baseline-col': isCraftBaselineRow(r),
                                 'is-editing-cell': isEditingMatrixCell(r, mDef)
                               }"
-                              :title="mDef.key === 'thue_com' ? 'Click để sửa % Thuế COM' : 'Click để sửa nhanh chỉ số này'"
-                              @click.stop="startEditMatrixCell(r, mDef)"
+                              :title="srDataMode === 'craft' ? (mDef.key === 'thue_com' ? 'Click để sửa % Thuế COM' : 'Click để sửa nhanh chỉ số này') : ''"
+                              @click.stop="srDataMode === 'craft' && startEditMatrixCell(r, mDef)"
                             >
                               <div class="sr-ccm-cell-main is-right-aligned">
                                 <input
@@ -10662,7 +11007,7 @@
                                   :class="{
                                     'is-neg-val': mDef.isNumeric && mDef.getNumeric(r) < 0
                                   }"
-                                  @click.stop="startEditMatrixCell(r, mDef, 'main')"
+                                  @click.stop="srDataMode === 'craft' && startEditMatrixCell(r, mDef, 'main')"
                                 >
                                   {{ mDef.format(r) }}
                                 </span>
@@ -10711,16 +11056,16 @@
                                 >
                                   <span
                                     class="sr-ccm-delta-part"
-                                    title="Click để sửa trực tiếp số tăng/giảm cụ thể so với Bản gốc"
-                                    @click.stop="startEditMatrixCell(r, mDef, 'delta_abs')"
+                                    :title="srDataMode === 'craft' ? 'Click để sửa trực tiếp số tăng/giảm cụ thể so với Bản gốc' : ''"
+                                    @click.stop="srDataMode === 'craft' && startEditMatrixCell(r, mDef, 'delta_abs')"
                                   >
                                     {{ getCraftMetricDelta(mDef, r, rowIdx, effectiveCraftCompareRows)?.deltaText }}
                                   </span>
                                   <span
                                     v-if="getCraftMetricDelta(mDef, r, rowIdx, effectiveCraftCompareRows)?.pctText"
                                     class="sr-ccm-delta-part is-pct-part"
-                                    title="Click để sửa trực tiếp % tăng/giảm so với Bản gốc"
-                                    @click.stop="startEditMatrixCell(r, mDef, 'delta_pct')"
+                                    :title="srDataMode === 'craft' ? 'Click để sửa trực tiếp % tăng/giảm so với Bản gốc' : ''"
+                                    @click.stop="srDataMode === 'craft' && startEditMatrixCell(r, mDef, 'delta_pct')"
                                   >
                                     ({{ getCraftMetricDelta(mDef, r, rowIdx, effectiveCraftCompareRows)?.pctText }})
                                   </span>
@@ -10897,6 +11242,8 @@ interface SrDialogOptions {
   subNote?: string
   confirmText?: string
   cancelText?: string
+  auxActionText?: string
+  onAuxAction?: () => void
 }
 
 interface SrDialogQueueItem {
@@ -10910,6 +11257,8 @@ interface SrDialogQueueItem {
   subNote: string
   confirmText: string
   cancelText: string
+  auxActionText: string
+  onAuxAction?: () => void
   resolve: (confirmed: boolean) => void
 }
 
@@ -10924,7 +11273,9 @@ const srDialog = reactive({
   highlightValue: '',
   subNote: '',
   confirmText: 'Đã hiểu',
-  cancelText: 'Hủy bỏ'
+  cancelText: 'Hủy bỏ',
+  auxActionText: '',
+  onAuxAction: undefined as (() => void) | undefined
 })
 
 const srDialogQueue: SrDialogQueueItem[] = []
@@ -10949,7 +11300,7 @@ function onSrDialogKeydown(ev: KeyboardEvent) {
     ) {
       return
     }
-    if (srDialog.mode === 'alert' || srDialog.variant !== 'danger') {
+    if (srDialog.mode === 'alert' || (srDialog.variant !== 'danger' && srDialog.variant !== 'error')) {
       ev.preventDefault()
       ev.stopPropagation()
       resolveSrDialog(true)
@@ -10973,6 +11324,8 @@ function presentNextSrDialog() {
   const nextItem = srDialogQueue.shift()
   if (!nextItem) {
     srDialog.show = false
+    srDialog.auxActionText = ''
+    srDialog.onAuxAction = undefined
     activeSrDialogResolver = null
     detachSrDialogKeyListener()
     return
@@ -10988,16 +11341,24 @@ function presentNextSrDialog() {
   srDialog.subNote = nextItem.subNote
   srDialog.confirmText = nextItem.confirmText
   srDialog.cancelText = nextItem.cancelText
+  srDialog.auxActionText = nextItem.auxActionText || ''
+  srDialog.onAuxAction = nextItem.onAuxAction
   srDialog.show = true
 
   nextTick(() => {
     attachSrDialogKeyListener()
-    if (srDialog.mode === 'confirm' && srDialog.variant === 'danger') {
+    if (srDialog.mode === 'confirm' && (srDialog.variant === 'danger' || srDialog.variant === 'error')) {
       srDialogCancelBtnRef.value?.focus()
     } else {
       srDialogConfirmBtnRef.value?.focus()
     }
   })
+}
+
+function triggerSrDialogAuxAction() {
+  if (typeof srDialog.onAuxAction === 'function') {
+    srDialog.onAuxAction()
+  }
 }
 
 function enqueueSrDialog(mode: 'alert' | 'confirm', opts: SrDialogOptions): Promise<boolean> {
@@ -11025,6 +11386,8 @@ function enqueueSrDialog(mode: 'alert' | 'confirm', opts: SrDialogOptions): Prom
       subNote: opts.subNote || '',
       confirmText: opts.confirmText || (mode === 'confirm' ? 'Xác nhận' : 'Đã hiểu'),
       cancelText: opts.cancelText || 'Hủy bỏ',
+      auxActionText: opts.auxActionText || '',
+      onAuxAction: opts.onAuxAction,
       resolve
     })
     if (!srDialog.show) {
@@ -11771,8 +12134,11 @@ const parseDateStr = (s: string) => {
   return isNaN(d.getTime()) ? null : d;
 };
 
-const doanhSoBan = (r: any) => toNum(r?.Tong_tien_truoc_thueVAT)
-const tongSauVat = (r: any) => {
+// ─── Chế độ xem Giá hợp đồng | Giá khách (Toàn trang, Biểu đồ & Ma trận So sánh) ───
+const analyticsPriceMode = ref<'hd' | 'khach'>('hd')
+
+const doanhSoBanHd = (r: any) => toNum(r?.Tong_tien_truoc_thueVAT)
+const tongSauVatHd = (r: any) => {
   const s = toNum(r?.Tong_tien_sau_thueVAT)
   return s > 0 ? s : (toNum(r?.Tong_tien_truoc_thueVAT) + toNum(r?.Tong_thueVAT))
 }
@@ -11782,8 +12148,60 @@ const congNo = (r: any) => {
   if (r.cong_no !== undefined && r.cong_no !== null && r.cong_no !== '') {
     return Math.max(0, toNum(r.cong_no))
   }
-  return Math.max(0, tongSauVat(r) - daThanhToan(r))
+  return Math.max(0, tongSauVatHd(r) - daThanhToan(r))
 }
+
+const doanhSoBanKhach = (r: any): number => {
+  if (!r) return 0
+  const rawKhach = toNum(
+    r?.Tong_tien_truoc_thueVAT_khach ??
+      r?.Tong_gia_thuc_te ??
+      r?.tong_truoc_vat_goc ??
+      r?.doanhSoBan_khach ??
+      r?.goodsTotal?.truoc_vat_khach ??
+      r?.goodsTotal?.ttTruocKhach
+  )
+  if (rawKhach > 0) return rawKhach
+  return Math.max(0, doanhSoBanHd(r) - grossCom(r))
+}
+
+const thueVatKhach = (r: any): number => {
+  if (!r) return 0
+  const rawVatKhach = toNum(
+    r?.Tong_thueVAT_khach ??
+      r?.goodsTotal?.vat_khach ??
+      r?.goodsTotal?.vatKhach
+  )
+  if (rawVatKhach > 0) return rawVatKhach
+  const dsbHd = doanhSoBanHd(r)
+  const dsbKh = doanhSoBanKhach(r)
+  const vatHd = toNum(r?.Tong_thueVAT) || Math.max(0, tongSauVatHd(r) - dsbHd)
+  if (dsbHd > 0 && vatHd > 0) {
+    return Math.round(vatHd * (dsbKh / dsbHd))
+  }
+  return vatHd
+}
+
+const tongSauVatKhach = (r: any): number => {
+  if (!r) return 0
+  const rawSauKhach = toNum(
+    r?.Tong_tien_sau_thueVAT_khach ??
+      r?.goodsTotal?.sau_vat_khach ??
+      r?.goodsTotal?.ttSauKhach
+  )
+  if (rawSauKhach > 0) return rawSauKhach
+  return doanhSoBanKhach(r) + thueVatKhach(r)
+}
+
+const doanhSoBan = (r: any): number =>
+  analyticsPriceMode.value === 'khach' ? doanhSoBanKhach(r) : doanhSoBanHd(r)
+
+const tongSauVat = (r: any): number =>
+  analyticsPriceMode.value === 'khach' ? tongSauVatKhach(r) : tongSauVatHd(r)
+
+const analyticsDoanhSoBan = (r: any): number => doanhSoBan(r)
+
+const analyticsTongSauVat = (r: any): number => tongSauVat(r)
 
 // ─── Payment Due Date & Multi-Installment Helpers ───
 const ddmmyyyyToIso = (s: string): string => {
@@ -12088,6 +12506,13 @@ const hdChiTietRawMap = ref<Record<string, any>>({})
 function chiTietObjToRowArr(item: any): any[] | null {
   if (Array.isArray(item)) return item
   if (item && typeof item === 'object') {
+    const donGiaHD = item.don_gia_hop_dong ?? item.Don_gia_hop_dong ?? item.don_gia ?? item.Don_gia ?? 0
+    const donGiaKhach =
+      item.don_gia_khach ??
+      item.Don_gia_khach ??
+      item.don_gia_goc ??
+      item.Don_gia_goc ??
+      0
     return [
       item.ma_hop_dong ?? item.Ma_hop_dong ?? '',
       item.so_hop_dong ?? item.So_hop_dong ?? '',
@@ -12098,11 +12523,11 @@ function chiTietObjToRowArr(item: any): any[] | null {
       item.ten_ncc ?? item.Ten_nha_cung_cap ?? item.ten_nha_cung_cap ?? '',
       item.mo_ta_chung ?? item.Mo_ta_chung ?? '',
       item.mo_ta_chi_tiet ?? item.Mo_ta_chi_tiet ?? '',
-      item.dien_giai ?? item.Dien_giai ?? '',
+      item.dien_giai ?? item.Dien_giai ?? item.Description ?? item.description ?? '',
       item.danh_muc ?? item.Danh_muc ?? '',
       item.ghi_chu ?? item.Ghi_chu ?? '',
       item.dvt ?? item.DVT ?? '',
-      item.don_gia ?? item.Don_gia ?? 0,
+      donGiaHD,
       item.gia_tieu_chuan ?? item.Gia_tieu_chuan ?? 0,
       item.don_vi_tien_te ?? item.Don_vi_tien_te ?? 'VND',
       item.ti_gia ?? item.Ti_gia ?? 1,
@@ -12111,7 +12536,11 @@ function chiTietObjToRowArr(item: any): any[] | null {
       item.features ?? item.Features ?? '',
       item.gia_hardware ?? item.Gia_hardware ?? 0,
       item.gia_nhap ?? item.Gia_nhap ?? 0,
-      item.muc_phan_tram_off ?? item.Muc_phan_tram_off ?? 0
+      item.muc_phan_tram_off ?? item.Muc_phan_tram_off ?? 0,
+      donGiaKhach,
+      item.thanh_tien_truoc_thue_khach ?? item.Thanh_tien_truoc_thue_khach ?? 0,
+      item.tien_thue_vat_khach ?? item.Tien_thue_vat_khach ?? 0,
+      item.thanh_tien_sau_thue_khach ?? item.Thanh_tien_sau_thue_khach ?? 0
     ]
   }
   return null
@@ -12193,7 +12622,7 @@ function cleanupDuplicatedChiTietAndAutoInjectedCom() {
         if (isExactRepeat) {
           const singleBlockSum = entries.slice(0, m).reduce((s, e) => s + toNum(e.arr[13]) * (toNum(e.arr[18]) || 1), 0)
           const matchedPo = officialRows.value.find((r: any) => String(r?.ma_hop_dong || '').trim() === maHD)
-          const poDsb = matchedPo ? doanhSoBan(matchedPo) : 0
+          const poDsb = matchedPo ? doanhSoBanHd(matchedPo) : 0
           const isDefaultRow = m === 1 && String(entries[0].arr[3] || '').trim() === 'Hàng hóa mặc định'
           if (isDefaultRow || (poDsb > 0 && Math.abs(singleBlockSum - poDsb) <= 10)) {
             dedupBlockLen = m
@@ -12360,6 +12789,10 @@ async function loadData() {
 
       mappedRows.push({
         ...item,
+        link_excel_bao_gia: String(item.link_excel_bao_gia || item.link_excel_bao_gia_hd || item.linkBaoGia || '').trim(),
+        link_excel_bao_gia_khach: String(item.link_excel_bao_gia_khach || item.linkBaoGiaKhach || '').trim(),
+        ten_file_bao_gia: String(item.ten_file_bao_gia || item.ten_file_bao_gia_hd || item.tenFileBG || '').trim(),
+        ten_file_bao_gia_khach: String(item.ten_file_bao_gia_khach || item.tenFileBGKhach || '').trim(),
         so_tien_da_thanh_toan: daTT,
         cong_no: cn,
         thoi_gian_thanh_toan: tgTT,
@@ -12465,10 +12898,12 @@ async function loadData() {
         net_com: nCom,
         account_manager_name: String(c.account_manager_name || c.am || '').trim(),
         img_save: String(c.img_save || c.existingImgUrl || '').trim(),
-        link_excel_bao_gia: String(c.link_excel_bao_gia || c.linkBaoGia || '').trim(),
+        link_excel_bao_gia: String(c.link_excel_bao_gia || c.link_excel_bao_gia_hd || c.linkBaoGia || '').trim(),
+        link_excel_bao_gia_khach: String(c.link_excel_bao_gia_khach || c.linkBaoGiaKhach || '').trim(),
         link_excel_mua_hang: String(c.link_excel_mua_hang || c.linkMuaHang || '').trim(),
         link_excel_dxmh: String(c.link_excel_dxmh || c.linkDxmh || '').trim(),
-        ten_file_bao_gia: String(c.ten_file_bao_gia || c.tenFileBG || '').trim(),
+        ten_file_bao_gia: String(c.ten_file_bao_gia || c.ten_file_bao_gia_hd || c.tenFileBG || '').trim(),
+        ten_file_bao_gia_khach: String(c.ten_file_bao_gia_khach || c.tenFileBGKhach || '').trim(),
         ten_file_mua_hang: String(c.ten_file_mua_hang || c.tenFileMH || '').trim(),
         ten_file_dxmh: String(c.ten_file_dxmh || c.tenFileDxmh || '').trim(),
         so_tien_da_thanh_toan: toNum(c.so_tien_da_thanh_toan),
@@ -12531,6 +12966,9 @@ async function loadData() {
 
     // ─── Làm sạch các dòng hop_dong_chi_tiet bị nhân bản & số COM tự nhảy do lỗi cũ ───
     cleanupDuplicatedChiTietAndAutoInjectedCom()
+
+    // ─── Kiểm tra URL query (?openPoKey=...&openSoPo=...) để tự động chuyển đến và mở PO khi mở tab mới ───
+    await handleDeepLinkOpenPoFromUrl()
   } catch (e) {
     console.error('Lỗi load sale_report từ Firebase:', e)
     officialRows.value = []
@@ -12540,16 +12978,119 @@ async function loadData() {
   }
 }
 
+async function handleDeepLinkOpenPoFromUrl() {
+  if (typeof window === 'undefined') return
+  const params = new URLSearchParams(window.location.search)
+  const openPoKey = (params.get('openPoKey') || '').trim()
+  const openSoPo = (params.get('openSoPo') || '').trim()
+  const srMode = (params.get('srMode') || '').trim()
+  if (!openPoKey && !openSoPo) return
+
+  // Làm sạch query param trên thanh địa chỉ để F5 không tự mở lại ngoài ý muốn
+  try {
+    const cleanUrl = new URL(window.location.href)
+    cleanUrl.searchParams.delete('openPoKey')
+    cleanUrl.searchParams.delete('openSoPo')
+    cleanUrl.searchParams.delete('srMode')
+    window.history.replaceState({}, '', cleanUrl.pathname + cleanUrl.search + cleanUrl.hash)
+  } catch (_) {}
+
+  const pool =
+    srMode === 'craft'
+      ? [...(craftRows.value || []), ...(officialRows.value || [])]
+      : [...(officialRows.value || []), ...(craftRows.value || [])]
+
+  let targetRow = openPoKey
+    ? pool.find(
+        r =>
+          String(r?._firebaseKey || '').trim() === openPoKey ||
+          String(r?.ID || '').trim() === openPoKey
+      )
+    : null
+
+  if (!targetRow && openSoPo) {
+    targetRow = pool.find(r => String(r?.So_PO || '').trim() === openSoPo)
+  }
+
+  if (!targetRow) return
+
+  const isCraftTarget = Boolean(targetRow._isCraft || targetRow.is_craft)
+  srDataMode.value = isCraftTarget ? 'craft' : 'official'
+  await nextTick()
+
+  if (!filteredRows.value.some(r => getPoRowKey(r) === getPoRowKey(targetRow))) {
+    searchStr.value = ''
+    filterCustomer.value = 'Tất cả'
+    filterYear.value = 'Tất cả'
+    filterMonth.value = 'Tất cả'
+    filterDebtStatus.value = 'Tất cả'
+    companySidebarSearch.value = ''
+    await nextTick()
+  }
+
+  displayLimit.value = Math.max(displayLimit.value, filteredRows.value.length + 10)
+  const groupKey = String(targetRow.Ma_cong_ty || targetRow.Ten_cong_ty || 'Khác')
+  selectedMasterGroupKey.value = groupKey
+  groupPoVisibleLimitMap.value = {
+    ...groupPoVisibleLimitMap.value,
+    [groupKey]: Math.max(9999, filteredRows.value.length + 10)
+  }
+  collapsedGroupMap.value = {
+    ...collapsedGroupMap.value,
+    [groupKey]: false
+  }
+
+  const poKey = getPoRowKey(targetRow) || String(targetRow.So_PO || openSoPo)
+  if (poKey) {
+    collapsedPoCardMap.value = {
+      ...collapsedPoCardMap.value,
+      [poKey]: false
+    }
+    if (isMobileShell.value) {
+      selectedMobilePoKey.value = poKey
+      mobileActiveTab.value = 'company_detail'
+    }
+  }
+
+  highlightedPoKey.value = poKey
+  if (highlightPoTimer) clearTimeout(highlightPoTimer)
+  highlightPoTimer = setTimeout(() => {
+    highlightedPoKey.value = ''
+  }, 5000)
+
+  await nextTick()
+  setTimeout(() => {
+    const activeCompanyCard = document.querySelector('.sr-md-company-card.active') as HTMLElement | null
+    if (activeCompanyCard) {
+      activeCompanyCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+    const cardEl =
+      (poKey ? document.getElementById(`sr-po-card-${poKey}`) : null) ||
+      (openSoPo ? document.getElementById(`sr-po-card-${openSoPo}`) : null)
+    if (cardEl) {
+      cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, 120)
+
+  openMultiEditModal(targetRow)
+}
+
 onMounted(() => {
   loadData()
   if (typeof document !== 'undefined') {
     document.addEventListener('click', handleOutsideSalePickerClick)
+  }
+  if (typeof window !== 'undefined') {
+    window.addEventListener('paste', handlePoModalClipboardPaste)
   }
 })
 
 onUnmounted(() => {
   if (typeof document !== 'undefined') {
     document.removeEventListener('click', handleOutsideSalePickerClick)
+  }
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('paste', handlePoModalClipboardPaste)
   }
 })
 
@@ -14238,8 +14779,8 @@ const netCom = (r: any) => {
   }
   return 0
 }
-const netPO = (r: any) => doanhSoBan(r) - grossCom(r)
-const netMargin = (r: any) => doanhSoBan(r) - grossCom(r) - tongCP(r)
+const netPO = (r: any) => doanhSoBanHd(r) - grossCom(r)
+const netMargin = (r: any) => doanhSoBanHd(r) - grossCom(r) - tongCP(r)
 const netMarginPct = (r: any) => {
   const np = netPO(r)
   return np !== 0 ? (netMargin(r) / np) * 100 : 0
@@ -14652,8 +15193,8 @@ const resolvedGranularity = computed<'day' | 'month' | 'quarter' | 'year'>(() =>
 
 const getRowMetricNumDen = (r: any, metric: string): { num: number; den: number } => {
   switch (metric) {
-    case 'doanhSoBan': return { num: doanhSoBan(r), den: 1 }
-    case 'tongSauVat': return { num: tongSauVat(r), den: 1 }
+    case 'doanhSoBan': return { num: analyticsDoanhSoBan(r), den: 1 }
+    case 'tongSauVat': return { num: analyticsTongSauVat(r), den: 1 }
     case 'daThanhToan': return { num: daThanhToan(r), den: 1 }
     case 'congNo': return { num: congNo(r), den: 1 }
     case 'grossCom': return { num: grossCom(r), den: 1 }
@@ -14662,8 +15203,8 @@ const getRowMetricNumDen = (r: any, metric: string): { num: number; den: number 
     case 'netMargin': return { num: netMargin(r), den: 1 }
     case 'totalNetComPct': return { num: netCom(r), den: netPO(r) }
     case 'totalNetMarginPct': return { num: netMargin(r), den: netPO(r) }
-    case 'totalNetComDsbPct': return { num: netCom(r), den: doanhSoBan(r) }
-    case 'totalNetMarginDsbPct': return { num: netMargin(r), den: doanhSoBan(r) }
+    case 'totalNetComDsbPct': return { num: netCom(r), den: analyticsDoanhSoBan(r) }
+    case 'totalNetMarginDsbPct': return { num: netMargin(r), den: analyticsDoanhSoBan(r) }
     default: return { num: 0, den: 1 }
   }
 }
@@ -14705,7 +15246,7 @@ const timelineBuckets = computed(() => {
     const { num } = getRowMetricNumDen(r, metric)
     g.sum += num
     g.np += netPO(r) || 0
-    g.dsb += doanhSoBan(r) || 0
+    g.dsb += analyticsDoanhSoBan(r) || 0
     g.nm += netMargin(r) || 0
     g.count += 1
   })
@@ -15030,6 +15571,8 @@ const companyGoodsList = computed(() => {
     }
   >()
 
+  const isKhachMode = analyticsPriceMode.value === 'khach'
+
   if (maHdToPoMap.size > 0 && Array.isArray(hdChiTietData.value)) {
     hdChiTietData.value.forEach(rowArr => {
       const mhd = String(rowArr[0] || '').trim()
@@ -15039,9 +15582,12 @@ const companyGoodsList = computed(() => {
       const ten = String(rowArr[3] || rowArr[9] || 'Mặt hàng').trim()
       const danhMuc = String(rowArr[10] || poRow?.Ten_nha_cung_cap || '').trim()
       const dvt = String(rowArr[12] || 'Cái').trim()
-      const donGia = Number(rowArr[13]) || 0
+      const rawDonGiaHd = Number(rowArr[13]) || 0
+      const rawDonGiaKhach = Number(rowArr[23]) || 0
+      const donGia = isKhachMode && rawDonGiaKhach > 0 ? rawDonGiaKhach : rawDonGiaHd
       const sl = Number(rowArr[18]) || 1
-      const ttTruoc = donGia * sl
+      const rawTtTruocKhach = Number(rowArr[24]) || 0
+      const ttTruoc = isKhachMode && rawTtTruocKhach > 0 ? rawTtTruocKhach : donGia * sl
       const key = `${ten.toLowerCase()}__${dvt.toLowerCase()}`
       if (!goodsMap.has(key)) {
         goodsMap.set(key, {
@@ -15077,9 +15623,14 @@ const companyGoodsList = computed(() => {
       const ten = String(gi.ten || gi.dienGiai || 'Mặt hàng').trim()
       const danhMuc = String(gi.danhMuc || r?.Ten_nha_cung_cap || '').trim()
       const dvt = String(gi.dvt || 'Cái').trim()
-      const donGia = toNum(gi.donGia)
+      const rawDonGiaHd = toNum(gi.donGia)
+      const rawDonGiaKhach = toNum(gi.donGiaKhach ?? gi.don_gia_khach ?? gi.don_gia_goc)
+      const donGia = isKhachMode && rawDonGiaKhach > 0 ? rawDonGiaKhach : rawDonGiaHd
       const sl = toNum(gi.sl) || 1
-      const ttTruoc = toNum(gi.ttTruoc) || donGia * sl
+      const rawTtTruocKhach = toNum(gi.ttTruocKhach ?? gi.thanh_tien_truoc_vat_khach)
+      const ttTruoc = isKhachMode
+        ? (rawTtTruocKhach > 0 ? rawTtTruocKhach : donGia * sl)
+        : (toNum(gi.ttTruoc) || donGia * sl)
       const key = `${ten.toLowerCase()}__${dvt.toLowerCase()}`
       if (!goodsMap.has(key)) {
         goodsMap.set(key, {
@@ -15108,7 +15659,7 @@ const companyGoodsList = computed(() => {
       const contentName = getPoContractContent(r, 80) || String(r.Ten_nha_cung_cap || `Đơn hàng PO #${idx + 1}`).trim()
       const ncc = String(r.Ten_nha_cung_cap || '').trim()
       const soPo = String(r.So_PO || `PO-${idx + 1}`).trim()
-      const dsb = doanhSoBan(r)
+      const dsb = analyticsDoanhSoBan(r)
       const key = contentName.toLowerCase()
       if (!goodsMap.has(key)) {
         goodsMap.set(key, {
@@ -15168,6 +15719,8 @@ const companyGoodsRankingRawData = computed(() => {
 })
 
 // ─── Unified Ranking Data Builder (Customer / Industry / Customer Group / Product / PO / Debt Status) ───
+const poEntryRowLookupMap = new Map<string, any>()
+
 const buildRankingData = (dimension: 'customer' | 'industry' | 'customerGroup' | 'product' | 'po' | 'debt', metric: string) => {
   if (!metric) {
     return {
@@ -15178,8 +15731,12 @@ const buildRankingData = (dimension: 'customer' | 'industry' | 'customerGroup' |
     }
   }
 
+  if (dimension === 'po') {
+    poEntryRowLookupMap.clear()
+  }
+
   const isCompanyScoped = Boolean(chartModal.value.companyScope)
-  const map = new Map<string, { num: number; den: number; names: Set<string>; poCount: number; subText: string; companies: Set<string> }>()
+  const map = new Map<string, { num: number; den: number; names: Set<string>; poCount: number; subText: string; companies: Set<string>; rawRow?: any }>()
   let total = 0
 
   activeChartScopeRows.value.forEach((r, idx) => {
@@ -15258,7 +15815,7 @@ const buildRankingData = (dimension: 'customer' | 'industry' | 'customerGroup' |
     }
 
     if (!map.has(key)) {
-      map.set(key, { num: 0, den: 0, names: new Set(), poCount: 0, subText, companies: new Set() })
+      map.set(key, { num: 0, den: 0, names: new Set(), poCount: 0, subText, companies: new Set(), rawRow: dimension === 'po' ? r : undefined })
     }
     const item = map.get(key)!
     item.num += num
@@ -15282,7 +15839,23 @@ const buildRankingData = (dimension: 'customer' | 'industry' | 'customerGroup' |
       finalVal = val.num
       total += finalVal
     }
-    const displayName = val.names.size > 0 ? Array.from(val.names)[0] : 'Khác'
+    let displayName = val.names.size > 0 ? Array.from(val.names)[0] : 'Khác'
+    if (dimension === 'po' && finalMap.has(displayName)) {
+      const shortContract = val.rawRow ? getPoContractContent(val.rawRow, 28) : ''
+      const candidate = shortContract && shortContract !== 'Chưa có nội dung HĐ/PO'
+        ? `${displayName} (${shortContract})`
+        : ''
+      if (candidate && !finalMap.has(candidate)) {
+        displayName = candidate
+      } else {
+        let dupIdx = 2
+        while (finalMap.has(`${displayName} (#${dupIdx})`)) dupIdx++
+        displayName = `${displayName} (#${dupIdx})`
+      }
+    }
+    if (dimension === 'po' && val.rawRow) {
+      poEntryRowLookupMap.set(displayName, val.rawRow)
+    }
     if (ratio) {
       finalMap.set(displayName, finalVal)
     } else {
@@ -15400,12 +15973,25 @@ function clearCompanyChartScope() {
 }
 
 function openPoDetailByEntryName(entryName: string) {
-  const soPo = String(entryName || '').split(' — ')[0].trim()
+  const rawName = String(entryName || '').trim()
+  const directRow = poEntryRowLookupMap.get(rawName)
+  if (directRow) {
+    chartModal.value.show = false
+    openMultiEditModal(directRow)
+    return
+  }
+  const soPo = rawName.split(' — ')[0].trim()
   if (!soPo) return
-  const matched = activeChartScopeRows.value.find(r => String(r.So_PO || '').trim() === soPo)
+  const searchPool = activeChartScopeRows.value.length > 0 ? activeChartScopeRows.value : rows.value
+  const matched =
+    searchPool.find((r, idx) => {
+      const rPo = String(r.So_PO || '').trim() || `PO-#${idx + 1}`
+      return rPo === soPo || String(r.So_PO || '').trim() === soPo || getPoContractContent(r).trim() === rawName
+    }) ||
+    rows.value.find(r => String(r.So_PO || '').trim() === soPo || getPoContractContent(r).trim() === rawName)
   if (matched) {
     chartModal.value.show = false
-    openDetailModal(matched)
+    openMultiEditModal(matched)
   } else {
     applyAnalyticsDrilldown(entryName)
   }
@@ -15568,7 +16154,11 @@ const activeRankingPieOptions = computed(() => {
         const index = activeEls[0].index
         const entry = activeRankingRawData.value.sorted[index]
         if (entry && entry[0]) {
-          applyAnalyticsDrilldown(entry[0])
+          if (analyticsActiveTab.value === 'po') {
+            openPoDetailByEntryName(entry[0])
+          } else {
+            applyAnalyticsDrilldown(entry[0])
+          }
         }
       }
     },
@@ -15683,7 +16273,11 @@ const activeRankingBarOptions = computed(() => {
         const index = activeEls[0].index
         const entry = activeRankingRawData.value.sorted[index]
         if (entry && entry[0]) {
-          applyAnalyticsDrilldown(entry[0])
+          if (analyticsActiveTab.value === 'po') {
+            openPoDetailByEntryName(entry[0])
+          } else {
+            applyAnalyticsDrilldown(entry[0])
+          }
         }
       }
     },
@@ -16045,6 +16639,10 @@ interface ImportItem {
   id: number;
   row: any;
   doanhSoBan: number;
+  doanhSoBanKhach?: number;
+  vatKhach?: number;
+  ttSauKhach?: number;
+  priceViewMode?: 'hd' | 'khach';
   giaMua: number;
   tongCP: number;
   grossCom: number;
@@ -16052,6 +16650,8 @@ interface ImportItem {
   productType: string;
   customer: string;
   recipient?: string;
+  address?: string;
+  _addressEdited?: boolean;
   mst: string;
   industry?: string;
   _industryEdited?: boolean;
@@ -16061,9 +16661,12 @@ interface ImportItem {
   linkedMaCongTy?: string;
   extractedCompany?: string;
   extractedRecipient?: string;
+  extractedAddress?: string;
   extractedMST?: string;
   extractedSourceLabel?: string;
   _approvedDbNameUpdate?: boolean;
+  _custDiffCandidates?: Record<string, string>;
+  _custDiffMatchedId?: string;
   customerPickerOpen?: boolean;
   customerSearchQuery?: string;
   createdTime: string;
@@ -16078,22 +16681,29 @@ interface ImportItem {
   previewUrlScanCom?: string;
   previewHtmlScanCom?: string;
   rawFileBaoGia?: File;
+  rawFileBaoGiaKhach?: File;
   rawFileMuaHang?: File;
   rawFileDxmh?: File;
   linkBaoGia?: string;
+  linkBaoGiaKhach?: string;
+  tenFileBGKhach?: string;
   linkMuaHang?: string;
   linkDxmh?: string;
   tenFileDxmh?: string;
   predictPct?: string;
+  predictPctKhach?: string;
   _origGross?: number;
   _origNet?: number;
+  _origDsbKhach?: number;
   activeTab?: 'po' | 'metrics' | 'goods' | 'debt';
   previewBaoGia?: boolean;
   previewMuaHang?: boolean;
   previewUrlBG?: string;
+  previewUrlBGKhach?: string;
   previewUrlMH?: string;
   previewUrlDXMH?: string;
   previewHtmlBG?: string;
+  previewHtmlBGKhach?: string;
   previewHtmlMH?: string;
   previewHtmlDXMH?: string;
   dxmhCustomerDetails?: Record<string, any>;
@@ -16131,11 +16741,14 @@ function serializeModalItemsForDirtyCheck(items: ImportItem[] | undefined | null
         soPO: String(it.soPO ?? '').trim(),
         customer: String(it.customer ?? '').trim(),
         recipient: String(it.recipient ?? '').trim(),
+        address: String(it.address ?? '').trim(),
+        _addressEdited: Boolean(it._addressEdited),
         mst: String(it.mst ?? '').trim(),
         industry: String(it.industry ?? '').trim(),
         _industryEdited: Boolean(it._industryEdited),
         customerGroup: String(it.customerGroup ?? '').trim(),
         _customerGroupEdited: Boolean(it._customerGroupEdited),
+        _approvedDbNameUpdate: Boolean(it._approvedDbNameUpdate),
         linkedMaKH: String(it.linkedMaKH ?? '').trim(),
         linkedMaCongTy: String(it.linkedMaCongTy ?? '').trim(),
         productType: String(it.productType ?? '').trim(),
@@ -16144,22 +16757,29 @@ function serializeModalItemsForDirtyCheck(items: ImportItem[] | undefined | null
         ghiChu: String(it.ghiChu ?? '').trim(),
         am: String(it.am ?? '').trim(),
         doanhSoBan: Number(it.doanhSoBan) || 0,
+        doanhSoBanKhach: Number(it.doanhSoBanKhach) || 0,
         giaMua: Number(it.giaMua) || 0,
         tongCP: Number(it.tongCP) || 0,
         grossCom: Number(it.grossCom) || 0,
         netCom: Number(it.netCom) || 0,
         taxPct: Number(it.taxPct) || 0,
+        predictPct: String(it.predictPct ?? ''),
+        predictPctKhach: String(it.predictPctKhach ?? ''),
         soTienDaThanhToan: Number(it.soTienDaThanhToan) || 0,
         linkBaoGia: String(it.linkBaoGia ?? ''),
+        linkBaoGiaKhach: String(it.linkBaoGiaKhach ?? ''),
+        tenFileBGKhach: String(it.tenFileBGKhach ?? ''),
         linkMuaHang: String(it.linkMuaHang ?? ''),
         linkDxmh: String(it.linkDxmh ?? ''),
         tenFileDxmh: String(it.tenFileDxmh ?? ''),
         base64Img: String(it.base64Img ?? ''),
         previewUrlScanCom: String(it.previewUrlScanCom ?? ''),
         previewUrlBG: String(it.previewUrlBG ?? ''),
+        previewUrlBGKhach: String(it.previewUrlBGKhach ?? ''),
         previewUrlMH: String(it.previewUrlMH ?? ''),
         previewUrlDXMH: String(it.previewUrlDXMH ?? ''),
         rawFileBaoGia: it.rawFileBaoGia ? `${it.rawFileBaoGia.name}:${it.rawFileBaoGia.size}:${it.rawFileBaoGia.lastModified}` : '',
+        rawFileBaoGiaKhach: it.rawFileBaoGiaKhach ? `${it.rawFileBaoGiaKhach.name}:${it.rawFileBaoGiaKhach.size}:${it.rawFileBaoGiaKhach.lastModified}` : '',
         rawFileMuaHang: it.rawFileMuaHang ? `${it.rawFileMuaHang.name}:${it.rawFileMuaHang.size}:${it.rawFileMuaHang.lastModified}` : '',
         rawFileDxmh: it.rawFileDxmh ? `${it.rawFileDxmh.name}:${it.rawFileDxmh.size}:${it.rawFileDxmh.lastModified}` : '',
         rawFileScanCom: it.rawFileScanCom ? `${it.rawFileScanCom.name}:${it.rawFileScanCom.size}:${it.rawFileScanCom.lastModified}` : '',
@@ -16181,9 +16801,13 @@ function serializeModalItemsForDirtyCheck(items: ImportItem[] | undefined | null
               sl: Number(g?.sl) || 0,
               donGia: Number(g?.donGia) || 0,
               ttTruoc: Number(g?.ttTruoc) || 0,
+              donGiaKhach: Number(g?.donGiaKhach) || 0,
+              ttTruocKhach: Number(g?.ttTruocKhach) || 0,
               vatPct: String(g?.vatPct ?? ''),
               vat: Number(g?.vat) || 0,
-              ttSau: Number(g?.ttSau) || 0
+              ttSau: Number(g?.ttSau) || 0,
+              vatKhach: Number(g?.vatKhach) || 0,
+              ttSauKhach: Number(g?.ttSauKhach) || 0
             }))
           : []
       }))
@@ -16209,12 +16833,12 @@ const unsavedPoModalTargetLabel = computed(() => {
 
 function hasUnsavedPoModalChanges(): boolean {
   if (!multiEditModal.value.show || multiEditModal.value.items.length === 0) return false
-  if (wasPreDirtyOnOpen.value) return true
+  if (wasPreDirtyOnOpen.value || isModalDirty.value) return true
   const currentSnap = serializeModalItemsForDirtyCheck(multiEditModal.value.items)
   if (initialPoModalSnapshot.value && currentSnap !== initialPoModalSnapshot.value) {
     return true
   }
-  return isModalDirty.value && !initialPoModalSnapshot.value
+  return false
 }
 
 function requestCloseMultiEditModal() {
@@ -16341,14 +16965,73 @@ function hasItemImgPreview(item: ImportItem | null | undefined): boolean {
   )
 }
 
+function getItemActiveBgRawFile(item: ImportItem | null | undefined): File | undefined {
+  if (!item) return undefined
+  return getModalPriceMode(item) === 'khach' ? item.rawFileBaoGiaKhach : item.rawFileBaoGia
+}
+
+function getItemActiveBgSavedLink(item: ImportItem | null | undefined): string {
+  if (!item) return ''
+  if (getModalPriceMode(item) === 'khach') {
+    return String(
+      item.linkBaoGiaKhach ||
+      item.row?.link_excel_bao_gia_khach ||
+      item.row?.linkBaoGiaKhach ||
+      ''
+    ).trim()
+  }
+  return String(
+    item.linkBaoGia ||
+    item.row?.link_excel_bao_gia ||
+    item.row?.link_excel_bao_gia_hd ||
+    item.row?.linkBaoGia ||
+    ''
+  ).trim()
+}
+
+function getItemActiveBgSavedName(item: ImportItem | null | undefined): string {
+  if (!item) return ''
+  if (getModalPriceMode(item) === 'khach') {
+    return String(
+      item.tenFileBGKhach ||
+      item.row?.ten_file_bao_gia_khach ||
+      item.row?.tenFileBGKhach ||
+      ''
+    ).trim()
+  }
+  return String(
+    item.row?.ten_file_bao_gia ||
+    item.row?.ten_file_bao_gia_hd ||
+    item.row?.tenFileBG ||
+    ''
+  ).trim()
+}
+
+function getItemActiveBgPreviewUrl(item: ImportItem | null | undefined): string {
+  if (!item) return ''
+  return (getModalPriceMode(item) === 'khach' ? item.previewUrlBGKhach : item.previewUrlBG) || ''
+}
+
+function getItemActiveBgPreviewHtml(item: ImportItem | null | undefined): string {
+  if (!item) return ''
+  return (getModalPriceMode(item) === 'khach' ? item.previewHtmlBGKhach : item.previewHtmlBG) || ''
+}
+
+function getItemActiveBgDisplayName(item: ImportItem | null | undefined): string {
+  if (!item) return ''
+  const raw = getItemActiveBgRawFile(item)
+  if (raw?.name) return raw.name
+  return getItemActiveBgSavedName(item)
+}
+
 function hasItemBgPreview(item: ImportItem | null | undefined): boolean {
   if (!item) return false
   return Boolean(
-    item.previewUrlBG ||
-    item.previewHtmlBG ||
-    item.rawFileBaoGia ||
-    item.row?.link_excel_bao_gia ||
-    item.row?.ten_file_bao_gia
+    getItemActiveBgPreviewUrl(item) ||
+    getItemActiveBgPreviewHtml(item) ||
+    getItemActiveBgRawFile(item) ||
+    getItemActiveBgSavedLink(item) ||
+    getItemActiveBgSavedName(item)
   )
 }
 
@@ -16452,8 +17135,139 @@ function syncGiaMuaToTongCP(item: ImportItem | null | undefined) {
   isModalDirty.value = true
 }
 
+function getModalPriceMode(item: ImportItem | null | undefined): 'hd' | 'khach' {
+  return item?.priceViewMode === 'khach' ? 'khach' : 'hd'
+}
+
+function ensureModalItemKhachData(item: ImportItem | null | undefined) {
+  if (!item) return
+  const dsbHD = Number(item.doanhSoBan) || 0
+  const gCom = Number(item.grossCom) || 0
+  if (item.doanhSoBanKhach === undefined || item.doanhSoBanKhach === null) {
+    const rawFromRow = toNum(
+      item.row?.Tong_tien_truoc_thueVAT_khach ??
+        item.row?.Tong_gia_thuc_te ??
+        item.row?.tong_truoc_vat_goc ??
+        item.row?.doanhSoBan_khach ??
+        item.goodsTotal?.ttTruocKhach ??
+        item.goodsTotal?.truoc_vat_khach
+    )
+    item.doanhSoBanKhach = rawFromRow > 0 ? rawFromRow : Math.max(0, dsbHD - gCom)
+  }
+  if (Array.isArray(item.goodsList) && item.goodsList.length > 0) {
+    const ratio = dsbHD > 0 && (item.doanhSoBanKhach || 0) > 0 ? (item.doanhSoBanKhach || 0) / dsbHD : 1
+    let sumTruocKhach = 0
+    let sumVatKhach = 0
+    let sumSauKhach = 0
+    item.goodsList.forEach((g: any) => {
+      if (!g) return
+      const sl = Number(g.sl) || 1
+      const pct = parseFloat(String(g.vatPct || '').replace(/[^0-9.-]/g, '')) || 0
+      if (g.donGiaKhach === undefined || g.donGiaKhach === null) {
+        const rawGk = toNum(g.don_gia_khach ?? g.don_gia_goc)
+        g.donGiaKhach = rawGk > 0 ? rawGk : Math.round((Number(g.donGia) || 0) * ratio)
+      }
+      if (g.ttTruocKhach === undefined || g.ttTruocKhach === null) {
+        g.ttTruocKhach = Math.round(sl * (Number(g.donGiaKhach) || 0))
+      }
+      if (g.vatKhach === undefined || g.vatKhach === null) {
+        g.vatKhach = Math.round(g.ttTruocKhach * (pct / 100))
+      }
+      if (g.ttSauKhach === undefined || g.ttSauKhach === null) {
+        g.ttSauKhach = g.ttTruocKhach + g.vatKhach
+      }
+      sumTruocKhach += g.ttTruocKhach
+      sumVatKhach += g.vatKhach
+      sumSauKhach += g.ttSauKhach
+    })
+    if (item.goodsTotal) {
+      if (item.goodsTotal.ttTruocKhach === undefined) item.goodsTotal.ttTruocKhach = sumTruocKhach
+      if (item.goodsTotal.vatKhach === undefined) item.goodsTotal.vatKhach = sumVatKhach
+      if (item.goodsTotal.ttSauKhach === undefined) item.goodsTotal.ttSauKhach = sumSauKhach
+    }
+  }
+}
+
+function setModalPriceMode(item: ImportItem | null | undefined, mode: 'hd' | 'khach') {
+  if (!item) return
+  ensureModalItemKhachData(item)
+  item.priceViewMode = mode
+  if (!item.activePreviewTab || item.activePreviewTab === 'bg') {
+    item.activePreviewTab = 'bg'
+  }
+}
+
+function getModalItemDsb(item: ImportItem | null | undefined): number {
+  if (!item) return 0
+  if (getModalPriceMode(item) === 'khach') {
+    const dsbK = Number(item.doanhSoBanKhach) || 0
+    if (dsbK > 0) return dsbK
+    const rawK = toNum(
+      item.row?.Tong_tien_truoc_thueVAT_khach ??
+        item.row?.Tong_gia_thuc_te ??
+        item.row?.tong_truoc_vat_goc ??
+        item.row?.doanhSoBan_khach ??
+        item.goodsTotal?.ttTruocKhach ??
+        item.row?.goodsTotal?.truoc_vat_khach ??
+        item.row?.goodsTotal?.ttTruocKhach
+    )
+    if (rawK > 0) return rawK
+    return Math.max(0, (Number(item.doanhSoBan) || 0) - (Number(item.grossCom) || 0))
+  }
+  return Number(item.doanhSoBan) || 0
+}
+
+function getModalItemTtSau(item: ImportItem | null | undefined): number {
+  if (!item) return 0
+  if (getModalPriceMode(item) === 'khach') {
+    const dsbK = getModalItemDsb(item)
+    if (item.goodsTotal?.ttSauKhach && Number(item.goodsTotal.ttSauKhach) > 0) {
+      return Number(item.goodsTotal.ttSauKhach)
+    }
+    const rawSauK = toNum(
+      item.ttSauKhach ??
+        item.row?.Tong_tien_sau_thueVAT_khach ??
+        item.row?.goodsTotal?.sau_vat_khach
+    )
+    if (rawSauK > 0) return rawSauK
+    const vatK = toNum(
+      item.vatKhach ??
+        item.goodsTotal?.vatKhach ??
+        item.row?.Tong_thueVAT_khach
+    )
+    if (vatK > 0) return dsbK + vatK
+    const dsbHD = Number(item.doanhSoBan) || 0
+    const sauHD = Number(item.goodsTotal?.ttSau || (item.row ? tongSauVatHd(item.row) : dsbHD)) || 0
+    if (dsbHD > 0 && sauHD > dsbHD) {
+      return Math.round(dsbK * (sauHD / dsbHD))
+    }
+    return dsbK
+  }
+  return Number(item.goodsTotal?.ttSau || (item.row ? tongSauVatHd(item.row) : item.doanhSoBan)) || 0
+}
+
+function hasModalPriceDiff(item: ImportItem | null | undefined): boolean {
+  if (!item) return false
+  const dsbHD = Number(item.doanhSoBan) || 0
+  const dsbK =
+    Number(item.doanhSoBanKhach) ||
+    toNum(
+      item.row?.Tong_tien_truoc_thueVAT_khach ??
+        item.row?.Tong_gia_thuc_te ??
+        item.row?.tong_truoc_vat_goc ??
+        item.row?.doanhSoBan_khach
+    ) ||
+    Math.max(0, dsbHD - (Number(item.grossCom) || 0))
+  return Math.abs(dsbHD - dsbK) >= 1
+}
+
 function syncGoodsTotalToDSB(item: ImportItem | null | undefined) {
   if (!item || !item.goodsTotal) return
+  if (getModalPriceMode(item) === 'khach') {
+    const nextKhach = Math.round(Number(item.goodsTotal.ttTruocKhach ?? item.goodsTotal.ttTruoc) || 0)
+    onFinancialValueChange(item, 'doanhSoBanKhach', nextKhach, true)
+    return
+  }
   item.doanhSoBan = Math.round(Number(item.goodsTotal.ttTruoc) || 0)
   onFinancialInput(item, 'doanhSoBan')
   isModalDirty.value = true
@@ -16470,6 +17284,8 @@ function addAnotherBlankPOInModal() {
     id: Date.now() + Math.floor(Math.random() * 1000),
     row: null,
     doanhSoBan: 0,
+    doanhSoBanKhach: 0,
+    priceViewMode: 'hd',
     giaMua: 0,
     tongCP: 0,
     grossCom: 0,
@@ -16514,6 +17330,8 @@ function handleCreateBlankPO() {
     id: Date.now(),
     row: null,
     doanhSoBan: 0,
+    doanhSoBanKhach: 0,
+    priceViewMode: 'hd',
     giaMua: 0,
     tongCP: 0,
     grossCom: 0,
@@ -16589,6 +17407,19 @@ function getIndustryFromDbCustomer(cus: any): string {
   return ''
 }
 
+function getAddressFromDbCustomer(cus: any): string {
+  if (!cus || typeof cus !== 'object') return ''
+  return String(
+    cus.dia_chi_cong_ty ||
+    cus.Dia_chi_cong_ty ||
+    cus.dia_chi ||
+    cus.Dia_chi ||
+    cus.address ||
+    cus.ADDRESS ||
+    ''
+  ).trim()
+}
+
 function getCustomerGroupArrayFromDbCustomer(cus: any): string[] {
   if (!cus || typeof cus !== 'object') return []
   const raw = cus.tagKH ?? cus.TagKH ?? cus.nhom_khach_hang ?? cus.Nhom_khach_hang
@@ -16639,6 +17470,7 @@ const khachHangList = computed(() => {
         ten_cong_ty,
         ten_khach_hang,
         mst,
+        dia_chi_cong_ty: getAddressFromDbCustomer(v),
         nganh_nghe_cong_ty: getIndustryFromDbCustomer(v),
         tagKH: getCustomerGroupArrayFromDbCustomer(v),
         _mstClean: mst.replace(/[^0-9A-Za-z-]/g, '').trim(),
@@ -16720,6 +17552,26 @@ function getMatchedDbCustomerForItem(item: ImportItem | null | undefined): any |
   return found
 }
 
+function getDisplayAddressForModalItem(item: ImportItem | null | undefined): string {
+  if (!item) return ''
+  if (item._addressEdited) return String(item.address || '')
+  if (item.address && String(item.address).trim()) return String(item.address).trim()
+  if (item.extractedAddress && String(item.extractedAddress).trim()) return String(item.extractedAddress).trim()
+  const dxmhAddr = String(item.dxmhCustomerDetails?.dia_chi_cong_ty || item.dxmhCustomerDetails?.address || '').trim()
+  if (dxmhAddr) return dxmhAddr
+  const rowAddr = String(item.row?.Dia_chi_cong_ty || item.row?.dia_chi_cong_ty || item.row?.dia_chi || item.row?.address || '').trim()
+  if (rowAddr) return rowAddr
+  const dbCus = getMatchedDbCustomerForItem(item)
+  return getAddressFromDbCustomer(dbCus)
+}
+
+function onItemAddressInput(item: ImportItem, val: string) {
+  if (!item) return
+  item.address = val
+  item._addressEdited = true
+  onItemCustomerFieldInput(item, 'dia_chi_cong_ty', val)
+}
+
 function getDisplayIndustryForModalItem(item: ImportItem | null | undefined): string {
   if (!item) return ''
   if (item._industryEdited) return String(item.industry || '')
@@ -16732,7 +17584,7 @@ function onItemIndustryInput(item: ImportItem, val: string) {
   if (!item) return
   item.industry = val
   item._industryEdited = true
-  isModalDirty.value = true
+  onItemCustomerFieldInput(item, 'nganh_nghe_cong_ty', val)
 }
 
 function getDisplayCustomerGroupForModalItem(item: ImportItem | null | undefined): string {
@@ -16747,143 +17599,200 @@ function onItemCustomerGroupInput(item: ImportItem, val: string) {
   if (!item) return
   item.customerGroup = val
   item._customerGroupEdited = true
-  isModalDirty.value = true
+  onItemCustomerFieldInput(item, 'tagKH', val)
 }
 
 function onCustomerDetailTagStringInput(val: string) {
   dbCustomerDetailModal.value.form.tagKH = parseCustomerGroupStringToArray(val)
 }
 
-function onItemCustomerFieldInput(_item: ImportItem) {
+function isSameCustFieldVal(field: string, a: string, b: string): boolean {
+  if (field === 'mst') {
+    const ca = String(a || '').replace(/[^0-9A-Za-z-]/g, '').trim().toLowerCase()
+    const cb = String(b || '').replace(/[^0-9A-Za-z-]/g, '').trim().toLowerCase()
+    return ca === cb
+  }
+  return normalizeCustomerCompareStr(a) === normalizeCustomerCompareStr(b)
+}
+
+function onItemCustomerFieldInput(item: ImportItem, field?: string, val?: string) {
+  if (item && field && val !== undefined) {
+    const matchedCus = getMatchedDbCustomerForItem(item)
+    if (matchedCus) {
+      let dbVal = ''
+      if (field === 'ten_cong_ty') dbVal = String(matchedCus.ten_cong_ty || '').trim()
+      else if (field === 'ten_khach_hang') dbVal = String(matchedCus.ten_khach_hang || '').trim()
+      else if (field === 'dia_chi_cong_ty') dbVal = getAddressFromDbCustomer(matchedCus)
+      else if (field === 'mst') dbVal = String(matchedCus.mst || '').trim()
+      else if (field === 'nganh_nghe_cong_ty') dbVal = getIndustryFromDbCustomer(matchedCus)
+      else if (field === 'tagKH') dbVal = getCustomerGroupFromDbCustomer(matchedCus)
+
+      const trimmedVal = String(val || '').trim()
+      if (trimmedVal && !isSameCustFieldVal(field, trimmedVal, dbVal)) {
+        item._custDiffCandidates = {
+          ...(item._custDiffCandidates || {}),
+          [field]: trimmedVal
+        }
+      }
+    }
+  }
   isModalDirty.value = true
 }
 
 function getCustomerDbMatchState(item: ImportItem | null | undefined): {
   status: 'matched' | 'diff' | 'new' | 'empty'
   matchedCus: any | null
-  diffs: Array<{ field: string; label: string; dbVal: string; poVal: string }>
+  diffs: Array<{
+    field: string
+    label: string
+    dbVal: string
+    poVal: string
+    activeSource: 'db' | 'po'
+  }>
+  activeDiffCount: number
 } {
-  if (!item) return { status: 'empty', matchedCus: null, diffs: [] }
+  if (!item) return { status: 'empty', matchedCus: null, diffs: [], activeDiffCount: 0 }
   const matchedCus = getMatchedDbCustomerForItem(item)
   const rawComp = String(item.customer || '').trim()
   const rawRec = String(item.recipient || '').trim()
+  const rawAddr = String(getDisplayAddressForModalItem(item) || '').trim()
   const rawMst = String(item.mst || '').trim()
+  const poInd = String(getDisplayIndustryForModalItem(item) || '').trim()
+  const poGrp = String(getDisplayCustomerGroupForModalItem(item) || '').trim()
 
   const rawItem = toRaw(item) as object
-  const stateCacheKey = `${matchedCus?.id || ''}|${matchedCus?.ten_cong_ty || ''}|${matchedCus?.ten_khach_hang || ''}|${matchedCus?.mst || ''}|${matchedCus?.nganh_nghe_cong_ty || ''}|${(matchedCus?.tagKH || []).join(',')}|${rawComp}|${rawRec}|${rawMst}|${item.industry || ''}|${item.customerGroup || ''}|${item._industryEdited ? 1 : 0}|${item._customerGroupEdited ? 1 : 0}|${item.extractedCompany || ''}|${item.extractedRecipient || ''}|${item.extractedSourceLabel || ''}`
+  const candSnapshot = item._custDiffCandidates ? JSON.stringify(item._custDiffCandidates) : ''
+  const stateCacheKey = `${matchedCus?.id || ''}|${matchedCus?.ten_cong_ty || ''}|${matchedCus?.ten_khach_hang || ''}|${matchedCus?.mst || ''}|${matchedCus?.dia_chi_cong_ty || ''}|${matchedCus?.nganh_nghe_cong_ty || ''}|${(matchedCus?.tagKH || []).join(',')}|${rawComp}|${rawRec}|${rawAddr}|${rawMst}|${poInd}|${poGrp}|${item._addressEdited ? 1 : 0}|${item._industryEdited ? 1 : 0}|${item._customerGroupEdited ? 1 : 0}|${item.extractedCompany || ''}|${item.extractedRecipient || ''}|${item.extractedAddress || ''}|${item.extractedMST || ''}|${item.dxmhRecipient || ''}|${candSnapshot}`
   const cachedState = custStateWeakCache.get(rawItem)
   if (cachedState && cachedState.key === stateCacheKey) {
     return cachedState.val
   }
 
   if (!matchedCus) {
-    const res = (!rawComp && !rawRec && !rawMst)
-      ? { status: 'empty' as const, matchedCus: null, diffs: [] }
-      : { status: 'new' as const, matchedCus: null, diffs: [] }
+    const res = (!rawComp && !rawRec && !rawMst && !rawAddr)
+      ? { status: 'empty' as const, matchedCus: null, diffs: [], activeDiffCount: 0 }
+      : { status: 'new' as const, matchedCus: null, diffs: [], activeDiffCount: 0 }
     custStateWeakCache.set(rawItem, { key: stateCacheKey, val: res })
     return res
   }
 
+  if (item._custDiffMatchedId !== matchedCus.id) {
+    item._custDiffMatchedId = matchedCus.id
+    item._custDiffCandidates = {}
+  }
+  if (!item._custDiffCandidates) {
+    item._custDiffCandidates = {}
+  }
+
   const dbComp = String(matchedCus.ten_cong_ty || '').trim()
   const dbRec = String(matchedCus.ten_khach_hang || '').trim()
+  const dbAddr = getAddressFromDbCustomer(matchedCus)
   const dbMst = String(matchedCus.mst || '').trim()
   const dbInd = getIndustryFromDbCustomer(matchedCus)
-  const poInd = String(getDisplayIndustryForModalItem(item) || '').trim()
   const dbGrp = getCustomerGroupFromDbCustomer(matchedCus)
-  const poGrp = String(getDisplayCustomerGroupForModalItem(item) || '').trim()
-  const itemHasDxmh = item.extractedSourceLabel === 'DXMH' || hasDxmhOnItem(item)
 
-  const diffs: Array<{ field: string; label: string; dbVal: string; poVal: string }> = []
+  const extComp = String(item.extractedCompany || '').trim()
+  const extRec = String(item.extractedRecipient || item.dxmhRecipient || '').trim()
+  const extAddr = String(item.extractedAddress || item.dxmhCustomerDetails?.dia_chi_cong_ty || item.dxmhCustomerDetails?.address || '').trim()
+  const extMst = String(item.extractedMST || '').trim()
 
-  if (rawComp && dbComp && normalizeCustomerCompareStr(rawComp) !== normalizeCustomerCompareStr(dbComp)) {
-    diffs.push({ field: 'ten_cong_ty', label: 'Tên CTY', dbVal: dbComp, poVal: rawComp })
-  }
-  if (!itemHasDxmh && rawRec && dbRec && normalizeCustomerCompareStr(rawRec) !== normalizeCustomerCompareStr(dbRec)) {
-    diffs.push({ field: 'ten_khach_hang', label: 'Người nhận', dbVal: dbRec, poVal: rawRec })
-  }
-  if (rawMst && dbMst && rawMst.replace(/[^0-9A-Za-z-]/g, '') !== dbMst.replace(/[^0-9A-Za-z-]/g, '')) {
-    diffs.push({ field: 'mst', label: 'MST', dbVal: dbMst, poVal: rawMst })
-  }
-  if (item._industryEdited && dbInd && poInd && normalizeCustomerCompareStr(poInd) !== normalizeCustomerCompareStr(dbInd)) {
-    diffs.push({ field: 'nganh_nghe_cong_ty', label: 'Ngành hàng', dbVal: dbInd, poVal: poInd })
-  }
-  if (item._customerGroupEdited && dbGrp && poGrp && normalizeCustomerCompareStr(poGrp) !== normalizeCustomerCompareStr(dbGrp)) {
-    diffs.push({ field: 'tagKH', label: 'Nhóm KH', dbVal: dbGrp, poVal: poGrp })
-  }
+  const fieldDefs = [
+    { field: 'ten_cong_ty', label: 'Tên Cty', dbVal: dbComp, curVal: rawComp, extVal: extComp, isEdited: true },
+    { field: 'ten_khach_hang', label: 'Người nhận', dbVal: dbRec, curVal: rawRec, extVal: extRec, isEdited: true },
+    { field: 'dia_chi_cong_ty', label: 'Địa chỉ', dbVal: dbAddr, curVal: rawAddr, extVal: extAddr, isEdited: Boolean(item._addressEdited || extAddr || item.row?.Dia_chi_cong_ty) },
+    { field: 'mst', label: 'MST', dbVal: dbMst, curVal: rawMst, extVal: extMst, isEdited: true },
+    { field: 'nganh_nghe_cong_ty', label: 'Ngành hàng', dbVal: dbInd, curVal: poInd, extVal: '', isEdited: Boolean(item._industryEdited) },
+    { field: 'tagKH', label: 'Nhóm KH', dbVal: dbGrp, curVal: poGrp, extVal: '', isEdited: Boolean(item._customerGroupEdited) }
+  ]
 
-  // Trường hợp lệch giữa File chứng từ (Báo giá / DXMH) và DB khi người dùng chưa áp dụng
-  if (diffs.length === 0 && hasItemCustomerDiffWithQuote(item)) {
-    const extComp = String(item.extractedCompany || '').trim()
-    const extRec = String(item.extractedRecipient || '').trim()
-    const srcLabel = item.extractedSourceLabel || 'Chứng từ'
-    if (extComp && dbComp && normalizeCustomerCompareStr(extComp) !== normalizeCustomerCompareStr(dbComp)) {
-      diffs.push({ field: 'ten_cong_ty', label: `Tên CTY (${srcLabel})`, dbVal: dbComp, poVal: extComp })
+  const diffs: Array<{
+    field: string
+    label: string
+    dbVal: string
+    poVal: string
+    activeSource: 'db' | 'po'
+  }> = []
+
+  for (const fd of fieldDefs) {
+    const hasDbOrEdited = Boolean(fd.dbVal || fd.isEdited)
+    if (fd.curVal && hasDbOrEdited && !isSameCustFieldVal(fd.field, fd.curVal, fd.dbVal)) {
+      item._custDiffCandidates[fd.field] = fd.curVal
+    } else if (!item._custDiffCandidates[fd.field] && fd.extVal && fd.dbVal && !isSameCustFieldVal(fd.field, fd.extVal, fd.dbVal)) {
+      item._custDiffCandidates[fd.field] = fd.extVal
     }
-    if (!itemHasDxmh && extRec && dbRec && normalizeCustomerCompareStr(extRec) !== normalizeCustomerCompareStr(dbRec)) {
-      diffs.push({ field: 'ten_khach_hang', label: `Người nhận (${srcLabel})`, dbVal: dbRec, poVal: extRec })
+
+    const candidate = String(item._custDiffCandidates[fd.field] || '').trim()
+    if (candidate && (fd.dbVal || fd.isEdited) && !isSameCustFieldVal(fd.field, candidate, fd.dbVal)) {
+      const isUsingDb = isSameCustFieldVal(fd.field, fd.curVal, fd.dbVal)
+      const poVal = isUsingDb ? candidate : (fd.curVal || candidate)
+      diffs.push({
+        field: fd.field,
+        label: fd.label,
+        dbVal: fd.dbVal || '(Chưa có trong DB)',
+        poVal,
+        activeSource: isUsingDb ? 'db' : 'po'
+      })
     }
   }
 
-  const finalRes = diffs.length > 0
-    ? { status: 'diff' as const, matchedCus, diffs }
-    : { status: 'matched' as const, matchedCus, diffs: [] }
+  const activeDiffCount = diffs.filter(d => d.activeSource === 'po').length
+  const finalRes = {
+    status: (activeDiffCount > 0 ? 'diff' : 'matched') as 'diff' | 'matched',
+    matchedCus,
+    diffs,
+    activeDiffCount
+  }
   custStateWeakCache.set(rawItem, { key: stateCacheKey, val: finalRes })
   return finalRes
 }
 
-async function applyCustomerMatchResolution(item: ImportItem, action: 'use_db' | 'update_db') {
+function selectCustomerDiffFieldValue(item: ImportItem, field: string, source: 'db' | 'po') {
   if (!item) return
   const matchedCus = getMatchedDbCustomerForItem(item)
   if (!matchedCus) return
 
-  if (action === 'use_db') {
-    applyItemCustomerSource(item, 'db')
-    item.industry = getIndustryFromDbCustomer(matchedCus)
-    item._industryEdited = false
-    item.customerGroup = getCustomerGroupFromDbCustomer(matchedCus)
-    item._customerGroupEdited = false
+  const dbValMap: Record<string, string> = {
+    ten_cong_ty: String(matchedCus.ten_cong_ty || '').trim(),
+    ten_khach_hang: String(matchedCus.ten_khach_hang || '').trim(),
+    dia_chi_cong_ty: getAddressFromDbCustomer(matchedCus),
+    mst: String(matchedCus.mst || '').trim(),
+    nganh_nghe_cong_ty: getIndustryFromDbCustomer(matchedCus),
+    tagKH: getCustomerGroupFromDbCustomer(matchedCus)
+  }
+
+  const dbVal = dbValMap[field] ?? ''
+  const poCandidate = String(item._custDiffCandidates?.[field] || '').trim()
+  const targetVal = source === 'db' ? dbVal : poCandidate
+
+  if (field === 'ten_cong_ty') {
+    item.customer = targetVal
+  } else if (field === 'ten_khach_hang') {
+    item.recipient = targetVal
+  } else if (field === 'dia_chi_cong_ty') {
+    item.address = targetVal
+    item._addressEdited = source === 'po'
+  } else if (field === 'mst') {
+    item.mst = targetVal
+  } else if (field === 'nganh_nghe_cong_ty') {
+    item.industry = targetVal
+    item._industryEdited = source === 'po'
+  } else if (field === 'tagKH') {
+    item.customerGroup = targetVal
+    item._customerGroupEdited = source === 'po'
+  }
+
+  // Nếu tất cả các trường đều đã chuyển sang dùng theo DB thì tự động bỏ tick "Cập nhật vào DB"
+  const nextState = getCustomerDbMatchState(item)
+  if (nextState.activeDiffCount === 0) {
     item._approvedDbNameUpdate = false
-    isModalDirty.value = true
-    return
   }
+  isModalDirty.value = true
+}
 
-  if (action === 'update_db') {
-    const dbComp = String(matchedCus.ten_cong_ty || '').trim()
-    if (hasItemCustomerDiffWithQuote(item) && normalizeCustomerCompareStr(item.customer) === normalizeCustomerCompareStr(dbComp)) {
-      applyItemCustomerSource(item, 'quote')
-    }
-    item._approvedDbNameUpdate = true
-    isModalDirty.value = true
-
-    if (matchedCus.id) {
-      const updates: Record<string, any> = {
-        last_updated: new Date().toISOString()
-      }
-      const rawComp = String(item.customer || '').trim()
-      const rawRec = String(item.recipient || '').trim()
-      const rawMst = String(item.mst || '').trim()
-      const rawInd = String(getDisplayIndustryForModalItem(item) || '').trim()
-      const rawGrpArr = parseCustomerGroupStringToArray(getDisplayCustomerGroupForModalItem(item))
-      const itemHasDxmh = item.extractedSourceLabel === 'DXMH' || hasDxmhOnItem(item)
-
-      if (rawComp) updates.ten_cong_ty = rawComp
-      if (!itemHasDxmh && rawRec) updates.ten_khach_hang = rawRec
-      if (rawMst) updates.mst = rawMst
-      if (rawInd) updates.nganh_nghe_cong_ty = rawInd
-      if (rawGrpArr.length > 0 || item._customerGroupEdited) updates.tagKH = rawGrpArr
-
-      try {
-        await update(dbRef(database, `khach_hang/${matchedCus.id}`), updates)
-        if (khachHangMap.value[matchedCus.id]) {
-          Object.assign(khachHangMap.value[matchedCus.id], updates)
-        }
-        item._industryEdited = false
-        item._customerGroupEdited = false
-      } catch (e) {
-        console.warn('Lỗi cập nhật nhanh khach_hang:', e)
-      }
-    }
-  }
+function toggleApproveCustomerDbUpdate(item: ImportItem, checked: boolean) {
+  if (!item) return
+  item._approvedDbNameUpdate = Boolean(checked)
+  isModalDirty.value = true
 }
 
 function hasItemCustomerDiffWithQuote(item: ImportItem | null | undefined): boolean {
@@ -16892,13 +17801,15 @@ function hasItemCustomerDiffWithQuote(item: ImportItem | null | undefined): bool
   if (!dbCus) return false
   const extComp = String(item.extractedCompany || '').trim()
   const extRec = String(item.extractedRecipient || '').trim()
-  if (!extComp && !extRec) return false
+  const extAddr = String(item.extractedAddress || item.dxmhCustomerDetails?.dia_chi_cong_ty || item.dxmhCustomerDetails?.address || '').trim()
+  if (!extComp && !extRec && !extAddr) return false
   const dbComp = String(dbCus.ten_cong_ty || '').trim()
   const dbRec = String(dbCus.ten_khach_hang || '').trim()
+  const dbAddr = getAddressFromDbCustomer(dbCus)
   const compDiff = extComp && dbComp && normalizeCustomerCompareStr(extComp) !== normalizeCustomerCompareStr(dbComp)
-  const itemHasDxmh = item.extractedSourceLabel === 'DXMH' || hasDxmhOnItem(item)
-  const recDiff = !itemHasDxmh && extRec && dbRec && normalizeCustomerCompareStr(extRec) !== normalizeCustomerCompareStr(dbRec)
-  return Boolean(compDiff || recDiff)
+  const recDiff = extRec && dbRec && normalizeCustomerCompareStr(extRec) !== normalizeCustomerCompareStr(dbRec)
+  const addrDiff = extAddr && dbAddr && normalizeCustomerCompareStr(extAddr) !== normalizeCustomerCompareStr(dbAddr)
+  return Boolean(compDiff || recDiff || addrDiff)
 }
 
 function applyItemCustomerSource(item: ImportItem, source: 'db' | 'quote') {
@@ -16907,9 +17818,9 @@ function applyItemCustomerSource(item: ImportItem, source: 'db' | 'quote') {
   const itemHasDxmh = hasDxmhOnItem(item)
   if (source === 'db' && dbCus) {
     item.customer = dbCus.ten_cong_ty || dbCus.ten_khach_hang || item.customer || ''
-    item.recipient = itemHasDxmh
-      ? (item.dxmhRecipient || item.recipient || dbCus.ten_khach_hang || '')
-      : (dbCus.ten_khach_hang || item.recipient || '')
+    item.recipient = dbCus.ten_khach_hang || item.recipient || ''
+    item.address = getAddressFromDbCustomer(dbCus)
+    item._addressEdited = false
     item.mst = dbCus.mst || item.mst || ''
     item.industry = getIndustryFromDbCustomer(dbCus)
     item._industryEdited = false
@@ -16925,6 +17836,11 @@ function applyItemCustomerSource(item: ImportItem, source: 'db' | 'quote') {
       item.recipient = item.dxmhRecipient || (item.extractedSourceLabel === 'DXMH' ? item.extractedRecipient : '') || item.recipient || ''
     } else if (item.extractedRecipient) {
       item.recipient = item.extractedRecipient
+    }
+    const extAddr = String(item.extractedAddress || item.dxmhCustomerDetails?.dia_chi_cong_ty || item.dxmhCustomerDetails?.address || '').trim()
+    if (extAddr) {
+      item.address = extAddr
+      item._addressEdited = true
     }
     if (item.extractedMST) item.mst = item.extractedMST
     if (dbCus) {
@@ -17538,7 +18454,7 @@ function getFilteredDbCustomersForItem(item: ImportItem) {
   const q = String(item?.customerSearchQuery || '').trim().toLowerCase()
   if (!q) return list.slice(0, 60)
   return list.filter(c => {
-    const s = [c.ten_cong_ty, c.ten_khach_hang, c.ma_khach_hang, c.ma_cong_ty, c.mst, c.nganh_nghe_cong_ty, c.sdt, c.email]
+    const s = [c.ten_cong_ty, c.ten_khach_hang, c.ma_khach_hang, c.ma_cong_ty, c.mst, c.dia_chi_cong_ty, c.nganh_nghe_cong_ty, c.sdt, c.email]
       .filter(Boolean)
       .join(' ')
       .toLowerCase()
@@ -17570,16 +18486,77 @@ async function selectDbCustomerForModalItem(item: ImportItem, cus: any): Promise
   item.recipient = (hasDxmhOnItem(item) && item.dxmhRecipient)
     ? item.dxmhRecipient
     : (cus.ten_khach_hang || '')
+  item.address = getAddressFromDbCustomer(cus)
+  item._addressEdited = false
   item.industry = getIndustryFromDbCustomer(cus)
   item._industryEdited = false
   item.customerGroup = getCustomerGroupFromDbCustomer(cus)
   item._customerGroupEdited = false
   item.linkedMaKH = newMaKH
   item.linkedMaCongTy = cus.ma_cong_ty || genMaCongTy(cus.ten_cong_ty || cus.ten_khach_hang)
+  item._custDiffMatchedId = cus.id
+  item._custDiffCandidates = {}
   item._approvedDbNameUpdate = false
   item.customerPickerOpen = false
   isModalDirty.value = true
   return true
+}
+
+interface ImportCustConflictInfo {
+  sourceLabel: string
+  company: string
+  recipient: string
+  address: string
+  mst: string
+}
+
+const importCustConflictModal = ref<{
+  show: boolean
+  selectedChoice: 'existing' | 'incoming'
+  existing: ImportCustConflictInfo
+  incoming: ImportCustConflictInfo
+  diffFlags: {
+    company: boolean
+    recipient: boolean
+    address: boolean
+    mst: boolean
+  }
+  resolve: ((choice: 'existing' | 'incoming') => void) | null
+}>({
+  show: false,
+  selectedChoice: 'existing',
+  existing: { sourceLabel: '', company: '', recipient: '', address: '', mst: '' },
+  incoming: { sourceLabel: '', company: '', recipient: '', address: '', mst: '' },
+  diffFlags: { company: false, recipient: false, address: false, mst: false },
+  resolve: null
+})
+
+function promptImportCustomerConflictChoice(
+  existing: ImportCustConflictInfo,
+  incoming: ImportCustConflictInfo,
+  diffFlags: { company: boolean; recipient: boolean; address: boolean; mst: boolean }
+): Promise<'existing' | 'incoming'> {
+  return new Promise(resolve => {
+    importCustConflictModal.value = {
+      show: true,
+      selectedChoice: 'existing',
+      existing,
+      incoming,
+      diffFlags,
+      resolve
+    }
+  })
+}
+
+function resolveImportCustConflict(choice: 'existing' | 'incoming') {
+  const fn = importCustConflictModal.value.resolve
+  importCustConflictModal.value.show = false
+  importCustConflictModal.value.resolve = null
+  if (fn) fn(choice)
+}
+
+function confirmImportCustConflict() {
+  resolveImportCustConflict(importCustConflictModal.value.selectedChoice)
 }
 
 async function applyExtractedQuoteCustomerToModalItem(
@@ -17587,28 +18564,132 @@ async function applyExtractedQuoteCustomerToModalItem(
   extractedCompany: string,
   extractedRecipient: string,
   extractedMST: string,
-  sourceLabel: string = 'Báo giá'
+  sourceLabel: string = 'Báo giá',
+  extractedAddress: string = ''
 ) {
   if (!item) return
-  const isDxmhSource = sourceLabel === 'DXMH'
+  const isDxmhSource = sourceLabel === 'DXMH' || sourceLabel.includes('ĐXMH')
   const itemHasDxmh = isDxmhSource || hasDxmhOnItem(item)
-  if (isDxmhSource && extractedRecipient) {
-    item.dxmhRecipient = extractedRecipient
+
+  const incComp = String(extractedCompany || '').trim()
+  const incRec = String(extractedRecipient || '').trim()
+  const incAddr = String(
+    extractedAddress ||
+    (isDxmhSource
+      ? (item.dxmhCustomerDetails?.dia_chi_cong_ty || item.dxmhCustomerDetails?.address || '')
+      : '')
+  ).trim()
+  const incMst = String(extractedMST || '').trim()
+  const hasIncomingCustomer = Boolean(incComp || incRec || incAddr || incMst)
+
+  const curComp = String(item.customer || '').trim()
+  const curRec = String(item.recipient || '').trim()
+  const curAddr = String(item.address || '').trim()
+  const curMst = String(item.mst || '').trim()
+  const hasExistingCustomer = Boolean(curComp || curRec || curAddr || curMst)
+  const prevSourceLabel = String(
+    item.extractedSourceLabel ||
+    (item.rawFileBaoGia || item.linkBaoGia
+      ? 'Báo giá Hợp đồng'
+      : item.rawFileBaoGiaKhach || item.linkBaoGiaKhach
+        ? 'Báo giá Khách'
+        : item.rawFileDxmh || item.linkDxmh
+          ? 'File ĐXMH'
+          : 'Đang có trên PO')
+  ).trim()
+
+  let finalComp = incComp
+  let finalRec = incRec
+  let finalAddr = incAddr
+  let finalMst = incMst
+  let finalSourceLabel = sourceLabel
+  let chosenSide: 'existing' | 'incoming' = 'incoming'
+
+  if (hasExistingCustomer && hasIncomingCustomer) {
+    let diffCompany = Boolean(curComp && incComp && !isSameCustFieldVal('ten_cong_ty', curComp, incComp))
+    const diffRecipient = Boolean(curRec && incRec && !isSameCustFieldVal('ten_khach_hang', curRec, incRec))
+    const diffAddress = Boolean(curAddr && incAddr && !isSameCustFieldVal('dia_chi_cong_ty', curAddr, incAddr))
+    const diffMst = Boolean(curMst && incMst && !isSameCustFieldVal('mst', curMst, incMst))
+
+    if (
+      !diffCompany &&
+      !diffRecipient &&
+      !diffAddress &&
+      !diffMst &&
+      (curComp || curRec) &&
+      (incComp || incRec) &&
+      Boolean(curComp) !== Boolean(incComp) &&
+      !isSameCustFieldVal('ten_cong_ty', curComp || curRec, incComp || incRec)
+    ) {
+      diffCompany = true
+    }
+
+    if (diffCompany || diffRecipient || diffAddress || diffMst) {
+      const wasLoading = loading.value
+      if (wasLoading) loading.value = false
+      chosenSide = await promptImportCustomerConflictChoice(
+        {
+          sourceLabel: prevSourceLabel,
+          company: curComp,
+          recipient: curRec,
+          address: curAddr,
+          mst: curMst
+        },
+        {
+          sourceLabel,
+          company: incComp || curComp,
+          recipient: incRec || curRec,
+          address: incAddr || curAddr,
+          mst: incMst || curMst
+        },
+        {
+          company: diffCompany,
+          recipient: diffRecipient,
+          address: diffAddress,
+          mst: diffMst
+        }
+      )
+      if (wasLoading) loading.value = true
+
+      if (chosenSide === 'existing') {
+        finalComp = curComp || incComp
+        finalRec = curRec || incRec
+        finalAddr = curAddr || incAddr
+        finalMst = curMst || incMst
+        finalSourceLabel = prevSourceLabel
+      } else {
+        finalComp = incComp || curComp
+        finalRec = incRec || curRec
+        finalAddr = incAddr || curAddr
+        finalMst = incMst || curMst
+        finalSourceLabel = sourceLabel
+        if (diffCompany || diffMst) {
+          item.linkedMaKH = ''
+          item.linkedMaCongTy = ''
+          item._custDiffMatchedId = undefined
+        }
+      }
+    }
   }
 
-  item.extractedCompany = extractedCompany || ''
-  item.extractedRecipient = extractedRecipient || ''
-  item.extractedMST = extractedMST || ''
-  item.extractedSourceLabel = sourceLabel
+  if (isDxmhSource && finalRec && chosenSide === 'incoming') {
+    item.dxmhRecipient = finalRec
+  }
+
+  item.extractedCompany = finalComp || ''
+  item.extractedRecipient = finalRec || ''
+  if (finalAddr) item.extractedAddress = finalAddr
+  item.extractedMST = finalMst || ''
+  item.extractedSourceLabel = finalSourceLabel
 
   let dbCus = getMatchedDbCustomerForItem(item)
   if (!dbCus) {
     // Thử điền tạm để dò trong DB theo MST / Tên trích xuất
     const tempItem: any = {
       ...item,
-      customer: extractedCompany || item.customer || '',
-      recipient: extractedRecipient || item.recipient || extractedCompany || '',
-      mst: extractedMST || item.mst || ''
+      customer: finalComp || item.customer || '',
+      recipient: finalRec || item.recipient || finalComp || '',
+      mst: finalMst || item.mst || ''
     }
     dbCus = getMatchedDbCustomerForItem(tempItem)
   }
@@ -17617,61 +18698,63 @@ async function applyExtractedQuoteCustomerToModalItem(
     // Giữ cố định 100% Mã KH và Mã công ty từ DB
     item.linkedMaKH = dbCus.ma_khach_hang
     item.linkedMaCongTy = dbCus.ma_cong_ty || genMaCongTy(dbCus.ten_cong_ty || dbCus.ten_khach_hang)
+    item._custDiffMatchedId = dbCus.id
+    item._custDiffCandidates = {}
 
     const dbComp = String(dbCus.ten_cong_ty || '').trim()
     const dbRec = String(dbCus.ten_khach_hang || '').trim()
+    const dbAddr = getAddressFromDbCustomer(dbCus)
     const dbMst = String(dbCus.mst || '').trim()
 
-    // Tên công ty & MST: ưu tiên DB nếu DB đã có, tự động bù nếu DB đang trống
-    item.mst = dbMst || extractedMST || item.mst || ''
-    item.customer = dbComp || extractedCompany || item.customer || ''
-
-    // Người nhận (Tên KH): nếu PO có File DXMH thì luôn lấy theo đúng File DXMH; chưa có File DXMH thì lấy Tên KH từ DB như cũ
-    if (isDxmhSource) {
-      item.recipient = extractedRecipient || dbRec || item.recipient || ''
+    // Điền giá trị đã chọn làm giá trị Hiện tại, để nếu khác với DB thì khung so sánh hiện ra ngay lập tức cho người dùng chọn từng mục
+    item.mst = finalMst || dbMst || item.mst || ''
+    item.customer = finalComp || dbComp || item.customer || ''
+    if (chosenSide === 'existing') {
+      item.recipient = finalRec || dbRec || item.recipient || ''
+    } else if (isDxmhSource) {
+      item.recipient = finalRec || dbRec || item.recipient || ''
     } else if (itemHasDxmh) {
-      item.recipient = item.dxmhRecipient || item.recipient || dbRec || extractedRecipient || ''
+      item.recipient = finalRec || item.dxmhRecipient || item.recipient || dbRec || ''
     } else {
-      item.recipient = dbRec || extractedRecipient || item.recipient || ''
+      item.recipient = finalRec || dbRec || item.recipient || ''
+    }
+    if (finalAddr) {
+      item.address = finalAddr
+      item._addressEdited = true
+    } else if (!item.address) {
+      item.address = dbAddr
     }
 
-    // Nếu tên trong file lệch với tên trong DB -> hỏi xác nhận + bật nút chuyển đổi nhanh 1-click (bỏ qua recDiff khi PO lấy người nhận theo DXMH)
-    const compDiff = extractedCompany && dbComp && normalizeCustomerCompareStr(extractedCompany) !== normalizeCustomerCompareStr(dbComp)
-    const recDiff = !itemHasDxmh && extractedRecipient && dbRec && normalizeCustomerCompareStr(extractedRecipient) !== normalizeCustomerCompareStr(dbRec)
-    if (compDiff || recDiff) {
-      let diffMsg = `Khách hàng đã có trong DB (Mã KH giữ nguyên: ${dbCus.ma_khach_hang}) nhưng tên trong File ${sourceLabel} có sự khác biệt:\n\n`
-      if (compDiff) diffMsg += `• Tên công ty:\n  - Trong DB: "${dbComp}"\n  - Trong ${sourceLabel}: "${extractedCompany}"\n`
-      if (recDiff) diffMsg += `• Người nhận (Tên KH):\n  - Trong DB: "${dbRec}"\n  - Trong ${sourceLabel}: "${extractedRecipient}"\n`
-      diffMsg += `\nBạn có muốn áp dụng tên theo File ${sourceLabel} và cập nhật lại tên hiển thị vào DB không?`
-
-      const applyFileNames = await openSrConfirm({
-        variant: 'info',
-        eyebrow: `Đối chiếu dữ liệu File ${sourceLabel} & Database`,
-        title: `Khác biệt thông tin khách hàng (${sourceLabel})`,
-        highlightLabel: `MÃ KH GIỮ CỐ ĐỊNH: ${dbCus.ma_khach_hang}`,
-        highlightValue: extractedCompany || extractedRecipient || dbComp,
-        message: diffMsg,
-        subNote: `Mã KH "${dbCus.ma_khach_hang}" và Mã công ty vẫn giữ nguyên 100% để không ảnh hưởng Công nợ. Nếu bấm giữ tên DB, bạn vẫn có thể chuyển đổi nhanh phía trên ô nhập.`,
-        confirmText: `Áp dụng theo File ${sourceLabel}`,
-        cancelText: 'Giữ tên theo DB'
-      })
-      if (applyFileNames) {
-        if (extractedCompany) item.customer = extractedCompany
-        if (!itemHasDxmh && extractedRecipient) item.recipient = extractedRecipient
-        item._approvedDbNameUpdate = true
-      }
+    if (finalComp && dbComp && !isSameCustFieldVal('ten_cong_ty', finalComp, dbComp)) {
+      item._custDiffCandidates.ten_cong_ty = finalComp
+    }
+    if (finalRec && dbRec && !isSameCustFieldVal('ten_khach_hang', finalRec, dbRec)) {
+      item._custDiffCandidates.ten_khach_hang = finalRec
+    }
+    if (finalAddr && (dbAddr || item._addressEdited) && !isSameCustFieldVal('dia_chi_cong_ty', finalAddr, dbAddr)) {
+      item._custDiffCandidates.dia_chi_cong_ty = finalAddr
+    }
+    if (finalMst && dbMst && !isSameCustFieldVal('mst', finalMst, dbMst)) {
+      item._custDiffCandidates.mst = finalMst
     }
   } else {
     // Khách mới hoàn toàn
-    item.customer = extractedCompany || item.customer || ''
-    if (isDxmhSource) {
-      item.recipient = extractedRecipient || item.recipient || item.customer || ''
+    item._custDiffCandidates = {}
+    item.customer = finalComp || item.customer || ''
+    if (chosenSide === 'existing') {
+      item.recipient = finalRec || item.recipient || item.customer || ''
+    } else if (isDxmhSource) {
+      item.recipient = finalRec || item.recipient || item.customer || ''
     } else if (itemHasDxmh) {
-      item.recipient = item.dxmhRecipient || item.recipient || extractedRecipient || item.customer || ''
+      item.recipient = finalRec || item.dxmhRecipient || item.recipient || item.customer || ''
     } else {
-      item.recipient = extractedRecipient || item.recipient || item.customer || ''
+      item.recipient = finalRec || item.recipient || item.customer || ''
     }
-    if (extractedMST) item.mst = extractedMST
+    if (finalAddr) {
+      item.address = finalAddr
+      item._addressEdited = true
+    }
+    if (finalMst) item.mst = finalMst
     if (!item.mst) {
       const existingRow = rows.value.find(r => r.Ten_cong_ty?.trim().toLowerCase() === item.customer.toLowerCase() && r.MST)
       if (existingRow) item.mst = existingRow.MST
@@ -17682,6 +18765,7 @@ async function applyExtractedQuoteCustomerToModalItem(
 async function upsertCustomerFromModalItem(item: ImportItem) {
   const rawComp = String(item.customer || '').trim()
   const rawRec = String(item.recipient || '').trim()
+  const rawAddr = String(getDisplayAddressForModalItem(item) || '').trim()
   const rawMst = String(item.mst || '').trim()
   const rawInd = String(getDisplayIndustryForModalItem(item) || '').trim()
   const rawGrpStr = String(getDisplayCustomerGroupForModalItem(item) || '').trim()
@@ -17697,11 +18781,13 @@ async function upsertCustomerFromModalItem(item: ImportItem) {
 
     const dbComp = String(existingCus.ten_cong_ty || '').trim()
     const dbRec = String(existingCus.ten_khach_hang || '').trim()
+    const dbAddr = getAddressFromDbCustomer(existingCus)
     const dbMst = String(existingCus.mst || '').trim()
     const dbInd = getIndustryFromDbCustomer(existingCus)
     const dbGrpArr = getCustomerGroupArrayFromDbCustomer(existingCus)
 
     const khUpdates: Record<string, any> = {}
+    // Tự động điền bổ sung cho các trường đang trống trong DB
     if (!dbMst && rawMst) khUpdates.mst = rawMst
     if (!dbComp && rawComp) khUpdates.ten_cong_ty = rawComp
     if (!dbRec) {
@@ -17710,13 +18796,16 @@ async function upsertCustomerFromModalItem(item: ImportItem) {
         : rawRec
       if (fallbackDbRec) khUpdates.ten_khach_hang = fallbackDbRec
     }
-    if (rawInd && (!dbInd || item._industryEdited || item._approvedDbNameUpdate)) {
+    if (!dbAddr && rawAddr) {
+      khUpdates.dia_chi_cong_ty = rawAddr
+      khUpdates.dia_chi = rawAddr
+      khUpdates.address = rawAddr
+    }
+    if (!dbInd && rawInd) {
       khUpdates.nganh_nghe_cong_ty = rawInd
     }
-    if ((rawGrpArr.length > 0 && dbGrpArr.length === 0) || item._customerGroupEdited || item._approvedDbNameUpdate) {
-      if (rawGrpArr.length > 0 || item._customerGroupEdited) {
-        khUpdates.tagKH = rawGrpArr
-      }
+    if (dbGrpArr.length === 0 && rawGrpArr.length > 0) {
+      khUpdates.tagKH = rawGrpArr
     }
 
     // Bổ sung thông tin chi tiết khách hàng trích xuất từ File DXMH (giống CustomerFirebase) cho các trường đang trống
@@ -17753,35 +18842,27 @@ async function upsertCustomerFromModalItem(item: ImportItem) {
       }
     }
 
-    const compChanged = dbComp && rawComp && normalizeCustomerCompareStr(dbComp) !== normalizeCustomerCompareStr(rawComp)
-    const recChanged = !itemHasDxmh && dbRec && rawRec && normalizeCustomerCompareStr(dbRec) !== normalizeCustomerCompareStr(rawRec)
-    const mstChanged = dbMst && rawMst && dbMst !== rawMst
-
-    if (compChanged || recChanged || mstChanged) {
-      let allowUpdate = Boolean(item._approvedDbNameUpdate)
-      if (!allowUpdate) {
-        let msg = `Thông tin khách hàng trên PO #${item.soPO || ''} khác với dữ liệu gốc trong DB (Mã KH giữ nguyên: ${maKHGen}):\n\n`
-        if (compChanged) msg += `• Tên công ty: "${dbComp}" -> "${rawComp}"\n`
-        if (recChanged) msg += `• Người nhận: "${dbRec}" -> "${rawRec}"\n`
-        if (mstChanged) msg += `• MST: "${dbMst}" -> "${rawMst}"\n`
-        msg += `\nBạn có muốn cập nhật lại tên hiển thị / MST mới này vào bảng Khách Hàng (khach_hang) không?`
-        allowUpdate = await openSrConfirm({
-          variant: 'info',
-          eyebrow: 'Đồng bộ thông tin khách hàng',
-          title: `Cập nhật thông tin khách hàng PO #${item.soPO || ''}`,
-          highlightLabel: `MÃ KH GIỮ NGUYÊN: ${maKHGen}`,
-          highlightValue: rawComp || rawRec || dbComp,
-          message: msg,
-          subNote: `Mã KH "${maKHGen}" và Mã công ty "${maCongTyGen}" vẫn giữ nguyên 100% để bảo toàn Công nợ.`,
-          confirmText: 'Cập nhật vào DB',
-          cancelText: 'Không cập nhật'
-        })
+    // Nếu người dùng đã tick "Cập nhật vào DB" trong khung so sánh -> ghi đè các trường đang khác biệt vào khach_hang
+    if (item._approvedDbNameUpdate) {
+      if (rawComp && !isSameCustFieldVal('ten_cong_ty', rawComp, dbComp)) {
+        khUpdates.ten_cong_ty = rawComp
       }
-      if (allowUpdate) {
-        if (compChanged) khUpdates.ten_cong_ty = rawComp
-        if (recChanged) khUpdates.ten_khach_hang = rawRec
-        if (mstChanged) khUpdates.mst = rawMst
-        item._approvedDbNameUpdate = true
+      if (rawRec && !isSameCustFieldVal('ten_khach_hang', rawRec, dbRec)) {
+        khUpdates.ten_khach_hang = rawRec
+      }
+      if (rawAddr && !isSameCustFieldVal('dia_chi_cong_ty', rawAddr, dbAddr)) {
+        khUpdates.dia_chi_cong_ty = rawAddr
+        khUpdates.dia_chi = rawAddr
+        khUpdates.address = rawAddr
+      }
+      if (rawMst && !isSameCustFieldVal('mst', rawMst, dbMst)) {
+        khUpdates.mst = rawMst
+      }
+      if (rawInd && !isSameCustFieldVal('nganh_nghe_cong_ty', rawInd, dbInd)) {
+        khUpdates.nganh_nghe_cong_ty = rawInd
+      }
+      if (rawGrpArr.length > 0 || item._customerGroupEdited) {
+        khUpdates.tagKH = rawGrpArr
       }
     }
 
@@ -17804,7 +18885,8 @@ async function upsertCustomerFromModalItem(item: ImportItem) {
       maCongTyGen,
       tenCongTy: rawComp || dbComp || rawRec || dbRec,
       tenKhachHang: rawRec || dbRec || rawComp || dbComp,
-      mstVal: rawMst || dbMst
+      mstVal: rawMst || dbMst,
+      diaChiVal: rawAddr || dbAddr
     }
   }
 
@@ -17817,6 +18899,7 @@ async function upsertCustomerFromModalItem(item: ImportItem) {
   const maKHGen = item.row?.Ma_khach_hang || genMaKhachHang(masterTenKH, tenCongTy) || ('KH_UNKNOWN_' + Date.now())
   const maCongTyGen = item.row?.Ma_cong_ty || genMaCongTy(tenCongTy || masterTenKH) || ('CTY_UNKNOWN_' + Date.now())
   const mstVal = rawMst
+  const diaChiCongTy = rawAddr || String(dxmhInfo?.dia_chi_cong_ty || dxmhInfo?.address || '').trim()
 
   if (tenCongTy || tenKhachHang) {
     try {
@@ -17826,7 +18909,6 @@ async function upsertCustomerFromModalItem(item: ImportItem) {
       const sdtCongTy = String(dxmhInfo?.so_dien_thoai_cong_ty || '').trim()
       const emailCaNhan = String(dxmhInfo?.email_ca_nhan || '').trim()
       const emailCongTy = String(dxmhInfo?.email_cong_ty || '').trim()
-      const diaChiCongTy = String(dxmhInfo?.dia_chi_cong_ty || dxmhInfo?.address || '').trim()
 
       const newKhPayload = {
         mst: mstVal,
@@ -17845,7 +18927,7 @@ async function upsertCustomerFromModalItem(item: ImportItem) {
         ten_khach_hang_phu: String(dxmhInfo?.ten_khach_hang_phu || '').trim(),
         so_dien_thoai_ca_nhan_phu: String(dxmhInfo?.so_dien_thoai_ca_nhan_phu || '').trim(),
         company: String(dxmhInfo?.company || '').trim(),
-        address: String(dxmhInfo?.address || '').trim(),
+        address: diaChiCongTy || String(dxmhInfo?.address || '').trim(),
         tel: String(dxmhInfo?.tel || '').trim(),
         sdt: sdtCaNhan || sdtCongTy,
         email: emailCaNhan || emailCongTy,
@@ -17877,11 +18959,39 @@ async function upsertCustomerFromModalItem(item: ImportItem) {
     maCongTyGen,
     tenCongTy: tenCongTy || tenKhachHang,
     tenKhachHang: tenKhachHang || tenCongTy,
-    mstVal
+    mstVal,
+    diaChiVal: diaChiCongTy
   }
 }
 
 function onFinancialInput(item: ImportItem, fieldChanged?: keyof ImportItem | 'taxPct') {
+  ensureModalItemKhachData(item);
+  const pct = (Number(item.taxPct) || 0) / 100;
+
+  if (fieldChanged === 'doanhSoBanKhach') {
+    const dsbK = Number(item.doanhSoBanKhach) || 0;
+    if (item.goodsTotal) {
+      const vatK = Number(item.goodsTotal.vatKhach ?? item.goodsTotal.vat) || 0;
+      item.goodsTotal = {
+        ...item.goodsTotal,
+        ttTruocKhach: dsbK,
+        vatKhach: vatK,
+        ttSauKhach: dsbK + vatK
+      };
+    }
+    if ((Number(item.grossCom) || 0) === 0 && (!item.doanhSoBan || Number(item.doanhSoBan) === 0)) {
+      item.doanhSoBan = dsbK;
+    } else {
+      item.grossCom = (Number(item.doanhSoBan) || 0) - dsbK;
+    }
+    item.netCom = Math.round(item.grossCom * (1 - pct));
+    item._origGross = item.grossCom;
+    item._origNet = item.netCom;
+    item._origDsbKhach = dsbK;
+    item.predictPctKhach = '';
+    return;
+  }
+
   if (fieldChanged === 'doanhSoBan' && item.goodsTotal) {
     const dsbVal = Number(item.doanhSoBan) || 0;
     const vatVal = Number(item.goodsTotal.vat) || 0;
@@ -17892,7 +19002,6 @@ function onFinancialInput(item: ImportItem, fieldChanged?: keyof ImportItem | 't
       ttSau: dsbVal + vatVal
     };
   }
-  const pct = (Number(item.taxPct) || 0) / 100;
 
   if (fieldChanged === 'netCom') {
     if (pct < 1) {
@@ -17905,6 +19014,19 @@ function onFinancialInput(item: ImportItem, fieldChanged?: keyof ImportItem | 't
     item.netCom = item.grossCom * (1 - pct);
   }
 
+  if (fieldChanged === 'doanhSoBan' || fieldChanged === 'grossCom' || fieldChanged === 'netCom') {
+    item.doanhSoBanKhach = Math.max(0, Math.round((Number(item.doanhSoBan) || 0) - (Number(item.grossCom) || 0)));
+    if (item.goodsTotal) {
+      const vatK = Number(item.goodsTotal.vatKhach ?? item.goodsTotal.vat) || 0;
+      item.goodsTotal = {
+        ...item.goodsTotal,
+        ttTruocKhach: item.doanhSoBanKhach,
+        vatKhach: vatK,
+        ttSauKhach: item.doanhSoBanKhach + vatK
+      };
+    }
+  }
+
   // Cập nhật lại số liệu gốc sau khi chỉnh sửa tay, và reset dự đoán
   item._origGross = item.grossCom;
   item._origNet = item.netCom;
@@ -17914,10 +19036,11 @@ function onFinancialInput(item: ImportItem, fieldChanged?: keyof ImportItem | 't
 function onGoodsValueChange(
   item: ImportItem,
   g: any,
-  field: 'sl' | 'donGia' | 'vatPct' | 'vat',
+  field: 'sl' | 'donGia' | 'donGiaKhach' | 'vatPct' | 'vat' | 'vatKhach',
   val: number
 ) {
   if (!g) return
+  ensureModalItemKhachData(item)
   const numVal = Number(val) || 0
 
   if (field === 'sl') {
@@ -17927,9 +19050,25 @@ function onGoodsValueChange(
     g.slStr = String(nextSl)
   } else if (field === 'donGia') {
     const nextDonGia = Math.round(numVal)
-    if (Math.round(Number(g.donGia) || 0) === nextDonGia) return
+    const prevDonGia = Math.round(Number(g.donGia) || 0)
+    if (prevDonGia === nextDonGia) return
+    const wasSameAsKhach = Math.round(Number(g.donGiaKhach ?? prevDonGia) || 0) === prevDonGia && (Number(item.grossCom) || 0) === 0
     g.donGia = nextDonGia
     g.donGiaStr = nextDonGia !== 0 ? nextDonGia.toLocaleString('vi-VN') : ''
+    if (wasSameAsKhach) {
+      g.donGiaKhach = nextDonGia
+    }
+  } else if (field === 'donGiaKhach') {
+    const nextDonGiaK = Math.round(numVal)
+    const prevDonGiaK = Math.round(Number(g.donGiaKhach ?? g.donGia) || 0)
+    if (prevDonGiaK === nextDonGiaK) return
+    g.donGiaKhach = nextDonGiaK
+    g.ttTruocKhach = Math.round((g.sl || 0) * nextDonGiaK)
+    const pct = parseFloat(String(g.vatPct || '').replace(/[^0-9.-]/g, '')) || 0
+    g.vatKhach = Math.round(g.ttTruocKhach * (pct / 100))
+    g.ttSauKhach = g.ttTruocKhach + (g.vatKhach || 0)
+    onGoodsInput(null, item, null, 'recalc_khach')
+    return
   } else if (field === 'vatPct') {
     const nextPct = Math.max(0, numVal)
     const prevPct = parseFloat(String(g.vatPct || '').replace(/[^0-9.-]/g, '')) || 0
@@ -17937,6 +19076,7 @@ function onGoodsValueChange(
     g.vatPct = nextPct === 0 ? '' : String(nextPct)
     g.vat = Math.round((g.ttTruoc || 0) * (nextPct / 100))
     g.vatStr = g.vat !== 0 ? g.vat.toLocaleString('vi-VN') : ''
+    g.vatKhach = Math.round((g.ttTruocKhach || 0) * (nextPct / 100))
   } else if (field === 'vat') {
     const nextVat = Math.round(numVal)
     if (Math.round(Number(g.vat) || 0) === nextVat) return
@@ -17945,18 +19085,36 @@ function onGoodsValueChange(
     if (g.ttTruoc > 0) {
       const pct = (nextVat / g.ttTruoc) * 100
       g.vatPct = pct === 0 ? '' : (pct % 1 === 0 ? String(pct) : pct.toFixed(2))
+      g.vatKhach = Math.round((g.ttTruocKhach || 0) * (pct / 100))
     } else {
       g.vatPct = ''
     }
+  } else if (field === 'vatKhach') {
+    const nextVatK = Math.round(numVal)
+    if (Math.round(Number(g.vatKhach) || 0) === nextVatK) return
+    g.vatKhach = nextVatK
+    if ((g.ttTruocKhach || 0) > 0) {
+      const pct = (nextVatK / g.ttTruocKhach) * 100
+      g.vatPct = pct === 0 ? '' : (pct % 1 === 0 ? String(pct) : pct.toFixed(2))
+      g.vat = Math.round((g.ttTruoc || 0) * (pct / 100))
+      g.vatStr = g.vat !== 0 ? g.vat.toLocaleString('vi-VN') : ''
+    }
+    g.ttSau = (g.ttTruoc || 0) + (g.vat || 0)
+    g.ttSauKhach = (g.ttTruocKhach || 0) + (g.vatKhach || 0)
+    onGoodsInput(null, item, null, 'recalc_khach')
+    return
   }
 
   g.ttTruoc = Math.round((g.sl || 0) * (g.donGia || 0))
+  g.ttTruocKhach = Math.round((g.sl || 0) * (Number(g.donGiaKhach ?? g.donGia) || 0))
   if (field !== 'vat' && g.vatPct) {
     const pct = parseFloat(String(g.vatPct).replace(/[^0-9.-]/g, '')) || 0
     g.vat = Math.round(g.ttTruoc * (pct / 100))
     g.vatStr = g.vat !== 0 ? g.vat.toLocaleString('vi-VN') : ''
+    g.vatKhach = Math.round(g.ttTruocKhach * (pct / 100))
   }
   g.ttSau = g.ttTruoc + (g.vat || 0)
+  g.ttSauKhach = g.ttTruocKhach + (g.vatKhach || 0)
 
   onGoodsInput(null, item, null, 'recalc')
 }
@@ -17974,6 +19132,7 @@ function onGoodsInput(e: Event | null, item: ImportItem, g: any, field: string) 
        let pct = parseFloat(raw.replace(/[^0-9.-]/g, '')) || 0;
        g.vat = (g.ttTruoc || 0) * (pct / 100);
        g.vatStr = g.vat === 0 ? '' : g.vat.toLocaleString('vi-VN');
+       g.vatKhach = Math.round((g.ttTruocKhach || 0) * (pct / 100));
     } else if (field === 'vat') {
        const val = parseInt(raw.replace(/[^0-9-]/g, '')) || 0;
        target.value = val === 0 && raw.replace(/[^0-9-]/g, '') === '' ? '' : val.toLocaleString('vi-VN');
@@ -17993,33 +19152,54 @@ function onGoodsInput(e: Event | null, item: ImportItem, g: any, field: string) 
     }
     
     g.ttTruoc = (g.sl || 0) * (g.donGia || 0);
+    g.ttTruocKhach = Math.round((g.sl || 0) * (Number(g.donGiaKhach ?? g.donGia) || 0));
     
     // Re-eval vat based on vatPct if available
     if (field !== 'vat' && g.vatPct) {
        let pct = parseFloat(String(g.vatPct).replace(/[^0-9.-]/g, '')) || 0;
        g.vat = g.ttTruoc * (pct / 100);
        g.vatStr = g.vat === 0 ? '' : g.vat.toLocaleString('vi-VN');
+       g.vatKhach = Math.round(g.ttTruocKhach * (pct / 100));
     }
     
     g.ttSau = g.ttTruoc + (g.vat || 0);
+    g.ttSauKhach = g.ttTruocKhach + (g.vatKhach || 0);
   }
   
   // Calc Total
   if (item.goodsList && item.goodsList.length > 0) {
     let tTruoc = 0, tVat = 0, tSau = 0;
+    let tTruocKhach = 0, tVatKhach = 0, tSauKhach = 0;
     item.goodsList.forEach((row, idx) => {
        if (!row.stt || /^\d+$/.test(String(row.stt))) row.stt = idx + 1;
        tTruoc += (row.ttTruoc || 0);
        tVat += (row.vat || 0);
        tSau += (row.ttSau || 0);
+       tTruocKhach += (row.ttTruocKhach ?? row.ttTruoc ?? 0);
+       tVatKhach += (row.vatKhach ?? row.vat ?? 0);
+       tSauKhach += (row.ttSauKhach ?? row.ttSau ?? 0);
     });
-    item.goodsTotal = { ttTruoc: tTruoc, vat: tVat, ttSau: tSau };
+    item.goodsTotal = {
+      ttTruoc: tTruoc,
+      vat: tVat,
+      ttSau: tSau,
+      ttTruocKhach: tTruocKhach,
+      vatKhach: tVatKhach,
+      ttSauKhach: tSauKhach
+    };
     
-    // Update Doanh số bán when goods list is edited
+    // Update Doanh số bán & Doanh số bán Khách when goods list is edited
     item.doanhSoBan = tTruoc;
+    item.doanhSoBanKhach = tTruocKhach;
+
+    if (field === 'recalc_khach' || tTruoc !== tTruocKhach) {
+      const taxPctNum = (Number(item.taxPct) || 0) / 100;
+      item.grossCom = tTruoc - tTruocKhach;
+      item.netCom = Math.round(item.grossCom * (1 - taxPctNum));
+    }
     
     // Recompute Gross Com / Net Com if prediction is active
-    if (item.predictPct) {
+    if (item.predictPct && field !== 'recalc_khach') {
        const pct = parseFloat(item.predictPct.replace(/[^0-9.-]/g, ''));
        if (!isNaN(pct)) {
          item.netCom = item.doanhSoBan * (pct / 100);
@@ -18052,7 +19232,11 @@ function addGoodsRow(item: ImportItem) {
     vat: 0,
     vatPct: '10',
     vatStr: '',
-    ttSau: 0
+    ttSau: 0,
+    donGiaKhach: 0,
+    ttTruocKhach: 0,
+    vatKhach: 0,
+    ttSauKhach: 0
   });
   isModalDirty.value = true;
 }
@@ -18184,8 +19368,10 @@ function matchPoGoodsRowWithDb(g: any): {
 
   const rawG = toRaw(g) as object
   const idx = hangHoaLookupIndex.value
-  const fileDonGiaVnd = Math.round(toNum(g.donGia))
-  const cacheKey = `${idx.version}|${g._linkedDbKey || ''}|${rawMa}|${rawTen}|${fileDonGiaVnd}|${g._syncedDbDone ? 1 : 0}|${g._syncedFilePrice || 0}`
+  const rawDonGiaHdVnd = Math.round(toNum(g.donGia))
+  const rawDonGiaKhachVnd = Math.round(toNum(g.donGiaKhach))
+  const fileDonGiaVnd = rawDonGiaHdVnd > 0 ? rawDonGiaHdVnd : rawDonGiaKhachVnd
+  const cacheKey = `${idx.version}|${g._linkedDbKey || ''}|${rawMa}|${rawTen}|${fileDonGiaVnd}|${rawDonGiaKhachVnd}|${g._syncedDbDone ? 1 : 0}|${g._syncedFilePrice || 0}`
   const cached = goodsMatchWeakCache.get(rawG)
   if (cached && cached.key === cacheKey) {
     return cached.val
@@ -18284,9 +19470,16 @@ function matchPoGoodsRowWithDb(g: any): {
   const dbGiaNhapVnd = dbCur === 'USD' ? Math.round(rawGiaNhap * dbRate) : Math.round(rawGiaNhap)
 
   let finalStatus: 'matched' | 'diff' = 'diff'
-  if (g._syncedDbDone && g._syncedFilePrice === fileDonGiaVnd) {
+  if (
+    g._syncedDbDone &&
+    (g._syncedFilePrice === fileDonGiaVnd || (rawDonGiaKhachVnd > 0 && g._syncedFilePrice === rawDonGiaKhachVnd))
+  ) {
     finalStatus = 'matched'
-  } else if (dbDonGiaVnd > 0 && fileDonGiaVnd > 0 && Math.abs(fileDonGiaVnd - dbDonGiaVnd) <= 10) {
+  } else if (
+    dbDonGiaVnd > 0 &&
+    ((fileDonGiaVnd > 0 && Math.abs(fileDonGiaVnd - dbDonGiaVnd) <= 10) ||
+      (rawDonGiaKhachVnd > 0 && Math.abs(rawDonGiaKhachVnd - dbDonGiaVnd) <= 10))
+  ) {
     finalStatus = 'matched'
   }
 
@@ -18674,8 +19867,14 @@ async function openPoGoodsDbSyncModal(item: ImportItem, focusRowIdx?: number) {
       const maHang = dbItem?.ma_hang || rawMa || genHangHoaCode(danhMuc, rawTen)
 
       const savedCalc = g._lastSyncCalc || null
-      const donGiaFileVnd = Math.round(toNum(g.donGia))
-      const chenhLechVnd = savedCalc ? toNum(savedCalc.chenhLechVnd) : 0
+      const rawDonGiaHdVnd = Math.round(toNum(g.donGia))
+      const rawDonGiaKhachVnd = Math.round(toNum(g.donGiaKhach))
+      const donGiaFileVnd = rawDonGiaHdVnd > 0 ? rawDonGiaHdVnd : rawDonGiaKhachVnd
+      const autoChenhLechVnd =
+        rawDonGiaHdVnd > 0 && rawDonGiaKhachVnd > 0 && rawDonGiaHdVnd !== rawDonGiaKhachVnd
+          ? rawDonGiaHdVnd - rawDonGiaKhachVnd
+          : 0
+      const chenhLechVnd = savedCalc ? toNum(savedCalc.chenhLechVnd) : autoChenhLechVnd
       const giaNhapVnd = savedCalc
         ? toNum(savedCalc.giaNhapVnd)
         : (match.dbGiaNhapVnd > 0 ? match.dbGiaNhapVnd : 0)
@@ -18839,10 +20038,11 @@ function onSyncRowOffPctChange(r: PoGoodsDbSyncRow, val: number) {
 
 function onFinancialValueChange(
   item: ImportItem,
-  field: 'doanhSoBan' | 'giaMua' | 'tongCP' | 'netCom' | 'grossCom' | 'taxPct' | 'soTienDaThanhToan',
+  field: 'doanhSoBan' | 'doanhSoBanKhach' | 'giaMua' | 'tongCP' | 'netCom' | 'grossCom' | 'taxPct' | 'soTienDaThanhToan',
   val: number,
   triggerCalc = true
 ) {
+  ensureModalItemKhachData(item)
   const nextVal = field === 'taxPct' ? Math.max(0, Number(val) || 0) : Math.round(Number(val) || 0)
   const prevVal = Number((item as any)[field]) || 0
   if (Math.abs(prevVal - nextVal) < 1e-6) return
@@ -19278,6 +20478,42 @@ function onFinancialPaste(e: ClipboardEvent, item: ImportItem, field: keyof Impo
 }
 
 function applyPredictPctValue(item: ImportItem, rawStr: string) {
+  ensureModalItemKhachData(item)
+  if (getModalPriceMode(item) === 'khach') {
+    item.predictPctKhach = rawStr
+    if (rawStr === '') {
+      if (item._origDsbKhach !== undefined) {
+        item.doanhSoBanKhach = item._origDsbKhach
+        item._origDsbKhach = undefined
+        const tax = (Number(item.taxPct) || 0) / 100
+        item.grossCom = (Number(item.doanhSoBan) || 0) - (Number(item.doanhSoBanKhach) || 0)
+        item.netCom = Math.round(item.grossCom * (1 - tax))
+      }
+      return
+    }
+
+    const normalizedK = rawStr.replace(/,/g, '.')
+    if (normalizedK === '-' || normalizedK === '.' || normalizedK === '-.') return
+    const desiredPctK = Number(normalizedK)
+    if (isNaN(desiredPctK) || desiredPctK >= 100) return
+
+    if (item._origDsbKhach === undefined) {
+      item._origDsbKhach = Number(item.doanhSoBanKhach) || 0
+    }
+
+    const pctK = desiredPctK / 100
+    const tcp = Number(item.tongCP) || 0
+    if (1 - pctK > 1e-6) {
+      const nextDsbK = Math.round(tcp / (1 - pctK))
+      item.doanhSoBanKhach = nextDsbK
+      const tax = (Number(item.taxPct) || 0) / 100
+      item.grossCom = (Number(item.doanhSoBan) || 0) - nextDsbK
+      item.netCom = Math.round(item.grossCom * (1 - tax))
+      isModalDirty.value = true
+    }
+    return
+  }
+
   item.predictPct = rawStr
 
   if (rawStr === '') {
@@ -19309,6 +20545,7 @@ function applyPredictPctValue(item: ImportItem, rawStr: string) {
 
   item.grossCom = requiredGrossCom
   item.netCom = requiredNetCom
+  item.doanhSoBanKhach = Math.max(0, dsb - requiredGrossCom)
   isModalDirty.value = true
 }
 
@@ -19354,26 +20591,46 @@ function openMultiEditModalWithDocTab(row: any, docTab: 'bg' | 'mh' | 'dxmh' | '
 }
 
 function createImportItemFromExistingRow(row: any, id: number): ImportItem {
+  const dsbHD = doanhSoBanHd(row)
+  const gCom = grossCom(row)
+  const rawDsbKhach = toNum(
+    row?.Tong_tien_truoc_thueVAT_khach ??
+      row?.Tong_gia_thuc_te ??
+      row?.tong_truoc_vat_goc ??
+      row?.doanhSoBan_khach ??
+      row?.goodsTotal?.truoc_vat_khach ??
+      row?.goodsTotal?.ttTruocKhach
+  )
+  const initDsbKhach = rawDsbKhach > 0 ? rawDsbKhach : Math.max(0, dsbHD - gCom)
+
   const initItem: ImportItem = {
     id,
     row,
-    doanhSoBan: doanhSoBan(row),
+    doanhSoBan: dsbHD,
+    doanhSoBanKhach: initDsbKhach,
+    priceViewMode: 'hd',
     giaMua: giaMua(row),
     tongCP: tongCP(row),
-    grossCom: grossCom(row),
+    grossCom: gCom,
     soPO: row.So_PO || '',
     productType: row.Ten_nha_cung_cap || '',
     customer: row.Ten_cong_ty || row.Ten_khach_hang || '',
     recipient: row.Ten_khach_hang || row.Ten_cong_ty || '',
+    address: String(row.Dia_chi_cong_ty || row.dia_chi_cong_ty || row.dia_chi || row.address || '').trim(),
+    _addressEdited: false,
     mst: row.MST || '',
     industry: '',
     _industryEdited: false,
+    customerGroup: '',
+    _customerGroupEdited: false,
     linkedMaKH: row.Ma_khach_hang || '',
     linkedMaCongTy: row.Ma_cong_ty || '',
     extractedCompany: '',
     extractedRecipient: '',
+    extractedAddress: '',
     extractedMST: '',
     _approvedDbNameUpdate: false,
+    _custDiffCandidates: {},
     customerPickerOpen: false,
     customerSearchQuery: '',
     createdTime: fmtDate(row.created_time) || getFormattedNow(),
@@ -19383,6 +20640,9 @@ function createImportItemFromExistingRow(row: any, id: number): ImportItem {
     am: row.account_manager_name || '',
     taxPct: thuePct(row),
     scanning: false,
+    linkBaoGia: row.link_excel_bao_gia || '',
+    linkBaoGiaKhach: row.link_excel_bao_gia_khach || '',
+    tenFileBGKhach: row.ten_file_bao_gia_khach || '',
     linkDxmh: row.link_excel_dxmh || '',
     tenFileDxmh: row.ten_file_dxmh || '',
     dxmhRecipient: (row.link_excel_dxmh || row.ten_file_dxmh) ? (row.Ten_khach_hang || '') : undefined,
@@ -19392,7 +20652,14 @@ function createImportItemFromExistingRow(row: any, id: number): ImportItem {
     activeTab: 'po',
     goodsList: []
   }
-  initItem.industry = getIndustryFromDbCustomer(getMatchedDbCustomerForItem(initItem))
+  const matchedInitCus = getMatchedDbCustomerForItem(initItem)
+  initItem.industry = getIndustryFromDbCustomer(matchedInitCus)
+  initItem.customerGroup = getCustomerGroupFromDbCustomer(matchedInitCus)
+  if (!initItem.address) {
+    initItem.address = getAddressFromDbCustomer(matchedInitCus)
+  }
+
+  const scaleRatio = dsbHD > 0 && initDsbKhach > 0 ? initDsbKhach / dsbHD : 1
 
   if (row && hdChiTietData.value.length > 0) {
     const rowMaHD = row.ma_hop_dong ? String(row.ma_hop_dong).trim() : ''
@@ -19401,16 +20668,30 @@ function createImportItemFromExistingRow(row: any, id: number): ImportItem {
       : []
     if (matchingRows.length > 0) {
       let tTruoc = 0, tVat = 0, tSau = 0
+      let tTruocKhach = 0, tVatKhach = 0, tSauKhach = 0
       initItem.goodsList = matchingRows.map((r, i) => {
-        const donGia = Number(r[13]) || 0
-        const sl = Number(r[18]) || 1
+        const donGia = toNum(r[13])
+        const sl = toNum(r[18]) || 1
         const ttTruoc = donGia * sl
-        const vatPct = Number(r[17]) || 0
+        const vatPct = toNum(r[17])
         const vat = (ttTruoc * vatPct) / 100
         const ttSau = ttTruoc + vat
+
+        const rowGoodsFallback = Array.isArray(row?.goodsList) ? row.goodsList[i] : null
+        const savedDonGiaKhach =
+          toNum(r[23]) ||
+          toNum(rowGoodsFallback?.don_gia_khach ?? rowGoodsFallback?.donGiaKhach ?? rowGoodsFallback?.don_gia_goc)
+        const donGiaKhach = savedDonGiaKhach > 0 ? savedDonGiaKhach : Math.round(donGia * scaleRatio)
+        const ttTruocKhach = Math.round(donGiaKhach * sl)
+        const vatKhach = Math.round((ttTruocKhach * vatPct) / 100)
+        const ttSauKhach = ttTruocKhach + vatKhach
+
         tTruoc += ttTruoc
         tVat += vat
         tSau += ttSau
+        tTruocKhach += ttTruocKhach
+        tVatKhach += vatKhach
+        tSauKhach += ttSauKhach
         return {
           stt: i + 1,
           maHang: String(r[2] || '').trim(),
@@ -19423,32 +20704,57 @@ function createImportItemFromExistingRow(row: any, id: number): ImportItem {
           ttTruoc: ttTruoc,
           vat: vat,
           ttSau: ttSau,
+          donGiaKhach,
+          ttTruocKhach,
+          vatKhach,
+          ttSauKhach,
           vatPct: String(vatPct),
           vatStr: vat > 0 ? vat.toLocaleString('vi-VN') : ''
         }
       })
-      initItem.goodsTotal = { ttTruoc: tTruoc, vat: tVat, ttSau: tSau }
+      initItem.goodsTotal = {
+        ttTruoc: tTruoc,
+        vat: tVat,
+        ttSau: tSau,
+        ttTruocKhach: tTruocKhach,
+        vatKhach: tVatKhach,
+        ttSauKhach: tSauKhach
+      }
+      if (!rawDsbKhach && tTruocKhach > 0) {
+        initItem.doanhSoBanKhach = tTruocKhach
+      }
     }
   }
 
   // Fallback đọc từ row.goodsList (dành cho Bản Tạm sale_report_craft hoặc bản ghi lưu sẵn goodsList)
   if ((!initItem.goodsList || initItem.goodsList.length === 0) && Array.isArray(row?.goodsList) && row.goodsList.length > 0) {
     let tTruoc = 0, tVat = 0, tSau = 0
+    let tTruocKhach = 0, tVatKhach = 0, tSauKhach = 0
     initItem.goodsList = row.goodsList.map((g: any, i: number) => {
-      const donGia = toNum(g.donGia)
+      const donGia = toNum(g.donGia ?? g.don_gia ?? g.don_gia_hop_dong)
       const sl = toNum(g.sl) || 1
-      const ttTruoc = toNum(g.ttTruoc) || donGia * sl
-      const vatPct = toNum(g.vatPct)
-      const vat = toNum(g.vat) || (ttTruoc * vatPct) / 100
-      const ttSau = toNum(g.ttSau) || ttTruoc + vat
+      const ttTruoc = toNum(g.ttTruoc ?? g.thanh_tien_truoc_vat) || donGia * sl
+      const vatPct = toNum(g.vatPct ?? g.vat_pct)
+      const vat = toNum(g.vat ?? g.tien_vat) || (ttTruoc * vatPct) / 100
+      const ttSau = toNum(g.ttSau ?? g.thanh_tien_sau_vat) || ttTruoc + vat
+
+      const savedGk = toNum(g.donGiaKhach ?? g.don_gia_khach ?? g.don_gia_goc)
+      const donGiaKhach = savedGk > 0 ? savedGk : Math.round(donGia * scaleRatio)
+      const ttTruocKhach = toNum(g.ttTruocKhach ?? g.thanh_tien_truoc_vat_khach) || Math.round(donGiaKhach * sl)
+      const vatKhach = toNum(g.vatKhach ?? g.tien_vat_khach) || Math.round((ttTruocKhach * vatPct) / 100)
+      const ttSauKhach = toNum(g.ttSauKhach ?? g.thanh_tien_sau_vat_khach) || ttTruocKhach + vatKhach
+
       tTruoc += ttTruoc
       tVat += vat
       tSau += ttSau
+      tTruocKhach += ttTruocKhach
+      tVatKhach += vatKhach
+      tSauKhach += ttSauKhach
       return {
         stt: i + 1,
-        maHang: String(g.maHang || '').trim(),
-        danhMuc: String(g.danhMuc || ''),
-        ten: String(g.ten || ''),
+        maHang: String(g.maHang || g.ma_hang_hoa || '').trim(),
+        danhMuc: String(g.danhMuc || g.hang || ''),
+        ten: String(g.ten || g.ten_hang_hoa || ''),
         dienGiai: String(g.dienGiai || ''),
         dvt: String(g.dvt || ''),
         sl,
@@ -19456,17 +20762,34 @@ function createImportItemFromExistingRow(row: any, id: number): ImportItem {
         ttTruoc,
         vat,
         ttSau,
+        donGiaKhach,
+        ttTruocKhach,
+        vatKhach,
+        ttSauKhach,
         vatPct: String(vatPct),
         vatStr: vat > 0 ? vat.toLocaleString('vi-VN') : ''
       }
     })
     initItem.goodsTotal = row.goodsTotal
       ? {
-          ttTruoc: toNum(row.goodsTotal.ttTruoc) || tTruoc,
+          ttTruoc: toNum(row.goodsTotal.ttTruoc ?? row.goodsTotal.truoc_vat) || tTruoc,
           vat: toNum(row.goodsTotal.vat) || tVat,
-          ttSau: toNum(row.goodsTotal.ttSau) || tSau
+          ttSau: toNum(row.goodsTotal.ttSau ?? row.goodsTotal.sau_vat) || tSau,
+          ttTruocKhach: toNum(row.goodsTotal.ttTruocKhach ?? row.goodsTotal.truoc_vat_khach) || tTruocKhach,
+          vatKhach: toNum(row.goodsTotal.vatKhach ?? row.goodsTotal.vat_khach) || tVatKhach,
+          ttSauKhach: toNum(row.goodsTotal.ttSauKhach ?? row.goodsTotal.sau_vat_khach) || tSauKhach
         }
-      : { ttTruoc: tTruoc, vat: tVat, ttSau: tSau }
+      : {
+          ttTruoc: tTruoc,
+          vat: tVat,
+          ttSau: tSau,
+          ttTruocKhach: tTruocKhach,
+          vatKhach: tVatKhach,
+          ttSauKhach: tSauKhach
+        }
+    if (!rawDsbKhach && tTruocKhach > 0) {
+      initItem.doanhSoBanKhach = tTruocKhach
+    }
   }
 
   void autoRepairItemXlsOfficeLinks(initItem)
@@ -19474,7 +20797,13 @@ function createImportItemFromExistingRow(row: any, id: number): ImportItem {
 }
 
 function openMultiEditModal(row: any, fieldToFocus?: string) {
-  if (row) selectedMobilePoKey.value = getPoRowKey(row)
+  if (!row) return
+  if (reviewMindmapModal.value?.show) reviewMindmapModal.value.show = false
+  if (chartModal.value?.show) chartModal.value.show = false
+  if (showCraftCompareModal.value) showCraftCompareModal.value = false
+  if (topCustomerModal.value?.show) topCustomerModal.value.show = false
+  if (topProductModal.value?.show) topProductModal.value.show = false
+  selectedMobilePoKey.value = getPoRowKey(row)
   isModalDirty.value = false
   activeItemIdx.value = 0
   const id = Date.now()
@@ -19502,6 +20831,18 @@ function openMultiEditModal(row: any, fieldToFocus?: string) {
 function onRowSelectedInModal(item: ImportItem) {
   isModalDirty.value = true
   if (!item.row) return
+  const dsbHD = doanhSoBanHd(item.row)
+  const gCom = grossCom(item.row)
+  const rawDsbKhach = toNum(
+    item.row?.Tong_tien_truoc_thueVAT_khach ??
+      item.row?.Tong_gia_thuc_te ??
+      item.row?.tong_truoc_vat_goc ??
+      item.row?.doanhSoBan_khach ??
+      item.row?.goodsTotal?.truoc_vat_khach ??
+      item.row?.goodsTotal?.ttTruocKhach
+  )
+  item.doanhSoBanKhach = rawDsbKhach > 0 ? rawDsbKhach : Math.max(0, dsbHD - gCom)
+  const scaleRatio = dsbHD > 0 && item.doanhSoBanKhach > 0 ? item.doanhSoBanKhach / dsbHD : 1
   
   if (item.row && hdChiTietData.value.length > 0) {
     const rowMaHD = item.row.ma_hop_dong ? String(item.row.ma_hop_dong).trim() : '';
@@ -19510,23 +20851,34 @@ function onRowSelectedInModal(item: ImportItem) {
     }) : [];
     if (matchingRows.length > 0) {
       let tTruoc = 0, tVat = 0, tSau = 0;
+      let tTruocKhach = 0, tVatKhach = 0, tSauKhach = 0;
       item.goodsList = matchingRows.map((r, i) => {
-        const donGia = Number(r[13]) || 0;
-        const sl = Number(r[18]) || 1;
+        const donGia = toNum(r[13]);
+        const sl = toNum(r[18]) || 1;
         const ttTruoc = donGia * sl;
-        const vatPct = Number(r[17]) || 0;
+        const vatPct = toNum(r[17]);
         const vat = (ttTruoc * vatPct) / 100;
         const ttSau = ttTruoc + vat;
+        const rowGoodsFallback = Array.isArray(item.row?.goodsList) ? item.row.goodsList[i] : null;
+        const savedGk = toNum(r[23]) || toNum(rowGoodsFallback?.don_gia_khach ?? rowGoodsFallback?.donGiaKhach ?? rowGoodsFallback?.don_gia_goc);
+        const donGiaKhach = savedGk > 0 ? savedGk : Math.round(donGia * scaleRatio);
+        const ttTruocKhach = Math.round(donGiaKhach * sl);
+        const vatKhach = Math.round((ttTruocKhach * vatPct) / 100);
+        const ttSauKhach = ttTruocKhach + vatKhach;
         tTruoc += ttTruoc;
         tVat += vat;
         tSau += ttSau;
+        tTruocKhach += ttTruocKhach;
+        tVatKhach += vatKhach;
+        tSauKhach += ttSauKhach;
         return {
           stt: i + 1, maHang: String(r[2] || '').trim(), danhMuc: r[10] || '', ten: r[3] || '', dienGiai: r[9] || '', dvt: r[12] || '',
           sl: sl, donGia: donGia, ttTruoc: ttTruoc, vat: vat, ttSau: ttSau,
+          donGiaKhach, ttTruocKhach, vatKhach, ttSauKhach,
           vatPct: String(vatPct), vatStr: vat > 0 ? vat.toLocaleString('vi-VN') : ''
         };
       });
-      item.goodsTotal = { ttTruoc: tTruoc, vat: tVat, ttSau: tSau };
+      item.goodsTotal = { ttTruoc: tTruoc, vat: tVat, ttSau: tSau, ttTruocKhach: tTruocKhach, vatKhach: tVatKhach, ttSauKhach: tSauKhach };
     } else {
       item.goodsList = [];
       item.goodsTotal = null;
@@ -19538,21 +20890,30 @@ function onRowSelectedInModal(item: ImportItem) {
 
   if ((!item.goodsList || item.goodsList.length === 0) && Array.isArray(item.row?.goodsList) && item.row.goodsList.length > 0) {
     let tTruoc = 0, tVat = 0, tSau = 0
+    let tTruocKhach = 0, tVatKhach = 0, tSauKhach = 0
     item.goodsList = item.row.goodsList.map((g: any, i: number) => {
-      const donGia = toNum(g.donGia)
+      const donGia = toNum(g.donGia ?? g.don_gia ?? g.don_gia_hop_dong)
       const sl = toNum(g.sl) || 1
-      const ttTruoc = toNum(g.ttTruoc) || donGia * sl
-      const vatPct = toNum(g.vatPct)
-      const vat = toNum(g.vat) || (ttTruoc * vatPct) / 100
-      const ttSau = toNum(g.ttSau) || ttTruoc + vat
+      const ttTruoc = toNum(g.ttTruoc ?? g.thanh_tien_truoc_vat) || donGia * sl
+      const vatPct = toNum(g.vatPct ?? g.vat_pct)
+      const vat = toNum(g.vat ?? g.tien_vat) || (ttTruoc * vatPct) / 100
+      const ttSau = toNum(g.ttSau ?? g.thanh_tien_sau_vat) || ttTruoc + vat
+      const savedGk = toNum(g.donGiaKhach ?? g.don_gia_khach ?? g.don_gia_goc)
+      const donGiaKhach = savedGk > 0 ? savedGk : Math.round(donGia * scaleRatio)
+      const ttTruocKhach = toNum(g.ttTruocKhach ?? g.thanh_tien_truoc_vat_khach) || Math.round(donGiaKhach * sl)
+      const vatKhach = toNum(g.vatKhach ?? g.tien_vat_khach) || Math.round((ttTruocKhach * vatPct) / 100)
+      const ttSauKhach = toNum(g.ttSauKhach ?? g.thanh_tien_sau_vat_khach) || ttTruocKhach + vatKhach
       tTruoc += ttTruoc
       tVat += vat
       tSau += ttSau
+      tTruocKhach += ttTruocKhach
+      tVatKhach += vatKhach
+      tSauKhach += ttSauKhach
       return {
         stt: i + 1,
-        maHang: String(g.maHang || '').trim(),
-        danhMuc: String(g.danhMuc || ''),
-        ten: String(g.ten || ''),
+        maHang: String(g.maHang || g.ma_hang_hoa || '').trim(),
+        danhMuc: String(g.danhMuc || g.hang || ''),
+        ten: String(g.ten || g.ten_hang_hoa || ''),
         dienGiai: String(g.dienGiai || ''),
         dvt: String(g.dvt || ''),
         sl,
@@ -19560,17 +20921,24 @@ function onRowSelectedInModal(item: ImportItem) {
         ttTruoc,
         vat,
         ttSau,
+        donGiaKhach,
+        ttTruocKhach,
+        vatKhach,
+        ttSauKhach,
         vatPct: String(vatPct),
         vatStr: vat > 0 ? vat.toLocaleString('vi-VN') : ''
       }
     })
     item.goodsTotal = item.row.goodsTotal
       ? {
-          ttTruoc: toNum(item.row.goodsTotal.ttTruoc) || tTruoc,
+          ttTruoc: toNum(item.row.goodsTotal.ttTruoc ?? item.row.goodsTotal.truoc_vat) || tTruoc,
           vat: toNum(item.row.goodsTotal.vat) || tVat,
-          ttSau: toNum(item.row.goodsTotal.ttSau) || tSau
+          ttSau: toNum(item.row.goodsTotal.ttSau ?? item.row.goodsTotal.sau_vat) || tSau,
+          ttTruocKhach: toNum(item.row.goodsTotal.ttTruocKhach ?? item.row.goodsTotal.truoc_vat_khach) || tTruocKhach,
+          vatKhach: toNum(item.row.goodsTotal.vatKhach ?? item.row.goodsTotal.vat_khach) || tVatKhach,
+          ttSauKhach: toNum(item.row.goodsTotal.ttSauKhach ?? item.row.goodsTotal.sau_vat_khach) || tSauKhach
         }
-      : { ttTruoc: tTruoc, vat: tVat, ttSau: tSau }
+      : { ttTruoc: tTruoc, vat: tVat, ttSau: tSau, ttTruocKhach: tTruocKhach, vatKhach: tVatKhach, ttSauKhach: tSauKhach }
   }
 
   item.mst = item.row.MST || ''
@@ -19580,12 +20948,25 @@ function onRowSelectedInModal(item: ImportItem) {
   item.recipient = item.row.Ten_khach_hang || item.row.Ten_cong_ty || ''
   item.linkedMaKH = item.row.Ma_khach_hang || ''
   item.linkedMaCongTy = item.row.Ma_cong_ty || ''
-  item.industry = getIndustryFromDbCustomer(getMatchedDbCustomerForItem(item))
+  const matchedSelCus = getMatchedDbCustomerForItem(item)
+  item.industry = getIndustryFromDbCustomer(matchedSelCus)
   item._industryEdited = false
+  item.customerGroup = getCustomerGroupFromDbCustomer(matchedSelCus)
+  item._customerGroupEdited = false
+  item.address = String(item.row.Dia_chi_cong_ty || item.row.dia_chi_cong_ty || item.row.dia_chi || item.row.address || '').trim() || getAddressFromDbCustomer(matchedSelCus)
+  item._addressEdited = false
+  item._custDiffCandidates = {}
   item.content = item.row.content_of_contract_PO || ''
   item.ghiChu = item.row.ghi_chu || ''
   item.soPO = item.row.So_PO || ''
   item.createdTime = fmtDate(item.row.created_time) || getFormattedNow()
+  if (!item.rawFileBaoGia) {
+    item.linkBaoGia = item.row.link_excel_bao_gia || ''
+  }
+  if (!item.rawFileBaoGiaKhach) {
+    item.linkBaoGiaKhach = item.row.link_excel_bao_gia_khach || ''
+    item.tenFileBGKhach = item.row.ten_file_bao_gia_khach || ''
+  }
   if (!item.rawFileDxmh) {
     item.linkDxmh = item.row.link_excel_dxmh || ''
     item.tenFileDxmh = item.row.ten_file_dxmh || ''
@@ -19597,14 +20978,14 @@ function onRowSelectedInModal(item: ImportItem) {
   }
   
   if (item.content) {
-    item.doanhSoBan = doanhSoBan(item.row)
+    item.doanhSoBan = doanhSoBanHd(item.row)
     if (!item.scanned) {
       item.grossCom = grossCom(item.row)
       item.netCom = netCom(item.row)
       item.taxPct = thuePct(item.row)
     }
   } else {
-    item.doanhSoBan = doanhSoBan(item.row)
+    item.doanhSoBan = doanhSoBanHd(item.row)
     item.giaMua = giaMua(item.row)
     item.tongCP = tongCP(item.row)
     if (!item.scanned) {
@@ -19900,8 +21281,20 @@ async function autoRepairItemXlsOfficeLinks(item: ImportItem | undefined | null)
     const fixedUrl = await repairSingleXlsCloudinaryUrl(oldUrl, targetRow.ten_file_bao_gia)
     if (fixedUrl && !item.rawFileBaoGia && targetRow.link_excel_bao_gia === oldUrl) {
       targetRow.link_excel_bao_gia = fixedUrl
+      if (item.linkBaoGia === oldUrl) item.linkBaoGia = fixedUrl
       if (item.previewUrlBG === oldUrl) item.previewUrlBG = fixedUrl
       dbPatch.link_excel_bao_gia = fixedUrl
+    }
+  }
+
+  if (!item.rawFileBaoGiaKhach && targetRow.link_excel_bao_gia_khach) {
+    const oldUrl = targetRow.link_excel_bao_gia_khach
+    const fixedUrl = await repairSingleXlsCloudinaryUrl(oldUrl, targetRow.ten_file_bao_gia_khach)
+    if (fixedUrl && !item.rawFileBaoGiaKhach && targetRow.link_excel_bao_gia_khach === oldUrl) {
+      targetRow.link_excel_bao_gia_khach = fixedUrl
+      if (item.linkBaoGiaKhach === oldUrl) item.linkBaoGiaKhach = fixedUrl
+      if (item.previewUrlBGKhach === oldUrl) item.previewUrlBGKhach = fixedUrl
+      dbPatch.link_excel_bao_gia_khach = fixedUrl
     }
   }
 
@@ -19943,7 +21336,8 @@ async function autoRepairItemXlsOfficeLinks(item: ImportItem | undefined | null)
 
   if (firebaseKey && Object.keys(dbPatch).length > 0) {
     try {
-      await update(dbRef(database, `sale_report/${firebaseKey}`), dbPatch)
+      const targetTable = targetRow._isCraft ? 'sale_report_craft' : 'sale_report'
+      await update(dbRef(database, `${targetTable}/${firebaseKey}`), dbPatch)
     } catch (err) {
       console.warn('Không thể cập nhật link .xls đã sửa lên Firebase:', err)
     }
@@ -20048,12 +21442,18 @@ async function saveMultiModal() {
               : await uploadFileToCloudinary(item.rawFileScanCom)
           }
   
-          let linkBG = '', linkMH = '', linkDXMH = '', tenBG = '', tenMH = '', tenDXMH = ''
+          let linkBG = item.linkBaoGia || '', linkBGKhach = item.linkBaoGiaKhach || '', linkMH = '', linkDXMH = '', tenBG = '', tenBGKhach = item.tenFileBGKhach || '', tenMH = '', tenDXMH = ''
           if (item.rawFileBaoGia) {
             linkBG = (item.previewUrlBG && item.previewUrlBG.startsWith('https://res.cloudinary.com/'))
               ? item.previewUrlBG
               : await uploadFileToCloudinary(item.rawFileBaoGia);
             tenBG = item.rawFileBaoGia.name;
+          }
+          if (item.rawFileBaoGiaKhach) {
+            linkBGKhach = (item.previewUrlBGKhach && item.previewUrlBGKhach.startsWith('https://res.cloudinary.com/'))
+              ? item.previewUrlBGKhach
+              : await uploadFileToCloudinary(item.rawFileBaoGiaKhach);
+            tenBGKhach = item.rawFileBaoGiaKhach.name;
           }
           if (item.rawFileMuaHang) {
             linkMH = (item.previewUrlMH && item.previewUrlMH.startsWith('https://res.cloudinary.com/'))
@@ -20078,14 +21478,33 @@ async function saveMultiModal() {
             maCongTyGen,
             tenCongTy,
             tenKhachHang,
-            mstVal
+            mstVal,
+            diaChiVal
           } = await upsertCustomerFromModalItem(item);
   
           const tTruoc = Number(item.doanhSoBan ?? item.goodsTotal?.ttTruoc ?? 0);
           const tVat = Number(item.goodsTotal?.vat || 0);
           const tSau = tTruoc + tVat;
+          const tTruocKhach = Number(
+            item.doanhSoBanKhach ??
+              item.goodsTotal?.ttTruocKhach ??
+              Math.max(0, tTruoc - (Number(item.grossCom) || 0))
+          );
+          const tVatKhach = Number(item.goodsTotal?.vatKhach ?? tVat);
+          const tSauKhach = tTruocKhach + tVatKhach;
+          item.doanhSoBanKhach = tTruocKhach;
+          item.vatKhach = tVatKhach;
+          item.ttSauKhach = tSauKhach;
           if (item.goodsTotal) {
-            item.goodsTotal = { ...item.goodsTotal, ttTruoc: tTruoc, vat: tVat, ttSau: tSau };
+            item.goodsTotal = {
+              ...item.goodsTotal,
+              ttTruoc: tTruoc,
+              vat: tVat,
+              ttSau: tSau,
+              ttTruocKhach: tTruocKhach,
+              vatKhach: tVatKhach,
+              ttSauKhach: tSauKhach
+            };
           }
 
           const initPaid = toNum(item.soTienDaThanhToan);
@@ -20107,6 +21526,7 @@ async function saveMultiModal() {
               Ten_khach_hang: tenKhachHang || tenCongTy,
               Ma_cong_ty: maCongTyGen,
               Ten_cong_ty: tenCongTy,
+              Dia_chi_cong_ty: diaChiVal || '',
               MST: mstVal,
               created_time: finalCreatedTime,
               content_of_contract_PO: item.content,
@@ -20114,6 +21534,11 @@ async function saveMultiModal() {
               Tong_tien_truoc_thueVAT: tTruoc,
               Tong_thueVAT: tVat,
               Tong_tien_sau_thueVAT: tSau,
+              Tong_gia_thuc_te: tTruocKhach,
+              Tong_tien_truoc_thueVAT_khach: tTruocKhach,
+              Tong_thueVAT_khach: tVatKhach,
+              Tong_tien_sau_thueVAT_khach: tSauKhach,
+              doanhSoBan_khach: tTruocKhach,
               so_tien_da_thanh_toan: initPaid,
               cong_no: initCongNo,
               thoi_gian_thanh_toan: initPayTime,
@@ -20129,12 +21554,16 @@ async function saveMultiModal() {
               account_manager_name: item.am,
               img_save: uploadedUrl,
               link_excel_bao_gia: linkBG,
+              link_excel_bao_gia_khach: linkBGKhach,
               link_excel_mua_hang: linkMH,
               link_excel_dxmh: linkDXMH,
               ten_file_bao_gia: tenBG,
+              ten_file_bao_gia_khach: tenBGKhach,
               ten_file_mua_hang: tenMH,
               ten_file_dxmh: tenDXMH,
-              danh_sach_file_khac: savedOtherFiles
+              danh_sach_file_khac: savedOtherFiles,
+              goodsList: Array.isArray(item.goodsList) ? JSON.parse(JSON.stringify(item.goodsList)) : [],
+              goodsTotal: item.goodsTotal ? JSON.parse(JSON.stringify(item.goodsTotal)) : undefined
           });
 
           const hdTongData = {
@@ -20143,20 +21572,36 @@ async function saveMultiModal() {
             ma_khach_hang: maKHGen,
             ten_khach_hang: tenKhachHang || tenCongTy,
             ngay_tao: formatNgayTaoHopDong(),
+            ngay_tao_hop_dong: formatNgayTaoHopDong(),
+            Tong_tien_truoc_thueVAT: tTruoc,
             tong_truoc_vat: tTruoc,
+            Tong_thueVAT: tVat,
             tong_vat: tVat,
+            Tong_tien_sau_thueVAT: tSau,
             tong_sau_vat: tSau,
+            Tong_gia_thuc_te: tTruocKhach,
+            Tong_tien_truoc_thueVAT_khach: tTruocKhach,
+            tong_truoc_vat_khach: tTruocKhach,
+            Tong_thueVAT_khach: tVatKhach,
+            tong_vat_khach: tVatKhach,
+            Tong_tien_sau_thueVAT_khach: tSauKhach,
+            tong_sau_vat_khach: tSauKhach,
             da_thanh_toan: initPaid,
+            Tong_thanh_toan: initPaid,
             con_phai_thu: initCongNo,
             trang_thai_thanh_toan: initCongNo <= 0 ? 'Đã thanh toán đủ' : (initPaid > 0 ? 'Thanh toán 1 phần' : 'Chưa thanh toán đủ'),
             loai_hop_dong: 'Chính thức',
+            Trang_thai_hop_dong: 'Chính thức',
             content: item.content || '',
+            content_of_contract_PO: item.content || '',
             don_vi_tien_te: 'VND',
             ti_gia: 1,
             ghi_chu: item.ghiChu || '',
-            tong_truoc_vat_goc: tTruoc,
+            Ghi_chu: item.ghiChu || '',
+            tong_truoc_vat_goc: tTruocKhach,
             ngay_tao_date: formatCreatedTimeDateOnly(),
             so_po: item.soPO || '',
+            So_PO: item.soPO || '',
             po_content: '',
             content_po: item.content || '',
             gross_com: item.grossCom || 0,
@@ -20168,31 +21613,70 @@ async function saveMultiModal() {
             phan_tram_thue_chenh_lech_gia: item.taxPct || 0,
             tong_chiet_khau: item.netCom || 0,
             con_lai: item.netCom || 0,
-            tong_cp: item.tongCP || 0
+            net_com: item.netCom || 0,
+            Tong_thanh_tien_chua_VAT_mua_hang: item.giaMua || 0,
+            giaMua: item.giaMua || 0,
+            Tong_CP_don_hang: item.tongCP || 0,
+            tongCP: item.tongCP || 0,
+            tong_cp: item.tongCP || 0,
+            ten_file: tenBG || '',
+            link_file: linkBG || '',
+            ten_file_bao_gia: tenBG || '',
+            link_excel_bao_gia: linkBG || '',
+            ten_file_khach: tenBGKhach || '',
+            link_file_khach: linkBGKhach || '',
+            ten_file_bao_gia_khach: tenBGKhach || '',
+            link_excel_bao_gia_khach: linkBGKhach || ''
           };
 
           const hdChiTietRows = (item.goodsList && item.goodsList.length > 0)
             ? item.goodsList.map((g: any) => ({
                 ma_hop_dong: maHD,
                 so_hop_dong: soHD,
+                Ma_hang: g.maHang || '',
                 ma_hang: g.maHang || '',
+                Ten_hang: g.ten || '',
                 ten_hang: g.ten || '',
                 main_img: '',
                 ma_ncc: '',
+                Ten_nha_cung_cap: item.productType || '',
                 ten_ncc: item.productType || '',
                 mo_ta_chung: '',
                 mo_ta_chi_tiet: '',
+                Features: g.dienGiai || '',
                 dien_giai: g.dienGiai || '',
+                Danh_muc: g.danhMuc || '',
                 danh_muc: g.danhMuc || '',
                 ghi_chu: '',
+                DVT: g.dvt || '',
                 dvt: g.dvt || '',
-                don_gia: g.donGia || 0,
-                gia_tieu_chuan: g.donGia || 0,
+                Don_gia: toNum(g.donGia),
+                don_gia: toNum(g.donGia),
+                Gia_tieu_chuan: toNum(g.donGiaKhach ?? g.donGia),
+                gia_tieu_chuan: toNum(g.donGiaKhach ?? g.donGia),
+                Don_gia_hop_dong: toNum(g.donGia),
+                Thanh_tien_truoc_thue_hop_dong: toNum(g.ttTruoc),
+                Tien_thue_vat_hop_dong: toNum(g.vat),
+                Thanh_tien_sau_thue_hop_dong: toNum(g.ttSau),
+                Don_gia_khach: toNum(g.donGiaKhach ?? g.donGia),
+                don_gia_khach: toNum(g.donGiaKhach ?? g.donGia),
+                Don_gia_goc: toNum(g.donGiaKhach ?? g.donGia),
+                don_gia_goc: toNum(g.donGiaKhach ?? g.donGia),
+                Thanh_tien_truoc_thue_khach: toNum(g.ttTruocKhach ?? g.ttTruoc),
+                thanh_tien_truoc_thue_khach: toNum(g.ttTruocKhach ?? g.ttTruoc),
+                Tien_thue_vat_khach: toNum(g.vatKhach ?? g.vat),
+                tien_thue_vat_khach: toNum(g.vatKhach ?? g.vat),
+                Thanh_tien_sau_thue_khach: toNum(g.ttSauKhach ?? g.ttSau),
+                thanh_tien_sau_thue_khach: toNum(g.ttSauKhach ?? g.ttSau),
+                Don_vi_tien_te: 'VND',
                 don_vi_tien_te: 'VND',
+                Ti_gia: 1,
                 ti_gia: 1,
-                thue_vat: g.vatPct || 0,
-                so_luong: g.sl || 1,
-                features: '',
+                Thue_VAT: toNum(g.vatPct),
+                thue_vat: toNum(g.vatPct),
+                So_luong: toNum(g.sl) || 1,
+                so_luong: toNum(g.sl) || 1,
+                features: g.dienGiai || '',
                 gia_hardware: 0,
                 gia_nhap: 0,
                 muc_phan_tram_off: 0
@@ -20258,9 +21742,11 @@ async function saveMultiModal() {
         }
 
         let linkBG = ''
+        let linkBGKhach = ''
         let linkMH = ''
         let linkDXMH = ''
         let tenBG = ''
+        let tenBGKhach = ''
         let tenMH = ''
         let tenDXMH = ''
         if (item.rawFileBaoGia) {
@@ -20268,6 +21754,12 @@ async function saveMultiModal() {
             ? item.previewUrlBG
             : await uploadFileToCloudinary(item.rawFileBaoGia)
           tenBG = item.rawFileBaoGia.name
+        }
+        if (item.rawFileBaoGiaKhach) {
+          linkBGKhach = (item.previewUrlBGKhach && item.previewUrlBGKhach.startsWith('https://res.cloudinary.com/'))
+            ? item.previewUrlBGKhach
+            : await uploadFileToCloudinary(item.rawFileBaoGiaKhach)
+          tenBGKhach = item.rawFileBaoGiaKhach.name
         }
         if (item.rawFileMuaHang) {
           linkMH = (item.previewUrlMH && item.previewUrlMH.startsWith('https://res.cloudinary.com/'))
@@ -20300,14 +21792,33 @@ async function saveMultiModal() {
           maCongTyGen,
           tenCongTy,
           tenKhachHang,
-          mstVal
+          mstVal,
+          diaChiVal
         } = await upsertCustomerFromModalItem(item);
 
         const tTruoc = Number(item.doanhSoBan ?? item.goodsTotal?.ttTruoc ?? 0);
         const tVat = Number(item.goodsTotal?.vat ?? toNum(item.row?.Tong_thueVAT) ?? 0);
         const tSau = tTruoc + tVat;
+        const tTruocKhach = Number(
+          item.doanhSoBanKhach ??
+            item.goodsTotal?.ttTruocKhach ??
+            Math.max(0, tTruoc - (Number(item.grossCom) || 0))
+        );
+        const tVatKhach = Number(item.goodsTotal?.vatKhach ?? tVat);
+        const tSauKhach = tTruocKhach + tVatKhach;
+        item.doanhSoBanKhach = tTruocKhach;
+        item.vatKhach = tVatKhach;
+        item.ttSauKhach = tSauKhach;
         if (item.goodsTotal) {
-          item.goodsTotal = { ...item.goodsTotal, ttTruoc: tTruoc, vat: tVat, ttSau: tSau };
+          item.goodsTotal = {
+            ...item.goodsTotal,
+            ttTruoc: tTruoc,
+            vat: tVat,
+            ttSau: tSau,
+            ttTruocKhach: tTruocKhach,
+            vatKhach: tVatKhach,
+            ttSauKhach: tSauKhach
+          };
         }
 
         const currentPaid = daThanhToan(item.row);
@@ -20324,12 +21835,18 @@ async function saveMultiModal() {
             Ten_khach_hang: tenKhachHang || tenCongTy,
             Ma_cong_ty: maCongTyGen,
             Ten_cong_ty: tenCongTy,
+            Dia_chi_cong_ty: diaChiVal || '',
             MST: mstVal,
             account_manager_name: item.am,
             Ten_nha_cung_cap: item.productType,
             Tong_tien_truoc_thueVAT: tTruoc,
             Tong_thueVAT: tVat,
             Tong_tien_sau_thueVAT: tSau,
+            Tong_gia_thuc_te: tTruocKhach,
+            Tong_tien_truoc_thueVAT_khach: tTruocKhach,
+            Tong_thueVAT_khach: tVatKhach,
+            Tong_tien_sau_thueVAT_khach: tSauKhach,
+            doanhSoBan_khach: tTruocKhach,
             so_tien_da_thanh_toan: currentPaid,
             cong_no: updatedCongNo,
             thoi_gian_thanh_toan: currentPayTime,
@@ -20345,40 +21862,64 @@ async function saveMultiModal() {
             net_com: Number(item.netCom) || 0,
             content_of_contract_PO: item.content,
             ghi_chu: item.ghiChu ?? item.row?.ghi_chu ?? '',
-            danh_sach_file_khac: savedOtherFiles
+            danh_sach_file_khac: savedOtherFiles,
+            goodsList: Array.isArray(item.goodsList) ? JSON.parse(JSON.stringify(item.goodsList)) : [],
+            goodsTotal: item.goodsTotal ? JSON.parse(JSON.stringify(item.goodsTotal)) : undefined
         };
         if (uploadedUrl) updatePayload.img_save = uploadedUrl;
         if (linkBG) { updatePayload.link_excel_bao_gia = linkBG; updatePayload.ten_file_bao_gia = tenBG; }
+        if (linkBGKhach) { updatePayload.link_excel_bao_gia_khach = linkBGKhach; updatePayload.ten_file_bao_gia_khach = tenBGKhach; }
         if (linkMH) { updatePayload.link_excel_mua_hang = linkMH; updatePayload.ten_file_mua_hang = tenMH; }
         if (linkDXMH) { updatePayload.link_excel_dxmh = linkDXMH; updatePayload.ten_file_dxmh = tenDXMH; }
 
         // ─── Update sale_report in Firebase ───
         const firebaseKey = item.row._firebaseKey || item.row.ID;
         if (firebaseKey) {
-          await update(dbRef(database, `sale_report/${firebaseKey}`), updatePayload);
+          const cleanUpdatePayload = JSON.parse(JSON.stringify(updatePayload));
+          await update(dbRef(database, `sale_report/${firebaseKey}`), cleanUpdatePayload);
         }
 
         // ─── Update hop_dong_tong_quat in Firebase ───
+        const finalLinkBG = linkBG || item.row?.link_excel_bao_gia || ''
+        const finalTenBG = tenBG || item.row?.ten_file_bao_gia || ''
+        const finalLinkBGKhach = linkBGKhach || item.row?.link_excel_bao_gia_khach || ''
+        const finalTenBGKhach = tenBGKhach || item.row?.ten_file_bao_gia_khach || ''
         const hdTongData = {
           ma_hop_dong: maHD,
           so_hop_dong: soHD,
           ma_khach_hang: maKHGen,
           ten_khach_hang: tenKhachHang || tenCongTy,
           ngay_tao: formatNgayTaoHopDong(),
+          ngay_tao_hop_dong: formatNgayTaoHopDong(),
+          Tong_tien_truoc_thueVAT: tTruoc,
           tong_truoc_vat: tTruoc,
+          Tong_thueVAT: tVat,
           tong_vat: tVat,
+          Tong_tien_sau_thueVAT: tSau,
           tong_sau_vat: tSau,
+          Tong_gia_thuc_te: tTruocKhach,
+          Tong_tien_truoc_thueVAT_khach: tTruocKhach,
+          tong_truoc_vat_khach: tTruocKhach,
+          Tong_thueVAT_khach: tVatKhach,
+          tong_vat_khach: tVatKhach,
+          Tong_tien_sau_thueVAT_khach: tSauKhach,
+          tong_sau_vat_khach: tSauKhach,
           da_thanh_toan: currentPaid,
+          Tong_thanh_toan: currentPaid,
           con_phai_thu: updatedCongNo,
           trang_thai_thanh_toan: updatedCongNo <= 0 ? 'Đã thanh toán đủ' : (currentPaid > 0 ? 'Thanh toán 1 phần' : 'Chưa thanh toán đủ'),
           loai_hop_dong: 'Chính thức',
+          Trang_thai_hop_dong: 'Chính thức',
           content: item.content || '',
+          content_of_contract_PO: item.content || '',
           don_vi_tien_te: 'VND',
           ti_gia: 1,
-          ghi_chu: '',
-          tong_truoc_vat_goc: tTruoc,
+          ghi_chu: item.ghiChu ?? item.row?.ghi_chu ?? '',
+          Ghi_chu: item.ghiChu ?? item.row?.ghi_chu ?? '',
+          tong_truoc_vat_goc: tTruocKhach,
           ngay_tao_date: formatCreatedTimeDateOnly(),
           so_po: item.soPO || '',
+          So_PO: item.soPO || '',
           po_content: '',
           content_po: item.content || '',
           gross_com: item.grossCom || 0,
@@ -20390,9 +21931,23 @@ async function saveMultiModal() {
           phan_tram_thue_chenh_lech_gia: item.taxPct || 0,
           tong_chiet_khau: item.netCom || 0,
           con_lai: item.netCom || 0,
-          tong_cp: item.tongCP || 0
+          net_com: item.netCom || 0,
+          Tong_thanh_tien_chua_VAT_mua_hang: item.giaMua || 0,
+          giaMua: item.giaMua || 0,
+          Tong_CP_don_hang: item.tongCP || 0,
+          tongCP: item.tongCP || 0,
+          tong_cp: item.tongCP || 0,
+          ten_file: finalTenBG,
+          link_file: finalLinkBG,
+          ten_file_bao_gia: finalTenBG,
+          link_excel_bao_gia: finalLinkBG,
+          ten_file_khach: finalTenBGKhach,
+          link_file_khach: finalLinkBGKhach,
+          ten_file_bao_gia_khach: finalTenBGKhach,
+          link_excel_bao_gia_khach: finalLinkBGKhach
         };
-        await update(dbRef(database, `hop_dong_tong_quat/${maHD}`), hdTongData);
+        const cleanHdTongData = JSON.parse(JSON.stringify(hdTongData));
+        await update(dbRef(database, `hop_dong_tong_quat/${maHD}`), cleanHdTongData);
 
         // ─── Update hop_dong_chi_tiet in Firebase ───
         let hdChiTietRows: any[] = [];
@@ -20400,24 +21955,50 @@ async function saveMultiModal() {
           hdChiTietRows = item.goodsList.map(g => ({
             ma_hop_dong: maHD,
             so_hop_dong: soHD,
+            Ma_hang: g.maHang || '',
             ma_hang: g.maHang || '',
+            Ten_hang: g.ten || '',
             ten_hang: g.ten || '',
             main_img: '',
             ma_ncc: '',
+            Ten_nha_cung_cap: item.productType || '',
             ten_ncc: item.productType || '',
             mo_ta_chung: '',
             mo_ta_chi_tiet: '',
+            Features: g.dienGiai || '',
             dien_giai: g.dienGiai || '',
+            Danh_muc: g.danhMuc || '',
             danh_muc: g.danhMuc || '',
             ghi_chu: '',
+            DVT: g.dvt || '',
             dvt: g.dvt || '',
-            don_gia: g.donGia || 0,
-            gia_tieu_chuan: g.donGia || 0,
+            Don_gia: toNum(g.donGia),
+            don_gia: toNum(g.donGia),
+            Gia_tieu_chuan: toNum(g.donGiaKhach ?? g.donGia),
+            gia_tieu_chuan: toNum(g.donGiaKhach ?? g.donGia),
+            Don_gia_hop_dong: toNum(g.donGia),
+            Thanh_tien_truoc_thue_hop_dong: toNum(g.ttTruoc),
+            Tien_thue_vat_hop_dong: toNum(g.vat),
+            Thanh_tien_sau_thue_hop_dong: toNum(g.ttSau),
+            Don_gia_khach: toNum(g.donGiaKhach ?? g.donGia),
+            don_gia_khach: toNum(g.donGiaKhach ?? g.donGia),
+            Don_gia_goc: toNum(g.donGiaKhach ?? g.donGia),
+            don_gia_goc: toNum(g.donGiaKhach ?? g.donGia),
+            Thanh_tien_truoc_thue_khach: toNum(g.ttTruocKhach ?? g.ttTruoc),
+            thanh_tien_truoc_thue_khach: toNum(g.ttTruocKhach ?? g.ttTruoc),
+            Tien_thue_vat_khach: toNum(g.vatKhach ?? g.vat),
+            tien_thue_vat_khach: toNum(g.vatKhach ?? g.vat),
+            Thanh_tien_sau_thue_khach: toNum(g.ttSauKhach ?? g.ttSau),
+            thanh_tien_sau_thue_khach: toNum(g.ttSauKhach ?? g.ttSau),
+            Don_vi_tien_te: 'VND',
             don_vi_tien_te: 'VND',
+            Ti_gia: 1,
             ti_gia: 1,
-            thue_vat: g.vatPct || 0,
-            so_luong: g.sl || 1,
-            features: '',
+            Thue_VAT: toNum(g.vatPct),
+            thue_vat: toNum(g.vatPct),
+            So_luong: toNum(g.sl) || 1,
+            so_luong: toNum(g.sl) || 1,
+            features: g.dienGiai || '',
             gia_hardware: 0,
             gia_nhap: 0,
             muc_phan_tram_off: 0
@@ -20439,6 +22020,11 @@ async function saveMultiModal() {
             dvt: 'Cái',
             don_gia: tTruoc,
             gia_tieu_chuan: tTruoc,
+            don_gia_khach: tTruocKhach,
+            don_gia_goc: tTruocKhach,
+            thanh_tien_truoc_thue_khach: tTruocKhach,
+            tien_thue_vat_khach: tVatKhach,
+            thanh_tien_sau_thue_khach: tSauKhach,
             don_vi_tien_te: 'VND',
             ti_gia: 1,
             thue_vat: 0,
@@ -20471,7 +22057,8 @@ async function saveMultiModal() {
           }
         }
         if (Object.keys(chiTietUpdates).length > 0) {
-          await update(dbRef(database), chiTietUpdates);
+          const cleanChiTietUpdates = JSON.parse(JSON.stringify(chiTietUpdates));
+          await update(dbRef(database), cleanChiTietUpdates);
         }
         rebuildHdChiTietDataArray();
 
@@ -20485,11 +22072,19 @@ async function saveMultiModal() {
         item.row.Ten_khach_hang = tenKhachHang || tenCongTy
         item.row.Ma_cong_ty = maCongTyGen
         item.row.Ten_cong_ty = tenCongTy
+        item.row.Dia_chi_cong_ty = diaChiVal || ''
         item.row.account_manager_name = item.am
         item.row.Ten_nha_cung_cap = item.productType
         item.row.Tong_tien_truoc_thueVAT = tTruoc
         item.row.Tong_thueVAT = tVat
         item.row.Tong_tien_sau_thueVAT = tSau
+        item.row.Tong_gia_thuc_te = tTruocKhach
+        item.row.Tong_tien_truoc_thueVAT_khach = tTruocKhach
+        item.row.Tong_thueVAT_khach = tVatKhach
+        item.row.Tong_tien_sau_thueVAT_khach = tSauKhach
+        item.row.doanhSoBan_khach = tTruocKhach
+        item.row.goodsList = Array.isArray(item.goodsList) ? JSON.parse(JSON.stringify(item.goodsList)) : []
+        item.row.goodsTotal = item.goodsTotal ? JSON.parse(JSON.stringify(item.goodsTotal)) : undefined
         item.row.so_tien_da_thanh_toan = currentPaid
         item.row.cong_no = updatedCongNo
         item.row.thoi_gian_thanh_toan = currentPayTime
@@ -20512,6 +22107,15 @@ async function saveMultiModal() {
         if (linkBG) {
           item.row.link_excel_bao_gia = linkBG
           item.row.ten_file_bao_gia = tenBG
+          item.linkBaoGia = linkBG
+          item.rawFileBaoGia = undefined
+        }
+        if (linkBGKhach) {
+          item.row.link_excel_bao_gia_khach = linkBGKhach
+          item.row.ten_file_bao_gia_khach = tenBGKhach
+          item.linkBaoGiaKhach = linkBGKhach
+          item.tenFileBGKhach = tenBGKhach
+          item.rawFileBaoGiaKhach = undefined
         }
         if (linkMH) {
           item.row.link_excel_mua_hang = linkMH
@@ -20629,6 +22233,27 @@ async function deletePO(item: ImportItem, idx: number) {
     // ─── Delete from Firebase (Bản Chính Thức) ───
     if (firebaseKey) {
       await remove(dbRef(database, `sale_report/${firebaseKey}`));
+    }
+    // ─── Xóa dữ liệu Hợp đồng tổng quát & Hợp đồng chi tiết liên quan tới PO này ───
+    const maHD = String(item.row?.ma_hop_dong || '').trim();
+    if (maHD) {
+      await remove(dbRef(database, `hop_dong_tong_quat/${maHD}`));
+      if (hdChiTietRawMap.value && typeof hdChiTietRawMap.value === 'object') {
+        const ctRemovePayload: Record<string, null> = {};
+        Object.entries(hdChiTietRawMap.value).forEach(([ctKey, ctVal]: [string, any]) => {
+          const entryMaHD = Array.isArray(ctVal)
+            ? String(ctVal[0] || '').trim()
+            : String(ctVal?.ma_hop_dong ?? ctVal?.Ma_hop_dong ?? '').trim();
+          if (entryMaHD === maHD) {
+            ctRemovePayload[`hop_dong_chi_tiet/${ctKey}`] = null;
+            delete hdChiTietRawMap.value[ctKey];
+          }
+        });
+        if (Object.keys(ctRemovePayload).length > 0) {
+          await update(dbRef(database), ctRemovePayload);
+        }
+        rebuildHdChiTietDataArray();
+      }
     }
     // ─── Xóa lịch sử thanh toán liên quan tới PO này ───
     if (srId || firebaseKey) {
@@ -20873,8 +22498,8 @@ const craftCompareMetricDefs: CraftCompareMetricDef[] = [
     isNumeric: true,
     higherIsBetter: true,
     highlightRow: true,
-    getNumeric: (r: any) => doanhSoBan(r),
-    format: (r: any) => fmt(doanhSoBan(r))
+    getNumeric: (r: any) => analyticsDoanhSoBan(r),
+    format: (r: any) => fmt(analyticsDoanhSoBan(r))
   },
   {
     key: 'gia_mua',
@@ -20909,8 +22534,8 @@ const craftCompareMetricDefs: CraftCompareMetricDef[] = [
     group: 'rev',
     isNumeric: true,
     higherIsBetter: true,
-    getNumeric: (r: any) => tongSauVat(r),
-    format: (r: any) => fmt(tongSauVat(r))
+    getNumeric: (r: any) => analyticsTongSauVat(r),
+    format: (r: any) => fmt(analyticsTongSauVat(r))
   },
 
   // NHÓM 2: COM, THUẾ & MARGIN
@@ -21023,10 +22648,10 @@ const craftCompareMetricDefs: CraftCompareMetricDef[] = [
     isRatio: true,
     higherIsBetter: true,
     getNumeric: (r: any) => {
-      const d = doanhSoBan(r)
+      const d = analyticsDoanhSoBan(r)
       return d > 0 ? Number(((netCom(r) / d) * 100).toFixed(2)) : 0
     },
-    format: (r: any) => `${pct(netCom(r), doanhSoBan(r))}%`
+    format: (r: any) => `${pct(netCom(r), analyticsDoanhSoBan(r))}%`
   },
   {
     key: 'pct_margin_dsb',
@@ -21039,10 +22664,10 @@ const craftCompareMetricDefs: CraftCompareMetricDef[] = [
     isRatio: true,
     higherIsBetter: true,
     getNumeric: (r: any) => {
-      const d = doanhSoBan(r)
+      const d = analyticsDoanhSoBan(r)
       return d > 0 ? Number(((netMargin(r) / d) * 100).toFixed(2)) : 0
     },
-    format: (r: any) => `${pct(netMargin(r), doanhSoBan(r))}%`
+    format: (r: any) => `${pct(netMargin(r), analyticsDoanhSoBan(r))}%`
   }
 ]
 
@@ -21117,10 +22742,10 @@ function isBestCraftMetricCell(mDef: CraftCompareMetricDef, r: any, list: any[])
 
 function getCraftMetricInlinePctText(mDef: CraftCompareMetricDef, r: any, list: any[]): string {
   if (!mDef.isNumeric || mDef.isRatio) return ''
-  const dsbVal = doanhSoBan(r)
+  const dsbVal = analyticsDoanhSoBan(r)
   if (mDef.key === 'dsb') {
     if (!list || list.length <= 1) return '100%'
-    const maxDsb = Math.max(...list.map(item => Math.max(0, doanhSoBan(item))), 0)
+    const maxDsb = Math.max(...list.map(item => Math.max(0, analyticsDoanhSoBan(item))), 0)
     return maxDsb > 0 ? `${pct(dsbVal, maxDsb)}%` : '0.00%'
   }
   return dsbVal > 0 ? `${pct(mDef.getNumeric(r), dsbVal)}% DSB` : '0.00% DSB'
@@ -21202,6 +22827,7 @@ function startEditMatrixCell(
   mDef: CraftCompareMetricDef,
   focusField: 'main' | 'delta_abs' | 'delta_pct' = 'main'
 ) {
+  if (srDataMode.value !== 'craft') return
   if (!mDef.isNumeric) return
   const rk = getCraftCompareKey(r)
   if (!rk) return
@@ -21343,6 +22969,10 @@ function cancelEditMatrixCell() {
 }
 
 async function commitEditMatrixCell(r: any, mDef: CraftCompareMetricDef) {
+  if (srDataMode.value !== 'craft') {
+    editingMatrixCell.value = null
+    return
+  }
   if (!editingMatrixCell.value) return
   const cell = editingMatrixCell.value
   const rk = getCraftCompareKey(r)
@@ -21366,9 +22996,13 @@ async function commitEditMatrixCell(r: any, mDef: CraftCompareMetricDef) {
   const oldVal = mDef.key === 'thue_com' ? thuePct(r) : mDef.getNumeric(r)
   if (Math.abs(newVal - oldVal) < 0.005) return
 
-  let dsb = doanhSoBan(r)
+  const isKhachMode = analyticsPriceMode.value === 'khach'
+  let dsb = doanhSoBanHd(r)
   let vat = thueVat(r)
-  let tSau = tongSauVat(r)
+  let tSau = tongSauVatHd(r)
+  let dsbKhach = doanhSoBanKhach(r)
+  let vatKhach = thueVatKhach(r)
+  let tSauKhach = tongSauVatKhach(r)
   let gCom = grossCom(r)
   let tPct = thuePct(r)
   let nCom = netCom(r)
@@ -21389,8 +23023,16 @@ async function commitEditMatrixCell(r: any, mDef: CraftCompareMetricDef) {
 
   switch (mDef.key) {
     case 'dsb': {
-      dsb = Math.max(0, Math.round(newVal))
-      tSau = dsb + vat
+      if (isKhachMode) {
+        dsbKhach = Math.max(0, Math.round(newVal))
+        tSauKhach = dsbKhach + vatKhach
+        recalcNetComFromGross(Math.max(0, dsb - dsbKhach))
+      } else {
+        dsb = Math.max(0, Math.round(newVal))
+        tSau = dsb + vat
+        dsbKhach = Math.max(0, dsb - gCom)
+        tSauKhach = dsbKhach + vatKhach
+      }
       break
     }
     case 'gia_mua': {
@@ -21406,17 +23048,26 @@ async function commitEditMatrixCell(r: any, mDef: CraftCompareMetricDef) {
       break
     }
     case 'tong_sau_vat': {
-      tSau = Math.max(0, Math.round(newVal))
-      vat = Math.max(0, tSau - dsb)
+      if (isKhachMode) {
+        tSauKhach = Math.max(0, Math.round(newVal))
+        vatKhach = Math.max(0, tSauKhach - dsbKhach)
+      } else {
+        tSau = Math.max(0, Math.round(newVal))
+        vat = Math.max(0, tSau - dsb)
+      }
       break
     }
     case 'net_po': {
       const targetNetPo = Math.round(newVal)
       recalcNetComFromGross(Math.max(0, dsb - targetNetPo))
+      dsbKhach = Math.max(0, dsb - gCom)
+      tSauKhach = dsbKhach + vatKhach
       break
     }
     case 'gross_com': {
       recalcNetComFromGross(Math.max(0, newVal))
+      dsbKhach = Math.max(0, dsb - gCom)
+      tSauKhach = dsbKhach + vatKhach
       break
     }
     case 'thue_com': {
@@ -21426,11 +23077,16 @@ async function commitEditMatrixCell(r: any, mDef: CraftCompareMetricDef) {
     }
     case 'net_com': {
       recalcGrossComFromNet(Math.max(0, newVal))
+      dsbKhach = Math.max(0, dsb - gCom)
+      tSauKhach = dsbKhach + vatKhach
       break
     }
     case 'pct_com_dsb': {
-      const targetNet = Math.round(dsb * (newVal / 100))
+      const baseDsb = isKhachMode ? dsbKhach : dsb
+      const targetNet = Math.round(baseDsb * (newVal / 100))
       recalcGrossComFromNet(Math.max(0, targetNet))
+      dsbKhach = Math.max(0, dsb - gCom)
+      tSauKhach = dsbKhach + vatKhach
       break
     }
     case 'pct_com_netpo': {
@@ -21439,6 +23095,8 @@ async function commitEditMatrixCell(r: any, mDef: CraftCompareMetricDef) {
       const denom = netFactor + ratio
       const targetGross = denom > 0.0001 ? Math.round((ratio * dsb) / denom) : 0
       recalcNetComFromGross(Math.max(0, targetGross))
+      dsbKhach = Math.max(0, dsb - gCom)
+      tSauKhach = dsbKhach + vatKhach
       break
     }
     case 'net_margin': {
@@ -21453,7 +23111,8 @@ async function commitEditMatrixCell(r: any, mDef: CraftCompareMetricDef) {
       break
     }
     case 'pct_margin_dsb': {
-      const targetMargin = Math.round(dsb * (newVal / 100))
+      const baseDsb = isKhachMode ? dsbKhach : dsb
+      const targetMargin = Math.round(baseDsb * (newVal / 100))
       cp = Math.max(0, dsb - gCom - targetMargin)
       break
     }
@@ -21464,6 +23123,11 @@ async function commitEditMatrixCell(r: any, mDef: CraftCompareMetricDef) {
     Tong_tien_truoc_thueVAT: dsb,
     Tong_thueVAT: vat,
     Tong_tien_sau_thueVAT: tSau,
+    Tong_gia_thuc_te: dsbKhach,
+    Tong_tien_truoc_thueVAT_khach: dsbKhach,
+    Tong_thueVAT_khach: vatKhach,
+    Tong_tien_sau_thueVAT_khach: tSauKhach,
+    doanhSoBan_khach: dsbKhach,
     Tong_thanh_tien_chua_VAT_mua_hang: gMua,
     Tong_CP_don_hang: cp,
     chiet_khau_tong_truoc_thue: gCom,
@@ -21480,7 +23144,10 @@ async function commitEditMatrixCell(r: any, mDef: CraftCompareMetricDef) {
       ...r.goodsTotal,
       ttTruoc: dsb,
       vat: vat,
-      ttSau: tSau
+      ttSau: tSau,
+      ttTruocKhach: dsbKhach,
+      vatKhach: vatKhach,
+      ttSauKhach: tSauKhach
     }
   }
 
@@ -21535,15 +23202,15 @@ const craftCompareBestSummary = computed(() => {
   if (!list || list.length < 2) return null
 
   let bestDsbRow = list[0]
-  let worstDsbVal = doanhSoBan(list[0])
+  let worstDsbVal = analyticsDoanhSoBan(list[0])
   let bestMarginRow = list[0]
   let worstMarginVal = netMargin(list[0])
   let bestComRow = list[0]
   let worstComVal = netCom(list[0])
 
   list.forEach(r => {
-    const d = doanhSoBan(r)
-    if (d > doanhSoBan(bestDsbRow)) bestDsbRow = r
+    const d = analyticsDoanhSoBan(r)
+    if (d > analyticsDoanhSoBan(bestDsbRow)) bestDsbRow = r
     if (d < worstDsbVal) worstDsbVal = d
 
     const m = netMargin(r)
@@ -21562,17 +23229,17 @@ const craftCompareBestSummary = computed(() => {
 
   return {
     bestDsbLabel: getLabel(bestDsbRow),
-    bestDsbVal: doanhSoBan(bestDsbRow),
+    bestDsbVal: analyticsDoanhSoBan(bestDsbRow),
     bestDsbNetPo: netPO(bestDsbRow),
-    dsbLeadDiff: Math.max(0, doanhSoBan(bestDsbRow) - worstDsbVal),
+    dsbLeadDiff: Math.max(0, analyticsDoanhSoBan(bestDsbRow) - worstDsbVal),
     bestMarginKey: getPoRowKey(bestMarginRow),
     bestMarginLabel: getLabel(bestMarginRow),
     bestMarginVal: netMargin(bestMarginRow),
-    bestMarginPctDsb: pct(netMargin(bestMarginRow), doanhSoBan(bestMarginRow)),
+    bestMarginPctDsb: pct(netMargin(bestMarginRow), analyticsDoanhSoBan(bestMarginRow)),
     marginLeadDiff: Math.max(0, netMargin(bestMarginRow) - worstMarginVal),
     bestComLabel: getLabel(bestComRow),
     bestComVal: netCom(bestComRow),
-    bestComPctDsb: pct(netCom(bestComRow), doanhSoBan(bestComRow)),
+    bestComPctDsb: pct(netCom(bestComRow), analyticsDoanhSoBan(bestComRow)),
     comLeadDiff: Math.max(0, netCom(bestComRow) - worstComVal)
   }
 })
@@ -21769,7 +23436,7 @@ const craftCompareBarData = computed(() => {
         {
           type: 'bar',
           label: 'Doanh số bán',
-          data: items.map(d => doanhSoBan(d.row)),
+          data: items.map(d => analyticsDoanhSoBan(d.row)),
           backgroundColor: isLight ? '#0284c7' : '#38bdf8',
           borderRadius: 6,
           maxBarThickness: isMobile.value ? 22 : 38
@@ -22022,10 +23689,12 @@ async function saveModalItemsToCraft(silent = false): Promise<string[]> {
             : await uploadFileToCloudinary(item.rawFileScanCom)
       }
 
-      let linkBG = fallbackRow?.link_excel_bao_gia || ''
+      let linkBG = fallbackRow?.link_excel_bao_gia || item.linkBaoGia || ''
+      let linkBGKhach = fallbackRow?.link_excel_bao_gia_khach || item.linkBaoGiaKhach || ''
       let linkMH = fallbackRow?.link_excel_mua_hang || ''
       let linkDXMH = fallbackRow?.link_excel_dxmh || item.linkDxmh || ''
       let tenBG = fallbackRow?.ten_file_bao_gia || ''
+      let tenBGKhach = fallbackRow?.ten_file_bao_gia_khach || item.tenFileBGKhach || ''
       let tenMH = fallbackRow?.ten_file_mua_hang || ''
       let tenDXMH = fallbackRow?.ten_file_dxmh || item.tenFileDxmh || ''
 
@@ -22035,6 +23704,13 @@ async function saveModalItemsToCraft(silent = false): Promise<string[]> {
             ? item.previewUrlBG
             : await uploadFileToCloudinary(item.rawFileBaoGia)
         tenBG = item.rawFileBaoGia.name
+      }
+      if (item.rawFileBaoGiaKhach) {
+        linkBGKhach =
+          item.previewUrlBGKhach && item.previewUrlBGKhach.startsWith('https://res.cloudinary.com/')
+            ? item.previewUrlBGKhach
+            : await uploadFileToCloudinary(item.rawFileBaoGiaKhach)
+        tenBGKhach = item.rawFileBaoGiaKhach.name
       }
       if (item.rawFileMuaHang) {
         linkMH =
@@ -22056,7 +23732,8 @@ async function saveModalItemsToCraft(silent = false): Promise<string[]> {
         maCongTyGen,
         tenCongTy,
         tenKhachHang,
-        mstVal
+        mstVal,
+        diaChiVal
       } = await upsertCustomerFromModalItem(item)
 
       const tTruoc = Number(item.doanhSoBan ?? item.goodsTotal?.ttTruoc ?? 0)
@@ -22066,6 +23743,27 @@ async function saveModalItemsToCraft(silent = false): Promise<string[]> {
       const tPct = Number(item.taxPct) || 0
       const tCom = Math.round(gCom * (tPct / 100))
       const nCom = Number(item.netCom) || Math.round(gCom - tCom)
+      const tTruocKhach = Number(
+        item.doanhSoBanKhach ??
+          item.goodsTotal?.ttTruocKhach ??
+          Math.max(0, tTruoc - gCom)
+      )
+      const tVatKhach = Number(item.goodsTotal?.vatKhach ?? tVat)
+      const tSauKhach = tTruocKhach + tVatKhach
+      item.doanhSoBanKhach = tTruocKhach
+      item.vatKhach = tVatKhach
+      item.ttSauKhach = tSauKhach
+      if (item.goodsTotal) {
+        item.goodsTotal = {
+          ...item.goodsTotal,
+          ttTruoc: tTruoc,
+          vat: tVat,
+          ttSau: tSau,
+          ttTruocKhach: tTruocKhach,
+          vatKhach: tVatKhach,
+          ttSauKhach: tSauKhach
+        }
+      }
       const finalCreatedTime = normalizePoCreatedTime(item.createdTime, fallbackRow?.created_time || nowStr)
       const savedOtherFiles = await resolveUploadedOtherFiles(item, nowStr)
 
@@ -22085,6 +23783,7 @@ async function saveModalItemsToCraft(silent = false): Promise<string[]> {
         Ten_khach_hang: tenKhachHang || tenCongTy,
         Ma_cong_ty: maCongTyGen,
         Ten_cong_ty: tenCongTy,
+        Dia_chi_cong_ty: diaChiVal || '',
         MST: mstVal,
         created_time: finalCreatedTime,
         content_of_contract_PO: item.content || '',
@@ -22092,6 +23791,11 @@ async function saveModalItemsToCraft(silent = false): Promise<string[]> {
         Tong_tien_truoc_thueVAT: tTruoc,
         Tong_thueVAT: tVat,
         Tong_tien_sau_thueVAT: tSau,
+        Tong_gia_thuc_te: tTruocKhach,
+        Tong_tien_truoc_thueVAT_khach: tTruocKhach,
+        Tong_thueVAT_khach: tVatKhach,
+        Tong_tien_sau_thueVAT_khach: tSauKhach,
+        doanhSoBan_khach: tTruocKhach,
         Tong_thanh_tien_chua_VAT_mua_hang: Number(item.giaMua) || 0,
         Tong_CP_don_hang: Number(item.tongCP) || 0,
         chiet_khau_tong_truoc_thue: gCom,
@@ -22105,20 +23809,187 @@ async function saveModalItemsToCraft(silent = false): Promise<string[]> {
         account_manager_name: item.am || '',
         img_save: uploadedUrl,
         link_excel_bao_gia: linkBG,
+        link_excel_bao_gia_khach: linkBGKhach,
         link_excel_mua_hang: linkMH,
         link_excel_dxmh: linkDXMH,
         ten_file_bao_gia: tenBG,
+        ten_file_bao_gia_khach: tenBGKhach,
         ten_file_mua_hang: tenMH,
         ten_file_dxmh: tenDXMH,
         danh_sach_file_khac: savedOtherFiles,
         goodsList: Array.isArray(item.goodsList) ? JSON.parse(JSON.stringify(item.goodsList)) : [],
-        goodsTotal: item.goodsTotal ? JSON.parse(JSON.stringify(item.goodsTotal)) : { ttTruoc: tTruoc, vat: tVat, ttSau: tSau },
+        goodsTotal: item.goodsTotal
+          ? JSON.parse(JSON.stringify(item.goodsTotal))
+          : {
+              ttTruoc: tTruoc,
+              vat: tVat,
+              ttSau: tSau,
+              ttTruocKhach: tTruocKhach,
+              vatKhach: tVatKhach,
+              ttSauKhach: tSauKhach
+            },
         is_craft: true,
         chotDeal: false
       }
 
+      const craftMaHD = String(craftPayload.ma_hop_dong || '').trim()
+      let existingHdVal: Record<string, any> = {}
+      if (craftMaHD) {
+        try {
+          const hdSnap = await get(dbRef(database, `hop_dong_tong_quat/${craftMaHD}`))
+          if (hdSnap.exists() && typeof hdSnap.val() === 'object') {
+            existingHdVal = hdSnap.val()
+          }
+        } catch (_err) {
+          // ignore
+        }
+      }
+      const craftSoHD = String(craftPayload.so_hop_dong || existingHdVal.so_hop_dong || existingHdVal.So_hop_dong || soPoLabel).trim()
+      craftPayload.so_hop_dong = craftSoHD
+
       updates[`sale_report_craft/${targetKey}`] = craftPayload
       savedKeys.push(targetKey)
+
+      if (craftMaHD) {
+        updates[`hop_dong_tong_quat/${craftMaHD}`] = {
+          ...existingHdVal,
+          ma_hop_dong: craftMaHD,
+          so_hop_dong: craftSoHD,
+          ma_hop_dong_goc: existingHdVal.ma_hop_dong_goc || craftMaHD,
+          ma_khach_hang: maKHGen,
+          ten_khach_hang: tenKhachHang || tenCongTy,
+          ngay_tao: existingHdVal.ngay_tao || formatNgayTaoHopDong(),
+          ngay_tao_hop_dong: existingHdVal.ngay_tao_hop_dong || formatNgayTaoHopDong(),
+          ngay_tao_date: existingHdVal.ngay_tao_date || formatCreatedTimeDateOnly(),
+          created_time: finalCreatedTime,
+          Tong_tien_truoc_thueVAT: tTruoc,
+          tong_truoc_vat: tTruoc,
+          Tong_thueVAT: tVat,
+          tong_vat: tVat,
+          Tong_tien_sau_thueVAT: tSau,
+          tong_sau_vat: tSau,
+          Tong_gia_thuc_te: tTruocKhach,
+          Tong_tien_truoc_thueVAT_khach: tTruocKhach,
+          tong_truoc_vat_khach: tTruocKhach,
+          tong_truoc_vat_goc: tTruocKhach,
+          Tong_thueVAT_khach: tVatKhach,
+          tong_vat_khach: tVatKhach,
+          Tong_tien_sau_thueVAT_khach: tSauKhach,
+          tong_sau_vat_khach: tSauKhach,
+          loai_hop_dong: 'Tạm',
+          Trang_thai_hop_dong: 'Tạm',
+          isCompleted: false,
+          id_sale_report_craft: targetKey,
+          So_PO: soPoLabel,
+          so_po: soPoLabel,
+          content: item.content || '',
+          content_po: item.content || '',
+          content_of_contract_PO: item.content || '',
+          Ghi_chu: item.ghiChu ?? fallbackRow?.ghi_chu ?? '',
+          ghi_chu: item.ghiChu ?? fallbackRow?.ghi_chu ?? '',
+          Don_vi_tien_te: 'VND',
+          don_vi_tien_te: 'VND',
+          Ti_gia: 1,
+          ti_gia: 1,
+          gross_com: gCom,
+          chenh_lech_gia: gCom,
+          chiet_khau_tong_truoc_thue: gCom,
+          phan_tram_thue: tPct,
+          phan_tram_thue_chenh_lech_gia: tPct,
+          thue_chenh_lech_gia: tCom,
+          con_lai: nCom,
+          tong_chiet_khau: nCom,
+          net_com: nCom,
+          Tong_thanh_tien_chua_VAT_mua_hang: Number(item.giaMua) || 0,
+          giaMua: Number(item.giaMua) || 0,
+          Tong_CP_don_hang: Number(item.tongCP) || 0,
+          tongCP: Number(item.tongCP) || 0,
+          tong_cp: Number(item.tongCP) || 0,
+          ten_file: tenBG,
+          link_file: linkBG,
+          ten_file_bao_gia: tenBG,
+          link_excel_bao_gia: linkBG,
+          ten_file_khach: tenBGKhach,
+          link_file_khach: linkBGKhach,
+          ten_file_bao_gia_khach: tenBGKhach,
+          link_excel_bao_gia_khach: linkBGKhach
+        }
+
+        if (Array.isArray(item.goodsList) && item.goodsList.length > 0) {
+          try {
+            const ctSnap = await get(dbRef(database, 'hop_dong_chi_tiet'))
+            if (ctSnap.exists()) {
+              const ctAll = ctSnap.val() || {}
+              for (const [ctK, ctV] of Object.entries(ctAll) as [string, any][]) {
+                if (ctV && String(ctV.ma_hop_dong || ctV.Ma_hop_dong || '').trim() === craftMaHD) {
+                  updates[`hop_dong_chi_tiet/${ctK}`] = null
+                }
+              }
+            }
+          } catch (_err) {
+            // ignore
+          }
+          for (const g of item.goodsList) {
+            const newCtKey = push(dbRef(database, 'hop_dong_chi_tiet')).key
+            if (newCtKey) {
+              updates[`hop_dong_chi_tiet/${newCtKey}`] = {
+                ma_hop_dong: craftMaHD,
+                so_hop_dong: craftSoHD,
+                Ma_hang: g.maHang || '',
+                ma_hang: g.maHang || '',
+                Ten_hang: g.ten || '',
+                ten_hang: g.ten || '',
+                main_img: '',
+                ma_ncc: '',
+                Ten_nha_cung_cap: item.productType || '',
+                ten_ncc: item.productType || '',
+                mo_ta_chung: '',
+                mo_ta_chi_tiet: '',
+                Features: g.dienGiai || '',
+                dien_giai: g.dienGiai || '',
+                Danh_muc: g.danhMuc || '',
+                danh_muc: g.danhMuc || '',
+                ghi_chu: '',
+                Trang_thai_hop_dong: 'Tạm',
+                trang_thai_hop_dong: 'Tạm',
+                DVT: g.dvt || '',
+                dvt: g.dvt || '',
+                Don_gia: toNum(g.donGia),
+                don_gia: toNum(g.donGia),
+                Gia_tieu_chuan: toNum(g.donGiaKhach ?? g.donGia),
+                gia_tieu_chuan: toNum(g.donGiaKhach ?? g.donGia),
+                Don_gia_hop_dong: toNum(g.donGia),
+                Thanh_tien_truoc_thue_hop_dong: toNum(g.ttTruoc),
+                Tien_thue_vat_hop_dong: toNum(g.vat),
+                Thanh_tien_sau_thue_hop_dong: toNum(g.ttSau),
+                Don_gia_khach: toNum(g.donGiaKhach ?? g.donGia),
+                don_gia_khach: toNum(g.donGiaKhach ?? g.donGia),
+                Don_gia_goc: toNum(g.donGiaKhach ?? g.donGia),
+                don_gia_goc: toNum(g.donGiaKhach ?? g.donGia),
+                Thanh_tien_truoc_thue_khach: toNum(g.ttTruocKhach ?? g.ttTruoc),
+                thanh_tien_truoc_thue_khach: toNum(g.ttTruocKhach ?? g.ttTruoc),
+                Tien_thue_vat_khach: toNum(g.vatKhach ?? g.vat),
+                tien_thue_vat_khach: toNum(g.vatKhach ?? g.vat),
+                Thanh_tien_sau_thue_khach: toNum(g.ttSauKhach ?? g.ttSau),
+                thanh_tien_sau_thue_khach: toNum(g.ttSauKhach ?? g.ttSau),
+                Chenh_lech_truoc_thue: toNum(g.ttTruoc) - toNum(g.ttTruocKhach ?? g.ttTruoc),
+                Don_vi_tien_te: 'VND',
+                don_vi_tien_te: 'VND',
+                Ti_gia: 1,
+                ti_gia: 1,
+                Thue_VAT: toNum(g.vatPct),
+                thue_vat: toNum(g.vatPct),
+                So_luong: toNum(g.sl) || 1,
+                so_luong: toNum(g.sl) || 1,
+                features: g.dienGiai || '',
+                gia_hardware: 0,
+                gia_nhap: 0,
+                muc_phan_tram_off: 0
+              }
+            }
+          }
+        }
+      }
       if ((item as any)._clonedFromRow) {
         const origKey = getCraftCompareKey((item as any)._clonedFromRow)
         if (origKey && selectedCraftCompareKeys.value.includes(origKey) && !selectedCraftCompareKeys.value.includes(targetKey)) {
@@ -22210,6 +24081,7 @@ function cloneActiveModalItemAsNewTab() {
       ...cur,
       row: null,
       rawFileBaoGia: undefined,
+      rawFileBaoGiaKhach: undefined,
       rawFileMuaHang: undefined,
       rawFileDxmh: undefined,
       rawFileScanCom: undefined
@@ -22355,15 +24227,32 @@ async function promoteCraftToOfficial(craftRow: any) {
 
     const finalSoPo = String(craftRow.So_PO || '').trim() || getNextAvailableSoPO(1)[0]
 
-    const tTruoc = doanhSoBan(craftRow)
+    const tTruoc = doanhSoBanHd(craftRow)
     const tVat = thueVat(craftRow)
-    const tSau = tongSauVat(craftRow)
+    const tSau = tongSauVatHd(craftRow)
     const gm = giaMua(craftRow)
     const tcp = tongCP(craftRow)
     const gCom = grossCom(craftRow)
     const tPct = thuePct(craftRow)
     const tCom = thueCom(craftRow)
     const nCom = netCom(craftRow)
+    const tTruocKhach = toNum(
+      craftRow.Tong_tien_truoc_thueVAT_khach ??
+        craftRow.Tong_gia_thuc_te ??
+        craftRow.doanhSoBan_khach ??
+        craftRow.goodsTotal?.ttTruocKhach ??
+        Math.max(0, tTruoc - gCom)
+    )
+    const tVatKhach = toNum(
+      craftRow.Tong_thueVAT_khach ??
+        craftRow.goodsTotal?.vatKhach ??
+        tVat
+    )
+    const tSauKhach = toNum(
+      craftRow.Tong_tien_sau_thueVAT_khach ??
+        craftRow.goodsTotal?.ttSauKhach ??
+        (tTruocKhach + tVatKhach)
+    )
     const nowStr = getFormattedNow()
     const srID = 'SR_' + Date.now() + '_' + Math.floor(Math.random() * 10000)
     const newSrKey = push(dbRef(database, 'sale_report')).key || srID
@@ -22385,6 +24274,11 @@ async function promoteCraftToOfficial(craftRow: any) {
       Tong_tien_truoc_thueVAT: tTruoc,
       Tong_thueVAT: tVat,
       Tong_tien_sau_thueVAT: tSau,
+      Tong_gia_thuc_te: tTruocKhach,
+      Tong_tien_truoc_thueVAT_khach: tTruocKhach,
+      Tong_thueVAT_khach: tVatKhach,
+      Tong_tien_sau_thueVAT_khach: tSauKhach,
+      doanhSoBan_khach: tTruocKhach,
       so_tien_da_thanh_toan: 0,
       cong_no: tSau,
       thoi_gian_thanh_toan: '',
@@ -22401,9 +24295,11 @@ async function promoteCraftToOfficial(craftRow: any) {
       account_manager_name: craftRow.account_manager_name || '',
       img_save: craftRow.img_save || '',
       link_excel_bao_gia: craftRow.link_excel_bao_gia || '',
+      link_excel_bao_gia_khach: craftRow.link_excel_bao_gia_khach || '',
       link_excel_mua_hang: craftRow.link_excel_mua_hang || '',
       link_excel_dxmh: craftRow.link_excel_dxmh || '',
       ten_file_bao_gia: craftRow.ten_file_bao_gia || '',
+      ten_file_bao_gia_khach: craftRow.ten_file_bao_gia_khach || '',
       ten_file_mua_hang: craftRow.ten_file_mua_hang || '',
       ten_file_dxmh: craftRow.ten_file_dxmh || '',
       danh_sach_file_khac: Array.isArray(craftRow.danh_sach_file_khac) ? craftRow.danh_sach_file_khac : [],
@@ -22412,7 +24308,14 @@ async function promoteCraftToOfficial(craftRow: any) {
       from_craft: craftKey,
       is_craft: false,
       goodsList: Array.isArray(craftRow.goodsList) ? craftRow.goodsList : [],
-      goodsTotal: craftRow.goodsTotal || { ttTruoc: tTruoc, vat: tVat, ttSau: tSau }
+      goodsTotal: craftRow.goodsTotal || {
+        ttTruoc: tTruoc,
+        vat: tVat,
+        ttSau: tSau,
+        ttTruocKhach: tTruocKhach,
+        vatKhach: tVatKhach,
+        ttSauKhach: tSauKhach
+      }
     }
 
     const hdTongData = {
@@ -22421,20 +24324,36 @@ async function promoteCraftToOfficial(craftRow: any) {
       ma_khach_hang: craftRow.Ma_khach_hang || '',
       ten_khach_hang: craftRow.Ten_khach_hang || craftRow.Ten_cong_ty || '',
       ngay_tao: formatNgayTaoHopDong(),
+      ngay_tao_hop_dong: formatNgayTaoHopDong(),
+      Tong_tien_truoc_thueVAT: tTruoc,
       tong_truoc_vat: tTruoc,
+      Tong_thueVAT: tVat,
       tong_vat: tVat,
+      Tong_tien_sau_thueVAT: tSau,
       tong_sau_vat: tSau,
+      Tong_gia_thuc_te: tTruocKhach,
+      Tong_tien_truoc_thueVAT_khach: tTruocKhach,
+      tong_truoc_vat_khach: tTruocKhach,
+      Tong_thueVAT_khach: tVatKhach,
+      tong_vat_khach: tVatKhach,
+      Tong_tien_sau_thueVAT_khach: tSauKhach,
+      tong_sau_vat_khach: tSauKhach,
       da_thanh_toan: 0,
+      Tong_thanh_toan: 0,
       con_phai_thu: tSau,
       trang_thai_thanh_toan: 'Chưa thanh toán đủ',
       loai_hop_dong: 'Chính thức',
+      Trang_thai_hop_dong: 'Chính thức',
       content: craftRow.content_of_contract_PO || '',
+      content_of_contract_PO: craftRow.content_of_contract_PO || '',
       don_vi_tien_te: 'VND',
       ti_gia: 1,
       ghi_chu: craftRow.ghi_chu || '',
-      tong_truoc_vat_goc: tTruoc,
+      Ghi_chu: craftRow.ghi_chu || '',
+      tong_truoc_vat_goc: tTruocKhach,
       ngay_tao_date: formatCreatedTimeDateOnly(),
       so_po: finalSoPo,
+      So_PO: finalSoPo,
       po_content: '',
       content_po: craftRow.content_of_contract_PO || '',
       gross_com: gCom,
@@ -22446,7 +24365,20 @@ async function promoteCraftToOfficial(craftRow: any) {
       phan_tram_thue_chenh_lech_gia: tPct,
       tong_chiet_khau: nCom,
       con_lai: nCom,
-      tong_cp: tcp
+      net_com: nCom,
+      Tong_thanh_tien_chua_VAT_mua_hang: gm,
+      giaMua: gm,
+      Tong_CP_don_hang: tcp,
+      tongCP: tcp,
+      tong_cp: tcp,
+      ten_file: craftRow.ten_file_bao_gia || '',
+      link_file: craftRow.link_excel_bao_gia || '',
+      ten_file_bao_gia: craftRow.ten_file_bao_gia || '',
+      link_excel_bao_gia: craftRow.link_excel_bao_gia || '',
+      ten_file_khach: craftRow.ten_file_bao_gia_khach || '',
+      link_file_khach: craftRow.link_excel_bao_gia_khach || '',
+      ten_file_bao_gia_khach: craftRow.ten_file_bao_gia_khach || '',
+      link_excel_bao_gia_khach: craftRow.link_excel_bao_gia_khach || ''
     }
 
     const updates: Record<string, any> = {}
@@ -22460,24 +24392,50 @@ async function promoteCraftToOfficial(craftRow: any) {
           updates[`hop_dong_chi_tiet/${newCtKey}`] = {
             ma_hop_dong: maHD,
             so_hop_dong: soHD,
+            Ma_hang: g.maHang || '',
             ma_hang: g.maHang || '',
+            Ten_hang: g.ten || '',
             ten_hang: g.ten || '',
             main_img: '',
             ma_ncc: '',
+            Ten_nha_cung_cap: craftRow.Ten_nha_cung_cap || '',
             ten_ncc: craftRow.Ten_nha_cung_cap || '',
             mo_ta_chung: '',
             mo_ta_chi_tiet: '',
+            Features: g.dienGiai || '',
             dien_giai: g.dienGiai || '',
+            Danh_muc: g.danhMuc || '',
             danh_muc: g.danhMuc || '',
             ghi_chu: '',
+            DVT: g.dvt || '',
             dvt: g.dvt || '',
+            Don_gia: toNum(g.donGia),
             don_gia: toNum(g.donGia),
-            gia_tieu_chuan: toNum(g.donGia),
+            Gia_tieu_chuan: toNum(g.donGiaKhach ?? g.donGia),
+            gia_tieu_chuan: toNum(g.donGiaKhach ?? g.donGia),
+            Don_gia_hop_dong: toNum(g.donGia),
+            Thanh_tien_truoc_thue_hop_dong: toNum(g.ttTruoc),
+            Tien_thue_vat_hop_dong: toNum(g.vat),
+            Thanh_tien_sau_thue_hop_dong: toNum(g.ttSau),
+            Don_gia_khach: toNum(g.donGiaKhach ?? g.donGia),
+            don_gia_khach: toNum(g.donGiaKhach ?? g.donGia),
+            Don_gia_goc: toNum(g.donGiaKhach ?? g.donGia),
+            don_gia_goc: toNum(g.donGiaKhach ?? g.donGia),
+            Thanh_tien_truoc_thue_khach: toNum(g.ttTruocKhach ?? g.ttTruoc),
+            thanh_tien_truoc_thue_khach: toNum(g.ttTruocKhach ?? g.ttTruoc),
+            Tien_thue_vat_khach: toNum(g.vatKhach ?? g.vat),
+            tien_thue_vat_khach: toNum(g.vatKhach ?? g.vat),
+            Thanh_tien_sau_thue_khach: toNum(g.ttSauKhach ?? g.ttSau),
+            thanh_tien_sau_thue_khach: toNum(g.ttSauKhach ?? g.ttSau),
+            Don_vi_tien_te: 'VND',
             don_vi_tien_te: 'VND',
+            Ti_gia: 1,
             ti_gia: 1,
+            Thue_VAT: toNum(g.vatPct),
             thue_vat: toNum(g.vatPct),
+            So_luong: toNum(g.sl) || 1,
             so_luong: toNum(g.sl) || 1,
-            features: '',
+            features: g.dienGiai || '',
             gia_hardware: 0,
             gia_nhap: 0,
             muc_phan_tram_off: 0
@@ -22579,6 +24537,27 @@ function triggerDxmhImport(targetItem: ImportItem | null) {
     dxmhInput.value.value = ''
     dxmhInput.value.click()
   }
+}
+
+function extractPoDateTimeFromDxmhFileName(fileName: string): string | null {
+  const base = String(fileName || '').replace(/\.[^/.]+$/, '').trim()
+  if (!base) return null
+  // Khớp ngày/tháng/năm trong tên file DXMH (VD: 704_DXMH_Orion_Kaspersky_A.Sơn_19.10.2026)
+  const regex = /(?:^|[^0-9])(\d{1,2})[.\-_\/](\d{1,2})[.\-_\/](20\d{2})(?:$|[^0-9])/g
+  let lastValidMatch: { d: number; m: number; y: number } | null = null
+  let m: RegExpExecArray | null
+  while ((m = regex.exec(base)) !== null) {
+    const dNum = Number(m[1])
+    const mNum = Number(m[2])
+    const yNum = Number(m[3])
+    if (dNum >= 1 && dNum <= 31 && mNum >= 1 && mNum <= 12 && yNum >= 2000 && yNum <= 2099) {
+      lastValidMatch = { d: dNum, m: mNum, y: yNum }
+    }
+  }
+  if (!lastValidMatch) return null
+  const now = new Date()
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${p(lastValidMatch.d)}/${p(lastValidMatch.m)}/${lastValidMatch.y} ${p(now.getHours())}:${p(now.getMinutes())}:${p(now.getSeconds())}`
 }
 
 function parseDxmhExcelBuffer(arrayBuffer: ArrayBuffer, fileName: string) {
@@ -22708,19 +24687,10 @@ function parseDxmhExcelBuffer(arrayBuffer: ArrayBuffer, fileName: string) {
     tel: String(record.CUS_TEL || '').trim()
   }
 
-  // Gợi ý thời gian PO từ tên file (VD: ..._08.10.2026) hoặc thời gian hiện tại (người dùng được phép sửa tự do)
-  let extractedTime = getFormattedNow()
-  const dateInName = content.match(/(?:^|[_\-\s])(\d{1,2})[.\-](\d{1,2})[.\-](20\d{2})(?:$|[_\-\s])/)
-  if (dateInName) {
-    const dNum = Number(dateInName[1])
-    const mNum = Number(dateInName[2])
-    const yNum = Number(dateInName[3])
-    if (dNum >= 1 && dNum <= 31 && mNum >= 1 && mNum <= 12) {
-      const now = new Date()
-      const p = (n: number) => String(n).padStart(2, '0')
-      extractedTime = `${p(dNum)}/${p(mNum)}/${yNum} ${p(now.getHours())}:${p(now.getMinutes())}:${p(now.getSeconds())}`
-    }
-  }
+  // Lấy thời gian PO từ ngày/tháng/năm trong tên file DXMH (VD: ..._19.10.2026), nếu không có thì fallback thời gian hiện tại
+  const dxmhFileTime = extractPoDateTimeFromDxmhFileName(fileName)
+  const extractedTime = dxmhFileTime || getFormattedNow()
+  const hasDateFromFileName = Boolean(dxmhFileTime)
 
   // Tự động khớp NCC trong schema hang_hoa nếu có
   const productType = matchHangHoaNcc(vendorHint, content)
@@ -22735,6 +24705,7 @@ function parseDxmhExcelBuffer(arrayBuffer: ArrayBuffer, fileName: string) {
     nguoiNhanDxmh,
     productType,
     extractedTime,
+    hasDateFromFileName,
     previewHtml,
     dxmhCustomerDetails
   }
@@ -23053,18 +25024,9 @@ Hãy trích xuất thông tin khách hàng, số PO và nhà cung cấp từ tà
 
 async function extractUniversalDxmhFromFile(file: File) {
   const content = file.name.replace(/\.[^/.]+$/, '')
-  let extractedTime = getFormattedNow()
-  const dateInName = content.match(/(?:^|[_\-\s])(\d{1,2})[.\-](\d{1,2})[.\-](20\d{2})(?:$|[_\-\s])/)
-  if (dateInName) {
-    const dNum = Number(dateInName[1])
-    const mNum = Number(dateInName[2])
-    const yNum = Number(dateInName[3])
-    if (dNum >= 1 && dNum <= 31 && mNum >= 1 && mNum <= 12) {
-      const now = new Date()
-      const p = (n: number) => String(n).padStart(2, '0')
-      extractedTime = `${p(dNum)}/${p(mNum)}/${yNum} ${p(now.getHours())}:${p(now.getMinutes())}:${p(now.getSeconds())}`
-    }
-  }
+  const dxmhFileTime = extractPoDateTimeFromDxmhFileName(file.name)
+  let extractedTime = dxmhFileTime || getFormattedNow()
+  let hasDateFromFileName = Boolean(dxmhFileTime)
 
   let soPO = ''
   const poFromName = content.match(/^(\d{1,6})(?:[_\-\s.]|$)/)
@@ -23090,6 +25052,7 @@ async function extractUniversalDxmhFromFile(file: File) {
         if (excelParsed.soPO) soPO = excelParsed.soPO
         if (excelParsed.productType) productType = excelParsed.productType
         if (excelParsed.extractedTime) extractedTime = excelParsed.extractedTime
+        if (excelParsed.hasDateFromFileName) hasDateFromFileName = true
         if (excelParsed.tenCT || excelParsed.nguoiNhanDxmh || excelParsed.tenKH || excelParsed.mst) {
           mst = excelParsed.mst
           tenCT = excelParsed.tenCT
@@ -23174,7 +25137,7 @@ async function extractUniversalDxmhFromFile(file: File) {
       const aiSoPO = aiData.soPO || soPO
       const aiProductType = matchHangHoaNcc(aiData.vendorHint, content) || productType
       let aiTime = extractedTime
-      if (aiData.ngayTao && /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(aiData.ngayTao)) {
+      if (!hasDateFromFileName && aiData.ngayTao && /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(aiData.ngayTao)) {
         const now = new Date()
         const p = (n: number) => String(n).padStart(2, '0')
         aiTime = `${aiData.ngayTao} ${p(now.getHours())}:${p(now.getMinutes())}:${p(now.getSeconds())}`
@@ -23246,6 +25209,7 @@ async function extractUniversalDxmhFromFile(file: File) {
     nguoiNhanDxmh,
     productType,
     extractedTime,
+    hasDateFromFileName,
     previewHtml,
     pUrl,
     dxmhCustomerDetails
@@ -23304,6 +25268,12 @@ async function confirmUploadModeChoice(mode: 'store_only' | 'scan_data') {
         tgtItem.previewUrlDXMH = pUrl
         tgtItem.previewHtmlDXMH = pHtml
         tgtItem.activePreviewTab = 'dxmh'
+        const dxmhFileTime = extractPoDateTimeFromDxmhFileName(file.name)
+        if (dxmhFileTime) {
+          tgtItem.createdTime = dxmhFileTime
+        } else if (!tgtItem.createdTime) {
+          tgtItem.createdTime = getFormattedNow()
+        }
         isModalDirty.value = true
         await openSrAlert({
           variant: 'success',
@@ -23335,7 +25305,7 @@ async function confirmUploadModeChoice(mode: 'store_only' | 'scan_data') {
           customer: '',
           recipient: '',
           mst: '',
-          createdTime: getFormattedNow(),
+          createdTime: extractPoDateTimeFromDxmhFileName(file.name) || getFormattedNow(),
           content: file.name.replace(/\.[^/.]+$/, ''),
           netCom: 0,
           am: 'Lê Phi Sơn',
@@ -23369,18 +25339,28 @@ async function confirmUploadModeChoice(mode: 'store_only' | 'scan_data') {
       if (tgt.type === 'update_item_bao_gia' && tgt.row) {
         const file = state.files[0]
         const { pUrl, pHtml } = await generateExcelOrPdfPreviewOnly(file)
-        tgt.row.rawFileBaoGia = file
-        tgt.row.previewUrlBG = pUrl
-        tgt.row.previewHtmlBG = pHtml
+        const isKhachMode = getModalPriceMode(tgt.row) === 'khach'
+        if (isKhachMode) {
+          tgt.row.rawFileBaoGiaKhach = file
+          tgt.row.tenFileBGKhach = file.name
+          tgt.row.previewUrlBGKhach = pUrl
+          tgt.row.previewHtmlBGKhach = pHtml
+        } else {
+          tgt.row.rawFileBaoGia = file
+          tgt.row.previewUrlBG = pUrl
+          tgt.row.previewHtmlBG = pHtml
+        }
         tgt.row.activePreviewTab = 'bg'
         isModalDirty.value = true
         await openSrAlert({
           variant: 'success',
           eyebrow: 'Import thành công',
-          title: 'Import File Báo Giá thành công',
-          highlightLabel: 'CHỨNG TỪ BÁO GIÁ LƯU TRỮ',
+          title: isKhachMode ? 'Import File Báo Giá (Khách) thành công' : 'Import File Báo Giá (HĐ) thành công',
+          highlightLabel: isKhachMode ? 'CHỨNG TỪ BÁO GIÁ KHÁCH LƯU TRỮ' : 'CHỨNG TỪ BÁO GIÁ HĐ LƯU TRỮ',
           highlightValue: file.name,
-          message: 'Đã tải và đính kèm file Báo giá vào PO thành công.',
+          message: isKhachMode
+            ? 'Đã tải và đính kèm file Báo giá (Giá Khách) vào PO thành công.'
+            : 'Đã tải và đính kèm file Báo giá (Giá Hợp Đồng) vào PO thành công.',
           confirmText: 'Hoàn tất'
         })
         return
@@ -23467,20 +25447,173 @@ async function confirmUploadModeChoice(mode: 'store_only' | 'scan_data') {
   }
 }
 
-function onDxmhSelected(e: Event) {
-  const target = e.target as HTMLInputElement
-  if (!target.files || target.files.length === 0) return
-  const files = Array.from(target.files)
-  target.value = ''
+interface DuplicateDxmhMatch {
+  poLabel: string
+  customerLabel: string
+  matchedFileName: string
+  rowKey: string
+  soPO: string
+  isCraft: boolean
+  modalTabIndex?: number
+}
+
+function findDuplicateDxmhForFile(
+  fileName: string,
+  targetItem: ImportItem | null
+): DuplicateDxmhMatch | null {
+  const cleanFull = String(fileName || '').trim().toLowerCase()
+  const cleanBase = cleanFull.replace(/\.[^/.]+$/, '').trim()
+  if (!cleanBase) return null
+
+  const targetRowKey = targetItem?.row
+    ? String(targetItem.row._firebaseKey || targetItem.row.ID || '').trim()
+    : ''
+
+  // 1. Kiểm tra trong các tab PO đang mở của Modal (nếu có)
+  if (multiEditModal.value.show && Array.isArray(multiEditModal.value.items)) {
+    for (let idx = 0; idx < multiEditModal.value.items.length; idx++) {
+      const it = multiEditModal.value.items[idx]
+      if (!it || it === targetItem) continue
+      const itFile = String(it.rawFileDxmh?.name || it.tenFileDxmh || it.row?.ten_file_dxmh || '').trim().toLowerCase()
+      const itBase = itFile.replace(/\.[^/.]+$/, '').trim()
+      const itContent = String(it.content || '').trim().toLowerCase().replace(/\.[^/.]+$/, '').trim()
+      if (
+        (itFile && itFile === cleanFull) ||
+        (itBase && itBase === cleanBase) ||
+        ((it.rawFileDxmh || it.tenFileDxmh || it.linkDxmh) && itContent && itContent === cleanBase)
+      ) {
+        const itRowKey = it.row ? String(it.row._firebaseKey || it.row.ID || '').trim() : ''
+        const itSoPo = String(it.soPO || it.row?.So_PO || '').trim()
+        return {
+          poLabel: itSoPo ? `PO #${itSoPo}` : 'PO đang nhập',
+          customerLabel: it.customer || it.recipient || 'Khách hàng đang nhập',
+          matchedFileName: it.rawFileDxmh?.name || it.tenFileDxmh || it.content || fileName,
+          rowKey: itRowKey,
+          soPO: itSoPo,
+          isCraft: Boolean(it.row?._isCraft || it.row?.is_craft || srDataMode.value === 'craft'),
+          modalTabIndex: idx
+        }
+      }
+    }
+  }
+
+  // 2. Kiểm tra trong toàn bộ danh sách PO hiện có (officialRows + craftRows)
+  const allRows = [...(officialRows.value || []), ...(craftRows.value || [])]
+  const seenKeys = new Set<string>()
+  for (const r of allRows) {
+    if (!r) continue
+    const rKey = String(r._firebaseKey || r.ID || '').trim()
+    if (rKey) {
+      if (targetRowKey && rKey === targetRowKey) continue
+      if (seenKeys.has(rKey)) continue
+      seenKeys.add(rKey)
+    }
+
+    const rFile = String(r.ten_file_dxmh || '').trim().toLowerCase()
+    const rBase = rFile.replace(/\.[^/.]+$/, '').trim()
+    const rContent = String(r.content_of_contract_PO || '').trim().toLowerCase().replace(/\.[^/.]+$/, '').trim()
+    const hasDxmhMarker = Boolean(r.link_excel_dxmh || r.ten_file_dxmh || rContent.includes('dxmh'))
+
+    if (
+      (rFile && rFile === cleanFull) ||
+      (rBase && rBase === cleanBase) ||
+      (hasDxmhMarker && rContent && rContent === cleanBase)
+    ) {
+      const rSoPo = String(r.So_PO || '').trim()
+      return {
+        poLabel: rSoPo ? `PO #${rSoPo}` : 'PO đã lưu',
+        customerLabel: r.Ten_cong_ty || r.Ten_khach_hang || 'Khách hàng',
+        matchedFileName: r.ten_file_dxmh || r.content_of_contract_PO || fileName,
+        rowKey: rKey,
+        soPO: rSoPo,
+        isCraft: Boolean(r._isCraft || r.is_craft)
+      }
+    }
+  }
+
+  return null
+}
+
+function openDuplicatePoInNewTab(dup: DuplicateDxmhMatch) {
+  if (typeof window === 'undefined') return
+  if (dup.rowKey || dup.soPO) {
+    const url = new URL(window.location.href)
+    url.pathname = '/sale-report-firebase'
+    if (dup.rowKey) url.searchParams.set('openPoKey', dup.rowKey)
+    else url.searchParams.delete('openPoKey')
+    if (dup.soPO) url.searchParams.set('openSoPo', dup.soPO)
+    else url.searchParams.delete('openSoPo')
+    if (dup.isCraft) url.searchParams.set('srMode', 'craft')
+    else url.searchParams.delete('srMode')
+    window.open(url.toString(), '_blank')
+    return
+  }
+  if (typeof dup.modalTabIndex === 'number' && multiEditModal.value.show) {
+    activeItemIdx.value = dup.modalTabIndex
+    resolveSrDialog(false)
+  }
+}
+
+async function handleDxmhFilesUpload(files: File[], currentTargetItem: ImportItem | null) {
+  if (!files || files.length === 0) return
+
+  // Kiểm tra trùng tên file ĐXMH với các PO đã có trên hệ thống
+  const dupList: Array<DuplicateDxmhMatch & { fileName: string }> = []
+  for (const f of files) {
+    const dup = findDuplicateDxmhForFile(f.name, currentTargetItem)
+    if (dup) {
+      dupList.push({
+        ...dup,
+        fileName: f.name
+      })
+    }
+  }
+
+  if (dupList.length > 0) {
+    const firstDup = dupList[0]
+    const highlightVal =
+      dupList.length === 1
+        ? `${firstDup.fileName} ➔ Đã có ở ${firstDup.poLabel} (${firstDup.customerLabel})`
+        : `${dupList.length} file trùng tên (${dupList.map(d => `${d.fileName} [${d.poLabel}]`).join(', ')})`
+    const msg =
+      dupList.length === 1
+        ? `File ĐXMH "${firstDup.fileName}" bị trùng tên với chứng từ đã có trên ${firstDup.poLabel} của khách hàng "${firstDup.customerLabel}". Bạn có chắc chắn vẫn muốn tiếp tục tải file này lên không?`
+        : `Phát hiện ${dupList.length} file ĐXMH bị trùng tên với các đơn hàng PO đã có trên hệ thống (${dupList.map(d => `${d.poLabel} — ${d.customerLabel}`).join('; ')}). Bạn có chắc chắn vẫn muốn tiếp tục tải lên không?`
+
+    const proceed = await openSrConfirm({
+      variant: 'error',
+      eyebrow: 'Cảnh báo trùng tên File ĐXMH',
+      title: 'Phát hiện File ĐXMH đã tồn tại',
+      highlightLabel: 'CHỨNG TỪ ĐXMH BỊ TRÙNG TÊN',
+      highlightValue: highlightVal,
+      message: msg,
+      auxActionText: 'Xem PO bị trùng',
+      onAuxAction: () => {
+        openDuplicatePoInNewTab(firstDup)
+      },
+      confirmText: 'Vẫn tiếp tục tải lên',
+      cancelText: 'Hủy bỏ'
+    })
+    if (!proceed) return
+  }
+
   uploadModeChoiceModal.value = {
     show: true,
     kind: 'dxmh',
     docLabel: 'File Đề Xuất Mua Hàng (DXMH)',
     files,
-    dxmhTargetItem: dxmhTargetItem.value,
+    dxmhTargetItem: currentTargetItem,
     scanTargetItem: null,
     importTargetVal: null
   }
+}
+
+async function onDxmhSelected(e: Event) {
+  const target = e.target as HTMLInputElement
+  if (!target.files || target.files.length === 0) return
+  const files = Array.from(target.files)
+  target.value = ''
+  await handleDxmhFilesUpload(files, dxmhTargetItem.value)
 }
 
 async function processDxmhFilesScan(files: File[], tgtItem: ImportItem | null) {
@@ -23514,22 +25647,27 @@ async function processDxmhFilesScan(files: File[], tgtItem: ImportItem | null) {
         tgtItem.productType = parsed.productType
       }
       tgtItem.dxmhCustomerDetails = parsed.dxmhCustomerDetails
-      tgtItem.dxmhRecipient = parsed.nguoiNhanDxmh || ''
+      if (!tgtItem.customer && !tgtItem.recipient && parsed.nguoiNhanDxmh) {
+        tgtItem.dxmhRecipient = parsed.nguoiNhanDxmh
+      }
 
-      if (parsed.tenCT || parsed.nguoiNhanDxmh || parsed.tenKH || parsed.mst) {
+      const dxmhAddr = String(
+        parsed.dxmhCustomerDetails?.dia_chi_cong_ty || parsed.dxmhCustomerDetails?.address || ''
+      ).trim()
+      if (parsed.tenCT || parsed.nguoiNhanDxmh || parsed.tenKH || parsed.mst || dxmhAddr) {
         await applyExtractedQuoteCustomerToModalItem(
           tgtItem,
           parsed.tenCT || '',
           parsed.nguoiNhanDxmh || '',
           parsed.mst || '',
-          'DXMH'
+          'File ĐXMH',
+          dxmhAddr
         )
       }
-      if (parsed.mst) {
-        tgtItem.mst = parsed.mst
-      }
-      if (!tgtItem.createdTime && parsed.extractedTime) {
+      if (parsed.hasDateFromFileName && parsed.extractedTime) {
         tgtItem.createdTime = parsed.extractedTime
+      } else if (!tgtItem.createdTime) {
+        tgtItem.createdTime = parsed.extractedTime || getFormattedNow()
       }
       isModalDirty.value = true
       await openSrAlert({
@@ -23569,6 +25707,9 @@ async function processDxmhFilesScan(files: File[], tgtItem: ImportItem | null) {
           finalSoPO = currentMaxPO > 0 ? String(currentMaxPO) : ''
         }
 
+        const dxmhNewAddr = String(
+          parsed.dxmhCustomerDetails?.dia_chi_cong_ty || parsed.dxmhCustomerDetails?.address || ''
+        ).trim()
         const newItemObj: ImportItem = {
           id: Date.now() + fIdx,
           row: null,
@@ -23580,9 +25721,11 @@ async function processDxmhFilesScan(files: File[], tgtItem: ImportItem | null) {
           productType: parsed.productType || '',
           customer: parsed.tenCT || parsed.nguoiNhanDxmh || parsed.tenKH || '',
           recipient: parsed.nguoiNhanDxmh || parsed.tenCT || '',
+          address: dxmhNewAddr,
           mst: parsed.mst || '',
           extractedCompany: parsed.tenCT || '',
           extractedRecipient: parsed.nguoiNhanDxmh || '',
+          extractedAddress: dxmhNewAddr,
           extractedMST: parsed.mst || '',
           extractedSourceLabel: 'DXMH',
           createdTime: parsed.extractedTime || getFormattedNow(),
@@ -23607,7 +25750,8 @@ async function processDxmhFilesScan(files: File[], tgtItem: ImportItem | null) {
           parsed.tenCT || '',
           parsed.nguoiNhanDxmh || '',
           parsed.mst || '',
-          'DXMH'
+          'DXMH',
+          dxmhNewAddr
         )
         if (parsed.mst) {
           newItemObj.mst = parsed.mst
@@ -23700,18 +25844,14 @@ function triggerOtherFilesUpload(item: ImportItem) {
   }
 }
 
-async function onOtherFilesSelected(e: Event) {
-  const target = e.target as HTMLInputElement
-  if (!target.files || target.files.length === 0) return
-  const item = otherFilesTargetItem.value
-  if (!item) return
+async function handleOtherFilesUpload(filesArr: File[], item: ImportItem | null) {
+  if (!item || !filesArr || filesArr.length === 0) return
 
   if (!Array.isArray(item.otherFiles)) {
     item.otherFiles = []
   }
 
   const nowStr = getFormattedNow()
-  const filesArr = Array.from(target.files)
   for (let i = 0; i < filesArr.length; i++) {
     const file = filesArr[i]
     let previewHtml = ''
@@ -23741,7 +25881,6 @@ async function onOtherFilesSelected(e: Event) {
   item.activeOtherFileIdx = Math.max(0, item.otherFiles.length - 1)
   item.activePreviewTab = 'other'
   isModalDirty.value = true
-  target.value = ''
   await openSrAlert({
     variant: 'success',
     eyebrow: 'Import thành công',
@@ -23751,6 +25890,14 @@ async function onOtherFilesSelected(e: Event) {
     message: 'Đã tải và thêm file đính kèm vào đơn hàng PO thành công.',
     confirmText: 'Hoàn tất'
   })
+}
+
+async function onOtherFilesSelected(e: Event) {
+  const target = e.target as HTMLInputElement
+  if (!target.files || target.files.length === 0) return
+  const filesArr = Array.from(target.files)
+  target.value = ''
+  await handleOtherFilesUpload(filesArr, otherFilesTargetItem.value)
 }
 
 function removeOtherFile(item: ImportItem, idx: number | string) {
@@ -24119,6 +26266,129 @@ function onFileSelected(e: Event) {
     dxmhTargetItem: null,
     scanTargetItem: null,
     importTargetVal: { ...tgt }
+  }
+}
+
+function handlePoModalClipboardPaste(e: ClipboardEvent) {
+  if (!multiEditModal.value.show || isMobileShell.value) return
+  if (
+    srDialog.show ||
+    uploadModeChoiceModal.value.show ||
+    importCustConflictModal.value.show ||
+    scanConfirmModal.value.show ||
+    showUnsavedPoCloseModal.value ||
+    loading.value
+  ) {
+    return
+  }
+
+  const cb = e.clipboardData
+  if (!cb) return
+
+  const collectedFiles: File[] = []
+  const seenSigs = new Set<string>()
+  const pushUniqueFile = (f: File | null | undefined) => {
+    if (!f) return
+    const sig = `${f.name}|${f.size}|${f.type}|${f.lastModified}`
+    if (seenSigs.has(sig)) return
+    seenSigs.add(sig)
+    collectedFiles.push(f)
+  }
+
+  if (cb.files && cb.files.length > 0) {
+    Array.from(cb.files).forEach(pushUniqueFile)
+  }
+  if (cb.items && cb.items.length > 0) {
+    for (let i = 0; i < cb.items.length; i++) {
+      const it = cb.items[i]
+      if (it && it.kind === 'file') {
+        pushUniqueFile(it.getAsFile())
+      }
+    }
+  }
+
+  // Nếu Clipboard chỉ chứa text (không có file hay hình ảnh) thì để trình duyệt dán text vào input như bình thường
+  if (collectedFiles.length === 0) return
+
+  const activeItem =
+    multiEditModal.value.items[activeItemIdx.value] || multiEditModal.value.items[0] || null
+  if (!activeItem) return
+
+  e.preventDefault()
+  e.stopPropagation()
+
+  isPoLeftPaneCollapsed.value = false
+  const activeTab = getActivePreviewTab(activeItem)
+
+  const d = new Date()
+  const p = (n: number) => String(n).padStart(2, '0')
+  const stamp = `${p(d.getDate())}${p(d.getMonth() + 1)}${d.getFullYear()}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`
+  const prefixByTab: Record<string, string> = {
+    bg: 'Bao_gia_paste',
+    mh: 'Mua_hang_paste',
+    dxmh: 'DXMH_paste',
+    img: 'Chung_tu_COM',
+    other: 'Tai_lieu_khac'
+  }
+  const tabPrefix = prefixByTab[activeTab] || 'Tai_lieu_paste'
+
+  const normalizedFiles = collectedFiles.map((f, idx) => {
+    const rawName = String(f.name || '').trim()
+    const isGenericClipName = !rawName || /^(image|clipboard|blob|untitled)(\.[a-z0-9]+)?$/i.test(rawName)
+    if (!isGenericClipName) return f
+
+    const extFromName = rawName.includes('.') ? rawName.split('.').pop() : ''
+    const extFromMime = f.type && f.type.includes('/') ? f.type.split('/')[1].split('+')[0] : ''
+    const ext = (extFromName || extFromMime || 'png').replace(/[^a-z0-9]/gi, '').toLowerCase() || 'png'
+    const suffix = collectedFiles.length > 1 ? `_${idx + 1}` : ''
+    const finalName = `${tabPrefix}_${stamp}${suffix}.${ext}`
+    return new File([f], finalName, {
+      type: f.type || 'image/png',
+      lastModified: f.lastModified || Date.now()
+    })
+  })
+
+  if (activeTab === 'bg') {
+    const tgt = { row: activeItem, type: 'update_item_bao_gia' as const }
+    importTarget.value = tgt
+    uploadModeChoiceModal.value = {
+      show: true,
+      kind: 'file_import',
+      docLabel: 'File Báo Giá Khách Hàng',
+      files: [normalizedFiles[0]],
+      dxmhTargetItem: null,
+      scanTargetItem: null,
+      importTargetVal: { ...tgt }
+    }
+  } else if (activeTab === 'mh') {
+    const tgt = { row: activeItem, type: 'update_item_mua_hang' as const }
+    importTarget.value = tgt
+    uploadModeChoiceModal.value = {
+      show: true,
+      kind: 'file_import',
+      docLabel: 'File Đơn Mua Hàng (NCC)',
+      files: [normalizedFiles[0]],
+      dxmhTargetItem: null,
+      scanTargetItem: null,
+      importTargetVal: { ...tgt }
+    }
+  } else if (activeTab === 'dxmh') {
+    dxmhTargetItem.value = activeItem
+    void handleDxmhFilesUpload([normalizedFiles[0]], activeItem)
+  } else if (activeTab === 'img') {
+    scanTarget.value = activeItem
+    uploadModeChoiceModal.value = {
+      show: true,
+      kind: 'scan_img',
+      docLabel: 'Chứng Từ COM',
+      files: [normalizedFiles[0]],
+      dxmhTargetItem: null,
+      scanTargetItem: activeItem,
+      importTargetVal: null
+    }
+  } else {
+    otherFilesTargetItem.value = activeItem
+    void handleOtherFilesUpload(normalizedFiles, activeItem)
   }
 }
 
@@ -25272,6 +27542,7 @@ async function processImportFilesScan(
       let extractedCustomer = ''
       let extractedCompany = ''
       let extractedRecipient = ''
+      let extractedAddress = ''
       let extractedMST = ''
       let extractedTime = ''
       let extractedProductType = isBG ? matchHangHoaNcc('', file.name) : ''
@@ -26181,12 +28452,13 @@ async function processImportFilesScan(
           if (stdGoods.length > 0) {
             goodsList = stdGoods
           }
-          if (!extractedCompany || !extractedRecipient || !extractedMST) {
+          if (!extractedCompany || !extractedRecipient || !extractedMST || !extractedAddress) {
             try {
               const stdCust = await parseCustomerQuoteStandardFromFile(file)
               if (stdCust) {
                 if (!extractedCompany && stdCust.Ten_cong_ty) extractedCompany = stdCust.Ten_cong_ty
                 if (!extractedRecipient && stdCust.Ten_khach_hang) extractedRecipient = stdCust.Ten_khach_hang
+                if (!extractedAddress && stdCust.Dia_chi_cong_ty) extractedAddress = stdCust.Dia_chi_cong_ty
                 if (!extractedMST && stdCust.MST) extractedMST = stdCust.MST
               }
             } catch (_) {}
@@ -26272,6 +28544,7 @@ async function processImportFilesScan(
             const aiRecipient = String(
               aiRes.extractedCustomer?.Ten_khach_hang || extractedRecipient || aiCompany || ''
             ).trim()
+            const aiAddress = String(aiRes.extractedCustomer?.Dia_chi_cong_ty || extractedAddress || '').trim()
             const aiMst = String(aiRes.extractedCustomer?.MST || extractedMST || '')
               .replace(/\s+/g, '')
               .trim()
@@ -26291,6 +28564,7 @@ async function processImportFilesScan(
               productType: extractedProductType,
               customer: aiCompany,
               recipient: aiRecipient,
+              address: aiAddress,
               mst: aiMst,
               createdTime: extractedTime || getFormattedNow(),
               goodsList: aiGoods
@@ -26305,6 +28579,7 @@ async function processImportFilesScan(
             extractedCompany = confirmed.customer
             extractedCustomer = confirmed.customer
             extractedRecipient = confirmed.recipient
+            extractedAddress = confirmed.address || aiAddress
             extractedMST = confirmed.mst
             extractedTime = confirmed.createdTime
             extractedProductType = confirmed.productType || extractedProductType
@@ -26395,12 +28670,14 @@ async function processImportFilesScan(
           productType: extractedProductType,
           customer: extractedCustomer,
           recipient: finalRecipient,
+          address: extractedAddress || '',
           mst: extractedMST || (existingRow ? existingRow.MST : ''),
           extractedCompany: extractedCompany || '',
           extractedRecipient: extractedRecipient || '',
+          extractedAddress: extractedAddress || '',
           extractedMST: extractedMST || '',
-          extractedSourceLabel: 'Báo giá',
-          createdTime: extractedTime || getFormattedNow(),
+          extractedSourceLabel: 'Báo giá Hợp đồng',
+          createdTime: getFormattedNow(),
           content: file.name.replace(/\.[^/.]+$/, ''),
           netCom: 0,
           am: 'Lê Phi Sơn',
@@ -26415,7 +28692,7 @@ async function processImportFilesScan(
           goodsTotal
         }
         if (tgt.type === 'bao_gia') {
-          await applyExtractedQuoteCustomerToModalItem(newItemObj, extractedCompany, extractedRecipient, extractedMST)
+          await applyExtractedQuoteCustomerToModalItem(newItemObj, extractedCompany, extractedRecipient, extractedMST, 'Báo giá Hợp đồng', extractedAddress)
         }
         // Đối chiếu kho sản phẩm (hang_hoa) bằng hàm độc lập cục bộ — không gửi kho sản phẩm cho AI
         crossReferenceFinancialsForImportedQuote(newItemObj)
@@ -26466,35 +28743,164 @@ async function processImportFilesScan(
 
   if (tgt.type === 'update_item_bao_gia') {
     if (parsedItems[0] && parsedItems[0].doanhSoBan) {
-      tgt.row.doanhSoBan = parsedItems[0].doanhSoBan
-      tgt.row.rawFileBaoGia = files[0]
-      tgt.row.previewUrlBG = parsedItems[0].previewUrlBG
-      tgt.row.previewHtmlBG = parsedItems[0].previewHtmlBG
-      tgt.row.activePreviewTab = 'bg'
-      tgt.row.goodsList = parsedItems[0].goodsList
-      tgt.row.goodsTotal = parsedItems[0].goodsTotal
-      if (!tgt.row.giaMua && parsedItems[0].giaMua) {
-        tgt.row.giaMua = parsedItems[0].giaMua
-        tgt.row.tongCP = parsedItems[0].tongCP || parsedItems[0].giaMua
+      const isKhachMode = getModalPriceMode(tgt.row) === 'khach'
+      if (isKhachMode) {
+        tgt.row.rawFileBaoGiaKhach = files[0]
+        tgt.row.tenFileBGKhach = files[0].name
+        tgt.row.previewUrlBGKhach = parsedItems[0].previewUrlBG
+        tgt.row.previewHtmlBGKhach = parsedItems[0].previewHtmlBG
+        tgt.row.activePreviewTab = 'bg'
+        const newDsbKhach = Number(parsedItems[0].goodsTotal?.ttTruoc || parsedItems[0].doanhSoBan) || 0
+        tgt.row.doanhSoBanKhach = newDsbKhach
+        if (Array.isArray(parsedItems[0].goodsList) && parsedItems[0].goodsList.length > 0) {
+          const hadExistingGoods = Array.isArray(tgt.row.goodsList) && tgt.row.goodsList.length > 0
+          if (hadExistingGoods && tgt.row.goodsList.length === parsedItems[0].goodsList.length) {
+            tgt.row.goodsList.forEach((g: any, idx: number) => {
+              const pg = parsedItems[0].goodsList?.[idx]
+              if (pg) {
+                g.donGiaKhach = pg.donGia
+                g.ttTruocKhach = pg.ttTruoc
+                g.vatKhach = pg.vat
+                g.ttSauKhach = pg.ttSau
+                if (!g.donGia) {
+                  g.donGia = pg.donGia
+                  g.ttTruoc = pg.ttTruoc
+                  g.vat = pg.vat
+                  g.ttSau = pg.ttSau
+                }
+              }
+            })
+          } else {
+            tgt.row.goodsList = parsedItems[0].goodsList.map((pg: any) => ({
+              ...pg,
+              donGiaKhach: pg.donGia,
+              ttTruocKhach: pg.ttTruoc,
+              vatKhach: pg.vat,
+              ttSauKhach: pg.ttSau
+            }))
+          }
+          let tTruoc = 0, tVat = 0, tSau = 0
+          let tTruocKhach = 0, tVatKhach = 0, tSauKhach = 0
+          tgt.row.goodsList.forEach((row: any, idx: number) => {
+            if (!row.stt || /^\d+$/.test(String(row.stt))) row.stt = idx + 1
+            tTruoc += (row.ttTruoc || 0)
+            tVat += (row.vat || 0)
+            tSau += (row.ttSau || 0)
+            tTruocKhach += (row.ttTruocKhach ?? row.ttTruoc ?? 0)
+            tVatKhach += (row.vatKhach ?? row.vat ?? 0)
+            tSauKhach += (row.ttSauKhach ?? row.ttSau ?? 0)
+          })
+          tgt.row.goodsTotal = {
+            ttTruoc: tTruoc,
+            vat: tVat,
+            ttSau: tSau,
+            ttTruocKhach: tTruocKhach,
+            vatKhach: tVatKhach,
+            ttSauKhach: tSauKhach
+          }
+        } else if (parsedItems[0].goodsTotal) {
+          const gt = parsedItems[0].goodsTotal
+          const prevGt = tgt.row.goodsTotal || {
+            ttTruoc: Number(tgt.row.doanhSoBan) || gt.ttTruoc || 0,
+            vat: gt.vat || 0,
+            ttSau: (Number(tgt.row.doanhSoBan) || gt.ttTruoc || 0) + (gt.vat || 0)
+          }
+          tgt.row.goodsTotal = {
+            ...prevGt,
+            ttTruocKhach: gt.ttTruoc ?? newDsbKhach,
+            vatKhach: gt.vat ?? 0,
+            ttSauKhach: gt.ttSau ?? (newDsbKhach + (gt.vat ?? 0))
+          }
+        }
+        if (!tgt.row.productType && parsedItems[0].productType) {
+          tgt.row.productType = parsedItems[0].productType
+        }
+        if (!tgt.row.content && parsedItems[0].content) {
+          tgt.row.content = parsedItems[0].content
+        }
+        if (!tgt.row.giaMua && parsedItems[0].giaMua) {
+          tgt.row.giaMua = parsedItems[0].giaMua
+          tgt.row.tongCP = parsedItems[0].tongCP || parsedItems[0].giaMua
+        }
+        onFinancialInput(tgt.row, 'doanhSoBanKhach')
+      } else {
+        const hadKhachQuote = Boolean(
+          tgt.row.rawFileBaoGiaKhach ||
+          tgt.row.linkBaoGiaKhach ||
+          (Number(tgt.row.doanhSoBanKhach) > 0 && Number(tgt.row.doanhSoBanKhach) !== Number(tgt.row.doanhSoBan))
+        )
+        const prevGoodsList = Array.isArray(tgt.row.goodsList) ? tgt.row.goodsList : []
+        const prevDsbKhach = Number(tgt.row.doanhSoBanKhach) || 0
+
+        tgt.row.doanhSoBan = parsedItems[0].doanhSoBan
+        tgt.row.rawFileBaoGia = files[0]
+        tgt.row.previewUrlBG = parsedItems[0].previewUrlBG
+        tgt.row.previewHtmlBG = parsedItems[0].previewHtmlBG
+        tgt.row.activePreviewTab = 'bg'
+        tgt.row.goodsList = parsedItems[0].goodsList
+        tgt.row.goodsTotal = parsedItems[0].goodsTotal
+
+        if (hadKhachQuote && Array.isArray(tgt.row.goodsList) && prevGoodsList.length === tgt.row.goodsList.length) {
+          let tTruocK = 0, tVatK = 0, tSauK = 0
+          tgt.row.goodsList.forEach((g: any, idx: number) => {
+            const oldG = prevGoodsList[idx]
+            if (oldG && oldG.donGiaKhach !== undefined) {
+              g.donGiaKhach = oldG.donGiaKhach
+              g.ttTruocKhach = oldG.ttTruocKhach ?? oldG.ttTruoc
+              g.vatKhach = oldG.vatKhach ?? oldG.vat
+              g.ttSauKhach = oldG.ttSauKhach ?? oldG.ttSau
+              tTruocK += g.ttTruocKhach || 0
+              tVatK += g.vatKhach || 0
+              tSauK += g.ttSauKhach || 0
+            }
+          })
+          if (tgt.row.goodsTotal && tTruocK > 0) {
+            tgt.row.goodsTotal = {
+              ...tgt.row.goodsTotal,
+              ttTruocKhach: tTruocK,
+              vatKhach: tVatK,
+              ttSauKhach: tSauK
+            }
+          }
+        }
+
+        if (!tgt.row.productType && parsedItems[0].productType) {
+          tgt.row.productType = parsedItems[0].productType
+        }
+        if (!tgt.row.content && parsedItems[0].content) {
+          tgt.row.content = parsedItems[0].content
+        }
+        if (!tgt.row.giaMua && parsedItems[0].giaMua) {
+          tgt.row.giaMua = parsedItems[0].giaMua
+          tgt.row.tongCP = parsedItems[0].tongCP || parsedItems[0].giaMua
+        }
+        if (parsedItems[0].grossCom) {
+          tgt.row.grossCom = parsedItems[0].grossCom
+          tgt.row.taxPct = parsedItems[0].taxPct || tgt.row.taxPct || 25
+          tgt.row.netCom = parsedItems[0].netCom
+          onFinancialInput(tgt.row)
+        } else if (hadKhachQuote && prevDsbKhach > 0) {
+          tgt.row.doanhSoBanKhach = prevDsbKhach
+          tgt.row.grossCom = (Number(tgt.row.doanhSoBan) || 0) - prevDsbKhach
+          onFinancialInput(tgt.row, 'grossCom')
+        } else {
+          onFinancialInput(tgt.row)
+        }
       }
-      if (parsedItems[0].grossCom) {
-        tgt.row.grossCom = parsedItems[0].grossCom
-        tgt.row.taxPct = parsedItems[0].taxPct || tgt.row.taxPct || 25
-        tgt.row.netCom = parsedItems[0].netCom
-      }
+      loading.value = false
       await applyExtractedQuoteCustomerToModalItem(
         tgt.row,
         parsedItems[0].extractedCompany || '',
         parsedItems[0].extractedRecipient || '',
-        parsedItems[0].extractedMST || ''
+        parsedItems[0].extractedMST || '',
+        isKhachMode ? 'Báo giá Khách' : 'Báo giá Hợp đồng',
+        parsedItems[0].extractedAddress || ''
       )
-      onFinancialInput(tgt.row)
       isModalDirty.value = true
-      loading.value = false
       await openSrAlert({
         variant: 'success',
-        title: 'Import File Báo Giá thành công',
-        message: `Đã trích xuất và cập nhật dữ liệu từ file Báo Giá (${files[0]?.name || ''}) vào PO #${tgt.row.soPO || 'mới'}.`,
+        title: isKhachMode ? 'Import File Báo Giá (Khách) thành công' : 'Import File Báo Giá (HĐ) thành công',
+        message: `Đã trích xuất và cập nhật dữ liệu từ file Báo Giá (${files[0]?.name || ''}) vào PO #${tgt.row.soPO || 'mới'} ở chế độ ${isKhachMode ? 'Giá Khách' : 'Giá Hợp Đồng'}.`,
         confirmText: 'Hoàn tất'
       })
       return
@@ -26669,6 +29075,25 @@ async function deleteSelectedPoRows() {
       if (firebaseKey) {
         deletedKeySet.add(String(firebaseKey))
         await remove(dbRef(database, `sale_report/${firebaseKey}`))
+      }
+      const maHD = String(r?.ma_hop_dong || '').trim()
+      if (maHD) {
+        await remove(dbRef(database, `hop_dong_tong_quat/${maHD}`))
+        if (hdChiTietRawMap.value && typeof hdChiTietRawMap.value === 'object') {
+          const ctRemovePayload: Record<string, null> = {}
+          Object.entries(hdChiTietRawMap.value).forEach(([ctKey, ctVal]: [string, any]) => {
+            const entryMaHD = Array.isArray(ctVal)
+              ? String(ctVal[0] || '').trim()
+              : String(ctVal?.ma_hop_dong ?? ctVal?.Ma_hop_dong ?? '').trim()
+            if (entryMaHD === maHD) {
+              ctRemovePayload[`hop_dong_chi_tiet/${ctKey}`] = null
+              delete hdChiTietRawMap.value[ctKey]
+            }
+          })
+          if (Object.keys(ctRemovePayload).length > 0) {
+            await update(dbRef(database), ctRemovePayload)
+          }
+        }
       }
       if (srId || firebaseKey) {
         const relatedHist = lichSuThanhToanList.value.filter(
@@ -33822,6 +36247,36 @@ const isAnySaleModalOpen = computed(() => Boolean(
   font-weight: 700;
 }
 
+.sr-po-paste-hint {
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: #94a3b8;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sr-po-paste-hint kbd {
+  padding: 1px 6px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: inherit;
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  color: #e2e8f0;
+}
+
+.sr-po-modal.is-light .sr-po-paste-hint {
+  color: #64748b;
+}
+
+.sr-po-modal.is-light .sr-po-paste-hint kbd {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
 .sr-po-other-list {
   flex: 1;
   overflow-y: auto;
@@ -39204,6 +41659,53 @@ const isAnySaleModalOpen = computed(() => Boolean(
   gap: 8px;
 }
 
+.sr-analytics-price-mode-bar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 4px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(52, 211, 153, 0.24);
+  margin-bottom: 2px;
+}
+
+.sr-analytics-price-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 31px;
+  padding: 5px 8px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.sr-analytics-price-mode-btn:hover {
+  color: #ecfdf5;
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.sr-analytics-price-mode-btn.active {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+  border-color: rgba(125, 211, 252, 0.5);
+  color: #ffffff;
+  box-shadow: 0 3px 10px -2px rgba(2, 132, 199, 0.45);
+}
+
+.sr-analytics-price-mode-btn.is-khach.active {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  border-color: rgba(110, 231, 183, 0.5);
+  color: #ffffff;
+  box-shadow: 0 3px 10px -2px rgba(16, 185, 129, 0.45);
+}
+
 .sr-analytics-side-heading {
   font-size: 11px;
   font-weight: 800;
@@ -39785,6 +42287,34 @@ const isAnySaleModalOpen = computed(() => Boolean(
 
 .sr-analytics-modal.is-light .sr-analytics-side-heading {
   color: #0284c7;
+}
+
+.sr-analytics-modal.is-light .sr-analytics-price-mode-bar {
+  background: #e0f2fe;
+  border-color: #bae6fd;
+}
+
+.sr-analytics-modal.is-light .sr-analytics-price-mode-btn {
+  color: #475569;
+}
+
+.sr-analytics-modal.is-light .sr-analytics-price-mode-btn:hover {
+  color: #0284c7;
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.sr-analytics-modal.is-light .sr-analytics-price-mode-btn.active {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+  border-color: #0284c7;
+  color: #ffffff;
+  box-shadow: 0 3px 10px -2px rgba(37, 99, 235, 0.32);
+}
+
+.sr-analytics-modal.is-light .sr-analytics-price-mode-btn.is-khach.active {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  border-color: #059669;
+  color: #ffffff;
+  box-shadow: 0 3px 10px -2px rgba(5, 150, 105, 0.32);
 }
 
 .sr-analytics-modal.is-light .sr-analytics-metric-strip {
@@ -41135,12 +43665,12 @@ const isAnySaleModalOpen = computed(() => Boolean(
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 9px;
+  padding: 2px 8px;
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
   background: rgba(16, 185, 129, 0.14);
-  border: 1px solid rgba(16, 185, 129, 0.38);
+  border: 1px solid rgba(16, 185, 129, 0.36);
   color: #34d399;
   max-width: 100%;
 }
@@ -41149,13 +43679,13 @@ const isAnySaleModalOpen = computed(() => Boolean(
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 9px;
+  padding: 2px 8px;
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
-  background: rgba(245, 158, 11, 0.15);
-  border: 1px solid rgba(245, 158, 11, 0.45);
-  color: #fbbf24;
+  background: rgba(239, 68, 68, 0.16);
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  color: #f87171;
   max-width: 100%;
 }
 
@@ -41163,11 +43693,11 @@ const isAnySaleModalOpen = computed(() => Boolean(
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 9px;
+  padding: 2px 8px;
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
-  background: rgba(56, 189, 248, 0.14);
+  background: rgba(56, 189, 248, 0.13);
   border: 1px solid rgba(56, 189, 248, 0.35);
   color: #38bdf8;
 }
@@ -41209,7 +43739,7 @@ const isAnySaleModalOpen = computed(() => Boolean(
   border-radius: 6px;
   font-size: 11px;
   font-weight: 700;
-  border: 1px solid rgba(56, 189, 248, 0.35);
+  border: 1px solid rgba(56, 189, 248, 0.32);
   background: rgba(14, 165, 233, 0.12);
   color: #38bdf8;
   cursor: pointer;
@@ -41222,79 +43752,211 @@ const isAnySaleModalOpen = computed(() => Boolean(
 }
 
 .sr-po-cust-quick-btn.is-edit {
-  border-color: rgba(245, 158, 11, 0.38);
-  background: rgba(245, 158, 11, 0.12);
-  color: #fbbf24;
+  border-color: rgba(148, 163, 184, 0.34);
+  background: rgba(30, 41, 59, 0.65);
+  color: #cbd5e1;
 }
 
 .sr-po-cust-quick-btn.is-edit:hover {
-  background: rgba(245, 158, 11, 0.24);
-  border-color: #fbbf24;
+  background: rgba(51, 65, 85, 0.85);
+  border-color: #94a3b8;
+  color: #f8fafc;
 }
 
+/* Khung đối chiếu gọn, Header nền Đỏ dễ nhận diện & thân Slate/Emerald sạch */
 .sr-po-cust-diff-strip {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 6px;
+  border-radius: 8px;
+  background: #0b1324;
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  border-left: 3px solid #ef4444;
+  overflow: hidden;
+}
+
+.sr-po-cust-diff-strip.is-resolved-db {
+  border-color: rgba(239, 68, 68, 0.38);
+  border-left-color: #ef4444;
+}
+
+.sr-po-cust-diff-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 8px;
-  padding: 7px 10px;
-  margin-bottom: 8px;
-  border-radius: 8px;
-  background: rgba(245, 158, 11, 0.09);
-  border: 1px dashed rgba(245, 158, 11, 0.45);
+  padding: 5px 10px;
+  background: linear-gradient(90deg, #b91c1c 0%, #dc2626 100%);
+  border-bottom: 1px solid rgba(239, 68, 68, 0.5);
 }
 
-.sr-po-cust-diff-items {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  flex: 1;
-  min-width: 0;
-}
-
-.sr-po-cust-diff-pill {
+.sr-po-cust-diff-head-lbl {
   display: inline-flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: 5px;
-  padding: 3px 8px;
-  border-radius: 6px;
-  background: rgba(15, 23, 42, 0.65);
-  border: 1px solid rgba(148, 163, 184, 0.2);
   font-size: 11px;
-}
-
-.sr-po-cust-diff-field {
   font-weight: 800;
-  color: #fbbf24;
+  color: #ffffff;
+  letter-spacing: 0.01em;
 }
 
-.sr-po-cust-diff-db {
+.sr-po-cust-diff-head-lbl svg {
+  color: #fecaca;
+  flex-shrink: 0;
+}
+
+.sr-po-cust-diff-strip.is-resolved-db .sr-po-cust-diff-head-lbl svg {
+  color: #fecaca;
+}
+
+.sr-po-cust-update-db-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 5px;
+  background: rgba(15, 23, 42, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.sr-po-cust-update-db-check:hover {
+  background: rgba(15, 23, 42, 0.65);
+  border-color: #ffffff;
+}
+
+.sr-po-cust-update-db-check.is-checked {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: #047857;
+}
+
+.sr-po-cust-update-db-check input[type="checkbox"] {
+  width: 12.5px;
+  height: 12.5px;
+  margin: 0;
+  accent-color: #10b981;
+  cursor: pointer;
+}
+
+.sr-po-cust-diff-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.sr-po-cust-diff-group {
+  display: flex;
+  flex-direction: column;
+  padding: 3px 6px;
+}
+
+.sr-po-cust-diff-group + .sr-po-cust-diff-group {
+  border-top: 1px dashed rgba(51, 65, 85, 0.75);
+}
+
+.sr-po-cust-diff-row {
+  display: grid;
+  grid-template-columns: 148px minmax(0, 1fr) 78px;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  line-height: 1.3;
+  padding: 2.5px 6px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.sr-po-cust-diff-row:hover {
+  background: rgba(30, 41, 59, 0.45);
+}
+
+.sr-po-cust-diff-row.is-active.is-db {
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.sr-po-cust-diff-row.is-active.is-po {
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.sr-po-diff-row-lbl {
+  font-weight: 700;
   color: #94a3b8;
-}
-.sr-po-cust-diff-db strong {
-  color: #cbd5e1;
-}
-
-.sr-po-cust-diff-arrow {
-  color: #f59e0b;
-  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.sr-po-cust-diff-po {
-  color: #38bdf8;
+.sr-po-diff-row-lbl em {
+  font-style: normal;
+  font-weight: 600;
+  font-size: 10.5px;
+  opacity: 0.82;
 }
-.sr-po-cust-diff-po strong {
+
+.sr-po-cust-diff-row.is-po .sr-po-diff-row-lbl {
   color: #7dd3fc;
 }
 
-.sr-po-cust-diff-actions {
-  display: flex;
+.sr-po-diff-row-val {
+  font-weight: 500;
+  color: #94a3b8;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sr-po-cust-diff-row.is-active .sr-po-diff-row-val {
+  color: #f8fafc;
+  font-weight: 700;
+}
+
+.sr-po-cust-diff-row.is-po.is-active .sr-po-diff-row-val {
+  color: #38bdf8;
+}
+
+.sr-po-diff-row-btn {
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
+  justify-content: center;
+  width: 78px;
+  height: 21px;
+  padding: 0 6px;
+  border-radius: 5px;
+  border: 1px solid #334155;
+  background: #131c31;
+  color: #94a3b8;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.14s ease;
+}
+
+.sr-po-diff-row-btn:hover {
+  border-color: #38bdf8;
+  color: #e2e8f0;
+  background: rgba(14, 165, 233, 0.16);
+}
+
+.sr-po-diff-row-btn.is-selected {
+  border-color: rgba(16, 185, 129, 0.48);
+  background: rgba(16, 185, 129, 0.16);
+  color: #34d399;
+}
+
+.sr-po-diff-row-btn.is-po-btn.is-selected {
+  border-color: rgba(56, 189, 248, 0.48);
+  background: rgba(2, 132, 199, 0.2);
+  color: #38bdf8;
 }
 
 .sr-po-cust-chip.is-emerald {
@@ -41307,7 +43969,8 @@ const isAnySaleModalOpen = computed(() => Boolean(
   border-color: #10b981;
 }
 
-/* Light Mode cho Smart Customer Match Bar */
+/* Light Mode cho Smart Customer Match Bar & Diff Strip */
+.sr-po-modal.is-light .sr-po-cust-status.is-matched,
 .theme-light-blue .sr-po-cust-status.is-matched,
 .is-light .sr-po-cust-status.is-matched {
   background: #ecfdf5;
@@ -41315,13 +43978,15 @@ const isAnySaleModalOpen = computed(() => Boolean(
   color: #047857;
 }
 
+.sr-po-modal.is-light .sr-po-cust-status.is-diff,
 .theme-light-blue .sr-po-cust-status.is-diff,
 .is-light .sr-po-cust-status.is-diff {
-  background: #fffbeb;
-  border-color: #fcd34d;
-  color: #b45309;
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #dc2626;
 }
 
+.sr-po-modal.is-light .sr-po-cust-status.is-new,
 .theme-light-blue .sr-po-cust-status.is-new,
 .is-light .sr-po-cust-status.is-new {
   background: #f0f9ff;
@@ -41329,56 +43994,205 @@ const isAnySaleModalOpen = computed(() => Boolean(
   color: #0369a1;
 }
 
+.sr-po-modal.is-light .sr-po-cust-approved-tag,
+.theme-light-blue .sr-po-cust-approved-tag,
+.is-light .sr-po-cust-approved-tag {
+  background: #d1fae5;
+  color: #047857;
+}
+
+.sr-po-modal.is-light .sr-po-cust-quick-btn,
 .theme-light-blue .sr-po-cust-quick-btn,
 .is-light .sr-po-cust-quick-btn {
   background: #f0f9ff;
   border-color: #7dd3fc;
   color: #0284c7;
 }
+
+.sr-po-modal.is-light .sr-po-cust-quick-btn:hover,
+.theme-light-blue .sr-po-cust-quick-btn:hover,
+.is-light .sr-po-cust-quick-btn:hover {
+  background: #e0f2fe;
+  border-color: #0284c7;
+}
+
+.sr-po-modal.is-light .sr-po-cust-quick-btn.is-edit,
 .theme-light-blue .sr-po-cust-quick-btn.is-edit,
 .is-light .sr-po-cust-quick-btn.is-edit {
-  background: #fffbeb;
-  border-color: #fcd34d;
-  color: #b45309;
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #475569;
 }
 
+.sr-po-modal.is-light .sr-po-cust-quick-btn.is-edit:hover,
+.theme-light-blue .sr-po-cust-quick-btn.is-edit:hover,
+.is-light .sr-po-cust-quick-btn.is-edit:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.sr-po-modal.is-light .sr-po-cust-diff-strip,
 .theme-light-blue .sr-po-cust-diff-strip,
 .is-light .sr-po-cust-diff-strip {
-  background: #fffbeb;
-  border-color: #f59e0b;
-}
-
-.theme-light-blue .sr-po-cust-diff-pill,
-.is-light .sr-po-cust-diff-pill {
   background: #ffffff;
-  border-color: #fde68a;
+  border-color: #fca5a5;
+  border-left-color: #dc2626;
 }
 
-.theme-light-blue .sr-po-cust-diff-field,
-.is-light .sr-po-cust-diff-field {
-  color: #b45309;
+.sr-po-modal.is-light .sr-po-cust-diff-strip.is-resolved-db,
+.theme-light-blue .sr-po-cust-diff-strip.is-resolved-db,
+.is-light .sr-po-cust-diff-strip.is-resolved-db {
+  border-color: #fca5a5;
+  border-left-color: #dc2626;
 }
-.theme-light-blue .sr-po-cust-diff-db,
-.is-light .sr-po-cust-diff-db {
+
+.sr-po-modal.is-light .sr-po-cust-diff-head,
+.theme-light-blue .sr-po-cust-diff-head,
+.is-light .sr-po-cust-diff-head {
+  background: linear-gradient(90deg, #dc2626 0%, #ef4444 100%);
+  border-bottom-color: #dc2626;
+}
+
+.sr-po-modal.is-light .sr-po-cust-diff-head-lbl,
+.theme-light-blue .sr-po-cust-diff-head-lbl,
+.is-light .sr-po-cust-diff-head-lbl {
+  color: #ffffff;
+}
+
+.sr-po-modal.is-light .sr-po-cust-diff-head-lbl svg,
+.theme-light-blue .sr-po-cust-diff-head-lbl svg,
+.is-light .sr-po-cust-diff-head-lbl svg {
+  color: #fee2e2;
+}
+
+.sr-po-modal.is-light .sr-po-cust-update-db-check,
+.theme-light-blue .sr-po-cust-update-db-check,
+.is-light .sr-po-cust-update-db-check {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.55);
+  color: #ffffff;
+}
+
+.sr-po-modal.is-light .sr-po-cust-update-db-check:hover,
+.theme-light-blue .sr-po-cust-update-db-check:hover,
+.is-light .sr-po-cust-update-db-check:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: #ffffff;
+}
+
+.sr-po-modal.is-light .sr-po-cust-update-db-check.is-checked,
+.theme-light-blue .sr-po-cust-update-db-check.is-checked,
+.is-light .sr-po-cust-update-db-check.is-checked {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: #047857;
+}
+
+.sr-po-modal.is-light .sr-po-cust-diff-group + .sr-po-cust-diff-group,
+.theme-light-blue .sr-po-cust-diff-group + .sr-po-cust-diff-group,
+.is-light .sr-po-cust-diff-group + .sr-po-cust-diff-group {
+  border-top-color: #e2e8f0;
+}
+
+.sr-po-modal.is-light .sr-po-cust-diff-row:hover,
+.theme-light-blue .sr-po-cust-diff-row:hover,
+.is-light .sr-po-cust-diff-row:hover {
+  background: #f8fafc;
+}
+
+.sr-po-modal.is-light .sr-po-cust-diff-row.is-active.is-db,
+.theme-light-blue .sr-po-cust-diff-row.is-active.is-db,
+.is-light .sr-po-cust-diff-row.is-active.is-db {
+  background: #ecfdf5;
+}
+
+.sr-po-modal.is-light .sr-po-cust-diff-row.is-active.is-po,
+.theme-light-blue .sr-po-cust-diff-row.is-active.is-po,
+.is-light .sr-po-cust-diff-row.is-active.is-po {
+  background: #f0f9ff;
+}
+
+.sr-po-modal.is-light .sr-po-diff-row-lbl,
+.theme-light-blue .sr-po-diff-row-lbl,
+.is-light .sr-po-diff-row-lbl {
   color: #64748b;
 }
-.theme-light-blue .sr-po-cust-diff-db strong,
-.is-light .sr-po-cust-diff-db strong {
-  color: #1e293b;
-}
-.theme-light-blue .sr-po-cust-diff-po,
-.is-light .sr-po-cust-diff-po {
+
+.sr-po-modal.is-light .sr-po-cust-diff-row.is-po .sr-po-diff-row-lbl,
+.theme-light-blue .sr-po-cust-diff-row.is-po .sr-po-diff-row-lbl,
+.is-light .sr-po-cust-diff-row.is-po .sr-po-diff-row-lbl {
   color: #0369a1;
 }
-.theme-light-blue .sr-po-cust-diff-po strong,
-.is-light .sr-po-cust-diff-po strong {
+
+.sr-po-modal.is-light .sr-po-diff-row-val,
+.theme-light-blue .sr-po-diff-row-val,
+.is-light .sr-po-diff-row-val {
+  color: #64748b;
+}
+
+.sr-po-modal.is-light .sr-po-cust-diff-row.is-active .sr-po-diff-row-val,
+.theme-light-blue .sr-po-cust-diff-row.is-active .sr-po-diff-row-val,
+.is-light .sr-po-cust-diff-row.is-active .sr-po-diff-row-val {
+  color: #0f172a;
+}
+
+.sr-po-modal.is-light .sr-po-cust-diff-row.is-po.is-active .sr-po-diff-row-val,
+.theme-light-blue .sr-po-cust-diff-row.is-po.is-active .sr-po-diff-row-val,
+.is-light .sr-po-cust-diff-row.is-po.is-active .sr-po-diff-row-val {
   color: #0284c7;
 }
+
+.sr-po-modal.is-light .sr-po-diff-row-btn,
+.theme-light-blue .sr-po-diff-row-btn,
+.is-light .sr-po-diff-row-btn {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #64748b;
+}
+
+.sr-po-modal.is-light .sr-po-diff-row-btn:hover,
+.theme-light-blue .sr-po-diff-row-btn:hover,
+.is-light .sr-po-diff-row-btn:hover {
+  background: #e0f2fe;
+  border-color: #0284c7;
+  color: #0284c7;
+}
+
+.sr-po-modal.is-light .sr-po-diff-row-btn.is-selected,
+.theme-light-blue .sr-po-diff-row-btn.is-selected,
+.is-light .sr-po-diff-row-btn.is-selected {
+  background: #d1fae5;
+  border-color: #10b981;
+  color: #047857;
+}
+
+.sr-po-modal.is-light .sr-po-diff-row-btn.is-po-btn.is-selected,
+.theme-light-blue .sr-po-diff-row-btn.is-po-btn.is-selected,
+.is-light .sr-po-diff-row-btn.is-po-btn.is-selected {
+  background: #e0f2fe;
+  border-color: #0284c7;
+  color: #0369a1;
+}
+
+.sr-po-modal.is-light .sr-po-cust-chip.is-emerald,
 .theme-light-blue .sr-po-cust-chip.is-emerald,
 .is-light .sr-po-cust-chip.is-emerald {
   background: #d1fae5;
   border-color: #34d399;
   color: #047857;
+}
+
+@media (max-width: 640px) {
+  .sr-po-cust-diff-row {
+    grid-template-columns: 128px minmax(0, 1fr) 70px;
+    gap: 6px;
+    font-size: 11px;
+  }
+  .sr-po-diff-row-btn {
+    width: 70px;
+    font-size: 10px;
+  }
 }
 
 /* ─── NÚT CHỌN TRONG CÁC Ô INPUT THÔNG TIN KHÁCH HÀNG & NÚT PHÂN TÍCH KH 360° ─── */
@@ -44188,6 +47002,40 @@ const isAnySaleModalOpen = computed(() => Boolean(
 .sr-dialog-card.is-light .sr-dialog-foot button.sr-dlg-discard:hover {
   background: #dc2626 !important;
   border-color: #dc2626 !important;
+  color: #ffffff !important;
+}
+
+.sr-dialog-card.has-aux-action {
+  width: 540px !important;
+}
+
+.sr-dialog-card.is-light.is-variant-danger,
+.sr-dialog-card.is-light.is-variant-error {
+  border-color: #fca5a5 !important;
+}
+
+.sr-dialog-foot button.sr-dlg-aux-action {
+  background: rgba(14, 165, 233, 0.16) !important;
+  border: 1px solid rgba(56, 189, 248, 0.48) !important;
+  color: #7dd3fc !important;
+}
+
+.sr-dialog-foot button.sr-dlg-aux-action:hover {
+  background: rgba(2, 132, 199, 0.88) !important;
+  border-color: #38bdf8 !important;
+  color: #ffffff !important;
+  transform: translateY(-1px) !important;
+}
+
+.sr-dialog-card.is-light .sr-dialog-foot button.sr-dlg-aux-action {
+  background: #eff6ff !important;
+  border: 1px solid #93c5fd !important;
+  color: #0284c7 !important;
+}
+
+.sr-dialog-card.is-light .sr-dialog-foot button.sr-dlg-aux-action:hover {
+  background: #0284c7 !important;
+  border-color: #0284c7 !important;
   color: #ffffff !important;
 }
 
@@ -52068,8 +54916,50 @@ const isAnySaleModalOpen = computed(() => Boolean(
 
 .sr-ctt-left {
   display: inline-flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
   flex-shrink: 0;
+}
+
+.sr-ctt-mode-switcher.is-price-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+}
+
+.sr-ctt-mode-switcher.is-price-row .sr-ctt-mode-btn {
+  width: 100%;
+  padding: 4.5px 10px;
+  font-size: 11.5px;
+}
+
+.sr-ctt-mode-btn.is-price-hd.active {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+  border-color: rgba(56, 189, 248, 0.45);
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(2, 132, 199, 0.3);
+}
+
+.sr-ctt-mode-btn.is-price-khach.active {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  border-color: rgba(52, 211, 153, 0.45);
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
+}
+
+.theme-light-blue .sr-ctt-mode-btn.is-price-hd.active {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+  border-color: rgba(2, 132, 199, 0.35);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.25);
+}
+
+.theme-light-blue .sr-ctt-mode-btn.is-price-khach.active {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  border-color: rgba(5, 150, 105, 0.35);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.25);
 }
 
 .sr-ctt-mode-switcher {
@@ -52189,6 +55079,9 @@ const isAnySaleModalOpen = computed(() => Boolean(
 
 /* Mobile 50/50 Full-Width Segmented Capsule Bar */
 .sr-mob-mode-switcher-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   margin: 0 0 10px 0;
   width: 100%;
 }
@@ -55995,5 +58888,680 @@ const isAnySaleModalOpen = computed(() => Boolean(
   height: 26px !important;
   padding: 0 9px !important;
   font-weight: 800 !important;
+}
+
+/* ─── HÀNG 1: CHUYỂN ĐỔI GIÁ HỢP ĐỒNG (XANH DƯƠNG) / GIÁ KHÁCH (XANH LÁ) NẰM RIÊNG PHÍA TRÊN TAB ─── */
+.sr-po-tabs-card.is-mode-hd {
+  background: linear-gradient(165deg, rgba(12, 31, 52, 0.92) 0%, rgba(9, 20, 36, 0.96) 100%);
+  border-color: rgba(56, 189, 248, 0.35);
+}
+
+.sr-po-tabs-card.is-mode-khach {
+  background: linear-gradient(165deg, rgba(10, 35, 28, 0.92) 0%, rgba(8, 24, 19, 0.96) 100%);
+  border-color: rgba(52, 211, 153, 0.36);
+}
+
+.sr-po-price-mode-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px 6px;
+  background: rgba(15, 23, 42, 0.55);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 13px 13px 0 0;
+  flex-shrink: 0;
+}
+
+.sr-po-price-mode-seg {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+  width: 100%;
+  background: rgba(9, 14, 26, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 9px;
+  padding: 3.5px;
+  gap: 6px;
+}
+
+.sr-po-price-mode-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 6.5px;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  white-space: nowrap;
+}
+
+.sr-po-price-mode-btn.is-hd:not(.active) {
+  color: #7dd3fc;
+}
+
+.sr-po-price-mode-btn.is-khach:not(.active) {
+  color: #6ee7b7;
+}
+
+.sr-po-price-mode-btn.is-hd:hover:not(.active) {
+  color: #e0f2fe;
+  background: rgba(2, 132, 199, 0.16);
+}
+
+.sr-po-price-mode-btn.is-khach:hover:not(.active) {
+  color: #d1fae5;
+  background: rgba(16, 185, 129, 0.16);
+}
+
+.sr-po-price-mode-btn.is-hd.active {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+  border-color: rgba(125, 211, 252, 0.55);
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(2, 132, 199, 0.36);
+}
+
+.sr-po-price-mode-btn.is-khach.active {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  border-color: rgba(110, 231, 183, 0.55);
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.36);
+}
+
+/* ─── HÀNG 2: TAB CHỈ SỐ TÀI CHÍNH / BẢNG HÀNG HÓA TÁCH BIỆT RÕ RÀNG ─── */
+.sr-po-tabs-head {
+  display: flex !important;
+  align-items: stretch !important;
+  justify-content: space-between !important;
+  flex-wrap: nowrap !important;
+  gap: 8px !important;
+  padding: 6px 12px 8px !important;
+  border-radius: 0 !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18) !important;
+  background: rgba(15, 23, 42, 0.35) !important;
+}
+
+.sr-po-tabs-head .sr-po-tabs-btn-group {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  width: 100% !important;
+  min-width: 0;
+}
+
+.sr-po-tabs-head .sr-po-tab-btn {
+  height: 34px;
+  padding: 0 14px !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(148, 163, 184, 0.22) !important;
+  background: rgba(15, 23, 42, 0.65) !important;
+  color: #94a3b8 !important;
+  font-size: 11.5px !important;
+  font-weight: 800 !important;
+  box-shadow: none !important;
+}
+
+.sr-po-tabs-card.is-mode-hd .sr-po-tabs-head .sr-po-tab-btn:hover:not(.active) {
+  color: #e0f2fe !important;
+  border-color: rgba(56, 189, 248, 0.4) !important;
+  background: rgba(2, 132, 199, 0.14) !important;
+}
+
+.sr-po-tabs-card.is-mode-khach .sr-po-tabs-head .sr-po-tab-btn:hover:not(.active) {
+  color: #d1fae5 !important;
+  border-color: rgba(52, 211, 153, 0.4) !important;
+  background: rgba(16, 185, 129, 0.14) !important;
+}
+
+.sr-po-tabs-card.is-mode-hd .sr-po-tabs-head .sr-po-tab-btn.active {
+  background: rgba(2, 132, 199, 0.24) !important;
+  border: 1.5px solid #38bdf8 !important;
+  color: #f0f9ff !important;
+  box-shadow: inset 0 -2.5px 0 #0284c7, 0 2px 8px rgba(2, 132, 199, 0.22) !important;
+}
+
+.sr-po-tabs-card.is-mode-khach .sr-po-tabs-head .sr-po-tab-btn.active {
+  background: rgba(5, 150, 105, 0.24) !important;
+  border: 1.5px solid #34d399 !important;
+  color: #ecfdf5 !important;
+  box-shadow: inset 0 -2.5px 0 #10b981, 0 2px 8px rgba(16, 185, 129, 0.22) !important;
+}
+
+/* ─── NỀN BẢNG CHỈ SỐ TÀI CHÍNH (B2: HỢP ĐỒNG = XANH DƯƠNG, KHÁCH = XANH LÁ CÂY) ─── */
+.sr-po-modal .sr-modal-finance-grid {
+  gap: 9px !important;
+  padding: 10px !important;
+  border-radius: 11px !important;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.sr-po-modal .sr-modal-finance-grid.is-mode-hd {
+  background: linear-gradient(180deg, rgba(12, 74, 110, 0.34) 0%, rgba(15, 23, 42, 0.85) 100%) !important;
+  border: 1px solid rgba(56, 189, 248, 0.35) !important;
+}
+
+.sr-po-modal .sr-modal-finance-grid.is-mode-khach {
+  background: linear-gradient(180deg, rgba(6, 78, 59, 0.36) 0%, rgba(10, 28, 22, 0.88) 100%) !important;
+  border: 1px solid rgba(52, 211, 153, 0.36) !important;
+}
+
+.sr-po-modal .sr-modal-finance-grid .sr-modal-fin-col {
+  border-radius: 9px !important;
+  padding: 10px 13px !important;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.sr-po-modal .sr-modal-finance-grid.is-mode-hd .sr-modal-fin-col {
+  background: rgba(14, 116, 144, 0.16) !important;
+  border: 1px solid rgba(56, 189, 248, 0.26) !important;
+}
+
+.sr-po-modal .sr-modal-finance-grid.is-mode-khach .sr-modal-fin-col {
+  background: rgba(16, 185, 129, 0.14) !important;
+  border: 1px solid rgba(52, 211, 153, 0.28) !important;
+}
+
+.sr-po-price-diff-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #fbbf24;
+  box-shadow: 0 0 6px rgba(251, 191, 36, 0.9);
+  flex-shrink: 0;
+}
+
+.sr-po-fin-mode-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  margin-left: 5px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.sr-po-fin-mode-tag.is-hd {
+  background: rgba(2, 132, 199, 0.22);
+  border: 1px solid rgba(56, 189, 248, 0.48);
+  color: #7dd3fc;
+}
+
+.sr-po-fin-mode-tag.is-khach {
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(52, 211, 153, 0.48);
+  color: #6ee7b7;
+}
+
+/* Light theme overrides (.sr-po-modal.is-light) */
+.sr-po-modal.is-light .sr-po-tabs-card.is-mode-hd {
+  background: #f8fbff !important;
+  border-color: #7dd3fc !important;
+}
+
+.sr-po-modal.is-light .sr-po-tabs-card.is-mode-khach {
+  background: #f4fdf9 !important;
+  border-color: #6ee7b7 !important;
+}
+
+.sr-po-modal.is-light .sr-po-tabs-card.is-mode-hd .sr-po-price-mode-bar {
+  background: linear-gradient(180deg, #e0f2fe 0%, #f0f9ff 100%);
+  border-bottom-color: #bae6fd;
+}
+
+.sr-po-modal.is-light .sr-po-tabs-card.is-mode-khach .sr-po-price-mode-bar {
+  background: linear-gradient(180deg, #d1fae5 0%, #ecfdf5 100%);
+  border-bottom-color: #a7f3d0;
+}
+
+.sr-po-modal.is-light .sr-po-price-mode-seg {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.sr-po-modal.is-light .sr-po-price-mode-btn.is-hd:not(.active) {
+  color: #0369a1;
+}
+
+.sr-po-modal.is-light .sr-po-price-mode-btn.is-khach:not(.active) {
+  color: #047857;
+}
+
+.sr-po-modal.is-light .sr-po-price-mode-btn.is-hd:hover:not(.active) {
+  color: #0284c7;
+  background: #f0f9ff;
+}
+
+.sr-po-modal.is-light .sr-po-price-mode-btn.is-khach:hover:not(.active) {
+  color: #059669;
+  background: #ecfdf5;
+}
+
+.sr-po-modal.is-light .sr-po-price-mode-btn.is-hd.active {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+  border-color: #0284c7;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.28);
+}
+
+.sr-po-modal.is-light .sr-po-price-mode-btn.is-khach.active {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  border-color: #059669;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.28);
+}
+
+.sr-po-modal.is-light .sr-po-tabs-head {
+  background: #ffffff !important;
+  border-bottom-color: #e2e8f0 !important;
+}
+
+.sr-po-modal.is-light .sr-po-tabs-head .sr-po-tab-btn {
+  background: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #475569 !important;
+}
+
+.sr-po-modal.is-light .sr-po-tabs-card.is-mode-hd .sr-po-tabs-head .sr-po-tab-btn:hover:not(.active) {
+  background: #f0f9ff !important;
+  border-color: #7dd3fc !important;
+  color: #0369a1 !important;
+}
+
+.sr-po-modal.is-light .sr-po-tabs-card.is-mode-khach .sr-po-tabs-head .sr-po-tab-btn:hover:not(.active) {
+  background: #ecfdf5 !important;
+  border-color: #6ee7b7 !important;
+  color: #047857 !important;
+}
+
+.sr-po-modal.is-light .sr-po-tabs-card.is-mode-hd .sr-po-tabs-head .sr-po-tab-btn.active {
+  background: #e0f2fe !important;
+  border: 1.5px solid #0284c7 !important;
+  color: #0369a1 !important;
+  box-shadow: inset 0 -2.5px 0 #0284c7, 0 2px 6px rgba(2, 132, 199, 0.14) !important;
+}
+
+.sr-po-modal.is-light .sr-po-tabs-card.is-mode-khach .sr-po-tabs-head .sr-po-tab-btn.active {
+  background: #d1fae5 !important;
+  border: 1.5px solid #059669 !important;
+  color: #047857 !important;
+  box-shadow: inset 0 -2.5px 0 #059669, 0 2px 6px rgba(5, 150, 105, 0.14) !important;
+}
+
+.sr-po-modal.is-light .sr-modal-finance-grid.is-mode-hd {
+  background: linear-gradient(180deg, #dbeafe 0%, #e0f2fe 100%) !important;
+  border: 1.5px solid #7dd3fc !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65) !important;
+}
+
+.sr-po-modal.is-light .sr-modal-finance-grid.is-mode-khach {
+  background: linear-gradient(180deg, #a7f3d0 0%, #d1fae5 100%) !important;
+  border: 1.5px solid #34d399 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65) !important;
+}
+
+.sr-po-modal.is-light .sr-modal-finance-grid.is-mode-hd .sr-modal-fin-col {
+  background: linear-gradient(180deg, #f8fbff 0%, #f0f9ff 100%) !important;
+  border: 1px solid #93c5fd !important;
+  box-shadow: 0 2px 5px rgba(2, 132, 199, 0.08) !important;
+}
+
+.sr-po-modal.is-light .sr-modal-finance-grid.is-mode-khach .sr-modal-fin-col {
+  background: linear-gradient(180deg, #f7fefa 0%, #ecfdf5 100%) !important;
+  border: 1px solid #6ee7b7 !important;
+  box-shadow: 0 2px 5px rgba(5, 150, 105, 0.08) !important;
+}
+
+.sr-po-modal.is-light .sr-modal-finance-grid .sr-modal-fin-col .sr-modal-input.is-fin-num {
+  background: #ffffff !important;
+  border-color: #94a3b8 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05) !important;
+}
+
+.sr-po-modal.is-light .sr-po-fin-mode-tag.is-hd {
+  background: #dbeafe;
+  border-color: #38bdf8;
+  color: #0369a1;
+}
+
+.sr-po-modal.is-light .sr-po-fin-mode-tag.is-khach {
+  background: #d1fae5;
+  border-color: #34d399;
+  color: #047857;
+}
+
+/* ─── MODAL CHỌN KHUNG KHÁCH HÀNG KHI KHÁC BIỆT GIỮA CÁC FILE IMPORT ─── */
+.sr-cust-conflict-modal {
+  max-width: 780px !important;
+  width: 94vw !important;
+  padding-bottom: 18px !important;
+}
+
+.sr-add-choice-header-icon.is-amber {
+  background: rgba(245, 158, 11, 0.18) !important;
+  border-color: rgba(245, 158, 11, 0.42) !important;
+  color: #fbbf24 !important;
+}
+
+.sr-add-choice-badge.is-amber {
+  background: rgba(245, 158, 11, 0.16) !important;
+  border-color: rgba(245, 158, 11, 0.4) !important;
+  color: #fbbf24 !important;
+}
+
+.sr-cust-conflict-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding: 16px 20px 4px;
+}
+
+.sr-cust-conflict-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(148, 163, 184, 0.25);
+  background: rgba(15, 23, 42, 0.72);
+  color: #f8fafc;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.sr-cust-conflict-card.is-existing:hover,
+.sr-cust-conflict-card.is-existing.is-selected {
+  border-color: #38bdf8;
+  background: rgba(14, 165, 233, 0.14);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(2, 132, 199, 0.25);
+}
+
+.sr-cust-conflict-card.is-incoming:hover,
+.sr-cust-conflict-card.is-incoming.is-selected {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.14);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.25);
+}
+
+.sr-cust-conflict-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 9px;
+  border-bottom: 1px dashed rgba(148, 163, 184, 0.22);
+}
+
+.sr-cust-conflict-source {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.sr-cust-conflict-tag {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.sr-cust-conflict-tag.is-blue {
+  background: rgba(56, 189, 248, 0.16);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+}
+
+.sr-cust-conflict-tag.is-emerald {
+  background: rgba(16, 185, 129, 0.16);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.sr-cust-conflict-title {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sr-cust-conflict-pick-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.16s ease;
+}
+
+.sr-cust-conflict-pick-pill.is-blue {
+  background: rgba(56, 189, 248, 0.14);
+  color: #7dd3fc;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+}
+
+.sr-cust-conflict-card.is-existing:hover .sr-cust-conflict-pick-pill.is-blue,
+.sr-cust-conflict-pick-pill.is-blue.is-active {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #38bdf8;
+}
+
+.sr-cust-conflict-pick-pill.is-emerald {
+  background: rgba(16, 185, 129, 0.14);
+  color: #6ee7b7;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.sr-cust-conflict-card.is-incoming:hover .sr-cust-conflict-pick-pill.is-emerald,
+.sr-cust-conflict-pick-pill.is-emerald.is-active {
+  background: #059669;
+  color: #ffffff;
+  border-color: #34d399;
+}
+
+.sr-cust-conflict-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px 0;
+  margin-top: 10px;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.sr-cust-conflict-foot-hint {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.sr-cust-conflict-foot-hint strong {
+  color: #f8fafc;
+}
+
+.sr-cust-conflict-confirm-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: 1px solid rgba(52, 211, 153, 0.45);
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  transition: all 0.16s ease;
+}
+
+.sr-cust-conflict-confirm-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+}
+
+.sr-cust-conflict-modal.is-light .sr-cust-conflict-footer {
+  border-top-color: #e2e8f0;
+}
+
+.sr-cust-conflict-modal.is-light .sr-cust-conflict-foot-hint {
+  color: #64748b;
+}
+
+.sr-cust-conflict-modal.is-light .sr-cust-conflict-foot-hint strong {
+  color: #0f172a;
+}
+
+.sr-cust-conflict-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sr-cust-conflict-row {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 7px;
+  background: rgba(30, 41, 59, 0.45);
+  border: 1px solid transparent;
+  font-size: 12px;
+}
+
+.sr-cust-conflict-row.is-diff {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.38);
+}
+
+.sr-cust-conflict-lbl {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.sr-cust-conflict-row.is-diff .sr-cust-conflict-lbl {
+  color: #fcd34d;
+  font-weight: 700;
+}
+
+.sr-cust-conflict-val {
+  font-size: 12px;
+  font-weight: 600;
+  color: #e2e8f0;
+  word-break: break-word;
+  line-height: 1.35;
+}
+
+.sr-cust-conflict-row.is-diff .sr-cust-conflict-val {
+  color: #fef3c7;
+  font-weight: 700;
+}
+
+/* Light theme overrides */
+.sr-cust-conflict-modal.is-light .sr-cust-conflict-card {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.sr-cust-conflict-modal.is-light .sr-cust-conflict-card.is-existing:hover,
+.sr-cust-conflict-modal.is-light .sr-cust-conflict-card.is-existing.is-selected {
+  background: #f0f9ff;
+  border-color: #0284c7;
+}
+
+.sr-cust-conflict-modal.is-light .sr-cust-conflict-card.is-incoming:hover,
+.sr-cust-conflict-modal.is-light .sr-cust-conflict-card.is-incoming.is-selected {
+  background: #ecfdf5;
+  border-color: #059669;
+}
+
+.sr-cust-conflict-modal.is-light .sr-cust-conflict-title {
+  color: #0f172a;
+}
+
+.sr-cust-conflict-modal.is-light .sr-cust-conflict-row {
+  background: #ffffff;
+  border-color: #e2e8f0;
+}
+
+.sr-cust-conflict-modal.is-light .sr-cust-conflict-row.is-diff {
+  background: #fffbeb;
+  border-color: #f59e0b;
+}
+
+.sr-cust-conflict-modal.is-light .sr-cust-conflict-lbl {
+  color: #64748b;
+}
+
+.sr-cust-conflict-modal.is-light .sr-cust-conflict-row.is-diff .sr-cust-conflict-lbl {
+  color: #b45309;
+}
+
+.sr-cust-conflict-modal.is-light .sr-cust-conflict-val {
+  color: #1e293b;
+}
+
+.sr-cust-conflict-modal.is-light .sr-cust-conflict-row.is-diff .sr-cust-conflict-val {
+  color: #92400e;
+}
+
+.sr-cust-conflict-modal.is-light .sr-cust-conflict-pick-pill.is-blue {
+  background: #e0f2fe;
+  color: #0369a1;
+  border-color: #7dd3fc;
+}
+
+.sr-cust-conflict-modal.is-light .sr-cust-conflict-pick-pill.is-blue.is-active {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+}
+
+.sr-cust-conflict-modal.is-light .sr-cust-conflict-pick-pill.is-emerald {
+  background: #d1fae5;
+  color: #047857;
+  border-color: #6ee7b7;
+}
+
+.sr-cust-conflict-modal.is-light .sr-cust-conflict-pick-pill.is-emerald.is-active {
+  background: #059669;
+  color: #ffffff;
+  border-color: #059669;
+}
+
+@media (max-width: 680px) {
+  .sr-cust-conflict-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
