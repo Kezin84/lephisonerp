@@ -1022,7 +1022,41 @@ export function createStarterTemplateConfig(customId?: string, name = 'Mẫu Bá
     })
   })
 
-  // Row 8: Repeating Item Row (Rows 12-13 in baogiachuan.xlsx)
+  // Row 8: Repeating Category Group Row (`dong_mau_nhom = 8`)
+  setCell(8, 1, '{{NHOM_STT}}', {
+    bold: true,
+    fontSize: 11,
+    fontFamily: 'Arial',
+    color: '#000000',
+    align: 'center',
+    valign: 'middle',
+    border: true,
+    wrapText: true
+  })
+  setCell(8, 2, '{{NHOM_TEN}}', {
+    bold: true,
+    fontSize: 11,
+    fontFamily: 'Arial',
+    color: '#000000',
+    align: 'left',
+    valign: 'middle',
+    border: true,
+    wrapText: true
+  })
+  for (let c = 3; c <= 9; c++) {
+    setCell(8, c, '', {
+      bold: true,
+      fontSize: 11,
+      fontFamily: 'Arial',
+      color: '#000000',
+      align: 'left',
+      valign: 'middle',
+      border: true,
+      wrapText: true
+    })
+  }
+
+  // Row 9: Repeating Item Row (`dong_mau_san_pham = 9`)
   const itemTokens: { c: number; val: string; align: 'left' | 'center' | 'right'; bold?: boolean; fontSize?: number }[] = [
     { c: 1, val: '{{STT}}', align: 'center', bold: true, fontSize: 11 },
     { c: 2, val: '{{TEN_HANG}}', align: 'left', bold: false, fontSize: 11 },
@@ -1035,7 +1069,7 @@ export function createStarterTemplateConfig(customId?: string, name = 'Mẫu Bá
     { c: 9, val: '{{TT_SAU_THUE}}', align: 'right', bold: true, fontSize: 11 }
   ]
   itemTokens.forEach(it => {
-    setCell(8, it.c, it.val, {
+    setCell(9, it.c, it.val, {
       bold: it.bold,
       fontSize: it.fontSize || 11,
       fontFamily: 'Arial',
@@ -1047,42 +1081,42 @@ export function createStarterTemplateConfig(customId?: string, name = 'Mẫu Bá
     })
   })
 
-  // Row 9: Total Row (Row 14 in baogiachuan.xlsx)
-  setCell(9, 1, 'TỔNG CỘNG', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'center', valign: 'middle', border: true, wrapText: true })
+  // Row 10: Total Row (`danh_sach_dong_tong = [10]`)
+  setCell(10, 1, 'TỔNG CỘNG', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'center', valign: 'middle', border: true, wrapText: true })
   for (let c = 2; c <= 6; c++) {
-    setCell(9, c, '', { bold: true, fontSize: 11, fontFamily: 'Arial', bgColor: '#ffff00', border: true })
+    setCell(10, c, '', { bold: true, fontSize: 11, fontFamily: 'Arial', bgColor: '#ffff00', border: true })
   }
-  setCell(9, 7, '{{TONG_TRUOC_THUE}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(9, 8, '{{TONG_TIEN_VAT}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(9, 9, '{{TONG_SAU_THUE}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(10, 7, '{{TONG_TRUOC_THUE}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(10, 8, '{{TONG_TIEN_VAT}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(10, 9, '{{TONG_SAU_THUE}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
 
-  // Row 10: Terms Header (Row 16 in baogiachuan.xlsx)
-  setCell(10, 1, 'CÁC ĐIỀU KHOẢN THƯƠNG MẠI KHÁC:', { bold: true, underline: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', align: 'left', valign: 'middle' })
+  // Row 11: Terms Header
+  setCell(11, 1, 'CÁC ĐIỀU KHOẢN THƯƠNG MẠI KHÁC:', { bold: true, underline: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', align: 'left', valign: 'middle' })
 
-  // Row 11: Commercial Terms Block pulled from schema `dieu_khoan` (Rows 17-23 in baogiachuan.xlsx)
-  setCell(11, 1, '1, 2...', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', align: 'center', valign: 'middle' })
-  setCell(11, 2, '{{DIEU_KHOAN}}', { fontSize: 11, fontFamily: 'Arial', color: '#000000', align: 'left', valign: 'middle', wrapText: true })
+  // Row 12: Commercial Terms Block pulled from schema `dieu_khoan` (`dong_dieu_khoan = 12`)
+  setCell(12, 1, '1, 2...', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', align: 'center', valign: 'middle' })
+  setCell(12, 2, '{{DIEU_KHOAN}}', { fontSize: 11, fontFamily: 'Arial', color: '#000000', align: 'left', valign: 'middle', wrapText: true })
 
-  // Row 12: Order Confirmation Note (Row 24 in baogiachuan.xlsx)
+  // Row 13: Order Confirmation Note
   setCell(
-    12,
+    13,
     2,
     '- Đơn đặt hàng chỉ được tiến hành sau khi Bên Mua Hàng đồng ý với các điều khoản nêu trên bằng cách\n  kí và đóng dấu vào Xác nhận đơn hàng này và gởi lại cho Bên Bán hàng',
     { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', align: 'left', valign: 'middle', wrapText: true }
   )
 
-  // Row 13-15: Signature Block (Rows 26-28 in baogiachuan.xlsx)
-  setCell(13, 1, 'Trân Trọng,', { bold: true, fontSize: 10, fontFamily: 'Arial', color: '#000000', align: 'left', valign: 'middle' })
-  setCell(13, 7, 'Xác nhận đặt hàng', { bold: true, fontSize: 10, fontFamily: 'Arial', color: '#000000', align: 'center', valign: 'middle' })
+  // Row 14-16: Signature Block (`dong_chu_ky = 14`)
+  setCell(14, 1, 'Trân Trọng,', { bold: true, fontSize: 10, fontFamily: 'Arial', color: '#000000', align: 'left', valign: 'middle' })
+  setCell(14, 7, 'Xác nhận đặt hàng', { bold: true, fontSize: 10, fontFamily: 'Arial', color: '#000000', align: 'center', valign: 'middle' })
 
-  setCell(14, 1, '', { fontSize: 10, fontFamily: 'Arial', align: 'left' })
+  setCell(15, 1, '', { fontSize: 10, fontFamily: 'Arial', align: 'left' })
 
-  setCell(15, 1, '{{NGUOI_LAP}}  -  {{SDT_NGUOI_LAP}}', { bold: true, fontSize: 10, fontFamily: 'Arial', color: '#0000cc', align: 'left', valign: 'middle' })
+  setCell(16, 1, '{{NGUOI_LAP}}  -  {{SDT_NGUOI_LAP}}', { bold: true, fontSize: 10, fontFamily: 'Arial', color: '#0000cc', align: 'left', valign: 'middle' })
 
-  // Row 16-18: Company Footer (Rows 30-32 in baogiachuan.xlsx)
-  setCell(16, 1, '{{TEN_CONG_TY_BAN}}', { bold: true, fontSize: 9, fontFamily: 'Arial', color: '#002060', align: 'left', valign: 'middle' })
-  setCell(17, 1, 'Add: {{DIA_CHI_CONG_TY_BAN}}', { fontSize: 9, fontFamily: 'Arial', color: '#0070c0', align: 'left', valign: 'middle' })
-  setCell(18, 1, 'T:  (028) 3841 8080 | F:  (028) 3841 5555 | E: {{EMAIL_NGUOI_LAP}} | W: www.ntssi.vn', { underline: true, fontSize: 11, fontFamily: 'Calibri', color: '#0563c1', align: 'left', valign: 'middle' })
+  // Row 17-19: Company Footer
+  setCell(17, 1, '{{TEN_CONG_TY_BAN}}', { bold: true, fontSize: 9, fontFamily: 'Arial', color: '#002060', align: 'left', valign: 'middle' })
+  setCell(18, 1, 'Add: {{DIA_CHI_CONG_TY_BAN}}', { fontSize: 9, fontFamily: 'Arial', color: '#0070c0', align: 'left', valign: 'middle' })
+  setCell(19, 1, 'T:  (028) 3841 8080 | F:  (028) 3841 5555 | E: {{EMAIL_NGUOI_LAP}} | W: www.ntssi.vn', { underline: true, fontSize: 11, fontFamily: 'Calibri', color: '#0563c1', align: 'left', valign: 'middle' })
 
   return {
     id,
@@ -1120,11 +1154,11 @@ export function createStarterTemplateConfig(customId?: string, name = 'Mẫu Bá
     },
     mapping_vung: {
       dong_tieu_de_bang: 7,
-      dong_mau_nhom: 0,
-      dong_mau_san_pham: 8,
-      danh_sach_dong_tong: [9],
-      dong_dieu_khoan: 11,
-      dong_chu_ky: 13
+      dong_mau_nhom: 8,
+      dong_mau_san_pham: 9,
+      danh_sach_dong_tong: [10],
+      dong_dieu_khoan: 12,
+      dong_chu_ky: 14
     },
     cau_hinh_cot_bang: [
       { colIndex: 1, header: 'Stt', field: 'stt', token: '{{STT}}', width: 5 },
@@ -1137,10 +1171,10 @@ export function createStarterTemplateConfig(customId?: string, name = 'Mẫu Bá
       { colIndex: 8, header: 'Thuế\nVAT', field: 'vat', token: '{{TIEN_VAT}}', width: 9 },
       { colIndex: 9, header: 'Thành tiền sau VAT', field: 'sau_thue', token: '{{TT_SAU_THUE}}', width: 14 }
     ],
-    so_dong: 18,
+    so_dong: 19,
     so_cot: 9,
     col_widths: { 1: 38, 2: 152, 3: 280, 4: 36, 5: 52, 6: 102, 7: 104, 8: 70, 9: 104 },
-    row_heights: { 1: 84, 2: 22, 3: 22, 4: 24, 5: 36, 6: 24, 7: 54, 8: 64, 9: 34, 10: 24, 11: 48, 12: 38, 13: 22, 14: 44, 15: 22, 16: 20, 17: 20, 18: 22 },
+    row_heights: { 1: 84, 2: 22, 3: 22, 4: 24, 5: 36, 6: 24, 7: 54, 8: 28, 9: 64, 10: 34, 11: 24, 12: 48, 13: 38, 14: 22, 15: 44, 16: 22, 17: 20, 18: 20, 19: 22 },
     merges: [
       { top: 1, left: 1, bottom: 1, right: 9 },
       { top: 2, left: 1, bottom: 2, right: 6 },
@@ -1149,17 +1183,18 @@ export function createStarterTemplateConfig(customId?: string, name = 'Mẫu Bá
       { top: 4, left: 1, bottom: 4, right: 9 },
       { top: 5, left: 1, bottom: 5, right: 9 },
       { top: 6, left: 1, bottom: 6, right: 9 },
-      { top: 9, left: 1, bottom: 9, right: 6 },
-      { top: 10, left: 1, bottom: 10, right: 9 },
-      { top: 11, left: 2, bottom: 11, right: 9 },
+      { top: 8, left: 2, bottom: 8, right: 9 },
+      { top: 10, left: 1, bottom: 10, right: 6 },
+      { top: 11, left: 1, bottom: 11, right: 9 },
       { top: 12, left: 2, bottom: 12, right: 9 },
-      { top: 13, left: 1, bottom: 13, right: 3 },
-      { top: 13, left: 7, bottom: 13, right: 9 },
-      { top: 14, left: 1, bottom: 14, right: 5 },
+      { top: 13, left: 2, bottom: 13, right: 9 },
+      { top: 14, left: 1, bottom: 14, right: 3 },
+      { top: 14, left: 7, bottom: 14, right: 9 },
       { top: 15, left: 1, bottom: 15, right: 5 },
-      { top: 16, left: 1, bottom: 16, right: 9 },
+      { top: 16, left: 1, bottom: 16, right: 5 },
       { top: 17, left: 1, bottom: 17, right: 9 },
-      { top: 18, left: 1, bottom: 18, right: 9 }
+      { top: 18, left: 1, bottom: 18, right: 9 },
+      { top: 19, left: 1, bottom: 19, right: 9 }
     ],
     grid_cells: cells
   }
@@ -1310,7 +1345,41 @@ export function createThreePriceComparisonTemplateConfig(
     })
   })
 
-  // Row 8: Repeating Item Row (no background fill on item cells; only Header is colored)
+  // Row 8: Repeating Category Group Row (`dong_mau_nhom = 8`)
+  setCell(8, 1, '{{NHOM_STT}}', {
+    bold: true,
+    fontSize: 11,
+    fontFamily: 'Arial',
+    color: '#000000',
+    align: 'center',
+    valign: 'middle',
+    border: true,
+    wrapText: true
+  })
+  setCell(8, 2, '{{NHOM_TEN}}', {
+    bold: true,
+    fontSize: 11,
+    fontFamily: 'Arial',
+    color: '#000000',
+    align: 'left',
+    valign: 'middle',
+    border: true,
+    wrapText: true
+  })
+  for (let c = 3; c <= 13; c++) {
+    setCell(8, c, '', {
+      bold: true,
+      fontSize: 11,
+      fontFamily: 'Arial',
+      color: '#000000',
+      align: 'left',
+      valign: 'middle',
+      border: true,
+      wrapText: true
+    })
+  }
+
+  // Row 9: Repeating Item Row (`dong_mau_san_pham = 9`)
   const itemTokens: { c: number; val: string; align: 'left' | 'center' | 'right'; bold?: boolean; fontSize?: number; color?: string }[] = [
     { c: 1, val: '{{STT}}', align: 'center', bold: true, fontSize: 11 },
     { c: 2, val: '{{TEN_HANG}}', align: 'left', bold: false, fontSize: 11 },
@@ -1327,7 +1396,7 @@ export function createThreePriceComparisonTemplateConfig(
     { c: 13, val: '{{NET_MARGIN}}', align: 'right', bold: true, fontSize: 11, color: '#059669' }
   ]
   itemTokens.forEach(it => {
-    setCell(8, it.c, it.val, {
+    setCell(9, it.c, it.val, {
       bold: it.bold,
       fontSize: it.fontSize || 11,
       fontFamily: 'Arial',
@@ -1339,75 +1408,75 @@ export function createThreePriceComparisonTemplateConfig(
     })
   })
 
-  // Row 9: TỔNG CỘNG TRƯỚC THUẾ (Số tổng đặt thẳng dưới cột Thành tiền 7, 9, 11 và Net Margin 13)
-  setCell(9, 1, 'TỔNG CỘNG TRƯỚC THUẾ', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#e2efda', align: 'center', valign: 'middle', border: true, wrapText: true })
+  // Row 10: TỔNG CỘNG TRƯỚC THUẾ (Số tổng đặt thẳng dưới cột Thành tiền 7, 9, 11 và Net Margin 13)
+  setCell(10, 1, 'TỔNG CỘNG TRƯỚC THUẾ', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#e2efda', align: 'center', valign: 'middle', border: true, wrapText: true })
   for (let c = 2; c <= 5; c++) {
-    setCell(9, c, '', { bold: true, fontSize: 11, fontFamily: 'Arial', bgColor: '#e2efda', border: true })
+    setCell(10, c, '', { bold: true, fontSize: 11, fontFamily: 'Arial', bgColor: '#e2efda', border: true })
   }
-  setCell(9, 6, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#e2efda', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(9, 7, '{{TONG_TRUOC_LIST}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#e2efda', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(9, 8, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#e2efda', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(9, 9, '{{TONG_TRUOC_KHACH}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#e2efda', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(9, 10, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#e2efda', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(9, 11, '{{TONG_TRUOC_HD}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#e2efda', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(9, 12, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#e2efda', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(9, 13, '{{TONG_NET_MARGIN}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#059669', bgColor: '#e2efda', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(10, 6, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#e2efda', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(10, 7, '{{TONG_TRUOC_LIST}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#e2efda', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(10, 8, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#e2efda', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(10, 9, '{{TONG_TRUOC_KHACH}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#e2efda', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(10, 10, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#e2efda', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(10, 11, '{{TONG_TRUOC_HD}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#e2efda', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(10, 12, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#e2efda', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(10, 13, '{{TONG_NET_MARGIN}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#059669', bgColor: '#e2efda', align: 'right', valign: 'middle', border: true, wrapText: true })
 
-  // Row 10: THUẾ VAT
-  setCell(10, 1, 'THUẾ VAT', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#fff2cc', align: 'center', valign: 'middle', border: true, wrapText: true })
+  // Row 11: THUẾ VAT
+  setCell(11, 1, 'THUẾ VAT', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#fff2cc', align: 'center', valign: 'middle', border: true, wrapText: true })
   for (let c = 2; c <= 5; c++) {
-    setCell(10, c, '', { bold: true, fontSize: 11, fontFamily: 'Arial', bgColor: '#fff2cc', border: true })
+    setCell(11, c, '', { bold: true, fontSize: 11, fontFamily: 'Arial', bgColor: '#fff2cc', border: true })
   }
-  setCell(10, 6, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#fff2cc', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(10, 7, '{{TONG_VAT_LIST}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#fff2cc', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(10, 8, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#fff2cc', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(10, 9, '{{TONG_VAT_KHACH}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#fff2cc', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(10, 10, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#fff2cc', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(10, 11, '{{TONG_VAT_HD}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#fff2cc', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(10, 12, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#fff2cc', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(10, 13, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#fff2cc', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(11, 6, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#fff2cc', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(11, 7, '{{TONG_VAT_LIST}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#fff2cc', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(11, 8, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#fff2cc', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(11, 9, '{{TONG_VAT_KHACH}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#fff2cc', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(11, 10, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#fff2cc', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(11, 11, '{{TONG_VAT_HD}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#fff2cc', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(11, 12, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#fff2cc', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(11, 13, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#fff2cc', align: 'right', valign: 'middle', border: true, wrapText: true })
 
-  // Row 11: TỔNG CỘNG SAU THUẾ
-  setCell(11, 1, 'TỔNG CỘNG SAU THUẾ', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'center', valign: 'middle', border: true, wrapText: true })
+  // Row 12: TỔNG CỘNG SAU THUẾ
+  setCell(12, 1, 'TỔNG CỘNG SAU THUẾ', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'center', valign: 'middle', border: true, wrapText: true })
   for (let c = 2; c <= 5; c++) {
-    setCell(11, c, '', { bold: true, fontSize: 11, fontFamily: 'Arial', bgColor: '#ffff00', border: true })
+    setCell(12, c, '', { bold: true, fontSize: 11, fontFamily: 'Arial', bgColor: '#ffff00', border: true })
   }
-  setCell(11, 6, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(11, 7, '{{TONG_SAU_LIST}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(11, 8, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(11, 9, '{{TONG_SAU_KHACH}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(11, 10, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(11, 11, '{{TONG_SAU_HD}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(11, 12, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(11, 13, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(12, 6, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(12, 7, '{{TONG_SAU_LIST}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(12, 8, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(12, 9, '{{TONG_SAU_KHACH}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(12, 10, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(12, 11, '{{TONG_SAU_HD}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(12, 12, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(12, 13, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
 
-  // Row 12: Terms Header
-  setCell(12, 1, 'CÁC ĐIỀU KHOẢN THƯƠNG MẠI KHÁC:', { bold: true, underline: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', align: 'left', valign: 'middle' })
+  // Row 13: Terms Header
+  setCell(13, 1, 'CÁC ĐIỀU KHOẢN THƯƠNG MẠI KHÁC:', { bold: true, underline: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', align: 'left', valign: 'middle' })
 
-  // Row 13: Commercial Terms Block
-  setCell(13, 1, '1, 2...', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', align: 'center', valign: 'middle' })
-  setCell(13, 2, '{{DIEU_KHOAN}}', { fontSize: 11, fontFamily: 'Arial', color: '#000000', align: 'left', valign: 'middle', wrapText: true })
+  // Row 14: Commercial Terms Block (`dong_dieu_khoan = 14`)
+  setCell(14, 1, '1, 2...', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', align: 'center', valign: 'middle' })
+  setCell(14, 2, '{{DIEU_KHOAN}}', { fontSize: 11, fontFamily: 'Arial', color: '#000000', align: 'left', valign: 'middle', wrapText: true })
 
-  // Row 14: Order Confirmation Note
+  // Row 15: Order Confirmation Note
   setCell(
-    14,
+    15,
     2,
     '- Đơn đặt hàng chỉ được tiến hành sau khi Bên Mua Hàng đồng ý với các điều khoản nêu trên bằng cách\n  kí và đóng dấu vào Xác nhận đơn hàng này và gởi lại cho Bên Bán hàng',
     { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', align: 'left', valign: 'middle', wrapText: true }
   )
 
-  // Row 15-17: Signature Block
-  setCell(15, 1, 'Trân Trọng,', { bold: true, fontSize: 10, fontFamily: 'Arial', color: '#000000', align: 'left', valign: 'middle' })
-  setCell(15, 9, 'Xác nhận đặt hàng', { bold: true, fontSize: 10, fontFamily: 'Arial', color: '#000000', align: 'center', valign: 'middle' })
+  // Row 16-18: Signature Block (`dong_chu_ky = 16`)
+  setCell(16, 1, 'Trân Trọng,', { bold: true, fontSize: 10, fontFamily: 'Arial', color: '#000000', align: 'left', valign: 'middle' })
+  setCell(16, 9, 'Xác nhận đặt hàng', { bold: true, fontSize: 10, fontFamily: 'Arial', color: '#000000', align: 'center', valign: 'middle' })
 
-  setCell(16, 1, '', { fontSize: 10, fontFamily: 'Arial', align: 'left' })
+  setCell(17, 1, '', { fontSize: 10, fontFamily: 'Arial', align: 'left' })
 
-  setCell(17, 1, '{{NGUOI_LAP}}  -  {{SDT_NGUOI_LAP}}', { bold: true, fontSize: 10, fontFamily: 'Arial', color: '#0000cc', align: 'left', valign: 'middle' })
+  setCell(18, 1, '{{NGUOI_LAP}}  -  {{SDT_NGUOI_LAP}}', { bold: true, fontSize: 10, fontFamily: 'Arial', color: '#0000cc', align: 'left', valign: 'middle' })
 
-  // Row 18-20: Company Footer
-  setCell(18, 1, '{{TEN_CONG_TY_BAN}}', { bold: true, fontSize: 9, fontFamily: 'Arial', color: '#002060', align: 'left', valign: 'middle' })
-  setCell(19, 1, 'Add: {{DIA_CHI_CONG_TY_BAN}}', { fontSize: 9, fontFamily: 'Arial', color: '#0070c0', align: 'left', valign: 'middle' })
-  setCell(20, 1, 'T:  (028) 3841 8080 | F:  (028) 3841 5555 | E: {{EMAIL_NGUOI_LAP}} | W: www.ntssi.vn', { underline: true, fontSize: 11, fontFamily: 'Calibri', color: '#0563c1', align: 'left', valign: 'middle' })
+  // Row 19-21: Company Footer
+  setCell(19, 1, '{{TEN_CONG_TY_BAN}}', { bold: true, fontSize: 9, fontFamily: 'Arial', color: '#002060', align: 'left', valign: 'middle' })
+  setCell(20, 1, 'Add: {{DIA_CHI_CONG_TY_BAN}}', { fontSize: 9, fontFamily: 'Arial', color: '#0070c0', align: 'left', valign: 'middle' })
+  setCell(21, 1, 'T:  (028) 3841 8080 | F:  (028) 3841 5555 | E: {{EMAIL_NGUOI_LAP}} | W: www.ntssi.vn', { underline: true, fontSize: 11, fontFamily: 'Calibri', color: '#0563c1', align: 'left', valign: 'middle' })
 
   return {
     id,
@@ -1445,11 +1514,11 @@ export function createThreePriceComparisonTemplateConfig(
     },
     mapping_vung: {
       dong_tieu_de_bang: 7,
-      dong_mau_nhom: 0,
-      dong_mau_san_pham: 8,
-      danh_sach_dong_tong: [9, 10, 11],
-      dong_dieu_khoan: 13,
-      dong_chu_ky: 15
+      dong_mau_nhom: 8,
+      dong_mau_san_pham: 9,
+      danh_sach_dong_tong: [10, 11, 12],
+      dong_dieu_khoan: 14,
+      dong_chu_ky: 16
     },
     cau_hinh_cot_bang: [
       { colIndex: 1, header: 'Stt', field: 'stt', token: '{{STT}}', width: 5 },
@@ -1466,7 +1535,7 @@ export function createThreePriceComparisonTemplateConfig(
       { colIndex: 12, header: 'Giá vốn / Giá off hãng\n({{DON_VI_TIEN_TE}})', field: 'gia_off_hang_kem_pct', token: '{{GIA_OFF_HANG_KEM_PCT}}', width: 14 },
       { colIndex: 13, header: 'Net Margin\n({{DON_VI_TIEN_TE}})', field: 'net_margin', token: '{{NET_MARGIN}}', width: 14 }
     ],
-    so_dong: 20,
+    so_dong: 21,
     so_cot: 13,
     col_widths: {
       1: 36,
@@ -1491,19 +1560,20 @@ export function createThreePriceComparisonTemplateConfig(
       5: 36,
       6: 24,
       7: 50,
-      8: 64,
-      9: 30,
+      8: 28,
+      9: 64,
       10: 30,
-      11: 34,
-      12: 24,
-      13: 48,
-      14: 38,
-      15: 22,
-      16: 44,
-      17: 22,
-      18: 20,
+      11: 30,
+      12: 34,
+      13: 24,
+      14: 48,
+      15: 38,
+      16: 22,
+      17: 44,
+      18: 22,
       19: 20,
-      20: 22
+      20: 20,
+      21: 22
     },
     merges: [
       { top: 1, left: 1, bottom: 1, right: 13 },
@@ -1513,22 +1583,187 @@ export function createThreePriceComparisonTemplateConfig(
       { top: 4, left: 1, bottom: 4, right: 13 },
       { top: 5, left: 1, bottom: 5, right: 13 },
       { top: 6, left: 1, bottom: 6, right: 13 },
-      { top: 9, left: 1, bottom: 9, right: 5 },
+      { top: 8, left: 2, bottom: 8, right: 13 },
       { top: 10, left: 1, bottom: 10, right: 5 },
       { top: 11, left: 1, bottom: 11, right: 5 },
-      { top: 12, left: 1, bottom: 12, right: 13 },
-      { top: 13, left: 2, bottom: 13, right: 13 },
+      { top: 12, left: 1, bottom: 12, right: 5 },
+      { top: 13, left: 1, bottom: 13, right: 13 },
       { top: 14, left: 2, bottom: 14, right: 13 },
-      { top: 15, left: 1, bottom: 15, right: 4 },
-      { top: 15, left: 9, bottom: 15, right: 13 },
-      { top: 16, left: 1, bottom: 16, right: 6 },
+      { top: 15, left: 2, bottom: 15, right: 13 },
+      { top: 16, left: 1, bottom: 16, right: 4 },
+      { top: 16, left: 9, bottom: 16, right: 13 },
       { top: 17, left: 1, bottom: 17, right: 6 },
-      { top: 18, left: 1, bottom: 18, right: 13 },
+      { top: 18, left: 1, bottom: 18, right: 6 },
       { top: 19, left: 1, bottom: 19, right: 13 },
-      { top: 20, left: 1, bottom: 20, right: 13 }
+      { top: 20, left: 1, bottom: 20, right: 13 },
+      { top: 21, left: 1, bottom: 21, right: 13 }
     ],
     grid_cells: cells
   }
+}
+
+export function isStandardFourQuoteTemplate(tpl?: Partial<PrintTemplateConfig> | null): boolean {
+  if (!tpl) return false
+  if (isDealRegTemplate(tpl) || isAgencyTemplate(tpl)) return false
+  if (isThreePriceComparisonTemplate(tpl) || isListPriceTemplate(tpl) || isContractPriceTemplate(tpl)) {
+    return true
+  }
+  const id = String(tpl.id || '').trim()
+  const name = String(tpl.ten_mau || '').toLowerCase()
+  const link = String(tpl.link_file_goc || '').toLowerCase()
+  return (
+    id === 'MINTL_DEFAULT_NTS' ||
+    id === 'MINTL_CHUAN_NTS' ||
+    id.startsWith('MINTL_DEFAULT_NTS_') ||
+    id.startsWith('MINTL_CHUAN_NTS_') ||
+    name.includes('chuẩn nts') ||
+    name.includes('chuan nts') ||
+    link.includes('baogiachuan.xlsx')
+  )
+}
+
+export function ensureStandardTemplateGroupTokenRow(tpl: PrintTemplateConfig): boolean {
+  if (!isStandardFourQuoteTemplate(tpl)) return false
+  const curGroupR = Number(tpl.mapping_vung?.dong_mau_nhom) || 0
+  if (curGroupR > 0) return false
+
+  const headerR = Number(tpl.mapping_vung?.dong_tieu_de_bang) || 7
+  const itemR = Number(tpl.mapping_vung?.dong_mau_san_pham) || 8
+  const totalCols = Math.max(Number(tpl.so_cot) || 9, 2)
+  const sttCol = findTableSttColumn(tpl)
+  const nameCol = Math.min(sttCol + 1, totalCols)
+
+  // If the row between headerR and itemR already exists and holds group tokens, just bind dong_mau_nhom
+  if (itemR > headerR + 1) {
+    const candR = headerR + 1
+    const c1Val = (tpl.grid_cells?.[`${candR}_${sttCol}`]?.value || '').trim()
+    const c2Val = (tpl.grid_cells?.[`${candR}_${nameCol}`]?.value || '').trim()
+    if (c1Val.includes('{{NHOM_STT}}') || c2Val.includes('{{NHOM_TEN}}')) {
+      tpl.mapping_vung.dong_mau_nhom = candR
+      return true
+    }
+  }
+
+  // Otherwise insert a new Category Group token row at `insertRow = itemR` and shift rows >= insertRow down by +1
+  const insertRow = itemR
+  let oldMaxRow = Math.max(Number(tpl.so_dong) || 18, insertRow)
+  Object.keys(tpl.grid_cells || {}).forEach(k => {
+    const r = Number(k.split('_')[0])
+    if (r > oldMaxRow) oldMaxRow = r
+  })
+
+  const nextCells: Record<string, GridCellData> = {}
+  Object.entries(tpl.grid_cells || {}).forEach(([k, cell]) => {
+    const [rStr, cStr] = k.split('_')
+    const r = Number(rStr)
+    const c = Number(cStr)
+    if (!r || !c) return
+    const targetR = r >= insertRow ? r + 1 : r
+    nextCells[`${targetR}_${c}`] = cell
+  })
+
+  for (let c = 1; c <= totalCols; c++) {
+    if (c === sttCol) {
+      nextCells[`${insertRow}_${c}`] = {
+        value: '{{NHOM_STT}}',
+        style: {
+          bold: true,
+          fontSize: 11,
+          fontFamily: 'Arial',
+          color: '#000000',
+          align: 'center',
+          valign: 'middle',
+          border: true,
+          wrapText: true
+        }
+      }
+    } else if (c === nameCol) {
+      nextCells[`${insertRow}_${c}`] = {
+        value: '{{NHOM_TEN}}',
+        style: {
+          bold: true,
+          fontSize: 11,
+          fontFamily: 'Arial',
+          color: '#000000',
+          align: 'left',
+          valign: 'middle',
+          border: true,
+          wrapText: true
+        }
+      }
+    } else {
+      nextCells[`${insertRow}_${c}`] = {
+        value: '',
+        style: {
+          bold: true,
+          fontSize: 11,
+          fontFamily: 'Arial',
+          color: '#000000',
+          align: 'left',
+          valign: 'middle',
+          border: true,
+          wrapText: true
+        }
+      }
+    }
+  }
+
+  const nextHeights: Record<number, number> = {}
+  for (let r = 1; r <= oldMaxRow; r++) {
+    const h = tpl.row_heights?.[r]
+    if (h !== undefined) {
+      const targetR = r >= insertRow ? r + 1 : r
+      nextHeights[targetR] = h
+    }
+  }
+  nextHeights[insertRow] = 28
+
+  const nextMerges: GridMerge[] = []
+  ;(tpl.merges || []).forEach(m => {
+    if (m.bottom < insertRow) {
+      nextMerges.push({ ...m })
+    } else if (m.top >= insertRow) {
+      nextMerges.push({
+        top: m.top + 1,
+        bottom: m.bottom + 1,
+        left: m.left,
+        right: m.right
+      })
+    } else {
+      nextMerges.push({
+        top: m.top,
+        bottom: m.bottom + 1,
+        left: m.left,
+        right: m.right
+      })
+    }
+  })
+  if (nameCol < totalCols) {
+    nextMerges.push({
+      top: insertRow,
+      bottom: insertRow,
+      left: nameCol,
+      right: totalCols
+    })
+  }
+
+  tpl.mapping_vung.dong_mau_nhom = insertRow
+  tpl.mapping_vung.dong_mau_san_pham = itemR + 1
+  tpl.mapping_vung.danh_sach_dong_tong = (tpl.mapping_vung.danh_sach_dong_tong || []).map(r =>
+    r >= insertRow ? r + 1 : r
+  )
+  if (tpl.mapping_vung.dong_dieu_khoan >= insertRow) {
+    tpl.mapping_vung.dong_dieu_khoan += 1
+  }
+  if (tpl.mapping_vung.dong_chu_ky >= insertRow) {
+    tpl.mapping_vung.dong_chu_ky += 1
+  }
+
+  tpl.so_dong = oldMaxRow + 1
+  tpl.grid_cells = nextCells
+  tpl.row_heights = nextHeights
+  tpl.merges = nextMerges
+  return true
 }
 
 export function normalizeLegacyTokenSyntax(val: string): string {
@@ -2968,25 +3203,28 @@ export async function fetchAndSyncPrintTemplates(): Promise<PrintTemplateConfig[
               merges: parsedMerges,
               grid_cells: parsedGridCells
             })
-        let needsThreePriceResync = isLegacy8ColThreePrice
+        let needsTemplateResync = isLegacy8ColThreePrice
         if (isThreePriceId && tpl.grid_cells) {
           const c7 = tpl.grid_cells['7_7']
           const c9 = tpl.grid_cells['7_9']
           const c11 = tpl.grid_cells['7_11']
           if (c7?.style && c7.style.bgColor === '#bfdbfe') {
             c7.style.bgColor = '#dbeafe'
-            needsThreePriceResync = true
+            needsTemplateResync = true
           }
           if (c9?.style && c9.style.bgColor === '#bbf7d0') {
             c9.style.bgColor = '#dcfce7'
-            needsThreePriceResync = true
+            needsTemplateResync = true
           }
           if (c11?.style && c11.style.bgColor === '#fde68a') {
             c11.style.bgColor = '#fef3c7'
-            needsThreePriceResync = true
+            needsTemplateResync = true
           }
         }
-        if (needsThreePriceResync) {
+        if (ensureStandardTemplateGroupTokenRow(tpl)) {
+          needsTemplateResync = true
+        }
+        if (needsTemplateResync) {
           newSyncUpdates[`mau_in_thiet_lap/${id}`] = serializeTemplateForFirebase(tpl)
         }
         templatesMap.set(id, tpl)
@@ -3085,24 +3323,61 @@ export async function fetchAndSyncPrintTemplates(): Promise<PrintTemplateConfig[
         }
 
         migratedTpl = ensureGridHeaderPopulated(migratedTpl)
+        ensureStandardTemplateGroupTokenRow(migratedTpl)
         templatesMap.set(newId, migratedTpl)
         newSyncUpdates[`mau_in_thiet_lap/${newId}`] = serializeTemplateForFirebase(migratedTpl)
       }
     }
 
-    // 3. Ensure at least 1 default starter template exists if `mau_in_thiet_lap` is completely empty
-    if (templatesMap.size === 0) {
+    // 3. Auto-seed built-in "Mẫu Báo Giá Chuẩn NTS" (`MINTL_DEFAULT_NTS`) if not yet present and not deleted by user
+    const existingChuanNts = Array.from(templatesMap.values()).find(
+      t =>
+        t.id === 'MINTL_DEFAULT_NTS' ||
+        t.id === 'MINTL_CHUAN_NTS' ||
+        String(t.ten_mau || '').toLowerCase().includes('chuẩn nts') ||
+        String(t.ten_mau || '').toLowerCase().includes('chuan nts')
+    )
+    if (!existingChuanNts && !deletedIds.has('MINTL_DEFAULT_NTS') && !deletedIds.has('MINTL_CHUAN_NTS')) {
       const defaultTpl = createStarterTemplateConfig('MINTL_DEFAULT_NTS', 'Mẫu Báo Giá Chuẩn NTS')
       defaultTpl.mac_dinh = true
       templatesMap.set(defaultTpl.id, defaultTpl)
       newSyncUpdates[`mau_in_thiet_lap/${defaultTpl.id}`] = serializeTemplateForFirebase(defaultTpl)
-    } else {
-      // Ensure at least one template has mac_dinh = true
-      const hasDefault = Array.from(templatesMap.values()).some(t => t.mac_dinh)
-      if (!hasDefault) {
-        const first = Array.from(templatesMap.values())[0]
-        first.mac_dinh = true
-        newSyncUpdates[`mau_in_thiet_lap/${first.id}/mac_dinh`] = true
+    }
+
+    // Never allow Agency template (`MINTL_DAI_LY`) to be auto-marked as default (`mac_dinh`)
+    for (const t of templatesMap.values()) {
+      const isAgency =
+        t.id === 'MINTL_DAI_LY' ||
+        t.id.startsWith('MINTL_DAI_LY_') ||
+        String(t.ten_mau || '').toLowerCase().includes('đại lý') ||
+        String(t.ten_mau || '').toLowerCase().includes('dai ly')
+      if (isAgency && t.mac_dinh) {
+        t.mac_dinh = false
+        newSyncUpdates[`mau_in_thiet_lap/${t.id}/mac_dinh`] = false
+      }
+    }
+
+    // Ensure "Mẫu Báo Giá Chuẩn NTS" (or first non-agency template) has mac_dinh = true if none is marked
+    const hasDefault = Array.from(templatesMap.values()).some(t => t.mac_dinh)
+    if (!hasDefault) {
+      const preferredDef =
+        Array.from(templatesMap.values()).find(
+          t =>
+            t.id === 'MINTL_DEFAULT_NTS' ||
+            t.id === 'MINTL_CHUAN_NTS' ||
+            String(t.ten_mau || '').toLowerCase().includes('chuẩn nts') ||
+            String(t.ten_mau || '').toLowerCase().includes('chuan nts')
+        ) ||
+        Array.from(templatesMap.values()).find(
+          t =>
+            t.id !== 'MINTL_DAI_LY' &&
+            !t.id.startsWith('MINTL_DAI_LY_') &&
+            !String(t.ten_mau || '').toLowerCase().includes('đại lý')
+        ) ||
+        Array.from(templatesMap.values())[0]
+      if (preferredDef) {
+        preferredDef.mac_dinh = true
+        newSyncUpdates[`mau_in_thiet_lap/${preferredDef.id}/mac_dinh`] = true
       }
     }
 
@@ -4421,6 +4696,7 @@ export function renderTemplateToHtml(tpl: PrintTemplateConfig, rawCtx: QuoteExpo
   }
 
   const expandedRows: ExpandedRow[] = []
+  const hasContextGroupRows = ctx.rows.some(qr => qr.type === 'group')
   let continuousItemStt = 0
   for (let r = 1; r <= totalRows; r++) {
     if (r === groupRowIdx && groupRowIdx > 0) {
@@ -4442,7 +4718,7 @@ export function renderTemplateToHtml(tpl: PrintTemplateConfig, rawCtx: QuoteExpo
         } else {
           continuousItemStt++
           const { textMap } = buildRowTokenMap(qRow, ctx, globalMap, qRowIdx)
-          if (groupRowIdx <= 0) {
+          if (groupRowIdx <= 0 || !hasContextGroupRows) {
             textMap['{{STT}}'] = formatContinuousFlatStt(continuousItemStt, ctx)
           }
           expandedRows.push({
@@ -5910,6 +6186,15 @@ export async function generateExcelBlobFromTemplate(
   const extraColListPrice = totalCols + 1
   const extraColOffHang = totalCols + 2
   const extraColOffKhach = totalCols + 3
+  const extraColDonGiaList = totalCols + 4
+  const extraColThanhTienList = totalCols + 5
+  const allExtraPriceCols = [
+    extraColListPrice,
+    extraColOffHang,
+    extraColOffKhach,
+    extraColDonGiaList,
+    extraColThanhTienList
+  ]
   const totalRows = Math.max(tpl.so_dong || 18, 1)
   const pageCfg = tpl.cau_hinh_trang || ({} as any)
   const defaultFontFamily = pageCfg.font_mac_dinh || 'Arial'
@@ -5943,6 +6228,10 @@ export async function generateExcelBlobFromTemplate(
     ws.getColumn(extraColOffHang).width = 13
     ws.getColumn(extraColOffKhach).hidden = false
     ws.getColumn(extraColOffKhach).width = 13
+    ws.getColumn(extraColDonGiaList).hidden = false
+    ws.getColumn(extraColDonGiaList).width = 16
+    ws.getColumn(extraColThanhTienList).hidden = false
+    ws.getColumn(extraColThanhTienList).width = 18
   }
 
   const vung = tpl.mapping_vung || {
@@ -6164,6 +6453,8 @@ export async function generateExcelBlobFromTemplate(
   let excelLogoRowIdx = -1
   let excelFooterCompanyRowIdx = -1
 
+  const hasContextGroupRows = ctx.rows.some(qr => qr.type === 'group')
+
   for (let r = 1; r <= totalRows; r++) {
     // Skip standalone group template row (emitted dynamically inside itemRowIdx loop)
     if (r === groupRowIdx && groupRowIdx > 0) {
@@ -6175,51 +6466,52 @@ export async function generateExcelBlobFromTemplate(
       firstDataRowIdx = outRowIdx
       ctx.rows.forEach((qRow, qRowIdx) => {
         if (qRow.type === 'group') {
-          if (groupRowIdx <= 0) return
-          const row = ws.getRow(outRowIdx)
-          const grpH = tpl.row_heights?.[groupRowIdx]
-          row.height = grpH && grpH > 0 ? Math.max(18, Math.round(grpH * 0.75)) : 22
-          const { textMap } = buildRowTokenMap(qRow, ctx, globalMap, qRowIdx)
+          if (groupRowIdx > 0) {
+            const row = ws.getRow(outRowIdx)
+            const grpH = tpl.row_heights?.[groupRowIdx]
+            row.height = grpH && grpH > 0 ? Math.max(18, Math.round(grpH * 0.75)) : 22
+            const { textMap } = buildRowTokenMap(qRow, ctx, globalMap, qRowIdx)
 
-          for (let c = 1; c <= totalCols; c++) {
-            const gCell = tpl.grid_cells?.[`${groupRowIdx}_${c}`]
-            const cell = row.getCell(c)
-            const rawGrpVal = gCell?.value || ''
-            applyGridStyleToExcelCell(cell, gCell?.style, rawGrpVal)
-            const replacedGrpVal = replaceTokensInText(rawGrpVal, textMap)
-            cell.value = rawGrpVal.trim() === '{{NHOM_STT}}' && /^\d+$/.test(replacedGrpVal.trim())
-              ? Number(replacedGrpVal.trim())
-              : replacedGrpVal
-            applyPreviewOverrideToExcelCell(cell, `row_${qRowIdx}_${c}`, gCell?.style, rawGrpVal)
-          }
-          if (appendPage2PriceCols) {
-            const grpBaseStyle =
-              tpl.grid_cells?.[`${groupRowIdx}_${totalCols}`]?.style ||
-              tpl.grid_cells?.[`${groupRowIdx}_2`]?.style || {
-                bold: true,
-                fontSize: defaultFontSize,
-                fontFamily: defaultFontFamily,
-                border: true
-              }
-            ;[extraColListPrice, extraColOffHang, extraColOffKhach].forEach(ec => {
-              const ecCell = row.getCell(ec)
-              applyGridStyleToExcelCell(ecCell, {
-                ...grpBaseStyle,
-                bgColor: '#0070C0',
-                color: '#FFFFFF',
-                bold: true,
-                border: true
+            for (let c = 1; c <= totalCols; c++) {
+              const gCell = tpl.grid_cells?.[`${groupRowIdx}_${c}`]
+              const cell = row.getCell(c)
+              const rawGrpVal = gCell?.value || ''
+              applyGridStyleToExcelCell(cell, gCell?.style, rawGrpVal)
+              const replacedGrpVal = replaceTokensInText(rawGrpVal, textMap)
+              cell.value = rawGrpVal.trim() === '{{NHOM_STT}}' && /^\d+$/.test(replacedGrpVal.trim())
+                ? Number(replacedGrpVal.trim())
+                : replacedGrpVal
+              applyPreviewOverrideToExcelCell(cell, `row_${qRowIdx}_${c}`, gCell?.style, rawGrpVal)
+            }
+            if (appendPage2PriceCols) {
+              const grpBaseStyle =
+                tpl.grid_cells?.[`${groupRowIdx}_${totalCols}`]?.style ||
+                tpl.grid_cells?.[`${groupRowIdx}_2`]?.style || {
+                  bold: true,
+                  fontSize: defaultFontSize,
+                  fontFamily: defaultFontFamily,
+                  border: true
+                }
+              allExtraPriceCols.forEach(ec => {
+                const ecCell = row.getCell(ec)
+                applyGridStyleToExcelCell(ecCell, {
+                  ...grpBaseStyle,
+                  bgColor: '#0070C0',
+                  color: '#FFFFFF',
+                  bold: true,
+                  border: true
+                })
+                ecCell.value = ''
               })
-              ecCell.value = ''
-            })
+            }
+            applyRowMergesWithStyle(outRowIdx, getGridRowMerges(groupRowIdx))
+            outRowIdx++
           }
-          applyRowMergesWithStyle(outRowIdx, getGridRowMerges(groupRowIdx))
-          outRowIdx++
         } else {
           continuousExcelStt++
           const row = ws.getRow(outRowIdx)
           const { textMap, rawNumberMap } = buildRowTokenMap(qRow, ctx, globalMap, qRowIdx)
-          if (groupRowIdx <= 0) {
+          if (groupRowIdx <= 0 || !hasContextGroupRows) {
             textMap['{{STT}}'] = formatContinuousFlatStt(continuousExcelStt, ctx)
           }
           const it = qRow.item || {}
@@ -6490,6 +6782,52 @@ export async function generateExcelBlobFromTemplate(
             )
             cOffK.value = offKhachPct / 100
             cOffK.numFmt = getExcelPctNumFmt(offKhachPct)
+
+            const listDgVal = rawNumberMap['{{GIA_LIST_DG}}'] ?? rawNumberMap['{{LIST_PRICE}}'] ?? 0
+            const cDgList = row.getCell(extraColDonGiaList)
+            applyGridStyleToExcelCell(
+              cDgList,
+              {
+                ...priceColStyle,
+                bgColor: '#0070C0',
+                color: '#FFFFFF',
+                bold: true,
+                align: 'right',
+                valign: 'middle',
+                border: true
+              },
+              '{{GIA_LIST_DG}}'
+            )
+            cDgList.value = listDgVal
+            cDgList.numFmt = numFmt
+
+            const listTtVal =
+              rawNumberMap['{{GIA_LIST_TT}}'] ??
+              Math.round(listDgVal * (Number(rawNumberMap['{{SO_LUONG}}']) || 1) * 100) / 100
+            const colExtraDgListL = colIndexToLetter(extraColDonGiaList)
+            const cTtList = row.getCell(extraColThanhTienList)
+            applyGridStyleToExcelCell(
+              cTtList,
+              {
+                ...priceColStyle,
+                bgColor: '#0070C0',
+                color: '#FFFFFF',
+                bold: true,
+                align: 'right',
+                valign: 'middle',
+                border: true
+              },
+              '{{GIA_LIST_TT}}'
+            )
+            if (colQtyL) {
+              cTtList.value = {
+                formula: `${colQtyL}${outRowIdx}*${colExtraDgListL}${outRowIdx}`,
+                result: listTtVal
+              }
+            } else {
+              cTtList.value = listTtVal
+            }
+            cTtList.numFmt = numFmt
           }
           row.height = Math.max(26, maxEstimatedLines * 14.5 + 8)
           applyRowMergesWithStyle(outRowIdx, getGridRowMerges(itemRowIdx))
@@ -6724,7 +7062,9 @@ export async function generateExcelBlobFromTemplate(
       const extraHeaders = [
         { col: extraColListPrice, text: `Giá List\n(${ctx.currency || 'VND'})` },
         { col: extraColOffHang, text: '% Off Hãng' },
-        { col: extraColOffKhach, text: '% Off Khách' }
+        { col: extraColOffKhach, text: '% Off Khách' },
+        { col: extraColDonGiaList, text: `Đơn giá List\n(${ctx.currency || 'VND'})` },
+        { col: extraColThanhTienList, text: `Thành tiền List\n(${ctx.currency || 'VND'})` }
       ]
       extraHeaders.forEach(eh => {
         const xlC = rowObj.getCell(eh.col)
@@ -6753,16 +7093,35 @@ export async function generateExcelBlobFromTemplate(
           valign: 'middle',
           border: true
         }
-      ;[extraColListPrice, extraColOffHang, extraColOffKhach].forEach(ec => {
+      const hasDataRowsForExtra =
+        firstDataRowIdx > 0 && lastDataRowIdx >= firstDataRowIdx && ctx.rows.some(x => x.type === 'item')
+      const isPrimaryTotalRow =
+        rowHasTruocThue || (vung.danh_sach_dong_tong || [])[0] === r
+      allExtraPriceCols.forEach(ec => {
         const xlC = rowObj.getCell(ec)
         applyGridStyleToExcelCell(xlC, {
           ...totStyle,
           bgColor: '#0070C0',
           color: '#FFFFFF',
           bold: true,
+          align: ec === extraColThanhTienList ? 'right' : 'center',
+          valign: 'middle',
           border: true
         })
-        xlC.value = ''
+        if (ec === extraColThanhTienList && isPrimaryTotalRow) {
+          const colExtraTtListL = colIndexToLetter(extraColThanhTienList)
+          if (hasDataRowsForExtra) {
+            xlC.value = {
+              formula: `SUM(${colExtraTtListL}${firstDataRowIdx}:${colExtraTtListL}${lastDataRowIdx})`,
+              result: threeTotals.list.truoc
+            }
+          } else {
+            xlC.value = threeTotals.list.truoc
+          }
+          xlC.numFmt = numFmt
+        } else {
+          xlC.value = ''
+        }
       })
     }
 
@@ -6821,9 +7180,9 @@ export async function generateExcelBlobFromTemplate(
     } catch {}
   }
 
-  // 4. Configure horizontal PageView (Page 1 = A..totalCols, Page 2 = extra 3 price cols when appendPage2PriceCols is active)
+  // 4. Configure horizontal PageView (Page 1 = A..totalCols, Page 2 = extra 5 price cols when appendPage2PriceCols is active)
   const finalLastRow = Math.max(ws.rowCount, 1)
-  const printLastCol = appendPage2PriceCols ? totalCols + 3 : totalCols
+  const printLastCol = appendPage2PriceCols ? totalCols + 5 : totalCols
   const lastColLetter = colIndexToLetter(printLastCol)
   ws.pageSetup.paperSize = tpl.cau_hinh_trang?.kho_giay === 'A3' ? 8 : 9 // 9 = A4
   ws.pageSetup.orientation = tpl.cau_hinh_trang?.huong_giay || 'portrait'

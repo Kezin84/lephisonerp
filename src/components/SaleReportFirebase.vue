@@ -1499,7 +1499,7 @@
                       </div>
                     </div>
 
-                    <!-- Dòng 3 (Ngay dưới Nội dung hợp đồng): 4 Ô Tệp đính kèm cố định (BÁO GIÁ, MUA HÀNG, DXMH, KHÁC) gọn gàng, ngăn nắp -->
+                    <!-- Dòng 3 (Ngay dưới Nội dung hợp đồng): 5 Ô Tệp đính kèm cố định (BÁO GIÁ, MUA HÀNG, DXMH, KHÁC, LICENSE) -->
                     <div
                       v-if="!isEffectivePoCollapsed(r)"
                       class="sr-po1-contract-files is-4box-grid"
@@ -1592,7 +1592,50 @@
                         </div>
                       </div>
 
-                      <!-- Ô 4: KHÁC (Gộp File khác & Ảnh chứng từ) -->
+                      <!-- Ô 4: LICENSE (Chế độ Chính thức — Tách riêng & Liên kết 2 chiều với Quản lý Bản quyền) -->
+                      <div
+                        v-if="srDataMode !== 'craft'"
+                        class="sr-po1-file-box is-cyan"
+                        :class="{ 'has-file': getPoCardLicenseFilesList(r).length > 0 }"
+                        @click.stop="openMultiEditModalWithDocTab(r, 'license')"
+                        :title="getPoCardLicenseFilesList(r).length > 0 ? getPoCardLicenseFilesList(r).map((l: any) => `${l.PRODUCT_NAME || l.PRODUCT || l.ten_file}${(l.LICENSE_ID || l.SERIAL_KEY) ? ' [' + (l.LICENSE_ID || l.SERIAL_KEY) + ']' : ''}`).join(' | ') : 'Nhấp để mở tab License trong Modal PO (Tải lên / Liên kết Bản quyền)'"
+                      >
+                        <div class="sr-po1-fb-left">
+                          <svg v-if="getPoCardLicenseFilesList(r).length > 0" class="sr-doc-tick-circle" width="14" height="14" viewBox="0 0 24 24" fill="none">
+                            <circle cx="12" cy="12" r="10" fill="#10b981"/>
+                            <polyline points="16.5 9 10.5 15 7.5 12" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+                          </svg>
+                          <span v-else class="sr-po1-fb-dot"></span>
+                          <span class="sr-po1-fb-tag">
+                            LICENSE<template v-if="getPoCardLicenseFilesList(r).length > 0"> ({{ getPoCardLicenseFilesList(r).length }})</template>
+                          </span>
+                          <span class="sr-po1-fb-name">
+                            {{ getPoCardLicenseFilesList(r).length > 0 ? (getPoCardLicenseFilesList(r).length === 1 ? (getPoCardLicenseFilesList(r)[0].PRODUCT_NAME || getPoCardLicenseFilesList(r)[0].PRODUCT || getPoCardLicenseFilesList(r)[0].ten_file || 'Đã có License') : `${getPoCardLicenseFilesList(r).length} bản quyền`) : 'Chưa có License' }}
+                          </span>
+                        </div>
+                        <div v-if="getPoCardLicenseFilesList(r).length > 0" class="sr-po1-fe-actions">
+                          <button
+                            type="button"
+                            class="sr-po1-fe-btn is-view"
+                            @click.stop="(getPoCardLicenseFilesList(r).length === 1 && getPoCardLicenseFilesList(r)[0].link_file) ? openPoFileOfficeView(getPoCardLicenseFilesList(r)[0].link_file, getPoCardLicenseFilesList(r)[0].ten_file, getPoCardLicenseFilesList(r)[0].isImage) : openMultiEditModalWithDocTab(r, 'license')"
+                            :title="getPoCardLicenseFilesList(r).length === 1 ? 'Xem License' : 'Xem toàn bộ License trong Modal PO'"
+                          >
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            <span>{{ getPoCardLicenseFilesList(r).length === 1 ? 'Xem' : `Xem (${getPoCardLicenseFilesList(r).length})` }}</span>
+                          </button>
+                          <button
+                            v-if="getPoCardLicenseFilesList(r)[0]?.link_file"
+                            type="button"
+                            class="sr-po1-fe-btn is-dl"
+                            @click.stop="downloadPoFile(getPoCardLicenseFilesList(r)[0].link_file, getPoCardLicenseFilesList(r)[0].ten_file || `License_PO_${r.So_PO || ''}`, $event)"
+                            :title="`Tải xuống: ${getPoCardLicenseFilesList(r)[0].ten_file}`"
+                          >
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- Ô 5: KHÁC (Gộp File khác & Ảnh chứng từ) -->
                       <div
                         class="sr-po1-file-box is-purple"
                         :class="{ 'has-file': getPoCardOtherFilesList(r).length > 0 }"
@@ -1636,7 +1679,7 @@
                   </div>
 
                   <!-- 2. 4 KHỐI CHỈ SỐ THEO ĐÚNG NHÓM GỐC (SỐ TIỀN MÀU XANH LÁ / ĐỎ) -->
-                  <div v-show="!isEffectivePoCollapsed(r)" class="sr-po1-4blocks" :class="{ 'is-craft-3blocks': srDataMode === 'craft' }">
+                  <div v-if="!isEffectivePoCollapsed(r)" class="sr-po1-4blocks" :class="{ 'is-craft-3blocks': srDataMode === 'craft' }">
                     <!-- KHỐI 1: Doanh số bán, Giá mua, Tổng CP đơn hàng -->
                     <div class="sr-po1-block">
                       <div class="sr-po1-block-title is-blue-head">Doanh số &amp; Chi phí</div>
@@ -1685,22 +1728,33 @@
 
                     <!-- KHỐI 3: Tỉ suất % trên Net PO & trên Doanh số bán -->
                     <div class="sr-po1-block">
-                      <div class="sr-po1-block-title is-green-head">Tỉ suất (%)</div>
+                      <div class="sr-po1-block-title is-green-head is-title-with-action">
+                        <span>Tỉ suất (%)</span>
+                        <button
+                          type="button"
+                          class="sr-po1-round-chip"
+                          :class="{ 'is-active': isPoRatioRounded(r) }"
+                          :title="isPoRatioRounded(r) ? 'Đang bật làm tròn tỉ suất (VD: 30.51% -> 31%, 15.21% -> 15%) • Nhấn để tắt' : 'Nhấn để làm tròn 4 chỉ số tỉ suất của PO này (VD: 30.51% -> 31%, 15.21% -> 15%)'"
+                          @click.stop="togglePoRatioRounding(r)"
+                        >
+                          {{ isPoRatioRounded(r) ? 'Làm tròn ✓' : 'Làm tròn' }}
+                        </button>
+                      </div>
                       <div class="sr-po1-b-row">
                         <span class="sr-po1-b-lbl">Net COM / Net PO</span>
-                        <strong class="sr-po1-b-val is-com-text">{{ pctFmt(netComPct(r)) }}</strong>
+                        <strong class="sr-po1-b-val is-com-text">{{ pctFmtPo(netComPct(r), r) }}</strong>
                       </div>
                       <div class="sr-po1-b-row">
                         <span class="sr-po1-b-lbl">Net Margin / Net PO</span>
-                        <strong class="sr-po1-b-val" :class="netMarginPct(r) >= 0 ? 'is-com-text' : 'is-debt-text'">{{ pctFmt(netMarginPct(r)) }}</strong>
+                        <strong class="sr-po1-b-val" :class="netMarginPct(r) >= 0 ? 'is-com-text' : 'is-debt-text'">{{ pctFmtPo(netMarginPct(r), r) }}</strong>
                       </div>
                       <div class="sr-po1-b-row is-sub-divider">
                         <span class="sr-po1-b-lbl">Net COM / <span class="sr-hide-mob">Doanh số bán</span><span class="sr-show-mob-inline">DSB</span></span>
-                        <strong class="sr-po1-b-val is-com-text">{{ pctFmt(netComDsbPct(r)) }}</strong>
+                        <strong class="sr-po1-b-val is-com-text">{{ pctFmtPo(netComDsbPct(r), r) }}</strong>
                       </div>
                       <div class="sr-po1-b-row">
                         <span class="sr-po1-b-lbl">Net Margin / <span class="sr-hide-mob">Doanh số bán</span><span class="sr-show-mob-inline">DSB</span></span>
-                        <strong class="sr-po1-b-val" :class="netMarginDsbPct(r) >= 0 ? 'is-com-text' : 'is-debt-text'">{{ pctFmt(netMarginDsbPct(r)) }}</strong>
+                        <strong class="sr-po1-b-val" :class="netMarginDsbPct(r) >= 0 ? 'is-com-text' : 'is-debt-text'">{{ pctFmtPo(netMarginDsbPct(r), r) }}</strong>
                       </div>
                     </div>
 
@@ -1732,9 +1786,72 @@
                         </span>
                       </div>
                     </div>
+
+                    <!-- KHỐI 5: Bản quyền / License (Luôn hiển thị bên cạnh Công nợ ở Bản Chính Thức) -->
+                    <div
+                      v-if="srDataMode !== 'craft'"
+                      class="sr-po1-block sr-po1-lic-block"
+                      @click.stop="openMultiEditModalWithDocTab(r, 'license')"
+                      title="Nhấp để mở tab Bản quyền / License của PO này"
+                    >
+                      <div class="sr-po1-block-title is-blue-head is-title-with-action">
+                        <span>Bản quyền<template v-if="getPoCardLicenseFilesList(r).length > 0"> ({{ getPoCardLicenseFilesList(r).length }})</template></span>
+                        <div v-if="getPoCardLicenseFilesList(r).length > 1" class="sr-po1-lic-switcher" @click.stop>
+                          <button
+                            v-for="(licItem, licIdx) in getPoCardLicenseFilesList(r)"
+                            :key="licItem.id || licIdx"
+                            type="button"
+                            class="sr-po1-round-chip"
+                            :class="{ 'is-active': getPoCardActiveLicenseIdx(r) === licIdx }"
+                            @click.stop="setPoCardActiveLicenseIdx(r, licIdx)"
+                            :title="`${licItem.PRODUCT_NAME || licItem.PRODUCT || 'License'} (${licItem.LICENSE_ID || licItem.SERIAL_KEY || '#' + (licIdx + 1)})`"
+                          >
+                            #{{ licIdx + 1 }}
+                          </button>
+                        </div>
+                      </div>
+
+                      <template v-if="getPoCardActiveLicense(r)">
+                        <div class="sr-po1-b-row is-primary sr-fin-row-clickable">
+                          <strong class="sr-po1-b-val is-com-text sr-po1-lic-prod-full" :title="`${getPoCardActiveLicense(r).PRODUCT_NAME || getPoCardActiveLicense(r).PRODUCT || '—'}${getPoCardActiveLicense(r).NHA_SAN_XUAT ? ' (' + getPoCardActiveLicense(r).NHA_SAN_XUAT + ')' : ''}`">
+                            {{ getPoCardActiveLicense(r).PRODUCT_NAME || getPoCardActiveLicense(r).PRODUCT || '—' }}<template v-if="getPoCardActiveLicense(r).NHA_SAN_XUAT"> ({{ getPoCardActiveLicense(r).NHA_SAN_XUAT }})</template>
+                          </strong>
+                        </div>
+                        <div class="sr-po1-b-row sr-fin-row-clickable">
+                          <span class="sr-po1-b-lbl">License ID</span>
+                          <span class="sr-po1-b-val sr-po1-lic-val-wrap">{{ getPoCardActiveLicense(r).LICENSE_ID || getPoCardActiveLicense(r).SERIAL_KEY || '—' }}</span>
+                        </div>
+                        <div class="sr-po1-b-row sr-fin-row-clickable">
+                          <span class="sr-po1-b-lbl">Ngày cấp</span>
+                          <span class="sr-po1-b-val">{{ formatPoCardLicenseDate(getPoCardActiveLicense(r).DATE_OF_LICENSE) }}</span>
+                        </div>
+                        <div class="sr-po1-b-row sr-fin-row-clickable">
+                          <span class="sr-po1-b-lbl">Ngày hết hạn</span>
+                          <span class="sr-po1-b-val">{{ formatPoCardLicenseDate(getPoCardActiveLicense(r).EXPIRATION_TIME) }}</span>
+                        </div>
+                        <div class="sr-po1-b-row sr-fin-row-clickable">
+                          <span class="sr-po1-b-lbl">Còn lại</span>
+                          <strong
+                            class="sr-po1-b-val"
+                            :class="getPoLicenseRemainingDaysInfo(getPoCardActiveLicense(r).EXPIRATION_TIME).isExpired ? 'is-debt-text' : 'is-com-text'"
+                          >
+                            {{ getPoLicenseRemainingDaysInfo(getPoCardActiveLicense(r).EXPIRATION_TIME).text || '—' }}
+                          </strong>
+                        </div>
+                        <div class="sr-po1-b-row is-sub-divider sr-fin-row-clickable">
+                          <span class="sr-po1-b-lbl">Hạn hiệu lực</span>
+                          <strong class="sr-po1-b-val is-com-text">{{ formatPoCardLicenseDate(getPoCardActiveLicense(r).SO_NGAY_HIEU_LUC || getPoCardActiveLicense(r).GRACE_PERIOD) }}</strong>
+                        </div>
+                      </template>
+
+                      <div v-else class="sr-po1-lic-empty-box">
+                        <span class="sr-po1-lic-empty-title">Chưa có License</span>
+                        <span class="sr-po1-lic-empty-sub">Nhấp để tải lên / liên kết</span>
+                      </div>
+                    </div>
                   </div>
 
-                  <div class="sr-po1-note-line" v-if="!isEffectivePoCollapsed(r) && r.ghi_chu">
+                  <div class="sr-po1-note-line" v-if="r.ghi_chu && !isEffectivePoCollapsed(r)">
                     <span class="sr-po1-files-label">Ghi chú:</span>
                     <span v-html="highlightSaleText(r.ghi_chu, searchStr)"></span>
                   </div>
@@ -2251,6 +2368,7 @@
                   :class="{
                     'is-left-collapsed': isPoLeftPaneCollapsed,
                     'is-left-wide': !isPoLeftPaneCollapsed && isPoLeftPaneWide,
+                    'is-license-tab': !isPoLeftPaneCollapsed && getActivePreviewTab(item) === 'license',
                     'mob-show-docs': mobilePoPane === 'docs'
                   }"
                 >
@@ -2279,6 +2397,10 @@
                     <button type="button" class="sr-po-rail-doc-btn is-sky" :class="{ 'has-file': hasItemImgPreview(item) }" @click="setActivePreviewTab(item, 'img')" title="Ảnh chứng từ COM">
                       <span>COM</span>
                       <svg v-if="hasItemImgPreview(item)" class="sr-rail-tick-circle" width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#10b981"/><polyline points="16.5 9 10.5 15 7.5 12" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                    <button v-if="srDataMode !== 'craft'" type="button" class="sr-po-rail-doc-btn is-cyan" :class="{ 'has-file': (item.licenseFiles?.length || 0) > 0 }" @click="setActivePreviewTab(item, 'license')" title="License / Bản quyền">
+                      <span>LIC</span>
+                      <svg v-if="(item.licenseFiles?.length || 0) > 0" class="sr-rail-tick-circle" width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#10b981"/><polyline points="16.5 9 10.5 15 7.5 12" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </button>
                     <button type="button" class="sr-po-rail-doc-btn is-purple" :class="{ 'has-file': (item.otherFiles?.length || 0) > 0 }" @click="setActivePreviewTab(item, 'other')" title="File đính kèm khác">
                       <span>+{{ item.otherFiles?.length || 0 }}</span>
@@ -2314,6 +2436,117 @@
                         >
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="15 18 9 12 15 6"/></svg>
                         </button>
+                      </div>
+                    </div>
+
+                    <!-- DANH SÁCH TOÀN BỘ FILE ĐÍNH KÈM CỦA PO (Ở TRÊN CÁC NÚT CHỨNG TỪ) -->
+                    <div v-if="getModalPoAllFilesList(item).length > 0" class="sr-po-all-files-section">
+                      <div class="sr-po-all-files-bar">
+                        <button
+                          type="button"
+                          class="sr-po-all-files-select-all"
+                          @click="toggleSelectAllPoModalDocs(item)"
+                        >
+                          <span
+                            class="sr-md-cc-check sr-po-doc-check"
+                            :class="{ selected: isAllPoModalDocsSelected(item) }"
+                          >
+                            <svg v-if="isAllPoModalDocsSelected(item)" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                          </span>
+                          <span>Chọn tất cả ({{ getSelectedPoModalDocs(item).length }}/{{ getModalPoAllFilesList(item).length }})</span>
+                        </button>
+                        <div class="sr-po-all-files-actions">
+                          <button
+                            type="button"
+                            class="sr-po-all-files-action-btn is-selected"
+                            :disabled="getSelectedPoModalDocs(item).length === 0 || isDownloadingPoDocs"
+                            @click="downloadSelectedPoModalDocs(item)"
+                            title="Tải các file đã chọn về máy (lưu thành 1 thư mục PO)"
+                          >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            <span>Tải đã chọn ({{ getSelectedPoModalDocs(item).length }})</span>
+                          </button>
+                          <button
+                            type="button"
+                            class="sr-po-all-files-action-btn is-all"
+                            :disabled="isDownloadingPoDocs"
+                            @click="downloadAllPoModalDocs(item)"
+                            title="Tải toàn bộ file của PO về máy (lưu thành 1 thư mục PO)"
+                          >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><polyline points="9 14 12 17 15 14"/></svg>
+                            <span>{{ isDownloadingPoDocs ? 'Đang tải...' : `Tải toàn bộ (${getModalPoAllFilesList(item).length})` }}</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div class="sr-po-all-files-grid custom-scrollbar">
+                        <div
+                          v-for="docEntry in getModalPoAllFilesList(item)"
+                          :key="docEntry.key"
+                          class="sr-po-all-file-row"
+                          :class="{ active: isPoModalDocEntryActive(item, docEntry) }"
+                        >
+                          <button
+                            type="button"
+                            class="sr-md-cc-check sr-po-doc-check"
+                            :class="{ selected: isPoModalDocSelected(item, docEntry.key) }"
+                            @click.stop="togglePoModalDocSelect(item, docEntry.key)"
+                            :title="isPoModalDocSelected(item, docEntry.key) ? 'Bỏ chọn file này' : 'Chọn file này'"
+                          >
+                            <svg v-if="isPoModalDocSelected(item, docEntry.key)" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                          </button>
+
+                          <button
+                            type="button"
+                            class="sr-po-all-file-name"
+                            :class="{ active: isPoModalDocEntryActive(item, docEntry) }"
+                            @click="selectPoModalDocEntry(item, docEntry)"
+                            :title="'Nhấp để xem trước: ' + docEntry.fileName"
+                          >
+                            <span class="sr-po-all-file-svg" :class="'is-' + getPoDocFileKind(docEntry)">
+                              <!-- Excel SVG (Biểu tượng gốc Microsoft Excel) -->
+                              <svg v-if="getPoDocFileKind(docEntry) === 'excel'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24" height="24"><path fill="#4CAF50" d="M41,10H25v28h16c0.553,0,1-0.447,1-1V11C42,10.447,41.553,10,41,10z"/><path fill="#FFF" d="M32 15H39V18H32zM32 25H39V28H32zM32 30H39V33H32zM32 20H39V23H32zM25 15H30V18H25zM25 25H30V28H25zM25 30H30V33H25zM25 20H30V23H25z"/><path fill="#2E7D32" d="M27,42L6,38.746C5.416,38.655,5,38.146,5,37.555v-27.11c0-0.591,0.416-1.1,1-1.191L27,6V42z"/><path fill="#FFF" d="M19.129,31l-2.411-4.561c-0.092-0.171-0.186-0.483-0.284-0.938h-0.037c-0.046,0.215-0.154,0.541-0.324,0.979L13.652,31H9.895l4.462-7.001L10.274,17h3.837l2.001,4.196c0.156,0.331,0.296,0.725,0.42,1.179h0.04c0.078-0.271,0.224-0.68,0.439-1.22L19.237,17h3.515l-4.199,6.939l4.316,7.059h-3.74V31z"/></svg>
+                              <!-- PDF SVG (Biểu tượng gốc PDF đỏ) -->
+                              <svg v-else-if="getPoDocFileKind(docEntry) === 'pdf'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24" height="24"><path fill="#FF1744" d="M38,42H10c-2.2,0-4-1.8-4-4V10c0-2.2,1.8-4,4-4h19l13,13v19C42,40.2,40.2,42,38,42z"/><path fill="#B71C1C" d="M29,6v9c0,2.2,1.8,4,4,4h9L29,6z"/><path fill="#FFF" d="M13.5,27v-8h3.3c1.8,0,2.9,1,2.9,2.6c0,1.6-1.1,2.6-2.9,2.6h-1.4V27H13.5z M15.4,22.6h1.2c0.8,0,1.2-0.4,1.2-1.1c0-0.7-0.4-1.1-1.2-1.1h-1.2V22.6z M21.2,27v-8h3c2.5,0,4.1,1.5,4.1,4c0,2.5-1.6,4-4.1,4H21.2z M23.1,25.4h1c1.4,0,2.2-0.9,2.2-2.4c0-1.5-0.8-2.4-2.2-2.4h-1V25.4z M29.9,27v-8h5.4v1.6h-3.5v1.7h3.1v1.6h-3.1V27H29.9z"/><rect x="13.5" y="30" width="21" height="2" rx="1" fill="#FFF"/><rect x="13.5" y="33.5" width="16" height="2" rx="1" fill="#FFF"/><rect x="13.5" y="37" width="12" height="2" rx="1" fill="#FFF"/></svg>
+                              <!-- Word SVG (Biểu tượng gốc Microsoft Word) -->
+                              <svg v-else-if="getPoDocFileKind(docEntry) === 'word'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24" height="24"><path fill="#2196F3" d="M41,10H25v28h16c0.553,0,1-0.447,1-1V11C42,10.447,41.553,10,41,10z"/><path fill="#FFF" d="M25 15H39V17.5H25zM25 20H39V22.5H25zM25 25H39V27.5H25zM25 30H35V32.5H25z"/><path fill="#1565C0" d="M27,42L6,38.746C5.416,38.655,5,38.146,5,37.555v-27.11c0-0.591,0.416-1.1,1-1.191L27,6V42z"/><path fill="#FFF" d="M21.8,17h-2.7l-1.5,8.6L15.8,17h-2.5l-1.9,8.6L9.9,17H7.1l2.8,14h2.7l1.9-8.3l1.8,8.3H19l2.8-14z"/></svg>
+                              <!-- Image SVG (Biểu tượng ảnh màu gốc) -->
+                              <svg v-else-if="getPoDocFileKind(docEntry) === 'image'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24" height="24"><rect x="6" y="8" width="36" height="32" rx="4" fill="#29B6F6"/><circle cx="16.5" cy="17.5" r="4" fill="#FFD54F"/><path fill="#0277BD" d="M23,25l-11,13h26c2.2,0,4-1.8,4-4v-2L31,20L23,25z"/><path fill="#4FC3F7" d="M16,24L6,36c0,2.2,1.8,4,4,4h22L16,24z"/></svg>
+                              <!-- Generic File SVG (Biểu tượng tài liệu màu gốc) -->
+                              <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24" height="24"><path fill="#90CAF9" d="M38,42H10c-2.2,0-4-1.8-4-4V10c0-2.2,1.8-4,4-4h19l13,13v19C42,40.2,40.2,42,38,42z"/><path fill="#1976D2" d="M29,6v9c0,2.2,1.8,4,4,4h9L29,6z"/><rect x="14" y="23" width="20" height="2.5" rx="1.2" fill="#1565C0"/><rect x="14" y="29" width="20" height="2.5" rx="1.2" fill="#1565C0"/><rect x="14" y="35" width="13" height="2.5" rx="1.2" fill="#1565C0"/></svg>
+                            </span>
+                            <span class="sr-po-all-file-label-wrap">
+                              <span
+                                v-if="docEntry.bgVariant"
+                                class="sr-po-fin-mode-tag sr-po-all-file-bg-tag"
+                                :class="docEntry.bgVariant === 'khach' ? 'is-khach' : 'is-hd'"
+                              >
+                                {{ docEntry.bgVariant === 'khach' ? 'BG Khách' : 'BG HĐ' }}
+                              </span>
+                              <span class="sr-po-all-file-text">{{ docEntry.displayLabel }}</span>
+                            </span>
+                          </button>
+
+                          <div class="sr-po-all-file-item-actions">
+                            <button
+                              type="button"
+                              class="sr-po1-fe-btn is-view"
+                              @click.stop="selectPoModalDocEntry(item, docEntry)"
+                              :title="'Xem trước file: ' + docEntry.fileName"
+                            >
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                              <span>Xem</span>
+                            </button>
+                            <button
+                              type="button"
+                              class="sr-po1-fe-btn is-dl"
+                              @click.stop="downloadSinglePoModalDoc(docEntry, $event)"
+                              :title="'Tải xuống file: ' + docEntry.fileName"
+                            >
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
@@ -2360,6 +2593,17 @@
                         <span>Ảnh COM</span>
                       </button>
                       <button
+                        v-if="srDataMode !== 'craft'"
+                        type="button"
+                        class="sr-po-doc-tab is-cyan"
+                        :class="{ active: getActivePreviewTab(item) === 'license', 'has-doc': (item.licenseFiles?.length || 0) > 0 }"
+                        @click="setActivePreviewTab(item, 'license')"
+                      >
+                        <svg v-if="(item.licenseFiles?.length || 0) > 0" class="sr-doc-tick-circle" width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#10b981"/><polyline points="16.5 9 10.5 15 7.5 12" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <span v-else class="sr-doc-dot"></span>
+                        <span>License ({{ item.licenseFiles?.length || 0 }})</span>
+                      </button>
+                      <button
                         type="button"
                         class="sr-po-doc-tab is-purple"
                         :class="{ active: getActivePreviewTab(item) === 'other', 'has-doc': (item.otherFiles?.length || 0) > 0 }"
@@ -2378,8 +2622,8 @@
                         <div class="sr-po-doc-toolbar is-emerald">
                           <div class="sr-po-doc-meta" @click="triggerImport(item, 'update_item_bao_gia')">
                             <div class="sr-po-doc-icon">
-                              <img v-if="getItemActiveBgDisplayName(item).toLowerCase().endsWith('.pdf')" src="/pdf-icon.png" style="width: 20px; height: 20px; object-fit: contain;" />
-                              <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                              <img v-if="getItemActiveBgDisplayName(item).toLowerCase().endsWith('.pdf')" src="/pdf-icon.png" style="width: 22px; height: 22px; object-fit: contain;" />
+                              <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="22" height="22"><path fill="#4CAF50" d="M41,10H25v28h16c0.553,0,1-0.447,1-1V11C42,10.447,41.553,10,41,10z"/><path fill="#FFF" d="M32 15H39V18H32zM32 25H39V28H32zM32 30H39V33H32zM32 20H39V23H32zM25 15H30V18H25zM25 25H30V28H25zM25 30H30V33H25zM25 20H30V23H25z"/><path fill="#2E7D32" d="M27,42L6,38.746C5.416,38.655,5,38.146,5,37.555v-27.11c0-0.591,0.416-1.1,1-1.191L27,6V42z"/><path fill="#FFF" d="M19.129,31l-2.411-4.561c-0.092-0.171-0.186-0.483-0.284-0.938h-0.037c-0.046,0.215-0.154,0.541-0.324,0.979L13.652,31H9.895l4.462-7.001L10.274,17h3.837l2.001,4.196c0.156,0.331,0.296,0.725,0.42,1.179h0.04c0.078-0.271,0.224-0.68,0.439-1.22L19.237,17h3.515l-4.199,6.939l4.316,7.059h-3.74V31z"/></svg>
                             </div>
                             <div class="sr-po-doc-info">
                               <div class="sr-po-doc-label">
@@ -2442,8 +2686,8 @@
                         <div class="sr-po-doc-toolbar is-rose">
                           <div class="sr-po-doc-meta" @click="triggerImport(item, 'update_item_mua_hang')">
                             <div class="sr-po-doc-icon">
-                              <img v-if="(item.rawFileMuaHang?.name || item.row?.ten_file_mua_hang)?.toLowerCase().endsWith('.pdf')" src="/pdf-icon.png" style="width: 20px; height: 20px; object-fit: contain;" />
-                              <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                              <img v-if="(item.rawFileMuaHang?.name || item.row?.ten_file_mua_hang)?.toLowerCase().endsWith('.pdf')" src="/pdf-icon.png" style="width: 22px; height: 22px; object-fit: contain;" />
+                              <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="22" height="22"><path fill="#4CAF50" d="M41,10H25v28h16c0.553,0,1-0.447,1-1V11C42,10.447,41.553,10,41,10z"/><path fill="#FFF" d="M32 15H39V18H32zM32 25H39V28H32zM32 30H39V33H32zM32 20H39V23H32zM25 15H30V18H25zM25 25H30V28H25zM25 30H30V33H25zM25 20H30V23H25z"/><path fill="#2E7D32" d="M27,42L6,38.746C5.416,38.655,5,38.146,5,37.555v-27.11c0-0.591,0.416-1.1,1-1.191L27,6V42z"/><path fill="#FFF" d="M19.129,31l-2.411-4.561c-0.092-0.171-0.186-0.483-0.284-0.938h-0.037c-0.046,0.215-0.154,0.541-0.324,0.979L13.652,31H9.895l4.462-7.001L10.274,17h3.837l2.001,4.196c0.156,0.331,0.296,0.725,0.42,1.179h0.04c0.078-0.271,0.224-0.68,0.439-1.22L19.237,17h3.515l-4.199,6.939l4.316,7.059h-3.74V31z"/></svg>
                             </div>
                             <div class="sr-po-doc-info">
                               <div class="sr-po-doc-label">File Mua Hàng (Đầu vào)</div>
@@ -2504,7 +2748,8 @@
                         <div class="sr-po-doc-toolbar is-amber">
                           <div class="sr-po-doc-meta" @click="triggerDxmhImport(item)">
                             <div class="sr-po-doc-icon">
-                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                              <img v-if="(item.rawFileDxmh?.name || item.tenFileDxmh || item.row?.ten_file_dxmh)?.toLowerCase().endsWith('.pdf')" src="/pdf-icon.png" style="width: 22px; height: 22px; object-fit: contain;" />
+                              <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="22" height="22"><path fill="#4CAF50" d="M41,10H25v28h16c0.553,0,1-0.447,1-1V11C42,10.447,41.553,10,41,10z"/><path fill="#FFF" d="M32 15H39V18H32zM32 25H39V28H32zM32 30H39V33H32zM32 20H39V23H32zM25 15H30V18H25zM25 25H30V28H25zM25 30H30V33H25zM25 20H30V23H25z"/><path fill="#2E7D32" d="M27,42L6,38.746C5.416,38.655,5,38.146,5,37.555v-27.11c0-0.591,0.416-1.1,1-1.191L27,6V42z"/><path fill="#FFF" d="M19.129,31l-2.411-4.561c-0.092-0.171-0.186-0.483-0.284-0.938h-0.037c-0.046,0.215-0.154,0.541-0.324,0.979L13.652,31H9.895l4.462-7.001L10.274,17h3.837l2.001,4.196c0.156,0.331,0.296,0.725,0.42,1.179h0.04c0.078-0.271,0.224-0.68,0.439-1.22L19.237,17h3.515l-4.199,6.939l4.316,7.059h-3.74V31z"/></svg>
                             </div>
                             <div class="sr-po-doc-info">
                               <div class="sr-po-doc-label">File Đề Xuất Mua Hàng (DXMH)</div>
@@ -2622,7 +2867,7 @@
                       </template>
 
                       <!-- 5. TAB FILE KHÁC -->
-                      <template v-else>
+                      <template v-else-if="getActivePreviewTab(item) === 'other'">
                         <div class="sr-po-doc-toolbar is-purple">
                           <div class="sr-po-doc-meta" @click="triggerOtherFilesUpload(item)">
                             <div class="sr-po-doc-icon">
@@ -2765,6 +3010,387 @@
                           >
                             + Thêm file
                           </button>
+                        </div>
+                      </template>
+
+                      <!-- 6. TAB LICENSE (CHIA 2 CỘT 50:50 — CỘT 1 PREVIEW • CỘT 2 ĐẦY ĐỦ TRƯỜNG DỮ LIỆU NHƯ TRANG LICENSE) -->
+                      <template v-else-if="getActivePreviewTab(item) === 'license'">
+                        <div class="sr-po-doc-toolbar is-cyan">
+                          <div class="sr-po-doc-meta" @click="triggerLicenseFilesUpload(item)">
+                            <div class="sr-po-doc-icon">
+                              <img v-if="isOtherFilePdf(getActiveLicenseFile(item) as any)" src="/pdf-icon.png" style="width: 20px; height: 20px; object-fit: contain;" />
+                              <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+                            </div>
+                            <div class="sr-po-doc-info">
+                              <div class="sr-po-doc-label">
+                                Bản Quyền / License (Đồng bộ 2 chiều)
+                                <template v-if="item.licenseFiles && item.licenseFiles.length > 0">
+                                  ({{ (item.activeLicenseFileIdx || 0) + 1 }}/{{ item.licenseFiles.length }})
+                                </template>
+                              </div>
+                              <div class="sr-po-doc-filename" :title="getActiveLicenseFile(item)?.PRODUCT_NAME || getActiveLicenseFile(item)?.PRODUCT || getActiveLicenseFile(item)?.ten_file || ''">
+                                {{ (getActiveLicenseFile(item)?.PRODUCT_NAME || getActiveLicenseFile(item)?.PRODUCT) ? `${getActiveLicenseFile(item)?.PRODUCT_NAME || getActiveLicenseFile(item)?.PRODUCT} (${getActiveLicenseFile(item)?.LICENSE_ID || getActiveLicenseFile(item)?.SERIAL_KEY || 'Chưa có License ID'})` : (getActiveLicenseFile(item)?.ten_file || 'Tải lên / quét nhiều file License (PDF, Ảnh) hoặc liên kết License có sẵn') }}
+                              </div>
+                            </div>
+                          </div>
+                          <div class="sr-po-doc-actions">
+                            <a
+                              v-if="getActiveLicenseFile(item) && (getActiveLicenseFile(item)!.LINK_FILE || getActiveLicenseFile(item)!.link_file || getActiveLicenseFile(item)!.previewUrl)"
+                              :href="getOtherFileOpenUrl(getActiveLicenseFile(item) as any)"
+                              target="_blank"
+                              class="sr-po-doc-btn is-open"
+                              title="Mở rộng file License sang tab mới"
+                            >
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+                              <span>Mở rộng</span>
+                            </a>
+                            <button
+                              v-if="getActiveLicenseFile(item)"
+                              type="button"
+                              class="sr-po-doc-btn is-del"
+                              @click="removeLicenseFile(item, item.activeLicenseFileIdx || 0)"
+                              title="Gỡ License này khỏi PO"
+                            >
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                              <span>Xóa</span>
+                            </button>
+                            <button
+                              type="button"
+                              class="sr-po-doc-btn is-open"
+                              :class="{ active: showExistingLicensePicker }"
+                              @click="toggleExistingLicensePicker(item)"
+                              title="Mở Modal Kho Quản lý Bản quyền để chọn liên kết License có sẵn"
+                            >
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                              <span>Kho License ({{ getAvailableCustomerLicensesForPo(item).length }})</span>
+                            </button>
+                            <button type="button" class="sr-po-doc-btn is-upload" @click="triggerLicenseFilesUpload(item)" title="Chọn nhiều file License (PDF / Ảnh) hoặc nhấn Ctrl + V để dán">
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                              <span>+ Tải &amp; Quét License</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <!-- DẢI CHUYỂN TAB KHI PO CÓ NHIỀU LICENSE (DÙNG CHUNG CHO CẢ PC & MOBILE) -->
+                        <div v-if="item.licenseFiles && item.licenseFiles.length > 0" class="sr-po-other-tabs-bar sr-po-lic-top-tabs custom-scrollbar">
+                          <div
+                            v-for="(lic, licIdx) in item.licenseFiles"
+                            :key="lic.id || lic.licenseFirebaseId || licIdx"
+                            class="sr-po-other-tab-pill"
+                            :class="{ active: (item.activeLicenseFileIdx || 0) === licIdx }"
+                            @click="item.activeLicenseFileIdx = licIdx"
+                            :title="`${lic.PRODUCT_NAME || lic.PRODUCT || lic.ten_file} (${lic.LICENSE_ID || lic.SERIAL_KEY || 'N/A'})`"
+                          >
+                            <span class="sr-po-other-tab-idx">#{{ licIdx + 1 }}</span>
+                            <span class="sr-po-other-tab-name">{{ lic.PRODUCT_NAME || lic.PRODUCT || lic.ten_file || `License #${licIdx + 1}` }}</span>
+                            <button
+                              type="button"
+                              class="sr-po-other-tab-close"
+                              @click.stop="removeLicenseFile(item, licIdx)"
+                              title="Gỡ License này"
+                            >
+                              &times;
+                            </button>
+                          </div>
+                          <button
+                            type="button"
+                            class="sr-po-other-tab-add"
+                            @click="triggerLicenseFilesUpload(item)"
+                            title="Thêm file License khác"
+                          >
+                            + Thêm License
+                          </button>
+                        </div>
+
+                        <!-- THANH CHUYỂN NHANH 2 CHẾ ĐỘ TRÊN MOBILE: XEM FILE PREVIEW | THÔNG SỐ BẢN QUYỀN -->
+                        <div class="sr-po-lic-mob-subtabs">
+                          <button
+                            type="button"
+                            class="sr-po-lic-mob-subtab"
+                            :class="{ active: getPoLicenseMobileSubTab(item) === 'preview' }"
+                            @click="poLicenseMobileSubTab = 'preview'"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                            <span>Xem File Preview</span>
+                          </button>
+                          <button
+                            type="button"
+                            class="sr-po-lic-mob-subtab"
+                            :class="{ active: getPoLicenseMobileSubTab(item) === 'specs' }"
+                            @click="poLicenseMobileSubTab = 'specs'"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+                            <span>Thông số Bản quyền ({{ item.licenseFiles?.length || 0 }})</span>
+                          </button>
+                        </div>
+
+                        <!-- BỐ CỤC CHIA 2 CỘT (50% TRÁI: PREVIEW CHỨNG TỪ • 50% PHẢI: ĐẦY ĐỦ TRƯỜNG DỮ LIỆU LICENSE) -->
+                        <div class="sr-po-lic-split-body" :class="'is-mob-' + getPoLicenseMobileSubTab(item)">
+                          <!-- CỘT 1 (TRÁI): KHUNG PREVIEW CHỨNG TỪ LICENSE -->
+                          <div class="sr-po-lic-preview-col">
+                            <div class="sr-po-doc-stage sr-po-lic-stage">
+                              <template v-if="item.licenseFiles && item.licenseFiles.length > 0 && getActiveLicenseFile(item)">
+                                <!-- 1. Preview Ảnh -->
+                                <div
+                                  v-if="isOtherFileImage(getActiveLicenseFile(item) as any)"
+                                  class="sr-po-img-stage"
+                                >
+                                  <img
+                                    :src="getActiveLicenseFile(item)!.previewUrl || getActiveLicenseFile(item)!.LINK_FILE || getActiveLicenseFile(item)!.link_file"
+                                    :alt="getActiveLicenseFile(item)!.NAME_FILE || getActiveLicenseFile(item)!.ten_file"
+                                  />
+                                </div>
+
+                                <!-- 2. Preview PDF -->
+                                <iframe
+                                  v-else-if="isOtherFilePdf(getActiveLicenseFile(item) as any) && (getActiveLicenseFile(item)!.previewUrl || getActiveLicenseFile(item)!.LINK_FILE || getActiveLicenseFile(item)!.link_file)"
+                                  :src="getActiveLicenseFile(item)!.previewUrl || getActiveLicenseFile(item)!.LINK_FILE || getActiveLicenseFile(item)!.link_file"
+                                  class="sr-po-preview-iframe"
+                                ></iframe>
+
+                                <!-- 3. Thẻ Tóm tắt Bản quyền nếu liên kết từ kho hoặc chưa có file PDF/Ảnh đính kèm -->
+                                <div v-else class="sr-po-doc-empty" style="cursor: default;">
+                                  <div class="sr-po-doc-empty-icon is-cyan">
+                                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+                                  </div>
+                                  <h5>{{ getActiveLicenseFile(item)!.PRODUCT_NAME || getActiveLicenseFile(item)!.PRODUCT || getActiveLicenseFile(item)!.ten_file || 'Bản quyền đã liên kết' }}</h5>
+                                  <p>
+                                    License ID: <strong>{{ getActiveLicenseFile(item)!.LICENSE_ID || getActiveLicenseFile(item)!.SERIAL_KEY || '—' }}</strong><br/>
+                                    Thời hạn: <strong>{{ getActiveLicenseFile(item)!.DATE_OF_LICENSE || getActiveLicenseFile(item)!.START_DATE || '—' }} → {{ getActiveLicenseFile(item)!.EXPIRATION_TIME || getActiveLicenseFile(item)!.END_DATE || '—' }}</strong>
+                                  </p>
+                                  <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 6px;">
+                                    <a
+                                      v-if="getActiveLicenseFile(item)!.LINK_FILE || getActiveLicenseFile(item)!.link_file || getActiveLicenseFile(item)!.previewUrl"
+                                      :href="getOtherFileOpenUrl(getActiveLicenseFile(item) as any)"
+                                      target="_blank"
+                                      class="sr-po-doc-empty-cta"
+                                      style="text-decoration: none;"
+                                    >
+                                      Mở / Tải xuống file License
+                                    </a>
+                                    <button
+                                      type="button"
+                                      class="sr-po-doc-empty-cta"
+                                      style="border: none; cursor: pointer;"
+                                      @click="triggerLicenseFilesUpload(item)"
+                                    >
+                                      + Tải thêm file PDF / Ảnh
+                                    </button>
+                                  </div>
+                                </div>
+                              </template>
+
+                              <div v-else class="sr-po-doc-empty" @click="triggerLicenseFilesUpload(item)">
+                                <div class="sr-po-doc-empty-icon is-cyan">
+                                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+                                </div>
+                                <h5>Chưa có Chứng Từ License / Bản Quyền</h5>
+                                <p>Hỗ trợ tải lên cùng lúc <strong>nhiều file License (PDF / Ảnh)</strong> — tự động bóc tách đầy đủ thông số bản quyền và đồng bộ 2 chiều sang trang <strong>Quản lý Bản quyền</strong>.</p>
+                                <span class="sr-po-doc-empty-cta">+ Tải lên &amp; Quét nhiều License</span>
+                                <div class="sr-po-paste-hint">Hoặc nhấn <kbd>Ctrl</kbd> + <kbd>V</kbd> để dán file / ảnh License</div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <!-- CỘT 2 (PHẢI): ĐẦY ĐỦ CÁC TRƯỜNG DỮ LIỆU NHƯ Ở TRANG LICENSE -->
+                          <div class="sr-po-lic-form-col custom-scrollbar">
+                            <template v-if="getActiveLicenseFile(item)">
+                              <div class="sr-po-lic-meta-top">
+                                <span class="sr-po-lic-sync-badge">
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                                  <span>Đồng bộ 2 chiều Quản lý Bản quyền</span>
+                                  <template v-if="item.linkedMaKH || item.row?.Ma_khach_hang">
+                                    • Mã KH: <strong>{{ item.linkedMaKH || item.row?.Ma_khach_hang }}</strong>
+                                  </template>
+                                  <template v-if="item.soPO">
+                                    • PO: <strong>{{ item.soPO }}</strong>
+                                  </template>
+                                </span>
+                                <span v-if="getActiveLicenseFile(item)!.scanning || getActiveLicenseFile(item)!._aiProcessing" class="sr-po-lic-scanning">
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                  <span>{{ getActiveLicenseFile(item)!._aiProcessing ? 'Đang phân tích License bằng AI...' : 'Đang đọc &amp; bóc tách thông tin License...' }}</span>
+                                </span>
+                              </div>
+
+                              <!-- NHÓM 1: THÔNG SỐ BẢN QUYỀN & KHÁCH HÀNG -->
+                              <div class="sr-po-lic-group">
+                                <div class="sr-po-lic-group-banner">
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                                  <span>THÔNG SỐ BẢN QUYỀN &amp; SẢN PHẨM</span>
+                                </div>
+
+                                <div class="sr-po-lic-spec-rows">
+                                  <!-- Hàng 2: Tên Khách hàng gốc trên File License (Full 100% chiều ngang) -->
+                                  <div class="sr-po-lic-row is-full">
+                                    <div class="sr-po-lic-field">
+                                      <label>Khách hàng (Tên gốc trên File License)</label>
+                                      <input
+                                        type="text"
+                                        v-model="getActiveLicenseFile(item)!.CUSTOMER"
+                                        @input="syncPoLicenseFieldAliases(getActiveLicenseFile(item))"
+                                        placeholder="Tên công ty trên file..."
+                                      />
+                                    </div>
+                                  </div>
+
+                                  <!-- Hàng 3: Định danh License & Hãng sản xuất (2 cột 50% - 50%) -->
+                                  <div class="sr-po-lic-row">
+                                    <div class="sr-po-lic-field">
+                                      <label>License ID / Serial Key</label>
+                                      <input
+                                        type="text"
+                                        v-model="getActiveLicenseFile(item)!.LICENSE_ID"
+                                        @input="syncPoLicenseFieldAliases(getActiveLicenseFile(item))"
+                                        placeholder="Nhập License ID..."
+                                      />
+                                    </div>
+                                    <div class="sr-po-lic-field">
+                                      <label>Nhà sản xuất (Hãng)</label>
+                                      <div class="sr-cust-input-with-picker">
+                                        <input
+                                          type="text"
+                                          v-model="getActiveLicenseFile(item)!.NHA_SAN_XUAT"
+                                          @input="syncPoLicenseFieldAliases(getActiveLicenseFile(item))"
+                                          style="padding-right: 64px;"
+                                          placeholder="Sophos, Kaspersky, Acronis..."
+                                        />
+                                        <button
+                                          type="button"
+                                          class="sr-cust-inline-picker-btn"
+                                          @click="openPoLicenseVendorPicker(getActiveLicenseFile(item))"
+                                          title="Mở danh sách chọn Hãng / Nhà sản xuất"
+                                        >
+                                          Chọn
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <!-- Hàng 4: Thông tin Sản phẩm (2 cột tỉ lệ 65% - 35%) -->
+                                  <div class="sr-po-lic-row is-product-split">
+                                    <div class="sr-po-lic-field">
+                                      <label>Tên sản phẩm (Product Name)</label>
+                                      <input
+                                        type="text"
+                                        v-model="getActiveLicenseFile(item)!.PRODUCT_NAME"
+                                        @input="syncPoLicenseFieldAliases(getActiveLicenseFile(item))"
+                                        placeholder="Tên phần mềm / bản quyền..."
+                                      />
+                                    </div>
+                                    <div class="sr-po-lic-field">
+                                      <label>Mã sản phẩm (Product Code)</label>
+                                      <input
+                                        type="text"
+                                        v-model="getActiveLicenseFile(item)!.PRODUCT_CODE"
+                                        @input="syncPoLicenseFieldAliases(getActiveLicenseFile(item))"
+                                        placeholder="Nhập mã sản phẩm..."
+                                      />
+                                    </div>
+                                  </div>
+
+                                  <!-- Hàng 5: Thông số Cấp phép ngắn (3 cột gọn trên 1 hàng) -->
+                                  <div class="sr-po-lic-row is-three-cols">
+                                    <div class="sr-po-lic-field">
+                                      <label>Số lượng (Volume)</label>
+                                      <input
+                                        type="text"
+                                        v-model="getActiveLicenseFile(item)!.LICENSE_VOLUME"
+                                        @input="syncPoLicenseFieldAliases(getActiveLicenseFile(item))"
+                                        placeholder="VD: 10, 50..."
+                                      />
+                                    </div>
+                                    <div class="sr-po-lic-field">
+                                      <label>Loại License (Type)</label>
+                                      <input
+                                        type="text"
+                                        v-model="getActiveLicenseFile(item)!.LICENSE_TYPE"
+                                        @input="syncPoLicenseFieldAliases(getActiveLicenseFile(item))"
+                                        placeholder="VD: Base, Renewal..."
+                                      />
+                                    </div>
+                                    <div class="sr-po-lic-field">
+                                      <label>Khu vực / Ngôn ngữ (Localization)</label>
+                                      <input
+                                        type="text"
+                                        v-model="getActiveLicenseFile(item)!.LOCALIZATION"
+                                        @input="syncPoLicenseFieldAliases(getActiveLicenseFile(item))"
+                                        placeholder="VD: Global, Vietnam..."
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <!-- NHÓM 2: THỜI GIAN, HIỆU LỰC GIA HẠN & MÔ TẢ -->
+                              <div class="sr-po-lic-group">
+                                <div class="sr-po-lic-group-banner is-green-head">
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                  <span>THỜI GIAN, HIỆU LỰC GIA HẠN &amp; MÔ TẢ</span>
+                                </div>
+
+                                <div class="sr-po-lic-meta-grid">
+                                  <div class="sr-po-lic-field">
+                                    <label>Ngày cấp (DD/MM/YYYY)</label>
+                                    <LicenseDatePickerInput
+                                      :modelValue="getActiveLicenseFile(item)!.DATE_OF_LICENSE"
+                                      :theme="uiTheme"
+                                      placeholder="Chọn ngày cấp..."
+                                      @update:modelValue="val => onPoLicenseDatePickerChange(getActiveLicenseFile(item), 'DATE_OF_LICENSE', val)"
+                                    />
+                                  </div>
+                                  <div class="sr-po-lic-field">
+                                    <label>Ngày hết hạn (DD/MM/YYYY)</label>
+                                    <LicenseDatePickerInput
+                                      :modelValue="getActiveLicenseFile(item)!.EXPIRATION_TIME"
+                                      :theme="uiTheme"
+                                      placeholder="Chọn ngày hết hạn..."
+                                      @update:modelValue="val => onPoLicenseDatePickerChange(getActiveLicenseFile(item), 'EXPIRATION_TIME', val)"
+                                    />
+                                  </div>
+                                  <div class="sr-po-lic-field">
+                                    <label>Số ngày cộng thêm (sau hết hạn)</label>
+                                    <input
+                                      type="number"
+                                      v-model="getActiveLicenseFile(item)!.graceDays"
+                                      @input="onPoLicenseGraceDaysChange(getActiveLicenseFile(item))"
+                                      placeholder="VD: 10, 30..."
+                                    />
+                                    <small v-if="getActiveLicenseFile(item)!.graceDays !== '' && getActiveLicenseFile(item)!.graceDays !== undefined && getActiveLicenseFile(item)!.EXPIRATION_TIME" class="sr-po-lic-grace-preview">
+                                      → Hạn hiệu lực: <b>{{ calcPoLicenseGraceDate(getActiveLicenseFile(item)!.EXPIRATION_TIME, getActiveLicenseFile(item)!.graceDays) }}</b>
+                                    </small>
+                                  </div>
+                                  <div class="sr-po-lic-field">
+                                    <label>Hạn hiệu lực (Ân hạn DD/MM/YYYY)</label>
+                                    <LicenseDatePickerInput
+                                      :modelValue="getActiveLicenseFile(item)!.SO_NGAY_HIEU_LUC"
+                                      :theme="uiTheme"
+                                      placeholder="Chọn hạn hiệu lực..."
+                                      @update:modelValue="val => onPoLicenseDatePickerChange(getActiveLicenseFile(item), 'SO_NGAY_HIEU_LUC', val)"
+                                    />
+                                  </div>
+                                  <div class="sr-po-lic-field is-wide">
+                                    <label>Mô tả (Description)</label>
+                                    <textarea
+                                      rows="2"
+                                      v-model="getActiveLicenseFile(item)!.LICENSE_DESCRIPTION"
+                                      @input="syncPoLicenseFieldAliases(getActiveLicenseFile(item))"
+                                      placeholder="Ghi chú chi tiết bản quyền..."
+                                    ></textarea>
+                                  </div>
+                                </div>
+                              </div>
+                            </template>
+
+                            <div v-else class="sr-po-lic-form-empty">
+                              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+                              <h6>Chưa có dữ liệu Bản quyền cho PO này</h6>
+                              <p>Tải lên file chứng nhận License để hệ thống tự động bóc tách toàn bộ trường dữ liệu hoặc chọn từ Kho License có sẵn.</p>
+                              <div class="sr-po-lic-form-empty-btns">
+                                <button type="button" class="sr-po-doc-btn is-upload" @click="triggerLicenseFilesUpload(item)">+ Tải &amp; Quét License</button>
+                                <button type="button" class="sr-po-doc-btn is-open" @click="toggleExistingLicensePicker(item)">Chọn từ Kho ({{ getAvailableCustomerLicensesForPo(item).length }})</button>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </template>
                     </div>
@@ -2942,9 +3568,8 @@
 
                             <!-- KHUNG ĐỐI CHIẾU GỌN THEO TỪNG MỤC KHI CÓ KHÁC BIỆT GIỮA DB VÀ HIỆN TẠI -->
                             <div
-                              v-if="getCustomerDbMatchState(item).diffs.length > 0"
+                              v-if="getCustomerDbMatchState(item).activeDiffCount > 0"
                               class="sr-po-cust-diff-strip"
-                              :class="{ 'is-resolved-db': getCustomerDbMatchState(item).activeDiffCount === 0 }"
                             >
                               <div class="sr-po-cust-diff-head">
                                 <span class="sr-po-cust-diff-head-lbl">
@@ -3285,22 +3910,34 @@
 
                               <!-- KHỐI 3: TỶ SUẤT % & DỰ ĐOÁN NET MARGIN / DSB -->
                               <div class="sr-modal-fin-col highlight-col">
+                                <div class="sr-fin-col-round-head">
+                                  <span class="sr-fin-col-round-lbl">Tỉ suất (%)</span>
+                                  <button
+                                    type="button"
+                                    class="sr-modal-round-chip"
+                                    :class="{ 'is-active': isPoRatioRounded(item) }"
+                                    :title="isPoRatioRounded(item) ? 'Đang bật làm tròn tỉ suất (VD: 30.51% -> 31%, 15.21% -> 15%) • Nhấn để tắt' : 'Nhấn để làm tròn 4 chỉ số tỉ suất của PO này (VD: 30.51% -> 31%, 15.21% -> 15%)'"
+                                    @click="toggleModalItemRatioRounding(item)"
+                                  >
+                                    {{ isPoRatioRounded(item) ? 'Làm tròn ✓' : 'Làm tròn' }}
+                                  </button>
+                                </div>
                                 <div class="sr-fin-inline-row">
                                   <span class="sr-fin-inline-lbl">Net COM / Net PO</span>
-                                  <strong class="sr-fin-inline-val text-green">{{ pctFmt(getModalPriceMode(item) === 'khach' ? 0 : (item.doanhSoBan - item.grossCom !== 0 ? (item.netCom / (item.doanhSoBan - item.grossCom)) * 100 : 0)) }}</strong>
+                                  <strong class="sr-fin-inline-val text-green">{{ pctFmtPo(getModalPriceMode(item) === 'khach' ? 0 : (item.doanhSoBan - item.grossCom !== 0 ? (item.netCom / (item.doanhSoBan - item.grossCom)) * 100 : 0), item) }}</strong>
                                 </div>
                                 <div class="sr-fin-inline-row">
                                   <span class="sr-fin-inline-lbl">Net Margin / Net PO</span>
-                                  <strong class="sr-fin-inline-val" :class="(getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : (item.doanhSoBan - item.grossCom)) !== 0 && ((getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : (item.doanhSoBan - item.grossCom)) - item.tongCP) / (getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : (item.doanhSoBan - item.grossCom)) >= 0 ? 'text-green' : 'text-red'">{{ pctFmt((getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : (item.doanhSoBan - item.grossCom)) !== 0 ? (((getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : (item.doanhSoBan - item.grossCom)) - item.tongCP) / (getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : (item.doanhSoBan - item.grossCom))) * 100 : 0) }}</strong>
+                                  <strong class="sr-fin-inline-val" :class="(getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : (item.doanhSoBan - item.grossCom)) !== 0 && ((getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : (item.doanhSoBan - item.grossCom)) - item.tongCP) / (getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : (item.doanhSoBan - item.grossCom)) >= 0 ? 'text-green' : 'text-red'">{{ pctFmtPo((getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : (item.doanhSoBan - item.grossCom)) !== 0 ? (((getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : (item.doanhSoBan - item.grossCom)) - item.tongCP) / (getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : (item.doanhSoBan - item.grossCom))) * 100 : 0, item) }}</strong>
                                 </div>
                                 <div class="sr-fin-solid-divider"></div>
                                 <div class="sr-fin-inline-row">
                                   <span class="sr-fin-inline-lbl">Net COM / DSB</span>
-                                  <strong class="sr-fin-inline-val text-green">{{ pctFmt(getModalPriceMode(item) === 'khach' ? 0 : (item.doanhSoBan !== 0 ? (item.netCom / item.doanhSoBan) * 100 : 0)) }}</strong>
+                                  <strong class="sr-fin-inline-val text-green">{{ pctFmtPo(getModalPriceMode(item) === 'khach' ? 0 : (item.doanhSoBan !== 0 ? (item.netCom / item.doanhSoBan) * 100 : 0), item) }}</strong>
                                 </div>
                                 <div class="sr-fin-inline-row">
                                   <span class="sr-fin-inline-lbl">Net Margin / DSB</span>
-                                  <strong class="sr-fin-inline-val" :class="(getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : item.doanhSoBan) !== 0 && ((getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : (item.doanhSoBan - item.grossCom)) - item.tongCP) / (getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : item.doanhSoBan) >= 0 ? 'text-green' : 'text-red'">{{ pctFmt((getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : item.doanhSoBan) !== 0 ? (((getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : (item.doanhSoBan - item.grossCom)) - item.tongCP) / (getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : item.doanhSoBan)) * 100 : 0) }}</strong>
+                                  <strong class="sr-fin-inline-val" :class="(getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : item.doanhSoBan) !== 0 && ((getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : (item.doanhSoBan - item.grossCom)) - item.tongCP) / (getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : item.doanhSoBan) >= 0 ? 'text-green' : 'text-red'">{{ pctFmtPo((getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : item.doanhSoBan) !== 0 ? (((getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : (item.doanhSoBan - item.grossCom)) - item.tongCP) / (getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : item.doanhSoBan)) * 100 : 0, item) }}</strong>
                                 </div>
 
                                 <!-- CHỈ SỐ NET MARGIN/DSB MONG MUỐN -->
@@ -3695,6 +4332,8 @@
     <input type="file" ref="dxmhInput" style="display: none" :accept="UNIVERSAL_IMPORT_ACCEPT" multiple @change="onDxmhSelected" />
     <!-- Hidden file input for Other attachments (File khác) -->
     <input type="file" ref="otherFilesInput" style="display: none" :accept="UNIVERSAL_IMPORT_ACCEPT" multiple @change="onOtherFilesSelected" />
+    <!-- Hidden file input for License attachments (Bản quyền / License) -->
+    <input type="file" ref="licenseFilesInput" style="display: none" accept=".pdf,image/*" multiple @change="onLicenseFilesSelected" />
     <!-- Hidden file input for scanning image / COM document -->
     <input type="file" ref="scanInput" style="display: none" :accept="UNIVERSAL_IMPORT_ACCEPT" @change="onScanSelected" />
 
@@ -4251,123 +4890,569 @@
       </div>
     </Teleport>
 
-    <!-- Export Modal -->
+    <!-- Export Modal (Fullscreen 100% Split-Pane: Left Time Filter + Right Live Excel Preview) -->
     <Teleport to="body">
-      <div v-if="showExportModal" class="sr-modal-overlay" :class="{ 'no-anim': isSwitchingTab }" @click.self="showExportModal = false">
-        <div class="sr-modal" style="max-width: 700px; width: 90vw;">
-          <div class="sr-modal-header">
-            <div class="sr-modal-icon" style="background:rgba(16,185,129,.2);color:#34d399">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <div
+        v-if="showExportModal"
+        class="sr-modal-overlay sr-po-modal-overlay sr-export-modal-overlay"
+        :class="{ 'theme-light-blue': uiTheme === 'light', 'is-craft-overlay': srDataMode === 'craft', 'no-anim': isSwitchingTab }"
+        @click.self="showExportModal = false"
+        style="z-index: 10020;"
+      >
+        <div
+          class="sr-modal sr-modal-large sr-po-modal is-fullscreen-100 sr-export-modal"
+          :class="{ 'is-light': uiTheme === 'light', 'is-craft-modal': srDataMode === 'craft', 'no-anim': isSwitchingTab }"
+        >
+          <!-- 1. STICKY TOP HEADER -->
+          <div class="sr-import-card-header sr-po-modal-header sr-export-header">
+            <div class="sr-po-header-left">
+              <span class="sr-po-header-icon is-excel-brand">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24" height="24"><path fill="#4CAF50" d="M41,10H25v28h16c0.553,0,1-0.447,1-1V11C42,10.447,41.553,10,41,10z"/><path fill="#FFF" d="M32 15H39V18H32zM32 25H39V28H32zM32 30H39V33H32zM32 20H39V23H32zM25 15H30V18H25zM25 25H30V28H25zM25 30H30V33H25zM25 20H30V23H25z"/><path fill="#2E7D32" d="M27,42L6,38.746C5.416,38.655,5,38.146,5,37.555v-27.11c0-0.591,0.416-1.1,1-1.191L27,6V42z"/><path fill="#FFF" d="M19.129,31l-2.411-4.561c-0.092-0.171-0.186-0.483-0.284-0.938h-0.037c-0.046,0.215-0.154,0.541-0.324,0.979L13.652,31H9.895l4.462-7.001L10.274,17h3.837l2.001,4.196c0.156,0.331,0.296,0.725,0.42,1.179h0.04c0.078-0.271,0.224-0.68,0.439-1.22L19.237,17h3.515l-4.199,6.939l4.316,7.059h-3.74V31z"/></svg>
+              </span>
+              <div class="sr-po-header-titles">
+                <div class="sr-po-header-title-row">
+                  <h4 class="sr-po-header-title">Xuất Báo Cáo Sale Report (Excel)</h4>
+                  <span class="sr-po-mode-badge">
+                    {{ exportFromSelectionMode ? 'PO ĐÃ CHỌN' : 'THEO THỜI GIAN' }}
+                  </span>
+                  <span class="sr-po-index-badge">
+                    {{ exportRecords.length }} PO • 21 CỘT (A → U)
+                  </span>
+                </div>
+                <p class="sr-po-header-sub">
+                  Tên file xuất: <strong>{{ exportTitle }}.xlsx</strong> • Chọn thời gian bên trái để xem trước trực tiếp trang tính Excel bên phải
+                </p>
+              </div>
             </div>
-            <div>
-              <h3>Xuất Sale Report</h3>
-              <p class="sr-modal-sub">{{ exportFromSelectionMode ? 'Xuất các PO đã tick chọn trên danh sách thẻ' : 'Chọn khoảng thời gian để xuất file Excel' }}</p>
+
+            <div class="sr-po-header-actions">
+              <button
+                type="button"
+                class="sr-export-top-dl-btn"
+                :disabled="exportRecords.length === 0 || exporting"
+                @click="doExport"
+                title="Tải xuống file Excel (.xlsx)"
+              >
+                <svg v-if="exporting" class="spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                <svg v-else width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span>{{ exporting ? 'Đang xuất Excel...' : `Tải xuống Excel (${exportRecords.length})` }}</span>
+              </button>
+              <button type="button" class="sr-po-header-close" @click="showExportModal = false" title="Đóng cửa sổ xuất Excel">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
             </div>
-            <button class="sr-modal-close" @click="showExportModal = false">&times;</button>
           </div>
-          <div class="sr-modal-body" style="max-height: 60vh; display: flex; flex-direction: column;">
-            
-            <!-- BƯỚC 1: CHỌN THỜI GIAN -->
-            <div v-if="!showExportPreview" style="display: flex; flex-direction: column; gap: 16px; max-width: 400px; margin: 0 auto; width: 100%; padding: 20px 0;">
-              <div class="elite-date-group group-tabs" style="width: 100%;">
-                <label class="sr-modal-label" style="margin-bottom: 12px; display: block; text-align: center; font-size: 14px;">Phân loại thời gian</label>
-                <div class="elite-mode-tabs" style="width: 100%; display: flex; background: rgba(15,23,42,0.8); border-radius: 8px; padding: 4px; border: 1px solid #1e293b;">
-                  <button type="button" :class="{ active: exportTimeMode === 'day' }" @click="exportTimeMode = 'day'" style="flex: 1; border: none; background: transparent; padding: 8px; color: #94a3b8; border-radius: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="if(!this.classList.contains('active')) this.style.color='#f8fafc'" onmouseout="if(!this.classList.contains('active')) this.style.color='#94a3b8'" :style="exportTimeMode === 'day' ? 'background: rgba(56,189,248,0.15); color: #38bdf8; font-weight: 600;' : ''">Ngày</button>
-                  <button type="button" :class="{ active: exportTimeMode === 'month' }" @click="exportTimeMode = 'month'" style="flex: 1; border: none; background: transparent; padding: 8px; color: #94a3b8; border-radius: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="if(!this.classList.contains('active')) this.style.color='#f8fafc'" onmouseout="if(!this.classList.contains('active')) this.style.color='#94a3b8'" :style="exportTimeMode === 'month' ? 'background: rgba(56,189,248,0.15); color: #38bdf8; font-weight: 600;' : ''">Tháng</button>
-                  <button type="button" :class="{ active: exportTimeMode === 'year' }" @click="exportTimeMode = 'year'" style="flex: 1; border: none; background: transparent; padding: 8px; color: #94a3b8; border-radius: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="if(!this.classList.contains('active')) this.style.color='#f8fafc'" onmouseout="if(!this.classList.contains('active')) this.style.color='#94a3b8'" :style="exportTimeMode === 'year' ? 'background: rgba(56,189,248,0.15); color: #38bdf8; font-weight: 600;' : ''">Năm</button>
-                </div>
-              </div>
 
-              <template v-if="exportTimeMode === 'day'">
-                <div class="elite-date-group group-date" style="width: 100%;">
-                  <label style="color: #94a3b8 !important; margin-bottom: 4px; display: block; font-size: 12px;">Từ ngày</label>
-                  <input type="date" v-model="exportDateFrom" :max="exportDateTo" @click="e => e.target.showPicker && e.target.showPicker()" class="elite-input" style="width: 100%; padding: 10px;" />
-                </div>
-                <div class="elite-date-group group-date" style="width: 100%;">
-                  <label style="color: #94a3b8 !important; margin-bottom: 4px; display: block; font-size: 12px;">Đến ngày</label>
-                  <input type="date" v-model="exportDateTo" :min="exportDateFrom" @click="e => e.target.showPicker && e.target.showPicker()" class="elite-input" style="width: 100%; padding: 10px;" />
-                </div>
-              </template>
+          <!-- 2. MOBILE PANE SWITCHER (<= 1080px) -->
+          <div class="sr-po-mobile-switch sr-export-mob-switch">
+            <button
+              type="button"
+              class="sr-po-mob-switch-btn"
+              :class="{ active: exportMobilePane === 'filter' }"
+              @click="exportMobilePane = 'filter'"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              <span>Chọn Thời Gian &amp; Lọc</span>
+            </button>
+            <button
+              type="button"
+              class="sr-po-mob-switch-btn"
+              :class="{ active: exportMobilePane === 'preview' }"
+              @click="exportMobilePane = 'preview'"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+              <span>Xem Trước Excel ({{ exportRecords.length }})</span>
+            </button>
+          </div>
 
-              <template v-if="exportTimeMode === 'month'">
-                <div class="elite-date-group group-date" style="width: 100%;">
-                  <label style="color: #94a3b8 !important; margin-bottom: 4px; display: block; font-size: 12px;">Từ tháng</label>
-                  <input type="month" v-model="exportMonthFrom" :max="exportMonthTo" @click="e => e.target.showPicker && e.target.showPicker()" class="elite-input" style="width: 100%; padding: 10px;" />
+          <!-- 3. SPLIT-PANE BODY: LEFT TIME FILTER + RIGHT LIVE EXCEL PREVIEW -->
+          <div class="sr-modal-body sr-po-modal-scroll sr-export-body">
+            <div class="sr-export-workspace">
+              <!-- ================= LEFT PANE: CHỌN THỜI GIAN & TÓM TẮT ================= -->
+              <aside class="sr-export-left-pane custom-scrollbar" :class="{ 'mob-hidden': exportMobilePane !== 'filter' }">
+                <!-- Nguồn dữ liệu xuất (nếu đang tick chọn PO ngoài danh sách) -->
+                <div v-if="selectedPoRows.length > 0 || exportFromSelectionMode" class="sr-export-card">
+                  <div class="sr-export-card-head">
+                    <span class="sr-export-card-title">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                      <span>Nguồn dữ liệu xuất</span>
+                    </span>
+                  </div>
+                  <div class="sr-export-seg-tabs is-2col">
+                    <button
+                      type="button"
+                      class="sr-export-seg-btn"
+                      :class="{ active: !exportFromSelectionMode }"
+                      @click="switchExportToTimeFilterMode()"
+                    >
+                      Theo thời gian ({{ rowsForExportFilter.length }})
+                    </button>
+                    <button
+                      type="button"
+                      class="sr-export-seg-btn"
+                      :class="{ active: exportFromSelectionMode }"
+                      :disabled="selectedPoRows.length === 0"
+                      @click="openExportModalForSelected()"
+                    >
+                      PO đã tick ({{ selectedPoRows.length }})
+                    </button>
+                  </div>
                 </div>
-                <div class="elite-date-group group-date" style="width: 100%;">
-                  <label style="color: #94a3b8 !important; margin-bottom: 4px; display: block; font-size: 12px;">Đến tháng</label>
-                  <input type="month" v-model="exportMonthTo" :min="exportMonthFrom" @click="e => e.target.showPicker && e.target.showPicker()" class="elite-input" style="width: 100%; padding: 10px;" />
-                </div>
-              </template>
 
-              <template v-if="exportTimeMode === 'year'">
-                <div class="elite-date-group group-date" style="width: 100%;">
-                  <label style="color: #94a3b8 !important; margin-bottom: 4px; display: block; font-size: 12px;">Từ năm</label>
-                  <select v-model="exportYearFrom" class="elite-input" style="width: 100%; padding: 10px;">
-                    <option value="">Chọn năm...</option>
-                    <option v-for="y in availableYearsList" :key="y" :value="y">{{ y }}</option>
-                  </select>
-                </div>
-                <div class="elite-date-group group-date" style="width: 100%;">
-                  <label style="color: #94a3b8 !important; margin-bottom: 4px; display: block; font-size: 12px;">Đến năm</label>
-                  <select v-model="exportYearTo" class="elite-input" style="width: 100%; padding: 10px;">
-                    <option value="">Chọn năm...</option>
-                    <option v-for="y in availableYearsList" :key="y" :value="y">{{ y }}</option>
-                  </select>
-                </div>
-              </template>
-            </div>
+                <!-- KHỐI 1: CHỌN THỜI GIAN -->
+                <div class="sr-export-card" :class="{ 'is-dimmed': exportFromSelectionMode }">
+                  <div class="sr-export-card-head">
+                    <span class="sr-export-card-title">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                      <span>Chọn khoảng thời gian</span>
+                    </span>
+                    <button
+                      v-if="exportFromSelectionMode"
+                      type="button"
+                      class="sr-export-link-btn"
+                      @click="switchExportToTimeFilterMode()"
+                    >
+                      Bật lọc thời gian
+                    </button>
+                  </div>
 
-            <!-- BƯỚC 2: DANH SÁCH BẢN GHI -->
-            <div v-else style="display: flex; flex-direction: column; overflow: hidden; flex: 1;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                <label class="sr-modal-label" style="margin: 0; white-space: nowrap;">Danh sách bản ghi</label>
-                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: nowrap;">
-                  <select v-model="exportSortOrder" class="elite-select" style="background: rgba(15,23,42,0.6); border: 1px solid #1e293b; color: #94a3b8; font-size: 12px; padding: 4px 8px; border-radius: 6px; outline: none; cursor: pointer;">
-                    <option value="Cũ => Mới">Cũ ➔ Mới</option>
-                    <option value="Mới => Cũ">Mới ➔ Cũ</option>
-                  </select>
-                  <span style="font-size: 12px; font-weight: 600; color: #38bdf8; background: rgba(56,189,248,0.1); padding: 4px 10px; border-radius: 12px; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center;">{{ exportRecords.length }} bản ghi</span>
-                </div>
-              </div>
-              <div style="overflow-y: auto; flex: 1; padding-right: 8px; display: flex; flex-direction: column; gap: 8px;" class="sr-scroll">
-                <div v-for="(r, i) in exportRecords" :key="r.ID || i" style="background: rgba(15,23,42,0.6); border: 1px solid #1e293b; border-radius: 8px; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
-                  <div style="flex: 1; overflow: hidden;">
-                    <div style="font-size: 13px; font-weight: 600; color: #f8fafc; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ r.content_of_contract_PO || 'Chưa có thông tin Content of contract/PO' }}</div>
-                    <div style="font-size: 12px; color: #cbd5e1; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ r.Ten_cong_ty || 'Chưa có thông tin Customer' }}</div>
-                    <div style="font-size: 11px; color: #94a3b8; display: flex; flex-wrap: wrap; align-items: center;">
-                      <span>PO: <span style="color: #38bdf8;">{{ r.So_PO }}</span> <span style="color: #475569; margin: 0 6px;">|</span></span>
-                      <span>DSB: <span style="color: #22c55e;">{{ fmt(doanhSoBan(r)) }}</span> <span style="color: #475569; margin: 0 6px;">|</span></span>
-                      <span>Giá mua: <span style="color: #f59e0b;">{{ fmt(giaMua(r)) }}</span> <span style="color: #475569; margin: 0 6px;">|</span></span>
-                      <span>Gross COM: <span style="color: #a855f7;">{{ fmt(grossCom(r)) }}</span> <span style="color: #475569; margin: 0 6px;">|</span></span>
-                      <span>Net COM: <span style="color: #34d399;">{{ fmt(netCom(r)) }}</span></span>
+                  <!-- Phím chọn nhanh (Presets) -->
+                  <div class="sr-export-presets">
+                    <button
+                      type="button"
+                      class="sr-export-preset-pill"
+                      :class="{ active: isExportPresetActive('this_month') }"
+                      @click="applyExportTimePreset('this_month')"
+                    >
+                      Tháng này
+                    </button>
+                    <button
+                      type="button"
+                      class="sr-export-preset-pill"
+                      :class="{ active: isExportPresetActive('last_month') }"
+                      @click="applyExportTimePreset('last_month')"
+                    >
+                      Tháng trước
+                    </button>
+                    <button
+                      type="button"
+                      class="sr-export-preset-pill"
+                      :class="{ active: isExportPresetActive('this_quarter') }"
+                      @click="applyExportTimePreset('this_quarter')"
+                    >
+                      Quý này
+                    </button>
+                    <button
+                      type="button"
+                      class="sr-export-preset-pill"
+                      :class="{ active: isExportPresetActive('this_year') }"
+                      @click="applyExportTimePreset('this_year')"
+                    >
+                      Năm nay
+                    </button>
+                    <button
+                      type="button"
+                      class="sr-export-preset-pill"
+                      :class="{ active: isExportPresetActive('all') }"
+                      @click="applyExportTimePreset('all')"
+                    >
+                      Tất cả
+                    </button>
+                  </div>
+
+                  <!-- 3-Tab Phân loại: Ngày / Tháng / Năm -->
+                  <div class="sr-export-seg-tabs is-3col">
+                    <button
+                      type="button"
+                      class="sr-export-seg-btn"
+                      :class="{ active: !exportFromSelectionMode && exportTimeMode === 'day' }"
+                      @click="exportFromSelectionMode = false; exportTimeMode = 'day'"
+                    >
+                      Theo Ngày
+                    </button>
+                    <button
+                      type="button"
+                      class="sr-export-seg-btn"
+                      :class="{ active: !exportFromSelectionMode && exportTimeMode === 'month' }"
+                      @click="exportFromSelectionMode = false; exportTimeMode = 'month'"
+                    >
+                      Theo Tháng
+                    </button>
+                    <button
+                      type="button"
+                      class="sr-export-seg-btn"
+                      :class="{ active: !exportFromSelectionMode && exportTimeMode === 'year' }"
+                      @click="exportFromSelectionMode = false; exportTimeMode = 'year'"
+                    >
+                      Theo Năm
+                    </button>
+                  </div>
+
+                  <!-- Ô chọn Ngày -->
+                  <div v-if="exportTimeMode === 'day'" class="sr-export-date-fields">
+                    <div class="sr-export-field">
+                      <label>Từ ngày</label>
+                      <input
+                        type="date"
+                        v-model="exportDateFrom"
+                        :max="exportDateTo"
+                        @focus="exportFromSelectionMode = false"
+                        @click="(e: any) => e.target.showPicker && e.target.showPicker()"
+                        class="sr-export-input"
+                      />
+                    </div>
+                    <div class="sr-export-field">
+                      <label>Đến ngày</label>
+                      <input
+                        type="date"
+                        v-model="exportDateTo"
+                        :min="exportDateFrom"
+                        @focus="exportFromSelectionMode = false"
+                        @click="(e: any) => e.target.showPicker && e.target.showPicker()"
+                        class="sr-export-input"
+                      />
                     </div>
                   </div>
-                  <button @click="exportRecords.splice(i, 1)" style="background: rgba(239,68,68,.1); color: #ef4444; border: 1px solid rgba(239,68,68,.3); border-radius: 6px; width: 28px; height: 28px; display: flex; justify-content: center; align-items: center; cursor: pointer; flex-shrink: 0;" title="Bỏ xuất bản ghi này" onmouseover="this.style.background='rgba(239,68,68,.2)'" onmouseout="this.style.background='rgba(239,68,68,.1)'">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                  </button>
+
+                  <!-- Ô chọn Tháng -->
+                  <div v-else-if="exportTimeMode === 'month'" class="sr-export-date-fields">
+                    <div class="sr-export-field">
+                      <label>Từ tháng</label>
+                      <input
+                        type="month"
+                        v-model="exportMonthFrom"
+                        :max="exportMonthTo"
+                        @focus="exportFromSelectionMode = false"
+                        @click="(e: any) => e.target.showPicker && e.target.showPicker()"
+                        class="sr-export-input"
+                      />
+                    </div>
+                    <div class="sr-export-field">
+                      <label>Đến tháng</label>
+                      <input
+                        type="month"
+                        v-model="exportMonthTo"
+                        :min="exportMonthFrom"
+                        @focus="exportFromSelectionMode = false"
+                        @click="(e: any) => e.target.showPicker && e.target.showPicker()"
+                        class="sr-export-input"
+                      />
+                    </div>
+                  </div>
+
+                  <!-- Ô chọn Năm -->
+                  <div v-else class="sr-export-date-fields">
+                    <div class="sr-export-field">
+                      <label>Từ năm</label>
+                      <select v-model="exportYearFrom" @change="exportFromSelectionMode = false" class="sr-export-input">
+                        <option value="">Tất cả năm...</option>
+                        <option v-for="y in availableYearsList" :key="y" :value="y">{{ y }}</option>
+                      </select>
+                    </div>
+                    <div class="sr-export-field">
+                      <label>Đến năm</label>
+                      <select v-model="exportYearTo" @change="exportFromSelectionMode = false" class="sr-export-input">
+                        <option value="">Tất cả năm...</option>
+                        <option v-for="y in availableYearsList" :key="y" :value="y">{{ y }}</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <!-- Thứ tự sắp xếp dòng Excel -->
+                  <div class="sr-export-sort-row">
+                    <span class="sr-export-sort-lbl">Thứ tự thời gian:</span>
+                    <div class="sr-export-seg-tabs is-2col is-compact">
+                      <button
+                        type="button"
+                        class="sr-export-seg-btn"
+                        :class="{ active: exportSortOrder === 'Cũ => Mới' }"
+                        @click="exportSortOrder = 'Cũ => Mới'"
+                      >
+                        Cũ ➔ Mới
+                      </button>
+                      <button
+                        type="button"
+                        class="sr-export-seg-btn"
+                        :class="{ active: exportSortOrder === 'Mới => Cũ' }"
+                        @click="exportSortOrder = 'Mới => Cũ'"
+                      >
+                        Mới ➔ Cũ
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <div v-if="exportRecords.length === 0" style="text-align: center; color: #64748b; padding: 24px; font-size: 13px;">
-                  Không còn bản ghi nào để xuất.
+
+                <!-- KHỐI 2: TÓM TẮT SỐ LIỆU SẼ XUẤT -->
+                <div class="sr-export-card sr-export-kpi-card">
+                  <div class="sr-export-card-head">
+                    <span class="sr-export-card-title">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                      <span>Tổng hợp {{ exportRecords.length }} PO sẽ xuất</span>
+                    </span>
+                  </div>
+                  <div class="sr-export-kpi-grid">
+                    <div class="sr-export-kpi-box is-full">
+                      <span class="sr-export-kpi-lbl">Tổng Doanh Số Bán (Volume)</span>
+                      <strong class="sr-export-kpi-val is-emerald">{{ fmt(exportSummaryStats.totalDsb) }}</strong>
+                    </div>
+                    <div class="sr-export-kpi-box">
+                      <span class="sr-export-kpi-lbl">Tổng Giá Mua</span>
+                      <strong class="sr-export-kpi-val is-rose">{{ fmt(exportSummaryStats.totalGiaMua) }}</strong>
+                    </div>
+                    <div class="sr-export-kpi-box">
+                      <span class="sr-export-kpi-lbl">Tổng Chi Phí ĐH</span>
+                      <strong class="sr-export-kpi-val is-amber">{{ fmt(exportSummaryStats.totalTongCP) }}</strong>
+                    </div>
+                    <div class="sr-export-kpi-box">
+                      <span class="sr-export-kpi-lbl">Tổng Gross COM</span>
+                      <strong class="sr-export-kpi-val is-purple">{{ fmt(exportSummaryStats.totalGrossCom) }}</strong>
+                    </div>
+                    <div class="sr-export-kpi-box">
+                      <span class="sr-export-kpi-lbl">Tổng Net COM</span>
+                      <strong class="sr-export-kpi-val is-emerald">{{ fmt(exportSummaryStats.totalNetCom) }}</strong>
+                    </div>
+                    <div class="sr-export-kpi-box is-full">
+                      <div class="sr-export-kpi-split">
+                        <span>Tổng Net Margin</span>
+                        <span class="sr-export-kpi-badge">{{ pctFmt(exportSummaryStats.nmNetPoPct) }} Net PO</span>
+                      </div>
+                      <strong class="sr-export-kpi-val" :class="exportSummaryStats.totalNetMargin >= 0 ? 'is-sky' : 'is-rose'">
+                        {{ fmt(exportSummaryStats.totalNetMargin) }}
+                      </strong>
+                    </div>
+                  </div>
                 </div>
-              </div>
+
+                <!-- KHỐI 3: DANH SÁCH PO RÚT GỌN (CÓ THỂ BỎ CHỌN TỪNG DÒNG) -->
+                <div class="sr-export-card sr-export-po-list-card">
+                  <div class="sr-export-card-head">
+                    <span class="sr-export-card-title">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                      <span>Danh sách PO ({{ exportRecords.length }})</span>
+                    </span>
+                    <button
+                      v-if="exportRemovedCount > 0"
+                      type="button"
+                      class="sr-export-link-btn"
+                      @click="restoreAllExportRecords()"
+                      title="Khôi phục lại các bản ghi đã bấm xóa tạm"
+                    >
+                      Khôi phục ({{ exportRemovedCount }})
+                    </button>
+                  </div>
+
+                  <div class="sr-export-mini-search">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input
+                      type="text"
+                      v-model="exportSearchQuery"
+                      placeholder="Tìm nhanh số PO, khách hàng..."
+                      class="sr-export-mini-search-input"
+                    />
+                    <button v-if="exportSearchQuery" type="button" class="sr-export-mini-clear" @click="exportSearchQuery = ''">&times;</button>
+                  </div>
+
+                  <div class="sr-export-mini-list custom-scrollbar">
+                    <div
+                      v-for="entry in exportFilteredSidebarRecords"
+                      :key="entry.row.ID || entry.idx"
+                      class="sr-export-mini-item"
+                    >
+                      <div class="sr-export-mini-main">
+                        <div class="sr-export-mini-top">
+                          <span class="sr-export-mini-stt">#{{ entry.idx + 1 }}</span>
+                          <span class="sr-export-mini-po">PO {{ entry.row.So_PO || 'N/A' }}</span>
+                          <span class="sr-export-mini-date">{{ fmtDate(entry.row.created_time) }}</span>
+                        </div>
+                        <div class="sr-export-mini-cust" :title="entry.row.Ten_cong_ty || ''">
+                          {{ entry.row.Ten_cong_ty || entry.row.content_of_contract_PO || 'Chưa có tên công ty' }}
+                        </div>
+                        <div class="sr-export-mini-nums">
+                          <span>DSB: <strong class="is-emerald">{{ fmt(doanhSoBan(entry.row)) }}</strong></span>
+                          <span>•</span>
+                          <span>Net COM: <strong class="is-sky">{{ fmt(netCom(entry.row)) }}</strong></span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        class="sr-export-mini-remove"
+                        @click="removeExportRecordItem(entry.row)"
+                        title="Loại bỏ PO này khỏi file xuất Excel"
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      </button>
+                    </div>
+                    <div v-if="exportFilteredSidebarRecords.length === 0" class="sr-export-mini-empty">
+                      Không có bản ghi PO nào khớp bộ lọc.
+                    </div>
+                  </div>
+                </div>
+              </aside>
+
+              <!-- ================= RIGHT PANE: BẢN EXCEL XEM TRƯỚC (LIVE SPREADSHEET PREVIEW) ================= -->
+              <section class="sr-export-right-pane" :class="{ 'mob-hidden': exportMobilePane !== 'preview' }">
+                <!-- Thanh công cụ trang tính Excel (Formula / Sheet Ribbon Bar) -->
+                <div class="sr-export-sheet-bar">
+                  <div class="sr-export-sheet-bar-left">
+                    <span class="sr-export-sheet-tab">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="16" height="16"><path fill="#4CAF50" d="M41,10H25v28h16c0.553,0,1-0.447,1-1V11C42,10.447,41.553,10,41,10z"/><path fill="#FFF" d="M32 15H39V18H32zM32 25H39V28H32zM32 30H39V33H32zM32 20H39V23H32zM25 15H30V18H25zM25 25H30V28H25zM25 30H30V33H25zM25 20H30V23H25z"/><path fill="#2E7D32" d="M27,42L6,38.746C5.416,38.655,5,38.146,5,37.555v-27.11c0-0.591,0.416-1.1,1-1.191L27,6V42z"/><path fill="#FFF" d="M19.129,31l-2.411-4.561c-0.092-0.171-0.186-0.483-0.284-0.938h-0.037c-0.046,0.215-0.154,0.541-0.324,0.979L13.652,31H9.895l4.462-7.001L10.274,17h3.837l2.001,4.196c0.156,0.331,0.296,0.725,0.42,1.179h0.04c0.078-0.271,0.224-0.68,0.439-1.22L19.237,17h3.515l-4.199,6.939l4.316,7.059h-3.74V31z"/></svg>
+                      <span>Sheet1 • SALE_REPORT</span>
+                    </span>
+                    <span class="sr-export-cell-addr">A1:U{{ Math.max(3, exportRecords.length + 2) }}</span>
+                    <span class="sr-export-fx-chip">fx</span>
+                    <span class="sr-export-formula-text" :title="exportTitle + '.xlsx'">
+                      ={{ exportTitle.replace(/_/g, ' ') }} ({{ exportRecords.length }} dòng dữ liệu)
+                    </span>
+                  </div>
+
+                  <div class="sr-export-sheet-bar-right">
+                    <button
+                      v-if="exportRemovedCount > 0"
+                      type="button"
+                      class="sr-export-restore-pill"
+                      @click="restoreAllExportRecords()"
+                    >
+                      + Khôi phục {{ exportRemovedCount }} dòng đã ẩn
+                    </button>
+                    <div class="sr-export-zoom-group" title="Thu phóng bảng xem trước Excel">
+                      <button type="button" class="sr-export-zoom-btn" :class="{ active: exportZoom === 85 }" @click="exportZoom = 85">85%</button>
+                      <button type="button" class="sr-export-zoom-btn" :class="{ active: exportZoom === 100 }" @click="exportZoom = 100">100%</button>
+                      <button type="button" class="sr-export-zoom-btn" :class="{ active: exportZoom === 115 }" @click="exportZoom = 115">115%</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Khung lưới trang tính Excel chuẩn 100% bản tải về (A -> U) -->
+                <div class="sr-export-sheet-stage custom-scrollbar">
+                  <div class="sr-export-sheet-canvas" :style="{ zoom: exportZoom / 100 }">
+                    <table class="sr-export-excel-table">
+                      <thead>
+                        <!-- Hàng chữ cái cột chuẩn Excel (A -> U) -->
+                        <tr class="sr-ex-col-letters">
+                          <th class="sr-ex-corner-cell">◢</th>
+                          <th v-for="colLet in ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U']" :key="colLet">
+                            {{ colLet }}
+                          </th>
+                        </tr>
+                      </thead>
+
+                      <tbody>
+                        <!-- Dòng 1: Banner tiêu đề gộp 21 cột (A1:U1) — Nền #00B050, Arial 22pt Bold Đen -->
+                        <tr class="sr-ex-row-banner">
+                          <td class="sr-ex-rownum">1</td>
+                          <td colspan="21" class="sr-ex-banner-merged">
+                            {{ exportTitle.replace(/_/g, ' ') }}
+                          </td>
+                        </tr>
+
+                        <!-- Dòng 2: Header 21 cột chuẩn Template (A2:U2) — Nền #FFFF00, Arial 11pt Bold Đen, cao 59.25pt -->
+                        <tr class="sr-ex-row-headers">
+                          <td class="sr-ex-rownum">2</td>
+                          <th class="is-col-stt">STT</th>
+                          <th class="is-col-mst">MST</th>
+                          <th class="is-col-po">PO</th>
+                          <th class="is-col-am">AM</th>
+                          <th class="is-col-mon">Mon</th>
+                          <th class="is-col-cust">Customer</th>
+                          <th class="is-col-content">Content of Contract/PO</th>
+                          <th class="is-col-prod">Product type</th>
+                          <th class="is-col-money">Doanh số bán</th>
+                          <th class="is-col-money">Giá mua</th>
+                          <th class="is-col-money">Tổng CP đơn hàng</th>
+                          <th class="is-col-money">Gross com</th>
+                          <th class="is-col-money">Thuế 25%</th>
+                          <th class="is-col-money">Net com</th>
+                          <th class="is-col-money">Net PO</th>
+                          <th class="is-col-money">Net Margin</th>
+                          <th class="is-col-pct">Net Margin / Net PO</th>
+                          <th class="is-col-pct">Net com / Net PO</th>
+                          <th class="is-col-pct">Net Margin / Volume</th>
+                          <th class="is-col-pct">Net com / Volume</th>
+                          <th class="is-col-note">Note</th>
+                        </tr>
+
+                        <!-- Các dòng dữ liệu từ Dòng 3 trở đi: Nền trắng #FFFFFF, viền đen 1px, Arial 11pt Đen căn giữa -->
+                        <tr
+                          v-for="(r, idx) in exportRecords"
+                          :key="r.ID || idx"
+                          class="sr-ex-data-row"
+                        >
+                          <td class="sr-ex-rownum">{{ idx + 3 }}</td>
+                          <td>{{ idx + 1 }}</td>
+                          <td>{{ r.MST || '' }}</td>
+                          <td>{{ r.So_PO || '' }}</td>
+                          <td>{{ r.account_manager_name || '' }}</td>
+                          <td>{{ getMonth(r.created_time) || '' }}</td>
+                          <td>{{ r.Ten_cong_ty || '' }}</td>
+                          <td>{{ r.content_of_contract_PO || '' }}</td>
+                          <td>{{ r.Ten_nha_cung_cap || '' }}</td>
+                          <td>{{ fmtExcelMoney(doanhSoBan(r)) }}</td>
+                          <td>{{ fmtExcelMoney(giaMua(r)) }}</td>
+                          <td>{{ fmtExcelMoney(tongCP(r)) }}</td>
+                          <td>{{ fmtExcelMoney(grossCom(r)) }}</td>
+                          <td>{{ fmtExcelMoney(thue(r)) }}</td>
+                          <td>{{ fmtExcelMoney(netCom(r)) }}</td>
+                          <td>{{ fmtExcelMoney(netPO(r)) }}</td>
+                          <td>{{ fmtExcelMoney(netMargin(r)) }}</td>
+                          <td>{{ fmtExcelPct(netPO(r) !== 0 ? netMargin(r) / netPO(r) : 0, r) }}</td>
+                          <td>{{ fmtExcelPct(netPO(r) !== 0 ? netCom(r) / netPO(r) : 0, r) }}</td>
+                          <td>{{ fmtExcelPct(doanhSoBan(r) !== 0 ? netMargin(r) / doanhSoBan(r) : 0, r) }}</td>
+                          <td>{{ fmtExcelPct(doanhSoBan(r) !== 0 ? netCom(r) / doanhSoBan(r) : 0, r) }}</td>
+                          <td>{{ r.ghi_chu || '' }}</td>
+                        </tr>
+
+                        <!-- Các dòng lưới Excel trống phía dưới giống hệt khi mở file trong Microsoft Excel -->
+                        <tr
+                          v-for="blankIdx in (exportRecords.length === 0 ? 12 : 4)"
+                          :key="'blank-' + blankIdx"
+                          class="sr-ex-blank-grid-row"
+                        >
+                          <td class="sr-ex-rownum">{{ exportRecords.length + 2 + blankIdx }}</td>
+                          <td v-for="cIdx in 21" :key="'bc-' + cIdx"></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <!-- Thanh Sheet Tab dưới đáy giống Microsoft Excel -->
+                <div class="sr-export-excel-bottom-tabs">
+                  <div class="sr-ex-nav-arrows">
+                    <span>◄</span>
+                    <span>►</span>
+                  </div>
+                  <div class="sr-ex-sheet-active-pill">
+                    Sheet1
+                  </div>
+                  <span class="sr-ex-sheet-plus">+</span>
+                  <span class="sr-ex-sheet-ready">READY</span>
+                </div>
+              </section>
             </div>
           </div>
-          <div class="sr-modal-footer">
-            <template v-if="!showExportPreview">
-              <button class="sr-btn sr-btn-cancel" @click="showExportModal = false">Hủy</button>
-              <button class="sr-btn sr-btn-save" style="background:linear-gradient(135deg,#38bdf8,#0ea5e9);box-shadow:0 2px 8px rgba(14,165,233,.3)" @click="showExportPreview = true">
-                Tiếp tục &rarr;
+
+          <!-- 4. STICKY BOTTOM FOOTER -->
+          <div class="sr-import-card-footer sr-po-modal-footer sr-export-footer">
+            <div class="sr-export-footer-left">
+              <span class="sr-export-footer-status">
+                Đang chọn xuất <strong>{{ exportRecords.length }}</strong> bản ghi PO • Định dạng chuẩn <strong>.xlsx (21 cột A → U)</strong>
+              </span>
+            </div>
+            <div class="sr-export-footer-right">
+              <button type="button" class="sr-btn sr-btn-cancel" @click="showExportModal = false">
+                Đóng
               </button>
-            </template>
-            <template v-else>
-              <button v-if="exportFromSelectionMode" class="sr-btn sr-btn-cancel" @click="switchExportToTimeFilterMode()">Chọn theo Thời gian</button>
-              <button v-else class="sr-btn sr-btn-cancel" @click="showExportPreview = false">&larr; Quay lại</button>
-              <button class="sr-btn sr-btn-save" style="background:linear-gradient(135deg,#10b981,#059669);box-shadow:0 2px 8px rgba(5,150,105,.3)" @click="doExport" :disabled="exportRecords.length === 0 || exporting">
-                <svg v-if="exporting" class="spin" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-                {{ exporting ? 'Đang xuất...' : '📥 Xuất file' }}
+              <button
+                type="button"
+                class="sr-btn sr-btn-save sr-export-confirm-btn"
+                :disabled="exportRecords.length === 0 || exporting"
+                @click="doExport"
+              >
+                <svg v-if="exporting" class="spin" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="18" height="18"><path fill="#4CAF50" d="M41,10H25v28h16c0.553,0,1-0.447,1-1V11C42,10.447,41.553,10,41,10z"/><path fill="#FFF" d="M32 15H39V18H32zM32 25H39V28H32zM32 30H39V33H32zM32 20H39V23H32zM25 15H30V18H25zM25 25H30V28H25zM25 30H30V33H25zM25 20H30V23H25z"/><path fill="#2E7D32" d="M27,42L6,38.746C5.416,38.655,5,38.146,5,37.555v-27.11c0-0.591,0.416-1.1,1-1.191L27,6V42z"/><path fill="#FFF" d="M19.129,31l-2.411-4.561c-0.092-0.171-0.186-0.483-0.284-0.938h-0.037c-0.046,0.215-0.154,0.541-0.324,0.979L13.652,31H9.895l4.462-7.001L10.274,17h3.837l2.001,4.196c0.156,0.331,0.296,0.725,0.42,1.179h0.04c0.078-0.271,0.224-0.68,0.439-1.22L19.237,17h3.515l-4.199,6.939l4.316,7.059h-3.74V31z"/></svg>
+                <span>{{ exporting ? 'Đang xuất file...' : `Xuất file Excel (${exportRecords.length} PO)` }}</span>
               </button>
-            </template>
+            </div>
           </div>
         </div>
       </div>
@@ -11138,12 +12223,296 @@
       </div>
     </Teleport>
 
+    <!-- ================== MODAL: CHỌN BẢN QUYỀN TỪ KHO LICENSE (DARK & LIGHT THEME + LAZY LOADING) ================== -->
+    <Teleport to="body">
+      <div
+        v-if="showExistingLicensePicker && activeExistingLicensePoItem"
+        class="sr-modal-overlay sr-lic-repo-overlay"
+        :class="{ 'theme-light-blue': uiTheme === 'light' }"
+        @click.self="showExistingLicensePicker = false"
+        style="z-index: 100260;"
+      >
+        <div
+          class="sr-modal sr-lic-repo-modal"
+          :class="{ 'is-light': uiTheme === 'light' }"
+        >
+          <!-- HEADER -->
+          <div class="sr-lic-repo-head">
+            <div class="sr-lic-repo-head-left">
+              <span class="sr-lic-repo-head-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  <polyline points="9 12 11 14 15 10"/>
+                </svg>
+              </span>
+              <div class="sr-lic-repo-head-titles">
+                <h4 class="sr-lic-repo-title">Kho Quản Lý Bản Quyền / License</h4>
+                <p class="sr-lic-repo-subtitle">
+                  <span>PO: <strong>{{ activeExistingLicensePoItem.soPO || 'Chưa nhập số PO' }}</strong></span>
+                  <span class="sr-lic-repo-dot">•</span>
+                  <span>KH: <strong>{{ activeExistingLicensePoItem.customer || activeExistingLicensePoItem.recipient || activeExistingLicensePoItem.linkedMaKH || 'Chưa chọn KH' }}</strong></span>
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              class="sr-lic-repo-close"
+              @click="showExistingLicensePicker = false"
+              title="Đóng cửa sổ Kho License"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- TOOLBAR: SEARCH + SCOPE TABS -->
+          <div class="sr-lic-repo-toolbar">
+            <div class="sr-lic-repo-search-wrap">
+              <svg class="sr-lic-repo-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input
+                type="text"
+                v-model="existingLicenseSearchQuery"
+                placeholder="Tìm theo Tên sản phẩm, License ID / Serial, Tên KH, Mã KH, Hãng, Số PO..."
+                class="sr-lic-repo-search-input"
+              />
+              <button
+                v-if="existingLicenseSearchQuery"
+                type="button"
+                class="sr-lic-repo-search-clear"
+                @click="existingLicenseSearchQuery = ''"
+                title="Xóa từ khóa"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+
+            <div class="sr-lic-repo-tabs">
+              <button
+                type="button"
+                class="sr-lic-repo-tab"
+                :class="{ active: existingLicenseFilterScope === 'recommended' }"
+                @click="existingLicenseFilterScope = 'recommended'"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <polyline points="16 11 18 13 22 9"/>
+                </svg>
+                <span>Gợi ý theo KH / Chưa gắn ({{ getAvailableCustomerLicensesForPo(activeExistingLicensePoItem).length }})</span>
+              </button>
+              <button
+                type="button"
+                class="sr-lic-repo-tab"
+                :class="{ active: existingLicenseFilterScope === 'all' }"
+                @click="existingLicenseFilterScope = 'all'"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                  <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                  <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                </svg>
+                <span>Toàn bộ Kho License ({{ getAllRepositoryLicensesForPo(activeExistingLicensePoItem).length }})</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- BODY: CARD LIST (LAZY LOADING ON SCROLL) -->
+          <div
+            ref="existingLicenseRepoBodyRef"
+            class="sr-lic-repo-body custom-scrollbar"
+            @scroll.passive="onExistingLicenseRepoScroll"
+          >
+            <div v-if="totalFilteredModalLicenseCandidates.length === 0" class="sr-lic-repo-empty">
+              <div class="sr-lic-repo-empty-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  <line x1="12" y1="8" x2="12" y2="12"/>
+                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+              </div>
+              <h5>Không tìm thấy bản quyền phù hợp</h5>
+              <p v-if="existingLicenseFilterScope === 'recommended' && getAllRepositoryLicensesForPo(activeExistingLicensePoItem).length > 0">
+                Chưa có License nào trong mục gợi ý khớp trực tiếp với khách hàng này. Bạn có thể chuyển sang xem toàn bộ kho hoặc tải file License mới lên.
+              </p>
+              <p v-else>
+                Không có bản ghi License nào khớp với từ khóa tìm kiếm hiện tại.
+              </p>
+              <div class="sr-lic-repo-empty-actions">
+                <button
+                  v-if="existingLicenseFilterScope === 'recommended' && getAllRepositoryLicensesForPo(activeExistingLicensePoItem).length > 0"
+                  type="button"
+                  class="sr-lic-repo-btn-secondary"
+                  @click="existingLicenseFilterScope = 'all'"
+                >
+                  Xem toàn bộ Kho License ({{ getAllRepositoryLicensesForPo(activeExistingLicensePoItem).length }})
+                </button>
+                <button
+                  type="button"
+                  class="sr-lic-repo-btn-primary"
+                  @click="showExistingLicensePicker = false; triggerLicenseFilesUpload(activeExistingLicensePoItem)"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  <span>+ Tải &amp; Quét File License Mới</span>
+                </button>
+              </div>
+            </div>
+
+            <div v-else class="sr-lic-repo-list">
+              <div
+                v-for="cand in filteredModalLicenseCandidates"
+                :key="cand.firebaseId"
+                class="sr-lic-repo-card"
+                :class="{
+                  'is-attached': cand.isAttached,
+                  'is-customer-match': cand.score >= 40
+                }"
+                @click="linkExistingLicenseRecordToPo(activeExistingLicensePoItem, cand)"
+              >
+                <div class="sr-lic-repo-card-main">
+                  <div class="sr-lic-repo-card-top">
+                    <span class="sr-lic-repo-prod-name">
+                      {{ cand.PRODUCT_NAME || cand.PRODUCT || cand.NAME_FILE || 'Chưa rõ Tên sản phẩm' }}
+                    </span>
+                    <span v-if="cand.NHA_SAN_XUAT" class="sr-lic-repo-badge is-vendor">
+                      {{ cand.NHA_SAN_XUAT }}
+                    </span>
+                    <span v-if="cand.score >= 40" class="sr-lic-repo-badge is-match">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                      <span>Khớp KH</span>
+                    </span>
+                  </div>
+
+                  <div class="sr-lic-repo-card-pills">
+                    <span class="sr-lic-repo-pill is-sn" title="License ID / Serial Key">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                      <span>{{ cand.LICENSE_ID || cand.SERIAL_KEY || 'Chưa có License ID' }}</span>
+                    </span>
+                    <span v-if="cand.MA_KHACH_HANG" class="sr-lic-repo-pill is-kh" title="Mã khách hàng">
+                      [{{ cand.MA_KHACH_HANG }}]
+                    </span>
+                    <span v-if="cand.LICENSE_VOLUME || cand.LICENSE_TYPE" class="sr-lic-repo-pill is-meta">
+                      {{ [cand.LICENSE_VOLUME ? `SL: ${cand.LICENSE_VOLUME}` : '', cand.LICENSE_TYPE].filter(Boolean).join(' • ') }}
+                    </span>
+                    <span v-if="cand.SO_PO" class="sr-lic-repo-pill is-po">
+                      Đang gắn PO: {{ cand.SO_PO }}
+                    </span>
+                  </div>
+
+                  <div class="sr-lic-repo-card-meta">
+                    <div class="sr-lic-repo-meta-item">
+                      <span class="sr-lic-repo-meta-lbl">KH trên file:</span>
+                      <strong class="sr-lic-repo-meta-val">{{ cand.CUSTOMER || cand.TEN_CONG_TY || '—' }}</strong>
+                    </div>
+                    <div class="sr-lic-repo-meta-item">
+                      <span class="sr-lic-repo-meta-lbl">Thời hạn:</span>
+                      <strong class="sr-lic-repo-meta-val is-mono">
+                        {{ formatPoCardLicenseDate(cand.DATE_OF_LICENSE || cand.START_DATE) }} → {{ formatPoCardLicenseDate(cand.EXPIRATION_TIME || cand.END_DATE) }}
+                      </strong>
+                      <span
+                        v-if="getPoLicenseRemainingDaysInfo(cand.EXPIRATION_TIME || cand.END_DATE).text"
+                        class="sr-lic-repo-days-badge"
+                        :class="{
+                          'is-expired': getPoLicenseRemainingDaysInfo(cand.EXPIRATION_TIME || cand.END_DATE).isExpired,
+                          'is-warning': getPoLicenseRemainingDaysInfo(cand.EXPIRATION_TIME || cand.END_DATE).isWarning
+                        }"
+                      >
+                        {{ getPoLicenseRemainingDaysInfo(cand.EXPIRATION_TIME || cand.END_DATE).text }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="sr-lic-repo-card-action">
+                  <span v-if="cand.isAttached" class="sr-lic-repo-attached-pill">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span>Đang gắn ở PO</span>
+                  </span>
+                  <button
+                    v-else
+                    type="button"
+                    class="sr-lic-repo-pick-btn"
+                    @click.stop="linkExistingLicenseRecordToPo(activeExistingLicensePoItem, cand)"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                    </svg>
+                    <span>Chọn gắn vào PO</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- LAZY LOAD MORE SENTINEL -->
+              <div v-if="hasMoreModalLicenseCandidates" class="sr-lic-repo-lazy-more">
+                <span class="sr-lic-repo-lazy-text">
+                  Đang hiển thị <strong>{{ filteredModalLicenseCandidates.length }}</strong> / <strong>{{ totalFilteredModalLicenseCandidates.length }}</strong> bản quyền (Cuộn xuống để tự động tải thêm)
+                </span>
+                <button
+                  type="button"
+                  class="sr-lic-repo-lazy-btn"
+                  @click="loadMoreExistingLicenses"
+                >
+                  + Tải thêm ({{ Math.min(EXISTING_LICENSE_PAGE_SIZE, totalFilteredModalLicenseCandidates.length - filteredModalLicenseCandidates.length) }})
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- FOOTER -->
+          <div class="sr-lic-repo-footer">
+            <div class="sr-lic-repo-footer-left">
+              <span class="sr-lic-repo-count">
+                Hiển thị <strong>{{ filteredModalLicenseCandidates.length }}</strong> / <strong>{{ totalFilteredModalLicenseCandidates.length }}</strong> bản quyền
+              </span>
+              <button
+                type="button"
+                class="sr-lic-repo-upload-link"
+                @click="showExistingLicensePicker = false; triggerLicenseFilesUpload(activeExistingLicensePoItem)"
+              >
+                <svg width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <span>Tải &amp; Quét File Mới</span>
+              </button>
+            </div>
+            <div class="sr-lic-repo-footer-right">
+              <button
+                type="button"
+                class="sr-lic-repo-close-btn"
+                @click="showExistingLicensePicker = false"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <LicenseVendorPickerModal
+      v-if="activePoLicenseVendorTarget"
+      v-model:show="showPoLicenseVendorPicker"
+      :modelValue="activePoLicenseVendorTarget.NHA_SAN_XUAT || ''"
+      :vendors="hangHoaNccList"
+      :theme="uiTheme"
+      @update:modelValue="onSelectPoLicenseVendor"
+    />
+
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick, watch, toRaw } from 'vue'
+import { useRoute } from 'vue-router'
 import FormattedInput from './FormattedInput.vue'
+import LicenseVendorPickerModal from './LicenseVendorPickerModal.vue'
+import LicenseDatePickerInput from './LicenseDatePickerInput.vue'
 import { parsePastedNumber } from '../utils/smartNumber'
 import {
   UNIVERSAL_IMPORT_ACCEPT,
@@ -11168,6 +12537,22 @@ import {
 } from '../utils/purchaseQuoteParser'
 import ExcelJS from 'exceljs'
 import * as XLSX from 'xlsx-js-style'
+import JSZip from 'jszip'
+import { triggerZipDownload } from '../utils/cardZipHelper'
+import {
+  extractLicenseRecordsFromFile,
+  extractSmartLicenseWithAI,
+  parseLicenseTextWithAI,
+  formatLicenseDateStr,
+  licenseDateToYmd,
+  ymdToLicenseDate,
+  syncLicenseToSaleReportPO,
+  removeLicenseFromSaleReportPO,
+  addDaysToLicenseDate,
+  diffDaysBetweenLicenseDates,
+  inspectLicenseDuplicate,
+  normalizeLicenseIdKey
+} from '../utils/licensePoSync'
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js'
 import { Bar, Pie, Doughnut } from 'vue-chartjs'
 import ChartDataLabels from 'chartjs-plugin-datalabels'
@@ -12737,11 +14122,12 @@ async function loadData() {
       }
     }
 
-    // ─── Read sale_report, hop_dong_tong_quat, sale_report_craft from Firebase in parallel (KHÔNG gọi hang_hoa lúc mới vào trang) ───
-    const [saleReportRes, hdTongQuatRes, srCraftRes] = await Promise.allSettled([
+    // ─── Read sale_report, hop_dong_tong_quat, sale_report_craft, license_old_data from Firebase in parallel (KHÔNG gọi hang_hoa lúc mới vào trang) ───
+    const [saleReportRes, hdTongQuatRes, srCraftRes, licenseOldRes] = await Promise.allSettled([
       get(dbRef(database, 'sale_report')),
       get(dbRef(database, 'hop_dong_tong_quat')),
-      get(dbRef(database, 'sale_report_craft'))
+      get(dbRef(database, 'sale_report_craft')),
+      get(dbRef(database, 'license_old_data'))
     ])
 
     if (hdTongQuatRes.status === 'fulfilled') {
@@ -12749,6 +14135,10 @@ async function loadData() {
     }
     if (srCraftRes.status === 'fulfilled') {
       saleReportCraftMap.value = srCraftRes.value.val() || {}
+    }
+    if (licenseOldRes.status === 'fulfilled') {
+      licenseOldDataMap.value = licenseOldRes.value.val() || {}
+      licenseOldDataLoaded.value = true
     }
 
     if (saleReportRes.status === 'rejected') {
@@ -12780,6 +14170,11 @@ async function loadData() {
         : (item.danh_sach_file_khac && typeof item.danh_sach_file_khac === 'object'
             ? Object.values(item.danh_sach_file_khac).filter(Boolean)
             : [])
+      const danhSachLicense = Array.isArray(item.danh_sach_license)
+        ? item.danh_sach_license.filter(Boolean)
+        : (item.danh_sach_license && typeof item.danh_sach_license === 'object'
+            ? Object.values(item.danh_sach_license).filter(Boolean)
+            : [])
 
       if (item.so_tien_da_thanh_toan === undefined || item.cong_no === undefined || item.thoi_gian_thanh_toan === undefined) {
         backfillUpdates[`sale_report/${firebaseKey}/so_tien_da_thanh_toan`] = daTT
@@ -12800,6 +14195,7 @@ async function loadData() {
         han_thanh_toan: hanTT,
         ke_hoach_thanh_toan: keHoachTT,
         danh_sach_file_khac: danhSachFileKhac,
+        danh_sach_license: danhSachLicense,
         _firebaseKey: firebaseKey, // lưu key Firebase để update/delete
         ID: item.ID || firebaseKey
       })
@@ -12978,102 +14374,117 @@ async function loadData() {
   }
 }
 
+const route = useRoute()
+
 async function handleDeepLinkOpenPoFromUrl() {
   if (typeof window === 'undefined') return
-  const params = new URLSearchParams(window.location.search)
-  const openPoKey = (params.get('openPoKey') || '').trim()
-  const openSoPo = (params.get('openSoPo') || '').trim()
-  const srMode = (params.get('srMode') || '').trim()
-  if (!openPoKey && !openSoPo) return
-
-  // Làm sạch query param trên thanh địa chỉ để F5 không tự mở lại ngoài ý muốn
   try {
-    const cleanUrl = new URL(window.location.href)
-    cleanUrl.searchParams.delete('openPoKey')
-    cleanUrl.searchParams.delete('openSoPo')
-    cleanUrl.searchParams.delete('srMode')
-    window.history.replaceState({}, '', cleanUrl.pathname + cleanUrl.search + cleanUrl.hash)
-  } catch (_) {}
+    const params = new URLSearchParams(window.location.search)
+    const openPoKey = String(route?.query?.openPoKey || params.get('openPoKey') || '').trim()
+    const openSoPo = String(route?.query?.openSoPo || params.get('openSoPo') || '').trim()
+    const srMode = String(route?.query?.srMode || params.get('srMode') || '').trim()
+    if (!openPoKey && !openSoPo) return
 
-  const pool =
-    srMode === 'craft'
-      ? [...(craftRows.value || []), ...(officialRows.value || [])]
-      : [...(officialRows.value || []), ...(craftRows.value || [])]
+    // Làm sạch query param trên thanh địa chỉ để F5 không tự mở lại ngoài ý muốn
+    try {
+      const cleanUrl = new URL(window.location.href)
+      cleanUrl.searchParams.delete('openPoKey')
+      cleanUrl.searchParams.delete('openSoPo')
+      cleanUrl.searchParams.delete('srMode')
+      window.history.replaceState({}, '', cleanUrl.pathname + cleanUrl.search + cleanUrl.hash)
+    } catch (_) {}
 
-  let targetRow = openPoKey
-    ? pool.find(
-        r =>
-          String(r?._firebaseKey || '').trim() === openPoKey ||
-          String(r?.ID || '').trim() === openPoKey
-      )
-    : null
+    const pool =
+      srMode === 'craft'
+        ? [...(craftRows.value || []), ...(officialRows.value || [])]
+        : [...(officialRows.value || []), ...(craftRows.value || [])]
 
-  if (!targetRow && openSoPo) {
-    targetRow = pool.find(r => String(r?.So_PO || '').trim() === openSoPo)
-  }
+    let targetRow = openPoKey
+      ? pool.find(
+          r =>
+            String(r?._firebaseKey || '').trim() === openPoKey ||
+            String(r?.ID || '').trim() === openPoKey
+        )
+      : null
 
-  if (!targetRow) return
+    if (!targetRow && openSoPo) {
+      const normTargetSoPo = openSoPo.toLowerCase()
+      targetRow =
+        pool.find(r => String(r?.So_PO || r?.so_po || r?.soPO || '').trim() === openSoPo) ||
+        pool.find(
+          r => String(r?.So_PO || r?.so_po || r?.soPO || '').trim().toLowerCase() === normTargetSoPo
+        )
+    }
 
-  const isCraftTarget = Boolean(targetRow._isCraft || targetRow.is_craft)
-  srDataMode.value = isCraftTarget ? 'craft' : 'official'
-  await nextTick()
+    if (!targetRow) return
 
-  if (!filteredRows.value.some(r => getPoRowKey(r) === getPoRowKey(targetRow))) {
-    searchStr.value = ''
-    filterCustomer.value = 'Tất cả'
-    filterYear.value = 'Tất cả'
-    filterMonth.value = 'Tất cả'
-    filterDebtStatus.value = 'Tất cả'
-    companySidebarSearch.value = ''
+    const isCraftTarget = Boolean(targetRow._isCraft || targetRow.is_craft)
+    srDataMode.value = isCraftTarget ? 'craft' : 'official'
     await nextTick()
-  }
 
-  displayLimit.value = Math.max(displayLimit.value, filteredRows.value.length + 10)
-  const groupKey = String(targetRow.Ma_cong_ty || targetRow.Ten_cong_ty || 'Khác')
-  selectedMasterGroupKey.value = groupKey
-  groupPoVisibleLimitMap.value = {
-    ...groupPoVisibleLimitMap.value,
-    [groupKey]: Math.max(9999, filteredRows.value.length + 10)
-  }
-  collapsedGroupMap.value = {
-    ...collapsedGroupMap.value,
-    [groupKey]: false
-  }
-
-  const poKey = getPoRowKey(targetRow) || String(targetRow.So_PO || openSoPo)
-  if (poKey) {
-    collapsedPoCardMap.value = {
-      ...collapsedPoCardMap.value,
-      [poKey]: false
+    if (!filteredRows.value.some(r => getPoRowKey(r) === getPoRowKey(targetRow))) {
+      resetAllSaleFilters()
+      await nextTick()
     }
-    if (isMobileShell.value) {
-      selectedMobilePoKey.value = poKey
-      mobileActiveTab.value = 'company_detail'
+
+    displayLimit.value = Math.max(displayLimit.value, filteredRows.value.length + 10)
+    const groupKey = String(targetRow.Ma_cong_ty || 'Khác')
+    selectedMasterGroupKey.value = groupKey
+    groupPoVisibleLimitMap.value = {
+      ...groupPoVisibleLimitMap.value,
+      [groupKey]: Math.max(9999, filteredRows.value.length + 10)
     }
+    collapsedGroupMap.value = {
+      ...collapsedGroupMap.value,
+      [groupKey]: false
+    }
+
+    const poKey = getPoRowKey(targetRow) || String(targetRow.So_PO || openSoPo)
+    if (poKey) {
+      collapsedPoCardMap.value = {
+        ...collapsedPoCardMap.value,
+        [poKey]: false
+      }
+      if (isMobileShell.value) {
+        selectedMobilePoKey.value = poKey
+        mobileActiveTab.value = 'company_detail'
+      }
+    }
+
+    highlightedPoKey.value = poKey
+    if (highlightPoTimer) clearTimeout(highlightPoTimer)
+    highlightPoTimer = setTimeout(() => {
+      highlightedPoKey.value = ''
+    }, 5000)
+
+    await nextTick()
+    setTimeout(() => {
+      const activeCompanyCard = document.querySelector('.sr-md-company-card.active') as HTMLElement | null
+      if (activeCompanyCard) {
+        activeCompanyCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      }
+      const cardEl =
+        (poKey ? document.getElementById(`sr-po-card-${poKey}`) : null) ||
+        (openSoPo ? document.getElementById(`sr-po-card-${openSoPo}`) : null)
+      if (cardEl) {
+        cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+    }, 120)
+
+    openMultiEditModal(targetRow)
+  } catch (err) {
+    console.warn('Lỗi mở deep link PO trên SaleReportFirebase:', err)
   }
-
-  highlightedPoKey.value = poKey
-  if (highlightPoTimer) clearTimeout(highlightPoTimer)
-  highlightPoTimer = setTimeout(() => {
-    highlightedPoKey.value = ''
-  }, 5000)
-
-  await nextTick()
-  setTimeout(() => {
-    const activeCompanyCard = document.querySelector('.sr-md-company-card.active') as HTMLElement | null
-    if (activeCompanyCard) {
-      activeCompanyCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-    }
-    const cardEl =
-      (poKey ? document.getElementById(`sr-po-card-${poKey}`) : null) ||
-      (openSoPo ? document.getElementById(`sr-po-card-${openSoPo}`) : null)
-    if (cardEl) {
-      cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    }
-  }, 120)
-
-  openMultiEditModal(targetRow)
 }
+
+watch(
+  () => [route.query.openPoKey, route.query.openSoPo],
+  ([newKey, newSoPo]) => {
+    if ((newKey || newSoPo) && !loading.value && (officialRows.value.length > 0 || craftRows.value.length > 0)) {
+      handleDeepLinkOpenPoFromUrl()
+    }
+  }
+)
 
 onMounted(() => {
   loadData()
@@ -13644,6 +15055,215 @@ function getPoCardOtherFilesList(r: any): Array<{ id: string; ten_file: string; 
   return out
 }
 
+const licenseOldDataMap = ref<Record<string, any>>({})
+const licenseOldDataLoaded = ref(false)
+const showPoLicenseVendorPicker = ref(false)
+const activePoLicenseVendorTarget = ref<any>(null)
+
+function openPoLicenseVendorPicker(licFile: any) {
+  if (!licFile) return
+  activePoLicenseVendorTarget.value = licFile
+  showPoLicenseVendorPicker.value = true
+}
+
+function onSelectPoLicenseVendor(val: string) {
+  if (!activePoLicenseVendorTarget.value) return
+  activePoLicenseVendorTarget.value.NHA_SAN_XUAT = val
+  syncPoLicenseFieldAliases(activePoLicenseVendorTarget.value)
+}
+
+function normalizePoLicenseEntry(raw: any, fallbackIdx = 0) {
+  const l = raw || {}
+  const licId = String(l.licenseFirebaseId || l.firebase_id || l.firebaseId || l.id || '').trim()
+  const dbRec = (licId && licenseOldDataMap.value && licenseOldDataMap.value[licId]) || {}
+
+  const link = String(
+    l.LINK_FILE || l.link_file || l.FILE_URL ||
+    dbRec.LINK_FILE || dbRec.link_file || dbRec.FILE_URL || ''
+  ).trim()
+
+  const productName = String(
+    l.PRODUCT_NAME || l.PRODUCT ||
+    dbRec.PRODUCT_NAME || dbRec.PRODUCT || ''
+  ).trim()
+
+  const licenseId = String(
+    l.LICENSE_ID || l.SERIAL_KEY ||
+    dbRec.LICENSE_ID || dbRec.SERIAL_KEY || ''
+  ).trim()
+
+  const name = String(
+    l.NAME_FILE || l.ten_file || l.FILE_NAME ||
+    dbRec.NAME_FILE || dbRec.ten_file || dbRec.FILE_NAME ||
+    productName || (licenseId ? `License_${licenseId}.pdf` : `License #${fallbackIdx + 1}`)
+  ).trim()
+
+  const dateOfLicense = formatLicenseDateStr(
+    l.DATE_OF_LICENSE || l.START_DATE ||
+    dbRec.DATE_OF_LICENSE || dbRec.START_DATE || ''
+  )
+
+  const expirationTime = formatLicenseDateStr(
+    l.EXPIRATION_TIME || l.END_DATE ||
+    dbRec.EXPIRATION_TIME || dbRec.END_DATE || ''
+  )
+
+  const soNgayHieuLuc = formatLicenseDateStr(
+    l.SO_NGAY_HIEU_LUC || l.GRACE_PERIOD ||
+    dbRec.SO_NGAY_HIEU_LUC || dbRec.GRACE_PERIOD || ''
+  )
+
+  const description = String(
+    l.LICENSE_DESCRIPTION || l.NOTE ||
+    dbRec.LICENSE_DESCRIPTION || dbRec.NOTE || ''
+  ).trim()
+
+  return {
+    id: licId || `lic_${fallbackIdx}`,
+    licenseFirebaseId: licId,
+    firebase_id: licId,
+    ten_file: name,
+    link_file: link,
+    NAME_FILE: name,
+    LINK_FILE: link,
+    isImage: /\.(png|jpe?g|webp|gif|bmp|svg)(\?|#|$)/i.test(link || name),
+    LICENSE_ID: licenseId,
+    PRODUCT_CODE: String(l.PRODUCT_CODE || dbRec.PRODUCT_CODE || '').trim(),
+    CUSTOMER: String(l.CUSTOMER || dbRec.CUSTOMER || '').trim(),
+    PRODUCT_NAME: productName,
+    LICENSE_VOLUME: String(l.LICENSE_VOLUME || dbRec.LICENSE_VOLUME || '').trim(),
+    LICENSE_TYPE: String(l.LICENSE_TYPE || dbRec.LICENSE_TYPE || '').trim(),
+    NHA_SAN_XUAT: String(l.NHA_SAN_XUAT || dbRec.NHA_SAN_XUAT || '').trim(),
+    LOCALIZATION: String(l.LOCALIZATION || dbRec.LOCALIZATION || '').trim(),
+    DATE_OF_LICENSE: dateOfLicense,
+    EXPIRATION_TIME: expirationTime,
+    graceDays:
+      l.graceDays ??
+      dbRec.graceDays ??
+      (expirationTime && soNgayHieuLuc
+        ? (diffDaysBetweenLicenseDates(expirationTime, soNgayHieuLuc) ?? 10)
+        : 10),
+    SO_NGAY_HIEU_LUC: soNgayHieuLuc,
+    LICENSE_DESCRIPTION: description,
+    // Legacy aliases kept in sync for backward compatibility
+    PRODUCT: productName,
+    SERIAL_KEY: licenseId,
+    START_DATE: dateOfLicense,
+    END_DATE: expirationTime,
+    GRACE_PERIOD: soNgayHieuLuc,
+    DURATION: String(l.DURATION || dbRec.DURATION || '').trim(),
+    NOTE: description
+  }
+}
+
+function getPoCardLicenseFilesList(r: any): Array<any> {
+  const out: Array<any> = []
+  const seenLicenseIds = new Set<string>()
+  const poKey = String(r?._firebaseKey || r?.ID || '').trim()
+  const soPo = String(r?.So_PO || '').trim()
+
+  if (Array.isArray(r?.danh_sach_license)) {
+    r.danh_sach_license.forEach((l: any, idx: number) => {
+      if (!l) return
+      const rawCatalogId = String(l.licenseFirebaseId || l.firebase_id || l.firebaseId || '').trim()
+      const fallbackId = String(l.id || '').trim()
+      const catalogKey =
+        rawCatalogId ||
+        (fallbackId && !/^(lic_\d+|LIC_TMP_|LIC_MANUAL_)/i.test(fallbackId) ? fallbackId : '')
+
+      // Chốt chặn: Nếu mục này từng liên kết với kho license_old_data nhưng đã bị xóa khỏi kho, bỏ qua để không hiện "bóng ma" hoặc tự hồi sinh khi Lưu PO
+      if (
+        licenseOldDataLoaded.value &&
+        catalogKey &&
+        !(licenseOldDataMap.value && licenseOldDataMap.value[catalogKey])
+      ) {
+        return
+      }
+
+      const normalized = normalizePoLicenseEntry(l, idx)
+      if (normalized.licenseFirebaseId) seenLicenseIds.add(normalized.licenseFirebaseId)
+      out.push(normalized)
+    })
+  }
+
+  // Bổ sung các bản ghi trong license_old_data đang liên kết trực tiếp với PO này (qua PO_FIREBASE_KEY hoặc SO_PO)
+  if (licenseOldDataMap.value && typeof licenseOldDataMap.value === 'object') {
+    Object.entries(licenseOldDataMap.value).forEach(([fbId, rec]: [string, any]) => {
+      if (!rec || typeof rec !== 'object' || seenLicenseIds.has(fbId)) return
+      const recPoKey = String(rec.PO_FIREBASE_KEY || '').trim()
+      const recSoPo = String(rec.SO_PO || '').trim()
+      const matchedByKey = Boolean(poKey && recPoKey && poKey === recPoKey)
+      const matchedBySoPo = Boolean(!recPoKey && soPo && recSoPo && soPo === recSoPo)
+      if (matchedByKey || matchedBySoPo) {
+        seenLicenseIds.add(fbId)
+        out.push(normalizePoLicenseEntry({ ...rec, licenseFirebaseId: fbId, id: fbId }, out.length))
+      }
+    })
+  }
+
+  return out
+}
+
+const poCardActiveLicenseIdxMap = reactive<Record<string, number>>({})
+
+function getPoCardActiveLicenseIdx(r: any): number {
+  const list = getPoCardLicenseFilesList(r)
+  if (!list.length) return 0
+  const key = String(r?._firebaseKey || r?.ID || r?.So_PO || '')
+  const rawIdx = Number(poCardActiveLicenseIdxMap[key] || 0)
+  return Math.max(0, Math.min(rawIdx, list.length - 1))
+}
+
+function setPoCardActiveLicenseIdx(r: any, idx: number) {
+  const key = String(r?._firebaseKey || r?.ID || r?.So_PO || '')
+  if (!key) return
+  poCardActiveLicenseIdxMap[key] = idx
+}
+
+function getPoCardActiveLicense(r: any): any | null {
+  const list = getPoCardLicenseFilesList(r)
+  if (!list.length) return null
+  return list[getPoCardActiveLicenseIdx(r)] || list[0] || null
+}
+
+function formatPoCardLicenseDate(val: any): string {
+  const formatted = formatLicenseDateStr(val || '')
+  return formatted || String(val || '').trim() || '—'
+}
+
+function getPoLicenseRemainingDaysInfo(expDateStr?: string): { text: string; isExpired: boolean; isWarning: boolean } {
+  const raw = formatLicenseDateStr(expDateStr || '') || String(expDateStr || '').trim()
+  if (!raw) return { text: '', isExpired: false, isWarning: false }
+
+  let d: Date | null = null
+  const dmyMatch = raw.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/)
+  if (dmyMatch) {
+    d = new Date(Number(dmyMatch[3]), Number(dmyMatch[2]) - 1, Number(dmyMatch[1]))
+  } else {
+    const ymdMatch = raw.match(/^(\d{4})[\/.-](\d{1,2})[\/.-](\d{1,2})$/)
+    if (ymdMatch) {
+      d = new Date(Number(ymdMatch[1]), Number(ymdMatch[2]) - 1, Number(ymdMatch[3]))
+    } else {
+      const parsed = new Date(raw)
+      if (!isNaN(parsed.getTime())) d = parsed
+    }
+  }
+  if (!d || isNaN(d.getTime())) return { text: '', isExpired: false, isWarning: false }
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  d.setHours(0, 0, 0, 0)
+  const diffDays = Math.round((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+
+  if (diffDays > 0) {
+    return { text: `Còn ${diffDays} ngày`, isExpired: false, isWarning: diffDays <= 30 }
+  }
+  if (diffDays === 0) {
+    return { text: 'Hết hạn hôm nay', isExpired: true, isWarning: true }
+  }
+  return { text: `Quá hạn ${Math.abs(diffDays)} ngày`, isExpired: true, isWarning: true }
+}
+
 const allGroupedFilteredRows = computed(() => {
   const map = new Map<string, any>()
   filteredRows.value.forEach(r => {
@@ -13851,6 +15471,142 @@ function openPoFileOfficeView(url: string, fileName?: string, isImage = false) {
   }
   const officeUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(cleanUrl)}`
   window.open(officeUrl, '_blank', 'noopener,noreferrer')
+}
+
+const poCardPreviewTabMap = ref<Record<string, string>>({})
+
+function getPoCardScopeId(r: any): string {
+  return String(getPoRowKey(r) || r?.id || r?.So_PO || 'po')
+}
+
+function detectPoCardDocKind(url = '', fileName = '', isImage = false): 'image' | 'pdf' | 'office' | 'other' {
+  if (isImage) return 'image'
+  const probe = `${fileName} ${String(url).split('?')[0]}`.toLowerCase()
+  if (/\.(png|jpe?g|webp|gif|bmp|svg)(\b|$)/i.test(probe)) return 'image'
+  if (/\.pdf(\b|$)/i.test(probe)) return 'pdf'
+  if (/\.(xlsx?|xlsb|csv|docx?|pptx?)(\b|$)/i.test(probe)) return 'office'
+  return 'other'
+}
+
+function getPoCardPreviewDocs(r: any) {
+  const bgUrl = String(r?.link_excel_bao_gia || '').trim()
+  const bgName = String(r?.ten_file_bao_gia || '').trim()
+  const mhUrl = String(r?.link_excel_mua_hang || '').trim()
+  const mhName = String(r?.ten_file_mua_hang || '').trim()
+  const dxUrl = String(r?.link_excel_dxmh || '').trim()
+  const dxName = String(r?.ten_file_dxmh || '').trim()
+
+  const otherList = getPoCardOtherFilesList(r)
+  const firstOther = otherList[0] || null
+  const otherUrl = String(firstOther?.link_file || '').trim()
+  const otherName = String(firstOther?.ten_file || '').trim()
+
+  const licList = srDataMode.value !== 'craft' ? getPoCardLicenseFilesList(r) : []
+  const firstLic = licList[0] || null
+  const licUrl = String(firstLic?.link_file || '').trim()
+  const licName = String(firstLic?.PRODUCT || firstLic?.ten_file || '').trim()
+
+  const docs: Array<{
+    key: string
+    label: string
+    shortLabel: string
+    url: string
+    fileName: string
+    hasUrl: boolean
+    kind: 'image' | 'pdf' | 'office' | 'other'
+    color: string
+    modalTab: string
+  }> = [
+    {
+      key: 'bg',
+      label: 'Báo giá',
+      shortLabel: 'Báo giá',
+      url: bgUrl,
+      fileName: bgName || (bgUrl ? 'File Báo giá' : ''),
+      hasUrl: Boolean(bgUrl),
+      kind: detectPoCardDocKind(bgUrl, bgName),
+      color: 'emerald',
+      modalTab: 'bg'
+    },
+    {
+      key: 'mh',
+      label: 'Mua hàng',
+      shortLabel: 'Mua hàng',
+      url: mhUrl,
+      fileName: mhName || (mhUrl ? 'File Mua hàng' : ''),
+      hasUrl: Boolean(mhUrl),
+      kind: detectPoCardDocKind(mhUrl, mhName),
+      color: 'rose',
+      modalTab: 'mh'
+    },
+    {
+      key: 'dxmh',
+      label: 'ĐXMH',
+      shortLabel: 'DXMH',
+      url: dxUrl,
+      fileName: dxName || (dxUrl ? 'File DXMH' : ''),
+      hasUrl: Boolean(dxUrl),
+      kind: detectPoCardDocKind(dxUrl, dxName),
+      color: 'amber',
+      modalTab: 'dxmh'
+    },
+    {
+      key: 'other',
+      label: 'Tệp đính kèm khác',
+      shortLabel: otherList.length > 1 ? `Khác (${otherList.length})` : 'Khác',
+      url: otherUrl,
+      fileName: otherName,
+      hasUrl: Boolean(otherUrl),
+      kind: detectPoCardDocKind(otherUrl, otherName, Boolean(firstOther?.isImage)),
+      color: 'purple',
+      modalTab: (r?.danh_sach_file_khac && r.danh_sach_file_khac.length > 0) ? 'other' : (r?.img_save ? 'img' : 'other')
+    }
+  ]
+
+  if (srDataMode.value !== 'craft') {
+    docs.push({
+      key: 'license',
+      label: 'License / Bản quyền',
+      shortLabel: licList.length > 1 ? `License (${licList.length})` : 'License',
+      url: licUrl,
+      fileName: licName,
+      hasUrl: Boolean(licUrl),
+      kind: detectPoCardDocKind(licUrl, licName, Boolean(firstLic?.isImage)),
+      color: 'cyan',
+      modalTab: 'license'
+    })
+  }
+
+  return docs
+}
+
+function getActivePoCardPreviewDoc(r: any) {
+  const docs = getPoCardPreviewDocs(r)
+  const scopeId = getPoCardScopeId(r)
+  const wantedKey = poCardPreviewTabMap.value[scopeId]
+  if (wantedKey) {
+    const found = docs.find((d) => d.key === wantedKey)
+    if (found) return found
+  }
+  const firstWithUrl = docs.find((d) => d.hasUrl)
+  return firstWithUrl || docs[0]
+}
+
+function setPoCardPreviewTab(r: any, tabKey: string) {
+  poCardPreviewTabMap.value = {
+    ...poCardPreviewTabMap.value,
+    [getPoCardScopeId(r)]: tabKey
+  }
+}
+
+function getPoCardDocEmbedUrl(doc: any): string {
+  const url = String(doc?.url || '').trim()
+  if (!url) return ''
+  if (doc.kind === 'image' || doc.kind === 'pdf') return url
+  if (doc.kind === 'office') {
+    return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`
+  }
+  return url
 }
 
 async function downloadPoFile(url: string, defaultName = 'tep-dinh-kem', ev?: Event) {
@@ -14995,6 +16751,56 @@ const fmt = (v: number) => {
 const pctFmt = (v: number) => {
   if (v === 0) return '0%'
   return v.toFixed(2) + '%'
+}
+
+const isPoRatioRounded = (r: any): boolean => {
+  return Boolean(r?.lam_tron_ti_suat ?? r?.row?.lam_tron_ti_suat)
+}
+
+const pctFmtPo = (v: number, r?: any): string => {
+  if (!Number.isFinite(v) || v === 0) return '0%'
+  if (r && isPoRatioRounded(r)) {
+    return `${Math.round(v)}%`
+  }
+  return v.toFixed(2) + '%'
+}
+
+const togglePoRatioRounding = async (r: any) => {
+  if (!r) return
+  const nextVal = !Boolean(r.lam_tron_ti_suat)
+  r.lam_tron_ti_suat = nextVal
+  const fbKey = String(r._firebaseKey || r.ID || '').trim()
+  if (fbKey) {
+    const nodeName = r._isCraft || srDataMode.value === 'craft' ? 'sale_report_craft' : 'sale_report'
+    const updates: Record<string, any> = {
+      [`${nodeName}/${fbKey}/lam_tron_ti_suat`]: nextVal
+    }
+    const maHd = String(r.ma_hop_dong || r.Ma_hop_dong || '').trim()
+    if (maHd) {
+      updates[`hop_dong_tong_quat/${maHd}/lam_tron_ti_suat`] = nextVal
+    }
+    const fromCraft = String(r.from_craft || '').trim()
+    if (fromCraft) {
+      updates[`sale_report_craft/${fromCraft}/lam_tron_ti_suat`] = nextVal
+    }
+    try {
+      await update(dbRef(database), updates)
+    } catch (e) {
+      console.warn('Lỗi lưu trạng thái làm tròn tỉ suất PO:', e)
+    }
+  }
+}
+
+const toggleModalItemRatioRounding = async (item: any) => {
+  if (!item) return
+  const nextVal = !isPoRatioRounded(item)
+  item.lam_tron_ti_suat = nextVal
+  if (item.row) {
+    item.row.lam_tron_ti_suat = !nextVal
+    await togglePoRatioRounding(item.row)
+  } else {
+    isModalDirty.value = true
+  }
 }
 
 // ─── Chart Modal ───
@@ -16638,6 +18444,44 @@ interface OtherAttachmentItem {
   previewHtml?: string;
 }
 
+interface LicenseAttachmentItem {
+  id: string;
+  licenseFirebaseId?: string;
+  firebase_id?: string;
+  ten_file: string;
+  link_file: string;
+  NAME_FILE?: string;
+  LINK_FILE?: string;
+  ngay_tai?: string;
+  rawFile?: File;
+  previewUrl?: string;
+  scanning?: boolean;
+  _formatError?: boolean;
+  _rawText?: string;
+  _aiProcessing?: boolean;
+  LICENSE_ID?: string;
+  PRODUCT_CODE?: string;
+  CUSTOMER?: string;
+  PRODUCT_NAME?: string;
+  LICENSE_VOLUME?: string;
+  LICENSE_TYPE?: string;
+  NHA_SAN_XUAT?: string;
+  LOCALIZATION?: string;
+  DATE_OF_LICENSE?: string;
+  EXPIRATION_TIME?: string;
+  graceDays?: number | string;
+  SO_NGAY_HIEU_LUC?: string;
+  LICENSE_DESCRIPTION?: string;
+  // Legacy aliases
+  PRODUCT?: string;
+  SERIAL_KEY?: string;
+  START_DATE?: string;
+  END_DATE?: string;
+  GRACE_PERIOD?: string;
+  DURATION?: string;
+  NOTE?: string;
+}
+
 interface ImportItem {
   id: number;
   row: any;
@@ -16713,11 +18557,14 @@ interface ImportItem {
   dxmhRecipient?: string;
   otherFiles?: OtherAttachmentItem[];
   activeOtherFileIdx?: number;
+  licenseFiles?: LicenseAttachmentItem[];
+  activeLicenseFileIdx?: number;
   goodsList?: any[];
   goodsTotal?: any;
   soTienDaThanhToan?: number;
   ghiChu?: string;
-  activePreviewTab?: 'bg' | 'mh' | 'dxmh' | 'img' | 'other';
+  lam_tron_ti_suat?: boolean;
+  activePreviewTab?: 'bg' | 'mh' | 'dxmh' | 'img' | 'other' | 'license';
 }
 
 const multiEditModal = ref({
@@ -16792,6 +18639,26 @@ function serializeModalItemsForDirtyCheck(items: ImportItem[] | undefined | null
               ten: String(f?.ten_file ?? ''),
               link: String(f?.link_file ?? ''),
               raw: f?.rawFile ? `${f.rawFile.name}:${f.rawFile.size}` : ''
+            }))
+          : [],
+        licenseFiles: Array.isArray(it.licenseFiles)
+          ? it.licenseFiles.map(l => ({
+              id: String(l?.licenseFirebaseId || l?.id || ''),
+              ten: String(l?.NAME_FILE ?? l?.ten_file ?? ''),
+              link: String(l?.LINK_FILE ?? l?.link_file ?? ''),
+              licId: String(l?.LICENSE_ID ?? l?.SERIAL_KEY ?? ''),
+              prodCode: String(l?.PRODUCT_CODE ?? ''),
+              cus: String(l?.CUSTOMER ?? ''),
+              prod: String(l?.PRODUCT_NAME ?? l?.PRODUCT ?? ''),
+              vol: String(l?.LICENSE_VOLUME ?? ''),
+              type: String(l?.LICENSE_TYPE ?? ''),
+              vendor: String(l?.NHA_SAN_XUAT ?? ''),
+              loc: String(l?.LOCALIZATION ?? ''),
+              start: String(l?.DATE_OF_LICENSE ?? l?.START_DATE ?? ''),
+              end: String(l?.EXPIRATION_TIME ?? l?.END_DATE ?? ''),
+              grace: String(l?.SO_NGAY_HIEU_LUC ?? l?.GRACE_PERIOD ?? ''),
+              desc: String(l?.LICENSE_DESCRIPTION ?? l?.NOTE ?? ''),
+              raw: l?.rawFile ? `${l.rawFile.name}:${l.rawFile.size}` : ''
             }))
           : [],
         goodsList: Array.isArray(it.goodsList)
@@ -17061,29 +18928,522 @@ function hasItemDxmhPreview(item: ImportItem | null | undefined): boolean {
   )
 }
 
-function getAttachedDocCount(item: ImportItem | null | undefined): number {
-  if (!item) return 0
-  let count = 0
-  if (hasItemBgPreview(item)) count++
-  if (hasItemMhPreview(item)) count++
-  if (hasItemDxmhPreview(item)) count++
-  if (hasItemImgPreview(item)) count++
-  if (item.otherFiles && item.otherFiles.length > 0) count += item.otherFiles.length
-  return count
+interface PoModalDocEntry {
+  key: string
+  tab: 'bg' | 'mh' | 'dxmh' | 'img' | 'other' | 'license'
+  bgVariant?: 'hd' | 'khach'
+  otherIdx?: number
+  licenseIdx?: number
+  fileName: string
+  displayLabel: string
+  url: string
+  rawFile?: File
+  base64DataUrl?: string
+  previewHtml?: string
 }
 
-function getActivePreviewTab(item: ImportItem | null | undefined): 'bg' | 'mh' | 'dxmh' | 'img' | 'other' {
+function getItemBgHdSavedLink(item: ImportItem | null | undefined): string {
+  if (!item) return ''
+  return String(
+    item.linkBaoGia ||
+    item.row?.link_excel_bao_gia ||
+    item.row?.link_excel_bao_gia_hd ||
+    item.row?.linkBaoGia ||
+    ''
+  ).trim()
+}
+
+function getItemBgHdSavedName(item: ImportItem | null | undefined): string {
+  if (!item) return ''
+  return String(
+    item.row?.ten_file_bao_gia ||
+    item.row?.ten_file_bao_gia_hd ||
+    item.row?.tenFileBG ||
+    ''
+  ).trim()
+}
+
+function hasItemBgHdDoc(item: ImportItem | null | undefined): boolean {
+  if (!item) return false
+  return Boolean(
+    item.previewUrlBG ||
+    item.previewHtmlBG ||
+    item.rawFileBaoGia ||
+    getItemBgHdSavedLink(item) ||
+    getItemBgHdSavedName(item)
+  )
+}
+
+function getItemBgKhachSavedLink(item: ImportItem | null | undefined): string {
+  if (!item) return ''
+  return String(
+    item.linkBaoGiaKhach ||
+    item.row?.link_excel_bao_gia_khach ||
+    item.row?.linkBaoGiaKhach ||
+    ''
+  ).trim()
+}
+
+function getItemBgKhachSavedName(item: ImportItem | null | undefined): string {
+  if (!item) return ''
+  return String(
+    item.tenFileBGKhach ||
+    item.row?.ten_file_bao_gia_khach ||
+    item.row?.tenFileBGKhach ||
+    ''
+  ).trim()
+}
+
+function hasItemBgKhachDoc(item: ImportItem | null | undefined): boolean {
+  if (!item) return false
+  return Boolean(
+    item.previewUrlBGKhach ||
+    item.previewHtmlBGKhach ||
+    item.rawFileBaoGiaKhach ||
+    getItemBgKhachSavedLink(item) ||
+    getItemBgKhachSavedName(item)
+  )
+}
+
+function resolvePoDocFileName(preferredName: string, url: string, fallbackBase: string, defaultExt = ''): string {
+  let name = String(preferredName || '').trim()
+  const cleanUrl = String(url || '').trim()
+  if (!name && cleanUrl && /^https?:\/\//i.test(cleanUrl)) {
+    try {
+      const seg = decodeURIComponent(cleanUrl.split('?')[0].split('#')[0].split('/').pop() || '').trim()
+      if (seg && /\.[a-z0-9]{2,5}$/i.test(seg) && !/^[a-z0-9]{18,}\.[a-z0-9]+$/i.test(seg)) {
+        name = seg
+      }
+    } catch {}
+  }
+  if (!name) {
+    name = fallbackBase
+  }
+  if (!/\.[a-z0-9]{2,5}$/i.test(name)) {
+    let ext = ''
+    if (cleanUrl && /^https?:\/\//i.test(cleanUrl)) {
+      const urlSeg = cleanUrl.split('?')[0].split('#')[0].split('/').pop() || ''
+      const dotIdx = urlSeg.lastIndexOf('.')
+      if (dotIdx > -1) {
+        const candidateExt = urlSeg.substring(dotIdx)
+        if (/^\.[a-z0-9]{2,5}$/i.test(candidateExt)) {
+          ext = candidateExt
+        }
+      }
+    }
+    if (!ext && defaultExt) {
+      ext = defaultExt.startsWith('.') ? defaultExt : `.${defaultExt}`
+    }
+    if (ext) {
+      name += ext
+    }
+  }
+  return name
+}
+
+function getPoDocFileKind(entry: PoModalDocEntry): 'excel' | 'pdf' | 'word' | 'image' | 'file' {
+  const check = `${entry.fileName || ''} ${entry.url || ''}`.toLowerCase()
+  if (/\.(xlsx?|xls|xlsm|xlsb|csv)(\?|#|\s|$)/i.test(check)) return 'excel'
+  if (/\.pdf(\?|#|\s|$)/i.test(check)) return 'pdf'
+  if (/\.(docx?|rtf)(\?|#|\s|$)/i.test(check)) return 'word'
+  if (entry.base64DataUrl || /\.(png|jpe?g|webp|gif|bmp|svg|jfif|tiff?)(\?|#|\s|$)/i.test(check)) return 'image'
+  if (entry.tab === 'img') return 'image'
+  return 'file'
+}
+
+function getModalPoAllFilesList(item: ImportItem | null | undefined): PoModalDocEntry[] {
+  if (!item) return []
+  const list: PoModalDocEntry[] = []
+  const poTag = String(item.soPO || item.row?.So_PO || item.id || '').trim()
+
+  if (hasItemBgHdDoc(item)) {
+    const raw = item.rawFileBaoGia
+    const link = getItemBgHdSavedLink(item) || String(item.previewUrlBG || '').trim()
+    const savedName = raw?.name || getItemBgHdSavedName(item)
+    const fileName = resolvePoDocFileName(savedName, link, poTag ? `Bao_gia_HD_PO_${poTag}` : 'Bao_gia_HD', '.xlsx')
+    list.push({
+      key: 'bg_hd',
+      tab: 'bg',
+      bgVariant: 'hd',
+      fileName,
+      displayLabel: fileName,
+      url: link,
+      rawFile: raw,
+      previewHtml: item.previewHtmlBG
+    })
+  }
+
+  if (hasItemBgKhachDoc(item)) {
+    const raw = item.rawFileBaoGiaKhach
+    const link = getItemBgKhachSavedLink(item) || String(item.previewUrlBGKhach || '').trim()
+    const savedName = raw?.name || getItemBgKhachSavedName(item)
+    const fileName = resolvePoDocFileName(savedName, link, poTag ? `Bao_gia_Khach_PO_${poTag}` : 'Bao_gia_Khach', '.xlsx')
+    list.push({
+      key: 'bg_khach',
+      tab: 'bg',
+      bgVariant: 'khach',
+      fileName,
+      displayLabel: fileName,
+      url: link,
+      rawFile: raw,
+      previewHtml: item.previewHtmlBGKhach
+    })
+  }
+
+  if (hasItemMhPreview(item)) {
+    const raw = item.rawFileMuaHang
+    const link = String(item.linkMuaHang || item.row?.link_excel_mua_hang || item.previewUrlMH || '').trim()
+    const savedName = raw?.name || String(item.row?.ten_file_mua_hang || '').trim()
+    const fileName = resolvePoDocFileName(savedName, link, poTag ? `Mua_hang_PO_${poTag}` : 'File_Mua_hang', '.xlsx')
+    list.push({
+      key: 'mh',
+      tab: 'mh',
+      fileName,
+      displayLabel: fileName,
+      url: link,
+      rawFile: raw,
+      previewHtml: item.previewHtmlMH
+    })
+  }
+
+  if (hasItemDxmhPreview(item)) {
+    const raw = item.rawFileDxmh
+    const link = String(item.linkDxmh || item.row?.link_excel_dxmh || item.previewUrlDXMH || '').trim()
+    const savedName = raw?.name || String(item.tenFileDxmh || item.row?.ten_file_dxmh || '').trim()
+    const fileName = resolvePoDocFileName(savedName, link, poTag ? `DXMH_PO_${poTag}` : 'File_DXMH', '.xlsx')
+    list.push({
+      key: 'dxmh',
+      tab: 'dxmh',
+      fileName,
+      displayLabel: fileName,
+      url: link,
+      rawFile: raw,
+      previewHtml: item.previewHtmlDXMH
+    })
+  }
+
+  if (hasItemImgPreview(item)) {
+    const raw = item.rawFileScanCom
+    const link = String(item.row?.img_save || item.previewUrlScanCom || '').trim()
+    const base64DataUrl = item.base64Img
+      ? (item.base64Img.startsWith('data:') ? item.base64Img : `data:image/jpeg;base64,${item.base64Img}`)
+      : ''
+    const fallbackComName = poTag ? `Chung_tu_COM_PO_${poTag}.jpg` : 'Chung_tu_COM.jpg'
+    const fileName = resolvePoDocFileName(raw?.name || '', link, fallbackComName, '.jpg')
+    list.push({
+      key: 'img',
+      tab: 'img',
+      fileName,
+      displayLabel: fileName,
+      url: link,
+      rawFile: raw,
+      base64DataUrl,
+      previewHtml: item.previewHtmlScanCom
+    })
+  }
+
+  if (Array.isArray(item.otherFiles) && item.otherFiles.length > 0) {
+    item.otherFiles.forEach((fk, fkIdx) => {
+      if (!fk) return
+      const raw = fk.rawFile
+      const link = String(fk.link_file || fk.previewUrl || '').trim()
+      const savedName = String(fk.ten_file || raw?.name || '').trim()
+      if (!savedName && !link && !raw && !fk.previewHtml) return
+      const fileName = resolvePoDocFileName(savedName, link, `File_dinh_kem_${fkIdx + 1}`, '')
+      list.push({
+        key: `other_${fk.id || fkIdx}`,
+        tab: 'other',
+        otherIdx: fkIdx,
+        fileName,
+        displayLabel: fileName,
+        url: link,
+        rawFile: raw,
+        previewHtml: fk.previewHtml
+      })
+    })
+  }
+
+  if (Array.isArray(item.licenseFiles) && item.licenseFiles.length > 0) {
+    item.licenseFiles.forEach((lic, licIdx) => {
+      if (!lic) return
+      const raw = lic.rawFile
+      const link = String(lic.link_file || lic.previewUrl || '').trim()
+      const savedName = String(lic.ten_file || raw?.name || lic.PRODUCT || '').trim()
+      if (!savedName && !link && !raw) return
+      const fileName = resolvePoDocFileName(savedName, link, `License_${licIdx + 1}`, '.pdf')
+      list.push({
+        key: `license_${lic.id || lic.licenseFirebaseId || licIdx}`,
+        tab: 'license',
+        licenseIdx: licIdx,
+        fileName,
+        displayLabel: lic.PRODUCT ? `[License] ${lic.PRODUCT} (${fileName})` : `[License] ${fileName}`,
+        url: link,
+        rawFile: raw
+      })
+    })
+  }
+
+  return list
+}
+
+const poModalSelectedDocKeysMap = ref<Record<string, string[]>>({})
+const isDownloadingPoDocs = ref(false)
+
+function getPoModalDocScopeKey(item: ImportItem | null | undefined): string {
+  if (!item) return 'default'
+  return String(item.id || item.row?.ID || item.row?._firebaseKey || 'default')
+}
+
+function isPoModalDocSelected(item: ImportItem | null | undefined, docKey: string): boolean {
+  const scope = getPoModalDocScopeKey(item)
+  const arr = poModalSelectedDocKeysMap.value[scope] || []
+  return arr.includes(docKey)
+}
+
+function togglePoModalDocSelect(item: ImportItem | null | undefined, docKey: string) {
+  const scope = getPoModalDocScopeKey(item)
+  const cur = new Set(poModalSelectedDocKeysMap.value[scope] || [])
+  if (cur.has(docKey)) {
+    cur.delete(docKey)
+  } else {
+    cur.add(docKey)
+  }
+  poModalSelectedDocKeysMap.value = {
+    ...poModalSelectedDocKeysMap.value,
+    [scope]: Array.from(cur)
+  }
+}
+
+function getSelectedPoModalDocs(item: ImportItem | null | undefined): PoModalDocEntry[] {
+  const all = getModalPoAllFilesList(item)
+  if (all.length === 0) return []
+  const scope = getPoModalDocScopeKey(item)
+  const selectedSet = new Set(poModalSelectedDocKeysMap.value[scope] || [])
+  return all.filter(entry => selectedSet.has(entry.key))
+}
+
+function isAllPoModalDocsSelected(item: ImportItem | null | undefined): boolean {
+  const all = getModalPoAllFilesList(item)
+  if (all.length === 0) return false
+  return getSelectedPoModalDocs(item).length === all.length
+}
+
+function toggleSelectAllPoModalDocs(item: ImportItem | null | undefined) {
+  const all = getModalPoAllFilesList(item)
+  const scope = getPoModalDocScopeKey(item)
+  if (all.length === 0) return
+  if (isAllPoModalDocsSelected(item)) {
+    poModalSelectedDocKeysMap.value = {
+      ...poModalSelectedDocKeysMap.value,
+      [scope]: []
+    }
+  } else {
+    poModalSelectedDocKeysMap.value = {
+      ...poModalSelectedDocKeysMap.value,
+      [scope]: all.map(e => e.key)
+    }
+  }
+}
+
+function isPoModalDocEntryActive(item: ImportItem | null | undefined, entry: PoModalDocEntry): boolean {
+  if (!item) return false
+  const curTab = getActivePreviewTab(item)
+  if (curTab !== entry.tab) return false
+  if (entry.tab === 'bg') {
+    return getModalPriceMode(item) === (entry.bgVariant || 'hd')
+  }
+  if (entry.tab === 'other') {
+    return (item.activeOtherFileIdx || 0) === (entry.otherIdx ?? 0)
+  }
+  if (entry.tab === 'license') {
+    return (item.activeLicenseFileIdx || 0) === (entry.licenseIdx ?? 0)
+  }
+  return true
+}
+
+function selectPoModalDocEntry(item: ImportItem | null | undefined, entry: PoModalDocEntry) {
+  if (!item) return
+  if (entry.tab === 'bg' && entry.bgVariant) {
+    setModalPriceMode(item, entry.bgVariant)
+  } else if (entry.tab === 'other' && entry.otherIdx !== undefined) {
+    item.activeOtherFileIdx = entry.otherIdx
+  } else if (entry.tab === 'license' && entry.licenseIdx !== undefined) {
+    item.activeLicenseFileIdx = entry.licenseIdx
+  }
+  setActivePreviewTab(item, entry.tab)
+}
+
+function sanitizePoDiskItemName(rawName: string, maxLen = 80): string {
+  const cleaned = String(rawName || '')
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/[\\/:*?"<>|]+/g, '_')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\.+$/, '')
+  if (cleaned.length <= maxLen) return cleaned
+  const dotIdx = cleaned.lastIndexOf('.')
+  if (dotIdx > 0 && cleaned.length - dotIdx <= 6) {
+    const ext = cleaned.substring(dotIdx)
+    const base = cleaned.substring(0, maxLen - ext.length).trim().replace(/\.+$/, '')
+    return `${base}${ext}`
+  }
+  return cleaned.substring(0, maxLen).trim().replace(/\.+$/, '')
+}
+
+async function fetchPoModalDocBlob(entry: PoModalDocEntry): Promise<Blob | null> {
+  if (entry.rawFile instanceof File) {
+    return entry.rawFile
+  }
+  if (entry.base64DataUrl) {
+    try {
+      const resp = await fetch(entry.base64DataUrl)
+      if (resp.ok) return await resp.blob()
+    } catch {}
+  }
+  if (entry.url) {
+    try {
+      const resp = await fetch(entry.url)
+      if (resp.ok) return await resp.blob()
+    } catch {}
+  }
+  if (entry.previewHtml) {
+    return new Blob([entry.previewHtml], { type: 'text/html;charset=utf-8' })
+  }
+  return null
+}
+
+async function downloadSinglePoModalDoc(entry: PoModalDocEntry, ev?: Event) {
+  if (ev) {
+    ev.stopPropagation()
+    ev.preventDefault()
+  }
+  const safeName = sanitizePoDiskItemName(entry.fileName || 'tep-dinh-kem') || 'tep-dinh-kem'
+  const blob = await fetchPoModalDocBlob(entry)
+  if (blob) {
+    const objectUrl = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.style.display = 'none'
+    a.href = objectUrl
+    a.download = safeName
+    document.body.appendChild(a)
+    a.click()
+    setTimeout(() => {
+      try {
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(objectUrl)
+      } catch {}
+    }, 1500)
+    return
+  }
+  if (entry.url) {
+    await downloadPoFile(entry.url, safeName)
+  }
+}
+
+async function downloadPoModalDocsBatch(item: ImportItem | null | undefined, entries: PoModalDocEntry[]) {
+  if (!item || entries.length === 0 || isDownloadingPoDocs.value) return
+
+  if (entries.length === 1) {
+    await downloadSinglePoModalDoc(entries[0])
+    return
+  }
+
+  isDownloadingPoDocs.value = true
+  try {
+    const poPart = sanitizePoDiskItemName(String(item.soPO || item.row?.So_PO || '').trim(), 28)
+    const custPart = sanitizePoDiskItemName(String(item.customer || item.row?.Ten_cong_ty || item.recipient || '').trim(), 42)
+    const archiveBaseName = ['PO', poPart, custPart].filter(Boolean).join('_') || `Chung_tu_PO_${item.id || 1}`
+    const zipFileName = `${archiveBaseName}.zip`
+
+    const zip = new JSZip()
+    const usedNames = new Set<string>()
+    let addedCount = 0
+
+    for (const entry of entries) {
+      let baseFileName = sanitizePoDiskItemName(entry.fileName || 'tep-dinh-kem', 90) || 'tep-dinh-kem'
+      if (entry.previewHtml && !entry.rawFile && !entry.url && !/\.html?$/i.test(baseFileName)) {
+        baseFileName += '.html'
+      }
+      let finalName = baseFileName
+      let dupCounter = 1
+      while (usedNames.has(finalName.toLowerCase())) {
+        dupCounter++
+        const dotIdx = baseFileName.lastIndexOf('.')
+        const suffix = entry.bgVariant === 'khach' && dupCounter === 2
+          ? '_BG_Khach'
+          : entry.bgVariant === 'hd' && dupCounter === 2
+            ? '_BG_HD'
+            : `_(${dupCounter})`
+        if (dotIdx > 0) {
+          finalName = `${baseFileName.substring(0, dotIdx)}${suffix}${baseFileName.substring(dotIdx)}`
+        } else {
+          finalName = `${baseFileName}${suffix}`
+        }
+      }
+      usedNames.add(finalName.toLowerCase())
+
+      const blob = await fetchPoModalDocBlob(entry)
+      if (blob) {
+        zip.file(finalName, blob)
+        addedCount++
+      }
+    }
+
+    if (addedCount > 0) {
+      const zipBlob = await zip.generateAsync({
+        type: 'blob',
+        compression: 'DEFLATE',
+        compressionOptions: { level: 6 }
+      })
+      triggerZipDownload(zipBlob, zipFileName)
+      return
+    }
+  } catch (zipErr) {
+    console.warn('[PO Docs ZIP Download] Fallback to sequential download:', zipErr)
+  } finally {
+    isDownloadingPoDocs.value = false
+  }
+
+  isDownloadingPoDocs.value = true
+  try {
+    for (const entry of entries) {
+      await downloadSinglePoModalDoc(entry)
+      await new Promise(resolve => setTimeout(resolve, 260))
+    }
+  } finally {
+    isDownloadingPoDocs.value = false
+  }
+}
+
+async function downloadSelectedPoModalDocs(item: ImportItem | null | undefined) {
+  const selected = getSelectedPoModalDocs(item)
+  if (selected.length === 0) return
+  await downloadPoModalDocsBatch(item, selected)
+}
+
+async function downloadAllPoModalDocs(item: ImportItem | null | undefined) {
+  const all = getModalPoAllFilesList(item)
+  if (all.length === 0) return
+  await downloadPoModalDocsBatch(item, all)
+}
+
+function getAttachedDocCount(item: ImportItem | null | undefined): number {
+  return getModalPoAllFilesList(item).length
+}
+
+function getActivePreviewTab(item: ImportItem | null | undefined): 'bg' | 'mh' | 'dxmh' | 'img' | 'other' | 'license' {
   if (!item) return 'bg'
   if (item.activePreviewTab) return item.activePreviewTab
-  if (hasItemBgPreview(item)) return 'bg'
+  if (hasItemBgPreview(item) || hasItemBgHdDoc(item) || hasItemBgKhachDoc(item)) return 'bg'
   if (hasItemMhPreview(item)) return 'mh'
   if (hasItemDxmhPreview(item)) return 'dxmh'
   if (hasItemImgPreview(item)) return 'img'
   if (item.otherFiles && item.otherFiles.length > 0) return 'other'
+  if (item.licenseFiles && item.licenseFiles.length > 0) return 'license'
   return 'bg'
 }
 
-function setActivePreviewTab(item: ImportItem | null | undefined, tab: 'bg' | 'mh' | 'dxmh' | 'img' | 'other') {
+function setActivePreviewTab(item: ImportItem | null | undefined, tab: 'bg' | 'mh' | 'dxmh' | 'img' | 'other' | 'license') {
   if (!item) return
   item.activePreviewTab = tab
   if (isPoLeftPaneCollapsed.value) {
@@ -17723,22 +20083,19 @@ function getCustomerDbMatchState(item: ImportItem | null | undefined): {
 
   for (const fd of fieldDefs) {
     const hasDbOrEdited = Boolean(fd.dbVal || fd.isEdited)
-    if (fd.curVal && hasDbOrEdited && !isSameCustFieldVal(fd.field, fd.curVal, fd.dbVal)) {
-      item._custDiffCandidates[fd.field] = fd.curVal
-    } else if (!item._custDiffCandidates[fd.field] && fd.extVal && fd.dbVal && !isSameCustFieldVal(fd.field, fd.extVal, fd.dbVal)) {
-      item._custDiffCandidates[fd.field] = fd.extVal
+    const isUsingDb = isSameCustFieldVal(fd.field, fd.curVal, fd.dbVal)
+    if (isUsingDb) {
+      delete item._custDiffCandidates[fd.field]
+      continue
     }
-
-    const candidate = String(item._custDiffCandidates[fd.field] || '').trim()
-    if (candidate && (fd.dbVal || fd.isEdited) && !isSameCustFieldVal(fd.field, candidate, fd.dbVal)) {
-      const isUsingDb = isSameCustFieldVal(fd.field, fd.curVal, fd.dbVal)
-      const poVal = isUsingDb ? candidate : (fd.curVal || candidate)
+    if (fd.curVal && hasDbOrEdited) {
+      item._custDiffCandidates[fd.field] = fd.curVal
       diffs.push({
         field: fd.field,
         label: fd.label,
         dbVal: fd.dbVal || '(Chưa có trong DB)',
-        poVal,
-        activeSource: isUsingDb ? 'db' : 'po'
+        poVal: fd.curVal,
+        activeSource: 'po'
       })
     }
   }
@@ -20589,7 +22946,7 @@ function onPredictPaste(e: ClipboardEvent, item: ImportItem) {
   applyPredictPctValue(item, cleanStr)
 }
 
-function openMultiEditModalWithDocTab(row: any, docTab: 'bg' | 'mh' | 'dxmh' | 'img' | 'other') {
+function openMultiEditModalWithDocTab(row: any, docTab: 'bg' | 'mh' | 'dxmh' | 'img' | 'other' | 'license') {
   openMultiEditModal(row)
   if (multiEditModal.value.items[0]) {
     multiEditModal.value.items[0].activePreviewTab = docTab
@@ -20644,6 +23001,7 @@ function createImportItemFromExistingRow(row: any, id: number): ImportItem {
     createdTime: fmtDate(row.created_time) || getFormattedNow(),
     content: row.content_of_contract_PO || '',
     ghiChu: row.ghi_chu || '',
+    lam_tron_ti_suat: Boolean(row.lam_tron_ti_suat),
     netCom: netCom(row),
     am: row.account_manager_name || '',
     taxPct: thuePct(row),
@@ -20657,6 +23015,8 @@ function createImportItemFromExistingRow(row: any, id: number): ImportItem {
     otherFiles: Array.isArray(row.danh_sach_file_khac)
       ? row.danh_sach_file_khac.filter(Boolean).map((f: any) => ({ ...f }))
       : [],
+    licenseFiles: getPoCardLicenseFilesList(row).map((l: any) => ({ ...l })),
+    activeLicenseFileIdx: 0,
     activeTab: 'po',
     goodsList: []
   }
@@ -20966,6 +23326,7 @@ function onRowSelectedInModal(item: ImportItem) {
   item._custDiffCandidates = {}
   item.content = item.row.content_of_contract_PO || ''
   item.ghiChu = item.row.ghi_chu || ''
+  item.lam_tron_ti_suat = Boolean(item.row.lam_tron_ti_suat)
   item.soPO = item.row.So_PO || ''
   item.createdTime = fmtDate(item.row.created_time) || getFormattedNow()
   if (!item.rawFileBaoGia) {
@@ -20983,6 +23344,10 @@ function onRowSelectedInModal(item: ImportItem) {
     item.otherFiles = Array.isArray(item.row.danh_sach_file_khac)
       ? item.row.danh_sach_file_khac.filter(Boolean).map((f: any) => ({ ...f }))
       : []
+  }
+  if (!item.licenseFiles || item.licenseFiles.length === 0) {
+    item.licenseFiles = getPoCardLicenseFilesList(item.row).map((l: any) => ({ ...l }))
+    item.activeLicenseFileIdx = 0
   }
   
   if (item.content) {
@@ -21386,6 +23751,155 @@ async function resolveUploadedOtherFiles(item: ImportItem, nowStr: string) {
   return saved
 }
 
+async function resolveAndSyncPoLicenses(
+  item: ImportItem,
+  poFirebaseKey: string,
+  maKHGen: string,
+  tenCongTy: string,
+  soPO: string,
+  nowStr: string
+) {
+  const list = Array.isArray(item.licenseFiles) ? item.licenseFiles : []
+  const prevList: any[] = getPoCardLicenseFilesList(item.row || {})
+  const keptLicenseIds = new Set<string>()
+  const saved: Array<any> = []
+  const licDbUpdates: Record<string, any> = {}
+
+  for (let i = 0; i < list.length; i++) {
+    const lic = list[i]
+    if (!lic) continue
+    let finalLink = String(lic.LINK_FILE || lic.link_file || '').trim()
+    if (!finalLink && lic.rawFile) {
+      finalLink = await uploadFileToCloudinary(lic.rawFile)
+      if (finalLink) {
+        lic.link_file = finalLink
+        lic.LINK_FILE = finalLink
+      }
+    }
+
+    let fbId = String(lic.licenseFirebaseId || lic.firebase_id || '').trim()
+    const isExistingInCatalog = Boolean(fbId && licenseOldDataMap.value && licenseOldDataMap.value[fbId])
+    if (!fbId || (!isExistingInCatalog && !fbId.startsWith('-'))) {
+      const dupCheck = inspectLicenseDuplicate(lic, getExistingLicensesCatalogFromMap())
+      if (dupCheck.isDuplicate && dupCheck.matchedRecord?.firebaseKey) {
+        fbId = String(dupCheck.matchedRecord.firebaseKey)
+      } else {
+        fbId = push(dbRef(database, 'license_old_data')).key || ('LIC_' + Date.now() + '_' + i)
+      }
+      lic.licenseFirebaseId = fbId
+      lic.firebase_id = fbId
+    }
+    keptLicenseIds.add(fbId)
+
+    const existingRec = (licenseOldDataMap.value && licenseOldDataMap.value[fbId]) || {}
+    const productName = String(lic.PRODUCT_NAME ?? lic.PRODUCT ?? existingRec.PRODUCT_NAME ?? existingRec.PRODUCT ?? '').trim()
+    const licenseId = String(lic.LICENSE_ID ?? lic.SERIAL_KEY ?? existingRec.LICENSE_ID ?? existingRec.SERIAL_KEY ?? '').trim()
+    const dateOfLicense = String(lic.DATE_OF_LICENSE ?? lic.START_DATE ?? existingRec.DATE_OF_LICENSE ?? existingRec.START_DATE ?? '').trim()
+    const expirationTime = String(lic.EXPIRATION_TIME ?? lic.END_DATE ?? existingRec.EXPIRATION_TIME ?? existingRec.END_DATE ?? '').trim()
+    const soNgayHieuLuc = String(lic.SO_NGAY_HIEU_LUC ?? lic.GRACE_PERIOD ?? existingRec.SO_NGAY_HIEU_LUC ?? existingRec.GRACE_PERIOD ?? '').trim()
+    const description = String(lic.LICENSE_DESCRIPTION ?? lic.NOTE ?? existingRec.LICENSE_DESCRIPTION ?? existingRec.NOTE ?? `Đồng bộ từ PO ${soPO || ''}`).trim()
+    const fileName = String(lic.NAME_FILE || lic.ten_file || existingRec.NAME_FILE || existingRec.FILE_NAME || productName || `License #${i + 1}`).trim()
+    const fileUrl = finalLink || String(existingRec.LINK_FILE || existingRec.FILE_URL || '').trim()
+
+    const licensePayload = {
+      ...existingRec,
+      CUSTOMER: String(lic.CUSTOMER || existingRec.CUSTOMER || tenCongTy || '').trim(),
+      MA_KHACH_HANG: String(maKHGen || existingRec.MA_KHACH_HANG || '').trim(),
+      TEN_CONG_TY: String(tenCongTy || existingRec.TEN_CONG_TY || '').trim(),
+      SO_PO: String(soPO || '').trim(),
+      PO_FIREBASE_KEY: String(poFirebaseKey || '').trim(),
+      LICENSE_ID: licenseId,
+      PRODUCT_CODE: String(lic.PRODUCT_CODE ?? existingRec.PRODUCT_CODE ?? '').trim(),
+      PRODUCT_NAME: productName,
+      LICENSE_VOLUME: String(lic.LICENSE_VOLUME ?? existingRec.LICENSE_VOLUME ?? '').trim(),
+      LICENSE_TYPE: String(lic.LICENSE_TYPE ?? existingRec.LICENSE_TYPE ?? '').trim(),
+      NHA_SAN_XUAT: String(lic.NHA_SAN_XUAT ?? existingRec.NHA_SAN_XUAT ?? '').trim(),
+      LOCALIZATION: String(lic.LOCALIZATION ?? existingRec.LOCALIZATION ?? '').trim(),
+      DATE_OF_LICENSE: dateOfLicense,
+      EXPIRATION_TIME: expirationTime,
+      SO_NGAY_HIEU_LUC: soNgayHieuLuc,
+      LICENSE_DESCRIPTION: description,
+      NAME_FILE: fileName,
+      LINK_FILE: fileUrl,
+      // Legacy aliases
+      PRODUCT: productName || fileName,
+      SERIAL_KEY: licenseId,
+      START_DATE: dateOfLicense,
+      END_DATE: expirationTime,
+      GRACE_PERIOD: soNgayHieuLuc,
+      DURATION: String(lic.DURATION || existingRec.DURATION || '').trim(),
+      NOTE: description,
+      FILE_URL: fileUrl,
+      FILE_NAME: fileName
+    }
+    delete (licensePayload as any).IS_GIA_HAN
+    delete (licensePayload as any).is_gia_han
+
+    licDbUpdates[`license_old_data/${fbId}`] = licensePayload
+    if (licenseOldDataMap.value) {
+      licenseOldDataMap.value[fbId] = licensePayload
+    }
+
+    saved.push({
+      id: fbId,
+      firebase_id: fbId,
+      licenseFirebaseId: fbId,
+      ten_file: fileName,
+      link_file: fileUrl,
+      NAME_FILE: fileName,
+      LINK_FILE: fileUrl,
+      ngay_tai: lic.ngay_tai || nowStr,
+      CUSTOMER: licensePayload.CUSTOMER,
+      MA_KHACH_HANG: licensePayload.MA_KHACH_HANG,
+      TEN_CONG_TY: licensePayload.TEN_CONG_TY,
+      SO_PO: licensePayload.SO_PO,
+      PO_FIREBASE_KEY: licensePayload.PO_FIREBASE_KEY,
+      LICENSE_ID: licensePayload.LICENSE_ID,
+      PRODUCT_CODE: licensePayload.PRODUCT_CODE,
+      PRODUCT_NAME: licensePayload.PRODUCT_NAME,
+      LICENSE_VOLUME: licensePayload.LICENSE_VOLUME,
+      LICENSE_TYPE: licensePayload.LICENSE_TYPE,
+      NHA_SAN_XUAT: licensePayload.NHA_SAN_XUAT,
+      LOCALIZATION: licensePayload.LOCALIZATION,
+      DATE_OF_LICENSE: licensePayload.DATE_OF_LICENSE,
+      EXPIRATION_TIME: licensePayload.EXPIRATION_TIME,
+      SO_NGAY_HIEU_LUC: licensePayload.SO_NGAY_HIEU_LUC,
+      LICENSE_DESCRIPTION: licensePayload.LICENSE_DESCRIPTION,
+      PRODUCT: licensePayload.PRODUCT,
+      SERIAL_KEY: licensePayload.SERIAL_KEY,
+      START_DATE: licensePayload.START_DATE,
+      END_DATE: licensePayload.END_DATE,
+      GRACE_PERIOD: licensePayload.GRACE_PERIOD,
+      DURATION: licensePayload.DURATION,
+      NOTE: licensePayload.NOTE
+    })
+  }
+
+  // Nếu có License trước đó gắn với PO này nhưng đã bị người dùng gỡ khỏi PO -> gỡ liên kết PO bên license_old_data
+  for (const prev of prevList) {
+    const prevId = String(prev?.licenseFirebaseId || prev?.id || '').trim()
+    if (prevId && !keptLicenseIds.has(prevId) && licenseOldDataMap.value && licenseOldDataMap.value[prevId]) {
+      licDbUpdates[`license_old_data/${prevId}/SO_PO`] = ''
+      licDbUpdates[`license_old_data/${prevId}/PO_FIREBASE_KEY`] = ''
+      licenseOldDataMap.value[prevId] = {
+        ...licenseOldDataMap.value[prevId],
+        SO_PO: '',
+        PO_FIREBASE_KEY: ''
+      }
+    }
+  }
+
+  if (Object.keys(licDbUpdates).length > 0) {
+    try {
+      await update(dbRef(database), JSON.parse(JSON.stringify(licDbUpdates)))
+    } catch (err) {
+      console.warn('[resolveAndSyncPoLicenses] Failed to update license_old_data:', err)
+    }
+  }
+
+  return saved
+}
+
 function formatNgayTaoHopDong() {
   const d = new Date();
   const p = (n: any) => String(n).padStart(2, '0');
@@ -21521,10 +24035,13 @@ async function saveMultiModal() {
           const finalCreatedTime = normalizePoCreatedTime(item.createdTime, nowStr);
           const initPayTime = initPaid > 0 ? nowStr : '';
           const savedOtherFiles = await resolveUploadedOtherFiles(item, nowStr);
+          const newPoFirebaseKey = push(dbRef(database, 'sale_report')).key || ('SR_' + Date.now() + '_' + Math.floor(Math.random() * 10000));
+          const savedLicenses = await resolveAndSyncPoLicenses(item, newPoFirebaseKey, maKHGen, tenCongTy, item.soPO, nowStr);
 
           const srID = 'SR_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
   
           bulkSaleReportItems.push({
+              _targetFirebaseKey: newPoFirebaseKey,
               ID: srID,
               ma_hop_dong: maHD,
               so_hop_dong: soHD,
@@ -21539,6 +24056,7 @@ async function saveMultiModal() {
               created_time: finalCreatedTime,
               content_of_contract_PO: item.content,
               ghi_chu: item.ghiChu || '',
+              lam_tron_ti_suat: Boolean(item.lam_tron_ti_suat),
               Tong_tien_truoc_thueVAT: tTruoc,
               Tong_thueVAT: tVat,
               Tong_tien_sau_thueVAT: tSau,
@@ -21570,6 +24088,7 @@ async function saveMultiModal() {
               ten_file_mua_hang: tenMH,
               ten_file_dxmh: tenDXMH,
               danh_sach_file_khac: savedOtherFiles,
+              danh_sach_license: savedLicenses,
               goodsList: Array.isArray(item.goodsList) ? JSON.parse(JSON.stringify(item.goodsList)) : [],
               goodsTotal: item.goodsTotal ? JSON.parse(JSON.stringify(item.goodsTotal)) : undefined
           });
@@ -21698,9 +24217,11 @@ async function saveMultiModal() {
         if (bulkSaleReportItems.length > 0) {
           const updates: Record<string, any> = {};
           for (const srItem of bulkSaleReportItems) {
-            const newKey = push(dbRef(database, 'sale_report')).key;
+            const newKey = (srItem as any)._targetFirebaseKey || push(dbRef(database, 'sale_report')).key;
+            const payloadToSave = { ...srItem };
+            delete (payloadToSave as any)._targetFirebaseKey;
             if (newKey) {
-              updates[`sale_report/${newKey}`] = srItem;
+              updates[`sale_report/${newKey}`] = payloadToSave;
               if (toNum(srItem.so_tien_da_thanh_toan) > 0) {
                 const histKey = push(dbRef(database, 'lich_su_thanh_toan')).key || ('LSTT_' + Date.now());
                 updates[`lich_su_thanh_toan/${histKey}`] = {
@@ -21833,6 +24354,9 @@ async function saveMultiModal() {
         const updatedCongNo = Math.max(0, tSau - currentPaid);
         const currentPayTime = item.row?.thoi_gian_thanh_toan || '';
 
+        const firebaseKey = item.row._firebaseKey || item.row.ID;
+        const savedLicenses = await resolveAndSyncPoLicenses(item, firebaseKey, maKHGen, tenCongTy, item.soPO, nowStr);
+
         // ─── Build update payload for Firebase ───
         const updatePayload: Record<string, any> = {
             ma_hop_dong: maHD,
@@ -21870,7 +24394,9 @@ async function saveMultiModal() {
             net_com: Number(item.netCom) || 0,
             content_of_contract_PO: item.content,
             ghi_chu: item.ghiChu ?? item.row?.ghi_chu ?? '',
+            lam_tron_ti_suat: Boolean(item.lam_tron_ti_suat ?? item.row?.lam_tron_ti_suat),
             danh_sach_file_khac: savedOtherFiles,
+            danh_sach_license: savedLicenses,
             goodsList: Array.isArray(item.goodsList) ? JSON.parse(JSON.stringify(item.goodsList)) : [],
             goodsTotal: item.goodsTotal ? JSON.parse(JSON.stringify(item.goodsTotal)) : undefined
         };
@@ -21881,7 +24407,6 @@ async function saveMultiModal() {
         if (linkDXMH) { updatePayload.link_excel_dxmh = linkDXMH; updatePayload.ten_file_dxmh = tenDXMH; }
 
         // ─── Update sale_report in Firebase ───
-        const firebaseKey = item.row._firebaseKey || item.row.ID;
         if (firebaseKey) {
           const cleanUpdatePayload = JSON.parse(JSON.stringify(updatePayload));
           await update(dbRef(database, `sale_report/${firebaseKey}`), cleanUpdatePayload);
@@ -22075,6 +24600,7 @@ async function saveMultiModal() {
         item.row.created_time = finalCreatedTime
         item.row.content_of_contract_PO = item.content
         item.row.ghi_chu = item.ghiChu ?? item.row.ghi_chu ?? ''
+        item.row.lam_tron_ti_suat = Boolean(item.lam_tron_ti_suat ?? item.row.lam_tron_ti_suat)
         item.row.MST = mstVal
         item.row.Ma_khach_hang = maKHGen
         item.row.Ten_khach_hang = tenKhachHang || tenCongTy
@@ -22109,6 +24635,7 @@ async function saveMultiModal() {
         item.row.net_com = Number(item.netCom) || 0
         item.row.netCom = Number(item.netCom) || 0
         item.row.danh_sach_file_khac = savedOtherFiles
+        item.row.danh_sach_license = savedLicenses
         if (uploadedUrl) {
           item.row.img_save = uploadedUrl
         }
@@ -23796,6 +26323,7 @@ async function saveModalItemsToCraft(silent = false): Promise<string[]> {
         created_time: finalCreatedTime,
         content_of_contract_PO: item.content || '',
         ghi_chu: item.ghiChu ?? fallbackRow?.ghi_chu ?? '',
+        lam_tron_ti_suat: Boolean(item.lam_tron_ti_suat ?? fallbackRow?.lam_tron_ti_suat),
         Tong_tien_truoc_thueVAT: tTruoc,
         Tong_thueVAT: tVat,
         Tong_tien_sau_thueVAT: tSau,
@@ -24146,17 +26674,12 @@ async function focusAndHighlightOfficialPo(targetKey: string, targetSoPo: string
   )
 
   if (targetRow && !filteredRows.value.some(r => getPoRowKey(r) === getPoRowKey(targetRow))) {
-    searchStr.value = ''
-    filterCustomer.value = 'Tất cả'
-    filterYear.value = 'Tất cả'
-    filterMonth.value = 'Tất cả'
-    filterDebtStatus.value = 'Tất cả'
-    companySidebarSearch.value = ''
+    resetAllSaleFilters()
     await nextTick()
   }
 
   displayLimit.value = Math.max(displayLimit.value, filteredRows.value.length + 10)
-  const groupKey = String(targetRow?.Ma_cong_ty || targetRow?.Ten_cong_ty || maCongTyHint || 'Khác')
+  const groupKey = String(targetRow?.Ma_cong_ty || maCongTyHint || 'Khác')
   selectedMasterGroupKey.value = groupKey
   groupPoVisibleLimitMap.value = {
     ...groupPoVisibleLimitMap.value,
@@ -25938,6 +28461,718 @@ function getOtherFileOpenUrl(fk: OtherAttachmentItem): string {
   return rawUrl
 }
 
+// ─── License / Bản Quyền (Tách riêng & Đồng bộ 2 chiều với license_old_data) ───
+const licenseFilesInput = ref<HTMLInputElement | null>(null)
+const licenseFilesTargetItem = ref<ImportItem | null>(null)
+const showExistingLicensePicker = ref(false)
+const existingLicenseTargetItem = ref<ImportItem | null>(null)
+const existingLicenseSearchQuery = ref('')
+const existingLicenseFilterScope = ref<'recommended' | 'all'>('recommended')
+const EXISTING_LICENSE_PAGE_SIZE = 20
+const existingLicenseVisibleCount = ref(EXISTING_LICENSE_PAGE_SIZE)
+const existingLicenseRepoBodyRef = ref<HTMLElement | null>(null)
+const poLicenseMobileSubTab = ref<'preview' | 'specs' | 'auto'>('auto')
+
+function getPoLicenseMobileSubTab(item: ImportItem | null | undefined): 'preview' | 'specs' {
+  if (poLicenseMobileSubTab.value === 'preview' || poLicenseMobileSubTab.value === 'specs') {
+    return poLicenseMobileSubTab.value
+  }
+  return (item?.licenseFiles && item.licenseFiles.length > 0) ? 'specs' : 'preview'
+}
+
+function getActiveLicenseFile(item: ImportItem | null | undefined): LicenseAttachmentItem | null {
+  if (!item || !Array.isArray(item.licenseFiles) || item.licenseFiles.length === 0) return null
+  const idx = Math.max(0, Math.min(Number(item.activeLicenseFileIdx || 0), item.licenseFiles.length - 1))
+  return item.licenseFiles[idx] || item.licenseFiles[0] || null
+}
+
+function triggerLicenseFilesUpload(item: ImportItem) {
+  licenseFilesTargetItem.value = item
+  if (licenseFilesInput.value) {
+    licenseFilesInput.value.value = ''
+    licenseFilesInput.value.click()
+  }
+}
+
+function syncPoLicenseFieldAliases(lic: LicenseAttachmentItem | null | undefined) {
+  if (!lic) return
+  if (lic.NAME_FILE !== undefined) lic.ten_file = String(lic.NAME_FILE || '')
+  if (lic.LINK_FILE !== undefined) lic.link_file = String(lic.LINK_FILE || '')
+  if (lic.PRODUCT_NAME !== undefined) lic.PRODUCT = String(lic.PRODUCT_NAME || '')
+  if (lic.LICENSE_ID !== undefined) lic.SERIAL_KEY = String(lic.LICENSE_ID || '')
+  if (lic.DATE_OF_LICENSE !== undefined) lic.START_DATE = String(lic.DATE_OF_LICENSE || '')
+  if (lic.EXPIRATION_TIME !== undefined) lic.END_DATE = String(lic.EXPIRATION_TIME || '')
+  if (lic.SO_NGAY_HIEU_LUC !== undefined) lic.GRACE_PERIOD = String(lic.SO_NGAY_HIEU_LUC || '')
+  if (lic.LICENSE_DESCRIPTION !== undefined) lic.NOTE = String(lic.LICENSE_DESCRIPTION || '')
+  isModalDirty.value = true
+}
+
+function onPoLicenseDatePickerChange(
+  lic: LicenseAttachmentItem | null | undefined,
+  field: 'DATE_OF_LICENSE' | 'EXPIRATION_TIME' | 'SO_NGAY_HIEU_LUC',
+  newDateStr: string
+) {
+  if (!lic) return
+  lic[field] = formatLicenseDateStr(newDateStr || '')
+  if (field === 'EXPIRATION_TIME') {
+    if (lic.graceDays !== '' && lic.graceDays !== null && lic.graceDays !== undefined) {
+      onPoLicenseGraceDaysChange(lic)
+      return
+    }
+    if (lic.EXPIRATION_TIME && lic.SO_NGAY_HIEU_LUC) {
+      const diff = diffDaysBetweenLicenseDates(lic.EXPIRATION_TIME, lic.SO_NGAY_HIEU_LUC)
+      if (diff !== null) lic.graceDays = diff
+    }
+  } else if (field === 'SO_NGAY_HIEU_LUC') {
+    if (!lic.SO_NGAY_HIEU_LUC) {
+      lic.graceDays = ''
+    } else if (lic.EXPIRATION_TIME) {
+      const diff = diffDaysBetweenLicenseDates(lic.EXPIRATION_TIME, lic.SO_NGAY_HIEU_LUC)
+      if (diff !== null) lic.graceDays = diff
+    }
+  }
+  syncPoLicenseFieldAliases(lic)
+}
+
+function onPoLicenseDateInput(
+  lic: LicenseAttachmentItem | null | undefined,
+  field: 'DATE_OF_LICENSE' | 'EXPIRATION_TIME' | 'SO_NGAY_HIEU_LUC',
+  ev: Event
+) {
+  if (!lic) return
+  const ymd = String((ev.target as HTMLInputElement)?.value || '').trim()
+  onPoLicenseDatePickerChange(lic, field, ymdToLicenseDate(ymd))
+}
+
+function onPoLicenseGraceDaysChange(lic: LicenseAttachmentItem | null | undefined) {
+  if (!lic) return
+  const exp = String(lic.EXPIRATION_TIME || lic.END_DATE || '').trim()
+  if (exp && lic.graceDays !== '' && lic.graceDays !== null && lic.graceDays !== undefined && !isNaN(Number(lic.graceDays))) {
+    const computedGrace = addDaysToLicenseDate(exp, Number(lic.graceDays))
+    if (computedGrace) {
+      lic.SO_NGAY_HIEU_LUC = computedGrace
+      lic.GRACE_PERIOD = computedGrace
+    }
+  }
+  syncPoLicenseFieldAliases(lic)
+}
+
+function calcPoLicenseGraceDate(expDate?: string, days?: number | string): string {
+  if (!expDate || days === '' || days === null || days === undefined || isNaN(Number(days))) return ''
+  return addDaysToLicenseDate(expDate, Number(days))
+}
+
+async function processPoLicenseWithAI(lic: LicenseAttachmentItem | null | undefined, item?: ImportItem | null) {
+  if (!lic) return
+  const fileName = lic.NAME_FILE || lic.ten_file || 'License'
+  let rawText = String(lic._rawText || '').trim()
+  lic._aiProcessing = true
+  aiScanningModal.value = {
+    show: true,
+    title: 'AI Đang Quét Chứng Từ License',
+    docLabel: 'Chứng Từ License',
+    fileName,
+    progressText: 'Đang dùng AI phân tích và bóc tách thông số bản quyền...',
+    progressMsg: 'Đang dùng AI phân tích và bóc tách thông số bản quyền...'
+  }
+
+  try {
+    if (!rawText && lic.rawFile && !lic.rawFile.type?.startsWith('image/')) {
+      const prelim = await extractLicenseRecordsFromFile(lic.rawFile, false)
+      if (Array.isArray(prelim) && prelim[0]?._rawText) {
+        rawText = String(prelim[0]._rawText || '').trim()
+        lic._rawText = rawText
+      }
+    }
+
+    const aiRecords = await extractSmartLicenseWithAI(
+      lic.rawFile || null,
+      rawText,
+      fileName,
+      (msg: string) => setAiScanningProgress(msg)
+    )
+    const parsed: any = Array.isArray(aiRecords) && aiRecords.length > 0 ? aiRecords[0] : null
+
+    aiScanningModal.value.show = false
+
+    const hasData = Boolean(
+      parsed && (parsed.LICENSE_ID || parsed.PRODUCT_NAME || parsed.CUSTOMER || parsed.PRODUCT_CODE || parsed.EXPIRATION_TIME)
+    )
+    if (!hasData) {
+      await openSrAlert({
+        variant: 'warning',
+        eyebrow: 'AI không tìm thấy dữ liệu',
+        title: 'Không nhận diện được thông tin hợp lệ',
+        highlightLabel: 'TỆP LICENSE',
+        highlightValue: fileName,
+        message: 'AI không thể tìm thấy thông tin bản quyền hợp lệ trong file này. Vui lòng tự nhập tay.',
+        confirmText: 'Đã hiểu'
+      })
+      return
+    }
+
+    const fmtDate = (v: any) => (v ? formatLicenseDateStr(String(v).trim()) : '')
+    lic.LICENSE_ID = String(parsed.LICENSE_ID || lic.LICENSE_ID || '').trim()
+    lic.CUSTOMER = String(parsed.CUSTOMER || lic.CUSTOMER || '').trim()
+    lic.PRODUCT_NAME = String(parsed.PRODUCT_NAME || lic.PRODUCT_NAME || '').trim()
+    lic.LOCALIZATION = String(parsed.LOCALIZATION || lic.LOCALIZATION || '').trim()
+    lic.LICENSE_VOLUME = String(parsed.LICENSE_VOLUME || lic.LICENSE_VOLUME || '').trim()
+    lic.DATE_OF_LICENSE = fmtDate(parsed.DATE_OF_LICENSE) || String(lic.DATE_OF_LICENSE || '').trim()
+    lic.EXPIRATION_TIME = fmtDate(parsed.EXPIRATION_TIME) || String(lic.EXPIRATION_TIME || '').trim()
+    lic.LICENSE_TYPE = String(parsed.LICENSE_TYPE || lic.LICENSE_TYPE || '').trim()
+    lic.PRODUCT_CODE = String(parsed.PRODUCT_CODE || lic.PRODUCT_CODE || '').trim()
+    lic.NHA_SAN_XUAT = String(parsed.NHA_SAN_XUAT || lic.NHA_SAN_XUAT || '').trim()
+    lic.LICENSE_DESCRIPTION = String(parsed.LICENSE_DESCRIPTION || lic.LICENSE_DESCRIPTION || '').trim()
+    if (lic.EXPIRATION_TIME) {
+      lic.SO_NGAY_HIEU_LUC = addDaysToLicenseDate(lic.EXPIRATION_TIME, Number(lic.graceDays || 30))
+    }
+    lic._formatError = false
+    syncPoLicenseFieldAliases(lic)
+    await validateAndResolvePoLicenseEntryDuplicate(lic, item)
+    if (item && Array.isArray(item.licenseFiles)) {
+      item.licenseFiles = [...item.licenseFiles]
+    }
+  } catch (err: any) {
+    aiScanningModal.value.show = false
+    console.error('[processPoLicenseWithAI] Error:', err)
+    await openSrAlert({
+      variant: 'danger',
+      eyebrow: 'Lỗi phân tích AI',
+      title: 'Không thể gọi AI',
+      highlightLabel: 'CHI TIẾT',
+      highlightValue: String(err?.message || err || 'Lỗi kết nối'),
+      message: 'Có lỗi xảy ra khi phân tích file bằng AI. Vui lòng thử lại hoặc nhập tay.',
+      confirmText: 'Đóng'
+    })
+  } finally {
+    aiScanningModal.value.show = false
+    lic._aiProcessing = false
+    if (item && Array.isArray(item.licenseFiles)) {
+      item.licenseFiles = [...item.licenseFiles]
+    }
+  }
+}
+
+function getExistingLicensesCatalogFromMap() {
+  if (!licenseOldDataMap.value || typeof licenseOldDataMap.value !== 'object') return []
+  return Object.entries(licenseOldDataMap.value).map(([fbKey, rec]: [string, any]) => ({
+    ...(rec || {}),
+    firebaseKey: fbKey,
+    LICENSE_ID: String(rec?.LICENSE_ID || rec?.SERIAL_KEY || '').trim(),
+    PRODUCT_CODE: String(rec?.PRODUCT_CODE || '').trim(),
+    PRODUCT_NAME: String(rec?.PRODUCT_NAME || rec?.PRODUCT || '').trim(),
+    EXPIRATION_TIME: formatLicenseDateStr(rec?.EXPIRATION_TIME || rec?.END_DATE || ''),
+    _normLicId: normalizeLicenseIdKey(rec?.LICENSE_ID || rec?.SERIAL_KEY || ''),
+    _normProdCode: String(rec?.PRODUCT_CODE || '').trim().toUpperCase(),
+    _normExpDate: formatLicenseDateStr(rec?.EXPIRATION_TIME || rec?.END_DATE || '')
+  }))
+}
+
+async function validateAndResolvePoLicenseEntryDuplicate(licEntry: any, item: ImportItem | null): Promise<boolean> {
+  if (!licEntry) return true
+  const rawId = String(licEntry.LICENSE_ID || licEntry.SERIAL_KEY || '').trim()
+  const normId = normalizeLicenseIdKey(rawId)
+  if (!normId) return true
+
+  // 1. Kiểm tra trùng ngay trong danh sách licenseFiles đang gắn trên PO này
+  if (item && Array.isArray(item.licenseFiles)) {
+    const candExp = formatLicenseDateStr(licEntry.EXPIRATION_TIME || licEntry.END_DATE || '')
+    const sibling = item.licenseFiles.find(
+      other =>
+        other &&
+        other !== licEntry &&
+        other.id !== licEntry.id &&
+        normalizeLicenseIdKey(other.LICENSE_ID || other.SERIAL_KEY || '') === normId &&
+        formatLicenseDateStr(other.EXPIRATION_TIME || other.END_DATE || '') === candExp
+    )
+    if (sibling) {
+      await openSrAlert({
+        variant: 'danger',
+        eyebrow: 'Trùng License ID — Chặn thêm mới',
+        title: 'Bản quyền này đã có sẵn trong PO',
+        highlightLabel: 'LICENSE ID',
+        highlightValue: rawId,
+        message: `License ID "${rawId}" (Hết hạn: ${candExp || '—'}) đã có trong danh sách bản quyền của đơn hàng PO này. Hệ thống tự động loại bỏ bản tải lên bị trùng!`,
+        confirmText: 'Đã hiểu'
+      })
+      const removeIdx = item.licenseFiles.indexOf(licEntry)
+      if (removeIdx >= 0) {
+        item.licenseFiles.splice(removeIdx, 1)
+        item.activeLicenseFileIdx = Math.max(0, item.licenseFiles.length - 1)
+      }
+      return false
+    }
+  }
+
+  // 2. Kiểm tra trùng với toàn bộ Kho Bản Quyền (license_old_data) theo Phương án 2
+  const catalog = getExistingLicensesCatalogFromMap()
+  const excludeKey = String(licEntry.licenseFirebaseId || licEntry.firebase_id || '').trim()
+  const dup = inspectLicenseDuplicate(licEntry, catalog, { excludeFirebaseKey: excludeKey })
+  if (!dup.isDuplicate) return true
+
+  if (dup.status === 'exact_duplicate') {
+    await openSrAlert({
+      variant: 'danger',
+      eyebrow: 'Trùng License ID — Chặn thêm mới',
+      title: 'License ID đã tồn tại trên hệ thống',
+      highlightLabel: 'LICENSE ID',
+      highlightValue: rawId,
+      message: dup.message,
+      confirmText: 'Đã hiểu'
+    })
+    if (item && Array.isArray(item.licenseFiles)) {
+      const removeIdx = item.licenseFiles.indexOf(licEntry)
+      if (removeIdx >= 0) {
+        item.licenseFiles.splice(removeIdx, 1)
+        item.activeLicenseFileIdx = Math.max(0, item.licenseFiles.length - 1)
+      }
+    }
+    return false
+  }
+
+  if (dup.status === 'renewal_candidate' && dup.matchedRecord?.firebaseKey) {
+    const allowRenewal = await openSrConfirm({
+      variant: 'warning',
+      eyebrow: 'License ID đã tồn tại (Gia hạn kỳ mới)',
+      title: 'Cập nhật Gia hạn vào License cũ?',
+      highlightLabel: 'LICENSE ID',
+      highlightValue: `${rawId} (${dup.oldExpDate || '—'} → ${dup.newExpDate || '—'})`,
+      message: `${dup.message}\n\nHệ thống chặn tạo mới bản ghi trùng mã. Bạn có muốn CẬP NHẬT (Ghi đè) kỳ hạn & chứng từ mới vào License cũ này không?`,
+      confirmText: 'Cập nhật vào License cũ',
+      cancelText: 'Hủy thêm'
+    })
+    if (allowRenewal) {
+      licEntry.licenseFirebaseId = dup.matchedRecord.firebaseKey
+      licEntry.firebase_id = dup.matchedRecord.firebaseKey
+      return true
+    } else {
+      if (item && Array.isArray(item.licenseFiles)) {
+        const removeIdx = item.licenseFiles.indexOf(licEntry)
+        if (removeIdx >= 0) {
+          item.licenseFiles.splice(removeIdx, 1)
+          item.activeLicenseFileIdx = Math.max(0, item.licenseFiles.length - 1)
+        }
+      }
+      return false
+    }
+  }
+
+  return true
+}
+
+async function handleLicenseFilesUpload(filesArr: File[], item: ImportItem | null) {
+  if (!item || !filesArr || filesArr.length === 0) return
+
+  if (!Array.isArray(item.licenseFiles)) {
+    item.licenseFiles = []
+  }
+
+  const nowStr = getFormattedNow()
+
+  for (let i = 0; i < filesArr.length; i++) {
+    const file = filesArr[i]
+    const previewUrl = URL.createObjectURL(file)
+    const rawEntry: LicenseAttachmentItem = {
+      id: 'LIC_TMP_' + Date.now() + '_' + i + '_' + Math.floor(Math.random() * 1000),
+      ten_file: file.name,
+      link_file: '',
+      NAME_FILE: file.name,
+      LINK_FILE: '',
+      ngay_tai: nowStr,
+      rawFile: file,
+      previewUrl,
+      scanning: true,
+      _formatError: false,
+      _rawText: '',
+      _aiProcessing: false,
+      LICENSE_ID: '',
+      PRODUCT_CODE: '',
+      CUSTOMER: '',
+      PRODUCT_NAME: '',
+      LICENSE_VOLUME: '',
+      LICENSE_TYPE: '',
+      NHA_SAN_XUAT: '',
+      LOCALIZATION: '',
+      DATE_OF_LICENSE: '',
+      EXPIRATION_TIME: '',
+      graceDays: 30,
+      SO_NGAY_HIEU_LUC: '',
+      LICENSE_DESCRIPTION: '',
+      PRODUCT: '',
+      SERIAL_KEY: '',
+      START_DATE: '',
+      END_DATE: '',
+      GRACE_PERIOD: '',
+      DURATION: '',
+      NOTE: ''
+    }
+    item.licenseFiles.push(rawEntry)
+    const entryIdx = item.licenseFiles.length - 1
+    const targetEntry = item.licenseFiles[entryIdx]
+    item.activeLicenseFileIdx = entryIdx
+    item.activePreviewTab = 'license'
+    item.licenseFiles = [...item.licenseFiles]
+    isModalDirty.value = true
+
+    try {
+      // 1. Quét chuẩn theo cơ chế bên trang License (Kaspersky, Sophos, Acronis, Delinea)
+      const parsedRecords = await extractLicenseRecordsFromFile(file, false)
+      targetEntry.scanning = false
+
+      const first: any = Array.isArray(parsedRecords) && parsedRecords.length > 0 ? parsedRecords[0] : null
+      const hasExtractedData = Boolean(
+        first &&
+        !first._formatError &&
+        (first.LICENSE_ID || first.PRODUCT_NAME || first.CUSTOMER || first.PRODUCT_CODE || first.EXPIRATION_TIME)
+      )
+
+      if (hasExtractedData) {
+        targetEntry._formatError = false
+        targetEntry._rawText = String(first._rawText || '')
+        targetEntry.CUSTOMER = String(first.CUSTOMER || '').trim()
+        targetEntry.PRODUCT_NAME = String(first.PRODUCT_NAME || first.PRODUCT || '').trim()
+        targetEntry.LICENSE_ID = String(first.LICENSE_ID || first.SERIAL_KEY || '').trim()
+        targetEntry.PRODUCT_CODE = String(first.PRODUCT_CODE || '').trim()
+        targetEntry.LICENSE_VOLUME = String(first.LICENSE_VOLUME || '').trim()
+        targetEntry.LICENSE_TYPE = String(first.LICENSE_TYPE || '').trim()
+        targetEntry.NHA_SAN_XUAT = String(first.NHA_SAN_XUAT || '').trim()
+        targetEntry.LOCALIZATION = String(first.LOCALIZATION || '').trim()
+        targetEntry.DATE_OF_LICENSE = String(first.DATE_OF_LICENSE || first.START_DATE || '').trim()
+        targetEntry.EXPIRATION_TIME = String(first.EXPIRATION_TIME || first.END_DATE || '').trim()
+        targetEntry.SO_NGAY_HIEU_LUC = String(
+          first.SO_NGAY_HIEU_LUC ||
+          first.GRACE_PERIOD ||
+          (targetEntry.EXPIRATION_TIME ? addDaysToLicenseDate(targetEntry.EXPIRATION_TIME, Number(targetEntry.graceDays || 30)) : '')
+        ).trim()
+        targetEntry.LICENSE_DESCRIPTION = String(first.LICENSE_DESCRIPTION || first.NOTE || '').trim()
+        syncPoLicenseFieldAliases(targetEntry)
+        await validateAndResolvePoLicenseEntryDuplicate(targetEntry, item)
+
+        // Nếu file có nhiều sản phẩm / trang chứa nhiều License, tự động tách thêm các bản quyền tiếp theo
+        for (let pIdx = 1; pIdx < parsedRecords.length; pIdx++) {
+          const rec: any = parsedRecords[pIdx]
+          const recExp = String(rec.EXPIRATION_TIME || rec.END_DATE || '').trim()
+          const nextEntry: LicenseAttachmentItem = {
+            id: 'LIC_TMP_' + Date.now() + '_' + i + '_' + pIdx + '_' + Math.floor(Math.random() * 1000),
+            ten_file: file.name,
+            link_file: '',
+            NAME_FILE: file.name,
+            LINK_FILE: '',
+            ngay_tai: nowStr,
+            rawFile: file,
+            previewUrl,
+            scanning: false,
+            _formatError: Boolean(rec._formatError),
+            _rawText: String(rec._rawText || first._rawText || ''),
+            _aiProcessing: false,
+            CUSTOMER: String(rec.CUSTOMER || targetEntry.CUSTOMER || '').trim(),
+            PRODUCT_NAME: String(rec.PRODUCT_NAME || rec.PRODUCT || '').trim(),
+            LICENSE_ID: String(rec.LICENSE_ID || rec.SERIAL_KEY || '').trim(),
+            PRODUCT_CODE: String(rec.PRODUCT_CODE || '').trim(),
+            LICENSE_VOLUME: String(rec.LICENSE_VOLUME || '').trim(),
+            LICENSE_TYPE: String(rec.LICENSE_TYPE || '').trim(),
+            NHA_SAN_XUAT: String(rec.NHA_SAN_XUAT || '').trim(),
+            LOCALIZATION: String(rec.LOCALIZATION || '').trim(),
+            DATE_OF_LICENSE: String(rec.DATE_OF_LICENSE || rec.START_DATE || '').trim(),
+            EXPIRATION_TIME: recExp,
+            graceDays: 30,
+            SO_NGAY_HIEU_LUC: String(
+              rec.SO_NGAY_HIEU_LUC ||
+              rec.GRACE_PERIOD ||
+              (recExp ? addDaysToLicenseDate(recExp, 30) : '')
+            ).trim(),
+            LICENSE_DESCRIPTION: String(rec.LICENSE_DESCRIPTION || rec.NOTE || '').trim(),
+            PRODUCT: '',
+            SERIAL_KEY: '',
+            START_DATE: '',
+            END_DATE: '',
+            GRACE_PERIOD: '',
+            DURATION: '',
+            NOTE: ''
+          }
+          syncPoLicenseFieldAliases(nextEntry)
+          item.licenseFiles.push(nextEntry)
+          await validateAndResolvePoLicenseEntryDuplicate(nextEntry, item)
+        }
+        item.licenseFiles = [...item.licenseFiles]
+      } else {
+        // 2. Không nhận diện được định dạng chuẩn -> Hỏi người dùng có muốn dùng AI để quét không
+        targetEntry._formatError = true
+        targetEntry._rawText = String(first?._rawText || '')
+        item.licenseFiles = [...item.licenseFiles]
+
+        const allowAi = await openSrConfirm({
+          variant: 'warning',
+          eyebrow: 'Không nhận diện được định dạng chuẩn',
+          title: 'Sử dụng AI để quét thông số License?',
+          highlightLabel: 'TỆP LICENSE',
+          highlightValue: file.name,
+          message: `Hệ thống không tự động nhận diện được định dạng chuẩn của file "${file.name}". Bạn có muốn sử dụng AI để quét và bóc tách thông số License không?`,
+          confirmText: 'Sử dụng AI để quét',
+          cancelText: 'Để tự nhập tay'
+        })
+        if (allowAi) {
+          await processPoLicenseWithAI(targetEntry, item)
+        }
+      }
+    } catch (err) {
+      targetEntry.scanning = false
+      targetEntry._formatError = true
+      item.licenseFiles = [...item.licenseFiles]
+      console.warn('[handleLicenseFilesUpload] Parse error:', err)
+
+      const allowAi = await openSrConfirm({
+        variant: 'warning',
+        eyebrow: 'Không nhận diện được định dạng chuẩn',
+        title: 'Sử dụng AI để quét thông số License?',
+        highlightLabel: 'TỆP LICENSE',
+        highlightValue: file.name,
+        message: `Hệ thống không tự động nhận diện được định dạng chuẩn của file "${file.name}". Bạn có muốn sử dụng AI để quét và bóc tách thông số License không?`,
+        confirmText: 'Sử dụng AI để quét',
+        cancelText: 'Để tự nhập tay'
+      })
+      if (allowAi) {
+        await processPoLicenseWithAI(targetEntry, item)
+      }
+    }
+  }
+
+  item.activeLicenseFileIdx = Math.max(0, item.licenseFiles.length - 1)
+  item.activePreviewTab = 'license'
+  item.licenseFiles = [...item.licenseFiles]
+  isModalDirty.value = true
+}
+
+async function onLicenseFilesSelected(e: Event) {
+  const target = e.target as HTMLInputElement
+  if (!target.files || target.files.length === 0) return
+  const filesArr = Array.from(target.files)
+  target.value = ''
+  await handleLicenseFilesUpload(filesArr, licenseFilesTargetItem.value)
+}
+
+function removeLicenseFile(item: ImportItem, idx: number | string) {
+  const numIdx = Number(idx)
+  if (!item || !Array.isArray(item.licenseFiles) || numIdx < 0 || numIdx >= item.licenseFiles.length) return
+  const removed = item.licenseFiles[numIdx]
+  if (removed?.previewUrl && removed.previewUrl.startsWith('blob:')) {
+    try {
+      URL.revokeObjectURL(removed.previewUrl)
+    } catch (_) {}
+  }
+  item.licenseFiles.splice(numIdx, 1)
+  const curIdx = Number(item.activeLicenseFileIdx || 0)
+  if (item.licenseFiles.length === 0) {
+    item.activeLicenseFileIdx = 0
+  } else if (curIdx >= item.licenseFiles.length) {
+    item.activeLicenseFileIdx = item.licenseFiles.length - 1
+  }
+  isModalDirty.value = true
+}
+
+const activeExistingLicensePoItem = computed<ImportItem | null>(() => {
+  if (existingLicenseTargetItem.value) return existingLicenseTargetItem.value
+  const items = multiEditModal.value?.items || []
+  return items[activeItemIdx.value] || items[0] || null
+})
+
+function toggleExistingLicensePicker(item: ImportItem) {
+  existingLicenseTargetItem.value = item
+  if (!showExistingLicensePicker.value) {
+    existingLicenseSearchQuery.value = ''
+    existingLicenseVisibleCount.value = EXISTING_LICENSE_PAGE_SIZE
+    const recCount = getAvailableCustomerLicensesForPo(item).length
+    existingLicenseFilterScope.value = recCount > 0 ? 'recommended' : 'all'
+    showExistingLicensePicker.value = true
+  } else {
+    showExistingLicensePicker.value = false
+  }
+}
+
+watch([existingLicenseSearchQuery, existingLicenseFilterScope], () => {
+  existingLicenseVisibleCount.value = EXISTING_LICENSE_PAGE_SIZE
+  if (existingLicenseRepoBodyRef.value) {
+    existingLicenseRepoBodyRef.value.scrollTop = 0
+  }
+})
+
+function getAllRepositoryLicensesForPo(item: ImportItem | null | undefined): Array<any> {
+  if (!licenseOldDataMap.value) return []
+  const attachedIds = new Set(
+    (item?.licenseFiles || [])
+      .map(l => String(l?.licenseFirebaseId || l?.id || '').trim())
+      .filter(Boolean)
+  )
+  const targetMaKH = String(item?.linkedMaKH || item?.row?.Ma_khach_hang || '').trim().toUpperCase()
+  const targetMaCty = String(item?.linkedMaCongTy || item?.row?.Ma_cong_ty || '').trim().toUpperCase()
+  const targetName = String(item?.customer || item?.recipient || item?.row?.Ten_cong_ty || '').trim().toLowerCase()
+
+  const list: Array<any> = []
+  Object.entries(licenseOldDataMap.value).forEach(([fbId, rec]: [string, any]) => {
+    if (!rec || typeof rec !== 'object') return
+    const recMaKH = String(rec.MA_KHACH_HANG || '').trim().toUpperCase()
+    const recTenCty = String(rec.TEN_CONG_TY || '').trim().toLowerCase()
+    const recVendorCus = String(rec.CUSTOMER || '').trim().toLowerCase()
+    const isAttached = attachedIds.has(fbId)
+
+    let score = 0
+    if (targetMaKH && recMaKH && targetMaKH === recMaKH) score += 100
+    else if (targetMaCty && recMaKH && recMaKH.includes(targetMaCty)) score += 80
+    else if (targetName && (recTenCty.includes(targetName) || (targetName.includes(recTenCty) && recTenCty.length > 3))) score += 60
+    else if (targetName && recVendorCus && (recVendorCus.includes(targetName) || targetName.includes(recVendorCus))) score += 40
+    else if (!rec.SO_PO) score += 10
+
+    list.push({
+      firebaseId: fbId,
+      score,
+      isAttached,
+      ...rec
+    })
+  })
+
+  return list.sort((a, b) => {
+    if (a.isAttached !== b.isAttached) return a.isAttached ? 1 : -1
+    if (b.score !== a.score) return b.score - a.score
+    return String(a.PRODUCT_NAME || a.PRODUCT || '').localeCompare(String(b.PRODUCT_NAME || b.PRODUCT || ''), 'vi')
+  })
+}
+
+function getAvailableCustomerLicensesForPo(item: ImportItem | null | undefined): Array<any> {
+  if (!item || !licenseOldDataMap.value) return []
+  return getAllRepositoryLicensesForPo(item)
+    .filter(cand => !cand.isAttached && cand.score > 0)
+}
+
+const totalFilteredModalLicenseCandidates = computed<Array<any>>(() => {
+  if (!showExistingLicensePicker.value) return []
+  const item = activeExistingLicensePoItem.value
+  if (!item) return []
+  const baseList =
+    existingLicenseFilterScope.value === 'recommended'
+      ? getAvailableCustomerLicensesForPo(item)
+      : getAllRepositoryLicensesForPo(item)
+
+  const q = String(existingLicenseSearchQuery.value || '').trim().toLowerCase()
+  if (!q) return baseList
+
+  return baseList.filter(cand => {
+    const hay = [
+      cand.PRODUCT_NAME,
+      cand.PRODUCT,
+      cand.LICENSE_ID,
+      cand.SERIAL_KEY,
+      cand.CUSTOMER,
+      cand.TEN_CONG_TY,
+      cand.MA_KHACH_HANG,
+      cand.NHA_SAN_XUAT,
+      cand.PRODUCT_CODE,
+      cand.SO_PO,
+      cand.NAME_FILE
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+    return hay.includes(q)
+  })
+})
+
+const filteredModalLicenseCandidates = computed<Array<any>>(() => {
+  return totalFilteredModalLicenseCandidates.value.slice(0, existingLicenseVisibleCount.value)
+})
+
+const hasMoreModalLicenseCandidates = computed<boolean>(() => {
+  return existingLicenseVisibleCount.value < totalFilteredModalLicenseCandidates.value.length
+})
+
+function loadMoreExistingLicenses() {
+  if (!hasMoreModalLicenseCandidates.value) return
+  existingLicenseVisibleCount.value = Math.min(
+    totalFilteredModalLicenseCandidates.value.length,
+    existingLicenseVisibleCount.value + EXISTING_LICENSE_PAGE_SIZE
+  )
+}
+
+function onExistingLicenseRepoScroll(ev: Event) {
+  if (!hasMoreModalLicenseCandidates.value) return
+  const el = ev.target as HTMLElement | null
+  if (!el) return
+  if (el.scrollTop + el.clientHeight >= el.scrollHeight - 160) {
+    loadMoreExistingLicenses()
+  }
+}
+
+function linkExistingLicenseRecordToPo(item: ImportItem | null | undefined, cand: any) {
+  if (!item || !cand) return
+  if (!Array.isArray(item.licenseFiles)) {
+    item.licenseFiles = []
+  }
+  const fbId = String(cand.firebaseId || cand.firebase_id || '').trim()
+  if (fbId && item.licenseFiles.some(l => (l.licenseFirebaseId || l.id) === fbId)) {
+    const existingIdx = item.licenseFiles.findIndex(l => (l.licenseFirebaseId || l.id) === fbId)
+    if (existingIdx >= 0) item.activeLicenseFileIdx = existingIdx
+    poLicenseMobileSubTab.value = 'specs'
+    showExistingLicensePicker.value = false
+    return
+  }
+  const normalized = normalizePoLicenseEntry(
+    {
+      ...cand,
+      id: fbId || ('LIC_' + Date.now()),
+      licenseFirebaseId: fbId,
+      CUSTOMER: String(cand.CUSTOMER || item.customer || '').trim()
+    },
+    item.licenseFiles.length
+  )
+  item.licenseFiles.push({
+    ...normalized,
+    ngay_tai: getFormattedNow()
+  })
+  item.activeLicenseFileIdx = Math.max(0, item.licenseFiles.length - 1)
+  poLicenseMobileSubTab.value = 'specs'
+  showExistingLicensePicker.value = false
+  isModalDirty.value = true
+}
+
+function addManualEmptyLicenseToPo(item: ImportItem) {
+  if (!item) return
+  if (!Array.isArray(item.licenseFiles)) {
+    item.licenseFiles = []
+  }
+  const defaultFileName = `License #${item.licenseFiles.length + 1}`
+  const defaultDesc = `PO ${item.soPO || ''}`.trim()
+  item.licenseFiles.push({
+    id: 'LIC_MANUAL_' + Date.now(),
+    ten_file: defaultFileName,
+    link_file: '',
+    NAME_FILE: defaultFileName,
+    LINK_FILE: '',
+    ngay_tai: getFormattedNow(),
+    LICENSE_ID: '',
+    PRODUCT_CODE: '',
+    CUSTOMER: String(item.customer || item.recipient || '').trim(),
+    PRODUCT_NAME: '',
+    LICENSE_VOLUME: '',
+    LICENSE_TYPE: '',
+    NHA_SAN_XUAT: '',
+    LOCALIZATION: '',
+    DATE_OF_LICENSE: '',
+    EXPIRATION_TIME: '',
+    graceDays: 10,
+    SO_NGAY_HIEU_LUC: '',
+    LICENSE_DESCRIPTION: defaultDesc,
+    PRODUCT: '',
+    SERIAL_KEY: '',
+    START_DATE: '',
+    END_DATE: '',
+    GRACE_PERIOD: '',
+    DURATION: '',
+    NOTE: defaultDesc
+  })
+  item.activeLicenseFileIdx = Math.max(0, item.licenseFiles.length - 1)
+  showExistingLicensePicker.value = false
+  isModalDirty.value = true
+}
+
 // ─── Scan Chứng Từ COM (Ảnh / PDF / Word / Excel) ───
 const scanInput = ref<HTMLInputElement | null>(null)
 const scanTarget = ref<ImportItem | null>(null)
@@ -26336,7 +29571,8 @@ function handlePoModalClipboardPaste(e: ClipboardEvent) {
     mh: 'Mua_hang_paste',
     dxmh: 'DXMH_paste',
     img: 'Chung_tu_COM',
-    other: 'Tai_lieu_khac'
+    other: 'Tai_lieu_khac',
+    license: 'License_paste'
   }
   const tabPrefix = prefixByTab[activeTab] || 'Tai_lieu_paste'
 
@@ -26394,6 +29630,9 @@ function handlePoModalClipboardPaste(e: ClipboardEvent) {
       scanTargetItem: activeItem,
       importTargetVal: null
     }
+  } else if (activeTab === 'license') {
+    licenseFilesTargetItem.value = activeItem
+    void handleLicenseFilesUpload(normalizedFiles, activeItem)
   } else {
     otherFilesTargetItem.value = activeItem
     void handleOtherFilesUpload(normalizedFiles, activeItem)
@@ -29190,11 +32429,16 @@ const showExportModal = ref(false)
 const showExportPreview = ref(false)
 const exportFromSelectionMode = ref(false)
 const exporting = ref(false)
+const exportZoom = ref<number>(100)
+const exportSearchQuery = ref<string>('')
+const exportMobilePane = ref<'filter' | 'preview'>('filter')
 
 watch(showExportModal, (val) => {
   if (!val) {
     showExportPreview.value = false
     exportFromSelectionMode.value = false
+    exportSearchQuery.value = ''
+    exportMobilePane.value = 'filter'
   }
 })
 
@@ -29235,15 +32479,172 @@ function openExportFromToolbar() {
   }
   exportFromSelectionMode.value = false
   exportRecords.value = sortRowsForExport(rowsForExportFilter.value)
-  showExportPreview.value = false
+  showExportPreview.value = true
   showExportModal.value = true
 }
 
 function switchExportToTimeFilterMode() {
   exportFromSelectionMode.value = false
   exportRecords.value = sortRowsForExport(rowsForExportFilter.value)
-  showExportPreview.value = false
+  showExportPreview.value = true
 }
+
+function applyExportTimePreset(preset: 'this_month' | 'last_month' | 'this_quarter' | 'this_year' | 'all') {
+  exportFromSelectionMode.value = false
+  const now = new Date()
+  const curY = now.getFullYear()
+  const curM = now.getMonth() + 1
+
+  if (preset === 'this_month') {
+    const mStr = `${curY}-${String(curM).padStart(2, '0')}`
+    exportTimeMode.value = 'month'
+    exportMonthFrom.value = mStr
+    exportMonthTo.value = mStr
+  } else if (preset === 'last_month') {
+    const lastD = new Date(curY, curM - 2, 1)
+    const mStr = `${lastD.getFullYear()}-${String(lastD.getMonth() + 1).padStart(2, '0')}`
+    exportTimeMode.value = 'month'
+    exportMonthFrom.value = mStr
+    exportMonthTo.value = mStr
+  } else if (preset === 'this_quarter') {
+    const qStartM = Math.floor((curM - 1) / 3) * 3 + 1
+    const qEndM = qStartM + 2
+    exportTimeMode.value = 'month'
+    exportMonthFrom.value = `${curY}-${String(qStartM).padStart(2, '0')}`
+    exportMonthTo.value = `${curY}-${String(qEndM).padStart(2, '0')}`
+  } else if (preset === 'this_year') {
+    exportTimeMode.value = 'year'
+    exportYearFrom.value = String(curY)
+    exportYearTo.value = String(curY)
+  } else {
+    exportTimeMode.value = 'year'
+    exportYearFrom.value = ''
+    exportYearTo.value = ''
+  }
+}
+
+function isExportPresetActive(preset: 'this_month' | 'last_month' | 'this_quarter' | 'this_year' | 'all'): boolean {
+  if (exportFromSelectionMode.value) return false
+  const now = new Date()
+  const curY = now.getFullYear()
+  const curM = now.getMonth() + 1
+  if (preset === 'this_month') {
+    const mStr = `${curY}-${String(curM).padStart(2, '0')}`
+    return exportTimeMode.value === 'month' && exportMonthFrom.value === mStr && exportMonthTo.value === mStr
+  }
+  if (preset === 'last_month') {
+    const lastD = new Date(curY, curM - 2, 1)
+    const mStr = `${lastD.getFullYear()}-${String(lastD.getMonth() + 1).padStart(2, '0')}`
+    return exportTimeMode.value === 'month' && exportMonthFrom.value === mStr && exportMonthTo.value === mStr
+  }
+  if (preset === 'this_quarter') {
+    const qStartM = Math.floor((curM - 1) / 3) * 3 + 1
+    const qEndM = qStartM + 2
+    const fStr = `${curY}-${String(qStartM).padStart(2, '0')}`
+    const tStr = `${curY}-${String(qEndM).padStart(2, '0')}`
+    return exportTimeMode.value === 'month' && exportMonthFrom.value === fStr && exportMonthTo.value === tStr
+  }
+  if (preset === 'this_year') {
+    return exportTimeMode.value === 'year' && String(exportYearFrom.value) === String(curY) && String(exportYearTo.value) === String(curY)
+  }
+  if (preset === 'all') {
+    return exportTimeMode.value === 'year' && !exportYearFrom.value && !exportYearTo.value
+  }
+  return false
+}
+
+function removeExportRecordItem(rowObj: any) {
+  const idx = exportRecords.value.indexOf(rowObj)
+  if (idx >= 0) {
+    exportRecords.value.splice(idx, 1)
+  }
+}
+
+function restoreAllExportRecords() {
+  const base = exportFromSelectionMode.value ? selectedPoRows.value : rowsForExportFilter.value
+  exportRecords.value = sortRowsForExport(base)
+}
+
+const exportRemovedCount = computed(() => {
+  const baseLen = exportFromSelectionMode.value ? selectedPoRows.value.length : rowsForExportFilter.value.length
+  return Math.max(0, baseLen - exportRecords.value.length)
+})
+
+function fmtExcelMoney(val: any): string {
+  const n = Number(val) || 0
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(Math.round(n))
+}
+
+function fmtExcelPct(ratio: any, r?: any): string {
+  const n = Number(ratio) || 0
+  if (r && isPoRatioRounded(r)) {
+    return `${Math.round(n * 100)}%`
+  }
+  return `${(n * 100).toFixed(2)}%`
+}
+
+const exportFilteredSidebarRecords = computed(() => {
+  const q = exportSearchQuery.value.trim().toLowerCase()
+  return exportRecords.value
+    .map((row, idx) => ({ row, idx }))
+    .filter(({ row }) => {
+      if (!q) return true
+      const hay = [
+        row.So_PO,
+        row.Ten_cong_ty,
+        row.content_of_contract_PO,
+        row.MST,
+        row.account_manager_name,
+        row.Ten_nha_cung_cap
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+      return hay.includes(q)
+    })
+})
+
+const exportSummaryStats = computed(() => {
+  const list = exportRecords.value
+  let totalDsb = 0
+  let totalGiaMua = 0
+  let totalTongCP = 0
+  let totalGrossCom = 0
+  let totalThue = 0
+  let totalNetCom = 0
+  let totalNetPO = 0
+  let totalNetMargin = 0
+
+  for (const r of list) {
+    totalDsb += doanhSoBan(r)
+    totalGiaMua += giaMua(r)
+    totalTongCP += tongCP(r)
+    totalGrossCom += grossCom(r)
+    totalThue += thue(r)
+    totalNetCom += netCom(r)
+    totalNetPO += netPO(r)
+    totalNetMargin += netMargin(r)
+  }
+
+  return {
+    count: list.length,
+    totalDsb,
+    totalGiaMua,
+    totalTongCP,
+    totalGrossCom,
+    totalThue,
+    totalNetCom,
+    totalNetPO,
+    totalNetMargin,
+    nmNetPoPct: totalNetPO !== 0 ? (totalNetMargin / totalNetPO) * 100 : 0,
+    ncNetPoPct: totalNetPO !== 0 ? (totalNetCom / totalNetPO) * 100 : 0,
+    nmVolPct: totalDsb !== 0 ? (totalNetMargin / totalDsb) * 100 : 0,
+    ncVolPct: totalDsb !== 0 ? (totalNetCom / totalDsb) * 100 : 0
+  }
+})
 
 const rowsForExportFilter = computed(() => {
   let list = rows.value
@@ -29395,10 +32796,13 @@ async function exportRowsToExcel(targetRows: any[], titleCode: string): Promise<
       const nc = netCom(r)
       const np = netPO(r)
       const nm = netMargin(r)
-      const nmPct = np !== 0 ? nm / np : 0
-      const ncPct = np !== 0 ? nc / np : 0
-      const nmVolPct = dsb !== 0 ? nm / dsb : 0
-      const ncVolPct = dsb !== 0 ? nc / dsb : 0
+      const isRoundedRatio = isPoRatioRounded(r)
+      const roundExcelRatio = (rawRatio: number) =>
+        isRoundedRatio ? Math.round(rawRatio * 100) / 100 : rawRatio
+      const nmPct = roundExcelRatio(np !== 0 ? nm / np : 0)
+      const ncPct = roundExcelRatio(np !== 0 ? nc / np : 0)
+      const nmVolPct = roundExcelRatio(dsb !== 0 ? nm / dsb : 0)
+      const ncVolPct = roundExcelRatio(dsb !== 0 ? nc / dsb : 0)
 
       const vals: any[] = [
         idx + 1,                        // 1 (A): STT
@@ -29437,7 +32841,7 @@ async function exportRowsToExcel(targetRows: any[], titleCode: string): Promise<
           cell.numFmt = moneyFmt
         }
         if (ci >= 16 && ci <= 19) {
-          cell.numFmt = pctFmtEx
+          cell.numFmt = isRoundedRatio ? '0%' : pctFmtEx
         }
       })
       row.commit()
@@ -35831,9 +39235,9 @@ const isAnySaleModalOpen = computed(() => Boolean(
   background: rgba(168, 85, 247, 0.14);
 }
 
-/* LEFT PANE: UNIFIED DOCUMENT VIEWER */
+/* LEFT PANE: UNIFIED DOCUMENT VIEWER (Tỷ lệ chuẩn 40% - 60%) */
 .sr-po-left-pane {
-  flex: 0 0 460px;
+  flex: 0 0 40%;
   display: flex;
   flex-direction: column;
   background: linear-gradient(180deg, rgba(15, 29, 25, 0.88) 0%, rgba(10, 20, 17, 0.95) 100%);
@@ -35926,10 +39330,363 @@ const isAnySaleModalOpen = computed(() => Boolean(
   background: rgba(16, 185, 129, 0.18);
 }
 
-/* 5-TAB ATTACHMENT SWITCHER STRIP */
+/* DANH SÁCH TOÀN BỘ FILE ĐÍNH KÈM Ở TRÊN CÁC NÚT CHỨNG TỪ */
+.sr-po-all-files-section {
+  padding: 8px 12px;
+  background: rgba(9, 18, 15, 0.55);
+  border-bottom: 1px solid rgba(52, 211, 153, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.sr-po-all-files-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sr-po-all-files-select-all {
+  width: auto;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #cbd5e1;
+  cursor: pointer;
+  user-select: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.sr-po-doc-check {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  border-radius: 4px;
+  border: 1.5px solid rgba(148, 163, 184, 0.48);
+  background: rgba(15, 23, 42, 0.7);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: all 0.14s ease;
+}
+
+.sr-po-doc-check:hover {
+  border-color: #34d399;
+}
+
+.sr-po-doc-check.selected {
+  background: #10b981;
+  border-color: #10b981;
+}
+
+.sr-po-all-files-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.sr-po-all-files-action-btn {
+  width: auto;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.sr-po-all-files-action-btn.is-selected {
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #38bdf8;
+}
+
+.sr-po-all-files-action-btn.is-selected:hover:not(:disabled) {
+  background: rgba(56, 189, 248, 0.24);
+  color: #ffffff;
+}
+
+.sr-po-all-files-action-btn.is-all {
+  background: rgba(16, 185, 129, 0.16);
+  border: 1px solid rgba(52, 211, 153, 0.38);
+  color: #34d399;
+}
+
+.sr-po-all-files-action-btn.is-all:hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.28);
+  color: #ffffff;
+}
+
+.sr-po-all-files-action-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.sr-po-all-files-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 14px;
+  row-gap: 8px;
+  max-height: 185px;
+  overflow-y: auto;
+  padding-top: 2px;
+}
+
+.sr-po-all-file-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 2px 0;
+  background: transparent;
+  border: none;
+}
+
+.sr-po-all-file-row > .sr-po-doc-check {
+  margin-top: 0;
+}
+
+.sr-po-all-file-name {
+  width: auto;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 0%;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  color: #e2e8f0;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.45;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  cursor: pointer;
+  transition: color 0.14s ease;
+}
+
+.sr-po-all-file-label-wrap {
+  flex: 1 1 0%;
+  min-width: 0;
+  line-height: 1.45;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.sr-po-all-file-svg {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+
+.sr-po-all-file-svg svg {
+  width: 44px !important;
+  height: 44px !important;
+  display: block;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.28));
+}
+
+.sr-po-all-file-bg-tag {
+  margin-left: 0 !important;
+  margin-right: 6px;
+  padding: 1.5px 6px;
+  font-size: 10.5px;
+  vertical-align: 1px;
+}
+
+.sr-po-all-file-text {
+  vertical-align: baseline;
+}
+
+.sr-po-all-file-name:hover .sr-po-all-file-text {
+  color: #38bdf8;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.sr-po-all-file-name.active .sr-po-all-file-text {
+  color: #34d399;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.sr-po-all-file-item-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.sr-po-all-file-item-actions .sr-po1-fe-btn {
+  width: auto;
+  margin: 0;
+  height: 23px;
+  padding: 0 7px;
+  font-size: 11px;
+  border-radius: 5px;
+}
+
+.sr-po-modal.is-light .sr-po-all-files-section {
+  background: #f8fafc;
+  border-bottom-color: #cbd5e1;
+}
+
+.sr-po-modal.is-light .sr-po-all-files-select-all {
+  color: #334155;
+}
+
+.sr-po-modal.is-light .sr-po-doc-check {
+  background: #ffffff;
+  border-color: #94a3b8;
+}
+
+.sr-po-modal.is-light .sr-po-doc-check:hover {
+  border-color: #0284c7;
+}
+
+.sr-po-modal.is-light .sr-po-doc-check.selected {
+  background: #0284c7;
+  border-color: #0284c7;
+  color: #ffffff;
+}
+
+.sr-po-modal.is-light .sr-po-all-files-action-btn.is-selected {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+  color: #0284c7;
+}
+
+.sr-po-modal.is-light .sr-po-all-files-action-btn.is-selected:hover:not(:disabled) {
+  background: #0284c7;
+  color: #ffffff;
+}
+
+.sr-po-modal.is-light .sr-po-all-files-action-btn.is-all {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+  color: #059669;
+}
+
+.sr-po-modal.is-light .sr-po-all-files-action-btn.is-all:hover:not(:disabled) {
+  background: #059669;
+  color: #ffffff;
+}
+
+.sr-po-modal.is-light .sr-po-all-file-name {
+  color: #1e293b;
+}
+
+.sr-po-modal.is-light .sr-po-all-file-svg.is-excel {
+  color: #059669;
+}
+
+.sr-po-modal.is-light .sr-po-all-file-svg.is-pdf {
+  color: #e11d48;
+}
+
+.sr-po-modal.is-light .sr-po-all-file-svg.is-word {
+  color: #0284c7;
+}
+
+.sr-po-modal.is-light .sr-po-all-file-svg.is-image {
+  color: #2563eb;
+}
+
+.sr-po-modal.is-light .sr-po-all-file-svg.is-file {
+  color: #7c3aed;
+}
+
+.sr-po-modal.is-light .sr-po-all-file-name:hover .sr-po-all-file-text {
+  color: #0284c7;
+}
+
+.sr-po-modal.is-light .sr-po-all-file-name.active .sr-po-all-file-text {
+  color: #0284c7;
+  font-weight: 700;
+}
+
+.sr-po-modal.is-light .sr-po-all-file-item-actions .sr-po1-fe-btn.is-view {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+  color: #0284c7;
+}
+
+.sr-po-modal.is-light .sr-po-all-file-item-actions .sr-po1-fe-btn.is-view:hover {
+  background: #0284c7;
+  border-color: #0284c7;
+  color: #ffffff;
+}
+
+.sr-po-modal.is-light .sr-po-all-file-item-actions .sr-po1-fe-btn.is-dl {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+  color: #059669;
+}
+
+.sr-po-modal.is-light .sr-po-all-file-item-actions .sr-po1-fe-btn.is-dl:hover {
+  background: #059669;
+  border-color: #059669;
+  color: #ffffff;
+}
+
+@media (max-width: 1080px) {
+  .sr-po-all-files-grid {
+    grid-template-columns: 1fr;
+    max-height: 150px;
+    row-gap: 6px;
+  }
+
+  .sr-po-all-file-name {
+    gap: 6px;
+  }
+
+  .sr-po-all-file-svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .sr-po-all-file-svg svg {
+    width: 24px !important;
+    height: 24px !important;
+  }
+}
+
+/* 6-TAB ATTACHMENT SWITCHER STRIP (LUÔN 1 HÀNG NGANG) */
 .sr-po-doc-tabs {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
   gap: 5px;
   padding: 8px 10px;
   background: rgba(9, 18, 15, 0.72);
@@ -36955,6 +40712,65 @@ const isAnySaleModalOpen = computed(() => Boolean(
 .sr-fin-micro-btn.is-emerald:hover {
   background: rgba(16, 185, 129, 0.3);
   color: #ffffff;
+}
+
+.sr-fin-col-round-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 3.5px 6px 3.5px 10px;
+  min-height: 27px;
+  margin-bottom: 3px;
+  border-radius: 7px;
+  border-bottom: none;
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.14);
+}
+
+.sr-fin-col-round-lbl {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #ffffff !important;
+}
+
+.sr-modal-overlay button.sr-modal-round-chip {
+  width: auto !important;
+  margin: 0 !important;
+  padding: 0 7px !important;
+  height: 20px !important;
+  min-height: 20px !important;
+  border-radius: 5px !important;
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  background: rgba(15, 23, 42, 0.78) !important;
+  color: #e2e8f0 !important;
+  border: 1px solid rgba(148, 163, 184, 0.42) !important;
+  transition: all 0.15s ease !important;
+  flex-shrink: 0 !important;
+}
+
+.sr-modal-overlay button.sr-modal-round-chip:hover {
+  background: #0284c7 !important;
+  border-color: #7dd3fc !important;
+  color: #ffffff !important;
+}
+
+.sr-modal-overlay button.sr-modal-round-chip.is-active {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+  color: #ffffff !important;
+  border-color: #7dd3fc !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.28) !important;
 }
 
 .sr-fin-inline-row {
@@ -39348,11 +43164,82 @@ const isAnySaleModalOpen = computed(() => Boolean(
   color: #ffffff;
 }
 
-/* 2. 4 Khối Chỉ Số Theo Nhóm Gốc (Chỉ 4 cột ngang hoặc 2x2, tuyệt đối không rớt 3+1) */
+/* 2. 5 Khối Chỉ Số Theo Nhóm Gốc (Doanh số • COM • Tỉ suất • Công nợ • Bản quyền) */
 .sr-po1-4blocks {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   background: transparent;
+}
+
+.sr-po1-block-title .sr-po1-lic-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-wrap: nowrap;
+}
+
+.sr-po1-lic-block {
+  cursor: pointer;
+}
+
+.sr-po1-lic-prod-full {
+  width: 100%;
+  text-align: left !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+  line-height: 1.35;
+}
+
+.sr-po1-lic-val-wrap {
+  text-align: right;
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+}
+
+.sr-po1-lic-empty-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 14px 8px;
+  border-radius: 8px;
+  border: 1px dashed rgba(56, 189, 248, 0.32);
+  background: rgba(14, 165, 233, 0.06);
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.sr-po1-lic-block:hover .sr-po1-lic-empty-box {
+  border-color: #38bdf8;
+  background: rgba(14, 165, 233, 0.12);
+}
+
+.sr-po1-lic-empty-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #7dd3fc;
+}
+
+.sr-po1-lic-empty-sub {
+  font-size: 10.5px;
+  color: #94a3b8;
+}
+
+.sr-page.theme-light-blue .sr-po1-lic-empty-box {
+  border-color: #7dd3fc;
+  background: #f0f9ff;
+}
+
+.sr-page.theme-light-blue .sr-po1-lic-empty-title {
+  color: #0284c7;
+}
+
+.sr-page.theme-light-blue .sr-po1-lic-empty-sub {
+  color: #64748b;
 }
 
 .sr-card-list.is-cols-2 .sr-po1-4blocks {
@@ -39372,13 +43259,20 @@ const isAnySaleModalOpen = computed(() => Boolean(
   border-right: none;
 }
 
-.sr-card-list.is-cols-2 .sr-po1-block:nth-child(2) {
+.sr-card-list.is-cols-2 .sr-po1-block:nth-child(2),
+.sr-card-list.is-cols-2 .sr-po1-block:nth-child(4) {
   border-right: none;
 }
 
 .sr-card-list.is-cols-2 .sr-po1-block:nth-child(1),
 .sr-card-list.is-cols-2 .sr-po1-block:nth-child(2) {
   border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.sr-card-list.is-cols-2 .sr-po1-lic-block {
+  grid-column: 1 / -1;
+  border-right: none !important;
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
 }
 
 .sr-po1-block-title {
@@ -39403,6 +43297,71 @@ const isAnySaleModalOpen = computed(() => Boolean(
 .sr-po1-block-title.is-green-head {
   background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
   color: #ffffff !important;
+}
+
+.sr-po1-block-title.is-title-with-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 3.5px 6px 3.5px 10px;
+  min-height: 27px;
+}
+
+.sr-page button.sr-po1-round-chip {
+  width: auto !important;
+  margin: 0 !important;
+  padding: 0 7px !important;
+  height: 20px !important;
+  min-height: 20px !important;
+  border-radius: 5px !important;
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  background: rgba(15, 23, 42, 0.78) !important;
+  color: #e2e8f0 !important;
+  border: 1px solid rgba(148, 163, 184, 0.42) !important;
+  transition: all 0.15s ease !important;
+  flex-shrink: 0 !important;
+}
+
+.sr-page button.sr-po1-round-chip:hover {
+  background: #0284c7 !important;
+  border-color: #7dd3fc !important;
+  color: #ffffff !important;
+}
+
+.sr-page button.sr-po1-round-chip.is-active {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+  color: #ffffff !important;
+  border-color: #7dd3fc !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.28) !important;
+}
+
+.sr-page.theme-light-blue button.sr-po1-round-chip {
+  background: #ffffff !important;
+  color: #047857 !important;
+  border: 1px solid #a7f3d0 !important;
+}
+
+.sr-page.theme-light-blue button.sr-po1-round-chip:hover {
+  background: #f0f9ff !important;
+  border-color: #0284c7 !important;
+  color: #0284c7 !important;
+}
+
+.sr-page.theme-light-blue button.sr-po1-round-chip.is-active {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+  color: #ffffff !important;
+  border-color: #bae6fd !important;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25) !important;
 }
 
 .sr-po1-block-title.is-red-head {
@@ -39493,12 +43452,18 @@ const isAnySaleModalOpen = computed(() => Boolean(
   .sr-workspace-layout.is-master-detail .sr-po1-4blocks {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .sr-workspace-layout.is-master-detail .sr-po1-block:nth-child(2) {
+  .sr-workspace-layout.is-master-detail .sr-po1-block:nth-child(2),
+  .sr-workspace-layout.is-master-detail .sr-po1-block:nth-child(4) {
     border-right: none;
   }
   .sr-workspace-layout.is-master-detail .sr-po1-block:nth-child(1),
   .sr-workspace-layout.is-master-detail .sr-po1-block:nth-child(2) {
     border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  }
+  .sr-workspace-layout.is-master-detail .sr-po1-lic-block {
+    grid-column: 1 / -1;
+    border-right: none !important;
+    border-top: 1px solid rgba(148, 163, 184, 0.14);
   }
 }
 
@@ -41213,6 +45178,33 @@ const isAnySaleModalOpen = computed(() => Boolean(
 
 .sr-po-modal.is-light .sr-fin-inline-val.is-muted {
   color: #475569 !important;
+}
+
+.sr-po-modal.is-light .sr-fin-col-round-head {
+  border-bottom: none;
+}
+
+.sr-po-modal.is-light .sr-fin-col-round-lbl {
+  color: #ffffff !important;
+}
+
+.sr-modal-overlay .sr-po-modal.is-light button.sr-modal-round-chip {
+  background: #ffffff !important;
+  color: #047857 !important;
+  border-color: #a7f3d0 !important;
+}
+
+.sr-modal-overlay .sr-po-modal.is-light button.sr-modal-round-chip:hover {
+  background: #f0f9ff !important;
+  border-color: #0284c7 !important;
+  color: #0284c7 !important;
+}
+
+.sr-modal-overlay .sr-po-modal.is-light button.sr-modal-round-chip.is-active {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+  color: #ffffff !important;
+  border-color: #bae6fd !important;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25) !important;
 }
 
 .sr-po-modal.is-light .sr-fin-inline-row.is-dashed-top {
@@ -48482,7 +52474,7 @@ const isAnySaleModalOpen = computed(() => Boolean(
     padding: 0 !important;
   }
 
-  /* 4 Khối chỉ số tài chính trên Mobile (Phương án PO-1): Lưới 2x2 giảm 50% chiều cao */
+  /* 5 Khối chỉ số tài chính trên Mobile (Phương án PO-1): Lưới 2x2 + Khối Bản quyền full chiều ngang */
   .sr-po1-4blocks,
   .sr-card-list.is-cols-2 .sr-po1-4blocks,
   .sr-workspace-layout.is-master-detail .sr-po1-4blocks {
@@ -48512,6 +52504,13 @@ const isAnySaleModalOpen = computed(() => Boolean(
     border-bottom: none !important;
   }
 
+  .sr-po1-block.sr-po1-lic-block {
+    grid-column: 1 / -1 !important;
+    border-right: none !important;
+    border-top: 1px solid rgba(148, 163, 184, 0.16) !important;
+    border-bottom: none !important;
+  }
+
   .sr-page.theme-light-blue .sr-po1-block:nth-child(odd) {
     border-right-color: #cbd5e1 !important;
   }
@@ -48519,6 +52518,10 @@ const isAnySaleModalOpen = computed(() => Boolean(
   .sr-page.theme-light-blue .sr-po1-block:nth-child(1),
   .sr-page.theme-light-blue .sr-po1-block:nth-child(2) {
     border-bottom-color: #cbd5e1 !important;
+  }
+
+  .sr-page.theme-light-blue .sr-po1-block.sr-po1-lic-block {
+    border-top-color: #cbd5e1 !important;
   }
 
   .sr-po1-block-title {
@@ -48530,6 +52533,13 @@ const isAnySaleModalOpen = computed(() => Boolean(
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .sr-page button.sr-po1-round-chip {
+    padding: 1px 5px !important;
+    height: 15px !important;
+    min-height: 15px !important;
+    font-size: 9px !important;
   }
 
   .sr-po1-b-row {
@@ -59573,6 +63583,2707 @@ const isAnySaleModalOpen = computed(() => Boolean(
 @media (max-width: 680px) {
   .sr-cust-conflict-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FULLSCREEN 100% SPLIT-PANE EXPORT EXCEL MODAL (.sr-export-modal)
+   Left: Time Filter, Presets, KPI Summary & Mini PO List
+   Right: Live 21-Column Excel Spreadsheet Preview (Dark & Light Parity)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.sr-export-modal .sr-po-header-icon.is-excel-brand {
+  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.22);
+}
+
+.sr-export-top-dl-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.16s ease;
+}
+
+.sr-export-top-dl-btn:hover:not(:disabled) {
+  background: #ffffff;
+  color: #065f46;
+  border-color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+}
+
+.sr-export-top-dl-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.sr-export-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden !important;
+  padding: 0 !important;
+  display: flex;
+  flex-direction: column;
+}
+
+.sr-export-workspace {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  overflow: hidden;
+}
+
+/* ─── LEFT PANE (TIME FILTER & SUMMARY) ─── */
+.sr-export-left-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: rgba(8, 17, 14, 0.92);
+  border-right: 1px solid rgba(52, 211, 153, 0.22);
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.sr-export-card {
+  background: rgba(15, 28, 24, 0.78);
+  border: 1px solid rgba(52, 211, 153, 0.2);
+  border-radius: 12px;
+  padding: 11px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  flex-shrink: 0;
+}
+
+.sr-export-card.is-dimmed {
+  opacity: 0.82;
+}
+
+.sr-export-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sr-export-card-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6ee7b7;
+}
+
+.sr-export-link-btn {
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #38bdf8;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sr-export-link-btn:hover {
+  background: #0284c7;
+  color: #ffffff;
+}
+
+/* Quick Time Presets */
+.sr-export-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.sr-export-preset-pill {
+  flex: 1 1 auto;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 7px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: rgba(15, 23, 42, 0.65);
+  color: #cbd5e1;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.sr-export-preset-pill:hover {
+  border-color: #34d399;
+  color: #ffffff;
+}
+
+.sr-export-preset-pill.active {
+  background: rgba(16, 185, 129, 0.22);
+  border-color: #34d399;
+  color: #6ee7b7;
+}
+
+/* Segmented Tabs */
+.sr-export-seg-tabs {
+  display: grid;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 9px;
+  background: rgba(9, 16, 14, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.sr-export-seg-tabs.is-2col {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.sr-export-seg-tabs.is-3col {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.sr-export-seg-btn {
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.sr-export-seg-tabs.is-compact .sr-export-seg-btn {
+  height: 26px;
+  font-size: 11.5px;
+}
+
+.sr-export-seg-btn:hover:not(:disabled) {
+  color: #f8fafc;
+}
+
+.sr-export-seg-btn.active {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.35);
+}
+
+.sr-export-seg-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.sr-export-date-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.sr-export-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sr-export-field label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.sr-export-input {
+  width: 100%;
+  height: 34px;
+  padding: 0 9px;
+  border-radius: 8px;
+  border: 1px solid rgba(52, 211, 153, 0.28);
+  background: rgba(9, 17, 14, 0.9);
+  color: #f8fafc;
+  font-size: 12.5px;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.sr-export-input:focus {
+  border-color: #34d399;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.18);
+}
+
+.sr-export-sort-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(148, 163, 184, 0.16);
+}
+
+.sr-export-sort-lbl {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+/* KPI Summary Grid */
+.sr-export-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.sr-export-kpi-box {
+  background: rgba(9, 18, 15, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 8px;
+  padding: 7px 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sr-export-kpi-box.is-full {
+  grid-column: span 2;
+}
+
+.sr-export-kpi-lbl,
+.sr-export-kpi-split {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.sr-export-kpi-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: rgba(56, 189, 248, 0.16);
+  color: #38bdf8;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.sr-export-kpi-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sr-export-kpi-val.is-emerald { color: #34d399; }
+.sr-export-kpi-val.is-rose { color: #fb7185; }
+.sr-export-kpi-val.is-amber { color: #fbbf24; }
+.sr-export-kpi-val.is-purple { color: #c084fc; }
+.sr-export-kpi-val.is-sky { color: #38bdf8; }
+
+/* Mini PO List in Left Sidebar */
+.sr-export-po-list-card {
+  flex: 1;
+  min-height: 200px;
+  overflow: hidden;
+}
+
+.sr-export-mini-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 9px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(9, 17, 14, 0.85);
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.sr-export-mini-search-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: #f8fafc;
+  font-size: 12px;
+  outline: none;
+}
+
+.sr-export-mini-clear {
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 15px;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.sr-export-mini-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-right: 2px;
+}
+
+.sr-export-mini-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  background: rgba(9, 18, 15, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  transition: border-color 0.14s ease;
+}
+
+.sr-export-mini-item:hover {
+  border-color: rgba(52, 211, 153, 0.4);
+}
+
+.sr-export-mini-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sr-export-mini-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.sr-export-mini-stt {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 800;
+  color: #64748b;
+}
+
+.sr-export-mini-po {
+  font-weight: 800;
+  color: #38bdf8;
+}
+
+.sr-export-mini-date {
+  margin-left: auto;
+  color: #94a3b8;
+  font-size: 10.5px;
+}
+
+.sr-export-mini-cust {
+  font-size: 12px;
+  font-weight: 700;
+  color: #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sr-export-mini-nums {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #94a3b8;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.sr-export-mini-nums strong.is-emerald { color: #34d399; }
+.sr-export-mini-nums strong.is-sky { color: #38bdf8; }
+
+.sr-export-mini-remove {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.sr-export-mini-remove:hover {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.sr-export-mini-empty {
+  text-align: center;
+  padding: 20px 10px;
+  font-size: 12px;
+  color: #64748b;
+  font-style: italic;
+}
+
+/* ─── RIGHT PANE (LIVE EXCEL SPREADSHEET PREVIEW) ─── */
+.sr-export-right-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: #07100d;
+  overflow: hidden;
+}
+
+.sr-export-sheet-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  background: rgba(12, 24, 20, 0.96);
+  border-bottom: 1px solid rgba(52, 211, 153, 0.22);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.sr-export-sheet-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.sr-export-sheet-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 7px;
+  background: rgba(16, 185, 129, 0.16);
+  border: 1px solid rgba(52, 211, 153, 0.36);
+  color: #6ee7b7;
+  font-size: 11.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.sr-export-cell-addr {
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  color: #e2e8f0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sr-export-fx-chip {
+  font-family: Georgia, serif;
+  font-style: italic;
+  font-weight: 800;
+  font-size: 13px;
+  color: #34d399;
+  padding: 0 2px;
+}
+
+.sr-export-formula-text {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  color: #cbd5e1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sr-export-sheet-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.sr-export-restore-pill {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 7px;
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  background: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sr-export-restore-pill:hover {
+  background: #f59e0b;
+  color: #0f172a;
+}
+
+.sr-export-zoom-group {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 7px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.sr-export-zoom-btn {
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 5px;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sr-export-zoom-btn.active {
+  background: #10b981;
+  color: #ffffff;
+}
+
+/* Excel Spreadsheet Table Stage — Giống 100% file SALE_REPORT_TEMPLATE.xlsx tải về */
+.sr-export-sheet-stage {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0;
+  background: #ffffff;
+}
+
+.sr-export-sheet-canvas {
+  min-width: max-content;
+  background: #ffffff;
+}
+
+.sr-export-excel-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: Arial, 'Helvetica Neue', sans-serif;
+  font-size: 14.67px; /* Chuẩn 11pt trong Excel */
+  color: #000000;
+  background: #ffffff;
+}
+
+/* Hàng tiêu đề chữ cái cột chuẩn Microsoft Excel (A..U) */
+.sr-ex-col-letters th {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: #e6e6e6;
+  color: #333333;
+  font-family: Calibri, Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  text-align: center;
+  height: 22px;
+  padding: 2px 6px;
+  border: 1px solid #bfbfbf;
+  user-select: none;
+}
+
+.sr-ex-corner-cell {
+  left: 0;
+  z-index: 35 !important;
+  width: 40px;
+  min-width: 40px;
+  background: #e6e6e6 !important;
+  color: #8c8c8c !important;
+  font-size: 11px !important;
+  text-align: right !important;
+  padding-right: 4px !important;
+}
+
+/* Cột số thứ tự dòng chuẩn Microsoft Excel (1, 2, 3...) */
+.sr-ex-rownum {
+  position: sticky;
+  left: 0;
+  z-index: 15;
+  width: 40px;
+  min-width: 40px;
+  background: #e6e6e6 !important;
+  color: #333333 !important;
+  font-family: Calibri, Arial, sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 400 !important;
+  text-align: center !important;
+  border: 1px solid #bfbfbf !important;
+  padding: 2px 4px !important;
+  user-select: none;
+}
+
+/* Dòng 1 (A1:U1): Banner tiêu đề gộp 21 cột — Nền #00B050, Arial 22pt Bold Đen, cao 33pt (~44px) */
+.sr-ex-row-banner td.sr-ex-banner-merged {
+  background: #00B050 !important;
+  color: #000000 !important;
+  font-family: Arial, sans-serif !important;
+  font-size: 29px !important; /* Chuẩn 22pt trong Excel */
+  font-weight: 700 !important;
+  text-align: center !important;
+  vertical-align: middle !important;
+  height: 44px;
+  padding: 4px 12px !important;
+  border: 1px solid #000000 !important;
+  white-space: nowrap;
+}
+
+/* Dòng 2 (A2:U2): Header 21 cột — Nền vàng #FFFF00, Arial 11pt Bold Đen, cao 59.25pt (~79px), viền đen 1px */
+.sr-ex-row-headers th {
+  position: sticky;
+  top: 23px;
+  z-index: 25;
+  background: #FFFF00 !important;
+  color: #000000 !important;
+  font-family: Arial, sans-serif !important;
+  font-size: 14.67px !important; /* Chuẩn 11pt trong Excel */
+  font-weight: 700 !important;
+  text-align: center !important;
+  vertical-align: middle !important;
+  height: 79px; /* Chuẩn 59.25pt trong SALE_REPORT_TEMPLATE.xlsx */
+  padding: 6px 8px !important;
+  border: 1px solid #000000 !important;
+  white-space: normal !important;
+  line-height: 1.25;
+}
+
+.sr-ex-row-headers .sr-ex-rownum {
+  position: sticky;
+  top: 23px;
+  left: 0;
+  z-index: 28;
+  height: 79px;
+}
+
+/* Độ rộng các cột tương đương Auto-fit trong exportRowsToExcel */
+.sr-export-excel-table .is-col-stt { min-width: 54px; }
+.sr-export-excel-table .is-col-mst { min-width: 118px; }
+.sr-export-excel-table .is-col-po { min-width: 96px; }
+.sr-export-excel-table .is-col-am { min-width: 105px; }
+.sr-export-excel-table .is-col-mon { min-width: 64px; }
+.sr-export-excel-table .is-col-cust { min-width: 240px; max-width: 340px; }
+.sr-export-excel-table .is-col-content { min-width: 250px; max-width: 360px; }
+.sr-export-excel-table .is-col-prod { min-width: 120px; }
+.sr-export-excel-table .is-col-money { min-width: 122px; }
+.sr-export-excel-table .is-col-pct { min-width: 118px; }
+.sr-export-excel-table .is-col-note { min-width: 180px; max-width: 300px; }
+
+/* Dòng dữ liệu (Row 3 trở đi): Nền trắng #FFFFFF, chữ đen #000000, Arial 11pt, căn giữa, viền đen 1px */
+.sr-ex-data-row td:not(.sr-ex-rownum) {
+  background: #ffffff !important;
+  color: #000000 !important;
+  font-family: Arial, sans-serif !important;
+  font-size: 14.67px !important; /* Chuẩn 11pt */
+  font-weight: 400 !important;
+  text-align: center !important;
+  vertical-align: middle !important;
+  padding: 6px 8px !important;
+  border: 1px solid #000000 !important;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.3;
+}
+
+.sr-ex-data-row:hover td:not(.sr-ex-rownum) {
+  background: #f2f9f5 !important;
+}
+
+/* Dòng lưới Excel trống bên dưới vùng dữ liệu */
+.sr-ex-blank-grid-row td:not(.sr-ex-rownum) {
+  background: #ffffff !important;
+  height: 24px;
+  border: 1px solid #d4d4d4 !important;
+}
+
+/* Thanh Sheet Tab dưới đáy giống Microsoft Excel */
+.sr-export-excel-bottom-tabs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 28px;
+  padding: 0 12px;
+  background: #e6e6e6;
+  border-top: 1px solid #bfbfbf;
+  font-family: Calibri, Arial, sans-serif;
+  font-size: 12px;
+  color: #333333;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.sr-ex-nav-arrows {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #666666;
+  font-size: 10px;
+}
+
+.sr-ex-sheet-active-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 14px;
+  background: #ffffff;
+  color: #107c41;
+  font-weight: 700;
+  border-left: 1px solid #bfbfbf;
+  border-right: 1px solid #bfbfbf;
+  border-bottom: 2px solid #107c41;
+}
+
+.sr-ex-sheet-plus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid #999999;
+  color: #555555;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.sr-ex-sheet-ready {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  color: #555555;
+  letter-spacing: 0.04em;
+}
+
+/* Footer */
+.sr-export-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 20px !important;
+}
+
+.sr-export-footer-status {
+  font-size: 12.5px;
+  color: #94a3b8;
+}
+
+.sr-export-footer-status strong {
+  color: #6ee7b7;
+}
+
+.sr-export-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sr-export-confirm-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 18px !important;
+  border-radius: 10px !important;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  color: #ffffff !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.35);
+}
+
+/* ─── LIGHT BLUE THEME PARITY (.sr-export-modal.is-light) ─── */
+.sr-export-modal.is-light {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+.sr-export-modal.is-light .sr-export-header {
+  background: linear-gradient(90deg, #0284c7 0%, #2563eb 60%, #1d4ed8 100%) !important;
+  border-bottom-color: #38bdf8 !important;
+}
+
+.sr-export-modal.is-light .sr-export-top-dl-btn:hover:not(:disabled) {
+  color: #0369a1;
+}
+
+.sr-export-modal.is-light .sr-export-left-pane {
+  background: #f8fafc;
+  border-right-color: #cbd5e1;
+}
+
+.sr-export-modal.is-light .sr-export-card {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.sr-export-modal.is-light .sr-export-card-title {
+  color: #0284c7;
+}
+
+.sr-export-modal.is-light .sr-export-preset-pill {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.sr-export-modal.is-light .sr-export-preset-pill:hover {
+  border-color: #0284c7;
+  color: #0284c7;
+}
+
+.sr-export-modal.is-light .sr-export-preset-pill.active {
+  background: #e0f2fe;
+  border-color: #0284c7;
+  color: #0369a1;
+}
+
+.sr-export-modal.is-light .sr-export-seg-tabs {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.sr-export-modal.is-light .sr-export-seg-btn {
+  color: #475569;
+}
+
+.sr-export-modal.is-light .sr-export-seg-btn.active {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.28);
+}
+
+.sr-export-modal.is-light .sr-export-field label,
+.sr-export-modal.is-light .sr-export-sort-lbl {
+  color: #475569;
+}
+
+.sr-export-modal.is-light .sr-export-input {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.sr-export-modal.is-light .sr-export-input:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.16);
+}
+
+.sr-export-modal.is-light .sr-export-kpi-box {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.sr-export-modal.is-light .sr-export-kpi-lbl,
+.sr-export-modal.is-light .sr-export-kpi-split {
+  color: #64748b;
+}
+
+.sr-export-modal.is-light .sr-export-kpi-val.is-emerald { color: #059669; }
+.sr-export-modal.is-light .sr-export-kpi-val.is-rose { color: #e11d48; }
+.sr-export-modal.is-light .sr-export-kpi-val.is-amber { color: #d97706; }
+.sr-export-modal.is-light .sr-export-kpi-val.is-purple { color: #7c3aed; }
+.sr-export-modal.is-light .sr-export-kpi-val.is-sky { color: #0284c7; }
+
+.sr-export-modal.is-light .sr-export-mini-search {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #64748b;
+}
+
+.sr-export-modal.is-light .sr-export-mini-search-input {
+  color: #0f172a;
+}
+
+.sr-export-modal.is-light .sr-export-mini-item {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.sr-export-modal.is-light .sr-export-mini-item:hover {
+  border-color: #7dd3fc;
+  background: #f0f9ff;
+}
+
+.sr-export-modal.is-light .sr-export-mini-po { color: #0284c7; }
+.sr-export-modal.is-light .sr-export-mini-cust { color: #0f172a; }
+.sr-export-modal.is-light .sr-export-mini-nums { color: #64748b; }
+.sr-export-modal.is-light .sr-export-mini-nums strong.is-emerald { color: #059669; }
+.sr-export-modal.is-light .sr-export-mini-nums strong.is-sky { color: #0284c7; }
+
+.sr-export-modal.is-light .sr-export-right-pane {
+  background: #ffffff;
+}
+
+.sr-export-modal.is-light .sr-export-sheet-bar {
+  background: #ffffff;
+  border-bottom-color: #cbd5e1;
+}
+
+.sr-export-modal.is-light .sr-export-sheet-tab {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+  color: #047857;
+}
+
+.sr-export-modal.is-light .sr-export-cell-addr {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #1e293b;
+}
+
+.sr-export-modal.is-light .sr-export-formula-text {
+  color: #334155;
+}
+
+.sr-export-modal.is-light .sr-export-zoom-group {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.sr-export-modal.is-light .sr-export-zoom-btn {
+  color: #475569;
+}
+
+.sr-export-modal.is-light .sr-export-zoom-btn.active {
+  background: #0284c7;
+  color: #ffffff;
+}
+
+.sr-export-modal.is-light .sr-export-footer {
+  background: #ffffff !important;
+  border-top-color: #cbd5e1 !important;
+}
+
+.sr-export-modal.is-light .sr-export-footer-status {
+  color: #475569;
+}
+
+.sr-export-modal.is-light .sr-export-footer-status strong {
+  color: #0284c7;
+}
+
+@media (max-width: 1080px) {
+  .sr-export-mob-switch {
+    display: flex !important;
+  }
+
+  .sr-export-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .sr-export-left-pane.mob-hidden,
+  .sr-export-right-pane.mob-hidden {
+    display: none !important;
+  }
+
+  .sr-export-left-pane {
+    border-right: none;
+  }
+}
+
+/* ─── LICENSE ATTACHMENT BOX & TAB (TÁCH RIÊNG • ĐỒNG BỘ 2 CHIỀU LICENSE_OLD_DATA) ─── */
+.sr-po1-file-box.is-cyan .sr-po1-fb-tag {
+  background: rgba(6, 182, 212, 0.16);
+  border-color: rgba(34, 211, 238, 0.42);
+  color: #67e8f9;
+}
+
+.sr-po1-file-box.is-cyan.has-file {
+  border-color: rgba(34, 211, 238, 0.42);
+  background: rgba(8, 51, 68, 0.34);
+}
+
+.sr-po1-file-box.is-cyan:hover {
+  border-color: #22d3ee;
+}
+
+.sr-po-rail-doc-btn.is-cyan.has-file {
+  border-color: rgba(34, 211, 238, 0.55);
+  color: #67e8f9;
+  background: rgba(6, 182, 212, 0.14);
+}
+
+.sr-po-doc-tab.is-cyan.active {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.25) 0%, rgba(14, 116, 144, 0.32) 100%);
+  border-color: #22d3ee;
+  color: #ecfeff;
+}
+
+.sr-po-doc-toolbar.is-cyan {
+  border-bottom: 1px solid rgba(34, 211, 238, 0.28);
+  background: linear-gradient(90deg, rgba(8, 51, 68, 0.55) 0%, rgba(15, 23, 42, 0.78) 100%);
+}
+
+.sr-po-doc-empty-icon.is-cyan {
+  background: rgba(6, 182, 212, 0.14);
+  border: 1px solid rgba(34, 211, 238, 0.35);
+  color: #22d3ee;
+}
+
+.sr-po-lic-picker {
+  padding: 10px 12px;
+  background: rgba(8, 47, 73, 0.48);
+  border-bottom: 1px solid rgba(34, 211, 238, 0.3);
+  max-height: 195px;
+  overflow-y: auto;
+}
+
+.sr-po-lic-picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #67e8f9;
+}
+
+.sr-po-lic-picker-manual {
+  padding: 3px 9px;
+  border-radius: 6px;
+  border: 1px solid rgba(52, 211, 153, 0.45);
+  background: rgba(16, 185, 129, 0.16);
+  color: #6ee7b7;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sr-po-lic-picker-close {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(15, 23, 42, 0.6);
+  color: #e2e8f0;
+  cursor: pointer;
+}
+
+.sr-po-lic-picker-empty {
+  font-size: 12px;
+  color: #cbd5e1;
+  padding: 6px 2px;
+}
+
+.sr-po-lic-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sr-po-lic-picker-item {
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sr-po-lic-picker-item:hover {
+  border-color: #22d3ee;
+  background: rgba(8, 51, 68, 0.55);
+}
+
+.sr-po-lic-picker-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: #f8fafc;
+}
+
+.sr-po-lic-picker-sn {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(56, 189, 248, 0.15);
+  color: #7dd3fc;
+  font-family: monospace;
+  font-size: 11px;
+}
+
+.sr-po-lic-picker-kh {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(16, 185, 129, 0.16);
+  color: #6ee7b7;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.sr-po-lic-picker-sub {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 3px;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+/* Mở rộng Cột Chứng Từ trong Modal PO khi đang ở Tab License để đủ không gian chia 2 cột 50:50 */
+.sr-po-workspace.is-license-tab .sr-po-left-pane {
+  flex: 0 0 60%;
+}
+
+.sr-po-workspace.is-license-tab.is-left-wide .sr-po-left-pane {
+  flex: 0 0 66%;
+}
+
+.sr-po-lic-split-body {
+  display: grid;
+  grid-template-columns: 50% 50%;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: rgba(9, 15, 26, 0.72);
+}
+
+.sr-po-lic-preview-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid rgba(34, 211, 238, 0.24);
+  background: rgba(6, 12, 22, 0.65);
+}
+
+.sr-po-lic-stage {
+  flex: 1;
+  min-height: 220px;
+}
+
+.sr-po-lic-file-links {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid rgba(34, 211, 238, 0.22);
+  background: rgba(15, 23, 42, 0.85);
+  flex-shrink: 0;
+}
+
+.sr-po-lic-form-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px 14px;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  background: rgba(15, 23, 42, 0.62);
+}
+
+.sr-po-lic-meta-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(52, 211, 153, 0.28);
+  flex-shrink: 0;
+}
+
+.sr-po-lic-sync-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  font-weight: 700;
+  color: #34d399;
+}
+
+.sr-po-lic-scanning {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fbbf24;
+}
+
+.sr-po-lic-ai-mini-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 6px;
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  background: rgba(14, 165, 233, 0.16);
+  color: #7dd3fc;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sr-po-lic-ai-mini-btn:hover:not(:disabled) {
+  background: #0284c7;
+  color: #ffffff;
+}
+
+.sr-po-lic-ai-mini-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.sr-po-lic-format-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.14);
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  color: #fde68a;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.sr-po-lic-ai-btn {
+  padding: 5px 11px;
+  border-radius: 6px;
+  border: 1px solid rgba(56, 189, 248, 0.55);
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+  color: #ffffff;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sr-po-lic-ai-btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.sr-po-lic-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 11px;
+  border-radius: 10px;
+  background: rgba(9, 15, 26, 0.62);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.sr-po-lic-group-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  margin-bottom: 4px;
+  border-radius: 7px;
+  border-bottom: none;
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.18);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: #ffffff !important;
+  text-transform: uppercase;
+}
+
+.sr-po-lic-group-banner.is-green-head {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
+}
+
+.sr-po-lic-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 10px;
+}
+
+.sr-po-lic-spec-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sr-po-lic-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 10px;
+}
+
+.sr-po-lic-row.is-full {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.sr-po-lic-row.is-product-split {
+  grid-template-columns: minmax(0, 1.85fr) minmax(0, 1fr);
+}
+
+.sr-po-lic-row.is-three-cols {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.sr-po-lic-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.sr-po-lic-field.is-wide {
+  grid-column: span 2;
+}
+
+.sr-po-lic-field label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #cbd5e1;
+}
+
+.sr-po-lic-field input,
+.sr-po-lic-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 5px 9px;
+  border-radius: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: #090f1a;
+  color: #f8fafc;
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sr-po-lic-field input {
+  height: 30px;
+}
+
+.sr-po-lic-field textarea {
+  resize: vertical;
+  min-height: 48px;
+}
+
+.sr-po-lic-field input:focus,
+.sr-po-lic-field textarea:focus {
+  border-color: #22d3ee;
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.15);
+}
+
+.sr-po-lic-field input[type="date"] {
+  color-scheme: dark;
+}
+
+.sr-po-lic-field input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.85;
+}
+
+.sr-modal-overlay.theme-light-blue .sr-po-lic-field input[type="date"] {
+  color-scheme: light;
+}
+
+.sr-po-lic-grace-preview {
+  font-size: 10.5px;
+  color: #34d399;
+  margin-top: 2px;
+}
+
+.sr-po-lic-form-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  padding: 24px 16px;
+  color: #94a3b8;
+}
+
+.sr-po-lic-form-empty h6 {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #f1f5f9;
+}
+
+.sr-po-lic-form-empty p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  max-width: 320px;
+  color: #94a3b8;
+}
+
+.sr-po-lic-form-empty-btns {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.sr-page.theme-light-blue .sr-po1-file-box.is-cyan .sr-po1-fb-tag {
+  background: #cffafe;
+  border-color: #67e8f9;
+  color: #0e7490;
+}
+
+.sr-page.theme-light-blue .sr-po1-file-box.is-cyan.has-file {
+  background: #ecfeff;
+  border-color: #67e8f9;
+}
+
+.sr-modal-overlay.theme-light-blue .sr-po-lic-picker {
+  background: #f0f9ff;
+  border-bottom-color: #bae6fd;
+}
+
+.sr-modal-overlay.theme-light-blue .sr-po-lic-picker-item {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+.sr-modal-overlay.theme-light-blue .sr-po-lic-picker-main {
+  color: #0f172a;
+}
+
+.sr-modal-overlay.theme-light-blue .sr-po-lic-split-body {
+  background: #f8fafc;
+}
+
+.sr-modal-overlay.theme-light-blue .sr-po-lic-preview-col {
+  background: #f1f5f9;
+  border-right-color: #cbd5e1;
+}
+
+.sr-modal-overlay.theme-light-blue .sr-po-lic-file-links {
+  background: #ffffff;
+  border-top-color: #cbd5e1;
+}
+
+.sr-modal-overlay.theme-light-blue .sr-po-lic-form-col {
+  background: #f8fafc;
+}
+
+.sr-modal-overlay.theme-light-blue .sr-po-lic-meta-top {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+}
+
+.sr-modal-overlay.theme-light-blue .sr-po-lic-sync-badge {
+  color: #047857;
+}
+
+.sr-modal-overlay.theme-light-blue .sr-po-lic-group {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+.sr-modal-overlay.theme-light-blue .sr-po-lic-group-banner {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+  color: #ffffff !important;
+  border-bottom: none;
+}
+
+.sr-modal-overlay.theme-light-blue .sr-po-lic-field label {
+  color: #334155;
+}
+
+.sr-modal-overlay.theme-light-blue .sr-po-lic-field input,
+.sr-modal-overlay.theme-light-blue .sr-po-lic-field textarea {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.sr-modal-overlay.theme-light-blue .sr-po-lic-form-empty h6 {
+  color: #0f172a;
+}
+
+.sr-modal-overlay.theme-light-blue .sr-po-lic-form-empty p {
+  color: #475569;
+}
+
+.sr-po-lic-top-tabs {
+  border-top: none;
+  border-bottom: 1px solid rgba(34, 211, 238, 0.22);
+  border-radius: 8px;
+}
+
+.sr-po-lic-mob-subtabs {
+  display: none;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 4px;
+  border-radius: 9px;
+  background: rgba(9, 15, 26, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  flex-shrink: 0;
+}
+
+.sr-po-lic-mob-subtab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.sr-po-lic-mob-subtab.active {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+  border-color: #7dd3fc;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35);
+}
+
+.sr-modal-overlay.theme-light-blue .sr-po-lic-mob-subtabs {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.sr-modal-overlay.theme-light-blue .sr-po-lic-mob-subtab {
+  color: #475569;
+}
+
+.sr-modal-overlay.theme-light-blue .sr-po-lic-mob-subtab.active {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+  border-color: #bae6fd;
+  color: #ffffff;
+}
+
+@media (max-width: 1080px) {
+  .sr-po-left-pane,
+  .sr-po-workspace.is-license-tab .sr-po-left-pane,
+  .sr-po-workspace.is-license-tab.is-left-wide .sr-po-left-pane {
+    flex: 1 1 0% !important;
+    width: 100% !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sr-po-left-pane-body {
+    flex: 0 0 auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+  }
+
+  .sr-po-doc-stage,
+  .sr-po-lic-stage {
+    flex: 0 0 auto !important;
+    min-height: 68dvh !important;
+    height: 68dvh !important;
+  }
+
+  .sr-po-doc-stage .sr-po-preview-iframe,
+  .sr-po-doc-stage .sr-po-preview-html,
+  .sr-po-doc-stage .sr-po-img-stage {
+    min-height: 66dvh !important;
+    height: 100% !important;
+  }
+
+  .sr-po-lic-mob-subtabs {
+    display: grid;
+  }
+
+  .sr-po-lic-split-body {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 0 0 auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+  }
+
+  .sr-po-lic-split-body.is-mob-preview .sr-po-lic-preview-col {
+    display: flex !important;
+    flex: 0 0 auto !important;
+    min-height: 68dvh !important;
+    border-right: none !important;
+    border-bottom: none !important;
+  }
+
+  .sr-po-lic-split-body.is-mob-preview .sr-po-lic-form-col {
+    display: none !important;
+  }
+
+  .sr-po-lic-split-body.is-mob-specs .sr-po-lic-preview-col {
+    display: none !important;
+  }
+
+  .sr-po-lic-split-body.is-mob-specs .sr-po-lic-form-col {
+    display: flex !important;
+    flex: 0 0 auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .sr-po-doc-tabs {
+    display: flex !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 6px !important;
+    padding: 8px 10px 0 !important;
+  }
+
+  .sr-po-doc-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .sr-po-doc-tab {
+    flex: 0 0 auto !important;
+    padding: 0 11px !important;
+    font-size: 11.5px !important;
+  }
+
+  .sr-po-doc-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 8px 10px;
+  }
+
+  .sr-po-doc-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .sr-po-doc-actions .sr-po-doc-btn {
+    flex: 1 1 calc(50% - 4px);
+    justify-content: center;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+
+  .sr-po-lic-meta-grid,
+  .sr-po-lic-row,
+  .sr-po-lic-row.is-product-split,
+  .sr-po-lic-row.is-three-cols {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  .sr-po-lic-field.is-wide {
+    grid-column: span 1 !important;
+  }
+
+  .sr-po-lic-form-col {
+    padding: 8px 8px 14px;
+  }
+}
+
+/* ─── MODAL KHO BẢN QUYỀN / LICENSE (ĐỒNG BỘ TEMPLATE DARK & LIGHT) ─── */
+.sr-lic-repo-overlay {
+  padding: 16px;
+  backdrop-filter: blur(5px);
+}
+
+.sr-lic-repo-modal {
+  max-width: 860px;
+  width: 96vw;
+  max-height: 86vh;
+  background: #0f172a;
+  border: 1px solid rgba(56, 189, 248, 0.36);
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 60px rgba(2, 6, 23, 0.82);
+}
+
+.sr-lic-repo-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, #0369a1 0%, #1d4ed8 100%);
+  border-bottom: 1px solid rgba(56, 189, 248, 0.28);
+  flex-shrink: 0;
+}
+
+.sr-lic-repo-head-left {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+
+.sr-lic-repo-head-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sr-lic-repo-head-titles {
+  min-width: 0;
+}
+
+.sr-lic-repo-title {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #ffffff;
+}
+
+.sr-lic-repo-subtitle {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  color: rgba(241, 245, 249, 0.9);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.sr-lic-repo-subtitle strong {
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.sr-lic-repo-dot {
+  opacity: 0.65;
+}
+
+.sr-lic-repo-close {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(15, 23, 42, 0.26);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.sr-lic-repo-close:hover {
+  background: rgba(239, 68, 68, 0.85);
+  border-color: rgba(254, 202, 202, 0.6);
+}
+
+.sr-lic-repo-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 18px;
+  background: rgba(15, 23, 42, 0.94);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  flex-shrink: 0;
+}
+
+.sr-lic-repo-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.sr-lic-repo-search-icon {
+  position: absolute;
+  left: 12px;
+  color: #38bdf8;
+  pointer-events: none;
+}
+
+.sr-lic-repo-search-input {
+  width: 100%;
+  height: 36px;
+  padding: 0 34px 0 36px;
+  border-radius: 9px;
+  border: 1px solid rgba(56, 189, 248, 0.34);
+  background: #090f1a;
+  color: #f8fafc;
+  font-size: 12.5px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sr-lic-repo-search-input::placeholder {
+  color: #64748b;
+}
+
+.sr-lic-repo-search-input:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.18);
+}
+
+.sr-lic-repo-search-clear {
+  position: absolute;
+  right: 9px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(148, 163, 184, 0.16);
+  color: #cbd5e1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.sr-lic-repo-search-clear:hover {
+  background: rgba(239, 68, 68, 0.25);
+  color: #fca5a5;
+}
+
+.sr-lic-repo-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sr-lic-repo-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 31px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  background: rgba(30, 41, 59, 0.65);
+  color: #cbd5e1;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sr-lic-repo-tab:hover {
+  border-color: rgba(56, 189, 248, 0.45);
+  color: #f8fafc;
+}
+
+.sr-lic-repo-tab.active {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+  border-color: rgba(125, 211, 252, 0.55);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.28);
+}
+
+.sr-lic-repo-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px 18px;
+  background: #0b1323;
+}
+
+.sr-lic-repo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.sr-lic-repo-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 11px 14px;
+  border-radius: 11px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.sr-lic-repo-card:hover {
+  border-color: #38bdf8;
+  background: rgba(14, 116, 144, 0.18);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(2, 6, 23, 0.35);
+}
+
+.sr-lic-repo-card.is-customer-match {
+  border-left: 3px solid #10b981;
+}
+
+.sr-lic-repo-card.is-attached {
+  border-color: rgba(16, 185, 129, 0.55);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.sr-lic-repo-card-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sr-lic-repo-card-top {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.sr-lic-repo-prod-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: #f8fafc;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.sr-lic-repo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 800;
+}
+
+.sr-lic-repo-badge.is-vendor {
+  background: rgba(168, 85, 247, 0.16);
+  border: 1px solid rgba(192, 132, 252, 0.35);
+  color: #d8b4fe;
+}
+
+.sr-lic-repo-badge.is-match {
+  background: rgba(16, 185, 129, 0.18);
+  border: 1px solid rgba(52, 211, 153, 0.42);
+  color: #6ee7b7;
+}
+
+.sr-lic-repo-card-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.sr-lic-repo-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.sr-lic-repo-pill.is-sn {
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.32);
+  color: #7dd3fc;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.sr-lic-repo-pill.is-kh {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(52, 211, 153, 0.32);
+  color: #6ee7b7;
+}
+
+.sr-lic-repo-pill.is-meta {
+  background: rgba(148, 163, 184, 0.14);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  color: #cbd5e1;
+}
+
+.sr-lic-repo-pill.is-po {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(251, 191, 36, 0.34);
+  color: #fcd34d;
+}
+
+.sr-lic-repo-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 11.5px;
+  color: #94a3b8;
+}
+
+.sr-lic-repo-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.sr-lic-repo-meta-lbl {
+  color: #94a3b8;
+}
+
+.sr-lic-repo-meta-val {
+  color: #e2e8f0;
+  font-weight: 700;
+}
+
+.sr-lic-repo-meta-val.is-mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+
+.sr-lic-repo-days-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 800;
+  background: rgba(16, 185, 129, 0.16);
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  color: #34d399;
+}
+
+.sr-lic-repo-days-badge.is-warning {
+  background: rgba(245, 158, 11, 0.18);
+  border-color: rgba(251, 191, 36, 0.42);
+  color: #fbbf24;
+}
+
+.sr-lic-repo-days-badge.is-expired {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(248, 113, 113, 0.42);
+  color: #f87171;
+}
+
+.sr-lic-repo-card-action {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.sr-lic-repo-pick-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+  color: #ffffff;
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.sr-lic-repo-pick-btn:hover {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  border-color: #6ee7b7;
+  box-shadow: 0 3px 10px rgba(16, 185, 129, 0.3);
+}
+
+.sr-lic-repo-attached-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 11px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid #10b981;
+  color: #34d399;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.sr-lic-repo-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  padding: 36px 20px;
+  color: #94a3b8;
+}
+
+.sr-lic-repo-empty-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  color: #38bdf8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.sr-lic-repo-empty h5 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: #f8fafc;
+}
+
+.sr-lic-repo-empty p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  max-width: 420px;
+  color: #94a3b8;
+}
+
+.sr-lic-repo-empty-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.sr-lic-repo-btn-primary,
+.sr-lic-repo-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.sr-lic-repo-btn-primary {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  border: 1px solid #34d399;
+  color: #ffffff;
+}
+
+.sr-lic-repo-btn-secondary {
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  color: #38bdf8;
+}
+
+.sr-lic-repo-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 11px 18px;
+  background: rgba(15, 23, 42, 0.96);
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+  flex-shrink: 0;
+}
+
+.sr-lic-repo-footer-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.sr-lic-repo-count {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.sr-lic-repo-count strong {
+  color: #38bdf8;
+  font-weight: 800;
+}
+
+.sr-lic-repo-upload-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 7px;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  background: rgba(16, 185, 129, 0.14);
+  color: #34d399;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sr-lic-repo-upload-link:hover {
+  background: #10b981;
+  color: #ffffff;
+}
+
+.sr-lic-repo-close-btn {
+  height: 32px;
+  padding: 0 18px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  background: rgba(30, 41, 59, 0.8);
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sr-lic-repo-close-btn:hover {
+  background: rgba(51, 65, 85, 0.95);
+  color: #ffffff;
+}
+
+/* ─── CHẾ ĐỘ SÁNG (LIGHT MODE / THEME-LIGHT-BLUE) CHO MODAL KHO LICENSE ─── */
+.sr-lic-repo-modal.is-light,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-modal {
+  background: #f8fafc;
+  border-color: #93c5fd;
+  box-shadow: 0 22px 50px rgba(15, 23, 42, 0.22);
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-head,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-head {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+  border-bottom-color: #bae6fd;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-toolbar,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-toolbar {
+  background: #ffffff;
+  border-bottom-color: #e2e8f0;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-search-icon,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-search-icon {
+  color: #0284c7;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-search-input,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-search-input {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-search-input::placeholder,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-search-input::placeholder {
+  color: #64748b;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-search-input:focus,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-search-input:focus {
+  background: #ffffff;
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.14);
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-search-clear,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-search-clear {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-tab,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-tab {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-tab:hover,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-tab:hover {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+  color: #0369a1;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-tab.active,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-tab.active {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+  border-color: transparent;
+  color: #ffffff;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-body,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-body {
+  background: #f1f5f9;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-card,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-card {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-card:hover,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-card:hover {
+  background: #f0f9ff;
+  border-color: #0284c7;
+  box-shadow: 0 6px 14px rgba(2, 132, 199, 0.12);
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-card.is-attached,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-card.is-attached {
+  background: #ecfdf5;
+  border-color: #34d399;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-prod-name,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-prod-name {
+  color: #0f172a;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-badge.is-vendor,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-badge.is-vendor {
+  background: #f3e8ff;
+  border-color: #d8b4fe;
+  color: #6b21a8;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-badge.is-match,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-badge.is-match {
+  background: #d1fae5;
+  border-color: #6ee7b7;
+  color: #047857;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-pill.is-sn,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-pill.is-sn {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+  color: #0369a1;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-pill.is-kh,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-pill.is-kh {
+  background: #d1fae5;
+  border-color: #6ee7b7;
+  color: #047857;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-pill.is-meta,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-pill.is-meta {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-pill.is-po,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-pill.is-po {
+  background: #fef3c7;
+  border-color: #fcd34d;
+  color: #b45309;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-meta-lbl,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-meta-lbl {
+  color: #64748b;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-meta-val,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-meta-val {
+  color: #0f172a;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-days-badge,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-days-badge {
+  background: #d1fae5;
+  border-color: #6ee7b7;
+  color: #047857;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-days-badge.is-warning,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-days-badge.is-warning {
+  background: #fef3c7;
+  border-color: #fcd34d;
+  color: #b45309;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-days-badge.is-expired,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-days-badge.is-expired {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-attached-pill,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-attached-pill {
+  background: #d1fae5;
+  border-color: #10b981;
+  color: #047857;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-empty h5,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-empty h5 {
+  color: #0f172a;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-empty p,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-empty p {
+  color: #475569;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-empty-icon,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-empty-icon {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+  color: #0284c7;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-btn-secondary,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-btn-secondary {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+  color: #0369a1;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-footer,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-footer {
+  background: #ffffff;
+  border-top-color: #e2e8f0;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-count,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-count {
+  color: #475569;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-count strong,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-count strong {
+  color: #0284c7;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-upload-link,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-upload-link {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+  color: #047857;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-upload-link:hover,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-upload-link:hover {
+  background: #10b981;
+  color: #ffffff;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-close-btn,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-close-btn {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-close-btn:hover,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-close-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.sr-lic-repo-card {
+  content-visibility: auto;
+  contain-intrinsic-size: 86px;
+}
+
+.sr-lic-repo-lazy-more {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  margin-top: 4px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px dashed rgba(56, 189, 248, 0.35);
+}
+
+.sr-lic-repo-lazy-text {
+  font-size: 11.5px;
+  color: #94a3b8;
+}
+
+.sr-lic-repo-lazy-text strong {
+  color: #38bdf8;
+  font-weight: 800;
+}
+
+.sr-lic-repo-lazy-btn {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 7px;
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  background: rgba(2, 132, 199, 0.2);
+  color: #7dd3fc;
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sr-lic-repo-lazy-btn:hover {
+  background: #0284c7;
+  color: #ffffff;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-lazy-more,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-lazy-more {
+  background: #ffffff;
+  border-color: #7dd3fc;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-lazy-text,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-lazy-text {
+  color: #475569;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-lazy-text strong,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-lazy-text strong {
+  color: #0284c7;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-lazy-btn,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-lazy-btn {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+  color: #0369a1;
+}
+
+.sr-lic-repo-modal.is-light .sr-lic-repo-lazy-btn:hover,
+.sr-modal-overlay.theme-light-blue .sr-lic-repo-lazy-btn:hover {
+  background: #0284c7;
+  color: #ffffff;
+}
+
+@media (max-width: 1080px) {
+  .sr-lic-repo-overlay {
+    padding: 0 !important;
+  }
+
+  .sr-lic-repo-modal {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    border: none !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .sr-lic-repo-head {
+    padding: 12px 14px;
+  }
+
+  .sr-lic-repo-toolbar {
+    padding: 10px 12px;
+  }
+
+  .sr-lic-repo-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .sr-lic-repo-tab {
+    justify-content: center;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+
+  .sr-lic-repo-body {
+    padding: 10px 12px;
+  }
+
+  .sr-lic-repo-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .sr-lic-repo-card-action {
+    justify-content: flex-end;
+    border-top: 1px dashed rgba(148, 163, 184, 0.2);
+    padding-top: 8px;
+  }
+
+  .sr-lic-repo-modal.is-light .sr-lic-repo-card-action,
+  .sr-modal-overlay.theme-light-blue .sr-lic-repo-card-action {
+    border-top-color: #e2e8f0;
+  }
+
+  .sr-lic-repo-pick-btn,
+  .sr-lic-repo-attached-pill {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .sr-lic-repo-footer {
+    padding: 10px 12px;
   }
 }
 </style>

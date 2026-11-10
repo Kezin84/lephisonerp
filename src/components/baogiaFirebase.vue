@@ -188,11 +188,11 @@ const vAutoGrow = {
 ====================== */
 function fbHopDongTongQuatToRow(item: any, fbKey = ''): any[] {
   if (Array.isArray(item)) {
-    const r = item.slice(0, 46)
-    while (r.length < 46) r.push('')
+    const r = item.slice(0, 47)
+    while (r.length < 47) r.push('')
     return r
   }
-  if (!item || typeof item !== 'object') return new Array(46).fill('')
+  if (!item || typeof item !== 'object') return new Array(47).fill('')
   const truocHD = toNum(item.Tong_tien_truoc_thueVAT ?? item.tong_truoc_vat ?? item.tong_tien, 0)
   const truocKhach = toNum(item.Tong_gia_thuc_te ?? item.Tong_tien_truoc_thueVAT_khach ?? item.tong_truoc_vat_khach ?? item.tong_gia_thuc_te ?? item.tong_truoc_vat_goc, truocHD)
   return [
@@ -241,13 +241,14 @@ function fbHopDongTongQuatToRow(item: any, fbKey = ''): any[] {
     String(item.id_sale_report ?? ''),
     String(item.ten_file_khach ?? item.ten_file_bao_gia_khach ?? ''),
     String(item.link_file_khach ?? item.link_excel_bao_gia_khach ?? ''),
-    toNum(item.Tong_CP_don_hang ?? item.tongCP ?? item.tong_cp ?? item.Tong_thanh_tien_chua_VAT_mua_hang ?? item.giaMua ?? item.gia_mua ?? item.tong_gia_von_mua_hang, 0)
+    toNum(item.Tong_CP_don_hang ?? item.tongCP ?? item.tong_cp ?? item.Tong_thanh_tien_chua_VAT_mua_hang ?? item.giaMua ?? item.gia_mua ?? item.tong_gia_von_mua_hang, 0),
+    Boolean(item.lam_tron_ti_suat ?? item.lamTronTiSuat ?? false)
   ]
 }
 
 function rowToFbHopDongTongQuat(r: any[]) {
-  const row = Array.isArray(r) ? r.slice(0, 46) : []
-  while (row.length < 46) row.push('')
+  const row = Array.isArray(r) ? r.slice(0, 47) : []
+  while (row.length < 47) row.push('')
   const isCompletedBool = row[33] === true || String(row[33]).toUpperCase() === 'TRUE'
   const truoc = toNum(row[5], 0)
   const vat = toNum(row[6], 0)
@@ -342,7 +343,8 @@ function rowToFbHopDongTongQuat(r: any[]) {
     link_excel_bao_gia_khach: linkFileKhach,
     structure: String(row[36] ?? ''),
     id_sale_report_craft: String(row[41] ?? ''),
-    id_sale_report: String(row[42] ?? '')
+    id_sale_report: String(row[42] ?? ''),
+    lam_tron_ti_suat: Boolean(row[46] === true || String(row[46]).toUpperCase() === 'TRUE')
   }
 }
 
@@ -1540,6 +1542,8 @@ function trackHistory(key: string, source: () => number) {
 const products = ref<HangHoa[]>([])
 const keyword = ref('')
 const userVolumeFilter = ref('')
+const isMobileDevice = ref(typeof window !== 'undefined' ? window.innerWidth <= 768 : false)
+const isMobileQuoteViewport = ref(typeof window !== 'undefined' ? window.innerWidth <= 1100 : false)
 
 const MAX_RECENT_SEARCHES = 8
 const recentSearches = ref<string[]>([])
@@ -1631,6 +1635,7 @@ function onCatalogSearchFocus() {
   }
   isSearchInputFocused.value = true
   showRecentSearches.value = true
+  showCategoryPicker.value = false
 }
 
 function onCatalogSearchBlur() {
@@ -2302,9 +2307,13 @@ function syncFlatRows() {
   let currentGroupSttLabel = ''
   let groupIndex = 0
   let stt = 0
+  const seenItemUids = new Set<string>()
   
   selectedItems.value.forEach((it, idx) => {
-    if (!it.uid) it.uid = Math.random().toString(36).substr(2, 9)
+    if (!it.uid || seenItemUids.has(String(it.uid))) {
+      it.uid = makeUniqueQuoteItemUid() + '_' + idx
+    }
+    seenItemUids.add(String(it.uid))
     const cat = (it.Danh_muc || '').trim()
     const gKey = normalizeQuoteCategoryKey(cat)
 
@@ -7157,11 +7166,19 @@ function withOriginalPriceFields(item: HangHoa & { So_luong: number }) {
   return item
 }
 
-function cloneHang(h: HangHoa, qty = 1): HangHoa & { So_luong: number } {
-  const item = {
+let _quoteItemUidSeq = 0
+function makeUniqueQuoteItemUid(): string {
+  _quoteItemUidSeq = (_quoteItemUidSeq + 1) % 1000000
+  return Math.random().toString(36).substr(2, 9) + '_' + Date.now().toString(36).slice(-4) + '_' + _quoteItemUidSeq.toString(36)
+}
+
+function cloneHang(h: HangHoa, qty = 1): HangHoa & { So_luong: number; uid?: string } {
+  const item: any = {
     ...JSON.parse(JSON.stringify(h)),
+    uid: makeUniqueQuoteItemUid(),
     So_luong: Math.max(1, toNum(qty, 1))
   }
+  delete item._mergedFromRows
   return withOriginalPriceFields(item)
 }
 
@@ -7917,7 +7934,7 @@ const saveQuoteFileConfigModal = reactive<{
   hdTemplateId: 'MINTL_HOP_DONG',
   hdCustomFile: null,
   khachMode: 'template',
-  khachTemplateId: 'MINTL_CHUAN_NTS',
+  khachTemplateId: 'MINTL_DEFAULT_NTS',
   khachCustomFile: null
 })
 const hdCustomFileInputRef = ref<HTMLInputElement | null>(null)
@@ -7933,8 +7950,23 @@ async function openSaveQuoteFileConfigModal(saveMode: 'temp' | 'official', fromS
     list.find(t => isContractPriceTemplate(t)) ||
     list[0]
   const defaultKhachTpl =
-    list.find(t => t.id === 'MINTL_CHUAN_NTS') ||
-    list.find(t => !isContractPriceTemplate(t) && !isListPriceTemplate(t) && !isThreePriceComparisonTemplate(t)) ||
+    list.find(
+      t =>
+        t.id === 'MINTL_DEFAULT_NTS' ||
+        t.id === 'MINTL_CHUAN_NTS' ||
+        String(t.ten_mau || '').toLowerCase().includes('chuẩn nts') ||
+        String(t.ten_mau || '').toLowerCase().includes('chuan nts')
+    ) ||
+    list.find(
+      t =>
+        !isContractPriceTemplate(t) &&
+        !isListPriceTemplate(t) &&
+        !isThreePriceComparisonTemplate(t) &&
+        t.id !== 'MINTL_DAI_LY' &&
+        !t.id.startsWith('MINTL_DAI_LY_') &&
+        !String(t.ten_mau || '').toLowerCase().includes('đại lý') &&
+        t.id !== 'MINTL_DEAL_REG'
+    ) ||
     list[0]
 
   saveQuoteFileConfigModal.saveMode = saveMode
@@ -7944,7 +7976,7 @@ async function openSaveQuoteFileConfigModal(saveMode: 'temp' | 'official', fromS
   saveQuoteFileConfigModal.hdTemplateId = defaultHdTpl?.id || 'MINTL_HOP_DONG'
   saveQuoteFileConfigModal.hdCustomFile = null
   saveQuoteFileConfigModal.khachMode = 'template'
-  saveQuoteFileConfigModal.khachTemplateId = defaultKhachTpl?.id || 'MINTL_CHUAN_NTS'
+  saveQuoteFileConfigModal.khachTemplateId = defaultKhachTpl?.id || 'MINTL_DEFAULT_NTS'
   saveQuoteFileConfigModal.khachCustomFile = null
   saveQuoteFileConfigModal.visible = true
 }
@@ -8248,7 +8280,8 @@ function buildHopDongTongQuatRow(
       idSaleReport,                             // ✅ index 42 - id_sale_report
       tenFileBaoGiaKhach,                       // ✅ index 43 - ten_file_khach
       linkBaoGiaKhach,                          // ✅ index 44 - link_file_khach
-      tongCpDonHang                             // ✅ index 45 - Tong_CP_don_hang
+      tongCpDonHang,                            // ✅ index 45 - Tong_CP_don_hang
+      Boolean(cmpSrIsRatioRounded.value)        // ✅ index 46 - lam_tron_ti_suat
   ]
 }
 
@@ -8560,6 +8593,7 @@ async function saveContractTemp(force = false, skipFileModal = false, fromSaveMo
       ke_hoach_thanh_toan: Array.isArray(existingCraft.ke_hoach_thanh_toan) ? existingCraft.ke_hoach_thanh_toan : [],
       goodsList: srMetrics.goodsList,
       goodsTotal: srMetrics.goodsTotal,
+      lam_tron_ti_suat: Boolean(cmpSrIsRatioRounded.value),
       is_craft: true,
       chotDeal: false
     }
@@ -8746,6 +8780,7 @@ async function saveContractOfficialAndSaleReport(force = false, skipFileModal = 
       ke_hoach_thanh_toan: [],
       goodsList: srMetrics.goodsList,
       goodsTotal: srMetrics.goodsTotal,
+      lam_tron_ti_suat: Boolean(cmpSrIsRatioRounded.value),
       from_craft: craftKey,
       is_craft: false
     }
@@ -9574,6 +9609,8 @@ function togglePriceListPicker() {
   const next = !showPriceListPicker.value
   if (next) {
     priceListSearchQuery.value = ''
+    showCategoryPicker.value = false
+    showRecentSearches.value = false
   }
   showPriceListPicker.value = next
 }
@@ -9589,6 +9626,64 @@ function selectPriceListOption(id: string) {
     showPriceListInfoSubbar.value = false
   }
 }
+
+// --- PRODUCT CATALOG CATEGORY PICKER (BÊN DƯỚI Ô SEARCH - PC POPOVER & MOBILE BOTTOM SHEET) ---
+const selectedCatalogCategory = ref<string>('')
+const showCategoryPicker = ref<boolean>(false)
+const categoryPickerSearchQuery = ref<string>('')
+const catPickerRootRef = ref<HTMLElement | null>(null)
+const catMobileSheetRef = ref<HTMLElement | null>(null)
+
+interface CatalogCategoryOption {
+  key: string
+  label: string
+  count: number
+}
+
+function toggleCategoryPicker() {
+  const next = !showCategoryPicker.value
+  if (next) {
+    categoryPickerSearchQuery.value = ''
+    showPriceListPicker.value = false
+    showRecentSearches.value = false
+  }
+  showCategoryPicker.value = next
+}
+
+function closeCategoryPicker() {
+  showCategoryPicker.value = false
+}
+
+function selectCatalogCategory(catKey: string) {
+  selectedCatalogCategory.value = catKey
+  showCategoryPicker.value = false
+}
+
+function handleCategoryDocPointerDown(ev: MouseEvent) {
+  if (!showCategoryPicker.value) return
+  const target = ev.target as Node | null
+  if (!target) return
+  if (catPickerRootRef.value?.contains(target)) return
+  if (catMobileSheetRef.value?.contains(target)) return
+  showCategoryPicker.value = false
+}
+
+function handleCategoryDocKeyDown(ev: KeyboardEvent) {
+  if (ev.key === 'Escape' && showCategoryPicker.value) {
+    showCategoryPicker.value = false
+  }
+}
+
+watch(showCategoryPicker, (open) => {
+  if (typeof document === 'undefined') return
+  if (open) {
+    document.addEventListener('mousedown', handleCategoryDocPointerDown, true)
+    document.addEventListener('keydown', handleCategoryDocKeyDown)
+  } else {
+    document.removeEventListener('mousedown', handleCategoryDocPointerDown, true)
+    document.removeEventListener('keydown', handleCategoryDocKeyDown)
+  }
+})
 
 function handlePriceListDocPointerDown(ev: MouseEvent) {
   if (!showPriceListPicker.value) return
@@ -9618,12 +9713,15 @@ watch(showPriceListPicker, (open) => {
 
 onDeactivated(() => {
   showPriceListPicker.value = false
+  showCategoryPicker.value = false
 })
 
 onUnmounted(() => {
   if (typeof document !== 'undefined') {
     document.removeEventListener('mousedown', handlePriceListDocPointerDown, true)
     document.removeEventListener('keydown', handlePriceListDocKeyDown)
+    document.removeEventListener('mousedown', handleCategoryDocPointerDown, true)
+    document.removeEventListener('keydown', handleCategoryDocKeyDown)
   }
 })
 
@@ -9723,6 +9821,74 @@ const activePriceListMap = computed(() => {
     }
   })
   return map
+})
+
+const catalogCategoryBasePool = computed(() => {
+  const hasPriceListFilter = Boolean(selectedPriceListId.value && activePriceList.value && filterOnlyPriceListItems.value)
+  return products.value.filter(p => {
+    if (hasPriceListFilter && !activePriceListMap.value.has(String(p.Ma_hang || '').trim())) {
+      return false
+    }
+    const okSupplier =
+      supplierFilter.value === 'ALL' ||
+      p.Ten_nha_cung_cap === supplierFilter.value ||
+      p.Ma_nha_cung_cap === supplierFilter.value
+    return okSupplier
+  })
+})
+
+const totalCatalogPoolCount = computed(() => catalogCategoryBasePool.value.length)
+
+const catalogCategoryOptions = computed<CatalogCategoryOption[]>(() => {
+  const countMap = new Map<string, number>()
+  let uncategorizedCount = 0
+
+  for (const p of catalogCategoryBasePool.value) {
+    const rawCat = String(p.Danh_muc || '').trim().toUpperCase()
+    if (rawCat) {
+      countMap.set(rawCat, (countMap.get(rawCat) || 0) + 1)
+    } else {
+      uncategorizedCount++
+    }
+  }
+
+  const list: CatalogCategoryOption[] = Array.from(countMap.entries())
+    .map(([name, count]) => ({
+      key: name,
+      label: name,
+      count
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'vi'))
+
+  if (uncategorizedCount > 0) {
+    list.push({
+      key: '__NONE__',
+      label: 'Chưa phân danh mục',
+      count: uncategorizedCount
+    })
+  }
+
+  return list
+})
+
+const selectedCategoryOption = computed<CatalogCategoryOption | null>(() => {
+  if (!selectedCatalogCategory.value) return null
+  return (
+    catalogCategoryOptions.value.find(c => c.key === selectedCatalogCategory.value) || {
+      key: selectedCatalogCategory.value,
+      label: selectedCatalogCategory.value === '__NONE__' ? 'Chưa phân danh mục' : selectedCatalogCategory.value,
+      count: 0
+    }
+  )
+})
+
+const filteredCatalogCategoryOptions = computed<CatalogCategoryOption[]>(() => {
+  const q = normalizePriceListSearchText(categoryPickerSearchQuery.value)
+  if (!q) return catalogCategoryOptions.value
+  return catalogCategoryOptions.value.filter(cat => {
+    const hay = normalizePriceListSearchText(cat.label)
+    return hay.includes(q)
+  })
 })
 
 function formatPriceListRuleShortBaoGia(plEntry: any, baseGiaGoc?: any) {
@@ -10323,6 +10489,15 @@ const filteredProducts = computed(() => {
         p.Ma_nha_cung_cap === supplierFilter.value
       if (!okSupplier) return false
 
+      if (selectedCatalogCategory.value) {
+        const pCat = String(p.Danh_muc || '').trim().toUpperCase()
+        if (selectedCatalogCategory.value === '__NONE__') {
+          if (pCat !== '') return false
+        } else if (pCat !== selectedCatalogCategory.value) {
+          return false
+        }
+      }
+
       let okKw = true
       if (words.length > 0) {
         const ma = (p.Ma_hang || '').toLowerCase()
@@ -10370,7 +10545,7 @@ const displayLimit = ref(PRODUCT_LAZY_BATCH_SIZE)
 const productLazySentinelRef = ref<HTMLElement | null>(null)
 let productLazyObserver: IntersectionObserver | null = null
 
-watch([keyword, supplierFilter, userVolumeFilter, selectedPriceListId, filterOnlyPriceListItems], () => {
+watch([keyword, supplierFilter, userVolumeFilter, selectedPriceListId, filterOnlyPriceListItems, selectedCatalogCategory, isMobileQuoteViewport], () => {
   displayLimit.value = PRODUCT_LAZY_BATCH_SIZE
 })
 
@@ -10484,33 +10659,1026 @@ function insertItemIntoGroup(cloned: any) {
   }
 }
 
+/* ======================
+   ✅ TÁCH DÒNG RIÊNG BIỆT & GỘP SẢN PHẨM CÙNG LOẠI (KÈM Ô TICK & ĐỒNG BỘ GIÁ)
+====================== */
+const quoteNoMergeItems = ref<boolean>(false)
+const mergeCheckedMap = reactive<Record<string, boolean>>({})
+const activeMergeSelectKey = ref<string>('')
+
+function persistQuoteNoMergeItems(val: boolean) {
+  quoteNoMergeItems.value = val
+}
+
+function isItemInActiveMergeSelect(it: any): boolean {
+  if (!activeMergeSelectKey.value || !it) return false
+  const key = getQuoteItemMergeKey(it)
+  return Boolean(key && key === activeMergeSelectKey.value && getDuplicateRowCountForItem(it) > 1)
+}
+
+function cancelMergeSelectMode() {
+  if (activeMergeSelectKey.value) {
+    const grp = duplicateMaHangGroups.value.find(g => g.mergeKey === activeMergeSelectKey.value)
+    if (grp) clearCheckedForMergeItems(grp.items)
+    activeMergeSelectKey.value = ''
+  }
+}
+
+function getRowMergeUid(it: any): string {
+  if (!it) return ''
+  if (!it.uid) {
+    it.uid = makeUniqueQuoteItemUid()
+  }
+  return String(it.uid)
+}
+
+function isRowCheckedForMerge(it: any): boolean {
+  const uid = getRowMergeUid(it)
+  return uid ? Boolean(mergeCheckedMap[uid]) : false
+}
+
+function toggleRowCheckedForMerge(it: any) {
+  const uid = getRowMergeUid(it)
+  if (!uid) return
+  mergeCheckedMap[uid] = !mergeCheckedMap[uid]
+}
+
+function clearCheckedForMergeItems(itemsList: any[]) {
+  itemsList.forEach(it => {
+    const uid = it?.uid ? String(it.uid) : ''
+    if (uid && mergeCheckedMap[uid]) {
+      delete mergeCheckedMap[uid]
+    }
+  })
+}
+
+function getQuoteItemMergeKey(it: any): string {
+  if (!it) return ''
+  const ma = String(it.Ma_hang || '').trim().toUpperCase()
+  if (ma) return `MA:${ma}`
+  const ten = String(it.Ten_hang || '').trim().toUpperCase()
+  return ten ? `TEN:${ten}` : ''
+}
+
+function getItemPriceSignature(it: any): string {
+  if (!it) return ''
+  const upCont = Math.round(unitPrice(it))
+  const upCust = Math.round(unitPriceRaw(it))
+  const cost = Math.round(standardPriceRaw(it))
+  const nhap = Math.round(giaNhapVndRaw(it))
+  const off = round2(getGocNumber(it, '_muc_phan_tram_off_goc', toNum(it.muc_phan_tram_off, 0)))
+  const vat = round2(getGocNumber(it, '_Thue_VAT_goc', toNum(it.Thue_VAT, 0)))
+  return `${upCont}|${upCust}|${cost}|${nhap}|${off}|${vat}`
+}
+
+function areQuoteItemsPriceIdentical(a: any, b: any): boolean {
+  if (!a || !b) return true
+  return getItemPriceSignature(a) === getItemPriceSignature(b)
+}
+
+interface DuplicateQuoteGroup {
+  mergeKey: string
+  maHang: string
+  tenHang: string
+  dvt: string
+  indices: number[]
+  items: any[]
+  totalQty: number
+  hasPriceConflict: boolean
+}
+
+const duplicateMaHangGroups = computed<DuplicateQuoteGroup[]>(() => {
+  const map = new Map<string, { indices: number[]; items: any[] }>()
+  selectedItems.value.forEach((it, idx) => {
+    const key = getQuoteItemMergeKey(it)
+    if (!key) return
+    let entry = map.get(key)
+    if (!entry) {
+      entry = { indices: [], items: [] }
+      map.set(key, entry)
+    }
+    entry.indices.push(idx)
+    entry.items.push(it)
+  })
+
+  const groups: DuplicateQuoteGroup[] = []
+  map.forEach((entry, mergeKey) => {
+    if (entry.indices.length > 1) {
+      const first = entry.items[0]
+      const totalQty = entry.items.reduce((acc, item) => acc + Math.max(1, Math.floor(toNum(item.So_luong, 1))), 0)
+      const hasPriceConflict = entry.items.some((item, i) => i > 0 && !areQuoteItemsPriceIdentical(first, item))
+      groups.push({
+        mergeKey,
+        maHang: String(first?.Ma_hang || ''),
+        tenHang: String(first?.Ten_hang || ''),
+        dvt: String(first?.DVT || 'ĐV'),
+        indices: entry.indices,
+        items: entry.items,
+        totalQty,
+        hasPriceConflict
+      })
+    }
+  })
+  return groups
+})
+
+const totalDuplicateRowsCount = computed(() =>
+  duplicateMaHangGroups.value.reduce((acc, g) => acc + g.indices.length, 0)
+)
+
+const hasSplittableRowsInQuote = computed(() =>
+  selectedItems.value.some(it => Math.max(1, Math.floor(toNum(it?.So_luong, 1))) > 1 || hasRowMergeHistory(it))
+)
+
+function getDuplicateRowCountForItem(item: any): number {
+  const key = getQuoteItemMergeKey(item)
+  if (!key) return 1
+  const found = duplicateMaHangGroups.value.find(g => g.mergeKey === key)
+  return found ? found.indices.length : 1
+}
+
+function getCheckedDuplicateIndicesForItem(item: any): number[] {
+  const key = getQuoteItemMergeKey(item)
+  if (!key) return []
+  const found = duplicateMaHangGroups.value.find(g => g.mergeKey === key)
+  if (!found) return []
+  return found.indices.filter(i => isRowCheckedForMerge(selectedItems.value[i]))
+}
+
+function getCheckedDuplicateCountForItem(item: any): number {
+  return getCheckedDuplicateIndicesForItem(item).length
+}
+
+function hasDuplicatePriceConflictForItem(item: any): boolean {
+  const key = getQuoteItemMergeKey(item)
+  if (!key) return false
+  const found = duplicateMaHangGroups.value.find(g => g.mergeKey === key)
+  return Boolean(found?.hasPriceConflict)
+}
+
+function hasRowMergeHistory(item: any): boolean {
+  return Array.isArray(item?._mergedFromRows) && item._mergedFromRows.length > 1
+}
+
+const quoteActionColWidthPx = computed(() => {
+  if (activeMergeSelectKey.value) {
+    const activeGrp = duplicateMaHangGroups.value.find(g => g.mergeKey === activeMergeSelectKey.value)
+    if (activeGrp && activeGrp.indices.length > 1) {
+      return 124
+    }
+  }
+  let maxCluster = 0 // 0: chỉ Xóa, 1: Tách + Xóa hoặc Gộp + Xóa, 2: Gộp + Tách + Xóa
+  for (const it of selectedItems.value) {
+    const canSplit = toNum(it?.So_luong, 1) > 1 || hasRowMergeHistory(it)
+    const canMerge = getDuplicateRowCountForItem(it) > 1
+    if (canSplit && canMerge) {
+      maxCluster = Math.max(maxCluster, 2)
+    } else if (canMerge || canSplit) {
+      maxCluster = Math.max(maxCluster, 1)
+    }
+  }
+  if (maxCluster === 2) return 96
+  if (maxCluster === 1) return 68
+  return 36
+})
+
+function insertClonedItemRespectingNoMerge(baseItem: any, qty: number, resolvedMaHang: string): number {
+  const cleanQty = Math.max(1, Math.floor(toNum(qty, 1)))
+  let highlightIdx = -1
+
+  if (quoteNoMergeItems.value) {
+    // Chế độ Không gộp: nếu SL > 1 (tối đa 50 dòng/lần thêm), tự tách thành N dòng SL = 1
+    if (cleanQty > 1 && cleanQty <= 50) {
+      for (let k = 0; k < cleanQty; k++) {
+        const singleClone = cloneHang(baseItem, 1)
+        singleClone.Ma_hang = resolvedMaHang
+        highlightIdx = insertItemIntoGroup(singleClone)
+      }
+    } else {
+      const cloned = cloneHang(baseItem, cleanQty)
+      cloned.Ma_hang = resolvedMaHang
+      highlightIdx = insertItemIntoGroup(cloned)
+    }
+    return highlightIdx
+  }
+
+  const foundIdx = selectedItems.value.findIndex(it => it.Ma_hang === resolvedMaHang)
+  if (foundIdx >= 0) {
+    selectedItems.value[foundIdx].So_luong += cleanQty
+    selectedItems.value[foundIdx].Don_gia = baseItem.Don_gia
+    ;(selectedItems.value[foundIdx] as any)._Don_gia_goc = getGocNumber(baseItem, '_Don_gia_goc', toNum(baseItem.Don_gia, 0))
+    ;(selectedItems.value[foundIdx] as any)._Don_gia_kho = getGocNumber(baseItem, '_Don_gia_kho', toNum(baseItem.Don_gia, 0))
+    highlightIdx = foundIdx
+  } else {
+    const cloned = cloneHang(baseItem, cleanQty)
+    cloned.Ma_hang = resolvedMaHang
+    highlightIdx = insertItemIntoGroup(cloned)
+  }
+  return highlightIdx
+}
+
+/* --- MODAL TÁCH DÒNG (KHI ĐANG GỘP NHƯNG TÁCH RA) --- */
+const splitItemModal = ref<{
+  show: boolean
+  idx: number
+  item: any | null
+  curQty: number
+  hasMergeHistory: boolean
+  mergeHistoryRows: any[]
+  mode: 'restore_history' | 'split_all_unit' | 'split_custom'
+  splitQty: number
+  customPriceEnabled: boolean
+  customUnitPriceVnd: number
+  customMucOffPct: number
+}>({
+  show: false,
+  idx: -1,
+  item: null,
+  curQty: 1,
+  hasMergeHistory: false,
+  mergeHistoryRows: [],
+  mode: 'split_all_unit',
+  splitQty: 1,
+  customPriceEnabled: false,
+  customUnitPriceVnd: 0,
+  customMucOffPct: 0
+})
+
+function closeSplitItemModal() {
+  splitItemModal.value.show = false
+  splitItemModal.value.idx = -1
+  splitItemModal.value.item = null
+}
+
+function splitSingleRowIntoUnitsNow(idx: number, restoreHistoryIfAvailable = false) {
+  const it = selectedItems.value[idx]
+  if (!it) return
+  const curQty = Math.max(1, Math.floor(toNum(it.So_luong, 1)))
+
+  if (restoreHistoryIfAvailable && hasRowMergeHistory(it)) {
+    const historyRows = (it as any)._mergedFromRows as any[]
+    const restored = historyRows.map(raw => {
+      const c = withOriginalPriceFields(JSON.parse(JSON.stringify(raw)))
+      c.uid = makeUniqueQuoteItemUid()
+      c.So_luong = Math.max(1, Math.floor(toNum(c.So_luong, 1)))
+      delete (c as any)._mergedFromRows
+      return c
+    })
+    selectedItems.value.splice(idx, 1, ...restored)
+    addAction(`Khôi phục ${restored.length} dòng trước khi gộp của mặt hàng "${it.Ten_hang}"`)
+    syncFlatRows()
+    scrollToAndHighlightRow(idx, false)
+    triggerToast(`Đã tách & khôi phục ${restored.length} dòng với mức giá ban đầu!`)
+    return
+  }
+
+  if (curQty <= 1) return
+  const count = Math.min(50, curQty)
+  const newRows: any[] = []
+  for (let k = 0; k < count; k++) {
+    const c = cloneHang(it, 1)
+    // Giữ nguyên cả các trường giá đã sửa của dòng gốc
+    c.Don_gia = it.Don_gia
+    ;(c as any)._Don_gia_goc = (it as any)._Don_gia_goc
+    ;(c as any)._Don_gia_kho = (it as any)._Don_gia_kho
+    c.Gia_tieu_chuan = it.Gia_tieu_chuan
+    ;(c as any)._Gia_tieu_chuan_goc = (it as any)._Gia_tieu_chuan_goc
+    ;(c as any)._Gia_tieu_chuan_kho = (it as any)._Gia_tieu_chuan_kho
+    c.muc_phan_tram_off = it.muc_phan_tram_off
+    ;(c as any)._muc_phan_tram_off_goc = (it as any)._muc_phan_tram_off_goc
+    ;(c as any)._muc_phan_tram_off_kho = (it as any)._muc_phan_tram_off_kho
+    if (k === count - 1 && curQty > count) {
+      c.So_luong = curQty - count + 1
+    }
+    newRows.push(c)
+  }
+  selectedItems.value.splice(idx, 1, ...newRows)
+  addAction(`Tách mặt hàng "${it.Ten_hang}" (SL ${curQty}) thành ${newRows.length} dòng riêng biệt`)
+  syncFlatRows()
+  scrollToAndHighlightRow(idx, false)
+  triggerToast(`Đã tách "${it.Ma_hang || it.Ten_hang}" thành ${newRows.length} dòng riêng biệt!`)
+}
+
+function handleSplitQuoteRow(idx: number, fromEditModal = false) {
+  const it = selectedItems.value[idx]
+  if (!it) return
+  if (fromEditModal && showQuoteEditModal.value) {
+    saveQuoteEdit()
+  }
+  const latestItem = selectedItems.value[idx]
+  if (!latestItem) return
+
+  const curQty = Math.max(1, Math.floor(toNum(latestItem.So_luong, 1)))
+  const hasHist = hasRowMergeHistory(latestItem)
+
+  // Nếu SL = 2 và không có lịch sử gộp khác giá -> Tách nhanh 1-click thành 2 dòng SL = 1
+  if (curQty === 2 && !hasHist) {
+    splitSingleRowIntoUnitsNow(idx, false)
+    return
+  }
+
+  if (curQty <= 1 && !hasHist) {
+    triggerToast('Mặt hàng đang có SL = 1 nên không cần tách thêm.', 'info')
+    return
+  }
+
+  const histRows = hasHist ? JSON.parse(JSON.stringify((latestItem as any)._mergedFromRows)) : []
+  splitItemModal.value = {
+    show: true,
+    idx,
+    item: JSON.parse(JSON.stringify(latestItem)),
+    curQty,
+    hasMergeHistory: hasHist,
+    mergeHistoryRows: histRows,
+    mode: hasHist ? 'restore_history' : (curQty <= 10 ? 'split_all_unit' : 'split_custom'),
+    splitQty: 1,
+    customPriceEnabled: false,
+    customUnitPriceVnd: Math.round(unitPriceRaw(latestItem)),
+    customMucOffPct: round2(getGocNumber(latestItem, '_muc_phan_tram_off_goc', toNum(latestItem.muc_phan_tram_off, 0)))
+  }
+}
+
+function stepSplitModalCustomQty(delta: number) {
+  const maxSplit = Math.max(1, splitItemModal.value.curQty - 1)
+  const next = Math.min(maxSplit, Math.max(1, Math.floor(toNum(splitItemModal.value.splitQty, 1)) + delta))
+  splitItemModal.value.splitQty = next
+}
+
+function confirmSplitItemModal() {
+  const { idx, mode, splitQty, customPriceEnabled, customUnitPriceVnd, customMucOffPct } = splitItemModal.value
+  const it = selectedItems.value[idx]
+  if (!it) {
+    closeSplitItemModal()
+    return
+  }
+
+  if (mode === 'restore_history' && hasRowMergeHistory(it)) {
+    closeSplitItemModal()
+    splitSingleRowIntoUnitsNow(idx, true)
+    return
+  }
+
+  if (mode === 'split_all_unit') {
+    closeSplitItemModal()
+    splitSingleRowIntoUnitsNow(idx, false)
+    return
+  }
+
+  // mode === 'split_custom': Tách thành 2 dòng (Dòng 1: curQty - splitQty, Dòng 2: splitQty)
+  const curQty = Math.max(2, Math.floor(toNum(it.So_luong, 2)))
+  const sQty = Math.min(curQty - 1, Math.max(1, Math.floor(toNum(splitQty, 1))))
+  const remainQty = curQty - sQty
+
+  const row1 = cloneHang(it, remainQty)
+  row1.Don_gia = it.Don_gia
+  ;(row1 as any)._Don_gia_goc = (it as any)._Don_gia_goc
+  ;(row1 as any)._Don_gia_kho = (it as any)._Don_gia_kho
+  row1.Gia_tieu_chuan = it.Gia_tieu_chuan
+  ;(row1 as any)._Gia_tieu_chuan_goc = (it as any)._Gia_tieu_chuan_goc
+  ;(row1 as any)._Gia_tieu_chuan_kho = (it as any)._Gia_tieu_chuan_kho
+  row1.muc_phan_tram_off = it.muc_phan_tram_off
+  ;(row1 as any)._muc_phan_tram_off_goc = (it as any)._muc_phan_tram_off_goc
+  ;(row1 as any)._muc_phan_tram_off_kho = (it as any)._muc_phan_tram_off_kho
+
+  const row2 = cloneHang(it, sQty)
+  row2.Don_gia = it.Don_gia
+  ;(row2 as any)._Don_gia_goc = (it as any)._Don_gia_goc
+  ;(row2 as any)._Don_gia_kho = (it as any)._Don_gia_kho
+  row2.Gia_tieu_chuan = it.Gia_tieu_chuan
+  ;(row2 as any)._Gia_tieu_chuan_goc = (it as any)._Gia_tieu_chuan_goc
+  ;(row2 as any)._Gia_tieu_chuan_kho = (it as any)._Gia_tieu_chuan_kho
+  row2.muc_phan_tram_off = it.muc_phan_tram_off
+  ;(row2 as any)._muc_phan_tram_off_goc = (it as any)._muc_phan_tram_off_goc
+  ;(row2 as any)._muc_phan_tram_off_kho = (it as any)._muc_phan_tram_off_kho
+
+  if (customPriceEnabled) {
+    const tg = getGocNumber(row2, '_Ti_gia_goc', toNum(row2.Ti_gia, 1)) || 1
+    const hw = getGocNumber(row2, '_gia_hardware_goc', toNum(row2.gia_hardware, 0))
+    const nhap = getGocNumber(row2, '_gia_nhap_goc', toNum(row2.gia_nhap, 0))
+    const pctOff = Math.max(0, toNum(customMucOffPct, 0))
+    const nextDonGia = solveDonGiaForTargetUnitPriceVnd(Math.max(0, toNum(customUnitPriceVnd, 0)), tg, hw, nhap, pctOff)
+    row2.muc_phan_tram_off = pctOff
+    ;(row2 as any)._muc_phan_tram_off_goc = pctOff
+    row2.Don_gia = nextDonGia
+    ;(row2 as any)._Don_gia_goc = nextDonGia
+  }
+
+  selectedItems.value.splice(idx, 1, row1, row2)
+  addAction(`Tách mặt hàng "${it.Ten_hang}" thành 2 dòng (SL ${remainQty} & SL ${sQty})`)
+  closeSplitItemModal()
+  syncFlatRows()
+  scrollToAndHighlightRow(idx + 1, false)
+  triggerToast(`Đã tách thành 2 dòng: SL ${remainQty} và SL ${sQty}!`)
+}
+
+/* --- MODAL ĐỒNG BỘ GIÁ KHI GỘP DÒNG TRÙNG MÃ (KHI MỖI CÁI GIÁ KHÁC NHAU) --- */
+interface MergeSyncPriceOption {
+  optionId: string
+  type: 'row' | 'weighted_avg' | 'custom'
+  label: string
+  subLabel: string
+  unitPriceCustVnd: number
+  unitPriceContVnd: number
+  costPriceVnd: number
+  mucOffPct: number
+  vatPct: number
+  mergedTotalCustVnd: number
+  diffVsCurrentTotalVnd: number
+  sourceItem?: any
+}
+
+interface MergeSyncConflictGroupEntry {
+  mergeKey: string
+  maHang: string
+  tenHang: string
+  dvt: string
+  indices: number[]
+  items: any[]
+  checkedRowFlags: boolean[]
+  hasPriceConflict: boolean
+  totalQty: number
+  currentSumCustVnd: number
+  selectedOptionId: string
+  customUnitPriceVnd: number
+  customCostPriceVnd: number
+  options: MergeSyncPriceOption[]
+}
+
+const mergeSyncModal = ref<{
+  show: boolean
+  scope: 'single' | 'all'
+  conflictGroups: MergeSyncConflictGroupEntry[]
+  identicalMergeKeys: string[]
+}>({
+  show: false,
+  scope: 'single',
+  conflictGroups: [],
+  identicalMergeKeys: []
+})
+
+function closeMergeSyncModal() {
+  mergeSyncModal.value.show = false
+  mergeSyncModal.value.conflictGroups = []
+  mergeSyncModal.value.identicalMergeKeys = []
+}
+
+function rebuildMergeSyncOptionsForGroup(cg: MergeSyncConflictGroupEntry) {
+  const activePairs = cg.items
+    .map((it, rowPos) => ({
+      it,
+      rowPos,
+      idx: cg.indices[rowPos],
+      checked: cg.checkedRowFlags[rowPos] !== false
+    }))
+    .filter(p => p.checked)
+
+  const targetPairs = activePairs.length > 0 ? activePairs : cg.items.map((it, rowPos) => ({
+    it,
+    rowPos,
+    idx: cg.indices[rowPos],
+    checked: true
+  }))
+
+  const activeItems = targetPairs.map(p => p.it)
+  const totalQty = activeItems.reduce((acc, it) => acc + Math.max(1, Math.floor(toNum(it.So_luong, 1))), 0)
+  const currentSumCustVnd = activeItems.reduce((acc, it) => acc + lineTruocThueRaw(it), 0)
+  const currentSumContVnd = activeItems.reduce((acc, it) => acc + lineTruocThue(it), 0)
+  const currentSumCostVnd = activeItems.reduce((acc, it) => acc + standardPriceRaw(it) * Math.max(1, toNum(it.So_luong, 1)), 0)
+
+  const signatures = new Set(activeItems.map(it => getItemPriceSignature(it)))
+  cg.hasPriceConflict = signatures.size > 1
+  cg.totalQty = totalQty
+  cg.currentSumCustVnd = Math.round(currentSumCustVnd)
+
+  const options: MergeSyncPriceOption[] = []
+
+  // 1) Các phương án lấy theo từng dòng đang được tick chọn
+  targetPairs.forEach(({ it, rowPos, idx }) => {
+    const sl = Math.max(1, Math.floor(toNum(it.So_luong, 1)))
+    const uCust = Math.round(unitPriceRaw(it))
+    const uCont = Math.round(unitPrice(it))
+    const uCost = Math.round(standardPriceRaw(it))
+    const offPct = round2(getGocNumber(it, '_muc_phan_tram_off_goc', toNum(it.muc_phan_tram_off, 0)))
+    const vatPct = round2(getGocNumber(it, '_Thue_VAT_goc', toNum(it.Thue_VAT, 0)))
+    const mergedTotalCustVnd = Math.round(uCust * totalQty)
+    const diffVsCurrentTotalVnd = Math.round(mergedTotalCustVnd - currentSumCustVnd)
+
+    options.push({
+      optionId: `row_${rowPos}`,
+      type: 'row',
+      label: `Theo giá Dòng #${rowPos + 1} (STT ${idx + 1} • SL: ${sl})`,
+      subLabel: offPct > 0 ? `Đang áp dụng chiết khấu -${offPct}% Off` : 'Mức giá riêng của dòng này',
+      unitPriceCustVnd: uCust,
+      unitPriceContVnd: uCont,
+      costPriceVnd: uCost,
+      mucOffPct: offPct,
+      vatPct,
+      mergedTotalCustVnd,
+      diffVsCurrentTotalVnd,
+      sourceItem: JSON.parse(JSON.stringify(it))
+    })
+  })
+
+  // 2) Phương án Bình quân gia quyền (Giữ nguyên tổng thành tiền)
+  const avgCustVnd = Math.round(currentSumCustVnd / Math.max(1, totalQty))
+  const avgContVnd = Math.round(currentSumContVnd / Math.max(1, totalQty))
+  const avgCostVnd = Math.round(currentSumCostVnd / Math.max(1, totalQty))
+  const firstItem = activeItems[0] || cg.items[0]
+  const firstVat = round2(getGocNumber(firstItem, '_Thue_VAT_goc', toNum(firstItem?.Thue_VAT, 0)))
+  const avgMergedTotal = Math.round(avgCustVnd * totalQty)
+
+  options.push({
+    optionId: 'weighted_avg',
+    type: 'weighted_avg',
+    label: 'Giá bình quân gia quyền (Giữ nguyên Tổng tiền)',
+    subLabel: `Tự chia trung bình cộng theo SL (${totalQty} ${cg.dvt}) để tổng tiền không đổi`,
+    unitPriceCustVnd: avgCustVnd,
+    unitPriceContVnd: avgContVnd,
+    costPriceVnd: avgCostVnd,
+    mucOffPct: 0,
+    vatPct: firstVat,
+    mergedTotalCustVnd: avgMergedTotal,
+    diffVsCurrentTotalVnd: Math.round(avgMergedTotal - currentSumCustVnd)
+  })
+
+  // 3) Phương án Tự nhập đơn giá đồng bộ mới
+  options.push({
+    optionId: 'custom',
+    type: 'custom',
+    label: 'Tự nhập mức giá đồng bộ tùy chỉnh',
+    subLabel: 'Nhập Đơn giá báo khách & Giá vốn mới áp dụng chung sau khi gộp',
+    unitPriceCustVnd: options[0]?.unitPriceCustVnd || avgCustVnd,
+    unitPriceContVnd: options[0]?.unitPriceContVnd || avgContVnd,
+    costPriceVnd: options[0]?.costPriceVnd || avgCostVnd,
+    mucOffPct: 0,
+    vatPct: firstVat,
+    mergedTotalCustVnd: (options[0]?.unitPriceCustVnd || avgCustVnd) * totalQty,
+    diffVsCurrentTotalVnd: (options[0]?.unitPriceCustVnd || avgCustVnd) * totalQty - currentSumCustVnd
+  })
+
+  cg.options = options
+  if (!options.some(o => o.optionId === cg.selectedOptionId)) {
+    cg.selectedOptionId = options[0]?.optionId || 'row_0'
+  }
+}
+
+function toggleMergeSyncRowCheck(cg: MergeSyncConflictGroupEntry, rowPos: number) {
+  const nextVal = !cg.checkedRowFlags[rowPos]
+  cg.checkedRowFlags[rowPos] = nextVal
+  const checkedCount = cg.checkedRowFlags.filter(Boolean).length
+  if (checkedCount < 2) {
+    triggerToast('Cần tích chọn ít nhất 2 dòng cùng mã để gộp.', 'info')
+  }
+  rebuildMergeSyncOptionsForGroup(cg)
+}
+
+function selectAllMergeSyncRows(cg: MergeSyncConflictGroupEntry, selectAll = true) {
+  cg.checkedRowFlags = cg.items.map((_, i) => selectAll ? true : i < 2)
+  rebuildMergeSyncOptionsForGroup(cg)
+}
+
+function buildMergeSyncGroupEntry(g: DuplicateQuoteGroup): MergeSyncConflictGroupEntry {
+  const preCheckedCount = g.items.filter(it => isRowCheckedForMerge(it)).length
+  const checkedRowFlags = g.items.map(it => preCheckedCount >= 2 ? isRowCheckedForMerge(it) : true)
+
+  const entry: MergeSyncConflictGroupEntry = {
+    mergeKey: g.mergeKey,
+    maHang: g.maHang,
+    tenHang: g.tenHang,
+    dvt: g.dvt,
+    indices: g.indices,
+    items: g.items.map(x => JSON.parse(JSON.stringify(x))),
+    checkedRowFlags,
+    hasPriceConflict: g.hasPriceConflict,
+    totalQty: g.totalQty,
+    currentSumCustVnd: 0,
+    selectedOptionId: 'row_0',
+    customUnitPriceVnd: 0,
+    customCostPriceVnd: 0,
+    options: []
+  }
+
+  rebuildMergeSyncOptionsForGroup(entry)
+  entry.customUnitPriceVnd = entry.options[0]?.unitPriceCustVnd || 0
+  entry.customCostPriceVnd = entry.options[0]?.costPriceVnd || 0
+  return entry
+}
+
+function applyPriceChoiceToMergedItem(baseItem: any, groupEntry: MergeSyncConflictGroupEntry, activeItems?: any[]): any {
+  const rowsToMerge = activeItems && activeItems.length > 0 ? activeItems : groupEntry.items
+  const totalQty = rowsToMerge.reduce((acc, it) => acc + Math.max(1, Math.floor(toNum(it.So_luong, 1))), 0)
+  const merged = cloneHang(baseItem, totalQty)
+  // Lưu lịch sử các dòng trước khi gộp để nếu bấm Tách ra lại có thể khôi phục đúng giá cũ
+  ;(merged as any)._mergedFromRows = rowsToMerge.map(raw => {
+    const snap = JSON.parse(JSON.stringify(raw))
+    delete snap._mergedFromRows
+    return snap
+  })
+
+  const chosen = groupEntry.options.find(o => o.optionId === groupEntry.selectedOptionId) || groupEntry.options[0]
+  if (!chosen) return merged
+
+  if (chosen.type === 'row' && chosen.sourceItem) {
+    const src = chosen.sourceItem
+    merged.Don_gia = src.Don_gia
+    ;(merged as any)._Don_gia_goc = (src as any)._Don_gia_goc
+    ;(merged as any)._Don_gia_kho = (src as any)._Don_gia_kho
+    merged.Gia_tieu_chuan = src.Gia_tieu_chuan
+    ;(merged as any)._Gia_tieu_chuan_goc = (src as any)._Gia_tieu_chuan_goc
+    ;(merged as any)._Gia_tieu_chuan_kho = (src as any)._Gia_tieu_chuan_kho
+    merged.gia_hardware = src.gia_hardware
+    ;(merged as any)._gia_hardware_goc = (src as any)._gia_hardware_goc
+    ;(merged as any)._gia_hardware_kho = (src as any)._gia_hardware_kho
+    merged.gia_nhap = src.gia_nhap
+    ;(merged as any)._gia_nhap_goc = (src as any)._gia_nhap_goc
+    ;(merged as any)._gia_nhap_kho = (src as any)._gia_nhap_kho
+    merged.muc_phan_tram_off = src.muc_phan_tram_off
+    ;(merged as any)._muc_phan_tram_off_goc = (src as any)._muc_phan_tram_off_goc
+    ;(merged as any)._muc_phan_tram_off_kho = (src as any)._muc_phan_tram_off_kho
+    merged.Ti_gia = src.Ti_gia
+    ;(merged as any)._Ti_gia_goc = (src as any)._Ti_gia_goc
+    ;(merged as any)._Ti_gia_kho = (src as any)._Ti_gia_kho
+    merged.Thue_VAT = src.Thue_VAT
+    ;(merged as any)._Thue_VAT_goc = (src as any)._Thue_VAT_goc
+    ;(merged as any)._Thue_VAT_kho = (src as any)._Thue_VAT_kho
+    merged.Don_vi_tien_te = src.Don_vi_tien_te
+    return merged
+  }
+
+  const tg = getGocNumber(merged, '_Ti_gia_goc', toNum(merged.Ti_gia, 1)) || 1
+  const targetCustVnd = chosen.type === 'custom'
+    ? Math.max(0, toNum(groupEntry.customUnitPriceVnd, 0))
+    : chosen.unitPriceCustVnd
+  const targetContVnd = chosen.type === 'custom'
+    ? targetCustVnd
+    : chosen.unitPriceContVnd
+  const targetCostVnd = chosen.type === 'custom'
+    ? Math.max(0, toNum(groupEntry.customCostPriceVnd, 0))
+    : chosen.costPriceVnd
+
+  merged.gia_hardware = 0
+  ;(merged as any)._gia_hardware_goc = 0
+  merged.gia_nhap = 0
+  ;(merged as any)._gia_nhap_goc = 0
+  merged.muc_phan_tram_off = 0
+  ;(merged as any)._muc_phan_tram_off_goc = 0
+
+  const nextDonGiaGoc = round2(targetCustVnd / tg)
+  const nextDonGiaCont = round2(targetContVnd / tg)
+  const nextGiaTC = round2(targetCostVnd / tg)
+
+  merged.Don_gia = nextDonGiaCont
+  ;(merged as any)._Don_gia_goc = nextDonGiaGoc
+  ;(merged as any)._Don_gia_kho = nextDonGiaGoc
+  merged.Gia_tieu_chuan = nextGiaTC
+  ;(merged as any)._Gia_tieu_chuan_goc = nextGiaTC
+  ;(merged as any)._Gia_tieu_chuan_kho = nextGiaTC
+
+  return merged
+}
+
+function executeImmediateMergeForKeys(mergeKeys: Set<string>, customConflictMap?: Map<string, MergeSyncConflictGroupEntry>) {
+  if (mergeKeys.size === 0) return 0
+  const nextItems: any[] = []
+  let mergedGroupCount = 0
+
+  const groupsByKey = new Map<string, DuplicateQuoteGroup>()
+  duplicateMaHangGroups.value.forEach(g => groupsByKey.set(g.mergeKey, g))
+
+  // Xác định tập index sẽ được gộp cho từng mergeKey (hỗ trợ gộp theo các ô tick chọn)
+  const indicesToMergeByKey = new Map<string, Set<number>>()
+  const firstIdxByKey = new Map<string, number>()
+  const itemsToMergeByKey = new Map<string, any[]>()
+
+  mergeKeys.forEach(key => {
+    const grp = groupsByKey.get(key)
+    if (!grp || grp.items.length <= 1) return
+    const conflictEntry = customConflictMap?.get(key)
+    let chosenIndices: number[] = []
+    let chosenItems: any[] = []
+
+    if (conflictEntry && conflictEntry.checkedRowFlags && conflictEntry.checkedRowFlags.length === grp.indices.length) {
+      grp.indices.forEach((origIdx, pos) => {
+        if (conflictEntry.checkedRowFlags[pos]) {
+          chosenIndices.push(origIdx)
+          chosenItems.push(grp.items[pos])
+        }
+      })
+    } else {
+      const checkedInline = grp.indices.filter((_, pos) => isRowCheckedForMerge(grp.items[pos]))
+      if (checkedInline.length >= 2) {
+        grp.indices.forEach((origIdx, pos) => {
+          if (isRowCheckedForMerge(grp.items[pos])) {
+            chosenIndices.push(origIdx)
+            chosenItems.push(grp.items[pos])
+          }
+        })
+      } else {
+        chosenIndices = [...grp.indices]
+        chosenItems = [...grp.items]
+      }
+    }
+
+    if (chosenIndices.length >= 2) {
+      indicesToMergeByKey.set(key, new Set(chosenIndices))
+      firstIdxByKey.set(key, chosenIndices[0])
+      itemsToMergeByKey.set(key, chosenItems)
+    }
+  })
+
+  selectedItems.value.forEach((it, idx) => {
+    const key = getQuoteItemMergeKey(it)
+    if (!key || !indicesToMergeByKey.has(key)) {
+      nextItems.push(it)
+      return
+    }
+    const idxSet = indicesToMergeByKey.get(key)!
+    if (!idxSet.has(idx)) {
+      // Dòng cùng mã nhưng không được tick chọn gộp -> giữ nguyên dòng riêng biệt
+      nextItems.push(it)
+      return
+    }
+    const firstIdx = firstIdxByKey.get(key)!
+    if (idx !== firstIdx) {
+      // Đã được gộp vào dòng đầu tiên được tick
+      return
+    }
+
+    const chosenItems = itemsToMergeByKey.get(key) || []
+    if (chosenItems.length <= 1) {
+      nextItems.push(it)
+      return
+    }
+
+    mergedGroupCount++
+    const conflictResolution = customConflictMap?.get(key)
+    if (conflictResolution) {
+      const mergedItem = applyPriceChoiceToMergedItem(chosenItems[0], conflictResolution, chosenItems)
+      clearCheckedForMergeItems([...chosenItems, mergedItem])
+      nextItems.push(mergedItem)
+    } else {
+      const totalQty = chosenItems.reduce((acc, row) => acc + Math.max(1, Math.floor(toNum(row.So_luong, 1))), 0)
+      const mergedItem = cloneHang(chosenItems[0], totalQty)
+      mergedItem.Don_gia = chosenItems[0].Don_gia
+      ;(mergedItem as any)._Don_gia_goc = (chosenItems[0] as any)._Don_gia_goc
+      ;(mergedItem as any)._Don_gia_kho = (chosenItems[0] as any)._Don_gia_kho
+      mergedItem.Gia_tieu_chuan = chosenItems[0].Gia_tieu_chuan
+      ;(mergedItem as any)._Gia_tieu_chuan_goc = (chosenItems[0] as any)._Gia_tieu_chuan_goc
+      ;(mergedItem as any)._Gia_tieu_chuan_kho = (chosenItems[0] as any)._Gia_tieu_chuan_kho
+      mergedItem.muc_phan_tram_off = chosenItems[0].muc_phan_tram_off
+      ;(mergedItem as any)._muc_phan_tram_off_goc = (chosenItems[0] as any)._muc_phan_tram_off_goc
+      ;(mergedItem as any)._muc_phan_tram_off_kho = (chosenItems[0] as any)._muc_phan_tram_off_kho
+      ;(mergedItem as any)._mergedFromRows = chosenItems.map(raw => {
+        const snap = JSON.parse(JSON.stringify(raw))
+        delete snap._mergedFromRows
+        return snap
+      })
+      clearCheckedForMergeItems([...chosenItems, mergedItem])
+      nextItems.push(mergedItem)
+    }
+  })
+
+  selectedItems.value = nextItems
+  activeMergeSelectKey.value = ''
+  syncFlatRows()
+  return mergedGroupCount
+}
+
+function openMergeDuplicateItemsFlow(scope: 'single' | 'all', targetMergeKey?: string, clickedIdx?: number) {
+  const targetGroups = scope === 'single' && targetMergeKey
+    ? duplicateMaHangGroups.value.filter(g => g.mergeKey === targetMergeKey)
+    : duplicateMaHangGroups.value
+
+  if (targetGroups.length === 0) {
+    triggerToast('Không có dòng trùng mã nào cần gộp.', 'info')
+    return
+  }
+
+  // Nếu người dùng bấm Xong/Gộp trên 1 nhóm sản phẩm trùng mã
+  if (scope === 'single' && targetGroups.length === 1) {
+    const grp = targetGroups[0]
+    let checkedIndices = grp.indices.filter(i => isRowCheckedForMerge(selectedItems.value[i]))
+
+    // Nếu người dùng mới tick 1 dòng:
+    // - Trường hợp bấm nút Xong/Gộp ở dòng khác cùng mã -> tự động gộp dòng đã tick với dòng vừa bấm
+    // - Trường hợp chỉ có đúng 2 dòng cùng mã -> tự động tick cả 2 dòng để gộp
+    if (checkedIndices.length === 1) {
+      if (clickedIdx !== undefined && clickedIdx !== checkedIndices[0] && grp.indices.includes(clickedIdx)) {
+        const clickedUid = getRowMergeUid(selectedItems.value[clickedIdx])
+        if (clickedUid) mergeCheckedMap[clickedUid] = true
+        checkedIndices = grp.indices.filter(i => isRowCheckedForMerge(selectedItems.value[i]))
+      } else if (grp.items.length === 2) {
+        grp.items.forEach(it => {
+          const u = getRowMergeUid(it)
+          if (u) mergeCheckedMap[u] = true
+        })
+        checkedIndices = [...grp.indices]
+      }
+    }
+
+    const checkedItems = checkedIndices.map(i => selectedItems.value[i]).filter(Boolean)
+
+    if (checkedItems.length === 1) {
+      triggerToast('Bạn đang tích chọn 1 dòng. Hãy tích chọn thêm ít nhất 1 dòng cùng mã nữa rồi bấm Xong!', 'info')
+      return
+    }
+
+    if (checkedItems.length >= 2) {
+      const sigs = new Set(checkedItems.map(it => getItemPriceSignature(it)))
+      if (sigs.size <= 1) {
+        const count = executeImmediateMergeForKeys(new Set([grp.mergeKey]))
+        if (count > 0) {
+          addAction(`Gộp ${checkedItems.length} dòng đã chọn của mã ${grp.maHang}`)
+          triggerToast(`Đã gộp ${checkedItems.length} dòng mã ${grp.maHang} thành công!`)
+        }
+        return
+      }
+    } else if (!grp.hasPriceConflict) {
+      // Nếu chưa tick dòng nào và tất cả các dòng cùng mã đều cùng mức giá -> gộp nhanh ngay lập tức
+      const count = executeImmediateMergeForKeys(new Set([grp.mergeKey]))
+      if (count > 0) {
+        addAction(`Gộp ${grp.items.length} dòng mã ${grp.maHang} (cùng mức giá)`)
+        triggerToast(`Đã gộp ${grp.items.length} dòng mã ${grp.maHang} thành công!`)
+      }
+      return
+    }
+  }
+
+  // Mở modal để người dùng tick chọn các dòng cùng loại muốn gộp & chọn mức giá đồng bộ (nếu lệch giá)
+  mergeSyncModal.value = {
+    show: true,
+    scope,
+    conflictGroups: targetGroups.map(buildMergeSyncGroupEntry),
+    identicalMergeKeys: []
+  }
+}
+
+function handleMergeQuoteRowByIdx(idx: number, fromEditModal = false) {
+  const it = selectedItems.value[idx]
+  if (!it) return
+  if (fromEditModal && showQuoteEditModal.value) {
+    saveQuoteEdit()
+  }
+  const latest = selectedItems.value[idx]
+  if (!latest) return
+  const key = getQuoteItemMergeKey(latest)
+  if (!key) return
+
+  if (fromEditModal) {
+    openMergeDuplicateItemsFlow('single', key, idx)
+    return
+  }
+
+  // Nhịp 1: Nếu chưa bật chế độ chọn gộp cho mã hàng này -> Bật chế độ chọn & hiện ô tick
+  if (activeMergeSelectKey.value !== key) {
+    if (activeMergeSelectKey.value) {
+      const prevGrp = duplicateMaHangGroups.value.find(g => g.mergeKey === activeMergeSelectKey.value)
+      if (prevGrp) clearCheckedForMergeItems(prevGrp.items)
+    }
+    activeMergeSelectKey.value = key
+    const clickedUid = getRowMergeUid(latest)
+    if (clickedUid) {
+      mergeCheckedMap[clickedUid] = true
+    }
+    return
+  }
+
+  // Nhịp 2: Đang ở chế độ chọn gộp của mã hàng này -> Thực hiện gộp các dòng đã tick
+  openMergeDuplicateItemsFlow('single', key, idx)
+}
+
+function confirmMergeSyncModal() {
+  const { conflictGroups, identicalMergeKeys } = mergeSyncModal.value
+  const allKeys = new Set<string>(identicalMergeKeys)
+  const resolutionMap = new Map<string, MergeSyncConflictGroupEntry>()
+
+  for (const cg of conflictGroups) {
+    const checkedCount = cg.checkedRowFlags.filter(Boolean).length
+    if (checkedCount < 2) {
+      triggerToast(`Mã ${cg.maHang}: Vui lòng tích chọn ít nhất 2 dòng để gộp.`, 'info')
+      return
+    }
+    allKeys.add(cg.mergeKey)
+    resolutionMap.set(cg.mergeKey, cg)
+  }
+
+  const mergedCount = executeImmediateMergeForKeys(allKeys, resolutionMap)
+  addAction(`Gộp & đồng bộ giá cho ${mergedCount} nhóm mặt hàng trùng mã`)
+  closeMergeSyncModal()
+  triggerToast(`Đã gộp ${mergedCount} mã hàng theo các dòng đã chọn thành công!`)
+}
+
+async function toggleQuoteNoMergeMode() {
+  const nextVal = !quoteNoMergeItems.value
+  persistQuoteNoMergeItems(nextVal)
+
+  if (nextVal) {
+    // Khi BẬT "Không gộp dòng": kiểm tra nếu trong bảng đang có dòng SL > 1 thì hỏi người dùng có muốn tách ngay không
+    const splittableCount = selectedItems.value.filter(
+      it => Math.max(1, Math.floor(toNum(it?.So_luong, 1))) > 1 || hasRowMergeHistory(it)
+    ).length
+    if (splittableCount > 0) {
+      const ok = await showTemplateConfirm({
+        title: 'Đã bật chế độ Không gộp dòng',
+        message: `Trong bảng báo giá đang có ${splittableCount} dòng có Số lượng > 1. Bạn có muốn tách tất cả các dòng này thành từng hàng riêng biệt (SL = 1) ngay bây giờ không?`,
+        subNote: 'Nếu mặt hàng trước đó được gộp từ các dòng khác giá, hệ thống sẽ tự khôi phục lại đúng mức giá riêng của từng dòng.',
+        confirmText: 'Tách ngay tất cả',
+        cancelText: 'Chỉ áp dụng khi thêm mới',
+        variant: 'info'
+      })
+      if (ok) {
+        splitAllQuoteRowsToSingleUnits()
+      } else {
+        triggerToast('Đã bật chế độ Không gộp (Áp dụng cho các lần thêm hàng tiếp theo)', 'info')
+      }
+    } else {
+      triggerToast('Đã bật chế độ Không gộp dòng (Mỗi sản phẩm SL > 1 sẽ tách hàng riêng)')
+    }
+  } else {
+    // Khi TẮT "Không gộp dòng": nếu đang có các dòng trùng mã thì hỏi gộp lại (và chọn giá nếu khác giá)
+    if (duplicateMaHangGroups.value.length > 0) {
+      const ok = await showTemplateConfirm({
+        title: 'Gộp lại các dòng cùng mã hàng?',
+        message: `Đang có ${duplicateMaHangGroups.value.length} mã hàng được tách thành nhiều dòng riêng (${totalDuplicateRowsCount.value} dòng). Bạn có muốn gộp các dòng cùng mã lại không?`,
+        subNote: 'Nếu các dòng cùng mã có mức giá khác nhau, hệ thống sẽ mở bảng cho bạn chọn mức giá muốn đồng bộ.',
+        confirmText: 'Gộp & chọn giá đồng bộ',
+        cancelText: 'Giữ nguyên bảng hiện tại',
+        variant: 'info'
+      })
+      if (ok) {
+        openMergeDuplicateItemsFlow('all')
+      } else {
+        triggerToast('Đã tắt chế độ Không gộp dòng', 'info')
+      }
+    } else {
+      triggerToast('Đã chuyển về chế độ Gộp dòng mặc định', 'info')
+    }
+  }
+}
+
+function splitAllQuoteRowsToSingleUnits() {
+  const next: any[] = []
+  let splitGroups = 0
+  selectedItems.value.forEach(it => {
+    const curQty = Math.max(1, Math.floor(toNum(it.So_luong, 1)))
+    if (hasRowMergeHistory(it)) {
+      splitGroups++
+      const historyRows = (it as any)._mergedFromRows as any[]
+      historyRows.forEach(raw => {
+        const c = withOriginalPriceFields(JSON.parse(JSON.stringify(raw)))
+        c.uid = makeUniqueQuoteItemUid()
+        c.So_luong = Math.max(1, Math.floor(toNum(c.So_luong, 1)))
+        delete (c as any)._mergedFromRows
+        next.push(c)
+      })
+    } else if (curQty > 1) {
+      splitGroups++
+      const count = Math.min(50, curQty)
+      for (let k = 0; k < count; k++) {
+        const c = cloneHang(it, 1)
+        c.Don_gia = it.Don_gia
+        ;(c as any)._Don_gia_goc = (it as any)._Don_gia_goc
+        ;(c as any)._Don_gia_kho = (it as any)._Don_gia_kho
+        c.Gia_tieu_chuan = it.Gia_tieu_chuan
+        ;(c as any)._Gia_tieu_chuan_goc = (it as any)._Gia_tieu_chuan_goc
+        ;(c as any)._Gia_tieu_chuan_kho = (it as any)._Gia_tieu_chuan_kho
+        c.muc_phan_tram_off = it.muc_phan_tram_off
+        ;(c as any)._muc_phan_tram_off_goc = (it as any)._muc_phan_tram_off_goc
+        ;(c as any)._muc_phan_tram_off_kho = (it as any)._muc_phan_tram_off_kho
+        if (k === count - 1 && curQty > count) {
+          c.So_luong = curQty - count + 1
+        }
+        next.push(c)
+      }
+    } else {
+      next.push(it)
+    }
+  })
+
+  if (splitGroups > 0) {
+    selectedItems.value = next
+    syncFlatRows()
+    addAction(`Tách ${splitGroups} mặt hàng có SL > 1 thành các dòng riêng biệt`)
+    triggerToast(`Đã tách ${splitGroups} mặt hàng thành các dòng riêng biệt!`)
+  }
+}
+
 function addItemFromCard(rawP: HangHoa) {
   const p = getProductWithPriceList(rawP)
   const qty = Math.max(1, qtyMap[p.Ma_hang] || 1)
   const resolvedMaHang = resolveMaHang(p);
 
-  const foundIdx = selectedItems.value.findIndex(
-    it => it.Ma_hang === resolvedMaHang
-  )
-
-  let highlightIdx = -1;
-  if (foundIdx >= 0) {
-    selectedItems.value[foundIdx].So_luong += qty
-    selectedItems.value[foundIdx].Don_gia = p.Don_gia
-    ;(selectedItems.value[foundIdx] as any)._Don_gia_goc = p.Don_gia
-    ;(selectedItems.value[foundIdx] as any)._Don_gia_kho = p.Don_gia
-    highlightIdx = foundIdx;
-  } else {
-    const cloned = cloneHang(p, qty);
-    cloned.Ma_hang = resolvedMaHang;
-    highlightIdx = insertItemIntoGroup(cloned);
-  }
+  const highlightIdx = insertClonedItemRespectingNoMerge(p, qty, resolvedMaHang);
   
   scrollToAndHighlightRow(highlightIdx);
   if (String(keyword.value || '').trim().length >= 2) {
     saveRecentSearch(keyword.value);
   }
-  triggerToast('Đã thêm sản phẩm thành công!');
+  triggerToast(
+    quoteNoMergeItems.value && qty > 1
+      ? `Đã thêm & tách thành ${Math.min(50, qty)} dòng riêng biệt!`
+      : 'Đã thêm sản phẩm thành công!'
+  );
   addedStatus[p.Ma_hang] = true;
   setTimeout(() => { addedStatus[p.Ma_hang] = false; }, 1500);
 }
@@ -10565,20 +11733,11 @@ function scrollToAndHighlightRow(idx: number, scroll = true) {
 function addItem(item: HangHoa & { So_luong: number }) {
   addAction(`Thêm hàng "${item.Ten_hang}"`)
   const resolvedMaHang = resolveMaHang(item);
+  const qty = Math.max(1, toNum(item.So_luong, 1));
+  const prepared = withOriginalPriceFields(JSON.parse(JSON.stringify(item)));
+  prepared.Ma_hang = resolvedMaHang;
 
-  const foundIdx = selectedItems.value.findIndex(
-    it => it.Ma_hang === resolvedMaHang
-  )
-
-  let highlightIdx = -1;
-  if (foundIdx >= 0) {
-    selectedItems.value[foundIdx].So_luong += Math.max(1, toNum(item.So_luong, 1))
-    highlightIdx = foundIdx;
-  } else {
-    const cloned = withOriginalPriceFields(JSON.parse(JSON.stringify(item)));
-    cloned.Ma_hang = resolvedMaHang;
-    highlightIdx = insertItemIntoGroup(cloned);
-  }
+  const highlightIdx = insertClonedItemRespectingNoMerge(prepared, qty, resolvedMaHang);
   
   // Rebuild liên kết cho TẤT CẢ hàng cùng danh mục (cả hàng mới lẫn hàng cũ)
   const addedCat = (item.Danh_muc || '').trim().toUpperCase();
@@ -12423,7 +13582,7 @@ function addFromCardModal() {
   )
 
   let highlightIdx = -1;
-  if (foundIdx >= 0) {
+  if (!quoteNoMergeItems.value && foundIdx >= 0) {
     const existing = selectedItems.value[foundIdx] as any
     existing.So_luong += Math.max(1, toNum(cardEdit.value.So_luong, 1))
     if (hadCardChanges) {
@@ -12464,7 +13623,8 @@ function addFromCardModal() {
     rawClone._muc_phan_tram_off_kho = toNum(rawClone.muc_phan_tram_off, 0)
     const cloned = withOriginalPriceFields(rawClone);
     cloned.Ma_hang = resolvedMaHang;
-    highlightIdx = insertItemIntoGroup(cloned);
+    const targetQty = Math.max(1, toNum(cardEdit.value.So_luong, 1));
+    highlightIdx = insertClonedItemRespectingNoMerge(cloned, targetQty, resolvedMaHang);
   }
   
   scrollToAndHighlightRow(highlightIdx);
@@ -12944,6 +14104,7 @@ type CmpSrOverrideBucket = {
   netCom: number | null
   taxPct: number | null
   predictPct: string
+  lamTronTiSuat: boolean
   _origGross: number | null
   _origNet: number | null
   _hasOrigSaved: boolean
@@ -12958,6 +14119,7 @@ function createEmptyCmpSrBucket(): CmpSrOverrideBucket {
     netCom: null,
     taxPct: null,
     predictPct: '',
+    lamTronTiSuat: false,
     _origGross: null,
     _origNet: null,
     _hasOrigSaved: false
@@ -13102,8 +14264,42 @@ function fmtCmpSrMoney(val: number): string {
   return quoteCurrency.value === 'USD' ? formatUSD(val) : formatVND(Math.round(val))
 }
 
+const cmpSrIsRatioRounded = computed(() =>
+  Boolean(cmpSrOverridesMap.contract.lamTronTiSuat || cmpSrOverridesMap.customer.lamTronTiSuat)
+)
+
 function fmtCmpSrPct(val: number): string {
-  return (Number.isFinite(val) ? val.toFixed(1) : '0.0') + '%'
+  const num = Number.isFinite(val) ? Number(val) : 0
+  if (cmpSrIsRatioRounded.value) {
+    return Math.round(num) + '%'
+  }
+  return num.toFixed(1) + '%'
+}
+
+function toggleCmpSrRatioRounding() {
+  const next = !cmpSrIsRatioRounded.value
+  cmpSrOverridesMap.contract.lamTronTiSuat = next
+  cmpSrOverridesMap.customer.lamTronTiSuat = next
+  flushQuoteTabsToStorageNow()
+
+  const loadedKey = String(loadedMaHopDong.value || '').trim()
+  if (loadedKey) {
+    update(dbRef(database, `hop_dong_tong_quat/${loadedKey}`), { lam_tron_ti_suat: next }).catch(() => {})
+    const matchedRow = (contractsRaw.value || []).find(
+      (r: any[]) => String(r?.[0] || '').trim() === loadedKey
+    )
+    if (matchedRow) {
+      matchedRow[46] = next
+      const craftId = String(matchedRow[41] || '').trim()
+      const srId = String(matchedRow[42] || '').trim()
+      if (craftId) {
+        update(dbRef(database, `sale_report_craft/${craftId}`), { lam_tron_ti_suat: next }).catch(() => {})
+      }
+      if (srId) {
+        update(dbRef(database, `sale_report/${srId}`), { lam_tron_ti_suat: next }).catch(() => {})
+      }
+    }
+  }
 }
 
 function onCmpSrFieldChange(
@@ -13268,6 +14464,25 @@ function restoreCmpSrOverridesFromContractRow(row: any[]) {
       cmpSrOverridesMap.customer.grossCom = savedGross
       if (savedNet > 0) cmpSrOverridesMap.customer.netCom = savedNet
     }
+  }
+
+  const isRowRounded = Boolean(row?.[46] === true || String(row?.[46]).toUpperCase() === 'TRUE')
+  cmpSrOverridesMap.contract.lamTronTiSuat = isRowRounded
+  cmpSrOverridesMap.customer.lamTronTiSuat = isRowRounded
+
+  const craftId = String(row?.[41] || '').trim()
+  const srId = String(row?.[42] || '').trim()
+  if (srId || craftId) {
+    const checkPath = srId ? `sale_report/${srId}/lam_tron_ti_suat` : `sale_report_craft/${craftId}/lam_tron_ti_suat`
+    get(dbRef(database, checkPath))
+      .then(snap => {
+        if (snap.exists()) {
+          const val = Boolean(snap.val() === true || String(snap.val()).toUpperCase() === 'TRUE')
+          cmpSrOverridesMap.contract.lamTronTiSuat = val
+          cmpSrOverridesMap.customer.lamTronTiSuat = val
+        }
+      })
+      .catch(() => {})
   }
 }
 
@@ -13722,6 +14937,10 @@ const applyKaspOff = () => {
 }
 
 function openQuoteEdit(idx: number, focusField?: string) {
+  if (isBulkSelectMode.value && idx >= 0 && selectedItems.value[idx]) {
+    toggleBulkSelectItem(selectedItems.value[idx])
+    return
+  }
   const priceFocusFields = [
     'So_luong', 'Ti_gia', 'Gia_tieu_chuan', 'Gia_tieu_chuan_usd',
     'Don_gia', 'Don_gia_usd', 'gia_nhap', 'gia_nhap_usd',
@@ -14954,6 +16173,1743 @@ function applyAdjustPrice() {
   }
   
   adjustPriceModal.value.show = false;
+}
+
+/* ======================
+   CHẾ ĐỘ CHỌN & SỬA GIÁ HÀNG LOẠT (BULK EDIT STUDIO)
+====================== */
+type BulkTargetField =
+  | 'cust_price'
+  | 'cont_price'
+  | 'cont_diff'
+  | 'cust_off_pct'
+  | 'vendor_off'
+  | 'vat_pct'
+  | 'list_price'
+  | 'import_price'
+  | 'exchange_rate'
+  | 'quantity'
+  | 'vnd_rounding'
+
+type BulkOpMode =
+  | 'percent'
+  | 'total_pro_rata'
+  | 'delta_unit'
+  | 'set_unit'
+  | 'set_val'
+  | 'delta_val'
+
+interface BulkFieldOptionMeta {
+  key: BulkTargetField
+  group: 'sales' | 'discount_tax' | 'cost_qty'
+  label: string
+  shortLabel: string
+  icon: string
+  desc: string
+  accent: 'blue' | 'emerald' | 'amber' | 'violet' | 'sky'
+  allowedOps: { key: BulkOpMode; label: string; icon: string }[]
+}
+
+const BULK_FIELD_OPTIONS: BulkFieldOptionMeta[] = [
+  {
+    key: 'cust_price',
+    group: 'sales',
+    label: 'Giá Báo Khách (Sửa Khách)',
+    shortLabel: 'Giá Khách',
+    icon: 'ri-edit-line',
+    desc: 'Cập nhật Đơn giá / TT trước thuế thực tế báo cho khách hàng (_Don_gia_goc)',
+    accent: 'blue',
+    allowedOps: [
+      { key: 'percent', label: 'Theo % (±%)', icon: 'ri-percent-line' },
+      { key: 'total_pro_rata', label: 'Tổng tiền nhóm', icon: 'ri-Aspect-ratio-line' },
+      { key: 'delta_unit', label: '± Số tiền / ĐVT', icon: 'ri-add-circle-line' },
+      { key: 'set_unit', label: 'Gán Đơn giá (=)', icon: 'ri-equalizer-line' }
+    ]
+  },
+  {
+    key: 'cont_price',
+    group: 'sales',
+    label: 'Giá Hợp Đồng (Sửa HĐ)',
+    shortLabel: 'Giá Hợp Đồng',
+    icon: 'ri-arrow-up-down-fill',
+    desc: 'Kê / điều chỉnh giá bán trên hợp đồng (Don_gia), giữ nguyên Báo giá gốc & Giá khách',
+    accent: 'emerald',
+    allowedOps: [
+      { key: 'percent', label: 'Theo % (±%)', icon: 'ri-percent-line' },
+      { key: 'total_pro_rata', label: 'Tổng tiền HĐ nhóm', icon: 'ri-Aspect-ratio-line' },
+      { key: 'delta_unit', label: '± Số tiền / ĐVT', icon: 'ri-add-circle-line' },
+      { key: 'set_unit', label: 'Gán Đơn giá HĐ (=)', icon: 'ri-equalizer-line' }
+    ]
+  },
+  {
+    key: 'cont_diff',
+    group: 'sales',
+    label: 'Chênh Lệch Giá (HĐ - Khách)',
+    shortLabel: 'Chênh Lệch',
+    icon: 'ri-scales-3-line',
+    desc: 'Điều chỉnh trực tiếp khoản chênh lệch giữa Hợp đồng và Giá báo khách cho các SP đã chọn',
+    accent: 'emerald',
+    allowedOps: [
+      { key: 'total_pro_rata', label: 'Tổng Chênh lệch nhóm', icon: 'ri-money-dollar-circle-line' },
+      { key: 'percent', label: 'Theo % lệch (±%)', icon: 'ri-percent-line' },
+      { key: 'delta_unit', label: '± Tiền lệch / SP', icon: 'ri-add-circle-line' }
+    ]
+  },
+  {
+    key: 'cust_off_pct',
+    group: 'discount_tax',
+    label: '% Off Khách (Chiết khấu KH)',
+    shortLabel: '% Off Khách',
+    icon: 'ri-coupon-3-line',
+    desc: 'Gán đồng loạt hoặc tăng/giảm thêm điểm % chiết khấu cho khách hàng',
+    accent: 'amber',
+    allowedOps: [
+      { key: 'set_val', label: 'Gán % Off cố định (=)', icon: 'ri-equalizer-line' },
+      { key: 'delta_val', label: 'Cộng / Trừ thêm % (±%)', icon: 'ri-percent-line' }
+    ]
+  },
+  {
+    key: 'vendor_off',
+    group: 'discount_tax',
+    label: '% Off Hãng & Giá Vốn',
+    shortLabel: '% Off Hãng / Vốn',
+    icon: 'ri-shield-star-line',
+    desc: 'Cập nhật % Off từ Hãng (Deal Reg / Standard) hoặc chỉnh trực tiếp Giá vốn (Gia_tieu_chuan)',
+    accent: 'violet',
+    allowedOps: [
+      { key: 'set_val', label: 'Gán % Off Hãng (=)', icon: 'ri-equalizer-line' },
+      { key: 'delta_val', label: '± Điểm % Off Hãng', icon: 'ri-percent-line' },
+      { key: 'percent', label: '± % trên Giá vốn', icon: 'ri-line-chart-line' },
+      { key: 'delta_unit', label: '± Số tiền Giá vốn', icon: 'ri-money-dollar-circle-line' }
+    ]
+  },
+  {
+    key: 'vat_pct',
+    group: 'discount_tax',
+    label: 'Thuế VAT (%)',
+    shortLabel: 'Thuế VAT (%)',
+    icon: 'ri-government-line',
+    desc: 'Đổi đồng loạt mức thuế suất VAT (0%, 5%, 8%, 10%...) cho các mặt hàng đã chọn',
+    accent: 'sky',
+    allowedOps: [
+      { key: 'set_val', label: 'Gán mức VAT cố định (=)', icon: 'ri-equalizer-line' },
+      { key: 'delta_val', label: 'Cộng / Trừ điểm % VAT', icon: 'ri-percent-line' }
+    ]
+  },
+  {
+    key: 'list_price',
+    group: 'cost_qty',
+    label: 'List Price (Giá niêm yết gốc)',
+    shortLabel: 'List Price',
+    icon: 'ri-price-tag-3-line',
+    desc: 'Tăng/giảm hoặc đặt lại List Price niêm yết gốc cho các mặt hàng được chọn',
+    accent: 'blue',
+    allowedOps: [
+      { key: 'percent', label: 'Theo % (±%)', icon: 'ri-percent-line' },
+      { key: 'delta_unit', label: '± Số tiền / ĐVT', icon: 'ri-add-circle-line' },
+      { key: 'set_unit', label: 'Gán List Price (=)', icon: 'ri-equalizer-line' },
+      { key: 'total_pro_rata', label: 'Tổng List Price nhóm', icon: 'ri-Aspect-ratio-line' }
+    ]
+  },
+  {
+    key: 'import_price',
+    group: 'cost_qty',
+    label: 'Giá Nhập (Chi phí nhập)',
+    shortLabel: 'Giá Nhập',
+    icon: 'ri-truck-line',
+    desc: 'Điều chỉnh tăng/giảm Giá nhập (VND) cộng thêm trên mỗi đơn vị sản phẩm',
+    accent: 'amber',
+    allowedOps: [
+      { key: 'percent', label: 'Theo % (±%)', icon: 'ri-percent-line' },
+      { key: 'delta_unit', label: '± Số tiền / ĐVT', icon: 'ri-add-circle-line' },
+      { key: 'set_unit', label: 'Gán Giá nhập (=)', icon: 'ri-equalizer-line' }
+    ]
+  },
+  {
+    key: 'exchange_rate',
+    group: 'cost_qty',
+    label: 'Tỉ Giá Ngoại Tệ (USD)',
+    shortLabel: 'Tỉ Giá (USD)',
+    icon: 'ri-exchange-dollar-line',
+    desc: 'Cập nhật đồng loạt tỉ giá quy đổi VND cho các mặt hàng ngoại tệ được chọn',
+    accent: 'amber',
+    allowedOps: [
+      { key: 'set_val', label: 'Gán Tỉ giá mới (=)', icon: 'ri-equalizer-line' },
+      { key: 'delta_val', label: 'Cộng / Trừ Tỉ giá (±₫)', icon: 'ri-add-circle-line' },
+      { key: 'percent', label: 'Tăng / Giảm theo %', icon: 'ri-percent-line' }
+    ]
+  },
+  {
+    key: 'quantity',
+    group: 'cost_qty',
+    label: 'Số Lượng (SL)',
+    shortLabel: 'Số Lượng (SL)',
+    icon: 'ri-stack-line',
+    desc: 'Đặt đồng loạt số lượng mới hoặc cộng/trừ thêm số lượng cho các mặt hàng được chọn',
+    accent: 'blue',
+    allowedOps: [
+      { key: 'set_val', label: 'Gán Số lượng cố định (=)', icon: 'ri-equalizer-line' },
+      { key: 'delta_val', label: 'Cộng / Trừ thêm SL (±)', icon: 'ri-add-circle-line' },
+      { key: 'percent', label: 'Nhân / Tăng giảm % SL', icon: 'ri-percent-line' }
+    ]
+  },
+  {
+    key: 'vnd_rounding',
+    group: 'cost_qty',
+    label: 'Làm Tròn Tiền VND (.000đ)',
+    shortLabel: 'Làm Tròn .000đ',
+    icon: 'ri-Compasses-2-line',
+    desc: 'Áp dụng quy tắc làm tròn hàng nghìn (.000đ Lên / Xuống / Chuẩn) cho các mặt hàng đã chọn',
+    accent: 'emerald',
+    allowedOps: [
+      { key: 'set_val', label: 'Chọn quy tắc làm tròn .000đ', icon: 'ri-equalizer-line' }
+    ]
+  }
+]
+
+const isBulkSelectMode = ref(false)
+const bulkSelectedUids = ref<string[]>([])
+const showBulkPreviewDetailList = ref(false)
+
+const bulkAdjustModal = ref({
+  show: false,
+  targetField: 'cust_price' as BulkTargetField,
+  opMode: 'percent' as BulkOpMode,
+  percentValue: 0,
+  percentSign: -1 as 1 | -1,
+  numberValue: 0,
+  numberSign: 1 as 1 | -1,
+  normalEditContractBehavior: 'keep_contract' as 'keep_contract' | 'keep_diff',
+  offApplyTier: 'customer_and_sync' as 'customer_and_sync' | 'contract_only',
+  onlyForeignCurrency: true,
+  isResetToCustomerPrice: false,
+  roundingTargetScope: 'all_sales' as 'all_sales' | VndPriceFieldKey,
+  roundingModeValue: 'round' as VndRoundingMode
+})
+
+function ensureItemHasBulkUid(it: any, fallbackIdx = 0): string {
+  if (!it) return ''
+  if (!it.uid) {
+    it.uid = makeUniqueQuoteItemUid() + '_' + fallbackIdx
+  }
+  return String(it.uid)
+}
+
+const canShowBulkEditInQuoteMode = computed(
+  () => quotePriceViewMode.value === 'customer' || quotePriceViewMode.value === 'contract'
+)
+
+watch(quotePriceViewMode, mode => {
+  if ((mode === 'origin' || mode === 'compare') && isBulkSelectMode.value) {
+    isBulkSelectMode.value = false
+    bulkAdjustModal.value.show = false
+  }
+})
+
+watch(
+  () => selectedItems.value.map((it, idx) => ensureItemHasBulkUid(it, idx)),
+  validUids => {
+    const validSet = new Set(validUids.filter(Boolean))
+    if (bulkSelectedUids.value.some(id => !validSet.has(id))) {
+      bulkSelectedUids.value = bulkSelectedUids.value.filter(id => validSet.has(id))
+    }
+    if (selectedItems.value.length === 0 && isBulkSelectMode.value) {
+      isBulkSelectMode.value = false
+      bulkAdjustModal.value.show = false
+    }
+  }
+)
+
+function toggleBulkSelectMode(forceState?: boolean) {
+  const next = typeof forceState === 'boolean' ? forceState : !isBulkSelectMode.value
+  if (next && !canShowBulkEditInQuoteMode.value) {
+    return
+  }
+  if (next && selectedItems.value.length === 0) {
+    triggerToast('Báo giá chưa có mặt hàng nào để chọn hàng loạt!', 'warning')
+    return
+  }
+  isBulkSelectMode.value = next
+  if (next) {
+    if (!quoteColVisible.stt) {
+      quoteColVisible.stt = true
+    }
+    if (isItemMergeSelecting?.value) {
+      cancelMergeSelectMode()
+    }
+    // Mặc định nếu chưa chọn SP nào thì giữ trống để người dùng tự tích hoặc bấm Chọn tất cả
+  } else {
+    bulkAdjustModal.value.show = false
+  }
+}
+
+function exitBulkSelectMode(clearSelection = true) {
+  isBulkSelectMode.value = false
+  bulkAdjustModal.value.show = false
+  if (clearSelection) {
+    bulkSelectedUids.value = []
+  }
+}
+
+function isBulkItemSelected(it: any): boolean {
+  if (!it || !it.uid) return false
+  return bulkSelectedUids.value.includes(String(it.uid))
+}
+
+function toggleBulkSelectItem(it: any) {
+  if (!it) return
+  const uid = ensureItemHasBulkUid(it)
+  if (!uid) return
+  const idx = bulkSelectedUids.value.indexOf(uid)
+  if (idx >= 0) {
+    bulkSelectedUids.value.splice(idx, 1)
+  } else {
+    bulkSelectedUids.value.push(uid)
+  }
+}
+
+const isAllBulkSelected = computed(() =>
+  selectedItems.value.length > 0 &&
+  selectedItems.value.every(it => it && it.uid && bulkSelectedUids.value.includes(String(it.uid)))
+)
+
+const isSomeBulkSelected = computed(() =>
+  bulkSelectedUids.value.length > 0 && !isAllBulkSelected.value
+)
+
+function selectAllBulkItems() {
+  bulkSelectedUids.value = selectedItems.value.map((it, idx) => ensureItemHasBulkUid(it, idx)).filter(Boolean)
+}
+
+function clearAllBulkItems() {
+  bulkSelectedUids.value = []
+}
+
+function toggleSelectAllBulkItems() {
+  if (isAllBulkSelected.value) {
+    clearAllBulkItems()
+  } else {
+    selectAllBulkItems()
+  }
+}
+
+function invertBulkSelection() {
+  const curSet = new Set(bulkSelectedUids.value)
+  bulkSelectedUids.value = selectedItems.value
+    .map((it, idx) => ensureItemHasBulkUid(it, idx))
+    .filter(uid => uid && !curSet.has(uid))
+}
+
+function getBulkGroupItems(groupKey: string) {
+  return selectedItems.value.filter(it => normalizeQuoteCategoryKey(it.Danh_muc) === groupKey)
+}
+
+function isBulkGroupAllSelected(groupKey: string): boolean {
+  const items = getBulkGroupItems(groupKey)
+  if (items.length === 0) return false
+  return items.every(it => isBulkItemSelected(it))
+}
+
+function isBulkGroupPartiallySelected(groupKey: string): boolean {
+  const items = getBulkGroupItems(groupKey)
+  if (items.length === 0) return false
+  const checkedCount = items.filter(it => isBulkItemSelected(it)).length
+  return checkedCount > 0 && checkedCount < items.length
+}
+
+function getBulkGroupSelectedCount(groupKey: string): number {
+  return getBulkGroupItems(groupKey).filter(it => isBulkItemSelected(it)).length
+}
+
+function toggleBulkSelectGroup(groupKey: string) {
+  const items = getBulkGroupItems(groupKey)
+  if (items.length === 0) return
+  const allSelected = isBulkGroupAllSelected(groupKey)
+  const groupUids = new Set(items.map(it => ensureItemHasBulkUid(it)).filter(Boolean))
+  if (allSelected) {
+    bulkSelectedUids.value = bulkSelectedUids.value.filter(uid => !groupUids.has(uid))
+  } else {
+    const merged = new Set([...bulkSelectedUids.value, ...Array.from(groupUids)])
+    bulkSelectedUids.value = Array.from(merged)
+  }
+}
+
+interface BulkQuickChip {
+  id: string
+  type: 'vendor' | 'category' | 'currency' | 'diff'
+  label: string
+  count: number
+  uids: string[]
+  allSelected: boolean
+  someSelected: boolean
+}
+
+const bulkQuickFilterChips = computed<BulkQuickChip[]>(() => {
+  const chips: BulkQuickChip[] = []
+  const items = selectedItems.value
+  if (items.length === 0) return chips
+
+  // 1. Theo Tiền tệ (nếu có ngoại tệ)
+  const foreignUids: string[] = []
+  const vndUids: string[] = []
+  items.forEach((it, idx) => {
+    const uid = ensureItemHasBulkUid(it, idx)
+    const cur = String(it.Don_vi_tien_te || 'VND').trim().toUpperCase()
+    if ((cur && cur !== 'VND') || toNum(it.Ti_gia, 1) > 1) {
+      foreignUids.push(uid)
+    } else {
+      vndUids.push(uid)
+    }
+  })
+  if (foreignUids.length > 0) {
+    chips.push({
+      id: 'cur-foreign',
+      type: 'currency',
+      label: `Ngoại tệ USD (${foreignUids.length})`,
+      count: foreignUids.length,
+      uids: foreignUids,
+      allSelected: foreignUids.every(u => bulkSelectedUids.value.includes(u)),
+      someSelected: foreignUids.some(u => bulkSelectedUids.value.includes(u))
+    })
+  }
+  if (foreignUids.length > 0 && vndUids.length > 0) {
+    chips.push({
+      id: 'cur-vnd',
+      type: 'currency',
+      label: `Hàng VND (${vndUids.length})`,
+      count: vndUids.length,
+      uids: vndUids,
+      allSelected: vndUids.every(u => bulkSelectedUids.value.includes(u)),
+      someSelected: vndUids.some(u => bulkSelectedUids.value.includes(u))
+    })
+  }
+
+  // 2. Theo mặt hàng đang có Chênh lệch HĐ
+  const diffUids = items
+    .filter(it => Math.abs(Math.round(lineTruocThue(it) - lineTruocThueRaw(it))) > 0)
+    .map(it => ensureItemHasBulkUid(it))
+  if (diffUids.length > 0 && diffUids.length < items.length) {
+    chips.push({
+      id: 'has-diff',
+      type: 'diff',
+      label: `Đang có lệch HĐ (${diffUids.length})`,
+      count: diffUids.length,
+      uids: diffUids,
+      allSelected: diffUids.every(u => bulkSelectedUids.value.includes(u)),
+      someSelected: diffUids.some(u => bulkSelectedUids.value.includes(u))
+    })
+  }
+
+  // 3. Theo Hãng (Vendor)
+  const vendorMap = new Map<string, { name: string; uids: string[] }>()
+  items.forEach((it, idx) => {
+    const vName = String(it.Ten_nha_cung_cap || it.Ma_nha_cung_cap || '').trim()
+    if (!vName) return
+    const key = vName.toUpperCase()
+    if (!vendorMap.has(key)) {
+      vendorMap.set(key, { name: vName, uids: [] })
+    }
+    vendorMap.get(key)!.uids.push(ensureItemHasBulkUid(it, idx))
+  })
+  if (vendorMap.size >= 1) {
+    vendorMap.forEach((val, key) => {
+      if (val.uids.length > 0 && (vendorMap.size > 1 || val.uids.length < items.length)) {
+        chips.push({
+          id: 'vendor-' + key,
+          type: 'vendor',
+          label: `Hãng: ${val.name} (${val.uids.length})`,
+          count: val.uids.length,
+          uids: val.uids,
+          allSelected: val.uids.every(u => bulkSelectedUids.value.includes(u)),
+          someSelected: val.uids.some(u => bulkSelectedUids.value.includes(u))
+        })
+      }
+    })
+  }
+
+  // 4. Theo Danh mục (Category)
+  const catMap = new Map<string, { name: string; uids: string[] }>()
+  items.forEach((it, idx) => {
+    const cName = String(it.Danh_muc || '').trim() || 'Danh mục trống'
+    const key = normalizeQuoteCategoryKey(it.Danh_muc)
+    if (!catMap.has(key)) {
+      catMap.set(key, { name: cName, uids: [] })
+    }
+    catMap.get(key)!.uids.push(ensureItemHasBulkUid(it, idx))
+  })
+  if (catMap.size > 1) {
+    catMap.forEach((val, key) => {
+      chips.push({
+        id: 'cat-' + key,
+        type: 'category',
+        label: `Nhóm: ${val.name} (${val.uids.length})`,
+        count: val.uids.length,
+        uids: val.uids,
+        allSelected: val.uids.every(u => bulkSelectedUids.value.includes(u)),
+        someSelected: val.uids.some(u => bulkSelectedUids.value.includes(u))
+      })
+    })
+  }
+
+  return chips
+})
+
+function toggleBulkQuickChip(chip: BulkQuickChip) {
+  const chipSet = new Set(chip.uids)
+  if (chip.allSelected) {
+    bulkSelectedUids.value = bulkSelectedUids.value.filter(u => !chipSet.has(u))
+  } else {
+    const merged = new Set([...bulkSelectedUids.value, ...chip.uids])
+    bulkSelectedUids.value = Array.from(merged)
+  }
+}
+
+const bulkSelectedItems = computed(() => {
+  const selSet = new Set(bulkSelectedUids.value)
+  return selectedItems.value.filter(it => it && it.uid && selSet.has(String(it.uid)))
+})
+
+const bulkSelectedSummary = computed(() => {
+  const items = bulkSelectedItems.value
+  let totalListVnd = 0
+  let totalCustVnd = 0
+  let totalContVnd = 0
+  let totalVatVnd = 0
+  let totalSauVnd = 0
+  let totalCostVnd = 0
+  let totalNhapVnd = 0
+  let totalQty = 0
+  let foreignCount = 0
+
+  items.forEach(it => {
+    const qty = Math.max(1, toNum(it.So_luong, 1))
+    totalQty += qty
+    totalListVnd += lineTruocThueKho(it)
+    totalCustVnd += lineTruocThueRaw(it)
+    totalContVnd += lineTruocThue(it)
+    totalVatVnd += tableLineVAT(it)
+    totalSauVnd += tableLineSauThue(it)
+    totalCostVnd += standardPriceRaw(it) * qty
+    totalNhapVnd += giaNhapVnd(it) * qty
+    const cur = String(it.Don_vi_tien_te || 'VND').trim().toUpperCase()
+    if ((cur && cur !== 'VND') || toNum(it.Ti_gia, 1) > 1) {
+      foreignCount++
+    }
+  })
+
+  return {
+    count: items.length,
+    totalQty,
+    totalListVnd: round2(totalListVnd),
+    totalCustVnd: round2(totalCustVnd),
+    totalContVnd: round2(totalContVnd),
+    totalDiffVnd: round2(totalContVnd - totalCustVnd),
+    totalVatVnd: round2(totalVatVnd),
+    totalSauVnd: round2(totalSauVnd),
+    totalCostVnd: round2(totalCostVnd),
+    totalNhapVnd: round2(totalNhapVnd),
+    foreignCount
+  }
+})
+
+async function deleteBulkSelectedItems() {
+  const count = bulkSelectedItems.value.length
+  if (count === 0) return
+  const sampleNames = bulkSelectedItems.value
+    .slice(0, 3)
+    .map(it => it.Ten_hang || it.Ma_hang)
+    .filter(Boolean)
+    .join(', ')
+  const ok = await showConfirmDialog({
+    title: 'Xóa mặt hàng đã chọn',
+    message: `Bạn có chắc chắn muốn xóa ${count} mặt hàng đã chọn khỏi bảng báo giá?`,
+    targetLabel: 'Phạm vi xóa hàng loạt',
+    targetValue: `${count} mặt hàng (${sampleNames}${count > 3 ? '...' : ''})`,
+    subNote: 'Thao tác này sẽ gỡ các dòng sản phẩm đã tích chọn khỏi báo giá hiện tại.',
+    confirmText: `Xóa ${count} mặt hàng`,
+    cancelText: 'Hủy',
+    variant: 'danger'
+  })
+  if (!ok) return
+
+  const delSet = new Set(bulkSelectedUids.value)
+  selectedItems.value = selectedItems.value.filter(it => !delSet.has(String(it.uid)))
+  bulkSelectedUids.value = []
+  addAction(`[Thao tác hàng loạt] Đã xóa ${count} mặt hàng khỏi báo giá`)
+  triggerToast(`Đã xóa ${count} mặt hàng khỏi báo giá!`, 'success')
+  if (selectedItems.value.length === 0) {
+    isBulkSelectMode.value = false
+  }
+}
+
+const currentBulkFieldMeta = computed<BulkFieldOptionMeta>(() => {
+  return (
+    BULK_FIELD_OPTIONS.find(f => f.key === bulkAdjustModal.value.targetField) ||
+    BULK_FIELD_OPTIONS[0]
+  )
+})
+
+function isBulkItemForeignCurrency(it: any): boolean {
+  const cur = String(it?.Don_vi_tien_te || 'VND').trim().toUpperCase()
+  return (Boolean(cur) && cur !== 'VND') || toNum(it?.Ti_gia, 1) > 1
+}
+
+function getBulkDefaultValueForFieldAndOp(field: BulkTargetField, op: BulkOpMode) {
+  const items = bulkSelectedItems.value
+  const first = items[0]
+  const isOrigin = quotePriceViewMode.value === 'origin'
+
+  if (op === 'percent' || op === 'delta_val' || op === 'delta_unit') {
+    return 0
+  }
+  if (!first) return 0
+
+  switch (field) {
+    case 'cust_price':
+      if (op === 'total_pro_rata') {
+        return Math.round(
+          items.reduce((s, it) => s + (isOrigin ? lineTruocThueKho(it) : lineTruocThueRaw(it)), 0)
+        )
+      }
+      return Math.round(isOrigin ? unitPriceKho(first) : unitPriceRaw(first))
+    case 'cont_price':
+      if (op === 'total_pro_rata') {
+        return Math.round(items.reduce((s, it) => s + lineTruocThue(it), 0))
+      }
+      return Math.round(unitPrice(first))
+    case 'cont_diff':
+      return Math.round(items.reduce((s, it) => s + (lineTruocThue(it) - lineTruocThueRaw(it)), 0))
+    case 'cust_off_pct':
+      return getGocNumber(first, '_muc_phan_tram_off_goc', toNum(first.muc_phan_tram_off, 0))
+    case 'vendor_off': {
+      const lp = donGiaLPKho(first)
+      const tc = toNum(first.Gia_tieu_chuan, 0)
+      return lp > 0 ? round2((1 - tc / lp) * 100) : 0
+    }
+    case 'vat_pct':
+      return toNum(first.Thue_VAT, 10)
+    case 'list_price':
+      if (op === 'total_pro_rata') {
+        return Math.round(items.reduce((s, it) => s + listPriceVndKho(it) * Math.max(1, toNum(it.So_luong, 1)), 0))
+      }
+      return Math.round(listPriceVndKho(first))
+    case 'import_price':
+      return Math.round(giaNhapVnd(first))
+    case 'exchange_rate': {
+      const fItem = items.find(it => isBulkItemForeignCurrency(it)) || first
+      return Math.max(1, Math.round(toNum(fItem.Ti_gia, 25500)))
+    }
+    case 'quantity':
+      return Math.max(1, Math.floor(toNum(first.So_luong, 1)))
+    default:
+      return 0
+  }
+}
+
+function selectBulkTargetField(fieldKey: BulkTargetField) {
+  const meta = BULK_FIELD_OPTIONS.find(f => f.key === fieldKey)
+  if (!meta) return
+  bulkAdjustModal.value.targetField = fieldKey
+  bulkAdjustModal.value.isResetToCustomerPrice = false
+
+  const allowedKeys = meta.allowedOps.map(o => o.key)
+  let nextOp = bulkAdjustModal.value.opMode
+  if (!allowedKeys.includes(nextOp)) {
+    nextOp = meta.allowedOps[0].key
+  }
+  bulkAdjustModal.value.opMode = nextOp
+  const defVal = getBulkDefaultValueForFieldAndOp(fieldKey, nextOp)
+  bulkAdjustModal.value.percentValue = 0
+  bulkAdjustModal.value.percentSign = -1
+  bulkAdjustModal.value.numberValue = defVal
+  bulkAdjustModal.value.numberSign = defVal < 0 ? -1 : 1
+}
+
+function selectBulkOpMode(op: BulkOpMode) {
+  bulkAdjustModal.value.opMode = op
+  bulkAdjustModal.value.isResetToCustomerPrice = false
+  const defVal = getBulkDefaultValueForFieldAndOp(bulkAdjustModal.value.targetField, op)
+  bulkAdjustModal.value.percentValue = 0
+  bulkAdjustModal.value.percentSign = -1
+  bulkAdjustModal.value.numberValue = defVal
+  bulkAdjustModal.value.numberSign = defVal < 0 ? -1 : 1
+}
+
+type BulkModalKind = 'normal' | 'contract'
+type BulkRowFieldKey =
+  | 'unit_price'
+  | 'line_truoc_thue'
+  | 'list_price'
+  | 'cost_price'
+  | 'vendor_off_pct'
+  | 'import_price'
+  | 'cust_off_pct'
+  | 'vat_pct'
+  | 'exchange_rate'
+  | 'quantity'
+  | 'cont_unit_price'
+  | 'cont_line_truoc_thue'
+  | 'cont_diff'
+
+type BulkRowUnitType = 'percent' | 'number'
+type BulkRowDirection = 'inc' | 'dec' | 'set'
+
+interface BulkVerticalRowConfig {
+  key: BulkRowFieldKey
+  label: string
+  unitType: BulkRowUnitType
+  direction: BulkRowDirection
+  value: string | number
+  allowPercent: boolean
+  allowNumber: boolean
+  numberUnitLabel: string
+  decimals: number
+}
+
+const bulkModalKind = ref<BulkModalKind>('normal')
+
+const PERCENT_NATIVE_ROW_KEYS: BulkRowFieldKey[] = ['vendor_off_pct', 'cust_off_pct', 'vat_pct']
+
+function createInitialBulkVerticalRows(kind: BulkModalKind = bulkModalKind.value): BulkVerticalRowConfig[] {
+  if (kind === 'contract') {
+    return [
+      {
+        key: 'cont_unit_price',
+        label: 'Đơn giá',
+        unitType: 'percent',
+        direction: 'inc',
+        value: '',
+        allowPercent: true,
+        allowNumber: true,
+        numberUnitLabel: '₫',
+        decimals: 2
+      },
+      {
+        key: 'cont_line_truoc_thue',
+        label: 'TT trước thuế',
+        unitType: 'percent',
+        direction: 'inc',
+        value: '',
+        allowPercent: true,
+        allowNumber: true,
+        numberUnitLabel: '₫',
+        decimals: 2
+      },
+      {
+        key: 'cont_diff',
+        label: 'Chênh lệch',
+        unitType: 'number',
+        direction: 'inc',
+        value: '',
+        allowPercent: true,
+        allowNumber: true,
+        numberUnitLabel: '₫',
+        decimals: 2
+      }
+    ]
+  }
+
+  return [
+    {
+      key: 'unit_price',
+      label: 'Đơn giá',
+      unitType: 'percent',
+      direction: 'dec',
+      value: '',
+      allowPercent: true,
+      allowNumber: true,
+      numberUnitLabel: '₫',
+      decimals: 2
+    },
+    {
+      key: 'line_truoc_thue',
+      label: 'TT trước thuế',
+      unitType: 'percent',
+      direction: 'dec',
+      value: '',
+      allowPercent: true,
+      allowNumber: true,
+      numberUnitLabel: '₫',
+      decimals: 2
+    },
+    {
+      key: 'list_price',
+      label: 'List Price',
+      unitType: 'percent',
+      direction: 'inc',
+      value: '',
+      allowPercent: true,
+      allowNumber: true,
+      numberUnitLabel: '₫',
+      decimals: 2
+    },
+    {
+      key: 'cost_price',
+      label: 'Giá vốn / Giá off hãng',
+      unitType: 'percent',
+      direction: 'inc',
+      value: '',
+      allowPercent: true,
+      allowNumber: true,
+      numberUnitLabel: '₫',
+      decimals: 2
+    },
+    {
+      key: 'vendor_off_pct',
+      label: '% Off hãng',
+      unitType: 'percent',
+      direction: 'set',
+      value: '',
+      allowPercent: true,
+      allowNumber: true,
+      numberUnitLabel: '%',
+      decimals: 2
+    },
+    {
+      key: 'import_price',
+      label: 'Giá nhập',
+      unitType: 'percent',
+      direction: 'inc',
+      value: '',
+      allowPercent: true,
+      allowNumber: true,
+      numberUnitLabel: '₫',
+      decimals: 2
+    },
+    {
+      key: 'cust_off_pct',
+      label: 'Mức Off (%)',
+      unitType: 'percent',
+      direction: 'set',
+      value: '',
+      allowPercent: true,
+      allowNumber: true,
+      numberUnitLabel: '%',
+      decimals: 2
+    },
+    {
+      key: 'vat_pct',
+      label: 'VAT (%)',
+      unitType: 'percent',
+      direction: 'set',
+      value: '',
+      allowPercent: true,
+      allowNumber: true,
+      numberUnitLabel: '%',
+      decimals: 2
+    },
+    {
+      key: 'exchange_rate',
+      label: 'Tỉ giá',
+      unitType: 'number',
+      direction: 'set',
+      value: '',
+      allowPercent: true,
+      allowNumber: true,
+      numberUnitLabel: '₫',
+      decimals: 0
+    },
+    {
+      key: 'quantity',
+      label: 'SL',
+      unitType: 'number',
+      direction: 'set',
+      value: '',
+      allowPercent: true,
+      allowNumber: true,
+      numberUnitLabel: 'SL',
+      decimals: 0
+    }
+  ]
+}
+
+const bulkVerticalRows = ref<BulkVerticalRowConfig[]>(createInitialBulkVerticalRows('normal'))
+
+function clearAllBulkRowInputs() {
+  bulkVerticalRows.value = createInitialBulkVerticalRows(bulkModalKind.value)
+}
+
+function switchBulkModalKind(kind: BulkModalKind) {
+  bulkModalKind.value = kind
+  bulkVerticalRows.value = createInitialBulkVerticalRows(kind)
+}
+
+function setBulkRowUnitType(row: BulkVerticalRowConfig, uType: BulkRowUnitType) {
+  row.unitType = uType
+  // Nếu là trường tiền tệ/SL mà chọn % nhưng đang ở chế độ Đặt (=), tự chuyển sang Tăng (+)
+  if (
+    uType === 'percent' &&
+    row.direction === 'set' &&
+    !PERCENT_NATIVE_ROW_KEYS.includes(row.key)
+  ) {
+    row.direction = 'inc'
+  }
+}
+
+function setBulkRowDirection(row: BulkVerticalRowConfig, dir: BulkRowDirection) {
+  row.direction = dir
+  // Nếu chọn Đặt (=) trên trường tiền tệ/SL thì tự chuyển đơn vị sang Số cụ thể
+  if (
+    dir === 'set' &&
+    !PERCENT_NATIVE_ROW_KEYS.includes(row.key)
+  ) {
+    row.unitType = 'number'
+  }
+}
+
+function onBulkRowValueInput(row: BulkVerticalRowConfig, val: number | string) {
+  if (val === '' || val === null || val === undefined) {
+    row.value = ''
+    return
+  }
+  const num = Math.abs(Number(val) || 0)
+  row.value = num === 0 && String(val).trim() === '' ? '' : num
+}
+
+function isBulkRowActive(row: BulkVerticalRowConfig): boolean {
+  const raw = String(row.value ?? '').trim()
+  if (raw === '') return false
+  const num = Number(row.value)
+  if (!Number.isFinite(num)) return false
+  if ((row.direction === 'inc' || row.direction === 'dec') && num === 0) return false
+  return true
+}
+
+const activeBulkVerticalRows = computed(() => {
+  return bulkVerticalRows.value.filter(r => isBulkRowActive(r))
+})
+
+function openBulkAdjustModal(kindOrField: BulkModalKind | BulkTargetField = 'normal') {
+  if (!isBulkSelectMode.value) {
+    isBulkSelectMode.value = true
+  }
+  if (bulkSelectedUids.value.length === 0) {
+    if (selectedItems.value.length > 0) {
+      selectAllBulkItems()
+      triggerToast(`Đã tự động chọn tất cả ${selectedItems.value.length} mặt hàng!`, 'info')
+    } else {
+      triggerToast('Chưa có mặt hàng nào trong báo giá!', 'warning')
+      return
+    }
+  }
+  const resolvedKind: BulkModalKind =
+    kindOrField === 'contract' || kindOrField === 'cont_price' || kindOrField === 'cont_diff'
+      ? 'contract'
+      : 'normal'
+  bulkModalKind.value = resolvedKind
+  bulkVerticalRows.value = createInitialBulkVerticalRows(resolvedKind)
+  bulkAdjustModal.value.show = true
+}
+
+function clearBulkSelectedContractDiff() {
+  const items = bulkSelectedItems.value
+  if (items.length === 0) return
+  const oldTotalCont = Math.round(items.reduce((s, it) => s + lineTruocThue(it), 0))
+  items.forEach(it => {
+    if (!it) return
+    withOriginalPriceFields(it)
+    const qty = Math.max(1, Math.floor(toNum(it.So_luong, 1)))
+    const tg = toNum(it.Ti_gia, 1) || 1
+    const hw = toNum(it.gia_hardware, 0)
+    const nhap = toNum(it.gia_nhap, 0)
+    const pctOff = toNum(it.muc_phan_tram_off, 0)
+    const targetUPVnd = lineTruocThueRaw(it) / qty
+    it.Don_gia = solveDonGiaForTargetUnitPriceVnd(targetUPVnd, tg, hw, nhap, pctOff)
+  })
+  selectedItems.value = [...selectedItems.value]
+  syncFlatRows()
+  const newTotalCont = Math.round(items.reduce((s, it) => s + lineTruocThue(it), 0))
+  addAction(
+    `[Kê giá HĐ hàng loạt - ${items.length} SP] Xóa chênh lệch (Về bằng giá gốc trước kê)`,
+    oldTotalCont,
+    newTotalCont
+  )
+  exitBulkSelectMode(true)
+  triggerToast(`Đã xóa chênh lệch cho ${items.length} mặt hàng!`, 'success')
+}
+
+function setBulkPercentSign(sign: 1 | -1) {
+  bulkAdjustModal.value.isResetToCustomerPrice = false
+  bulkAdjustModal.value.percentSign = sign
+  const cur = Number(bulkAdjustModal.value.percentValue) || 0
+  if (cur !== 0) {
+    bulkAdjustModal.value.percentValue = sign * Math.abs(cur)
+  }
+}
+
+function onBulkPercentInput(val: number | string) {
+  bulkAdjustModal.value.isResetToCustomerPrice = false
+  const num = Number(val) || 0
+  const prev = Number(bulkAdjustModal.value.percentValue) || 0
+  if (num === 0) {
+    bulkAdjustModal.value.percentValue = 0
+    return
+  }
+  if (num < 0) {
+    bulkAdjustModal.value.percentSign = -1
+    bulkAdjustModal.value.percentValue = num
+    return
+  }
+  if (prev < 0 && Math.abs(Math.abs(prev) - num) < 1e-9) {
+    bulkAdjustModal.value.percentSign = 1
+    bulkAdjustModal.value.percentValue = num
+    return
+  }
+  bulkAdjustModal.value.percentValue =
+    bulkAdjustModal.value.percentSign < 0 ? -num : num
+}
+
+function selectBulkPercentPreset(pct: number) {
+  bulkAdjustModal.value.isResetToCustomerPrice = false
+  bulkAdjustModal.value.percentSign = pct < 0 ? -1 : 1
+  bulkAdjustModal.value.percentValue = pct
+}
+
+function setBulkNumberSign(sign: 1 | -1) {
+  bulkAdjustModal.value.isResetToCustomerPrice = false
+  bulkAdjustModal.value.numberSign = sign
+  const cur = Number(bulkAdjustModal.value.numberValue) || 0
+  if (cur !== 0) {
+    bulkAdjustModal.value.numberValue = sign * Math.abs(cur)
+  }
+}
+
+const isBulkSignedNumberInput = computed(() => {
+  const { targetField, opMode } = bulkAdjustModal.value
+  if (targetField === 'cont_diff') return true
+  if (opMode === 'delta_unit' || opMode === 'delta_val') return true
+  return false
+})
+
+function onBulkNumberInput(val: number | string) {
+  bulkAdjustModal.value.isResetToCustomerPrice = false
+  const num = Number(val) || 0
+  if (!isBulkSignedNumberInput.value) {
+    bulkAdjustModal.value.numberSign = 1
+    bulkAdjustModal.value.numberValue = Math.max(0, num)
+    return
+  }
+  const prev = Number(bulkAdjustModal.value.numberValue) || 0
+  if (num === 0) {
+    bulkAdjustModal.value.numberValue = 0
+    return
+  }
+  if (num < 0) {
+    bulkAdjustModal.value.numberSign = -1
+    bulkAdjustModal.value.numberValue = num
+    return
+  }
+  if (prev < 0 && Math.abs(Math.abs(prev) - num) < 1e-9) {
+    bulkAdjustModal.value.numberSign = 1
+    bulkAdjustModal.value.numberValue = num
+    return
+  }
+  bulkAdjustModal.value.numberValue =
+    bulkAdjustModal.value.numberSign < 0 ? -num : num
+}
+
+function selectBulkQuickValuePreset(val: number) {
+  bulkAdjustModal.value.isResetToCustomerPrice = false
+  if (bulkAdjustModal.value.opMode === 'percent' || bulkAdjustModal.value.opMode === 'delta_val') {
+    bulkAdjustModal.value.percentSign = val < 0 ? -1 : 1
+    bulkAdjustModal.value.percentValue = val
+  } else {
+    bulkAdjustModal.value.numberSign = val < 0 ? -1 : 1
+    bulkAdjustModal.value.numberValue = val
+  }
+}
+
+function triggerBulkClearContractDiff() {
+  bulkAdjustModal.value.isResetToCustomerPrice = true
+  if (bulkAdjustModal.value.targetField === 'cont_diff') {
+    bulkAdjustModal.value.opMode = 'total_pro_rata'
+    bulkAdjustModal.value.numberValue = 0
+    bulkAdjustModal.value.numberSign = 1
+  } else {
+    bulkAdjustModal.value.opMode = 'total_pro_rata'
+    bulkAdjustModal.value.numberValue = Math.round(bulkSelectedSummary.value.totalCustVnd)
+    bulkAdjustModal.value.numberSign = 1
+  }
+}
+
+function resetBulkModalInputToOriginal() {
+  bulkAdjustModal.value.isResetToCustomerPrice = false
+  const { targetField, opMode } = bulkAdjustModal.value
+  const defVal = getBulkDefaultValueForFieldAndOp(targetField, opMode)
+  bulkAdjustModal.value.percentValue = 0
+  bulkAdjustModal.value.percentSign = -1
+  bulkAdjustModal.value.numberValue = defVal
+  bulkAdjustModal.value.numberSign = defVal < 0 ? -1 : 1
+}
+
+interface BulkPreviewRowItem {
+  uid: string
+  idx: number
+  name: string
+  code: string
+  qty: number
+  currency: string
+  skipped: boolean
+  skipReason: string
+  oldMetricVal: number
+  newMetricVal: number
+  oldDisplay: string
+  newDisplay: string
+  deltaVal: number
+  oldCustLineVnd: number
+  newCustLineVnd: number
+  oldContLineVnd: number
+  newContLineVnd: number
+}
+
+const bulkPreviewComputation = computed(() => {
+  const {
+    targetField,
+    opMode,
+    percentValue,
+    numberValue,
+    normalEditContractBehavior,
+    offApplyTier,
+    onlyForeignCurrency,
+    isResetToCustomerPrice,
+    roundingTargetScope,
+    roundingModeValue
+  } = bulkAdjustModal.value
+
+  const items = bulkSelectedItems.value
+  const count = items.length
+  const isOrigin = quotePriceViewMode.value === 'origin'
+
+  const sumOldCustLine = items.reduce((s, it) => s + (isOrigin ? lineTruocThueKho(it) : lineTruocThueRaw(it)), 0)
+  const sumRawCustLine = items.reduce((s, it) => s + lineTruocThueRaw(it), 0)
+  const sumOldContLine = items.reduce((s, it) => s + lineTruocThue(it), 0)
+  const sumOldDiff = sumOldContLine - sumRawCustLine
+  const sumOldListLine = items.reduce((s, it) => s + listPriceVndKho(it) * Math.max(1, toNum(it.So_luong, 1)), 0)
+  const hasAnyForeignInSelection = items.some(it => isBulkItemForeignCurrency(it))
+
+  const rows: BulkPreviewRowItem[] = []
+  let aggOldVal = 0
+  let aggNewVal = 0
+  let aggOldCustTotal = 0
+  let aggNewCustTotal = 0
+  let aggOldContTotal = 0
+  let aggNewContTotal = 0
+  let unitSuffix = '₫'
+
+  items.forEach(it => {
+    const uid = String(it.uid || '')
+    const realIdx = selectedItems.value.indexOf(it)
+    const qty = Math.max(1, Math.floor(toNum(it.So_luong, 1)))
+    const tg = toNum(it.Ti_gia, 1) || 1
+    const hw = toNum(it.gia_hardware, 0)
+    const nhap = toNum(it.gia_nhap, 0)
+    const pctOff = toNum(it.muc_phan_tram_off, 0)
+
+    const tgGoc = getGocNumber(it, '_Ti_gia_goc', tg) || 1
+    const hwGoc = getGocNumber(it, '_gia_hardware_goc', hw)
+    const nhapGoc = getGocNumber(it, '_gia_nhap_goc', nhap)
+    const pctOffGoc = getGocNumber(it, '_muc_phan_tram_off_goc', pctOff)
+    const tgKho = getGocNumber(it, '_Ti_gia_kho', tgGoc) || 1
+
+    const oldCustLineVnd = lineTruocThueRaw(it)
+    const oldContLineVnd = lineTruocThue(it)
+    const existingDiffVnd = oldContLineVnd - oldCustLineVnd
+    const hasItemDiff = Math.abs(Math.round(existingDiffVnd)) > 0
+
+    let newCustLineVnd = oldCustLineVnd
+    let newContLineVnd = oldContLineVnd
+    let oldMetricVal = 0
+    let newMetricVal = 0
+    let oldDisplay = ''
+    let newDisplay = ''
+    let skipped = false
+    let skipReason = ''
+
+    if (targetField === 'cust_price') {
+      unitSuffix = '₫'
+      const baseLine = isOrigin ? lineTruocThueKho(it) : oldCustLineVnd
+      const baseUnit = isOrigin ? unitPriceKho(it) : unitPriceRaw(it)
+      let targetUnitVnd = baseUnit
+      if (opMode === 'percent') {
+        targetUnitVnd = Math.max(0, baseUnit * (1 + (Number(percentValue) || 0) / 100))
+      } else if (opMode === 'total_pro_rata') {
+        const targetSum = Math.max(0, Number(numberValue) || 0)
+        const targetLine = sumOldCustLine > 0 ? baseLine * (targetSum / sumOldCustLine) : targetSum / Math.max(1, count)
+        targetUnitVnd = targetLine / qty
+      } else if (opMode === 'delta_unit') {
+        targetUnitVnd = Math.max(0, baseUnit + (Number(numberValue) || 0))
+      } else if (opMode === 'set_unit') {
+        targetUnitVnd = Math.max(0, Number(numberValue) || 0)
+      }
+      newCustLineVnd = round2(targetUnitVnd * qty)
+      if (!hasItemDiff) {
+        newContLineVnd = newCustLineVnd
+      } else if (normalEditContractBehavior === 'keep_diff') {
+        newContLineVnd = Math.max(0, round2(newCustLineVnd + existingDiffVnd))
+      } else {
+        newContLineVnd = oldContLineVnd
+      }
+      oldMetricVal = baseLine
+      newMetricVal = newCustLineVnd
+      oldDisplay = `${formatVND(baseUnit)} ₫/ĐVT (TT: ${formatVND(baseLine)} ₫)`
+      newDisplay = `${formatVND(targetUnitVnd)} ₫/ĐVT (TT: ${formatVND(newCustLineVnd)} ₫)`
+    } else if (targetField === 'cont_price') {
+      unitSuffix = '₫'
+      const baseUnit = unitPrice(it)
+      let targetUnitVnd = baseUnit
+      if (isResetToCustomerPrice) {
+        targetUnitVnd = oldCustLineVnd / qty
+      } else if (opMode === 'percent') {
+        targetUnitVnd = Math.max(0, baseUnit * (1 + (Number(percentValue) || 0) / 100))
+      } else if (opMode === 'total_pro_rata') {
+        const targetSum = Math.max(0, Number(numberValue) || 0)
+        const targetLine = sumOldContLine > 0 ? oldContLineVnd * (targetSum / sumOldContLine) : targetSum / Math.max(1, count)
+        targetUnitVnd = targetLine / qty
+      } else if (opMode === 'delta_unit') {
+        targetUnitVnd = Math.max(0, baseUnit + (Number(numberValue) || 0))
+      } else if (opMode === 'set_unit') {
+        targetUnitVnd = Math.max(0, Number(numberValue) || 0)
+      }
+      newContLineVnd = round2(targetUnitVnd * qty)
+      oldMetricVal = oldContLineVnd
+      newMetricVal = newContLineVnd
+      oldDisplay = `${formatVND(baseUnit)} ₫/ĐVT (TT: ${formatVND(oldContLineVnd)} ₫)`
+      newDisplay = `${formatVND(targetUnitVnd)} ₫/ĐVT (TT: ${formatVND(newContLineVnd)} ₫)`
+    } else if (targetField === 'cont_diff') {
+      unitSuffix = '₫'
+      let targetDiff = existingDiffVnd
+      if (isResetToCustomerPrice) {
+        targetDiff = 0
+      } else if (opMode === 'total_pro_rata') {
+        const desiredTotalDiff = Number(numberValue) || 0
+        const deltaTotalDiff = desiredTotalDiff - sumOldDiff
+        if (sumRawCustLine > 0) {
+          targetDiff = existingDiffVnd + deltaTotalDiff * (oldCustLineVnd / sumRawCustLine)
+        } else if (sumOldContLine > 0) {
+          targetDiff = existingDiffVnd + deltaTotalDiff * (oldContLineVnd / sumOldContLine)
+        } else {
+          targetDiff = existingDiffVnd + deltaTotalDiff / Math.max(1, count)
+        }
+      } else if (opMode === 'percent') {
+        targetDiff = existingDiffVnd * (1 + (Number(percentValue) || 0) / 100)
+      } else if (opMode === 'delta_unit') {
+        targetDiff = existingDiffVnd + (Number(numberValue) || 0)
+      }
+      newContLineVnd = Math.max(0, round2(oldCustLineVnd + targetDiff))
+      const actualNewDiff = newContLineVnd - oldCustLineVnd
+      oldMetricVal = existingDiffVnd
+      newMetricVal = actualNewDiff
+      oldDisplay = `${existingDiffVnd >= 0 ? '+' : ''}${formatVND(existingDiffVnd)} ₫`
+      newDisplay = `${actualNewDiff >= 0 ? '+' : ''}${formatVND(actualNewDiff)} ₫`
+    } else if (targetField === 'cust_off_pct') {
+      unitSuffix = '%'
+      const curOff = offApplyTier === 'contract_only' ? pctOff : pctOffGoc
+      let nextOff = curOff
+      if (opMode === 'set_val') {
+        nextOff = Math.min(100, Math.max(0, round2(Number(numberValue) || 0)))
+      } else {
+        nextOff = Math.min(100, Math.max(0, round2(curOff + (Number(percentValue) || 0))))
+      }
+      const lpGoc = donGiaLPGoc(it)
+      const lpCont = donGiaLP(it)
+      if (offApplyTier === 'contract_only') {
+        const nextUnitCont = round2((lpCont * (1 - nextOff / 100) + nhap) * tg)
+        newContLineVnd = round2(nextUnitCont * qty)
+      } else {
+        const nextUnitCust = round2((lpGoc * (1 - nextOff / 100) + nhapGoc) * tgGoc)
+        newCustLineVnd = round2(nextUnitCust * qty)
+        if (!hasItemDiff || normalEditContractBehavior === 'keep_diff') {
+          const nextUnitCont = round2((lpCont * (1 - nextOff / 100) + nhap) * tg)
+          newContLineVnd = round2(nextUnitCont * qty)
+        }
+      }
+      oldMetricVal = curOff
+      newMetricVal = nextOff
+      oldDisplay = `${curOff}% (TT: ${formatVND(offApplyTier === 'contract_only' ? oldContLineVnd : oldCustLineVnd)} ₫)`
+      newDisplay = `${nextOff}% (TT: ${formatVND(offApplyTier === 'contract_only' ? newContLineVnd : newCustLineVnd)} ₫)`
+    } else if (targetField === 'vendor_off') {
+      const lpKho = donGiaLPKho(it)
+      const oldTcUsd = toNum(it.Gia_tieu_chuan, 0)
+      const oldTcVnd = round2(oldTcUsd * tg)
+      const oldOffHangPct = lpKho > 0 ? round2((1 - oldTcUsd / lpKho) * 100) : 0
+      let newTcUsd = oldTcUsd
+      let newOffHangPct = oldOffHangPct
+
+      if (opMode === 'set_val') {
+        unitSuffix = '%'
+        newOffHangPct = Math.min(100, Math.max(0, round2(Number(numberValue) || 0)))
+        newTcUsd = Math.max(0, round2(lpKho * (1 - newOffHangPct / 100)))
+        oldMetricVal = oldOffHangPct
+        newMetricVal = newOffHangPct
+      } else if (opMode === 'delta_val') {
+        unitSuffix = '%'
+        newOffHangPct = Math.min(100, Math.max(0, round2(oldOffHangPct + (Number(percentValue) || 0))))
+        newTcUsd = Math.max(0, round2(lpKho * (1 - newOffHangPct / 100)))
+        oldMetricVal = oldOffHangPct
+        newMetricVal = newOffHangPct
+      } else if (opMode === 'percent') {
+        unitSuffix = '₫'
+        const targetTcVnd = Math.max(0, oldTcVnd * (1 + (Number(percentValue) || 0) / 100))
+        newTcUsd = tg > 0 ? targetTcVnd / tg : targetTcVnd
+        newOffHangPct = lpKho > 0 ? round2((1 - newTcUsd / lpKho) * 100) : 0
+        oldMetricVal = oldTcVnd * qty
+        newMetricVal = round2(newTcUsd * tg) * qty
+      } else {
+        unitSuffix = '₫'
+        const targetTcVnd = Math.max(0, oldTcVnd + (Number(numberValue) || 0))
+        newTcUsd = tg > 0 ? targetTcVnd / tg : targetTcVnd
+        newOffHangPct = lpKho > 0 ? round2((1 - newTcUsd / lpKho) * 100) : 0
+        oldMetricVal = oldTcVnd * qty
+        newMetricVal = round2(newTcUsd * tg) * qty
+      }
+      const newTcVnd = round2(newTcUsd * tg)
+      oldDisplay = `${formatVND(oldTcVnd)} ₫ (-${oldOffHangPct}%)`
+      newDisplay = `${formatVND(newTcVnd)} ₫ (-${newOffHangPct}%)`
+    } else if (targetField === 'vat_pct') {
+      unitSuffix = '%'
+      const oldVat = toNum(it.Thue_VAT, 0)
+      let newVat = oldVat
+      if (opMode === 'set_val') {
+        newVat = Math.min(100, Math.max(0, round2(Number(numberValue) || 0)))
+      } else {
+        newVat = Math.min(100, Math.max(0, round2(oldVat + (Number(percentValue) || 0))))
+      }
+      const oldVatAmt = round2((oldContLineVnd * oldVat) / 100)
+      const newVatAmt = round2((oldContLineVnd * newVat) / 100)
+      oldMetricVal = oldVat
+      newMetricVal = newVat
+      oldDisplay = `${oldVat}% (${formatVND(oldVatAmt)} ₫)`
+      newDisplay = `${newVat}% (${formatVND(newVatAmt)} ₫)`
+    } else if (targetField === 'list_price') {
+      unitSuffix = '₫'
+      const oldLpUsd = getGocNumber(it, '_Don_gia_kho', getGocNumber(it, '_Don_gia_goc', toNum(it.Don_gia, 0)))
+      const oldLpVnd = round2(oldLpUsd * tgKho)
+      let newLpVnd = oldLpVnd
+      if (opMode === 'percent') {
+        newLpVnd = Math.max(0, oldLpVnd * (1 + (Number(percentValue) || 0) / 100))
+      } else if (opMode === 'delta_unit') {
+        newLpVnd = Math.max(0, oldLpVnd + (Number(numberValue) || 0))
+      } else if (opMode === 'set_unit') {
+        newLpVnd = Math.max(0, Number(numberValue) || 0)
+      } else if (opMode === 'total_pro_rata') {
+        const targetSum = Math.max(0, Number(numberValue) || 0)
+        const oldLineLp = oldLpVnd * qty
+        const newLineLp = sumOldListLine > 0 ? oldLineLp * (targetSum / sumOldListLine) : targetSum / Math.max(1, count)
+        newLpVnd = newLineLp / qty
+      }
+      const newLpUsd = tgKho > 0 ? newLpVnd / tgKho : newLpVnd
+      const newUnitCust = round2(((hwGoc + newLpUsd) * (1 - pctOffGoc / 100) + nhapGoc) * tgGoc)
+      newCustLineVnd = round2(newUnitCust * qty)
+      if (!hasItemDiff) {
+        newContLineVnd = newCustLineVnd
+      } else if (normalEditContractBehavior === 'keep_diff') {
+        newContLineVnd = Math.max(0, round2(newCustLineVnd + existingDiffVnd))
+      }
+      oldMetricVal = oldLpVnd * qty
+      newMetricVal = round2(newLpVnd) * qty
+      oldDisplay = `${formatVND(oldLpVnd)} ₫/ĐVT`
+      newDisplay = `${formatVND(newLpVnd)} ₫/ĐVT`
+    } else if (targetField === 'import_price') {
+      unitSuffix = '₫'
+      const oldNhapVnd = round2(nhap * tg)
+      let newNhapVnd = oldNhapVnd
+      if (opMode === 'percent') {
+        newNhapVnd = Math.max(0, oldNhapVnd * (1 + (Number(percentValue) || 0) / 100))
+      } else if (opMode === 'delta_unit') {
+        newNhapVnd = Math.max(0, oldNhapVnd + (Number(numberValue) || 0))
+      } else {
+        newNhapVnd = Math.max(0, Number(numberValue) || 0)
+      }
+      const newNhapUsd = tg > 0 ? newNhapVnd / tg : newNhapVnd
+      const newUnitCust = round2((donGiaLPGoc(it) * (1 - pctOffGoc / 100) + newNhapUsd) * tgGoc)
+      const newUnitCont = round2((donGiaLP(it) * (1 - pctOff / 100) + newNhapUsd) * tg)
+      newCustLineVnd = round2(newUnitCust * qty)
+      newContLineVnd = round2(newUnitCont * qty)
+      oldMetricVal = oldNhapVnd * qty
+      newMetricVal = round2(newNhapVnd) * qty
+      oldDisplay = `${formatVND(oldNhapVnd)} ₫/ĐVT`
+      newDisplay = `${formatVND(newNhapVnd)} ₫/ĐVT`
+    } else if (targetField === 'exchange_rate') {
+      unitSuffix = '₫'
+      const isForeign = isBulkItemForeignCurrency(it)
+      if (onlyForeignCurrency && hasAnyForeignInSelection && !isForeign) {
+        skipped = true
+        skipReason = 'Hàng VND (Giữ nguyên tỉ giá = 1)'
+        oldMetricVal = tg
+        newMetricVal = tg
+        oldDisplay = '1 ₫ (VND)'
+        newDisplay = 'Giữ nguyên (VND)'
+      } else {
+        let newTg = tg
+        if (opMode === 'set_val') {
+          newTg = Math.max(1, Math.round(Number(numberValue) || 1))
+        } else if (opMode === 'delta_val') {
+          newTg = Math.max(1, Math.round(tg + (Number(numberValue) || 0)))
+        } else {
+          newTg = Math.max(1, Math.round(tg * (1 + (Number(percentValue) || 0) / 100)))
+        }
+        newCustLineVnd = round2(donGiaSauOffGoc(it) * newTg * qty)
+        newContLineVnd = round2(donGiaSauOff(it) * newTg * qty)
+        oldMetricVal = tg
+        newMetricVal = newTg
+        oldDisplay = `${formatVND(tg)} ₫/${it.Don_vi_tien_te || 'USD'}`
+        newDisplay = `${formatVND(newTg)} ₫/${it.Don_vi_tien_te || 'USD'}`
+      }
+    } else if (targetField === 'quantity') {
+      unitSuffix = 'SP'
+      let newQty = qty
+      if (opMode === 'set_val') {
+        newQty = Math.max(1, Math.floor(Number(numberValue) || 1))
+      } else if (opMode === 'delta_val') {
+        newQty = Math.max(1, Math.floor(qty + (Number(numberValue) || 0)))
+      } else {
+        newQty = Math.max(1, Math.round(qty * (1 + (Number(percentValue) || 0) / 100)))
+      }
+      newCustLineVnd = round2(unitPriceRaw(it) * newQty)
+      newContLineVnd = round2(unitPrice(it) * newQty)
+      oldMetricVal = qty
+      newMetricVal = newQty
+      oldDisplay = `SL: ${formatVND(qty)} ${it.DVT || ''}`
+      newDisplay = `SL: ${formatVND(newQty)} ${it.DVT || ''}`
+    } else if (targetField === 'vnd_rounding') {
+      unitSuffix = '₫'
+      const modeNames: Record<VndRoundingMode, string> = {
+        ceil: 'Làm tròn LÊN (.000↑)',
+        floor: 'Làm tròn XUỐNG (.000↓)',
+        round: 'Làm tròn chuẩn (±500)',
+        none: 'Không làm tròn (Mặc định)'
+      }
+      const rawUp = round2(donGiaSauOff(it) * tg)
+      const newUp = roundingModeValue === 'none' ? rawUp : roundVndByMode(rawUp, roundingModeValue)
+      newContLineVnd = round2(newUp * qty)
+      oldMetricVal = oldContLineVnd
+      newMetricVal = newContLineVnd
+      oldDisplay = `${formatVND(unitPrice(it))} ₫`
+      newDisplay = `${formatVND(newUp)} ₫ (${modeNames[roundingModeValue]})`
+    }
+
+    if (!skipped) {
+      aggOldVal += oldMetricVal
+      aggNewVal += newMetricVal
+    }
+    aggOldCustTotal += oldCustLineVnd
+    aggNewCustTotal += newCustLineVnd
+    aggOldContTotal += oldContLineVnd
+    aggNewContTotal += newContLineVnd
+
+    rows.push({
+      uid,
+      idx: realIdx,
+      name: it.Ten_hang || it.Ma_hang || 'Sản phẩm',
+      code: it.Ma_hang || '',
+      qty,
+      currency: String(it.Don_vi_tien_te || 'VND').toUpperCase(),
+      skipped,
+      skipReason,
+      oldMetricVal,
+      newMetricVal,
+      oldDisplay,
+      newDisplay,
+      deltaVal: round2(newMetricVal - oldMetricVal),
+      oldCustLineVnd,
+      newCustLineVnd,
+      oldContLineVnd,
+      newContLineVnd
+    })
+  })
+
+  const activeRowsCount = rows.filter(r => !r.skipped).length || 1
+  const isAverageDisplayField =
+    ['cust_off_pct', 'vat_pct', 'exchange_rate'].includes(targetField) ||
+    (targetField === 'vendor_off' && (opMode === 'set_val' || opMode === 'delta_val'))
+
+  const displayOldSummary = isAverageDisplayField ? round2(aggOldVal / activeRowsCount) : Math.round(aggOldVal)
+  const displayNewSummary = isAverageDisplayField ? round2(aggNewVal / activeRowsCount) : Math.round(aggNewVal)
+  const displayDeltaSummary = round2(displayNewSummary - displayOldSummary)
+
+  return {
+    rows,
+    activeRowsCount: rows.filter(r => !r.skipped).length,
+    skippedRowsCount: rows.filter(r => r.skipped).length,
+    unitSuffix,
+    isAverageDisplayField,
+    displayOldSummary,
+    displayNewSummary,
+    displayDeltaSummary,
+    aggOldCustTotal: Math.round(aggOldCustTotal),
+    aggNewCustTotal: Math.round(aggNewCustTotal),
+    aggOldContTotal: Math.round(aggOldContTotal),
+    aggNewContTotal: Math.round(aggNewContTotal),
+    aggNewDiffTotal: Math.round(aggNewContTotal - aggNewCustTotal),
+    hasExistingDiffItems: items.some(it => Math.abs(Math.round(lineTruocThue(it) - lineTruocThueRaw(it))) > 0)
+  }
+})
+
+const hasBulkAdjustChanged = computed(() => {
+  if (bulkAdjustModal.value.targetField === 'vnd_rounding') return true
+  if (bulkAdjustModal.value.isResetToCustomerPrice) return true
+  return bulkPreviewComputation.value.rows.some(r => !r.skipped && Math.abs(r.deltaVal) > 1e-4)
+})
+
+function applyBulkAdjustModal() {
+  const items = bulkSelectedItems.value
+  if (items.length === 0) {
+    triggerToast('Vui lòng chọn ít nhất 1 mặt hàng!', 'warning')
+    return
+  }
+
+  const activeRows = activeBulkVerticalRows.value
+  if (activeRows.length === 0) {
+    triggerToast('Vui lòng nhập số vào ít nhất 1 trường dữ liệu để điều chỉnh!', 'warning')
+    return
+  }
+
+  const isContractModal = bulkModalKind.value === 'contract'
+  const isOrigin = quotePriceViewMode.value === 'origin'
+  const hasAnyForeignInSelection = items.some(it => isBulkItemForeignCurrency(it))
+  const oldTotalCont = Math.round(items.reduce((s, it) => s + lineTruocThue(it), 0))
+
+  items.forEach(it => {
+    if (!it) return
+    withOriginalPriceFields(it)
+
+    activeRows.forEach(row => {
+      const numVal = Math.abs(Number(row.value) || 0)
+      const sign = row.direction === 'dec' ? -1 : 1
+      const isSet = row.direction === 'set'
+      const isPct = row.unitType === 'percent'
+
+      const qty = Math.max(1, Math.floor(toNum(it.So_luong, 1)))
+      const tg = toNum(it.Ti_gia, 1) || 1
+      const hw = toNum(it.gia_hardware, 0)
+      const nhap = toNum(it.gia_nhap, 0)
+      const pctOff = toNum(it.muc_phan_tram_off, 0)
+
+      const tgGoc = getGocNumber(it, '_Ti_gia_goc', tg) || 1
+      const hwGoc = getGocNumber(it, '_gia_hardware_goc', hw)
+      const nhapGoc = getGocNumber(it, '_gia_nhap_goc', nhap)
+      const pctOffGoc = getGocNumber(it, '_muc_phan_tram_off_goc', pctOff)
+      const tgKho = getGocNumber(it, '_Ti_gia_kho', tgGoc) || 1
+
+      const oldCustLineVnd = lineTruocThueRaw(it)
+      const oldContLineVnd = lineTruocThue(it)
+      const existingDiffVnd = oldContLineVnd - oldCustLineVnd
+      const hasItemDiff = Math.abs(Math.round(existingDiffVnd)) > 0
+
+      // ================= A. TRƯỜNG CỦA MODAL SỬA GIÁ HÀNG LOẠT =================
+      if (row.key === 'unit_price') {
+        const baseUnit = isOrigin ? unitPriceKho(it) : unitPriceRaw(it)
+        let targetUnitVnd = baseUnit
+        if (isSet) {
+          targetUnitVnd = Math.max(0, numVal)
+        } else if (isPct) {
+          targetUnitVnd = Math.max(0, baseUnit * (1 + (sign * numVal) / 100))
+        } else {
+          targetUnitVnd = Math.max(0, baseUnit + sign * numVal)
+        }
+        it._Don_gia_goc = solveDonGiaForTargetUnitPriceVnd(targetUnitVnd, tgGoc, hwGoc, nhapGoc, pctOffGoc)
+        if (!hasItemDiff) {
+          it.Don_gia = solveDonGiaForTargetUnitPriceVnd(targetUnitVnd, tg, hw, nhap, pctOff)
+        }
+      } else if (row.key === 'line_truoc_thue') {
+        const baseLine = isOrigin ? lineTruocThueKho(it) : lineTruocThueRaw(it)
+        let targetLineVnd = baseLine
+        if (isSet) {
+          targetLineVnd = Math.max(0, numVal)
+        } else if (isPct) {
+          targetLineVnd = Math.max(0, baseLine * (1 + (sign * numVal) / 100))
+        } else {
+          targetLineVnd = Math.max(0, baseLine + sign * numVal)
+        }
+        const targetUnitVnd = targetLineVnd / qty
+        it._Don_gia_goc = solveDonGiaForTargetUnitPriceVnd(targetUnitVnd, tgGoc, hwGoc, nhapGoc, pctOffGoc)
+        if (!hasItemDiff) {
+          it.Don_gia = solveDonGiaForTargetUnitPriceVnd(targetUnitVnd, tg, hw, nhap, pctOff)
+        }
+      } else if (row.key === 'list_price') {
+        const oldLpUsd = getGocNumber(it, '_Don_gia_kho', getGocNumber(it, '_Don_gia_goc', toNum(it.Don_gia, 0)))
+        const oldLpVnd = round2(oldLpUsd * tgKho)
+        let newLpVnd = oldLpVnd
+        if (isSet) {
+          newLpVnd = Math.max(0, numVal)
+        } else if (isPct) {
+          newLpVnd = Math.max(0, oldLpVnd * (1 + (sign * numVal) / 100))
+        } else {
+          newLpVnd = Math.max(0, oldLpVnd + sign * numVal)
+        }
+        const newLpUsd = tgKho > 0 ? newLpVnd / tgKho : newLpVnd
+        const prevGocUsd = getGocNumber(it, '_Don_gia_goc', toNum(it.Don_gia, 0))
+        const prevContUsd = toNum(it.Don_gia, 0)
+        const deltaUsd = newLpUsd - prevGocUsd
+        it._Don_gia_kho = newLpUsd
+        it._Don_gia_goc = newLpUsd
+        if (!hasItemDiff) {
+          it.Don_gia = newLpUsd
+        } else {
+          it.Don_gia = Math.max(0, prevContUsd + deltaUsd)
+        }
+      } else if (row.key === 'cost_price') {
+        const oldTcUsd = toNum(it.Gia_tieu_chuan, 0)
+        const oldTcVnd = round2(oldTcUsd * tg)
+        let nextTcVnd = oldTcVnd
+        if (isSet) {
+          nextTcVnd = Math.max(0, numVal)
+        } else if (isPct) {
+          nextTcVnd = Math.max(0, oldTcVnd * (1 + (sign * numVal) / 100))
+        } else {
+          nextTcVnd = Math.max(0, oldTcVnd + sign * numVal)
+        }
+        const newTcUsd = tg > 0 ? nextTcVnd / tg : nextTcVnd
+        it.Gia_tieu_chuan = newTcUsd
+        it._Gia_tieu_chuan_goc = newTcUsd
+        it._Gia_tieu_chuan_kho = newTcUsd
+      } else if (row.key === 'vendor_off_pct') {
+        const lpKho = donGiaLPKho(it)
+        const oldTcUsd = toNum(it.Gia_tieu_chuan, 0)
+        const oldOffHangPct = lpKho > 0 ? round2((1 - oldTcUsd / lpKho) * 100) : 0
+        const nextPct = isSet
+          ? Math.min(100, Math.max(0, round2(numVal)))
+          : Math.min(100, Math.max(0, round2(oldOffHangPct + sign * numVal)))
+        const newTcUsd = Math.max(0, round2(lpKho * (1 - nextPct / 100)))
+        it.Gia_tieu_chuan = newTcUsd
+        it._Gia_tieu_chuan_goc = newTcUsd
+        it._Gia_tieu_chuan_kho = newTcUsd
+      } else if (row.key === 'import_price') {
+        const oldNhapVnd = round2(nhap * tg)
+        let newNhapVnd = oldNhapVnd
+        if (isSet) {
+          newNhapVnd = Math.max(0, numVal)
+        } else if (isPct) {
+          newNhapVnd = Math.max(0, oldNhapVnd * (1 + (sign * numVal) / 100))
+        } else {
+          newNhapVnd = Math.max(0, oldNhapVnd + sign * numVal)
+        }
+        const newNhapUsd = tg > 0 ? newNhapVnd / tg : newNhapVnd
+        it.gia_nhap = newNhapUsd
+        it._gia_nhap_goc = newNhapUsd
+      } else if (row.key === 'cust_off_pct') {
+        const curOff = pctOffGoc
+        const nextOff = isSet
+          ? Math.min(100, Math.max(0, round2(numVal)))
+          : Math.min(100, Math.max(0, round2(curOff + sign * numVal)))
+        it._muc_phan_tram_off_goc = nextOff
+        if (!hasItemDiff) {
+          it.muc_phan_tram_off = nextOff
+        }
+      } else if (row.key === 'vat_pct') {
+        const oldVat = toNum(it.Thue_VAT, 0)
+        const newVat = isSet
+          ? Math.min(100, Math.max(0, round2(numVal)))
+          : Math.min(100, Math.max(0, round2(oldVat + sign * numVal)))
+        it.Thue_VAT = newVat
+        it._Thue_VAT_goc = newVat
+      } else if (row.key === 'exchange_rate') {
+        const isForeign = isBulkItemForeignCurrency(it)
+        if (hasAnyForeignInSelection && !isForeign) {
+          return
+        }
+        let newTg = tg
+        if (isSet) {
+          newTg = Math.max(1, Math.round(numVal))
+        } else if (isPct) {
+          newTg = Math.max(1, Math.round(tg * (1 + (sign * numVal) / 100)))
+        } else {
+          newTg = Math.max(1, Math.round(tg + sign * numVal))
+        }
+        it.Ti_gia = newTg
+        it._Ti_gia_goc = newTg
+      } else if (row.key === 'quantity') {
+        let newQty = qty
+        if (isSet) {
+          newQty = Math.max(1, Math.floor(numVal))
+        } else if (isPct) {
+          newQty = Math.max(1, Math.round(qty * (1 + (sign * numVal) / 100)))
+        } else {
+          newQty = Math.max(1, Math.floor(qty + sign * numVal))
+        }
+        it.So_luong = newQty
+        if (it.Ma_hang) {
+          qtyMap[it.Ma_hang] = newQty
+        }
+      }
+
+      // ================= B. TRƯỜNG CỦA MODAL KÊ GIÁ HĐ HÀNG LOẠT =================
+      else if (row.key === 'cont_unit_price') {
+        const baseContUnit = unitPrice(it)
+        let targetContUnitVnd = baseContUnit
+        if (isSet) {
+          targetContUnitVnd = Math.max(0, numVal)
+        } else if (isPct) {
+          targetContUnitVnd = Math.max(0, baseContUnit * (1 + (sign * numVal) / 100))
+        } else {
+          targetContUnitVnd = Math.max(0, baseContUnit + sign * numVal)
+        }
+        it.Don_gia = solveDonGiaForTargetUnitPriceVnd(targetContUnitVnd, tg, hw, nhap, pctOff)
+      } else if (row.key === 'cont_line_truoc_thue') {
+        const baseContLine = lineTruocThue(it)
+        let targetContLineVnd = baseContLine
+        if (isSet) {
+          targetContLineVnd = Math.max(0, numVal)
+        } else if (isPct) {
+          targetContLineVnd = Math.max(0, baseContLine * (1 + (sign * numVal) / 100))
+        } else {
+          targetContLineVnd = Math.max(0, baseContLine + sign * numVal)
+        }
+        const targetContUnitVnd = targetContLineVnd / qty
+        it.Don_gia = solveDonGiaForTargetUnitPriceVnd(targetContUnitVnd, tg, hw, nhap, pctOff)
+      } else if (row.key === 'cont_diff') {
+        const rawLine = lineTruocThueRaw(it)
+        const curDiff = lineTruocThue(it) - rawLine
+        let nextDiff = curDiff
+        if (isSet) {
+          nextDiff = numVal
+        } else if (isPct) {
+          if (Math.abs(curDiff) >= 1) {
+            nextDiff = curDiff * (1 + (sign * numVal) / 100)
+          } else {
+            nextDiff = rawLine * ((sign * numVal) / 100)
+          }
+        } else {
+          nextDiff = curDiff + sign * numVal
+        }
+        const targetContLineVnd = Math.max(0, rawLine + nextDiff)
+        const targetContUnitVnd = targetContLineVnd / qty
+        it.Don_gia = solveDonGiaForTargetUnitPriceVnd(targetContUnitVnd, tg, hw, nhap, pctOff)
+      }
+    })
+  })
+
+  if (quotePriceViewMode.value !== 'compare') {
+    if (isContractModal) {
+      quotePriceViewMode.value = 'contract'
+    } else if (activeRows.some(r => r.key === 'unit_price' || r.key === 'line_truoc_thue')) {
+      quotePriceViewMode.value = 'customer'
+    }
+  }
+
+  selectedItems.value = [...selectedItems.value]
+  syncFlatRows()
+
+  const newTotalCont = Math.round(items.reduce((s, it) => s + lineTruocThue(it), 0))
+  const summaryDesc = activeRows
+    .map(r => {
+      const sym = r.direction === 'set' ? '=' : r.direction === 'dec' ? '-' : '+'
+      const u = r.unitType === 'percent' ? '%' : r.numberUnitLabel
+      return `${r.label} (${sym}${formatVND(Number(r.value) || 0)}${u})`
+    })
+    .join(', ')
+
+  addAction(
+    `[${isContractModal ? 'Sửa HĐ hàng loạt' : 'Sửa khách hàng loạt'} - ${items.length} SP] ${summaryDesc}`,
+    oldTotalCont,
+    newTotalCont
+  )
+
+  exitBulkSelectMode(true)
+  triggerToast(
+    `Đã ${isContractModal ? 'kê giá HĐ' : 'cập nhật'} ${activeRows.length} trường cho ${items.length} mặt hàng!`,
+    'success'
+  )
 }
 
 function removeSelected(idx: number) {
@@ -16990,23 +19946,39 @@ watch(isPreviewDirectEditMode, (enabled) => {
 async function loadPrintTemplates() {
   const list = await fetchAndSyncPrintTemplates()
   printTemplates.value = list
-  if (!selectedPrintTemplateId.value || !list.some(t => t.id === selectedPrintTemplateId.value)) {
-    const def = list.find(t => t.mac_dinh) || list[0]
+  if (
+    !selectedPrintTemplateId.value ||
+    selectedPrintTemplateId.value === 'MINTL_DAI_LY' ||
+    !list.some(t => t.id === selectedPrintTemplateId.value)
+  ) {
+    const def =
+      list.find(
+        t =>
+          t.id === 'MINTL_DEFAULT_NTS' ||
+          t.id === 'MINTL_CHUAN_NTS' ||
+          String(t.ten_mau || '').toLowerCase().includes('chuẩn nts') ||
+          String(t.ten_mau || '').toLowerCase().includes('chuan nts')
+      ) ||
+      list.find(t => t.mac_dinh && t.id !== 'MINTL_DAI_LY') ||
+      list.find(t => t.id !== 'MINTL_DAI_LY') ||
+      list[0]
     if (def) selectedPrintTemplateId.value = def.id
   }
-  const validTicked = selectedPrintTemplateIds.value.filter(id => list.some(t => t.id === id))
-  if (validTicked.length > 0) {
-    selectedPrintTemplateIds.value = validTicked
-  } else if (selectedPrintTemplateId.value) {
-    selectedPrintTemplateIds.value = [selectedPrintTemplateId.value]
-  }
+  // Không tự động tick chọn mặc định mẫu in (đặc biệt là Mẫu Báo Giá Đại Lý), để người dùng tự chọn
+  selectedPrintTemplateIds.value = selectedPrintTemplateIds.value.filter(id => list.some(t => t.id === id))
 }
 
 const activePrintTemplate = computed<PrintTemplateConfig | null>(() => {
   if (!printTemplates.value.length) return null
   return (
     printTemplates.value.find(t => t.id === selectedPrintTemplateId.value) ||
-    printTemplates.value.find(t => t.mac_dinh) ||
+    printTemplates.value.find(
+      t =>
+        t.id === 'MINTL_DEFAULT_NTS' ||
+        t.id === 'MINTL_CHUAN_NTS' ||
+        String(t.ten_mau || '').toLowerCase().includes('chuẩn nts')
+    ) ||
+    printTemplates.value.find(t => t.mac_dinh && t.id !== 'MINTL_DAI_LY') ||
     printTemplates.value[0] ||
     null
   )
@@ -17051,11 +20023,14 @@ const selectedPrintTemplatesList = computed<PrintTemplateConfig[]>(() => {
   if (!printTemplates.value.length) return []
   const ticked = printTemplates.value.filter(t => selectedPrintTemplateIds.value.includes(t.id))
   if (ticked.length > 0) return ticked
-  return activePrintTemplate.value ? [activePrintTemplate.value] : []
+  if (showExportExcelModal.value && activePrintTemplate.value) {
+    return [activePrintTemplate.value]
+  }
+  return []
 })
 
 function getPrintTemplateFileSuffix(tpl: PrintTemplateConfig): string {
-  if (tpl.id === 'MINTL_CHUAN_NTS') return 'BaoGiaKhach'
+  if (tpl.id === 'MINTL_CHUAN_NTS' || tpl.id === 'MINTL_DEFAULT_NTS') return 'BaoGiaKhach'
   if (tpl.id === 'MINTL_DOI_CHIEU_3_GIA' || isThreePriceComparisonTemplate(tpl)) return 'DoiChieu3Gia'
   if (tpl.id === 'MINTL_HOP_DONG' || isContractPriceTemplate(tpl)) return 'BaoGiaHopDong'
   if (tpl.id === 'MINTL_LIST_PRICE' || isListPriceTemplate(tpl)) return 'BaoGiaListPrice'
@@ -17385,6 +20360,11 @@ function openExportExcelModal(templateData?: string, mappingConfig?: any[]) {
 function requestExportWithSaveConfirm(format: ExportFormatType) {
   if (saveQuoteFileConfigModal.previewingSlot) {
     executeExportByFormat(format)
+    return
+  }
+  if (format !== 'agency_excel' && !showExportExcelModal.value && selectedPrintTemplatesList.value.length === 0) {
+    showExportInfoModal.value = true
+    triggerToast('Vui lòng tick chọn ít nhất 1 mẫu in để xuất!', 'warning')
     return
   }
   pendingExportFormat.value = format
@@ -18089,6 +21069,7 @@ function switchQuoteTab(tabId: string) {
   if (!target) return
 
   snapshotCurrentStateToActiveTab()
+  exitBulkSelectMode(true)
   activeQuoteTabId.value = target.id
   applyTabSessionToCurrentState(target)
   flushQuoteTabsToStorageNow()
@@ -18203,7 +21184,105 @@ function onClickQuoteTabCustomerBadge(tab: QuoteTabSession, e: MouseEvent) {
   }
 }
 
-function getQuoteTabDisplayTitle(tab: QuoteTabSession, idx: number): string {
+const draggingQuoteTabId = ref<string | null>(null)
+const dragOverQuoteTabId = ref<string | null>(null)
+const renamingQuoteTabId = ref<string | null>(null)
+const renamingQuoteTabDraft = ref<string>('')
+let lastTabSwapTime = 0
+let lastTabDragEndTime = 0
+
+function onQuoteTabDragStart(tab: QuoteTabSession, e: DragEvent) {
+  const targetEl = e.target as HTMLElement | null
+  if (
+    renamingQuoteTabId.value === tab.id ||
+    targetEl?.closest('.quote-tab-close') ||
+    targetEl?.closest('.quote-tab-rename-input')
+  ) {
+    e.preventDefault()
+    return
+  }
+  snapshotCurrentStateToActiveTab()
+  draggingQuoteTabId.value = tab.id
+  dragOverQuoteTabId.value = null
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', tab.id)
+  }
+}
+
+function onQuoteTabDragOver(targetTab: QuoteTabSession, e: DragEvent) {
+  e.preventDefault()
+  if (e.dataTransfer) {
+    e.dataTransfer.dropEffect = 'move'
+  }
+  const dragId = draggingQuoteTabId.value
+  if (!dragId || dragId === targetTab.id) {
+    dragOverQuoteTabId.value = null
+    return
+  }
+
+  const fromIdx = quoteTabs.value.findIndex(t => t.id === dragId)
+  const toIdx = quoteTabs.value.findIndex(t => t.id === targetTab.id)
+  if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return
+
+  const el = e.currentTarget as HTMLElement | null
+  if (el) {
+    const rect = el.getBoundingClientRect()
+    const midX = rect.left + rect.width / 2
+    if (fromIdx < toIdx && e.clientX < midX) return
+    if (fromIdx > toIdx && e.clientX > midX) return
+  }
+
+  const now = Date.now()
+  if (now - lastTabSwapTime < 90) return
+  lastTabSwapTime = now
+
+  dragOverQuoteTabId.value = targetTab.id
+  const moved = quoteTabs.value.splice(fromIdx, 1)[0]
+  if (moved) {
+    quoteTabs.value.splice(toIdx, 0, moved)
+  }
+}
+
+function onQuoteTabItemDrop(targetTab: QuoteTabSession, e: DragEvent) {
+  e.preventDefault()
+  const dragId = draggingQuoteTabId.value
+  if (dragId && dragId !== targetTab.id) {
+    const fromIdx = quoteTabs.value.findIndex(t => t.id === dragId)
+    const toIdx = quoteTabs.value.findIndex(t => t.id === targetTab.id)
+    if (fromIdx !== -1 && toIdx !== -1 && fromIdx !== toIdx) {
+      const moved = quoteTabs.value.splice(fromIdx, 1)[0]
+      if (moved) {
+        quoteTabs.value.splice(toIdx, 0, moved)
+      }
+    }
+  }
+  draggingQuoteTabId.value = null
+  dragOverQuoteTabId.value = null
+  lastTabDragEndTime = Date.now()
+  flushQuoteTabsToStorageNow()
+}
+
+function onQuoteTabDrop(e: DragEvent) {
+  e.preventDefault()
+  if (draggingQuoteTabId.value) {
+    draggingQuoteTabId.value = null
+    dragOverQuoteTabId.value = null
+    lastTabDragEndTime = Date.now()
+    flushQuoteTabsToStorageNow()
+  }
+}
+
+function onQuoteTabDragEnd() {
+  if (draggingQuoteTabId.value) {
+    draggingQuoteTabId.value = null
+    dragOverQuoteTabId.value = null
+    lastTabDragEndTime = Date.now()
+    flushQuoteTabsToStorageNow()
+  }
+}
+
+function getQuoteTabFallbackTitle(tab: QuoteTabSession, idx: number): string {
   const isCurrent = tab.id === activeQuoteTabId.value
   const loadedMa = isCurrent ? loadedMaHopDong.value : tab.loadedMaHopDong
   const soHD = isCurrent ? soHopDong.value : tab.soHopDong
@@ -18212,18 +21291,83 @@ function getQuoteTabDisplayTitle(tab: QuoteTabSession, idx: number): string {
   return loadedMa ? `Sửa ${soHD || loadedMa}` : `Báo giá ${num}`
 }
 
+function getQuoteTabDisplayTitle(tab: QuoteTabSession, idx: number): string {
+  const isCurrent = tab.id === activeQuoteTabId.value
+  const note = String(isCurrent ? ghiChuHopDong.value : (tab.ghiChuHopDong || '')).trim()
+  if (note) return note
+
+  return getQuoteTabFallbackTitle(tab, idx)
+}
+
+function startRenameQuoteTab(tab: QuoteTabSession, e?: Event) {
+  if (e) e.stopPropagation()
+  if (tab.id !== activeQuoteTabId.value) {
+    switchQuoteTab(tab.id)
+  }
+  const currentNote = String(
+    tab.id === activeQuoteTabId.value ? ghiChuHopDong.value : (tab.ghiChuHopDong || '')
+  ).trim()
+  renamingQuoteTabId.value = tab.id
+  renamingQuoteTabDraft.value = currentNote
+  nextTick(() => {
+    if (typeof document === 'undefined') return
+    const inputEl = document.querySelector(
+      `input.quote-tab-rename-input[data-tab-rename-id="${tab.id}"]`
+    ) as HTMLInputElement | null
+    if (inputEl) {
+      inputEl.focus()
+      inputEl.select()
+    }
+  })
+}
+
+function commitRenameQuoteTab(tab?: QuoteTabSession) {
+  const targetId = tab?.id || renamingQuoteTabId.value
+  if (!targetId || renamingQuoteTabId.value !== targetId) return
+  const targetTab = quoteTabs.value.find(t => t.id === targetId)
+  const cleaned = String(renamingQuoteTabDraft.value || '').trim()
+  if (targetTab) {
+    targetTab.ghiChuHopDong = cleaned
+  }
+  if (targetId === activeQuoteTabId.value) {
+    ghiChuHopDong.value = cleaned
+  }
+  renamingQuoteTabId.value = null
+  flushQuoteTabsToStorageNow()
+}
+
+function cancelRenameQuoteTab() {
+  renamingQuoteTabId.value = null
+  renamingQuoteTabDraft.value = ''
+}
+
+function onQuoteTabItemClick(tab: QuoteTabSession, e: MouseEvent) {
+  if (Date.now() - lastTabDragEndTime < 220) return
+  if (renamingQuoteTabId.value && renamingQuoteTabId.value !== tab.id) {
+    commitRenameQuoteTab()
+  }
+  if (tab.id !== activeQuoteTabId.value) {
+    switchQuoteTab(tab.id)
+    return
+  }
+  if (renamingQuoteTabId.value !== tab.id) {
+    startRenameQuoteTab(tab, e)
+  }
+}
+
 function getQuoteTabFullTooltip(tab: QuoteTabSession): string {
   const isCurrent = tab.id === activeQuoteTabId.value
   const maHD = isCurrent ? maHopDong.value : tab.maHopDong
   const soHD = isCurrent ? soHopDong.value : tab.soHopDong
   const po = isCurrent ? currentPO.value : tab.currentPO
   const loadedMa = isCurrent ? loadedMaHopDong.value : tab.loadedMaHopDong
+  const note = String(isCurrent ? ghiChuHopDong.value : (tab.ghiChuHopDong || '')).trim()
   const cus = isCurrent
     ? (khach.value?.Ten_cong_ty || khach.value?.Ten_khach_hang || tenKHInput.value || 'Chưa chọn KH')
     : (tab.khach?.Ten_cong_ty || tab.khach?.Ten_khach_hang || tab.tenKHInput || 'Chưa chọn KH')
   const count = getTabItemCount(tab)
   const parts = [
-    `Báo giá ${tab.tabNumber}`,
+    note ? `${note} (Báo giá ${tab.tabNumber})` : `Báo giá ${tab.tabNumber}`,
     `Số HĐ: ${soHD || '—'}`,
     `Số PO: ${po || '—'}`,
     `Mã HĐ: ${maHD || '—'}`
@@ -18231,6 +21375,7 @@ function getQuoteTabFullTooltip(tab: QuoteTabSession): string {
   if (loadedMa) parts.push(`Mã HĐ cũ: ${loadedMa}`)
   parts.push(`Khách hàng: ${cus}`)
   parts.push(`Số SP: ${count}`)
+  parts.push('Click vào tab đang mở để đổi tên (Ghi chú HĐ)')
   return parts.join(' | ')
 }
 
@@ -18368,6 +21513,7 @@ watch(
 )
 
 function resetToanBoBaoGia() {
+  exitBulkSelectMode(true);
   selectedItems.value = [];
   flatQuoteRows.value = [];
   resetAllCmpSrOverrides();
@@ -18481,8 +21627,6 @@ const handleBeforeUnload = (_e: BeforeUnloadEvent) => {
   flushQuoteTabsToStorageNow()
 }
 
-const isMobileDevice = ref(window.innerWidth <= 768)
-const isMobileQuoteViewport = ref(window.innerWidth <= 1100)
 const handleResizeMobile = () => {
   isMobileDevice.value = window.innerWidth <= 768
   isMobileQuoteViewport.value = window.innerWidth <= 1100
@@ -22069,18 +25213,7 @@ function confirmAddVoiceItemsToQuote() {
     const qty = Math.max(1, entry.quantity)
     const resolvedMaHang = resolveMaHang(p)
 
-    const foundIdx = selectedItems.value.findIndex(it => it.Ma_hang === resolvedMaHang)
-    if (foundIdx >= 0) {
-      selectedItems.value[foundIdx].So_luong += qty
-      selectedItems.value[foundIdx].Don_gia = p.Don_gia
-      ;(selectedItems.value[foundIdx] as any)._Don_gia_goc = p.Don_gia
-      ;(selectedItems.value[foundIdx] as any)._Don_gia_kho = p.Don_gia
-      lastHighlightIdx = foundIdx
-    } else {
-      const cloned = cloneHang(p, qty)
-      cloned.Ma_hang = resolvedMaHang
-      lastHighlightIdx = insertItemIntoGroup(cloned)
-    }
+    lastHighlightIdx = insertClonedItemRespectingNoMerge(p, qty, resolvedMaHang)
 
     qtyMap[p.Ma_hang] = qty
     const cat = (p.Danh_muc || '').trim().toUpperCase()
@@ -22894,7 +26027,7 @@ async function prepareGuideStep(step: GuideStepItem) {
   }
 
   if (step.id === 'finance-customer') {
-    showProductSidebar.value = true
+    showCompareFinancePanel.value = true
     activeLeftDockTab.value = 'customer'
     return
   }
@@ -22903,7 +26036,7 @@ async function prepareGuideStep(step: GuideStepItem) {
     if (isMobileQuoteViewport.value) {
       if (mobileStep.value !== 3) setMobileStep(3)
     } else {
-      showProductSidebar.value = true
+      showCompareFinancePanel.value = true
       activeLeftDockTab.value = 'discount'
     }
     return
@@ -22913,7 +26046,7 @@ async function prepareGuideStep(step: GuideStepItem) {
     if (isMobileQuoteViewport.value) {
       if (mobileStep.value !== 3) setMobileStep(3)
     } else {
-      showProductSidebar.value = true
+      showCompareFinancePanel.value = true
       activeLeftDockTab.value = 'finance'
     }
     return
@@ -22923,7 +26056,7 @@ async function prepareGuideStep(step: GuideStepItem) {
     if (isMobileQuoteViewport.value) {
       if (mobileStep.value === 1) setMobileStep(2)
     } else {
-      showProductSidebar.value = true
+      showCompareFinancePanel.value = true
     }
   }
 }
@@ -22962,6 +26095,7 @@ const isAnyQuoteModalOpen = computed(() => Boolean(
   showCustomerPickerModal.value ||
   showProductPickerModal.value ||
   adjustPriceModal.value.show ||
+  bulkAdjustModal.value.show ||
   showHistoryModal.value ||
   showSelectCustomerModal.value ||
   showPipelineModal.value ||
@@ -22975,8 +26109,11 @@ const isAnyQuoteModalOpen = computed(() => Boolean(
   (showKasperskyImageFullscreen.value && previewImageLink.value) ||
   showVoiceQuoteModal.value ||
   (showPriceListPicker.value && isMobileQuoteViewport.value) ||
+  (showCategoryPicker.value && isMobileQuoteViewport.value) ||
   showMobileQuoteTabsSheet.value ||
-  showMobileQuoteModeSheet.value
+  showMobileQuoteModeSheet.value ||
+  splitItemModal.value.show ||
+  mergeSyncModal.value.show
 ))
 
 let isBaoGiaComponentActive = false
@@ -23582,6 +26719,133 @@ onUnmounted(() => {
               </svg>
             </button>
           </div>
+
+          <!-- NUT CHON DANH MUC SAN PHAM (PC POPOVER > 1100PX & MOBILE BOTTOM SHEET <= 1100PX) -->
+          <div ref="catPickerRootRef" class="cat-picker-root">
+            <button
+              type="button"
+              class="pl-picker-trigger cat-picker-trigger"
+              :class="{ 'is-custom': Boolean(selectedCatalogCategory), 'is-open': showCategoryPicker }"
+              title="Lọc sản phẩm theo danh mục"
+              @click.stop="toggleCategoryPicker"
+            >
+              <span class="pl-trig-icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+                  <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+                  <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+                  <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+                </svg>
+              </span>
+              <span class="pl-trig-name">
+                {{ selectedCategoryOption ? selectedCategoryOption.label : 'Tất cả danh mục' }}
+              </span>
+              <span class="pl-trig-count">
+                {{ selectedCategoryOption ? `${formatVND(selectedCategoryOption.count)} SP` : `${catalogCategoryOptions.length} danh mục` }}
+              </span>
+              <span
+                v-if="selectedCatalogCategory"
+                role="button"
+                tabindex="0"
+                class="pl-trig-reset"
+                title="Bỏ lọc danh mục (hiện tất cả)"
+                aria-label="Bỏ lọc danh mục"
+                @click.stop="selectCatalogCategory('')"
+                @keydown.enter.stop.prevent="selectCatalogCategory('')"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="10.5" height="10.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </span>
+              <svg
+                class="pl-trig-chevron"
+                xmlns="http://www.w3.org/2000/svg"
+                width="12.5"
+                height="12.5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+
+            <Transition name="pl-pop">
+              <div v-if="showCategoryPicker" class="pl-desktop-popover cat-desktop-popover" @click.stop>
+                <div v-if="catalogCategoryOptions.length > 0" class="pl-pop-search-box">
+                  <svg class="pl-pop-search-ic" xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                  </svg>
+                  <input
+                    v-model="categoryPickerSearchQuery"
+                    type="text"
+                    class="pl-pop-search-input"
+                    placeholder="Tìm nhanh danh mục..."
+                  />
+                  <button
+                    v-if="categoryPickerSearchQuery"
+                    type="button"
+                    class="pl-pop-search-clear"
+                    title="Xóa từ khóa"
+                    @click="categoryPickerSearchQuery = ''"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                </div>
+
+                <div class="pl-pop-list">
+                  <button
+                    type="button"
+                    class="pl-opt-card is-base-opt"
+                    :class="{ 'is-selected': !selectedCatalogCategory }"
+                    @click="selectCatalogCategory('')"
+                  >
+                    <div class="pl-opt-top">
+                      <span class="pl-opt-radio">
+                        <svg v-if="!selectedCatalogCategory" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                      </span>
+                      <span class="pl-opt-title">Tất cả danh mục</span>
+                      <span class="pl-opt-count">{{ formatVND(totalCatalogPoolCount) }} SP</span>
+                    </div>
+                    <div class="pl-opt-sub">Hiển thị toàn bộ sản phẩm trong kho ({{ catalogCategoryOptions.length }} danh mục)</div>
+                  </button>
+
+                  <div v-if="catalogCategoryOptions.length > 0" class="pl-pop-section-lbl">
+                    <span>Danh mục ({{ filteredCatalogCategoryOptions.length }})</span>
+                  </div>
+
+                  <div v-if="catalogCategoryOptions.length > 0 && filteredCatalogCategoryOptions.length === 0" class="pl-pop-empty">
+                    Không tìm thấy danh mục phù hợp với "{{ categoryPickerSearchQuery }}"
+                  </div>
+
+                  <button
+                    v-for="cat in filteredCatalogCategoryOptions"
+                    :key="cat.key"
+                    type="button"
+                    class="pl-opt-card cat-opt-card"
+                    :class="{ 'is-selected': selectedCatalogCategory === cat.key }"
+                    @click="selectCatalogCategory(cat.key)"
+                  >
+                    <div class="pl-opt-top">
+                      <span class="pl-opt-radio">
+                        <svg v-if="selectedCatalogCategory === cat.key" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                      </span>
+                      <span class="pl-opt-title">{{ cat.label }}</span>
+                      <span class="pl-opt-count">{{ formatVND(cat.count) }} SP</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </Transition>
+          </div>
         </div>
         </div>
 
@@ -23849,237 +27113,9 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <!-- ================== DOCK BÊN DƯỚI KHO SẢN PHẨM (CÁCH B: TAB NGANG + 2 NÚT THAO TÁC) ================== -->
-        <div class="bottom-totals left-sidebar-dock">
-          <!-- Thanh 3 Tab ngang: Khách hàng | Chiết khấu | Tài chính (Nhấn lại tab đang mở để thu gọn) -->
-          <div class="sidebar-dock-tabs">
-            <button
-              type="button"
-              class="dock-tab-btn"
-              :class="{ active: activeLeftDockTab === 'customer' }"
-              @click="toggleLeftDockTab('customer')"
-              :title="getCurrentDockCustomerName() ? `Khách hàng: ${getCurrentDockCustomerName()} (Nhấn để mở/thu gọn)` : 'Nhấn để mở/thu gọn mục Khách hàng'"
-            >
-              <i class="lucide-user" style="font-size: 13px; margin: 0; flex-shrink: 0;"></i>
-              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;">{{ getCurrentDockCustomerName() || 'Khách hàng' }}</span>
-              <span
-                v-if="khach.MST || khach.Ten_cong_ty || khach.Ten_khach_hang"
-                style="width: 6px; height: 6px; border-radius: 50%; background: #10b981; flex-shrink: 0;"
-              ></span>
-            </button>
-            <button
-              type="button"
-              class="dock-tab-btn"
-              :class="{ active: activeLeftDockTab === 'discount' }"
-              @click="toggleLeftDockTab('discount')"
-              title="Nhấn để mở/thu gọn mục Chiết khấu & Chênh lệch"
-            >
-              <i class="lucide-trending-down" style="font-size: 13px; margin: 0;"></i>
-              <span>Chiết khấu</span>
-            </button>
-            <button
-              type="button"
-              class="dock-tab-btn"
-              :class="{ active: activeLeftDockTab === 'finance' }"
-              @click="toggleLeftDockTab('finance')"
-              title="Nhấn để mở/thu gọn mục Tổng hợp tài chính"
-            >
-              <i class="lucide-wallet" style="font-size: 13px; margin: 0;"></i>
-              <span>Tài chính</span>
-            </button>
-          </div>
-
-          <!-- KHỐI 0 : KHÁCH HÀNG (COMPACT INLINE-PREFIX — PHƯƠNG ÁN 1) -->
-          <div data-guide="dock-customer-panel" class="totals-box step-customer dock-tab-panel" :class="{ 'dock-tab-active': activeLeftDockTab === 'customer' }">
-            <div class="totals-body cust-compact-body">
-              <div class="cust-micro-bar">
-                <span class="cust-micro-title">
-                  <i class="lucide-user cust-micro-icon"></i>
-                  <span>Thông tin KH</span>
-                </span>
-                <div class="cust-micro-actions">
-                  <button
-                    v-if="khach.MST || khach.Ten_cong_ty || khach.Ten_khach_hang || khach.Dia_chi_cong_ty"
-                    type="button"
-                    class="cust-micro-btn is-reset"
-                    title="Xóa thông tin khách hàng đang chọn"
-                    @click.stop="resetCustomer"
-                  >
-                    Xóa
-                  </button>
-                  <button
-                    type="button"
-                    class="cust-micro-btn is-detail"
-                    title="Mở bảng thông tin chi tiết khách hàng"
-                    @click.stop="showCustomerDetailModal = true"
-                  >
-                    <span>Chi tiết</span>
-                    <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <polyline points="9 18 15 12 9 6" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              <!-- Hàng 1: MST -->
-              <div class="input-with-picker is-compact-picker has-inline-prefix" :class="{ 'input-loading': customersState === 'loading', 'input-loaded': customersState === 'loaded', 'input-ready': customersState === 'ready' }">
-                <span class="cust-inline-prefix">MST</span>
-                <textarea rows="1" v-auto-grow @keydown.enter.prevent v-model="khach.MST" class="cell-input m-wrap-input m-wrap-compact has-right-picker" placeholder="Mã số thuế..." @change="onMSTChange"></textarea>
-                <button type="button" class="inline-picker-btn inline-picker-btn-sm" @click="openCustomerPicker('mst')">Chọn</button>
-              </div>
-
-              <!-- Hàng 2: Khách -->
-              <div class="input-with-picker is-compact-picker has-inline-prefix" :class="{ 'input-loading': customersState === 'loading', 'input-loaded': customersState === 'loaded', 'input-ready': customersState === 'ready' }">
-                <span class="cust-inline-prefix">Khách</span>
-                <textarea rows="1" v-auto-grow @keydown.enter.prevent v-model="khach.Ten_khach_hang" class="cell-input m-wrap-input m-wrap-compact has-right-picker" placeholder="Tên người nhận..." @change="onTenKhachHangChange"></textarea>
-                <button type="button" class="inline-picker-btn inline-picker-btn-sm" @click="openCustomerPicker('ten_kh')">Chọn</button>
-              </div>
-
-              <!-- Hàng 3: Công ty -->
-              <div class="input-with-picker is-compact-picker has-inline-prefix" :class="{ 'input-loading': customersState === 'loading', 'input-loaded': customersState === 'loaded', 'input-ready': customersState === 'ready' }">
-                <span class="cust-inline-prefix">Công ty</span>
-                <textarea rows="1" v-auto-grow @keydown.enter.prevent v-model="khach.Ten_cong_ty" class="cell-input m-wrap-input m-wrap-compact has-right-picker" placeholder="Nhập tên công ty..." @change="onTenCongTyChange"></textarea>
-                <button type="button" class="inline-picker-btn inline-picker-btn-sm" @click="openCustomerPicker('ten_cong_ty')">Chọn</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- KHỐI 1 : CHIẾT KHẤU & CHÊNH LỆCH -->
-          <div data-guide="dock-discount-panel" class="totals-box step-summary dock-tab-panel" :class="{ 'dock-tab-active': activeLeftDockTab === 'discount' }">
-            <div class="totals-body">
-              <div class="totals-row">
-                <span class="totals-label" style="display: flex; align-items: center; gap: 5px;">
-                  Chiết khấu tổng trước thuế
-                  <FormattedInput v-model="chietKhauTruocThuePct" placeholder="0" style="width: 44px; padding: 1px 4px; height: 22px; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; font-weight: 600; color: #ef4444; font-size: 12px; background: #fff; margin: 0;" /> %
-                </span>
-                <span class="totals-value">
-                  {{ formatVND(chietKhauTruocThue) }}
-                  <span class="history-icon" @click="openHistory('chietKhauTruocThue', 'Chiết khấu tổng trước thuế')"><i class="ri-history-line" style="font-size: 13px;"></i></span>
-                </span>
-              </div>
-              <div class="totals-row">
-                <span class="totals-label" style="display: flex; align-items: center; gap: 5px;">
-                  Thuế chênh lệch giá
-                  <FormattedInput v-model="thueChenhLechPct" placeholder="0" style="width: 44px; padding: 1px 4px; height: 22px; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; font-weight: 600; color: #ef4444; font-size: 12px; background: #fff; margin: 0;" /> %
-                </span>
-                <span class="totals-value">
-                  {{ formatVND(thueChenhLech) }}
-                  <span class="history-icon" @click="openHistory('thueChenhLech', 'Thuế chênh lệch giá')"><i class="ri-history-line" style="font-size: 13px;"></i></span>
-                </span>
-              </div>
-              <div class="totals-row">
-                <span class="totals-label" style="display: flex; align-items: center; gap: 6px;">
-                  Chênh lệch giá
-                  <button data-guide="btn-adjust-total-diff" class="util-btn small inline-adjust" style="padding: 1px 5px !important; font-size: 10.5px !important; margin: 0 !important; white-space: nowrap; border-radius: 4px;" @click="openAdjustPrice('all', '', 'Tổng chênh lệch giá', 'total_chenh_lech')" title="Điều chỉnh tổng chênh lệch">
-                    <i class="ri-arrow-up-down-fill"></i>
-                  </button>
-                </span>
-                <span class="totals-value text-diff-yellow">
-                  {{ chenhLechGia >= 0 ? '+' : '' }}{{ formatVND(chenhLechGia) }}
-                  <span class="history-icon" @click="openHistory('chenhLechGia', 'Chênh lệch giá')"><i class="ri-history-line" style="font-size: 13px;"></i></span>
-                </span>
-              </div>
-              <div class="totals-row">
-                <span class="totals-label">Còn lại</span>
-                <span class="totals-value">
-                  {{ formatVND(conLai) }}
-                  <span class="history-icon" @click="openHistory('conLai', 'Còn lại')"><i class="ri-history-line" style="font-size: 13px;"></i></span>
-                </span>
-              </div>
-              <div class="totals-row totals-highlight" style="margin-top: 2px; border-top: 1px dashed rgba(245,158,11,0.3); padding-top: 5px;">
-                <span class="totals-label">Tổng Chiết khấu</span>
-                <span class="totals-value">
-                  {{ formatVND(tongChietKhau) }}
-                  <span class="history-icon" @click="openHistory('tongChietKhau', 'Tổng Chiết khấu')"><i class="ri-history-line" style="font-size: 13px;"></i></span>
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <!-- KHỐI 2 : TỔNG HỢP TÀI CHÍNH -->
-          <div data-guide="dock-finance-panel" class="totals-box step-summary dock-tab-panel" :class="{ 'dock-tab-active': activeLeftDockTab === 'finance' }">
-            <div class="totals-body">
-              <div class="totals-row">
-                <span class="totals-label">TT trước thuế (Khách)</span>
-                <span class="totals-value">
-                  {{ formatVND(tongGiaThucTe) }}
-                  <span class="history-icon" @click="openHistory('tongGiaThucTe', 'TT trước thuế (Khách)')"><i class="ri-history-line" style="font-size: 13px;"></i></span>
-                </span>
-              </div>
-              <div class="totals-row">
-                <span class="totals-label" style="display: flex; align-items: center; gap: 6px;">
-                  TT trước thuế (HĐ)
-                  <button data-guide="btn-adjust-all-quote" class="util-btn small inline-adjust" style="padding: 1px 5px !important; font-size: 10.5px !important; margin: 0 !important;" @click="openAdjustPrice('all', '', 'Toàn bộ báo giá')" title="Điều chỉnh giá toàn bộ báo giá">
-                    <i class="ri-arrow-up-down-fill"></i>
-                  </button>
-                </span>
-                <span class="totals-value">
-                  {{ formatVND(totals.truoc) }}
-                  <span class="history-icon" @click="openHistory('truoc', 'TT trước thuế (HĐ)')"><i class="ri-history-line" style="font-size: 13px;"></i></span>
-                </span>
-              </div>
-              <div class="totals-row">
-                <span class="totals-label">Tổng VAT</span>
-                <span class="totals-value text-vat-blue">
-                  {{ formatVND(totals.vat) }}
-                  <span class="history-icon" @click="openHistory('vat', 'Tổng VAT')"><i class="ri-history-line" style="font-size: 13px;"></i></span>
-                </span>
-              </div>
-              <div class="totals-row totals-highlight-blue">
-                <span class="totals-label">TT sau thuế</span>
-                <span class="totals-value">
-                  {{ formatVND(totals.sau) }}
-                  <span class="history-icon" @click="openHistory('sau', 'TT sau thuế')"><i class="ri-history-line" style="font-size: 13px;"></i></span>
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <!-- KHỐI 3 : THAO TÁC (LƯU BÁO GIÁ + XUẤT FILE + ICON 3 CHẤM DỌC) -->
-          <div class="totals-box step-actions" style="border: none !important; background: transparent !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; padding: 2px 0 0 0 !important; border-radius: 0 !important;">
-            <input type="file" ref="importTemplateFileInput" :accept="UNIVERSAL_IMPORT_ACCEPT" style="display: none" @change="onImportTemplateFileChange" />
-            <input type="file" ref="importMuaHangFileInput" :accept="UNIVERSAL_IMPORT_ACCEPT" style="display: none" @change="onImportMuaHangFileChange" />
-            <div class="sidebar-bottom-action-row" style="display: flex; align-items: stretch; gap: 6px;">
-              <button
-                class="action-btn action-save"
-                :disabled="saving || !hasUnsavedChanges()"
-                @click="showSaveModal = true"
-                style="flex: 1.12; min-width: 0; width: auto !important; margin: 0 !important; padding: 9px 10px !important; font-size: 12px !important; font-weight: 800; flex-direction: row !important; align-items: center; justify-content: center; gap: 5px; min-height: 38px; letter-spacing: 0.4px; text-transform: uppercase; white-space: nowrap; background: linear-gradient(135deg, #3b82f6, #2563eb) !important; border: none; color: #ffffff !important; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);"
-              >
-                <i class="lucide-save" style="margin: 0; font-size: 14px; flex-shrink: 0;"></i>
-                <span>{{ saving ? 'Đang lưu...' : 'Lưu báo giá' }}</span>
-              </button>
-              <button
-                type="button"
-                class="action-btn action-export-file"
-                @click="showExportInfoModal = true"
-                title="Mở bảng chọn kiểu xuất file (Mẫu in / Excel / Agency / Pipeline)"
-                style="flex: 0.96; min-width: 0; width: auto !important; margin: 0 !important; padding: 9px 10px !important; font-size: 12px !important; font-weight: 800; flex-direction: row !important; align-items: center; justify-content: center; gap: 5px; min-height: 38px; letter-spacing: 0.4px; text-transform: uppercase; white-space: nowrap; background: linear-gradient(135deg, #10b981, #059669) !important; border: none; color: #ffffff !important; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                  <polyline points="17 8 12 3 7 8"></polyline>
-                  <line x1="12" y1="3" x2="12" y2="15"></line>
-                </svg>
-                <span>Xuất file</span>
-              </button>
-              <button
-                type="button"
-                class="action-btn action-more-dots"
-                @click="showMoreActionsModal = true"
-                title="Thao tác & Tiện ích mở rộng"
-                style="flex: 0 0 38px; width: 38px !important; min-width: 38px !important; margin: 0 !important; padding: 0 !important; font-size: 16px !important; font-weight: 800; flex-direction: row !important; align-items: center !important; justify-content: center !important; min-height: 38px; background: rgba(15, 23, 42, 0.65) !important; border: 1px solid rgba(56, 189, 248, 0.35) !important; color: #38bdf8 !important; box-shadow: none !important;"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="5" r="1.5"></circle>
-                  <circle cx="12" cy="12" r="1.5"></circle>
-                  <circle cx="12" cy="19" r="1.5"></circle>
-                </svg>
-              </button>
-            </div>
-            <p v-if="saveMsg" class="save-msg" style="margin: 5px 0 0; font-size: 11px; color: #10b981; text-align: center;">{{ saveMsg }}</p>
-          </div>
-        </div>
+        <!-- INPUT FILE ẨN DÙNG CHUNG CHO IMPORT BÁO GIÁ / MUA HÀNG -->
+        <input type="file" ref="importTemplateFileInput" :accept="UNIVERSAL_IMPORT_ACCEPT" style="display: none" @change="onImportTemplateFileChange" />
+        <input type="file" ref="importMuaHangFileInput" :accept="UNIVERSAL_IMPORT_ACCEPT" style="display: none" @change="onImportMuaHangFileChange" />
       </aside>
 
       <!-- ================== CENTER: BẢNG BÁO GIÁ VÀ TỔNG TIỀN ================== -->
@@ -24099,51 +27135,81 @@ onUnmounted(() => {
               </svg>
               <span>{{ mobileStep === 3 ? 'Báo giá' : 'Kho SP' }}</span>
             </button>
-            <div class="quote-tabs-scroll" ref="quoteTabsScrollRef">
-              <div
-                v-for="(tab, tIdx) in quoteTabs"
-                :key="tab.id"
-                class="quote-tab-item"
-                :class="{
-                  active: tab.id === activeQuoteTabId,
-                  editing: Boolean(tab.id === activeQuoteTabId ? loadedMaHopDong : tab.loadedMaHopDong),
-                  'has-items': getTabItemCount(tab) > 0
-                }"
-                :title="getQuoteTabFullTooltip(tab)"
-                @click="switchQuoteTab(tab.id)"
-              >
-                <svg class="quote-tab-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                  <polyline points="14 2 14 8 20 8"></polyline>
-                  <line x1="16" y1="13" x2="8" y2="13"></line>
-                  <line x1="16" y1="17" x2="8" y2="17"></line>
-                </svg>
-                <span class="quote-tab-title">
-                  {{ getQuoteTabDisplayTitle(tab, tIdx) }}
-                </span>
-                <span v-if="getTabItemCount(tab) > 0" class="quote-tab-sp-pill">
-                  {{ getTabItemCount(tab) }}
-                </span>
-                <span
-                  v-if="getTabCustomerName(tab)"
-                  class="quote-tab-badge"
-                  :title="tab.id === activeQuoteTabId ? 'Nhấn để xem chi tiết khách hàng' : getTabCustomerName(tab)"
-                  @click="onClickQuoteTabCustomerBadge(tab, $event)"
+            <div
+              class="quote-tabs-scroll"
+              ref="quoteTabsScrollRef"
+              @dragover.prevent
+              @drop="onQuoteTabDrop"
+            >
+              <TransitionGroup name="quote-tab-reorder">
+                <div
+                  v-for="(tab, tIdx) in quoteTabs"
+                  :key="tab.id"
+                  class="quote-tab-item"
+                  :class="{
+                    active: tab.id === activeQuoteTabId,
+                    editing: Boolean(tab.id === activeQuoteTabId ? loadedMaHopDong : tab.loadedMaHopDong),
+                    'has-items': getTabItemCount(tab) > 0,
+                    'is-renaming': renamingQuoteTabId === tab.id,
+                    'is-dragging': draggingQuoteTabId === tab.id,
+                    'is-drag-over': dragOverQuoteTabId === tab.id && draggingQuoteTabId !== tab.id
+                  }"
+                  :draggable="quoteTabs.length > 1 && renamingQuoteTabId !== tab.id"
+                  :title="getQuoteTabFullTooltip(tab)"
+                  @click="onQuoteTabItemClick(tab, $event)"
+                  @dblclick.stop="startRenameQuoteTab(tab, $event)"
+                  @dragstart="onQuoteTabDragStart(tab, $event)"
+                  @dragover.prevent="onQuoteTabDragOver(tab, $event)"
+                  @drop.stop="onQuoteTabItemDrop(tab, $event)"
+                  @dragend="onQuoteTabDragEnd"
                 >
-                  {{ getTabCustomerName(tab) }}
-                </span>
-                <button
-                  type="button"
-                  class="quote-tab-close"
-                  title="Đóng và xóa tab báo giá này"
-                  @click.stop="closeQuoteTab(tab.id)"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  <svg class="quote-tab-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
                   </svg>
-                </button>
-              </div>
+                  <input
+                    v-if="renamingQuoteTabId === tab.id"
+                    :data-tab-rename-id="tab.id"
+                    v-model="renamingQuoteTabDraft"
+                    type="text"
+                    class="quote-tab-rename-input"
+                    :placeholder="getQuoteTabFallbackTitle(tab, tIdx)"
+                    @click.stop
+                    @mousedown.stop
+                    @keydown.enter.stop.prevent="commitRenameQuoteTab(tab)"
+                    @keydown.esc.stop.prevent="cancelRenameQuoteTab"
+                    @blur="commitRenameQuoteTab(tab)"
+                  />
+                  <span v-else class="quote-tab-title">
+                    {{ getQuoteTabDisplayTitle(tab, tIdx) }}
+                  </span>
+                  <span v-if="getTabItemCount(tab) > 0" class="quote-tab-sp-pill">
+                    {{ getTabItemCount(tab) }}
+                  </span>
+                  <span
+                    v-if="getTabCustomerName(tab)"
+                    class="quote-tab-badge"
+                    :title="tab.id === activeQuoteTabId ? 'Nhấn để xem chi tiết khách hàng' : getTabCustomerName(tab)"
+                    @click="onClickQuoteTabCustomerBadge(tab, $event)"
+                  >
+                    {{ getTabCustomerName(tab) }}
+                  </span>
+                  <button
+                    type="button"
+                    class="quote-tab-close"
+                    draggable="false"
+                    title="Đóng và xóa tab báo giá này"
+                    @click.stop="closeQuoteTab(tab.id)"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                </div>
+              </TransitionGroup>
 
               <!-- Desktop: nút + nằm ngay sau tab cuối cùng -->
               <button
@@ -24394,7 +27460,7 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <!-- CỤM PHẢI: TIỀN TỆ + THIẾT LẬP HIỂN THỊ + HƯỚNG DẪN -->
+            <!-- CỤM PHẢI: TIỀN TỆ + SỬA HÀNG LOẠT + THIẾT LẬP HIỂN THỊ + HƯỚNG DẪN -->
             <div class="header-right-cluster" style="margin-left: auto; display: inline-flex; align-items: center; gap: 6px; flex-wrap: nowrap; flex-shrink: 0;">
 
               <div class="vip-currency-switch" @click="quoteCurrency = quoteCurrency === 'VND' ? 'USD' : 'VND'" style="display: inline-flex; align-items: center; background: #0f172a; padding: 3px; border-radius: 30px; position: relative; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5), 0 1px 1px rgba(255,255,255,0.05); cursor: pointer; user-select: none; border: 1px solid #1e293b; height: 28px; box-sizing: border-box;">
@@ -24402,6 +27468,31 @@ onUnmounted(() => {
                 <div :style="{ position: 'relative', width: '44px', textAlign: 'center', fontSize: '11px', fontWeight: 800, color: quoteCurrency === 'VND' ? '#ffffff' : '#64748b', transition: 'color 0.25s', zIndex: 2, letterSpacing: '0.4px' }">VND</div>
                 <div :style="{ position: 'relative', width: '44px', textAlign: 'center', fontSize: '11px', fontWeight: 800, color: quoteCurrency === 'USD' ? '#ffffff' : '#64748b', transition: 'color 0.25s', zIndex: 2, letterSpacing: '0.4px' }">USD</div>
               </div>
+
+              <button
+                v-if="canShowBulkEditInQuoteMode"
+                type="button"
+                class="btn-bulk-edit-quote"
+                :class="{ 'is-active': isBulkSelectMode, 'has-selected': bulkSelectedUids.length > 0 }"
+                :disabled="selectedItems.length === 0 && !isBulkSelectMode"
+                @click="toggleBulkSelectMode()"
+                :title="isBulkSelectMode ? 'Đang bật chế độ chọn hàng loạt — Nhấn để thoát' : 'Chọn nhiều mặt hàng trong bảng để điều chỉnh giá / chiết khấu / VAT / tỉ giá hàng loạt'"
+              >
+                <svg v-if="!isBulkSelectMode" class="btn-bulk-ico" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="9 11 12 14 22 4"></polyline>
+                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                </svg>
+                <svg v-else class="btn-bulk-ico" xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+                <span class="bulk-btn-text">
+                  {{ isBulkSelectMode ? (bulkSelectedUids.length > 0 ? `Đang chọn (${bulkSelectedUids.length})` : 'Thoát chọn') : 'Sửa hàng loạt' }}
+                </span>
+                <span v-if="isBulkSelectMode && bulkSelectedUids.length > 0" class="bulk-btn-count-pill">
+                  {{ bulkSelectedUids.length }}
+                </span>
+              </button>
 
               <button v-if="false" type="button" @click="openVoiceQuoteModal" style="display: none !important;" title="Ghi âm giọng nói để thêm mặt hàng vào báo giá">
                 <span>Báo giá giọng nói</span>
@@ -24895,6 +27986,82 @@ onUnmounted(() => {
               </div>
           </div>
 
+          <!-- ================== THANH CHỌN NHANH HÀNG LOẠT (BULK SELECTION SUBBAR) ================== -->
+          <Transition name="pl-subbar-slide">
+            <div v-if="canShowBulkEditInQuoteMode && isBulkSelectMode && selectedItems.length > 0" class="bulk-select-subbar">
+              <div class="bss-left-controls">
+                <button
+                  type="button"
+                  class="bss-ctrl-btn is-check-all"
+                  :class="{ 'is-active': isAllBulkSelected }"
+                  @click="toggleSelectAllBulkItems()"
+                >
+                  <span class="bss-mini-box" :class="{ 'is-checked': isAllBulkSelected, 'is-indeterminate': isSomeBulkSelected }">
+                    <svg v-if="isAllBulkSelected" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <span v-else-if="isSomeBulkSelected" class="bss-minus-bar"></span>
+                  </span>
+                  <span>{{ isAllBulkSelected ? 'Bỏ chọn tất cả' : `Chọn tất cả (${selectedItems.length})` }}</span>
+                </button>
+
+                <button
+                  v-if="bulkSelectedUids.length > 0 && !isAllBulkSelected"
+                  type="button"
+                  class="bss-ctrl-btn"
+                  @click="invertBulkSelection()"
+                  title="Đảo ngược các dòng đang chọn"
+                >
+                  <i class="ri-refresh-line"></i>
+                  <span>Đảo chọn</span>
+                </button>
+
+                <button
+                  v-if="bulkSelectedUids.length > 0 && !isAllBulkSelected"
+                  type="button"
+                  class="bss-ctrl-btn is-clear"
+                  @click="clearAllBulkItems()"
+                >
+                  <span>Bỏ chọn</span>
+                </button>
+
+                <span class="bss-selected-counter">
+                  Đã chọn <b>{{ bulkSelectedUids.length }}</b>/{{ selectedItems.length }} SP
+                </span>
+              </div>
+
+              <div class="bss-right-actions">
+                <button
+                  v-if="canShowNormalEditBtn"
+                  type="button"
+                  class="bss-open-studio-btn is-normal-edit"
+                  :disabled="bulkSelectedUids.length === 0"
+                  @click="openBulkAdjustModal('normal')"
+                  title="Sửa khách hàng loạt (Đơn giá, List Price, Giá vốn, % Off, Giá nhập, VAT, Tỉ giá, SL...)"
+                >
+                  <i class="ri-edit-line"></i>
+                  <span>Sửa khách hàng loạt ({{ bulkSelectedUids.length }})</span>
+                </button>
+                <button
+                  type="button"
+                  class="bss-open-studio-btn is-contract-edit"
+                  :disabled="bulkSelectedUids.length === 0"
+                  @click="openBulkAdjustModal('contract')"
+                  title="Sửa HĐ hàng loạt (Chỉ điều chỉnh giá trên Hợp đồng, giữ nguyên giá gốc)"
+                >
+                  <i class="ri-arrow-up-down-fill"></i>
+                  <span>Sửa HĐ hàng loạt ({{ bulkSelectedUids.length }})</span>
+                </button>
+                <button
+                  type="button"
+                  class="bss-exit-btn"
+                  @click="exitBulkSelectMode(true)"
+                  title="Đóng chế độ sửa hàng loạt"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          </Transition>
+
           <!-- ================== MOBILE COMPACT CUSTOMER CARD (ĐÃ TẮT VÌ BƯỚC 4 LƯU/XUẤT ĐÃ CÓ FORM KHÁCH HÀNG) ================== -->
           <div v-if="false" class="mobile-quote-customer-card">
             <div class="m-cust-header" @click="showMobileCustomerInline = !showMobileCustomerInline">
@@ -24990,10 +28157,26 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <table :class="{ 'is-compare-3price-table': quotePriceViewMode === 'compare' }">
+            <table :class="{ 'is-compare-3price-table': quotePriceViewMode === 'compare', 'is-bulk-select-table': isBulkSelectMode }">
               <thead>
                 <tr style="color: #ffffff !important; font-weight: 800 !important;">
-                  <th v-if="quoteColVisible.stt" class="col-stt" style="border-top-left-radius: 6px;">STT</th>
+                  <th v-if="quoteColVisible.stt" class="col-stt" style="border-top-left-radius: 6px;">
+                    <label
+                      v-if="isBulkSelectMode"
+                      class="bulk-th-check-label"
+                      :title="isAllBulkSelected ? 'Bỏ chọn tất cả' : 'Chọn tất cả hàng hóa'"
+                      @click.stop
+                    >
+                      <input
+                        type="checkbox"
+                        class="bulk-native-checkbox"
+                        :checked="isAllBulkSelected"
+                        :indeterminate.prop="isSomeBulkSelected"
+                        @change="toggleSelectAllBulkItems()"
+                      />
+                    </label>
+                    <template v-else>STT</template>
+                  </th>
                   <th v-if="quoteColVisible.pn" class="col-pn">P/N</th>
                   <th v-if="quoteColVisible.sku_code" class="col-pn">SKU Code</th>
                   <th v-if="quoteColVisible.ten_hang" class="col-name">Tên hàng</th>
@@ -25024,7 +28207,7 @@ onUnmounted(() => {
                     <th v-if="quoteColVisible.tt_sau_thue" class="col-tt">TT sau thuế ({{ quoteCurrency }})</th>
                     <th v-if="quoteColVisible.net_margin" class="col-tt" style="color: #ffffff !important;">Net Margin</th>
                   </template>
-                  <th v-if="quoteColVisible.xoa" class="col-del" style="border-top-right-radius: 6px;">Xóa</th>
+                  <th v-if="quoteColVisible.xoa" class="col-del" :style="{ width: quoteActionColWidthPx + 'px', borderTopRightRadius: '6px' }">Xóa</th>
                 </tr>
               </thead>
               <draggable 
@@ -25046,15 +28229,47 @@ onUnmounted(() => {
                 @end="onFlatDragEnd"
               >
                 <template #item="{ element: r }">
-                  <tr v-if="r.type === 'group'" :data-quote-group-key="r.key" :class="['group-row', (isMobileDevice || guideTempTableDemoActive) ? '' : 'drag-handle', isMobileGroupMoveActive(r.key) ? 'is-move-active' : '']" style="cursor: grab;" title="Kéo thả danh mục">
-                    <td v-if="quoteColVisible.stt" class="group-stt">
+                  <tr
+                    v-if="r.type === 'group'"
+                    :data-quote-group-key="r.key"
+                    :class="[
+                      'group-row',
+                      (isMobileDevice || guideTempTableDemoActive) ? '' : 'drag-handle',
+                      isMobileGroupMoveActive(r.key) ? 'is-move-active' : '',
+                      isBulkSelectMode && isBulkGroupAllSelected(r.key) ? 'is-bulk-group-checked' : ''
+                    ]"
+                    style="cursor: grab;"
+                    title="Kéo thả danh mục"
+                    @click="isBulkSelectMode ? toggleBulkSelectGroup(r.key) : undefined"
+                  >
+                    <td v-if="quoteColVisible.stt" class="group-stt" @click.stop="isBulkSelectMode ? toggleBulkSelectGroup(r.key) : undefined">
                       <div style="display: flex; align-items: center; justify-content: center; gap: 4px; white-space: nowrap;">
-                        <i class="lucide-grip-vertical" style="opacity: 0.5;"></i> {{ r.roman }}
+                        <label
+                          v-if="isBulkSelectMode"
+                          class="bulk-row-check-label is-group-check"
+                          :title="isBulkGroupAllSelected(r.key) ? 'Bỏ chọn danh mục này' : 'Chọn toàn bộ sản phẩm thuộc danh mục này'"
+                          @click.stop
+                        >
+                          <input
+                            type="checkbox"
+                            class="bulk-native-checkbox"
+                            :checked="isBulkGroupAllSelected(r.key)"
+                            :indeterminate.prop="isBulkGroupPartiallySelected(r.key)"
+                            @change.stop="toggleBulkSelectGroup(r.key)"
+                          />
+                        </label>
+                        <i v-else class="lucide-grip-vertical" style="opacity: 0.5;"></i>
+                        <span>{{ r.roman }}</span>
                       </div>
                     </td>
                     <td :colspan="Math.max(1, visibleQuoteColCount - (quoteColVisible.stt ? 1 : 0))" class="group-title">
                       <div class="group-title-bar">
-                        <span class="group-title-text">{{ r.title }}</span>
+                        <span class="group-title-text">
+                          {{ r.title }}
+                          <span v-if="isBulkSelectMode" class="bulk-group-count-tag">
+                            ({{ getBulkGroupSelectedCount(r.key) }}/{{ getBulkGroupItems(r.key).length }} đã chọn)
+                          </span>
+                        </span>
                         <div data-guide="group-adjust-actions" class="group-row-actions" @click.stop>
                           <Transition name="m-qcard-move-slide">
                             <div v-if="isMobileGroupMoveActive(r.key)" class="m-qcard-move-stepper is-group-stepper">
@@ -25110,11 +28325,36 @@ onUnmounted(() => {
                       </div>
                     </td>
                   </tr>
-                  <tr v-else-if="r.type === 'item'" v-show="!draggingGroupKey" :class="['quote-item-row', isMobileDevice ? '' : 'drag-handle']" style="cursor: grab;" title="Nhấn giữ để kéo thả sản phẩm" :id="'quote-row-' + r.idx" @click="openQuoteEdit(r.idx)">
-                    <td v-if="quoteColVisible.stt" data-label="STT" style="color: #ffffff; font-weight: 700;">
-                      <div style="display: flex; justify-content: center; align-items: center; gap: 4px; white-space: nowrap;">
-                        <i class="lucide-grip-vertical" style="opacity: 0.3;"></i>
-                        {{ r.stt }}
+                  <tr
+                    v-else-if="r.type === 'item'"
+                    v-show="!draggingGroupKey"
+                    :class="[
+                      'quote-item-row',
+                      isMobileDevice ? '' : 'drag-handle',
+                      isBulkSelectMode ? 'is-bulk-selectable-row' : '',
+                      isBulkSelectMode && isBulkItemSelected(r.item) ? 'is-bulk-row-checked' : ''
+                    ]"
+                    :style="{ cursor: isBulkSelectMode ? 'pointer' : 'grab' }"
+                    :title="isBulkSelectMode ? 'Nhấn để chọn / bỏ chọn mặt hàng này' : 'Nhấn giữ để kéo thả sản phẩm'"
+                    :id="'quote-row-' + r.idx"
+                    @click="openQuoteEdit(r.idx)"
+                  >
+                    <td v-if="quoteColVisible.stt" data-label="STT" style="color: #ffffff; font-weight: 700;" @click.stop="isBulkSelectMode ? toggleBulkSelectItem(r.item) : openQuoteEdit(r.idx)">
+                      <div style="display: flex; justify-content: center; align-items: center; gap: 5px; white-space: nowrap;">
+                        <label
+                          v-if="isBulkSelectMode"
+                          class="bulk-row-check-label"
+                          @click.stop
+                        >
+                          <input
+                            type="checkbox"
+                            class="bulk-native-checkbox"
+                            :checked="isBulkItemSelected(r.item)"
+                            @change.stop="toggleBulkSelectItem(r.item)"
+                          />
+                        </label>
+                        <i v-else class="lucide-grip-vertical" style="opacity: 0.3;"></i>
+                        <span>{{ r.stt }}</span>
                       </div>
                     </td>
                     <td v-if="quoteColVisible.pn" data-label="P/N" class="col-pn-cell" :title="r.item.Ma_hang" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Ma_hang')">{{ r.item.Ma_hang }}</td>
@@ -25134,7 +28374,9 @@ onUnmounted(() => {
                     </td>
                     <td v-if="quoteColVisible.hang" data-label="Hãng" class="col-hang-cell" :title="r.item.Ten_nha_cung_cap" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Ten_nha_cung_cap')">{{ r.item.Ten_nha_cung_cap }}</td>
                     <td v-if="quoteColVisible.dvt" data-label="ĐVT" class="col-dvt-cell" :title="r.item.DVT" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'DVT')">{{ r.item.DVT }}</td>
-                    <td v-if="quoteColVisible.sl" data-label="SL" class="center" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'So_luong')">{{ r.item.So_luong }}</td>
+                    <td v-if="quoteColVisible.sl" data-label="SL" class="center col-sl-cell" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'So_luong')">
+                      {{ r.item.So_luong }}
+                    </td>
                     <td data-label="Tỉ giá" v-if="quoteCurrency === 'USD' && quoteColVisible.ti_gia" class="center" style="line-height: 1.3;" @click.stop="openQuoteEdit(r.idx, 'Ti_gia')">
                       <div style="color: #fbbf24; font-weight: 800; font-size: 13px;">{{ formatVND(tableTiGia(r.item)) }}</div>
                       <div style="font-size: 10px; color: #94a3b8; font-weight: 700;">USD</div>
@@ -25184,19 +28426,88 @@ onUnmounted(() => {
                         </div>
                       </td>
                     </template>
-                    <td v-if="quoteColVisible.xoa" data-label="Thao tác" class="center">
-                      <div style="display: flex; gap: 4px; justify-content: center;">
-                        <button class="btn-del" @click.stop="removeSelected(r.idx)" title="Xóa">✕</button>
+                    <td v-if="quoteColVisible.xoa" data-label="Thao tác" class="center col-del-cell" @click.stop>
+                      <div class="row-action-cluster">
+                        <label
+                          v-if="isItemInActiveMergeSelect(r.item)"
+                          class="q-row-merge-check"
+                          :class="{ 'is-checked': isRowCheckedForMerge(r.item) }"
+                          :title="isRowCheckedForMerge(r.item) ? 'Đã tích chọn dòng này để gộp (' + r.item.Ma_hang + ')' : 'Tích chọn dòng này (' + r.item.Ma_hang + ') để gộp'"
+                          @click.stop
+                        >
+                          <input
+                            type="checkbox"
+                            :checked="isRowCheckedForMerge(r.item)"
+                            @change.stop="toggleRowCheckedForMerge(r.item)"
+                          />
+                        </label>
+                        <button
+                          v-if="getDuplicateRowCountForItem(r.item) > 1"
+                          type="button"
+                          class="q-row-merge-chip"
+                          :class="{
+                            'is-conflict': hasDuplicatePriceConflictForItem(r.item),
+                            'is-selecting': isItemInActiveMergeSelect(r.item),
+                            'has-checked': getCheckedDuplicateCountForItem(r.item) >= 2
+                          }"
+                          :title="isItemInActiveMergeSelect(r.item) ? 'Nhấn để xác nhận gộp các dòng đã tích chọn' : 'Nhấn để hiện ô tick chọn các dòng cùng mã cần gộp'"
+                          @click.stop="handleMergeQuoteRowByIdx(r.idx)"
+                        >
+                          <span>{{ isItemInActiveMergeSelect(r.item) ? ('Xong (' + getCheckedDuplicateCountForItem(r.item) + ')') : 'Gộp' }}</span>
+                        </button>
+                        <button
+                          v-if="isItemInActiveMergeSelect(r.item)"
+                          type="button"
+                          class="q-row-merge-cancel"
+                          title="Hủy chọn gộp"
+                          @click.stop="cancelMergeSelectMode()"
+                        >
+                          Hủy
+                        </button>
+                        <button
+                          v-if="!isItemInActiveMergeSelect(r.item) && (toNum(r.item.So_luong, 1) > 1 || hasRowMergeHistory(r.item))"
+                          type="button"
+                          class="q-row-split-chip"
+                          :class="{ 'has-hist': hasRowMergeHistory(r.item) }"
+                          :title="hasRowMergeHistory(r.item) ? 'Tách dòng / Khôi phục mức giá riêng trước khi gộp' : (toNum(r.item.So_luong, 1) === 2 ? 'Tách nhanh thành 2 dòng riêng biệt (SL = 1)' : 'Tách mặt hàng này thành các dòng riêng biệt')"
+                          @click.stop="handleSplitQuoteRow(r.idx)"
+                        >
+                          <span>Tách</span>
+                        </button>
+                        <button type="button" class="btn-del" @click.stop="removeSelected(r.idx)" title="Xóa dòng này">✕</button>
                       </div>
                     </td>
 
                     <!-- MOBILE COMPACT ITEM CARD (Mobile <= 1100px) -->
                     <td class="mobile-quote-item-cell" :colspan="Math.max(1, visibleQuoteColCount)">
-                      <div class="m-qcard" :class="{ 'is-move-active': isMobileItemMoveActive(r.item, r.idx) }">
-                        <!-- Dòng 1: Badge tên chế độ báo giá phía trên Tên hàng + Nút xóa & Nút di chuyển -->
+                      <div
+                        class="m-qcard"
+                        :class="{
+                          'is-move-active': isMobileItemMoveActive(r.item, r.idx),
+                          'is-bulk-mode': isBulkSelectMode,
+                          'is-bulk-checked': isBulkSelectMode && isBulkItemSelected(r.item)
+                        }"
+                      >
+                        <!-- Dòng 1: Badge tên chế độ báo giá phía trên Tên hàng + Cụm Gộp/Tách + Nút xóa & Nút di chuyển -->
                         <div class="m-qcard-top">
                           <div class="m-qcard-head-col">
                             <div class="m-qcard-mode-row">
+                              <label
+                                v-if="isBulkSelectMode"
+                                class="m-qcard-bulk-check-pill"
+                                :class="{ 'is-checked': isBulkItemSelected(r.item) }"
+                                @click.stop
+                              >
+                                <input
+                                  type="checkbox"
+                                  :checked="isBulkItemSelected(r.item)"
+                                  @change.stop="toggleBulkSelectItem(r.item)"
+                                />
+                                <span class="m-qcard-bulk-box">
+                                  <svg v-if="isBulkItemSelected(r.item)" xmlns="http://www.w3.org/2000/svg" width="10.5" height="10.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                </span>
+                                <span>{{ isBulkItemSelected(r.item) ? 'Đã chọn' : 'Chọn sửa' }}</span>
+                              </label>
                               <span class="m-qcard-mode-badge" :class="'is-mode-' + quotePriceViewMode">
                                 <span class="m-qcard-mode-dot"></span>
                                 <span>{{ currentQuotePriceViewOption.shortLabel }}</span>
@@ -25233,6 +28544,48 @@ onUnmounted(() => {
                                 </button>
                               </div>
                             </Transition>
+                            <label
+                              v-if="isItemInActiveMergeSelect(r.item)"
+                              class="q-row-merge-check is-mobile"
+                              :class="{ 'is-checked': isRowCheckedForMerge(r.item) }"
+                              :title="isRowCheckedForMerge(r.item) ? 'Đã tích chọn dòng này để gộp' : 'Tích chọn dòng này để gộp'"
+                              @click.stop
+                            >
+                              <input
+                                type="checkbox"
+                                :checked="isRowCheckedForMerge(r.item)"
+                                @change.stop="toggleRowCheckedForMerge(r.item)"
+                              />
+                            </label>
+                            <button
+                              v-if="getDuplicateRowCountForItem(r.item) > 1"
+                              type="button"
+                              class="m-qcard-merge-tag"
+                              :class="{
+                                'is-conflict': hasDuplicatePriceConflictForItem(r.item),
+                                'is-selecting': isItemInActiveMergeSelect(r.item)
+                              }"
+                              @click.stop="handleMergeQuoteRowByIdx(r.idx)"
+                            >
+                              <span>{{ isItemInActiveMergeSelect(r.item) ? ('Xong (' + getCheckedDuplicateCountForItem(r.item) + ')') : 'Gộp' }}</span>
+                            </button>
+                            <button
+                              v-if="isItemInActiveMergeSelect(r.item)"
+                              type="button"
+                              class="q-row-merge-cancel is-mobile"
+                              @click.stop="cancelMergeSelectMode()"
+                            >
+                              Hủy
+                            </button>
+                            <button
+                              v-if="!isItemInActiveMergeSelect(r.item) && (toNum(r.item.So_luong, 1) > 1 || hasRowMergeHistory(r.item))"
+                              type="button"
+                              class="m-qcard-split-tag"
+                              :class="{ 'has-hist': hasRowMergeHistory(r.item) }"
+                              @click.stop="handleSplitQuoteRow(r.idx)"
+                            >
+                              <span>{{ hasRowMergeHistory(r.item) ? 'Tách/Khôi phục' : 'Tách' }}</span>
+                            </button>
                             <button type="button" class="m-qcard-del" @click.stop="removeSelected(r.idx)" title="Xóa sản phẩm">
                               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
                                 <polyline points="3 6 5 6 21 6"></polyline>
@@ -25523,11 +28876,13 @@ onUnmounted(() => {
           </div>
           </div>
 
-          <!-- CỘT CHỈ SỐ TÀI CHÍNH, COM, THUẾ & TỈ SUẤT ĐỘC LẬP NHƯ KHO SẢN PHẨM (HIỂN THỊ Ở BÁO GIÁ KHÁCH, BÁO GIÁ HỢP ĐỒNG & ĐỐI CHIẾU 3 GIÁ) -->
+          <!-- CỘT CHỈ SỐ TÀI CHÍNH, COM, THUẾ, TỈ SUẤT + CHIẾT KHẤU/TÀI CHÍNH & THAO TÁC TRÊN PC -->
           <aside
-            v-if="quotePriceViewMode !== 'origin'"
             class="cmp-sr-finance-wrap"
-            :class="{ 'is-collapsed': !showCompareFinancePanel }"
+            :class="{
+              'is-collapsed': !showCompareFinancePanel,
+              'is-origin-mode': quotePriceViewMode === 'origin'
+            }"
           >
             <!-- THANH THU GỌN (HIỆN KHI ĐANG ĐÓNG: DẢI DỌC BÊN PHẢI TRÊN PC / THANH NGANG GỌN TRÊN MOBILE) -->
             <button
@@ -25544,52 +28899,242 @@ onUnmounted(() => {
                 </svg>
               </span>
               <span class="cmp-sr-rail-label">CHỈ SỐ TÀI CHÍNH &amp; COM</span>
-              <span class="cmp-sr-rail-badge" :class="cmpSrNetMarginOnDsbPct >= 0 ? 'is-com-text' : 'is-debt-text'">
+              <span
+                v-if="quotePriceViewMode !== 'origin'"
+                class="cmp-sr-rail-badge"
+                :class="cmpSrNetMarginOnDsbPct >= 0 ? 'is-com-text' : 'is-debt-text'"
+              >
                 {{ fmtCmpSrPct(cmpSrNetMarginOnDsbPct) }}
               </span>
             </button>
 
             <div v-else class="cmp-sr-po1-blocks">
-              <!-- HEADER CHỌN NGUỒN GIÁ TÍNH CHỈ SỐ (GIÁ HỢP ĐỒNG | GIÁ KHÁCH) + NÚT THU GỌN -->
-              <div class="cmp-sr-source-bar">
-                <div class="cmp-sr-source-pills">
-                  <button
-                    type="button"
-                    class="cmp-sr-source-pill is-contract"
-                    :class="{ active: cmpSrPriceSource === 'contract' }"
-                    @click="cmpSrPriceSource = 'contract'"
-                    title="Tính chỉ số theo bảng Giá Hợp đồng"
-                  >
-                    <span>Giá Hợp đồng</span>
-                  </button>
-                  <button
-                    type="button"
-                    class="cmp-sr-source-pill is-customer"
-                    :class="{ active: cmpSrPriceSource === 'customer' }"
-                    @click="cmpSrPriceSource = 'customer'"
-                    title="Tính chỉ số theo bảng Giá Khách"
-                  >
-                    <span>Giá Khách</span>
-                  </button>
+              <template v-if="quotePriceViewMode !== 'origin'">
+                <!-- HEADER CHỌN NGUỒN GIÁ TÍNH CHỈ SỐ (GIÁ HỢP ĐỒNG | GIÁ KHÁCH) + NÚT THU GỌN -->
+                <div class="cmp-sr-source-bar">
+                  <div class="cmp-sr-source-pills">
+                    <button
+                      type="button"
+                      class="cmp-sr-source-pill is-contract"
+                      :class="{ active: cmpSrPriceSource === 'contract' }"
+                      @click="cmpSrPriceSource = 'contract'"
+                      title="Tính chỉ số theo bảng Giá Hợp đồng"
+                    >
+                      <span>Giá Hợp đồng</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="cmp-sr-source-pill is-customer"
+                      :class="{ active: cmpSrPriceSource === 'customer' }"
+                      @click="cmpSrPriceSource = 'customer'"
+                      title="Tính chỉ số theo bảng Giá Khách"
+                    >
+                      <span>Giá Khách</span>
+                    </button>
+                  </div>
+                  <div class="cmp-sr-head-actions">
+                    <button
+                      v-if="hasCmpSrOverrides"
+                      type="button"
+                      class="cmp-sr-source-reset-btn"
+                      @click="resetCurrentCmpSrBucket"
+                      title="Khôi phục chỉ số mặc định của chế độ giá đang chọn"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                        <path d="M3 3v5h5"></path>
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      class="cmp-sr-source-collapse-btn"
+                      @click="showCompareFinancePanel = false"
+                      title="Thu gọn cột Chỉ số tài chính & COM"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="13 17 18 12 13 7"></polyline>
+                        <polyline points="6 17 11 12 6 7"></polyline>
+                      </svg>
+                    </button>
+                  </div>
                 </div>
+
+                <!-- KHỐI 1: Doanh số & Chi phí -->
+                <div class="cmp-sr-po1-block">
+                  <div class="cmp-sr-block-title is-blue-head">
+                    <span>Doanh số &amp; Chi phí</span>
+                    <span class="cmp-sr-block-mode-tag">{{ cmpSrPriceSource === 'customer' ? 'GIÁ KHÁCH' : 'GIÁ HĐ' }}</span>
+                  </div>
+                  <div class="cmp-sr-b-row is-primary">
+                    <span class="cmp-sr-b-lbl">Doanh số bán</span>
+                    <FormattedInput
+                      :modelValue="cmpSrDoanhSoBan"
+                      @update:modelValue="val => onCmpSrFieldChange('doanhSoBan', val)"
+                      :decimals="quoteCurrency === 'USD' ? 2 : 0"
+                      :allowNegative="true"
+                      placeholder="0"
+                      class="cmp-sr-b-input is-com-text is-primary-input"
+                    />
+                  </div>
+                  <div class="cmp-sr-b-row">
+                    <span class="cmp-sr-b-lbl">Giá mua</span>
+                    <FormattedInput
+                      :modelValue="cmpSrGiaMua"
+                      @update:modelValue="val => onCmpSrFieldChange('giaMua', val)"
+                      :decimals="quoteCurrency === 'USD' ? 2 : 0"
+                      :allowNegative="true"
+                      placeholder="0"
+                      class="cmp-sr-b-input is-debt-text"
+                    />
+                  </div>
+                  <div class="cmp-sr-b-row">
+                    <span class="cmp-sr-b-lbl">Tổng CP đơn hàng</span>
+                    <FormattedInput
+                      :modelValue="cmpSrTongCP"
+                      @update:modelValue="val => onCmpSrFieldChange('tongCP', val)"
+                      :decimals="quoteCurrency === 'USD' ? 2 : 0"
+                      :allowNegative="true"
+                      placeholder="0"
+                      class="cmp-sr-b-input is-debt-text"
+                    />
+                  </div>
+                  <div class="cmp-sr-b-row is-sub-divider">
+                    <span class="cmp-sr-b-lbl">Tổng tiền sau VAT</span>
+                    <strong class="cmp-sr-b-val is-com-text">{{ fmtCmpSrMoney(cmpSrTongSauVat) }}</strong>
+                  </div>
+                </div>
+
+                <!-- KHỐI 2: COM, Thuế & Margin -->
+                <div class="cmp-sr-po1-block">
+                  <div class="cmp-sr-block-title is-green-head">
+                    <span>COM, Thuế &amp; Margin</span>
+                  </div>
+                  <div class="cmp-sr-b-row is-primary">
+                    <span class="cmp-sr-b-lbl">Net COM</span>
+                    <FormattedInput
+                      :modelValue="cmpSrNetCom"
+                      @update:modelValue="val => onCmpSrFieldChange('netCom', val)"
+                      :decimals="quoteCurrency === 'USD' ? 2 : 0"
+                      :allowNegative="true"
+                      placeholder="0"
+                      class="cmp-sr-b-input is-com-text is-primary-input"
+                    />
+                  </div>
+                  <div class="cmp-sr-b-row">
+                    <span class="cmp-sr-b-lbl">Gross COM</span>
+                    <FormattedInput
+                      :modelValue="cmpSrGrossCom"
+                      @update:modelValue="val => onCmpSrFieldChange('grossCom', val)"
+                      :decimals="quoteCurrency === 'USD' ? 2 : 0"
+                      :allowNegative="true"
+                      placeholder="0"
+                      class="cmp-sr-b-input is-com-text"
+                    />
+                  </div>
+                  <div class="cmp-sr-b-row">
+                    <span class="cmp-sr-b-lbl cmp-sr-tax-lbl-wrap">
+                      <span>Thuế</span>
+                      <FormattedInput
+                        :modelValue="cmpSrTaxPct"
+                        @update:modelValue="val => onCmpSrFieldChange('taxPct', val)"
+                        :decimals="2"
+                        placeholder="25"
+                        class="cmp-sr-tax-pct-input"
+                      />
+                      <span>%</span>
+                    </span>
+                    <span class="cmp-sr-b-val is-debt-text">{{ fmtCmpSrMoney(cmpSrTaxAmount) }}</span>
+                  </div>
+                  <div class="cmp-sr-b-row">
+                    <span class="cmp-sr-b-lbl">Net PO</span>
+                    <span class="cmp-sr-b-val is-com-text">{{ fmtCmpSrMoney(cmpSrNetPO) }}</span>
+                  </div>
+                  <div class="cmp-sr-b-row is-sub-divider">
+                    <span class="cmp-sr-b-lbl">Net Margin</span>
+                    <strong class="cmp-sr-b-val" :class="cmpSrNetMargin >= 0 ? 'is-com-text' : 'is-debt-text'">
+                      {{ fmtCmpSrMoney(cmpSrNetMargin) }}
+                    </strong>
+                  </div>
+                </div>
+
+                <!-- KHỐI 3: Tỉ suất (%) & Chỉ số Net Margin/DSB mong muốn -->
+                <div class="cmp-sr-po1-block">
+                  <div class="cmp-sr-block-title is-green-head is-title-with-action">
+                    <span>Tỉ suất (%)</span>
+                    <button
+                      type="button"
+                      class="cmp-sr-round-chip"
+                      :class="{ 'is-active': cmpSrIsRatioRounded }"
+                      :title="cmpSrIsRatioRounded ? 'Đang bật làm tròn tỉ suất (VD: 30.51% -> 31%, 15.21% -> 15%) • Nhấn để tắt' : 'Nhấn để làm tròn 4 chỉ số tỉ suất (VD: 30.51% -> 31%, 15.21% -> 15%)'"
+                      @click.stop="toggleCmpSrRatioRounding"
+                    >
+                      {{ cmpSrIsRatioRounded ? 'Làm tròn ✓' : 'Làm tròn' }}
+                    </button>
+                  </div>
+                  <div class="cmp-sr-b-row">
+                    <span class="cmp-sr-b-lbl">Net COM / Net PO</span>
+                    <strong class="cmp-sr-b-val is-com-text">{{ fmtCmpSrPct(cmpSrNetComOnNetPoPct) }}</strong>
+                  </div>
+                  <div class="cmp-sr-b-row">
+                    <span class="cmp-sr-b-lbl">Net Margin / Net PO</span>
+                    <strong class="cmp-sr-b-val" :class="cmpSrNetMarginOnNetPoPct >= 0 ? 'is-com-text' : 'is-debt-text'">
+                      {{ fmtCmpSrPct(cmpSrNetMarginOnNetPoPct) }}
+                    </strong>
+                  </div>
+                  <div class="cmp-sr-b-row is-sub-divider">
+                    <span class="cmp-sr-b-lbl">Net COM / Doanh số bán</span>
+                    <strong class="cmp-sr-b-val is-com-text">{{ fmtCmpSrPct(cmpSrNetComOnDsbPct) }}</strong>
+                  </div>
+                  <div class="cmp-sr-b-row">
+                    <span class="cmp-sr-b-lbl">Net Margin / Doanh số bán</span>
+                    <strong class="cmp-sr-b-val" :class="cmpSrNetMarginOnDsbPct >= 0 ? 'is-com-text' : 'is-debt-text'">
+                      {{ fmtCmpSrPct(cmpSrNetMarginOnDsbPct) }}
+                    </strong>
+                  </div>
+
+                  <!-- CHỈ SỐ NET MARGIN/DSB MONG MUỐN -->
+                  <div class="cmp-sr-predict-card" :class="{ 'is-active': cmpSrOverrides.predictPct !== '' }">
+                    <div class="cmp-sr-predict-head">
+                      <label class="cmp-sr-predict-lbl">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                        <span>CHỈ SỐ NET MARGIN/DSB MONG MUỐN</span>
+                      </label>
+                      <button
+                        v-if="cmpSrOverrides.predictPct !== ''"
+                        type="button"
+                        class="cmp-sr-predict-reset-btn"
+                        @click="resetCmpSrPredictPct"
+                        title="Khôi phục Gross COM & Net COM gốc"
+                      >
+                        Hoàn tác
+                      </button>
+                    </div>
+                    <div class="cmp-sr-predict-input-wrap">
+                      <input
+                        type="text"
+                        inputmode="decimal"
+                        placeholder="Nhập % mong muốn..."
+                        :value="cmpSrOverrides.predictPct"
+                        @input="onCmpSrPredictInput"
+                        class="cmp-sr-predict-input"
+                      />
+                      <span class="cmp-sr-predict-pct">%</span>
+                    </div>
+                  </div>
+                </div>
+              </template>
+
+              <!-- HEADER RÚT GỌN KHI ĐANG Ở CHẾ ĐỘ BÁO GIÁ GỐC TRÊN PC -->
+              <div v-else class="cmp-sr-source-bar hide-on-mobile-quote">
+                <span style="font-size: 11px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: #38bdf8; padding-left: 4px;">
+                  TÀI CHÍNH &amp; THAO TÁC
+                </span>
                 <div class="cmp-sr-head-actions">
-                  <button
-                    v-if="hasCmpSrOverrides"
-                    type="button"
-                    class="cmp-sr-source-reset-btn"
-                    @click="resetCurrentCmpSrBucket"
-                    title="Khôi phục chỉ số mặc định của chế độ giá đang chọn"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-                      <path d="M3 3v5h5"></path>
-                    </svg>
-                  </button>
                   <button
                     type="button"
                     class="cmp-sr-source-collapse-btn"
                     @click="showCompareFinancePanel = false"
-                    title="Thu gọn cột Chỉ số tài chính & COM"
+                    title="Thu gọn cột phải"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
                       <polyline points="13 17 18 12 13 7"></polyline>
@@ -25599,158 +29144,237 @@ onUnmounted(() => {
                 </div>
               </div>
 
-              <!-- KHỐI 1: Doanh số & Chi phí -->
-              <div class="cmp-sr-po1-block">
-                <div class="cmp-sr-block-title is-blue-head">
-                  <span>Doanh số &amp; Chi phí</span>
-                  <span class="cmp-sr-block-mode-tag">{{ cmpSrPriceSource === 'customer' ? 'GIÁ KHÁCH' : 'GIÁ HĐ' }}</span>
+              <!-- DOCK BÊN DƯỚI KHỐI TỈ SUẤT TRÊN PC: [KHÁCH HÀNG | CHIẾT KHẤU | TÀI CHÍNH] + NÚT LƯU / XUẤT / TIỆN ÍCH -->
+              <div class="pc-right-finance-dock hide-on-mobile-quote">
+                <div class="pc-right-dock-divider" aria-hidden="true"></div>
+                <div class="cmp-sr-block-title is-blue-head pc-right-dock-head-bar">
+                  <span>Khách hàng &amp; Tổng kết</span>
+                  <span class="cmp-sr-block-mode-tag">BÁO GIÁ</span>
                 </div>
-                <div class="cmp-sr-b-row is-primary">
-                  <span class="cmp-sr-b-lbl">Doanh số bán</span>
-                  <FormattedInput
-                    :modelValue="cmpSrDoanhSoBan"
-                    @update:modelValue="val => onCmpSrFieldChange('doanhSoBan', val)"
-                    :decimals="quoteCurrency === 'USD' ? 2 : 0"
-                    :allowNegative="true"
-                    placeholder="0"
-                    class="cmp-sr-b-input is-com-text is-primary-input"
-                  />
-                </div>
-                <div class="cmp-sr-b-row">
-                  <span class="cmp-sr-b-lbl">Giá mua</span>
-                  <FormattedInput
-                    :modelValue="cmpSrGiaMua"
-                    @update:modelValue="val => onCmpSrFieldChange('giaMua', val)"
-                    :decimals="quoteCurrency === 'USD' ? 2 : 0"
-                    :allowNegative="true"
-                    placeholder="0"
-                    class="cmp-sr-b-input is-debt-text"
-                  />
-                </div>
-                <div class="cmp-sr-b-row">
-                  <span class="cmp-sr-b-lbl">Tổng CP đơn hàng</span>
-                  <FormattedInput
-                    :modelValue="cmpSrTongCP"
-                    @update:modelValue="val => onCmpSrFieldChange('tongCP', val)"
-                    :decimals="quoteCurrency === 'USD' ? 2 : 0"
-                    :allowNegative="true"
-                    placeholder="0"
-                    class="cmp-sr-b-input is-debt-text"
-                  />
-                </div>
-                <div class="cmp-sr-b-row is-sub-divider">
-                  <span class="cmp-sr-b-lbl">Tổng tiền sau VAT</span>
-                  <strong class="cmp-sr-b-val is-com-text">{{ fmtCmpSrMoney(cmpSrTongSauVat) }}</strong>
-                </div>
-              </div>
-
-              <!-- KHỐI 2: COM, Thuế & Margin -->
-              <div class="cmp-sr-po1-block">
-                <div class="cmp-sr-block-title is-green-head">
-                  <span>COM, Thuế &amp; Margin</span>
-                </div>
-                <div class="cmp-sr-b-row is-primary">
-                  <span class="cmp-sr-b-lbl">Net COM</span>
-                  <FormattedInput
-                    :modelValue="cmpSrNetCom"
-                    @update:modelValue="val => onCmpSrFieldChange('netCom', val)"
-                    :decimals="quoteCurrency === 'USD' ? 2 : 0"
-                    :allowNegative="true"
-                    placeholder="0"
-                    class="cmp-sr-b-input is-com-text is-primary-input"
-                  />
-                </div>
-                <div class="cmp-sr-b-row">
-                  <span class="cmp-sr-b-lbl">Gross COM</span>
-                  <FormattedInput
-                    :modelValue="cmpSrGrossCom"
-                    @update:modelValue="val => onCmpSrFieldChange('grossCom', val)"
-                    :decimals="quoteCurrency === 'USD' ? 2 : 0"
-                    :allowNegative="true"
-                    placeholder="0"
-                    class="cmp-sr-b-input is-com-text"
-                  />
-                </div>
-                <div class="cmp-sr-b-row">
-                  <span class="cmp-sr-b-lbl cmp-sr-tax-lbl-wrap">
-                    <span>Thuế</span>
-                    <FormattedInput
-                      :modelValue="cmpSrTaxPct"
-                      @update:modelValue="val => onCmpSrFieldChange('taxPct', val)"
-                      :decimals="2"
-                      placeholder="25"
-                      class="cmp-sr-tax-pct-input"
-                    />
-                    <span>%</span>
-                  </span>
-                  <span class="cmp-sr-b-val is-debt-text">{{ fmtCmpSrMoney(cmpSrTaxAmount) }}</span>
-                </div>
-                <div class="cmp-sr-b-row">
-                  <span class="cmp-sr-b-lbl">Net PO</span>
-                  <span class="cmp-sr-b-val is-com-text">{{ fmtCmpSrMoney(cmpSrNetPO) }}</span>
-                </div>
-                <div class="cmp-sr-b-row is-sub-divider">
-                  <span class="cmp-sr-b-lbl">Net Margin</span>
-                  <strong class="cmp-sr-b-val" :class="cmpSrNetMargin >= 0 ? 'is-com-text' : 'is-debt-text'">
-                    {{ fmtCmpSrMoney(cmpSrNetMargin) }}
-                  </strong>
-                </div>
-              </div>
-
-              <!-- KHỐI 3: Tỉ suất (%) & Chỉ số Net Margin/DSB mong muốn -->
-              <div class="cmp-sr-po1-block">
-                <div class="cmp-sr-block-title is-green-head">
-                  <span>Tỉ suất (%)</span>
-                </div>
-                <div class="cmp-sr-b-row">
-                  <span class="cmp-sr-b-lbl">Net COM / Net PO</span>
-                  <strong class="cmp-sr-b-val is-com-text">{{ fmtCmpSrPct(cmpSrNetComOnNetPoPct) }}</strong>
-                </div>
-                <div class="cmp-sr-b-row">
-                  <span class="cmp-sr-b-lbl">Net Margin / Net PO</span>
-                  <strong class="cmp-sr-b-val" :class="cmpSrNetMarginOnNetPoPct >= 0 ? 'is-com-text' : 'is-debt-text'">
-                    {{ fmtCmpSrPct(cmpSrNetMarginOnNetPoPct) }}
-                  </strong>
-                </div>
-                <div class="cmp-sr-b-row is-sub-divider">
-                  <span class="cmp-sr-b-lbl">Net COM / Doanh số bán</span>
-                  <strong class="cmp-sr-b-val is-com-text">{{ fmtCmpSrPct(cmpSrNetComOnDsbPct) }}</strong>
-                </div>
-                <div class="cmp-sr-b-row">
-                  <span class="cmp-sr-b-lbl">Net Margin / Doanh số bán</span>
-                  <strong class="cmp-sr-b-val" :class="cmpSrNetMarginOnDsbPct >= 0 ? 'is-com-text' : 'is-debt-text'">
-                    {{ fmtCmpSrPct(cmpSrNetMarginOnDsbPct) }}
-                  </strong>
+                <div class="sidebar-dock-tabs">
+                  <button
+                    type="button"
+                    class="dock-tab-btn"
+                    :class="{ active: activeLeftDockTab === 'customer' }"
+                    @click="toggleLeftDockTab('customer')"
+                    :title="getCurrentDockCustomerName() ? `Khách hàng: ${getCurrentDockCustomerName()} (Nhấn để mở/thu gọn)` : 'Nhấn để mở/thu gọn mục Khách hàng'"
+                  >
+                    <i class="lucide-user" style="font-size: 13px; margin: 0; flex-shrink: 0;"></i>
+                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;">{{ getCurrentDockCustomerName() || 'Khách hàng' }}</span>
+                    <span
+                      v-if="khach.MST || khach.Ten_cong_ty || khach.Ten_khach_hang"
+                      style="width: 6px; height: 6px; border-radius: 50%; background: #10b981; flex-shrink: 0;"
+                    ></span>
+                  </button>
+                  <button
+                    type="button"
+                    class="dock-tab-btn"
+                    :class="{ active: activeLeftDockTab === 'discount' }"
+                    @click="toggleLeftDockTab('discount')"
+                    title="Nhấn để mở/thu gọn mục Chiết khấu & Chênh lệch"
+                  >
+                    <i class="lucide-trending-down" style="font-size: 13px; margin: 0;"></i>
+                    <span>Chiết khấu</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="dock-tab-btn"
+                    :class="{ active: activeLeftDockTab === 'finance' }"
+                    @click="toggleLeftDockTab('finance')"
+                    title="Nhấn để mở/thu gọn mục Tổng hợp tài chính"
+                  >
+                    <i class="lucide-wallet" style="font-size: 13px; margin: 0;"></i>
+                    <span>Tài chính</span>
+                  </button>
                 </div>
 
-                <!-- CHỈ SỐ NET MARGIN/DSB MONG MUỐN -->
-                <div class="cmp-sr-predict-card" :class="{ 'is-active': cmpSrOverrides.predictPct !== '' }">
-                  <div class="cmp-sr-predict-head">
-                    <label class="cmp-sr-predict-lbl">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
-                      <span>CHỈ SỐ NET MARGIN/DSB MONG MUỐN</span>
-                    </label>
+                <!-- KHỐI KHÁCH HÀNG -->
+                <div data-guide="dock-customer-panel" class="totals-box step-customer dock-tab-panel" :class="{ 'dock-tab-active': activeLeftDockTab === 'customer' }">
+                  <div class="totals-body cust-compact-body">
+                    <div class="cust-micro-bar">
+                      <span class="cust-micro-title">
+                        <i class="lucide-user cust-micro-icon"></i>
+                        <span>Thông tin KH</span>
+                      </span>
+                      <div class="cust-micro-actions">
+                        <button
+                          v-if="khach.MST || khach.Ten_cong_ty || khach.Ten_khach_hang || khach.Dia_chi_cong_ty"
+                          type="button"
+                          class="cust-micro-btn is-reset"
+                          title="Xóa thông tin khách hàng đang chọn"
+                          @click.stop="resetCustomer"
+                        >
+                          Xóa
+                        </button>
+                        <button
+                          type="button"
+                          class="cust-micro-btn is-detail"
+                          title="Mở bảng thông tin chi tiết khách hàng"
+                          @click.stop="showCustomerDetailModal = true"
+                        >
+                          <span>Chi tiết</span>
+                          <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="9 18 15 12 9 6" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- Hàng 1: MST -->
+                    <div class="input-with-picker is-compact-picker has-inline-prefix" :class="{ 'input-loading': customersState === 'loading', 'input-loaded': customersState === 'loaded', 'input-ready': customersState === 'ready' }">
+                      <span class="cust-inline-prefix">MST</span>
+                      <textarea rows="1" v-auto-grow @keydown.enter.prevent v-model="khach.MST" class="cell-input m-wrap-input m-wrap-compact has-right-picker" placeholder="Mã số thuế..." @change="onMSTChange"></textarea>
+                      <button type="button" class="inline-picker-btn inline-picker-btn-sm" @click="openCustomerPicker('mst')">Chọn</button>
+                    </div>
+
+                    <!-- Hàng 2: Khách -->
+                    <div class="input-with-picker is-compact-picker has-inline-prefix" :class="{ 'input-loading': customersState === 'loading', 'input-loaded': customersState === 'loaded', 'input-ready': customersState === 'ready' }">
+                      <span class="cust-inline-prefix">Khách</span>
+                      <textarea rows="1" v-auto-grow @keydown.enter.prevent v-model="khach.Ten_khach_hang" class="cell-input m-wrap-input m-wrap-compact has-right-picker" placeholder="Tên người nhận..." @change="onTenKhachHangChange"></textarea>
+                      <button type="button" class="inline-picker-btn inline-picker-btn-sm" @click="openCustomerPicker('ten_kh')">Chọn</button>
+                    </div>
+
+                    <!-- Hàng 3: Công ty -->
+                    <div class="input-with-picker is-compact-picker has-inline-prefix" :class="{ 'input-loading': customersState === 'loading', 'input-loaded': customersState === 'loaded', 'input-ready': customersState === 'ready' }">
+                      <span class="cust-inline-prefix">Công ty</span>
+                      <textarea rows="1" v-auto-grow @keydown.enter.prevent v-model="khach.Ten_cong_ty" class="cell-input m-wrap-input m-wrap-compact has-right-picker" placeholder="Nhập tên công ty..." @change="onTenCongTyChange"></textarea>
+                      <button type="button" class="inline-picker-btn inline-picker-btn-sm" @click="openCustomerPicker('ten_cong_ty')">Chọn</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- KHỐI CHIẾT KHẤU & CHÊNH LỆCH -->
+                <div data-guide="dock-discount-panel" class="totals-box step-summary dock-tab-panel" :class="{ 'dock-tab-active': activeLeftDockTab === 'discount' }">
+                  <div class="totals-body">
+                    <div class="totals-row">
+                      <span class="totals-label" style="display: flex; align-items: center; gap: 5px;">
+                        Chiết khấu tổng trước thuế
+                        <FormattedInput v-model="chietKhauTruocThuePct" placeholder="0" style="width: 44px; padding: 1px 4px; height: 22px; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; font-weight: 600; color: #ef4444; font-size: 12px; background: #fff; margin: 0;" /> %
+                      </span>
+                      <span class="totals-value">
+                        {{ formatVND(chietKhauTruocThue) }}
+                        <span class="history-icon" @click="openHistory('chietKhauTruocThue', 'Chiết khấu tổng trước thuế')"><i class="ri-history-line" style="font-size: 13px;"></i></span>
+                      </span>
+                    </div>
+                    <div class="totals-row">
+                      <span class="totals-label" style="display: flex; align-items: center; gap: 5px;">
+                        Thuế chênh lệch giá
+                        <FormattedInput v-model="thueChenhLechPct" placeholder="0" style="width: 44px; padding: 1px 4px; height: 22px; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; font-weight: 600; color: #ef4444; font-size: 12px; background: #fff; margin: 0;" /> %
+                      </span>
+                      <span class="totals-value">
+                        {{ formatVND(thueChenhLech) }}
+                        <span class="history-icon" @click="openHistory('thueChenhLech', 'Thuế chênh lệch giá')"><i class="ri-history-line" style="font-size: 13px;"></i></span>
+                      </span>
+                    </div>
+                    <div class="totals-row">
+                      <span class="totals-label" style="display: flex; align-items: center; gap: 6px;">
+                        Chênh lệch giá
+                        <button data-guide="btn-adjust-total-diff" class="util-btn small inline-adjust" style="padding: 1px 5px !important; font-size: 10.5px !important; margin: 0 !important; white-space: nowrap; border-radius: 4px;" @click="openAdjustPrice('all', '', 'Tổng chênh lệch giá', 'total_chenh_lech')" title="Điều chỉnh tổng chênh lệch">
+                          <i class="ri-arrow-up-down-fill"></i>
+                        </button>
+                      </span>
+                      <span class="totals-value text-diff-yellow">
+                        {{ chenhLechGia >= 0 ? '+' : '' }}{{ formatVND(chenhLechGia) }}
+                        <span class="history-icon" @click="openHistory('chenhLechGia', 'Chênh lệch giá')"><i class="ri-history-line" style="font-size: 13px;"></i></span>
+                      </span>
+                    </div>
+                    <div class="totals-row">
+                      <span class="totals-label">Còn lại</span>
+                      <span class="totals-value">
+                        {{ formatVND(conLai) }}
+                        <span class="history-icon" @click="openHistory('conLai', 'Còn lại')"><i class="ri-history-line" style="font-size: 13px;"></i></span>
+                      </span>
+                    </div>
+                    <div class="totals-row totals-highlight" style="margin-top: 2px; border-top: 1px dashed rgba(245,158,11,0.3); padding-top: 5px;">
+                      <span class="totals-label">Tổng Chiết khấu</span>
+                      <span class="totals-value">
+                        {{ formatVND(tongChietKhau) }}
+                        <span class="history-icon" @click="openHistory('tongChietKhau', 'Tổng Chiết khấu')"><i class="ri-history-line" style="font-size: 13px;"></i></span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- KHỐI TỔNG HỢP TÀI CHÍNH -->
+                <div data-guide="dock-finance-panel" class="totals-box step-summary dock-tab-panel" :class="{ 'dock-tab-active': activeLeftDockTab === 'finance' }">
+                  <div class="totals-body">
+                    <div class="totals-row">
+                      <span class="totals-label">TT trước thuế (Khách)</span>
+                      <span class="totals-value">
+                        {{ formatVND(tongGiaThucTe) }}
+                        <span class="history-icon" @click="openHistory('tongGiaThucTe', 'TT trước thuế (Khách)')"><i class="ri-history-line" style="font-size: 13px;"></i></span>
+                      </span>
+                    </div>
+                    <div class="totals-row">
+                      <span class="totals-label" style="display: flex; align-items: center; gap: 6px;">
+                        TT trước thuế (HĐ)
+                        <button data-guide="btn-adjust-all-quote" class="util-btn small inline-adjust" style="padding: 1px 5px !important; font-size: 10.5px !important; margin: 0 !important;" @click="openAdjustPrice('all', '', 'Toàn bộ báo giá')" title="Điều chỉnh giá toàn bộ báo giá">
+                          <i class="ri-arrow-up-down-fill"></i>
+                        </button>
+                      </span>
+                      <span class="totals-value">
+                        {{ formatVND(totals.truoc) }}
+                        <span class="history-icon" @click="openHistory('truoc', 'TT trước thuế (HĐ)')"><i class="ri-history-line" style="font-size: 13px;"></i></span>
+                      </span>
+                    </div>
+                    <div class="totals-row">
+                      <span class="totals-label">Tổng VAT</span>
+                      <span class="totals-value text-vat-blue">
+                        {{ formatVND(totals.vat) }}
+                        <span class="history-icon" @click="openHistory('vat', 'Tổng VAT')"><i class="ri-history-line" style="font-size: 13px;"></i></span>
+                      </span>
+                    </div>
+                    <div class="totals-row totals-highlight-blue">
+                      <span class="totals-label">TT sau thuế</span>
+                      <span class="totals-value">
+                        {{ formatVND(totals.sau) }}
+                        <span class="history-icon" @click="openHistory('sau', 'TT sau thuế')"><i class="ri-history-line" style="font-size: 13px;"></i></span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- KHỐI THAO TÁC GHIM CỐ ĐỊNH Ở ĐÁY CỘT PHẢI (LƯU BÁO GIÁ + XUẤT FILE + ICON 3 CHẤM DỌC) -->
+                <div class="totals-box step-actions pc-right-sticky-actions">
+                  <div class="sidebar-bottom-action-row" style="display: flex; align-items: stretch; gap: 6px;">
                     <button
-                      v-if="cmpSrOverrides.predictPct !== ''"
-                      type="button"
-                      class="cmp-sr-predict-reset-btn"
-                      @click="resetCmpSrPredictPct"
-                      title="Khôi phục Gross COM & Net COM gốc"
+                      class="action-btn action-save"
+                      :disabled="saving || !hasUnsavedChanges()"
+                      @click="showSaveModal = true"
+                      style="flex: 1.12; min-width: 0; width: auto !important; margin: 0 !important; padding: 9px 10px !important; font-size: 12px !important; font-weight: 800; flex-direction: row !important; align-items: center; justify-content: center; gap: 5px; min-height: 38px; letter-spacing: 0.4px; text-transform: uppercase; white-space: nowrap; background: linear-gradient(135deg, #3b82f6, #2563eb) !important; border: none; color: #ffffff !important; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);"
                     >
-                      Hoàn tác
+                      <i class="lucide-save" style="margin: 0; font-size: 14px; flex-shrink: 0;"></i>
+                      <span>{{ saving ? 'Đang lưu...' : 'Lưu báo giá' }}</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="action-btn action-export-file"
+                      @click="showExportInfoModal = true"
+                      title="Mở bảng chọn kiểu xuất file (Mẫu in / Excel / Agency / Pipeline)"
+                      style="flex: 0.96; min-width: 0; width: auto !important; margin: 0 !important; padding: 9px 10px !important; font-size: 12px !important; font-weight: 800; flex-direction: row !important; align-items: center; justify-content: center; gap: 5px; min-height: 38px; letter-spacing: 0.4px; text-transform: uppercase; white-space: nowrap; background: linear-gradient(135deg, #10b981, #059669) !important; border: none; color: #ffffff !important; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                      </svg>
+                      <span>Xuất file</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="action-btn action-more-dots"
+                      @click="showMoreActionsModal = true"
+                      title="Thao tác & Tiện ích mở rộng"
+                      style="flex: 0 0 38px; width: 38px !important; min-width: 38px !important; margin: 0 !important; padding: 0 !important; font-size: 16px !important; font-weight: 800; flex-direction: row !important; align-items: center !important; justify-content: center !important; min-height: 38px; background: rgba(15, 23, 42, 0.65) !important; border: 1px solid rgba(56, 189, 248, 0.35) !important; color: #38bdf8 !important; box-shadow: none !important;"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="5" r="1.5"></circle>
+                        <circle cx="12" cy="12" r="1.5"></circle>
+                        <circle cx="12" cy="19" r="1.5"></circle>
+                      </svg>
                     </button>
                   </div>
-                  <div class="cmp-sr-predict-input-wrap">
-                    <input
-                      type="text"
-                      inputmode="decimal"
-                      placeholder="Nhập % mong muốn..."
-                      :value="cmpSrOverrides.predictPct"
-                      @input="onCmpSrPredictInput"
-                      class="cmp-sr-predict-input"
-                    />
-                    <span class="cmp-sr-predict-pct">%</span>
-                  </div>
+                  <p v-if="saveMsg" class="save-msg" style="margin: 5px 0 0; font-size: 11px; color: #10b981; text-align: center;">{{ saveMsg }}</p>
                 </div>
               </div>
             </div>
@@ -25929,7 +29553,7 @@ onUnmounted(() => {
             v-if="mobileStep === 2"
             type="button"
             class="m-quote-mode-mini-dock"
-            :class="['is-mode-' + quotePriceViewMode, { 'is-modal-hidden': isAnyQuoteModalOpen }]"
+            :class="['is-mode-' + quotePriceViewMode, { 'is-modal-hidden': isAnyQuoteModalOpen || isBulkSelectMode }]"
             @click.stop="showMobileQuoteModeSheet = true"
             title="Nhấn để đổi chế độ hiển thị báo giá"
           >
@@ -25940,6 +29564,61 @@ onUnmounted(() => {
               <polyline points="18 15 12 9 6 15"></polyline>
             </svg>
           </button>
+
+          <!-- ================== DOCK SỬA HÀNG LOẠT TRÊN MOBILE (NẰM NGAY TRÊN DOCK CÔNG CỤ) ================== -->
+          <Transition name="bulk-float-bar">
+            <div
+              v-if="mobileStep === 2 && canShowBulkEditInQuoteMode && isBulkSelectMode && selectedItems.length > 0"
+              class="bulk-floating-action-bar"
+              :class="{ 'is-modal-hidden': isAnyQuoteModalOpen }"
+            >
+              <div class="bulk-fab-summary">
+                <span class="bulk-fab-count-badge">{{ bulkSelectedSummary.count }}</span>
+                <span class="bulk-fab-title-compact">SP</span>
+              </div>
+
+              <div class="bulk-fab-actions">
+                <button
+                  v-if="canShowNormalEditBtn"
+                  type="button"
+                  class="bulk-fab-btn is-primary-cust"
+                  :disabled="bulkSelectedUids.length === 0"
+                  @click="openBulkAdjustModal('normal')"
+                  title="Sửa khách hàng loạt"
+                >
+                  <i class="ri-edit-line"></i>
+                  <span>Sửa khách hàng loạt ({{ bulkSelectedSummary.count }})</span>
+                </button>
+                <button
+                  type="button"
+                  class="bulk-fab-btn is-primary-cont"
+                  :disabled="bulkSelectedUids.length === 0"
+                  @click="openBulkAdjustModal('contract')"
+                  title="Sửa HĐ hàng loạt"
+                >
+                  <i class="ri-arrow-up-down-fill"></i>
+                  <span>Sửa HĐ hàng loạt ({{ bulkSelectedSummary.count }})</span>
+                </button>
+                <button
+                  type="button"
+                  class="bulk-fab-btn is-danger-del"
+                  :disabled="bulkSelectedUids.length === 0"
+                  @click="deleteBulkSelectedItems"
+                  title="Xóa các mặt hàng đang chọn"
+                >
+                  <i class="ri-delete-bin-line"></i>
+                </button>
+                <button
+                  type="button"
+                  class="bulk-fab-btn is-close-bar"
+                  @click="exitBulkSelectMode(true)"
+                  title="Thoát chế độ chọn hàng loạt"
+                >
+                  <i class="ri-close-line"></i>
+                </button>
+              </div>
+            </div>
+          </Transition>
 
           <!-- ================== DOCK QUY TRÌNH BÁO GIÁ TRÊN MOBILE (SCREEN 2 & SCREEN 3) ================== -->
           <div class="mobile-screen2-action-bar" :class="{ 'is-modal-hidden': isAnyQuoteModalOpen }">
@@ -28496,11 +32175,11 @@ onUnmounted(() => {
             </div>
 
             <!-- SUMMARY BOX INSIDE COL 3 -->
-            <div class="modal-qty-box" style="margin-top: auto; display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.3); border: 1px dashed rgba(16,185,129,0.3); border-radius: 12px; padding: 16px;">
-              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px; margin: 0;">Số lượng xuất</label>
-              <div class="qty" style="transform: scale(1.1); transform-origin: right center;">
+            <div class="modal-qty-box">
+              <label class="modal-qty-label"><i class="lucide-layers" style="width: 15px; height: 15px; margin-right: 6px; vertical-align: text-bottom;"></i> SỐ LƯỢNG XUẤT</label>
+              <div class="qty">
                 <button type="button" @click="itemForm.So_luong = Math.max(1, toNum(itemForm.So_luong, 1) - 1)">&#x2212;</button>
-                <FormattedInput class="qty-input-inline" :decimals="0" v-model="itemForm.So_luong" placeholder="1" style="width: 36px; background: transparent !important; border: none !important; text-align: center; border-radius: 0; font-weight: 800; font-size: 14px; padding: 0; color: #fff; box-shadow: none;" />
+                <FormattedInput class="qty-input-inline" :decimals="0" v-model="itemForm.So_luong" placeholder="1" />
                 <button type="button" @click="itemForm.So_luong = toNum(itemForm.So_luong, 1) + 1">+</button>
               </div>
             </div>
@@ -29009,11 +32688,11 @@ onUnmounted(() => {
             </div>
 
             <!-- SUMMARY BOX INSIDE COL 3 -->
-            <div class="modal-qty-box" style="margin-top: auto; display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.3); border: 1px dashed rgba(16,185,129,0.3); border-radius: 12px; padding: 16px;">
-              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px; margin: 0;">Số lượng xuất</label>
-              <div class="qty" style="transform: scale(1.1); transform-origin: right center;">
+            <div class="modal-qty-box">
+              <label class="modal-qty-label"><i class="lucide-layers" style="width: 15px; height: 15px; margin-right: 6px; vertical-align: text-bottom;"></i> SỐ LƯỢNG XUẤT</label>
+              <div class="qty">
                 <button type="button" @click="cardEdit.So_luong = Math.max(1, toNum(cardEdit.So_luong, 1) - 1)">&#x2212;</button>
-                <FormattedInput class="qty-input-inline" :decimals="0" v-model="cardEdit.So_luong" placeholder="1" style="width: 36px; background: transparent !important; border: none !important; text-align: center; border-radius: 0; font-weight: 800; font-size: 14px; padding: 0; color: #fff; box-shadow: none;" />
+                <FormattedInput class="qty-input-inline" :decimals="0" v-model="cardEdit.So_luong" placeholder="1" />
                 <button type="button" @click="cardEdit.So_luong = toNum(cardEdit.So_luong, 1) + 1">+</button>
               </div>
             </div>
@@ -30256,9 +33935,31 @@ onUnmounted(() => {
 
           <!-- Quick Summary Pills -->
           <div class="quote-edit-quick-pills" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 12px;">
-            <div class="qe-pill">
+            <div class="qe-pill" style="display: inline-flex; align-items: center; gap: 6px;">
               <span class="qe-pill-label">SL:</span>
               <strong class="qe-pill-val">{{ quoteEdit.So_luong }}</strong>
+              <button
+                v-if="(toNum(quoteEdit.So_luong, 1) > 1 || hasRowMergeHistory(quoteEdit)) && quoteEditIdx >= 0"
+                type="button"
+                class="q-row-split-chip"
+                :class="{ 'has-hist': hasRowMergeHistory(quoteEdit) }"
+                style="margin-left: 2px;"
+                @click.stop="handleSplitQuoteRow(quoteEditIdx, true)"
+                title="Lưu chỉnh sửa hiện tại và tách dòng hàng hóa này"
+              >
+                <span>{{ hasRowMergeHistory(quoteEdit) ? 'Tách/Khôi phục' : 'Tách dòng' }}</span>
+              </button>
+              <button
+                v-if="getDuplicateRowCountForItem(quoteEdit) > 1 && quoteEditIdx >= 0"
+                type="button"
+                class="q-row-merge-chip"
+                :class="{ 'is-conflict': hasDuplicatePriceConflictForItem(quoteEdit) }"
+                style="margin-left: 2px;"
+                @click.stop="handleMergeQuoteRowByIdx(quoteEditIdx, true)"
+                title="Lưu chỉnh sửa hiện tại và gộp các dòng cùng mã hàng này"
+              >
+                <span>Gộp</span>
+              </button>
             </div>
             <div class="qe-pill">
               <span class="qe-pill-label">List Price:</span>
@@ -30669,11 +34370,11 @@ onUnmounted(() => {
 
               <!-- Số lượng QTY -->
               <div style="display: flex; flex-direction: column; gap: 6px; margin-top: auto;">
-                <div class="modal-qty-box" style="display: flex; align-items: center; justify-content: space-between; background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.25); border-radius: 10px; padding: 10px 14px;">
-                  <span style="font-size: 13px; font-weight: 700; color: #10b981;"><i class="lucide-layers" style="width: 16px; height: 16px; margin-right: 6px; vertical-align: text-bottom;"></i> SỐ LƯỢNG (QTY)</span>
-                  <div class="qty" style="margin: 0; transform-origin: right;">
+                <div class="modal-qty-box">
+                  <span class="modal-qty-label"><i class="lucide-layers" style="width: 16px; height: 16px; margin-right: 6px; vertical-align: text-bottom;"></i> SỐ LƯỢNG (QTY)</span>
+                  <div class="qty">
                     <button type="button" @click="quoteEdit.So_luong = Math.max(1, toNum(quoteEdit.So_luong, 1) - 1)">&#x2212;</button>
-                    <FormattedInput id="qe-So_luong" class="qty-input-inline" :decimals="0" v-model="quoteEdit.So_luong" @input="ensureNumberField(quoteEdit, 'So_luong')" style="width: 44px; background: transparent !important; border: none !important; text-align: center; border-radius: 0; font-weight: 800; font-size: 15px; padding: 0; color: #fff; box-shadow: none;" />
+                    <FormattedInput id="qe-So_luong" class="qty-input-inline" :decimals="0" v-model="quoteEdit.So_luong" @input="ensureNumberField(quoteEdit, 'So_luong')" />
                     <button type="button" @click="quoteEdit.So_luong = toNum(quoteEdit.So_luong, 1) + 1">+</button>
                   </div>
                 </div>
@@ -34025,6 +37726,194 @@ onUnmounted(() => {
       </div>
     </div>
 
+    <!-- ================== MODAL: SỬA GIÁ HÀNG LOẠT / KÊ GIÁ HĐ HÀNG LOẠT ================== -->
+    <div
+      v-if="bulkAdjustModal.show"
+      class="modal adjust-price-modal-overlay bulk-adjust-modal-overlay"
+      @click.self="bulkAdjustModal.show = false"
+    >
+      <div
+        class="modal-card adjust-price-modal-card bulk-adjust-modal-card"
+        :class="bulkModalKind === 'normal' ? 'is-normal-mode' : 'is-adjust-mode'"
+      >
+        <!-- Header đơn giản, gọn gàng -->
+        <div class="modal-head adj-modal-head">
+          <h3 class="dt-only-head adj-dt-head">
+            <span class="adj-dt-head-icon">
+              <i :class="bulkModalKind === 'normal' ? 'ri-edit-line' : 'ri-arrow-up-down-fill'"></i>
+            </span>
+            <span class="adj-dt-head-text">
+              <span class="adj-dt-title">
+                {{ bulkModalKind === 'normal' ? 'Sửa khách hàng loạt' : 'Sửa HĐ hàng loạt' }}
+              </span>
+              <span class="adj-dt-sub">
+                {{
+                  bulkModalKind === 'normal'
+                    ? `Đang chọn ${bulkSelectedSummary.count} mặt hàng (SL: ${bulkSelectedSummary.totalQty}) • Nhập dòng nào áp dụng dòng đó`
+                    : `Đang chọn ${bulkSelectedSummary.count} mặt hàng (SL: ${bulkSelectedSummary.totalQty}) • Chỉ điều chỉnh giá trên Hợp đồng, giữ nguyên giá gốc`
+                }}
+              </span>
+            </span>
+          </h3>
+          <div class="m-grab-head-stack">
+            <span class="m-grab-eyebrow">Đang chọn {{ bulkSelectedSummary.count }} SP (SL: {{ bulkSelectedSummary.totalQty }})</span>
+            <span class="m-grab-title">
+              {{ bulkModalKind === 'normal' ? 'Sửa khách hàng loạt' : 'Sửa HĐ hàng loạt' }}
+            </span>
+          </div>
+          <button type="button" class="x" @click.prevent="bulkAdjustModal.show = false" aria-label="Đóng">✕</button>
+        </div>
+
+        <!-- Body: Danh sách các trường dữ liệu xếp theo hàng dọc -->
+        <div class="adj-modal-body bulk-vmodal-body">
+          <div class="bulk-vtable-wrap">
+            <!-- Tiêu đề 4 cột -->
+            <div class="bulk-vtable-head">
+              <div class="bulk-vcol-label">Trường dữ liệu giá</div>
+              <div class="bulk-vcol-unit">% / Số cụ thể</div>
+              <div class="bulk-vcol-dir">Tăng / Giảm</div>
+              <div class="bulk-vcol-input">Số</div>
+            </div>
+
+            <!-- Danh sách hàng dọc -->
+            <div class="bulk-vtable-rows">
+              <div
+                v-for="row in bulkVerticalRows"
+                :key="row.key"
+                class="bulk-vrow"
+                :class="{ 'is-active': isBulkRowActive(row) }"
+              >
+                <!-- Cột 1: Tên trường dữ liệu -->
+                <div class="bulk-vcol-label">
+                  <span class="bulk-vrow-name">{{ row.label }}</span>
+                </div>
+
+                <!-- Cột 2: % / Số cụ thể -->
+                <div class="bulk-vcol-unit">
+                  <div class="bulk-seg-mini">
+                    <button
+                      type="button"
+                      class="bulk-seg-mini-btn"
+                      :class="{ active: row.unitType === 'percent' }"
+                      @click="setBulkRowUnitType(row, 'percent')"
+                    >
+                      %
+                    </button>
+                    <button
+                      type="button"
+                      class="bulk-seg-mini-btn"
+                      :class="{ active: row.unitType === 'number' }"
+                      @click="setBulkRowUnitType(row, 'number')"
+                    >
+                      Số cụ thể
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Cột 3: Tăng / Giảm / Đặt -->
+                <div class="bulk-vcol-dir">
+                  <div class="bulk-seg-mini">
+                    <button
+                      type="button"
+                      class="bulk-seg-mini-btn is-inc"
+                      :class="{ active: row.direction === 'inc' }"
+                      @click="setBulkRowDirection(row, 'inc')"
+                    >
+                      + Tăng
+                    </button>
+                    <button
+                      type="button"
+                      class="bulk-seg-mini-btn is-dec"
+                      :class="{ active: row.direction === 'dec' }"
+                      @click="setBulkRowDirection(row, 'dec')"
+                    >
+                      - Giảm
+                    </button>
+                    <button
+                      type="button"
+                      class="bulk-seg-mini-btn is-set"
+                      :class="{ active: row.direction === 'set' }"
+                      @click="setBulkRowDirection(row, 'set')"
+                      title="Đặt bằng giá trị cố định"
+                    >
+                      = Đặt
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Cột 4: Ô nhập Số -->
+                <div class="bulk-vcol-input">
+                  <div class="bulk-vinput-box" :class="{ 'has-val': isBulkRowActive(row) }">
+                    <FormattedInput
+                      class="bulk-vrow-input"
+                      :model-value="row.value"
+                      @update:model-value="val => onBulkRowValueInput(row, val)"
+                      :decimals="row.unitType === 'percent' ? 2 : row.decimals"
+                      :allow-negative="false"
+                      :inputmode="(row.unitType === 'percent' || row.decimals > 0) ? 'decimal' : 'numeric'"
+                      placeholder="0"
+                      @keydown.enter.prevent="applyBulkAdjustModal()"
+                    />
+                    <span class="bulk-vunit-suffix">
+                      {{ row.unitType === 'percent' ? '%' : row.numberUnitLabel }}
+                    </span>
+                    <button
+                      v-if="isBulkRowActive(row)"
+                      type="button"
+                      class="bulk-vclear-btn"
+                      @click="row.value = ''"
+                      title="Xóa số dòng này"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sticky Footer -->
+        <div class="adj-modal-footer bulk-adj-modal-footer">
+          <button
+            type="button"
+            class="adj-btn-cancel"
+            @click.prevent="bulkAdjustModal.show = false"
+          >
+            Hủy
+          </button>
+          <button
+            v-if="bulkModalKind === 'contract' && Math.abs(bulkSelectedSummary.totalDiffVnd) >= 1"
+            type="button"
+            class="adj-btn-cancel bulk-btn-clear-diff"
+            @click.prevent="clearBulkSelectedContractDiff()"
+            title="Đặt lại Đơn giá HĐ về bằng Đơn giá gốc cho các mặt hàng đang chọn"
+          >
+            Xóa lệch
+          </button>
+          <button
+            v-if="activeBulkVerticalRows.length > 0"
+            type="button"
+            class="adj-btn-cancel bulk-btn-reset-all"
+            @click.prevent="clearAllBulkRowInputs()"
+          >
+            Xóa nhập
+          </button>
+          <button
+            type="button"
+            class="adj-btn-confirm bulk-adj-btn-confirm"
+            :disabled="activeBulkVerticalRows.length === 0"
+            @click.prevent="applyBulkAdjustModal()"
+          >
+            <i class="lucide-check"></i>
+            <span>
+              {{ bulkModalKind === 'normal' ? 'Lưu giá mới' : 'Xác nhận kê giá' }}{{ activeBulkVerticalRows.length > 0 ? ` (${activeBulkVerticalRows.length})` : '' }}
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- ================== MODAL: LỊCH SỬ THAY ĐỔI ================== -->
     <div v-if="showHistoryModal" class="modal modal-fullscreen-overlay" @click.self="showHistoryModal = false">
       <div class="modal-card history-modal-card modal-fullscreen-card">
@@ -35866,6 +39755,108 @@ onUnmounted(() => {
       </div>
     </Transition>
 
+    <!-- MOBILE BOTTOM SHEET CHON DANH MUC SAN PHAM (<= 1100PX) -->
+    <Transition name="pl-sheet">
+      <div
+        v-if="showCategoryPicker"
+        ref="catMobileSheetRef"
+        class="pl-mobile-sheet-overlay"
+        @click.self="closeCategoryPicker"
+      >
+        <div class="pl-mobile-sheet" @click.stop>
+          <div class="pl-sheet-grabber-wrap">
+            <span class="pl-sheet-grabber"></span>
+          </div>
+
+          <div class="pl-sheet-head">
+            <div class="pl-sheet-head-txt">
+              <h4>Chọn danh mục sản phẩm</h4>
+              <p>{{ catalogCategoryOptions.length }} danh mục • Kho {{ formatVND(totalCatalogPoolCount) }} SP</p>
+            </div>
+            <button
+              type="button"
+              class="pl-sheet-close-btn"
+              aria-label="Đóng"
+              @click="closeCategoryPicker"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+
+          <div v-if="catalogCategoryOptions.length > 0" class="pl-sheet-search-wrap">
+            <svg class="pl-pop-search-ic" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input
+              v-model="categoryPickerSearchQuery"
+              type="text"
+              class="pl-sheet-search-input"
+              placeholder="Tìm nhanh danh mục..."
+            />
+            <button
+              v-if="categoryPickerSearchQuery"
+              type="button"
+              class="pl-pop-search-clear"
+              aria-label="Xóa từ khóa"
+              @click="categoryPickerSearchQuery = ''"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+
+          <div class="pl-sheet-list">
+            <button
+              type="button"
+              class="pl-opt-card is-sheet-card is-base-opt"
+              :class="{ 'is-selected': !selectedCatalogCategory }"
+              @click="selectCatalogCategory('')"
+            >
+              <div class="pl-opt-top">
+                <span class="pl-opt-radio">
+                  <svg v-if="!selectedCatalogCategory" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </span>
+                <span class="pl-opt-title">Tất cả danh mục</span>
+                <span class="pl-opt-count">{{ formatVND(totalCatalogPoolCount) }} SP</span>
+              </div>
+              <div class="pl-opt-sub">Hiển thị toàn bộ sản phẩm trong kho ({{ catalogCategoryOptions.length }} danh mục)</div>
+            </button>
+
+            <div v-if="catalogCategoryOptions.length > 0" class="pl-pop-section-lbl is-sheet-lbl">
+              <span>Danh mục ({{ filteredCatalogCategoryOptions.length }})</span>
+            </div>
+
+            <div v-if="catalogCategoryOptions.length > 0 && filteredCatalogCategoryOptions.length === 0" class="pl-pop-empty">
+              Không tìm thấy danh mục phù hợp với "{{ categoryPickerSearchQuery }}"
+            </div>
+
+            <button
+              v-for="cat in filteredCatalogCategoryOptions"
+              :key="'m-cat-' + cat.key"
+              type="button"
+              class="pl-opt-card is-sheet-card cat-opt-card"
+              :class="{ 'is-selected': selectedCatalogCategory === cat.key }"
+              @click="selectCatalogCategory(cat.key)"
+            >
+              <div class="pl-opt-top">
+                <span class="pl-opt-radio">
+                  <svg v-if="selectedCatalogCategory === cat.key" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </span>
+                <span class="pl-opt-title">{{ cat.label }}</span>
+                <span class="pl-opt-count">{{ formatVND(cat.count) }} SP</span>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
     <!-- MOBILE QUOTE TABS OVERVIEW BOTTOM SHEET (<= 1100px) -->
     <Transition name="pl-sheet">
       <div
@@ -36046,6 +40037,399 @@ onUnmounted(() => {
                 <span v-if="(showQuoteEditModal ? effectiveQuoteEditPriceViewMode : quotePriceViewMode) === opt.value" class="qmode-card-active-badge">Đang xem</span>
               </div>
               <div class="qmode-card-desc">{{ opt.desc }}</div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- ================== MODAL 1: TÁCH DÒNG HÀNG HÓA (KHI ĐANG GỘP NHƯNG TÁCH RA) ================== -->
+    <Transition name="async-modal">
+      <div
+        v-if="splitItemModal.show && splitItemModal.item"
+        class="modal vip-modal-overlay split-merge-modal-overlay"
+        style="z-index: 10042;"
+        @click.self="closeSplitItemModal"
+      >
+        <div class="modal-card vip-modal-card split-item-modal-card" role="dialog" aria-modal="true">
+          <div class="modal-head modal-head-themed split-merge-modal-head">
+            <div class="dt-only-head" style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; color: #ffffff;">
+                <path d="M16 3h5v5"></path>
+                <path d="M8 3H3v5"></path>
+                <path d="M12 22v-8.3a4 4 0 0 0-1.172-2.872L3 3"></path>
+                <path d="m15 9 6-6"></path>
+              </svg>
+              <span style="font-weight: 800; font-size: 14.5px; color: #ffffff; text-transform: uppercase; letter-spacing: 0.4px;">
+                Tách dòng hàng hóa
+              </span>
+              <span v-if="splitItemModal.item.Ma_hang" class="sm-head-code-pill">{{ splitItemModal.item.Ma_hang }}</span>
+            </div>
+            <div class="m-grab-head-stack">
+              <span class="m-grab-eyebrow">{{ splitItemModal.item.Ma_hang || 'Tách dòng báo giá' }}</span>
+              <span class="m-grab-title">Tách dòng hàng hóa</span>
+            </div>
+            <button type="button" class="x" @click="closeSplitItemModal" aria-label="Đóng">✕</button>
+          </div>
+
+          <div class="split-merge-modal-body">
+            <!-- Target Product Summary Card -->
+            <div class="sm-target-card">
+              <div class="sm-target-main">
+                <div class="sm-target-name">{{ splitItemModal.item.Ten_hang || 'Sản phẩm trong báo giá' }}</div>
+                <div class="sm-target-meta">
+                  <span v-if="splitItemModal.item.Ma_hang">Mã: <b>{{ splitItemModal.item.Ma_hang }}</b></span>
+                  <span>•</span>
+                  <span>Đơn giá KH hiện tại: <b class="is-emerald">{{ formatVND(Math.round(unitPriceRaw(splitItemModal.item))) }} ₫</b></span>
+                </div>
+              </div>
+              <div class="sm-target-qty-badge">
+                <span class="sm-qty-lbl">Đang gộp</span>
+                <strong class="sm-qty-val">SL: {{ splitItemModal.curQty }} {{ splitItemModal.item.DVT || 'ĐV' }}</strong>
+              </div>
+            </div>
+
+            <div class="sm-section-label">Chọn phương thức tách dòng:</div>
+
+            <div class="sm-options-list">
+              <!-- TÙY CHỌN 1: KHÔI PHỤC LẠI CÁC DÒNG & MỨC GIÁ CŨ TRƯỚC KHI GỘP (NẾU CÓ LỊCH SỬ GỘP) -->
+              <label
+                v-if="splitItemModal.hasMergeHistory"
+                class="sm-option-card"
+                :class="{ 'is-selected': splitItemModal.mode === 'restore_history' }"
+                @click="splitItemModal.mode = 'restore_history'"
+              >
+                <div class="sm-opt-top">
+                  <span class="sm-radio-circle">
+                    <span v-if="splitItemModal.mode === 'restore_history'" class="sm-radio-dot"></span>
+                  </span>
+                  <div class="sm-opt-title-wrap">
+                    <div class="sm-opt-title">
+                      Khôi phục {{ splitItemModal.mergeHistoryRows.length }} dòng &amp; mức giá gốc trước khi gộp
+                      <span class="sm-recommend-tag">Khuyên dùng</span>
+                    </div>
+                    <div class="sm-opt-desc">
+                      Tách trả lại đúng số lượng và mức giá riêng biệt của từng dòng trước lúc bạn gộp.
+                    </div>
+                  </div>
+                </div>
+                <div class="sm-history-preview-list">
+                  <div
+                    v-for="(hRow, hIdx) in splitItemModal.mergeHistoryRows"
+                    :key="'hist-row-' + hIdx"
+                    class="sm-history-preview-item"
+                  >
+                    <span class="sm-hist-idx">Dòng #{{ hIdx + 1 }}</span>
+                    <span class="sm-hist-sl">SL: <b>{{ Math.max(1, toNum(hRow.So_luong, 1)) }}</b></span>
+                    <span class="sm-hist-price">Đơn giá KH: <b>{{ formatVND(Math.round(unitPriceRaw(hRow))) }} ₫</b></span>
+                    <span v-if="toNum(hRow.muc_phan_tram_off, 0) > 0" class="sm-hist-off">-{{ round2(toNum(hRow.muc_phan_tram_off, 0)) }}% Off</span>
+                  </div>
+                </div>
+              </label>
+
+              <!-- TÙY CHỌN 2: TÁCH ĐỀU THÀNH N DÒNG (MỖI DÒNG SL = 1) -->
+              <label
+                v-if="splitItemModal.curQty > 1"
+                class="sm-option-card"
+                :class="{ 'is-selected': splitItemModal.mode === 'split_all_unit' }"
+                @click="splitItemModal.mode = 'split_all_unit'"
+              >
+                <div class="sm-opt-top">
+                  <span class="sm-radio-circle">
+                    <span v-if="splitItemModal.mode === 'split_all_unit'" class="sm-radio-dot"></span>
+                  </span>
+                  <div class="sm-opt-title-wrap">
+                    <div class="sm-opt-title">
+                      Tách toàn bộ thành {{ Math.min(50, splitItemModal.curQty) }} dòng riêng biệt (Mỗi dòng SL = 1)
+                    </div>
+                    <div class="sm-opt-desc">
+                      Mỗi đơn vị sản phẩm nằm trên 1 hàng độc lập với đơn giá {{ formatVND(Math.round(unitPriceRaw(splitItemModal.item))) }} ₫ để bạn tùy ý chỉnh sửa riêng.
+                    </div>
+                  </div>
+                </div>
+              </label>
+
+              <!-- TÙY CHỌN 3: TÁCH THEO SỐ LƯỢNG TÙY CHỌN (CHIA 2 DÒNG + ĐẶT GIÁ RIÊNG) -->
+              <div
+                v-if="splitItemModal.curQty >= 2"
+                class="sm-option-card"
+                :class="{ 'is-selected': splitItemModal.mode === 'split_custom' }"
+                @click="splitItemModal.mode = 'split_custom'"
+              >
+                <div class="sm-opt-top">
+                  <span class="sm-radio-circle">
+                    <span v-if="splitItemModal.mode === 'split_custom'" class="sm-radio-dot"></span>
+                  </span>
+                  <div class="sm-opt-title-wrap">
+                    <div class="sm-opt-title">
+                      Tách lẻ số lượng ra 1 dòng mới (Chia làm 2 dòng)
+                    </div>
+                    <div class="sm-opt-desc">
+                      Phù hợp khi chỉ có một vài cái áp dụng mức giá hoặc chiết khấu khác.
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="splitItemModal.mode === 'split_custom'" class="sm-custom-split-box" @click.stop>
+                  <div class="sm-split-qty-row">
+                    <div class="sm-split-col">
+                      <span class="sm-split-col-lbl">Dòng gốc giữ lại</span>
+                      <strong class="sm-split-col-val">{{ Math.max(1, splitItemModal.curQty - splitItemModal.splitQty) }} {{ splitItemModal.item.DVT || 'ĐV' }}</strong>
+                    </div>
+                    <div class="sm-split-arrow">→</div>
+                    <div class="sm-split-col is-highlight">
+                      <span class="sm-split-col-lbl">Số lượng tách ra dòng mới</span>
+                      <div class="sm-stepper-control">
+                        <button type="button" class="sm-step-btn" :disabled="splitItemModal.splitQty <= 1" @click.stop="stepSplitModalCustomQty(-1)">−</button>
+                        <input
+                          type="number"
+                          class="sm-step-input"
+                          :min="1"
+                          :max="Math.max(1, splitItemModal.curQty - 1)"
+                          v-model.number="splitItemModal.splitQty"
+                        />
+                        <button type="button" class="sm-step-btn" :disabled="splitItemModal.splitQty >= splitItemModal.curQty - 1" @click.stop="stepSplitModalCustomQty(1)">+</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <label class="sm-custom-price-toggle">
+                    <input type="checkbox" v-model="splitItemModal.customPriceEnabled" />
+                    <span>Đặt luôn Đơn giá / % Off riêng cho dòng mới tách ra</span>
+                  </label>
+
+                  <div v-if="splitItemModal.customPriceEnabled" class="sm-custom-price-grid">
+                    <div class="sm-field">
+                      <label>Đơn giá báo khách mới (VND)</label>
+                      <FormattedInput
+                        :modelValue="splitItemModal.customUnitPriceVnd"
+                        :decimals="0"
+                        @update:modelValue="splitItemModal.customUnitPriceVnd = $event"
+                        placeholder="Nhập đơn giá..."
+                      />
+                    </div>
+                    <div class="sm-field">
+                      <label>% Chiết khấu (Off) dòng mới</label>
+                      <FormattedInput
+                        :modelValue="splitItemModal.customMucOffPct"
+                        :decimals="2"
+                        @update:modelValue="splitItemModal.customMucOffPct = $event"
+                        placeholder="0%"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-actions split-merge-modal-foot">
+            <button type="button" class="sm-btn-cancel" @click="closeSplitItemModal">Hủy bỏ</button>
+            <button type="button" class="sm-btn-confirm" @click="confirmSplitItemModal">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Xác nhận tách dòng</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- ================== MODAL 2: CHỌN CÁC DÒNG CÙNG LOẠI ĐỂ GỘP & ĐỒNG BỘ GIÁ ================== -->
+    <Transition name="async-modal">
+      <div
+        v-if="mergeSyncModal.show"
+        class="modal vip-modal-overlay split-merge-modal-overlay"
+        style="z-index: 10043;"
+        @click.self="closeMergeSyncModal"
+      >
+        <div class="modal-card vip-modal-card merge-sync-modal-card" role="dialog" aria-modal="true">
+          <div class="modal-head modal-head-themed split-merge-modal-head">
+            <div class="dt-only-head" style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; color: #ffffff;">
+                <path d="m8 6 4-4 4 4"></path>
+                <path d="M12 2v10.3a4 4 0 0 1-1.172 2.872L4 22"></path>
+                <path d="m20 22-5-5"></path>
+              </svg>
+              <span style="font-weight: 800; font-size: 14.5px; color: #ffffff; text-transform: uppercase; letter-spacing: 0.4px;">
+                Gộp sản phẩm cùng loại &amp; Đồng bộ giá
+              </span>
+              <span class="sm-head-code-pill">{{ mergeSyncModal.conflictGroups.length }} mã hàng</span>
+            </div>
+            <div class="m-grab-head-stack">
+              <span class="m-grab-eyebrow">Gộp dòng trùng mã • Tích chọn &amp; Đồng bộ giá</span>
+              <span class="m-grab-title">Gộp sản phẩm cùng loại</span>
+            </div>
+            <button type="button" class="x" @click="closeMergeSyncModal" aria-label="Đóng">✕</button>
+          </div>
+
+          <div class="split-merge-modal-body">
+            <div class="sm-conflict-banner">
+              <div class="sm-conflict-banner-ico">✓</div>
+              <div class="sm-conflict-banner-txt">
+                Tích chọn <b>các dòng cùng mã hàng</b> muốn gộp lại thành 1 dòng (các dòng bỏ tích sẽ được giữ nguyên riêng biệt).
+                Nếu các dòng được tích có <b>mức giá khác nhau</b>, bạn có thể chọn mức giá đồng bộ ngay bên dưới.
+              </div>
+            </div>
+
+            <div
+              v-for="(cg, cgIdx) in mergeSyncModal.conflictGroups"
+              :key="'conflict-grp-' + cg.mergeKey"
+              class="sm-conflict-group-box"
+            >
+              <div class="sm-cg-header">
+                <div class="sm-cg-title-col">
+                  <div class="sm-cg-title">
+                    <span v-if="mergeSyncModal.conflictGroups.length > 1" class="sm-cg-index">#{{ cgIdx + 1 }}</span>
+                    <span>{{ cg.tenHang || cg.maHang }}</span>
+                  </div>
+                  <div class="sm-cg-sub">
+                    <span v-if="cg.maHang" class="sm-cg-code">Mã: <b>{{ cg.maHang }}</b></span>
+                    <span>•</span>
+                    <span>Tổng tiền các dòng đã tích: <b>{{ formatVND(cg.currentSumCustVnd) }} ₫</b></span>
+                  </div>
+                </div>
+                <div class="sm-cg-badge">
+                  Đã tích {{ cg.checkedRowFlags.filter(Boolean).length }}/{{ cg.indices.length }} dòng → <b>Tổng SL: {{ cg.totalQty }} {{ cg.dvt }}</b>
+                </div>
+              </div>
+
+              <!-- DANH SÁCH Ô TICK CÁC DÒNG CÙNG LOẠI ĐỂ NGƯỜI DÙNG CHỌN DÒNG MUỐN GỘP -->
+              <div class="sm-row-check-section">
+                <div class="sm-row-check-head">
+                  <span class="sm-row-check-title">Tích chọn các dòng muốn gộp ({{ cg.checkedRowFlags.filter(Boolean).length }}/{{ cg.items.length }} dòng):</span>
+                  <button
+                    type="button"
+                    class="sm-row-check-all-btn"
+                    @click.stop="selectAllMergeSyncRows(cg, cg.checkedRowFlags.filter(Boolean).length < cg.items.length)"
+                  >
+                    {{ cg.checkedRowFlags.filter(Boolean).length < cg.items.length ? 'Chọn tất cả dòng' : 'Chỉ chọn 2 dòng đầu' }}
+                  </button>
+                </div>
+                <div class="sm-row-check-list">
+                  <label
+                    v-for="(rowIt, rowPos) in cg.items"
+                    :key="cg.mergeKey + '-chk-' + rowPos"
+                    class="sm-row-check-item"
+                    :class="{ 'is-checked': cg.checkedRowFlags[rowPos] }"
+                    @click.prevent="toggleMergeSyncRowCheck(cg, rowPos)"
+                  >
+                    <input
+                      type="checkbox"
+                      :checked="cg.checkedRowFlags[rowPos]"
+                      tabindex="-1"
+                      readonly
+                    />
+                    <div class="sm-rci-main">
+                      <span class="sm-rci-pos">Dòng #{{ rowPos + 1 }} <small>(STT {{ cg.indices[rowPos] + 1 }})</small></span>
+                      <span class="sm-rci-qty">SL: <b>{{ Math.max(1, Math.floor(toNum(rowIt.So_luong, 1))) }} {{ cg.dvt }}</b></span>
+                    </div>
+                    <div class="sm-rci-price">
+                      <span class="sm-rci-uprice">Đơn giá: <b>{{ formatVND(Math.round(unitPriceRaw(rowIt))) }} ₫</b></span>
+                      <span v-if="round2(getGocNumber(rowIt, '_muc_phan_tram_off_goc', toNum(rowIt.muc_phan_tram_off, 0))) > 0" class="sm-rci-off">
+                        -{{ round2(getGocNumber(rowIt, '_muc_phan_tram_off_goc', toNum(rowIt.muc_phan_tram_off, 0))) }}% Off
+                      </span>
+                      <span class="sm-rci-total">TT: <b>{{ formatVND(Math.round(lineTruocThueRaw(rowIt))) }} ₫</b></span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <div v-if="!cg.hasPriceConflict" class="sm-same-price-notice">
+                <span>✓ Các dòng đang tích chọn có cùng mức đơn giá (<b>{{ formatVND(cg.options[0]?.unitPriceCustVnd || 0) }} ₫</b>) — Sẵn sàng gộp thành 1 dòng (SL: <b>{{ cg.totalQty }} {{ cg.dvt }}</b>).</span>
+              </div>
+
+              <div v-else class="sm-options-list">
+                <div class="sm-options-list-label">Các dòng đã tích có đơn giá khác nhau — Chọn mức giá đồng bộ sau khi gộp:</div>
+                <div
+                  v-for="opt in cg.options"
+                  :key="cg.mergeKey + '-' + opt.optionId"
+                  class="sm-option-card is-merge-opt"
+                  :class="{ 'is-selected': cg.selectedOptionId === opt.optionId }"
+                  @click="cg.selectedOptionId = opt.optionId"
+                >
+                  <div class="sm-opt-top">
+                    <span class="sm-radio-circle">
+                      <span v-if="cg.selectedOptionId === opt.optionId" class="sm-radio-dot"></span>
+                    </span>
+                    <div class="sm-opt-title-wrap">
+                      <div class="sm-opt-title-row">
+                        <span class="sm-opt-title">{{ opt.label }}</span>
+                        <span
+                          v-if="opt.type === 'weighted_avg'"
+                          class="sm-recommend-tag is-sky"
+                        >
+                          Giữ nguyên tổng tiền
+                        </span>
+                      </div>
+                      <div class="sm-opt-desc">{{ opt.subLabel }}</div>
+                    </div>
+                  </div>
+
+                  <!-- Bảng chi tiết thông số giá của phương án -->
+                  <div v-if="opt.type !== 'custom'" class="sm-price-metrics-strip">
+                    <div class="sm-pm-cell">
+                      <span class="sm-pm-lbl">Đơn giá Khách</span>
+                      <strong class="sm-pm-val is-emerald">{{ formatVND(opt.unitPriceCustVnd) }} ₫</strong>
+                    </div>
+                    <div class="sm-pm-cell">
+                      <span class="sm-pm-lbl">Giá vốn / Tiêu chuẩn</span>
+                      <strong class="sm-pm-val is-amber">{{ formatVND(opt.costPriceVnd) }} ₫</strong>
+                    </div>
+                    <div class="sm-pm-cell">
+                      <span class="sm-pm-lbl">TT sau gộp (SL {{ cg.totalQty }})</span>
+                      <strong class="sm-pm-val is-sky">{{ formatVND(opt.mergedTotalCustVnd) }} ₫</strong>
+                    </div>
+                    <div class="sm-pm-cell">
+                      <span class="sm-pm-lbl">Chênh lệch tổng tiền</span>
+                      <strong
+                        class="sm-pm-val"
+                        :class="opt.diffVsCurrentTotalVnd === 0 ? 'is-neutral' : (opt.diffVsCurrentTotalVnd > 0 ? 'is-emerald' : 'is-rose')"
+                      >
+                        {{ opt.diffVsCurrentTotalVnd === 0 ? 'Không đổi (0 ₫)' : ((opt.diffVsCurrentTotalVnd > 0 ? '+' : '') + formatVND(opt.diffVsCurrentTotalVnd) + ' ₫') }}
+                      </strong>
+                    </div>
+                  </div>
+
+                  <!-- Ô nhập khi chọn Tự nhập mức giá đồng bộ tùy chỉnh -->
+                  <div v-else-if="cg.selectedOptionId === 'custom'" class="sm-custom-price-grid" style="margin-top: 10px;" @click.stop>
+                    <div class="sm-field">
+                      <label>Đơn giá báo khách đồng bộ (VND / 1 {{ cg.dvt }})</label>
+                      <FormattedInput
+                        :modelValue="cg.customUnitPriceVnd"
+                        :decimals="0"
+                        @update:modelValue="cg.customUnitPriceVnd = $event"
+                        placeholder="Nhập đơn giá đồng bộ..."
+                      />
+                    </div>
+                    <div class="sm-field">
+                      <label>Giá vốn / Giá tiêu chuẩn (VND / 1 {{ cg.dvt }})</label>
+                      <FormattedInput
+                        :modelValue="cg.customCostPriceVnd"
+                        :decimals="0"
+                        @update:modelValue="cg.customCostPriceVnd = $event"
+                        placeholder="Nhập giá vốn..."
+                      />
+                    </div>
+                    <div class="sm-custom-live-summary">
+                      <span>Thành tiền sau gộp ({{ cg.totalQty }} {{ cg.dvt }}): <b>{{ formatVND(Math.round((cg.customUnitPriceVnd || 0) * cg.totalQty)) }} ₫</b></span>
+                      <span>
+                        Chênh lệch:
+                        <b :class="Math.round((cg.customUnitPriceVnd || 0) * cg.totalQty - cg.currentSumCustVnd) >= 0 ? 'is-emerald' : 'is-rose'">
+                          {{ (Math.round((cg.customUnitPriceVnd || 0) * cg.totalQty - cg.currentSumCustVnd) >= 0 ? '+' : '') + formatVND(Math.round((cg.customUnitPriceVnd || 0) * cg.totalQty - cg.currentSumCustVnd)) }} ₫
+                        </b>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-actions split-merge-modal-foot">
+            <button type="button" class="sm-btn-cancel" @click="closeMergeSyncModal">Hủy bỏ</button>
+            <button type="button" class="sm-btn-confirm" @click="confirmMergeSyncModal">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Xác nhận Gộp các dòng đã tích</span>
             </button>
           </div>
         </div>
@@ -37240,61 +41624,75 @@ h3 [class^="lucide-"] {
   display: inline-flex !important;
   align-items: center !important;
   gap: 5px !important;
-  background: rgba(245, 158, 11, 0.16) !important;
-  color: #fbbf24 !important;
-  border: 1px solid rgba(245, 158, 11, 0.42) !important;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid #d97706 !important;
   border-radius: 6px !important;
   padding: 3px 9px !important;
   font-size: 11px !important;
   font-weight: 700 !important;
   width: max-content !important;
   white-space: nowrap !important;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.28) !important;
   transition: all 0.18s ease !important;
 }
 .inline-normal-edit {
   display: inline-flex !important;
   align-items: center !important;
   gap: 5px !important;
-  background: rgba(59, 130, 246, 0.16) !important;
-  color: #60a5fa !important;
-  border: 1px solid rgba(59, 130, 246, 0.42) !important;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(52, 211, 153, 0.45) !important;
   border-radius: 6px !important;
   padding: 3px 9px !important;
   font-size: 11px !important;
   font-weight: 700 !important;
   width: max-content !important;
   white-space: nowrap !important;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25) !important;
   transition: all 0.18s ease !important;
 }
+.inline-adjust span,
 .inline-adjust i,
 .inline-adjust [class^="lucide-"] {
-  color: inherit !important;
+  color: #ffffff !important;
   font-size: 12px !important;
 }
+.inline-adjust span {
+  font-size: 11px !important;
+}
+.inline-normal-edit span,
 .inline-normal-edit i,
 .inline-normal-edit [class^="lucide-"] {
-  color: inherit !important;
+  color: #ffffff !important;
   font-size: 12px !important;
 }
+.inline-normal-edit span {
+  font-size: 11px !important;
+}
 .inline-adjust:hover {
-  background: rgba(245, 158, 11, 0.28) !important;
-  border-color: #fbbf24 !important;
-  color: #fde68a !important;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%) !important;
+  border-color: #f59e0b !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 10px rgba(245, 158, 11, 0.38) !important;
   transform: translateY(-1px);
 }
 .inline-normal-edit:hover {
-  background: rgba(59, 130, 246, 0.28) !important;
-  border-color: #60a5fa !important;
-  color: #93c5fd !important;
+  background: linear-gradient(135deg, #34d399 0%, #10b981 100%) !important;
+  border-color: #34d399 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.38) !important;
   transform: translateY(-1px);
 }
+.inline-adjust:hover span,
 .inline-adjust:hover i,
 .inline-adjust:hover [class^="lucide-"] {
-  color: #fde68a !important;
+  color: #ffffff !important;
 }
+.inline-normal-edit:hover span,
 .inline-normal-edit:hover i,
 .inline-normal-edit:hover [class^="lucide-"] {
-  color: #93c5fd !important;
+  color: #ffffff !important;
 }
 
 
@@ -37843,15 +42241,35 @@ hr { border: none; border-top: 1px solid #1e293b; margin: 12px 0; }
 .btn-add-icon { font-size: 12px; font-weight: 800; }
 
 .btn-del {
-  width: 28px; height: 28px; padding: 0;
-  background: #ef4444; color: #ffffff;
-  border: none; border-radius: 6px;
-  transition: all .2s; min-width: 28px;
-  box-shadow: none;
-  font-weight: bold;
-  font-size: 14px;
+  width: 26px; height: 26px; min-width: 26px; padding: 0; margin: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.25);
+  transition: all 0.18s ease;
+  font-weight: 800;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
 }
-.btn-del:hover { background: #dc2626; color: #ffffff; transform: none; }
+.btn-del:hover {
+  background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+  border-color: #f87171;
+  color: #ffffff;
+  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.38);
+  transform: scale(1.06);
+}
+.btn-del:active {
+  transform: scale(0.94);
+}
+.modal-actions .btn-del {
+  width: auto;
+  height: auto;
+  border-radius: 8px;
+  padding: 10px 20px;
+}
 
 /* ===== TABLE WRAPPER ===== */
 .quote-table-container {
@@ -38156,7 +42574,8 @@ td.dvt { font-family: inherit; white-space: normal; }
 .col-tt   { width: 105px; text-align: right; }
 .col-vat  { width: 85px; text-align: right; }
 .col-loi  { width: 110px; text-align: right; color: #059669; }
-.col-del  { width: 36px; text-align: center; }
+.col-del  { width: 36px; text-align: center; white-space: nowrap; padding-left: 4px !important; padding-right: 4px !important; }
+.col-del-cell { white-space: nowrap; padding-left: 4px !important; padding-right: 4px !important; }
 
 /* Cell Input */
 .quote-center {
@@ -38206,6 +42625,55 @@ td.dvt { font-family: inherit; white-space: normal; }
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
+}
+.sidebar-dock-tabs.is-single-tab {
+  grid-template-columns: minmax(0, 1fr);
+}
+.sidebar-dock-tabs.is-two-tabs {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.pc-right-finance-dock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: auto;
+  padding: 11px 12px 12px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.84);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  position: relative;
+}
+.pc-right-dock-divider {
+  position: relative;
+  height: 2px;
+  margin: -4px -4px 2px -4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent 0%, rgba(56, 189, 248, 0.65) 25%, rgba(16, 185, 129, 0.65) 75%, transparent 100%);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.28);
+}
+.pc-right-dock-head-bar {
+  margin-bottom: 2px !important;
+}
+.pc-right-finance-dock .totals-box.dock-tab-panel {
+  background: rgba(9, 13, 22, 0.55);
+  border-radius: 10px;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.pc-right-sticky-actions {
+  position: sticky;
+  bottom: -12px;
+  margin: 2px -12px -12px -12px !important;
+  padding: 10px 12px 12px 12px !important;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.96) 0%, #0f172a 100%) !important;
+  border: none !important;
+  border-top: 1px solid rgba(16, 185, 129, 0.35) !important;
+  border-radius: 0 0 18px 18px !important;
+  box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.45) !important;
+  z-index: 6;
 }
 .dock-tab-btn {
   width: 100% !important;
@@ -41379,16 +45847,16 @@ td.dvt { font-family: inherit; white-space: normal; }
     height: 28px !important;
     padding: 0 !important;
     margin: 0 !important;
-    border-radius: 7px !important;
-    background: rgba(239, 68, 68, 0.14) !important;
-    border: 1px solid rgba(239, 68, 68, 0.35) !important;
-    color: #f87171 !important;
+    border-radius: 50% !important;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+    border: 1px solid rgba(248, 113, 113, 0.45) !important;
+    color: #ffffff !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
     flex-shrink: 0 !important;
     cursor: pointer !important;
-    box-shadow: none !important;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.25) !important;
   }
 
   .m-qcard-move-toggle {
@@ -42480,9 +46948,10 @@ td.dvt { font-family: inherit; white-space: normal; }
   }
 
   .page.theme-light-blue .m-qcard-del {
-    background: #fef2f2 !important;
-    border-color: #fecaca !important;
-    color: #dc2626 !important;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+    border-color: #dc2626 !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.25) !important;
   }
 
   .page.theme-light-blue .m-qcard-move-toggle,
@@ -43229,6 +47698,25 @@ td.dvt { font-family: inherit; white-space: normal; }
   position: relative;
 }
 
+.quote-tab-item[draggable="true"] {
+  cursor: grab;
+}
+
+.quote-tab-item[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.quote-tab-item.is-dragging {
+  opacity: 0.52;
+  transform: scale(0.97);
+  border-style: dashed !important;
+  z-index: 6;
+}
+
+.quote-tab-reorder-move {
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+
 .quote-tab-item:hover {
   background: rgba(30, 41, 59, 0.95);
   border-color: rgba(100, 116, 139, 0.8);
@@ -43263,11 +47751,50 @@ td.dvt { font-family: inherit; white-space: normal; }
 }
 
 .quote-tab-title {
-  max-width: 210px;
+  max-width: 165px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   line-height: 1.3;
+}
+
+.quote-tab-item.active .quote-tab-title {
+  cursor: text;
+}
+
+#app .page .quote-tab-item input.quote-tab-rename-input {
+  width: 145px !important;
+  min-width: 96px !important;
+  max-width: 175px !important;
+  height: 22px !important;
+  min-height: 22px !important;
+  margin: 0 !important;
+  padding: 0 6px !important;
+  border-radius: 5px !important;
+  border: 1px solid #38bdf8 !important;
+  background: rgba(2, 6, 23, 0.88) !important;
+  color: #f8fafc !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2) !important;
+}
+
+#app .page .quote-tab-item input.quote-tab-rename-input::placeholder {
+  color: #64748b !important;
+  font-weight: 500 !important;
+}
+
+#app .page.theme-light-blue .quote-tab-item input.quote-tab-rename-input {
+  background: #ffffff !important;
+  border-color: #2563eb !important;
+  color: #0f172a !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16) !important;
+}
+
+#app .page.theme-light-blue .quote-tab-item input.quote-tab-rename-input::placeholder {
+  color: #94a3b8 !important;
 }
 
 .quote-tab-badge {
@@ -43537,10 +48064,26 @@ td.dvt { font-family: inherit; white-space: normal; }
   box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25) !important;
 }
 
-.page.theme-light-blue .bottom-totals.left-sidebar-dock .totals-box.dock-tab-panel {
+.page.theme-light-blue .pc-right-finance-dock {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05) !important;
+}
+.page.theme-light-blue .pc-right-dock-divider {
+  background: linear-gradient(90deg, transparent 0%, #3b82f6 25%, #10b981 75%, transparent 100%) !important;
+  box-shadow: none !important;
+}
+.page.theme-light-blue .bottom-totals.left-sidebar-dock .totals-box.dock-tab-panel,
+.page.theme-light-blue .pc-right-finance-dock .totals-box.dock-tab-panel {
   background: #ffffff !important;
   border: 1px solid #bfdbfe !important;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04) !important;
+}
+
+.page.theme-light-blue .pc-right-sticky-actions {
+  background: linear-gradient(180deg, #f0f7ff 0%, #e0ecff 100%) !important;
+  border-top: 1px solid #93c5fd !important;
+  box-shadow: 0 -4px 14px rgba(30, 64, 175, 0.08) !important;
 }
 
 .page.theme-light-blue .step-customer .totals-header {
@@ -43753,25 +48296,49 @@ td.dvt { font-family: inherit; white-space: normal; }
 .page.theme-light-blue .group-title {
   color: #1e3a8a !important;
 }
-.page.theme-light-blue .inline-normal-edit {
-  background: #eff6ff !important;
-  color: #1d4ed8 !important;
-  border: 1px solid #93c5fd !important;
+#app .page.theme-light-blue .inline-normal-edit {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid #1d4ed8 !important;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25) !important;
 }
-.page.theme-light-blue .inline-normal-edit:hover {
-  background: #dbeafe !important;
-  border-color: #3b82f6 !important;
-  color: #1e40af !important;
+#app .page.theme-light-blue .inline-normal-edit span,
+#app .page.theme-light-blue .inline-normal-edit i,
+#app .page.theme-light-blue .inline-normal-edit [class^="lucide-"] {
+  color: #ffffff !important;
 }
-.page.theme-light-blue .inline-adjust {
-  background: #fffbeb !important;
-  color: #b45309 !important;
-  border: 1px solid #fcd34d !important;
+#app .page.theme-light-blue .inline-normal-edit:hover {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  border-color: #2563eb !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.35) !important;
 }
-.page.theme-light-blue .inline-adjust:hover {
-  background: #fef3c7 !important;
+#app .page.theme-light-blue .inline-normal-edit:hover span,
+#app .page.theme-light-blue .inline-normal-edit:hover i,
+#app .page.theme-light-blue .inline-normal-edit:hover [class^="lucide-"] {
+  color: #ffffff !important;
+}
+#app .page.theme-light-blue .inline-adjust {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid #d97706 !important;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.28) !important;
+}
+#app .page.theme-light-blue .inline-adjust span,
+#app .page.theme-light-blue .inline-adjust i,
+#app .page.theme-light-blue .inline-adjust [class^="lucide-"] {
+  color: #ffffff !important;
+}
+#app .page.theme-light-blue .inline-adjust:hover {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%) !important;
   border-color: #f59e0b !important;
-  color: #92400e !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 10px rgba(245, 158, 11, 0.38) !important;
+}
+#app .page.theme-light-blue .inline-adjust:hover span,
+#app .page.theme-light-blue .inline-adjust:hover i,
+#app .page.theme-light-blue .inline-adjust:hover [class^="lucide-"] {
+  color: #ffffff !important;
 }
 
 .page.theme-light-blue tbody tr.quote-item-row,
@@ -44855,6 +49422,7 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
   flex-direction: column;
   gap: 10px;
   width: 100%;
+  flex: 1;
 }
 
 .cmp-sr-source-bar {
@@ -45008,6 +49576,67 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
 .cmp-sr-block-title.is-green-head {
   background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
   color: #ffffff !important;
+}
+
+.cmp-sr-block-title.is-title-with-action {
+  padding: 3.5px 6px 3.5px 10px;
+  min-height: 27px;
+}
+
+#app .page button.cmp-sr-round-chip {
+  width: auto !important;
+  margin: 0 !important;
+  padding: 0 7px !important;
+  height: 20px !important;
+  min-height: 20px !important;
+  border-radius: 5px !important;
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  background: rgba(15, 23, 42, 0.78) !important;
+  color: #e2e8f0 !important;
+  border: 1px solid rgba(148, 163, 184, 0.42) !important;
+  transition: all 0.15s ease !important;
+  flex-shrink: 0 !important;
+}
+
+#app .page button.cmp-sr-round-chip:hover {
+  background: #0284c7 !important;
+  border-color: #7dd3fc !important;
+  color: #ffffff !important;
+}
+
+#app .page button.cmp-sr-round-chip.is-active {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+  color: #ffffff !important;
+  border-color: #7dd3fc !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.28) !important;
+}
+
+#app .page.theme-light-blue button.cmp-sr-round-chip {
+  background: #ffffff !important;
+  color: #047857 !important;
+  border: 1px solid #a7f3d0 !important;
+}
+
+#app .page.theme-light-blue button.cmp-sr-round-chip:hover {
+  background: #f0f9ff !important;
+  border-color: #0284c7 !important;
+  color: #0284c7 !important;
+}
+
+#app .page.theme-light-blue button.cmp-sr-round-chip.is-active {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+  color: #ffffff !important;
+  border-color: #bae6fd !important;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25) !important;
 }
 
 .cmp-sr-head-reset-btn {
@@ -45476,7 +50105,8 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
     display: contents !important;
   }
 
-  .main-grid.mobile-step-3 .quote-center .cmp-sr-finance-wrap {
+  .main-grid.mobile-step-3 .quote-center .cmp-sr-finance-wrap,
+  .cmp-sr-finance-wrap.is-origin-mode {
     display: none !important;
   }
 
@@ -46065,9 +50695,136 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
   border-radius: 0 0 12px 12px !important;
 }
 
-.page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .modal-qty-box {
-  background: #f8fafc !important;
-  border: 1px solid #cbd5e1 !important;
+/* ===== Cụm Số lượng trong Modal (Kiểu 1: Không khung bao ngoài, 2 nút màu template, số phẳng ở giữa) ===== */
+#app .page .modal-card .modal-qty-box,
+#app .page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .modal-qty-box {
+  margin-top: auto;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 6px 0 !important;
+  box-shadow: none !important;
+}
+
+#app .page .modal-card .modal-qty-box .modal-qty-label {
+  font-size: 12.5px !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  color: #10b981 !important;
+  margin: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+#app .page .modal-card .modal-qty-box .modal-qty-label i {
+  color: #10b981 !important;
+}
+
+#app .page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .modal-qty-box .modal-qty-label,
+#app .page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .modal-qty-box .modal-qty-label i {
+  color: #2563eb !important;
+}
+
+#app .page .modal-card .modal-qty-box .qty {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  transform: none !important;
+}
+
+#app .page .modal-card .modal-qty-box .qty button,
+#app .page .modal-card .modal-qty-box .qty button:last-child {
+  width: 30px !important;
+  min-width: 30px !important;
+  max-width: 30px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  max-height: 30px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 50% !important;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  border: 1px solid rgba(52, 211, 153, 0.45) !important;
+  color: #ffffff !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.28) !important;
+  cursor: pointer !important;
+  transition: all 0.18s ease !important;
+  flex-shrink: 0 !important;
+}
+
+#app .page .modal-card .modal-qty-box .qty button:hover,
+#app .page .modal-card .modal-qty-box .qty button:last-child:hover {
+  background: linear-gradient(135deg, #34d399 0%, #10b981 100%) !important;
+  border-color: #34d399 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4) !important;
+}
+
+#app .page .modal-card .modal-qty-box .qty button:active {
+  transform: scale(0.92) !important;
+}
+
+#app .page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .modal-qty-box .qty button,
+#app .page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .modal-qty-box .qty button:last-child {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+  border: 1px solid #1d4ed8 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.28) !important;
+}
+
+#app .page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .modal-qty-box .qty button:hover,
+#app .page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .modal-qty-box .qty button:last-child:hover {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  border-color: #2563eb !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.38) !important;
+}
+
+#app .page .modal-card .modal-qty-box .qty input.qty-input-inline,
+#app .page .modal-card .modal-qty-box .qty input.qty-input-inline:focus {
+  width: 42px !important;
+  min-width: 36px !important;
+  max-width: 56px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  max-height: 30px !important;
+  padding: 0 2px !important;
+  margin: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+  text-align: center !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  font-variant-numeric: tabular-nums !important;
+  color: #ffffff !important;
+}
+
+#app .page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .modal-qty-box .qty input.qty-input-inline,
+#app .page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .modal-qty-box .qty input.qty-input-inline:focus {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
   color: #0f172a !important;
 }
 
@@ -46086,21 +50843,21 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
   border-bottom-color: #e2e8f0 !important;
 }
 
-.page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) label,
-.page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) label span,
-.page.theme-light-blue .modal-content label,
-.page.theme-light-blue .modal-content label span {
+.page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) label:not(.modal-qty-label),
+.page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) label:not(.modal-qty-label) span,
+.page.theme-light-blue .modal-content label:not(.modal-qty-label),
+.page.theme-light-blue .modal-content label:not(.modal-qty-label) span {
   color: #1e293b !important;
 }
 
 /* Toàn bộ Input, Textarea, Select trong các Modal Light Mode */
-.page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(.qty-input-inline):not(.sm-step-input),
 .page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) textarea,
 .page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) select,
-.page.theme-light-blue .vip-modal-card:not(.export-vip-modal):not(.load-invoice-modal) input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.page.theme-light-blue .vip-modal-card:not(.export-vip-modal):not(.load-invoice-modal) input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(.qty-input-inline):not(.sm-step-input),
 .page.theme-light-blue .vip-modal-card:not(.export-vip-modal):not(.load-invoice-modal) textarea,
 .page.theme-light-blue .vip-modal-card:not(.export-vip-modal):not(.load-invoice-modal) select,
-.page.theme-light-blue .modal-content input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.page.theme-light-blue .modal-content input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(.qty-input-inline):not(.sm-step-input),
 .page.theme-light-blue .modal-content textarea,
 .page.theme-light-blue .modal-content select {
   background: #ffffff !important;
@@ -46108,13 +50865,13 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
   color: #0f172a !important;
 }
 
-.page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) input:focus,
+.page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) input:not(.qty-input-inline):not(.sm-step-input):focus,
 .page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) textarea:focus,
 .page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) select:focus,
-.page.theme-light-blue .vip-modal-card:not(.export-vip-modal):not(.load-invoice-modal) input:focus,
+.page.theme-light-blue .vip-modal-card:not(.export-vip-modal):not(.load-invoice-modal) input:not(.qty-input-inline):not(.sm-step-input):focus,
 .page.theme-light-blue .vip-modal-card:not(.export-vip-modal):not(.load-invoice-modal) textarea:focus,
 .page.theme-light-blue .vip-modal-card:not(.export-vip-modal):not(.load-invoice-modal) select:focus,
-.page.theme-light-blue .modal-content input:focus,
+.page.theme-light-blue .modal-content input:not(.qty-input-inline):not(.sm-step-input):focus,
 .page.theme-light-blue .modal-content textarea:focus,
 .page.theme-light-blue .modal-content select:focus {
   background: #ffffff !important;
@@ -46297,7 +51054,7 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
 }
 
 .page.theme-light-blue .modal-banner-header,
-.page.theme-light-blue .modal-banner-header * {
+.page.theme-light-blue .modal-banner-header *:not(.bg-studio-mob-rail-toggle):not(.bg-studio-mob-rail-toggle *) {
   color: #ffffff !important;
 }
 
@@ -51287,35 +56044,54 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
     box-shadow: none !important;
   }
 
+  #app .page .modal-card .modal-qty-box,
   #app .page .quote-edit-modal-card .modal-qty-box {
-    padding: 8px 12px !important;
-  }
-
-  #app .page .quote-edit-modal-card .modal-qty-box .qty {
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 4px !important;
-  }
-
-  #app .page .quote-edit-modal-card .modal-qty-box .qty button {
-    width: 34px !important;
-    min-width: 34px !important;
-    height: 34px !important;
-    min-height: 34px !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    border-radius: 8px !important;
-    font-size: 16px !important;
+    padding: 6px 0 !important;
+    background: transparent !important;
+    border: none !important;
     box-shadow: none !important;
   }
 
+  #app .page .modal-card .modal-qty-box .qty,
+  #app .page .quote-edit-modal-card .modal-qty-box .qty {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  #app .page .modal-card .modal-qty-box .qty button,
+  #app .page .quote-edit-modal-card .modal-qty-box .qty button {
+    width: 32px !important;
+    min-width: 32px !important;
+    max-width: 32px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    max-height: 32px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 50% !important;
+    font-size: 16px !important;
+  }
+
+  #app .page .modal-card .modal-qty-box .qty input.qty-input-inline,
+  #app .page .modal-card .modal-qty-box .qty .qty-input-inline input,
   #app .page .quote-edit-modal-card .modal-qty-box .qty input.qty-input-inline,
   #app .page .quote-edit-modal-card .modal-qty-box .qty .qty-input-inline input {
-    width: 48px !important;
-    min-width: 48px !important;
+    width: 44px !important;
+    min-width: 40px !important;
+    max-width: 56px !important;
     height: 34px !important;
-    padding: 0 4px !important;
+    min-height: 34px !important;
+    max-height: 34px !important;
+    padding: 0 2px !important;
     text-align: center !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
   }
 
   /* 6. Thanh Footer 3 nút cố định 1 hàng ngang chuẩn Safe Area iPhone */
@@ -55119,7 +59895,15 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
   min-width: 0;
 }
 
-#app .page .sidebar-head-product button.pl-picker-trigger {
+#app .page .cat-picker-root {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  margin-top: 6px;
+}
+
+#app .page .sidebar-head-product button.pl-picker-trigger,
+#app .page .cat-picker-root button.pl-picker-trigger {
   width: 100% !important;
   min-width: 0 !important;
   height: 34px !important;
@@ -55141,19 +59925,22 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
   transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease !important;
 }
 
-#app .page .sidebar-head-product button.pl-picker-trigger:hover {
+#app .page .sidebar-head-product button.pl-picker-trigger:hover,
+#app .page .cat-picker-root button.pl-picker-trigger:hover {
   border-color: rgba(56, 189, 248, 0.45) !important;
   background: rgba(15, 23, 42, 0.96) !important;
   transform: none !important;
 }
 
-#app .page .sidebar-head-product button.pl-picker-trigger.is-custom {
+#app .page .sidebar-head-product button.pl-picker-trigger.is-custom,
+#app .page .cat-picker-root button.pl-picker-trigger.is-custom {
   border-color: rgba(16, 185, 129, 0.55) !important;
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.14) 0%, rgba(15, 23, 42, 0.94) 100%) !important;
   box-shadow: 0 2px 10px rgba(16, 185, 129, 0.12) !important;
 }
 
-#app .page .sidebar-head-product button.pl-picker-trigger.is-open {
+#app .page .sidebar-head-product button.pl-picker-trigger.is-open,
+#app .page .cat-picker-root button.pl-picker-trigger.is-open {
   border-color: #38bdf8 !important;
   box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.16) !important;
 }
@@ -55428,19 +60215,25 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
   gap: 5px !important;
   max-height: 290px !important;
   overflow-y: auto !important;
+  overflow-x: hidden !important;
   padding-right: 2px !important;
 }
 
 #app .page .pl-pop-section-lbl {
+  flex: 0 0 auto !important;
+  flex-shrink: 0 !important;
   font-size: 10px !important;
   font-weight: 800 !important;
   text-transform: uppercase !important;
   letter-spacing: 0.5px !important;
   color: #64748b !important;
   padding: 4px 4px 1px !important;
+  line-height: 1.3 !important;
 }
 
 #app .page .pl-pop-empty {
+  flex: 0 0 auto !important;
+  flex-shrink: 0 !important;
   padding: 16px 10px !important;
   text-align: center !important;
   font-size: 11.5px !important;
@@ -55450,10 +60243,13 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
 
 /* Option Card dung chung cho Desktop Popover & Mobile Bottom Sheet */
 #app .page button.pl-opt-card {
+  flex: 0 0 auto !important;
+  flex-shrink: 0 !important;
   width: 100% !important;
   min-width: 0 !important;
   height: auto !important;
-  min-height: 0 !important;
+  min-height: 36px !important;
+  max-height: none !important;
   margin: 0 !important;
   padding: 8.5px 10px !important;
   border-radius: 10px !important;
@@ -55463,9 +60259,12 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
   display: flex !important;
   flex-direction: column !important;
   align-items: stretch !important;
+  justify-content: center !important;
   gap: 4.5px !important;
   text-align: left !important;
   text-transform: none !important;
+  white-space: normal !important;
+  box-sizing: border-box !important;
   box-shadow: none !important;
   cursor: pointer !important;
   transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease !important;
@@ -55705,7 +60504,12 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
     display: none !important;
   }
 
-  #app .page .sidebar-head-product button.pl-picker-trigger {
+  #app .page .cat-picker-root {
+    margin-top: 5px !important;
+  }
+
+  #app .page .sidebar-head-product button.pl-picker-trigger,
+  #app .page .cat-picker-root button.pl-picker-trigger {
     height: 31px !important;
     min-height: 31px !important;
     max-height: 31px !important;
@@ -55871,27 +60675,31 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
 }
 
 /* =========================================================================
-   LIGHT MODE (.page.theme-light-blue) CHO PRICE LIST PICKER V2
+   LIGHT MODE (.page.theme-light-blue) CHO PRICE LIST PICKER V2 & CATEGORY PICKER
    ========================================================================= */
-#app .page.theme-light-blue .sidebar-head-product button.pl-picker-trigger {
+#app .page.theme-light-blue .sidebar-head-product button.pl-picker-trigger,
+#app .page.theme-light-blue .cat-picker-root button.pl-picker-trigger {
   background: #f8fbff !important;
   border: 1px solid #cbd5e1 !important;
   color: #0f172a !important;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
 }
 
-#app .page.theme-light-blue .sidebar-head-product button.pl-picker-trigger:hover {
+#app .page.theme-light-blue .sidebar-head-product button.pl-picker-trigger:hover,
+#app .page.theme-light-blue .cat-picker-root button.pl-picker-trigger:hover {
   background: #ffffff !important;
   border-color: #60a5fa !important;
 }
 
-#app .page.theme-light-blue .sidebar-head-product button.pl-picker-trigger.is-custom {
+#app .page.theme-light-blue .sidebar-head-product button.pl-picker-trigger.is-custom,
+#app .page.theme-light-blue .cat-picker-root button.pl-picker-trigger.is-custom {
   background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%) !important;
   border-color: #2563eb !important;
   box-shadow: 0 2px 8px rgba(37, 99, 235, 0.12) !important;
 }
 
-#app .page.theme-light-blue .sidebar-head-product button.pl-picker-trigger.is-open {
+#app .page.theme-light-blue .sidebar-head-product button.pl-picker-trigger.is-open,
+#app .page.theme-light-blue .cat-picker-root button.pl-picker-trigger.is-open {
   border-color: #2563eb !important;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
 }
@@ -56216,6 +61024,15 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
     max-width: 120px !important;
     font-size: 12px !important;
     letter-spacing: -0.1px !important;
+  }
+
+  #app .page .quote-tab-item input.quote-tab-rename-input {
+    width: 122px !important;
+    max-width: 136px !important;
+    height: 23px !important;
+    min-height: 23px !important;
+    font-size: 16px !important;
+    padding: 0 5px !important;
   }
 
   /* Pill số lượng SP nhỏ gọn ngay trên từng tab có hàng */
@@ -57540,10 +62357,17 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
 }
 
 #app .page .catalog-search-row {
+  position: relative !important;
+  z-index: 25 !important;
   display: flex !important;
   align-items: center !important;
   gap: 7px !important;
   width: 100% !important;
+}
+
+#app .page .cat-picker-root {
+  position: relative !important;
+  z-index: 20 !important;
 }
 
 #app .page .catalog-unified-bar {
@@ -62945,6 +67769,2215 @@ button.export-quick-fmt-pill.fmt-html:hover {
 
   #app .page .modal-card button.sqfc-btn.is-confirm {
     grid-column: 1 / -1 !important;
+  }
+}
+
+/* =====================================================================
+   TÁCH DÒNG & GỘP DÒNG ĐỒNG BỘ GIÁ (PC TABLE + MOBILE CARD + MODALS)
+   ===================================================================== */
+.quote-sl-cell-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.quote-sl-num {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.row-action-cluster {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+label.q-row-merge-check {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 22px !important;
+  height: 22px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-radius: 5px !important;
+  background: rgba(16, 185, 129, 0.12) !important;
+  border: 1px solid rgba(16, 185, 129, 0.4) !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+  transition: all 0.15s ease !important;
+}
+
+label.q-row-merge-check:hover {
+  background: rgba(16, 185, 129, 0.22) !important;
+  border-color: #10b981 !important;
+}
+
+label.q-row-merge-check.is-checked {
+  background: rgba(16, 185, 129, 0.28) !important;
+  border-color: #10b981 !important;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.35) !important;
+}
+
+label.q-row-merge-check input[type='checkbox'] {
+  width: 14px !important;
+  height: 14px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  cursor: pointer !important;
+  accent-color: #10b981 !important;
+}
+
+.page.theme-light-blue label.q-row-merge-check {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+}
+
+.page.theme-light-blue label.q-row-merge-check.is-checked {
+  background: #dbeafe !important;
+  border-color: #2563eb !important;
+  box-shadow: 0 1px 4px rgba(37, 99, 235, 0.22) !important;
+}
+
+.page.theme-light-blue label.q-row-merge-check input[type='checkbox'] {
+  accent-color: #2563eb !important;
+}
+
+#app .page button.q-row-split-chip,
+#app .page button.q-row-merge-chip {
+  width: auto !important;
+  margin: 0 !important;
+  padding: 2px 7px !important;
+  height: 22px !important;
+  min-height: 22px !important;
+  border-radius: 5px !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 3px !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  font-variant-numeric: tabular-nums !important;
+  transition: all 0.15s ease !important;
+  line-height: 1 !important;
+}
+
+#app .page button.q-row-split-chip {
+  background: rgba(56, 189, 248, 0.14) !important;
+  color: #38bdf8 !important;
+  border: 1px solid rgba(56, 189, 248, 0.4) !important;
+}
+
+#app .page button.q-row-split-chip.has-hist {
+  background: rgba(16, 185, 129, 0.16) !important;
+  color: #34d399 !important;
+  border-color: rgba(16, 185, 129, 0.48) !important;
+}
+
+#app .page button.q-row-split-chip:hover {
+  background: rgba(56, 189, 248, 0.25) !important;
+  transform: translateY(-1px);
+}
+
+#app .page button.q-row-merge-chip {
+  background: rgba(16, 185, 129, 0.15) !important;
+  color: #34d399 !important;
+  border: 1px solid rgba(16, 185, 129, 0.45) !important;
+}
+
+#app .page button.q-row-merge-chip.is-conflict {
+  background: rgba(245, 158, 11, 0.18) !important;
+  color: #fbbf24 !important;
+  border-color: rgba(245, 158, 11, 0.55) !important;
+}
+
+#app .page button.q-row-merge-chip.is-selecting,
+#app .page button.m-qcard-merge-tag.is-selecting {
+  background: #10b981 !important;
+  color: #ffffff !important;
+  border-color: #059669 !important;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.35) !important;
+}
+
+#app .page button.q-row-merge-cancel {
+  width: auto !important;
+  margin: 0 !important;
+  padding: 2px 6px !important;
+  height: 22px !important;
+  min-height: 22px !important;
+  border-radius: 5px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  background: rgba(148, 163, 184, 0.14) !important;
+  color: #94a3b8 !important;
+  border: 1px solid rgba(148, 163, 184, 0.35) !important;
+  line-height: 1 !important;
+}
+
+#app .page button.q-row-merge-cancel:hover {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #f87171 !important;
+  border-color: rgba(239, 68, 68, 0.45) !important;
+}
+
+#app .page.theme-light-blue button.q-row-merge-cancel {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  border-color: #cbd5e1 !important;
+}
+
+#app .page button.q-row-merge-chip:hover {
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+}
+
+/* Mobile Card Split & Merge Tags */
+#app .page button.m-qcard-split-tag,
+#app .page button.m-qcard-merge-tag {
+  width: auto !important;
+  margin: 0 !important;
+  padding: 2px 7px !important;
+  height: 22px !important;
+  border-radius: 6px !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+#app .page button.m-qcard-split-tag {
+  background: rgba(56, 189, 248, 0.14) !important;
+  color: #38bdf8 !important;
+  border: 1px solid rgba(56, 189, 248, 0.4) !important;
+}
+
+#app .page button.m-qcard-split-tag.has-hist {
+  background: rgba(16, 185, 129, 0.16) !important;
+  color: #34d399 !important;
+  border-color: rgba(16, 185, 129, 0.48) !important;
+}
+
+#app .page button.m-qcard-merge-tag {
+  background: rgba(16, 185, 129, 0.15) !important;
+  color: #34d399 !important;
+  border: 1px solid rgba(16, 185, 129, 0.45) !important;
+}
+
+#app .page button.m-qcard-merge-tag.is-conflict {
+  background: rgba(245, 158, 11, 0.18) !important;
+  color: #fbbf24 !important;
+  border-color: rgba(245, 158, 11, 0.55) !important;
+}
+
+/* Light Mode Overrides for Per-Row Split/Merge Chips */
+#app .page.theme-light-blue button.q-row-split-chip,
+#app .page.theme-light-blue button.m-qcard-split-tag {
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+  border-color: #93c5fd !important;
+}
+
+#app .page.theme-light-blue button.q-row-split-chip.has-hist,
+#app .page.theme-light-blue button.m-qcard-split-tag.has-hist {
+  background: #ecfdf5 !important;
+  color: #047857 !important;
+  border-color: #6ee7b7 !important;
+}
+
+#app .page.theme-light-blue button.q-row-merge-chip,
+#app .page.theme-light-blue button.m-qcard-merge-tag {
+  background: #ecfdf5 !important;
+  color: #047857 !important;
+  border-color: #6ee7b7 !important;
+}
+
+#app .page.theme-light-blue button.q-row-merge-chip.is-conflict,
+#app .page.theme-light-blue button.m-qcard-merge-tag.is-conflict {
+  background: #fffbeb !important;
+  color: #b45309 !important;
+  border-color: #fcd34d !important;
+}
+
+/* Modal Cards: Split Item & Merge Sync */
+.modal .modal-card.split-item-modal-card {
+  width: 620px;
+  max-width: 95vw;
+  max-height: 88vh;
+  padding: 0 !important;
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #0f172a;
+  border: 1px solid #334155;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);
+}
+
+.modal .modal-card.merge-sync-modal-card {
+  width: 760px;
+  max-width: 96vw;
+  max-height: 90vh;
+  padding: 0 !important;
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #0f172a;
+  border: 1px solid #334155;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);
+}
+
+.split-merge-modal-head {
+  padding: 13px 20px !important;
+  border-bottom: none !important;
+  border-radius: 0 !important;
+  flex-shrink: 0;
+  justify-content: space-between;
+  position: relative;
+}
+
+.sm-head-code-pill {
+  background: rgba(0, 0, 0, 0.24);
+  color: #ffffff;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 800;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.split-merge-modal-body {
+  padding: 16px 20px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sm-target-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.sm-target-main {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sm-target-name {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #f8fafc;
+  line-height: 1.35;
+}
+
+.sm-target-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 12px;
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
+}
+
+.sm-target-meta b {
+  color: #e2e8f0;
+}
+
+.sm-target-meta b.is-emerald {
+  color: #34d399;
+}
+
+.sm-target-qty-badge {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.sm-qty-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #38bdf8;
+  letter-spacing: 0.4px;
+}
+
+.sm-qty-val {
+  font-size: 13px;
+  font-weight: 800;
+  color: #f8fafc;
+  font-variant-numeric: tabular-nums;
+}
+
+.sm-section-label {
+  font-size: 11.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #94a3b8;
+}
+
+.sm-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sm-option-card {
+  display: flex !important;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1.5px solid #334155;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  margin: 0 !important;
+  text-transform: none !important;
+}
+
+.sm-option-card:hover {
+  border-color: #475569;
+  background: rgba(30, 41, 59, 0.75);
+}
+
+.sm-option-card.is-selected {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: #10b981;
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.25);
+}
+
+.sm-opt-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.sm-radio-circle {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #64748b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.sm-option-card.is-selected .sm-radio-circle {
+  border-color: #10b981;
+}
+
+.sm-radio-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #10b981;
+}
+
+.sm-opt-title-wrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.sm-opt-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sm-opt-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #f8fafc;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sm-opt-desc {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+.sm-recommend-tag {
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.18);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  white-space: nowrap;
+}
+
+.sm-recommend-tag.is-sky {
+  background: rgba(56, 189, 248, 0.16);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.45);
+}
+
+.sm-history-preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px dashed rgba(148, 163, 184, 0.25);
+}
+
+.sm-history-preview-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: #cbd5e1;
+  font-variant-numeric: tabular-nums;
+}
+
+.sm-hist-idx {
+  font-weight: 800;
+  color: #38bdf8;
+}
+
+.sm-hist-price b {
+  color: #34d399;
+}
+
+.sm-hist-off {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.sm-custom-split-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.sm-split-qty-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.sm-split-col {
+  flex: 1;
+  min-width: 140px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid #334155;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sm-split-col.is-highlight {
+  border-color: rgba(56, 189, 248, 0.5);
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.sm-split-col-lbl {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.sm-split-col-val {
+  font-size: 15px;
+  font-weight: 800;
+  color: #f8fafc;
+  font-variant-numeric: tabular-nums;
+}
+
+.sm-split-arrow {
+  font-size: 18px;
+  font-weight: 900;
+  color: #38bdf8;
+}
+
+.sm-stepper-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#app .page .sm-stepper-control button.sm-step-btn,
+#app .page .sm-stepper-control button.sm-step-btn:last-child {
+  width: 28px !important;
+  min-width: 28px !important;
+  max-width: 28px !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  border: 1px solid rgba(52, 211, 153, 0.45) !important;
+  color: #ffffff !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.18s ease !important;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.28) !important;
+}
+
+#app .page .sm-stepper-control button.sm-step-btn:hover:not(:disabled),
+#app .page .sm-stepper-control button.sm-step-btn:last-child:hover:not(:disabled) {
+  background: linear-gradient(135deg, #34d399 0%, #10b981 100%) !important;
+  border-color: #34d399 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4) !important;
+}
+
+#app .page.theme-light-blue .sm-stepper-control button.sm-step-btn,
+#app .page.theme-light-blue .sm-stepper-control button.sm-step-btn:last-child {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+  border: 1px solid #1d4ed8 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.28) !important;
+}
+
+#app .page.theme-light-blue .sm-stepper-control button.sm-step-btn:hover:not(:disabled),
+#app .page.theme-light-blue .sm-stepper-control button.sm-step-btn:last-child:hover:not(:disabled) {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  border-color: #2563eb !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.38) !important;
+}
+
+#app .page .sm-stepper-control input.sm-step-input,
+#app .page .sm-stepper-control input.sm-step-input:focus {
+  width: 44px !important;
+  min-width: 38px !important;
+  max-width: 56px !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
+  margin: 0 !important;
+  padding: 0 2px !important;
+  text-align: center !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  font-variant-numeric: tabular-nums !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  color: #ffffff !important;
+}
+
+#app .page.theme-light-blue .sm-stepper-control input.sm-step-input,
+#app .page.theme-light-blue .sm-stepper-control input.sm-step-input:focus {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  color: #0f172a !important;
+}
+
+.sm-custom-price-toggle {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+  color: #e2e8f0 !important;
+  text-transform: none !important;
+  margin: 0 !important;
+  cursor: pointer;
+}
+
+.sm-custom-price-toggle input[type='checkbox'] {
+  width: 15px !important;
+  height: 15px !important;
+  margin: 0 !important;
+  accent-color: #10b981;
+}
+
+.sm-custom-price-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.sm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.sm-field label {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #94a3b8 !important;
+  margin: 0 !important;
+  text-transform: none !important;
+}
+
+.sm-custom-live-summary {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(30, 41, 59, 0.75);
+  font-size: 12px;
+  color: #cbd5e1;
+  font-variant-numeric: tabular-nums;
+}
+
+.sm-custom-live-summary b.is-emerald {
+  color: #34d399;
+}
+
+.sm-custom-live-summary b.is-rose {
+  color: #f87171;
+}
+
+/* Conflict Groups in Merge Sync Modal */
+.sm-conflict-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fde68a;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.sm-conflict-banner-ico {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #f59e0b;
+  color: #0f172a;
+  font-weight: 900;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.sm-conflict-group-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(30, 41, 59, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.sm-cg-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed rgba(148, 163, 184, 0.22);
+}
+
+.sm-cg-title-col {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.sm-cg-title {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #f8fafc;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sm-cg-index {
+  color: #38bdf8;
+  font-weight: 900;
+}
+
+.sm-cg-sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
+}
+
+.sm-cg-sub b {
+  color: #e2e8f0;
+}
+
+.sm-cg-badge {
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #38bdf8;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sm-price-metrics-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.sm-pm-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sm-pm-lbl {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sm-pm-val {
+  font-size: 12.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: #f8fafc;
+}
+
+.sm-pm-val.is-emerald {
+  color: #34d399;
+}
+
+.sm-pm-val.is-amber {
+  color: #fbbf24;
+}
+
+.sm-pm-val.is-sky {
+  color: #38bdf8;
+}
+
+.sm-pm-val.is-rose {
+  color: #f87171;
+}
+
+.sm-pm-val.is-neutral {
+  color: #94a3b8;
+}
+
+.split-merge-modal-foot {
+  padding: 12px 20px !important;
+  border-top: 1px solid rgba(148, 163, 184, 0.16) !important;
+  background: rgba(15, 23, 42, 0.95) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+  flex-shrink: 0;
+  margin: 0 !important;
+}
+
+#app .page .split-merge-modal-foot button.sm-btn-cancel,
+#app .page .split-merge-modal-foot button.sm-btn-confirm {
+  width: auto !important;
+  margin: 0 !important;
+  padding: 9px 18px !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  white-space: nowrap !important;
+}
+
+#app .page .split-merge-modal-foot button.sm-btn-cancel {
+  background: #1e293b !important;
+  color: #cbd5e1 !important;
+  border: 1px solid #475569 !important;
+}
+
+#app .page .split-merge-modal-foot button.sm-btn-confirm {
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 3px 10px rgba(16, 185, 129, 0.3) !important;
+}
+
+/* Light Mode (.page.theme-light-blue) for Split & Merge Modals */
+.page.theme-light-blue .modal .modal-card.split-item-modal-card,
+.page.theme-light-blue .modal .modal-card.merge-sync-modal-card {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.18);
+}
+
+.page.theme-light-blue .sm-target-card,
+.page.theme-light-blue .sm-conflict-group-box {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.page.theme-light-blue .sm-target-name,
+.page.theme-light-blue .sm-cg-title,
+.page.theme-light-blue .sm-opt-title,
+.page.theme-light-blue .sm-qty-val,
+.page.theme-light-blue .sm-split-col-val {
+  color: #0f172a;
+}
+
+.page.theme-light-blue .sm-target-meta,
+.page.theme-light-blue .sm-cg-sub,
+.page.theme-light-blue .sm-opt-desc,
+.page.theme-light-blue .sm-section-label {
+  color: #475569;
+}
+
+.page.theme-light-blue .sm-target-meta b,
+.page.theme-light-blue .sm-cg-sub b {
+  color: #0f172a;
+}
+
+.page.theme-light-blue .sm-target-meta b.is-emerald {
+  color: #059669;
+}
+
+.page.theme-light-blue .sm-target-qty-badge,
+.page.theme-light-blue .sm-cg-badge {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.page.theme-light-blue .sm-qty-lbl {
+  color: #1d4ed8;
+}
+
+.page.theme-light-blue .sm-option-card {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+.page.theme-light-blue .sm-option-card:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.page.theme-light-blue .sm-option-card.is-selected {
+  background: #eff6ff;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2);
+}
+
+.page.theme-light-blue .sm-option-card.is-selected .sm-radio-circle {
+  border-color: #2563eb;
+}
+
+.page.theme-light-blue .sm-radio-dot {
+  background: #2563eb;
+}
+
+.page.theme-light-blue .sm-history-preview-list,
+.page.theme-light-blue .sm-custom-split-box,
+.page.theme-light-blue .sm-price-metrics-strip,
+.page.theme-light-blue .sm-custom-live-summary {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.page.theme-light-blue .sm-history-preview-item {
+  color: #334155;
+}
+
+.page.theme-light-blue .sm-hist-idx,
+.page.theme-light-blue .sm-pm-val.is-sky {
+  color: #1d4ed8;
+}
+
+.page.theme-light-blue .sm-hist-price b,
+.page.theme-light-blue .sm-pm-val.is-emerald {
+  color: #059669;
+}
+
+.page.theme-light-blue .sm-pm-val.is-amber {
+  color: #b45309;
+}
+
+.page.theme-light-blue .sm-pm-val.is-rose {
+  color: #dc2626;
+}
+
+.page.theme-light-blue .sm-split-col {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+.page.theme-light-blue .sm-split-col.is-highlight {
+  background: #eff6ff;
+  border-color: #60a5fa;
+}
+
+.page.theme-light-blue .sm-custom-price-toggle {
+  color: #0f172a !important;
+}
+
+/* Checklist các dòng cùng sản phẩm trong Modal Gộp */
+.sm-row-check-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.sm-row-check-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sm-row-check-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: #e2e8f0;
+}
+
+#app .page button.sm-row-check-all-btn {
+  width: auto !important;
+  margin: 0 !important;
+  padding: 3px 9px !important;
+  height: 24px !important;
+  border-radius: 6px !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  background: rgba(56, 189, 248, 0.14) !important;
+  color: #38bdf8 !important;
+  border: 1px solid rgba(56, 189, 248, 0.4) !important;
+  cursor: pointer !important;
+}
+
+.sm-row-check-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+label.sm-row-check-item {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  flex-wrap: wrap !important;
+  padding: 8px 10px !important;
+  margin: 0 !important;
+  border-radius: 8px !important;
+  background: rgba(30, 41, 59, 0.55) !important;
+  border: 1px solid #334155 !important;
+  cursor: pointer !important;
+  text-transform: none !important;
+  transition: all 0.15s ease !important;
+}
+
+label.sm-row-check-item.is-checked {
+  background: rgba(16, 185, 129, 0.12) !important;
+  border-color: #10b981 !important;
+}
+
+label.sm-row-check-item input[type='checkbox'] {
+  width: 15px !important;
+  height: 15px !important;
+  margin: 0 !important;
+  accent-color: #10b981 !important;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.sm-rci-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 140px;
+  font-size: 12.5px;
+  color: #f8fafc;
+}
+
+.sm-rci-pos {
+  font-weight: 800;
+  color: #38bdf8;
+}
+
+.sm-rci-pos small {
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.sm-rci-qty {
+  color: #cbd5e1;
+}
+
+.sm-rci-price {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: #cbd5e1;
+}
+
+.sm-rci-uprice b {
+  color: #34d399;
+}
+
+.sm-rci-off {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(239, 68, 68, 0.16);
+  color: #f87171;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.sm-rci-total b {
+  color: #f8fafc;
+}
+
+.sm-same-price-notice {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #34d399;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.sm-options-list-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: #fbbf24;
+  margin-bottom: 2px;
+}
+
+.page.theme-light-blue .sm-row-check-section {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+.page.theme-light-blue .sm-row-check-title,
+.page.theme-light-blue .sm-rci-main,
+.page.theme-light-blue .sm-rci-total b {
+  color: #0f172a;
+}
+
+.page.theme-light-blue .sm-rci-pos {
+  color: #1d4ed8;
+}
+
+.page.theme-light-blue .sm-rci-qty,
+.page.theme-light-blue .sm-rci-price {
+  color: #334155;
+}
+
+.page.theme-light-blue .sm-rci-uprice b {
+  color: #059669;
+}
+
+.page.theme-light-blue label.sm-row-check-item {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+
+.page.theme-light-blue label.sm-row-check-item.is-checked {
+  background: #eff6ff !important;
+  border-color: #2563eb !important;
+}
+
+.page.theme-light-blue label.sm-row-check-item input[type='checkbox'] {
+  accent-color: #2563eb !important;
+}
+
+.page.theme-light-blue .sm-same-price-notice {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+  color: #047857;
+}
+
+.page.theme-light-blue .sm-options-list-label {
+  color: #b45309;
+}
+
+.page.theme-light-blue .sm-conflict-banner {
+  background: #fffbeb;
+  border-color: #fcd34d;
+  color: #92400e;
+}
+
+.page.theme-light-blue .split-merge-modal-foot {
+  background: #f8fafc !important;
+  border-top-color: #e2e8f0 !important;
+}
+
+#app .page.theme-light-blue .split-merge-modal-foot button.sm-btn-cancel {
+  background: #ffffff !important;
+  color: #334155 !important;
+  border-color: #cbd5e1 !important;
+}
+
+#app .page.theme-light-blue .split-merge-modal-foot button.sm-btn-confirm {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+  box-shadow: 0 3px 10px rgba(37, 99, 235, 0.25) !important;
+}
+
+@media (max-width: 1100px) {
+  .modal .modal-card.split-item-modal-card,
+  .modal .modal-card.merge-sync-modal-card {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    border-radius: 0 !important;
+    border: none !important;
+  }
+
+  .sm-price-metrics-strip {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .sm-custom-price-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ============================================================================
+   BULK SELECT & BULK PRICE ADJUSTMENT SYSTEM (SỬA HÀNG LOẠT BÁO GIÁ)
+   ============================================================================ */
+
+/* 1. Nút "Sửa hàng loạt" trên Header bảng Báo giá */
+#app .page .table-header-box button.btn-bulk-edit-quote {
+  width: auto !important;
+  margin: 0 !important;
+  padding: 5px 11px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  border-radius: 7px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  font-size: 11.5px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.2px !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  background: rgba(56, 189, 248, 0.14) !important;
+  color: #38bdf8 !important;
+  border: 1px solid rgba(56, 189, 248, 0.42) !important;
+  box-shadow: 0 2px 6px rgba(2, 6, 23, 0.25) !important;
+  transition: all 0.18s ease !important;
+  flex-shrink: 0 !important;
+}
+
+#app .page .table-header-box button.btn-bulk-edit-quote:hover {
+  background: rgba(56, 189, 248, 0.24) !important;
+  border-color: #38bdf8 !important;
+  color: #f8fafc !important;
+  transform: translateY(-1px);
+}
+
+#app .page .table-header-box button.btn-bulk-edit-quote.is-active {
+  background: linear-gradient(135deg, #0284c7, #2563eb) !important;
+  color: #ffffff !important;
+  border-color: #60a5fa !important;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.28), 0 4px 12px rgba(37, 99, 235, 0.35) !important;
+}
+
+/* 2. Thanh Công cụ Chọn nhanh & Lọc thông minh (.bulk-select-subbar) */
+.bulk-btn-count-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  font-size: 10.5px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.bulk-select-subbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 14px;
+  background: linear-gradient(90deg, rgba(15, 23, 42, 0.96) 0%, rgba(30, 41, 59, 0.96) 100%);
+  border-bottom: 1px solid rgba(56, 189, 248, 0.32);
+  box-shadow: inset 0 1px 0 rgba(56, 189, 248, 0.12);
+}
+
+.bss-left-controls,
+.bss-right-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.bss-selected-counter {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #cbd5e1;
+  font-size: 11.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.bss-selected-counter b {
+  color: #38bdf8;
+  font-weight: 900;
+}
+
+.bss-mini-box {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1.5px solid #64748b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.bss-mini-box.is-checked,
+.bss-mini-box.is-indeterminate {
+  background: #38bdf8;
+  border-color: #38bdf8;
+  color: #0f172a;
+}
+
+.bss-minus-bar {
+  width: 8px;
+  height: 2px;
+  background: #0f172a;
+  border-radius: 1px;
+}
+
+#app .page .bulk-select-subbar button.bss-ctrl-btn {
+  width: auto !important;
+  margin: 0 !important;
+  padding: 4px 10px !important;
+  height: 27px !important;
+  border-radius: 6px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  background: rgba(30, 41, 59, 0.9) !important;
+  color: #cbd5e1 !important;
+  border: 1px solid #475569 !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  transition: all 0.15s ease !important;
+}
+
+#app .page .bulk-select-subbar button.bss-ctrl-btn:hover,
+#app .page .bulk-select-subbar button.bss-ctrl-btn.is-active {
+  background: rgba(56, 189, 248, 0.18) !important;
+  color: #38bdf8 !important;
+  border-color: #38bdf8 !important;
+}
+
+.bss-quick-chips-scroll {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.bss-chips-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  margin-right: 2px;
+  white-space: nowrap;
+}
+
+#app .page .bulk-select-subbar button.bss-filter-chip {
+  width: auto !important;
+  margin: 0 !important;
+  padding: 3px 9px !important;
+  height: 24px !important;
+  border-radius: 999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  background: rgba(15, 23, 42, 0.75) !important;
+  color: #cbd5e1 !important;
+  border: 1px solid rgba(148, 163, 184, 0.3) !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  transition: all 0.15s ease !important;
+}
+
+#app .page .bulk-select-subbar button.bss-filter-chip.is-some {
+  border-color: rgba(56, 189, 248, 0.55) !important;
+  color: #38bdf8 !important;
+}
+
+#app .page .bulk-select-subbar button.bss-filter-chip.is-all {
+  background: rgba(16, 185, 129, 0.18) !important;
+  color: #34d399 !important;
+  border-color: #10b981 !important;
+}
+
+#app .page .bulk-select-subbar button.bss-open-studio-btn {
+  width: auto !important;
+  margin: 0 !important;
+  padding: 4px 11px !important;
+  height: 27px !important;
+  border-radius: 7px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  font-size: 11.5px !important;
+  font-weight: 800 !important;
+  background: linear-gradient(135deg, #0284c7, #2563eb) !important;
+  color: #ffffff !important;
+  border: 1px solid #60a5fa !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3) !important;
+}
+
+#app .page .bulk-select-subbar button.bss-open-studio-btn.is-contract-edit {
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  border-color: #34d399 !important;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3) !important;
+}
+
+#app .page .bulk-select-subbar button.bss-open-studio-btn:disabled {
+  opacity: 0.45 !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+}
+
+#app .page .bulk-select-subbar button.bss-exit-btn {
+  width: 27px !important;
+  min-width: 27px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  height: 27px !important;
+  border-radius: 7px !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  background: rgba(239, 68, 68, 0.14) !important;
+  color: #f87171 !important;
+  border: 1px solid rgba(239, 68, 68, 0.36) !important;
+  cursor: pointer !important;
+}
+
+/* 3. Checkbox trong Bảng PC & Card Mobile */
+label.bulk-th-check-label,
+label.bulk-row-check-label {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  margin: 0 !important;
+  cursor: pointer !important;
+  user-select: none !important;
+}
+
+input.bulk-native-checkbox,
+input.bulk-th-checkbox,
+input.bulk-group-checkbox,
+input.bulk-row-checkbox {
+  width: 15px !important;
+  height: 15px !important;
+  margin: 0 !important;
+  accent-color: #38bdf8 !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+}
+
+.bulk-row-stt-num {
+  font-size: 12px;
+  font-weight: 700;
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
+}
+
+.bulk-group-count-tag,
+.bulk-group-sel-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 800;
+  background: rgba(56, 189, 248, 0.18);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  margin-left: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+tr.quote-item-row.is-bulk-row-checked > td {
+  background: rgba(56, 189, 248, 0.11) !important;
+}
+
+tr.quote-item-row.is-bulk-row-checked > td:first-child {
+  box-shadow: inset 3px 0 0 #38bdf8 !important;
+}
+
+.m-qcard.is-bulk-checked,
+.m-qcard.is-bulk-card-checked {
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 0 1.5px rgba(56, 189, 248, 0.45), 0 6px 16px rgba(2, 6, 23, 0.35) !important;
+}
+
+label.m-qcard-bulk-check-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  padding: 2px 8px !important;
+  margin: 0 4px 0 0 !important;
+  border-radius: 6px !important;
+  background: rgba(56, 189, 248, 0.14) !important;
+  border: 1px solid rgba(56, 189, 248, 0.38) !important;
+  color: #38bdf8 !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  cursor: pointer !important;
+}
+
+label.m-qcard-bulk-check-pill.is-checked {
+  background: rgba(16, 185, 129, 0.18) !important;
+  border-color: #10b981 !important;
+  color: #34d399 !important;
+}
+
+label.m-qcard-bulk-check-pill input[type='checkbox'] {
+  width: 14px !important;
+  height: 14px !important;
+  margin: 0 !important;
+  accent-color: #38bdf8 !important;
+}
+
+.m-qcard-bulk-box {
+  display: none;
+}
+
+/* 4. Thanh Tác Vụ Nổi (Floating Bulk Action Bar - Chỉ hiển thị trên Mobile, ẩn trên PC vì PC đã có 2 nút ở Header) */
+.bulk-floating-action-bar {
+  display: none !important;
+}
+
+.bulk-fab-summary {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+.bulk-fab-count-badge {
+  min-width: 26px;
+  height: 26px;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #0284c7, #2563eb);
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
+}
+
+.bulk-fab-title-compact {
+  font-size: 11px;
+  font-weight: 800;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+.bulk-fab-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+#app .page .bulk-floating-action-bar button.bulk-fab-btn {
+  width: auto !important;
+  margin: 0 !important;
+  padding: 0 10px !important;
+  height: 32px !important;
+  border-radius: 9px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  font-size: 11.5px !important;
+  font-weight: 800 !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  transition: all 0.16s ease !important;
+}
+
+#app .page .bulk-floating-action-bar button.bulk-fab-btn:disabled {
+  opacity: 0.45 !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+}
+
+#app .page .bulk-floating-action-bar button.bulk-fab-btn.is-primary-cust {
+  flex: 1 1 0 !important;
+  background: linear-gradient(135deg, #0284c7, #2563eb) !important;
+  color: #ffffff !important;
+  border: 1px solid #60a5fa !important;
+  box-shadow: 0 3px 10px rgba(37, 99, 235, 0.32) !important;
+}
+
+#app .page .bulk-floating-action-bar button.bulk-fab-btn.is-primary-cont {
+  flex: 1 1 0 !important;
+  background: linear-gradient(135deg, #059669, #10b981) !important;
+  color: #ffffff !important;
+  border: 1px solid #34d399 !important;
+  box-shadow: 0 3px 10px rgba(16, 185, 129, 0.3) !important;
+}
+
+#app .page .bulk-floating-action-bar button.bulk-fab-btn.is-danger-del {
+  padding: 0 !important;
+  width: 32px !important;
+  min-width: 32px !important;
+  flex: 0 0 32px !important;
+  background: rgba(239, 68, 68, 0.16) !important;
+  color: #f87171 !important;
+  border: 1px solid rgba(239, 68, 68, 0.4) !important;
+}
+
+#app .page .bulk-floating-action-bar button.bulk-fab-btn.is-close-bar {
+  padding: 0 !important;
+  width: 32px !important;
+  min-width: 32px !important;
+  flex: 0 0 32px !important;
+  background: rgba(15, 23, 42, 0.85) !important;
+  color: #94a3b8 !important;
+  border: 1px solid #475569 !important;
+}
+
+.bulk-float-bar-enter-active,
+.bulk-float-bar-leave-active {
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bulk-float-bar-enter-from,
+.bulk-float-bar-leave-to {
+  opacity: 0;
+  transform: translateY(14px);
+}
+
+/* 5. Modal Sửa Giá Hàng Loạt - Dạng bảng danh sách hàng dọc (.bulk-adjust-modal-card) */
+#app .page .adjust-price-modal-card.bulk-adjust-modal-card {
+  width: min(680px, 95vw) !important;
+  max-width: 680px !important;
+  max-height: 90vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+#app .page .adjust-price-modal-card.bulk-adjust-modal-card .bulk-vmodal-body {
+  overflow-y: auto !important;
+  max-height: calc(90vh - 130px) !important;
+  padding: 12px 14px !important;
+}
+
+#app .page .adjust-price-modal-card.bulk-adjust-modal-card .bulk-vtable-wrap {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.65);
+  overflow: hidden;
+}
+
+#app .page .adjust-price-modal-card.bulk-adjust-modal-card .bulk-vtable-head {
+  display: grid;
+  grid-template-columns: minmax(145px, 1.2fr) 126px 168px minmax(135px, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(2, 6, 23, 0.75);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  font-size: 11px;
+  font-weight: 800;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+#app .page .adjust-price-modal-card.bulk-adjust-modal-card .bulk-vtable-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+#app .page .adjust-price-modal-card.bulk-adjust-modal-card .bulk-vrow {
+  display: grid;
+  grid-template-columns: minmax(145px, 1.2fr) 126px 168px minmax(135px, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.55);
+  transition: background 0.14s ease;
+}
+
+#app .page .adjust-price-modal-card.bulk-adjust-modal-card .bulk-vrow:last-child {
+  border-bottom: none;
+}
+
+#app .page .adjust-price-modal-card.bulk-adjust-modal-card .bulk-vrow:hover {
+  background: rgba(30, 41, 59, 0.55);
+}
+
+#app .page .adjust-price-modal-card.bulk-adjust-modal-card .bulk-vrow.is-active {
+  background: rgba(37, 99, 235, 0.14);
+}
+
+#app .page .adjust-price-modal-card.bulk-adjust-modal-card .bulk-vcol-label {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+#app .page .adjust-price-modal-card.bulk-adjust-modal-card .bulk-vrow-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#app .page .adjust-price-modal-card.bulk-adjust-modal-card .bulk-vrow.is-active .bulk-vrow-name {
+  color: #60a5fa;
+  font-weight: 800;
+}
+
+#app .page .adjust-price-modal-card.bulk-adjust-modal-card .bulk-seg-mini {
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  padding: 2px;
+  border-radius: 7px;
+  background: rgba(2, 6, 23, 0.65);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  gap: 2px;
+}
+
+#app .page .adjust-price-modal-card.bulk-adjust-modal-card button.bulk-seg-mini-btn {
+  flex: 1 1 0 !important;
+  width: auto !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 5px !important;
+  height: 26px !important;
+  min-height: 26px !important;
+  border-radius: 5px !important;
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  color: #94a3b8 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  box-shadow: none !important;
+  transition: all 0.12s ease !important;
+}
+
+#app .page .adjust-price-modal-card.bulk-adjust-modal-card button.bulk-seg-mini-btn:hover {
+  color: #e2e8f0 !important;
+}
+
+#app .page .adjust-price-modal-card.bulk-adjust-modal-card button.bulk-seg-mini-btn.active {
+  background: #1e293b !important;
+  color: #f8fafc !important;
+  border-color: rgba(148, 163, 184, 0.38) !important;
+  font-weight: 800 !important;
+}
+
+#app .page .adjust-price-modal-card.bulk-adjust-modal-card button.bulk-seg-mini-btn.is-inc.active {
+  background: rgba(16, 185, 129, 0.18) !important;
+  color: #34d399 !important;
+  border-color: rgba(16, 185, 129, 0.45) !important;
+}
+
+#app .page .adjust-price-modal-card.bulk-adjust-modal-card button.bulk-seg-mini-btn.is-dec.active {
+  background: rgba(244, 63, 94, 0.18) !important;
+  color: #fb7185 !important;
+  border-color: rgba(244, 63, 94, 0.45) !important;
+}
+
+#app .page .adjust-price-modal-card.bulk-adjust-modal-card button.bulk-seg-mini-btn.is-set.active {
+  background: rgba(59, 130, 246, 0.2) !important;
+  color: #60a5fa !important;
+  border-color: rgba(59, 130, 246, 0.48) !important;
+}
+
+#app .page .adjust-price-modal-card.bulk-adjust-modal-card .bulk-vinput-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 30px;
+  border-radius: 7px;
+  background: rgba(2, 6, 23, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  padding: 0 7px;
+  gap: 4px;
+  transition: border-color 0.14s ease, box-shadow 0.14s ease;
+}
+
+#app .page .adjust-price-modal-card.bulk-adjust-modal-card .bulk-vinput-box:focus-within,
+#app .page .adjust-price-modal-card.bulk-adjust-modal-card .bulk-vinput-box.has-val {
+  border-color: #3b82f6;
+  background: rgba(15, 23, 42, 0.95);
+}
+
+#app .page .adjust-price-modal-card.bulk-adjust-modal-card input.bulk-vrow-input {
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 28px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  text-align: right !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  color: #f8fafc !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+#app .page .adjust-price-modal-card.bulk-adjust-modal-card input.bulk-vrow-input::placeholder {
+  color: #475569 !important;
+  font-weight: 600 !important;
+}
+
+#app .page .adjust-price-modal-card.bulk-adjust-modal-card .bulk-vunit-suffix {
+  font-size: 11px;
+  font-weight: 800;
+  color: #94a3b8;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+#app .page .adjust-price-modal-card.bulk-adjust-modal-card button.bulk-vclear-btn {
+  width: 18px !important;
+  min-width: 18px !important;
+  height: 18px !important;
+  min-height: 18px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(148, 163, 184, 0.2) !important;
+  color: #cbd5e1 !important;
+  font-size: 10px !important;
+  line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+  box-shadow: none !important;
+}
+
+#app .page .adjust-price-modal-card.bulk-adjust-modal-card button.bulk-vclear-btn:hover {
+  background: rgba(239, 68, 68, 0.3) !important;
+  color: #fca5a5 !important;
+}
+
+/* ============================================================================
+   LIGHT BLUE THEME OVERRIDES (.page.theme-light-blue) CHO BULK EDIT
+   ============================================================================ */
+#app .page.theme-light-blue .table-header-box button.btn-bulk-edit-quote {
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+  border-color: #93c5fd !important;
+  box-shadow: none !important;
+}
+
+#app .page.theme-light-blue .table-header-box button.btn-bulk-edit-quote.is-active {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+  color: #ffffff !important;
+  border-color: #1d4ed8 !important;
+}
+
+.page.theme-light-blue .bulk-select-subbar {
+  background: #f0f7ff;
+  border-bottom-color: #bfdbfe;
+  box-shadow: none;
+}
+
+.page.theme-light-blue .bss-selected-counter {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1e40af;
+}
+
+.page.theme-light-blue .bss-selected-counter b {
+  color: #1d4ed8;
+}
+
+#app .page.theme-light-blue .bulk-select-subbar button.bss-ctrl-btn {
+  background: #ffffff !important;
+  color: #334155 !important;
+  border-color: #cbd5e1 !important;
+}
+
+#app .page.theme-light-blue .bulk-select-subbar button.bss-ctrl-btn.is-active {
+  background: #dbeafe !important;
+  color: #1d4ed8 !important;
+  border-color: #2563eb !important;
+}
+
+#app .page.theme-light-blue .bulk-select-subbar button.bss-filter-chip {
+  background: #ffffff !important;
+  color: #334155 !important;
+  border-color: #cbd5e1 !important;
+}
+
+#app .page.theme-light-blue .bulk-select-subbar button.bss-filter-chip.is-all {
+  background: #ecfdf5 !important;
+  color: #047857 !important;
+  border-color: #10b981 !important;
+}
+
+.page.theme-light-blue tr.quote-item-row.is-bulk-row-checked > td {
+  background: #eff6ff !important;
+}
+
+.page.theme-light-blue tr.quote-item-row.is-bulk-row-checked > td:first-child {
+  box-shadow: inset 3px 0 0 #2563eb !important;
+}
+
+.page.theme-light-blue .bulk-floating-action-bar {
+  background: rgba(255, 255, 255, 0.96) !important;
+  border-color: #2563eb !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16) !important;
+}
+
+.page.theme-light-blue .bulk-fab-title-compact {
+  color: #475569;
+}
+
+#app .page.theme-light-blue .bulk-floating-action-bar button.bulk-fab-btn.is-close-bar {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  border-color: #cbd5e1 !important;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card.bulk-adjust-modal-card .bulk-vtable-wrap {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card.bulk-adjust-modal-card .bulk-vtable-head {
+  background: #f1f5f9;
+  color: #475569;
+  border-bottom-color: #cbd5e1;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card.bulk-adjust-modal-card .bulk-vrow {
+  border-bottom-color: #e2e8f0;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card.bulk-adjust-modal-card .bulk-vrow:hover {
+  background: #f8fafc;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card.bulk-adjust-modal-card .bulk-vrow.is-active {
+  background: #eff6ff;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card.bulk-adjust-modal-card .bulk-vrow-name {
+  color: #0f172a;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card.bulk-adjust-modal-card .bulk-vrow.is-active .bulk-vrow-name {
+  color: #1d4ed8;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card.bulk-adjust-modal-card .bulk-seg-mini {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card.bulk-adjust-modal-card button.bulk-seg-mini-btn {
+  color: #64748b !important;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card.bulk-adjust-modal-card button.bulk-seg-mini-btn.active {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #94a3b8 !important;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card.bulk-adjust-modal-card button.bulk-seg-mini-btn.is-inc.active {
+  background: #ecfdf5 !important;
+  color: #047857 !important;
+  border-color: #10b981 !important;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card.bulk-adjust-modal-card button.bulk-seg-mini-btn.is-dec.active {
+  background: #fff1f2 !important;
+  color: #be123c !important;
+  border-color: #f43f5e !important;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card.bulk-adjust-modal-card button.bulk-seg-mini-btn.is-set.active {
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+  border-color: #3b82f6 !important;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card.bulk-adjust-modal-card .bulk-vinput-box {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card.bulk-adjust-modal-card .bulk-vinput-box:focus-within,
+#app .page.theme-light-blue .adjust-price-modal-card.bulk-adjust-modal-card .bulk-vinput-box.has-val {
+  border-color: #2563eb;
+  background: #ffffff;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card.bulk-adjust-modal-card input.bulk-vrow-input {
+  color: #0f172a !important;
+}
+
+#app .page.theme-light-blue .adjust-price-modal-card.bulk-adjust-modal-card input.bulk-vrow-input::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* ============================================================================
+   RESPONSIVE MOBILE CHO BULK EDIT (<= 1100px & <= 680px)
+   ============================================================================ */
+@media (max-width: 1100px) {
+  #app .page .table-header-box button.btn-bulk-edit-quote {
+    order: 3 !important;
+    height: 30px !important;
+    min-height: 30px !important;
+    padding: 0 9px !important;
+    border-radius: 8px !important;
+  }
+
+  /* Trên Mobile: Ẩn 2 nút Sửa giá / Kê giá HĐ ở Header vì đã có Dock bên dưới */
+  #app .page .bulk-select-subbar button.bss-open-studio-btn {
+    display: none !important;
+  }
+
+  /* Trên Mobile: Hiển thị Dock sửa hàng loạt nằm ngay phía trên Dock công cụ (.mobile-screen2-action-bar) */
+  .bulk-floating-action-bar {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    flex-wrap: nowrap !important;
+    position: fixed !important;
+    left: 12px !important;
+    right: 12px !important;
+    bottom: calc(132px + env(safe-area-inset-bottom, 0px)) !important;
+    width: auto !important;
+    max-width: calc(100vw - 24px) !important;
+    margin: 0 auto !important;
+    padding: 7px 10px !important;
+    border-radius: 16px !important;
+    z-index: 955 !important;
+    background: rgba(15, 23, 42, 0.92) !important;
+    border: 1.5px solid rgba(56, 189, 248, 0.55) !important;
+    box-shadow:
+      0 10px 26px rgba(2, 6, 23, 0.58),
+      inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
+    backdrop-filter: blur(22px) saturate(185%) !important;
+    -webkit-backdrop-filter: blur(22px) saturate(185%) !important;
+    transition:
+      bottom 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.24s ease !important;
+  }
+
+  .bulk-floating-action-bar.is-modal-hidden,
+  .page.has-open-modal .bulk-floating-action-bar {
+    transform: translateY(calc(100% + 140px + env(safe-area-inset-bottom, 0px))) scale(0.96) !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  .app-layout.mobile-nav-hidden .bulk-floating-action-bar {
+    bottom: calc(68px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  #app .page .modal .modal-card.adjust-price-modal-card.bulk-adjust-modal-card {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    border-radius: 0 !important;
+  }
+
+  #app .page .adjust-price-modal-card.bulk-adjust-modal-card .bulk-vmodal-body {
+    max-height: none !important;
+    flex: 1 1 auto !important;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1100px) {
+  .bulk-floating-action-bar,
+  .app-layout.mobile-nav-hidden .bulk-floating-action-bar {
+    left: 84px !important;
+    right: 12px !important;
+    bottom: 60px !important;
+    max-width: none !important;
+  }
+}
+
+@media (max-width: 680px) {
+  #app .page .adjust-price-modal-card.bulk-adjust-modal-card .bulk-vtable-head {
+    display: none;
+  }
+
+  #app .page .adjust-price-modal-card.bulk-adjust-modal-card .bulk-vrow {
+    grid-template-columns: 1fr 125px;
+    gap: 6px 8px;
+    padding: 9px 10px;
+  }
+
+  #app .page .bulk-floating-action-bar button.bulk-fab-btn {
+    padding: 0 8px !important;
+    font-size: 11px !important;
+    height: 32px !important;
   }
 }
 </style>

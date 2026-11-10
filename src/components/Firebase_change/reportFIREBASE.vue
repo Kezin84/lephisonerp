@@ -2879,10 +2879,42 @@
               <!-- ======================================================= -->
               <!-- COLUMN 1 (~23%): PHÂN LOẠI · ĐỘ QUAN TRỌNG · THỜI GIAN  -->
               <!-- ======================================================= -->
-              <aside class="modal-group bg-studio-left-rail" data-guide="studio-left-rail">
-                <div class="modal-banner-header is-sky">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                  <span>PHÂN LOẠI &amp; THỜI GIAN</span>
+              <aside
+                class="modal-group bg-studio-left-rail"
+                :class="{ 'is-mob-collapsed': !isMobileLeftRailOpen }"
+                data-guide="studio-left-rail"
+              >
+                <div
+                  class="modal-banner-header is-sky is-mob-collapsible"
+                  @click="toggleMobileLeftRail"
+                >
+                  <div class="modal-banner-left">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <span>PHÂN LOẠI &amp; THỜI GIAN</span>
+                  </div>
+                  <button
+                    type="button"
+                    class="bg-studio-mob-rail-toggle"
+                    :class="{ 'is-open': isMobileLeftRailOpen }"
+                    @click.stop="toggleMobileLeftRail"
+                    :title="isMobileLeftRailOpen ? 'Thu gọn Phân loại & Thời gian' : 'Mở rộng Phân loại & Thời gian'"
+                  >
+                    <span>{{ isMobileLeftRailOpen ? 'Thu gọn' : 'Mở rộng' }}</span>
+                    <svg
+                      class="bg-studio-mob-rail-chevron"
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="13"
+                      height="13"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.6"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </button>
                 </div>
 
                 <div class="modal-group-body bg-studio-rail-body" data-guide="studio-left-field-group">
@@ -3570,7 +3602,7 @@
                           class="bg-file-pill is-emerald"
                         >
                           <span class="bg-studio-file-kind is-bg">BÁO GIÁ</span>
-                          <span class="bg-file-pill-ic" v-html="getFileIconSvg(getExcelFileName(formData, 'link_excel_bao_gia', i, 'Báo giá'))"></span>
+                          <span class="bg-file-pill-ic" v-html="getFileIconSvg(getExcelFileName(formData, 'link_excel_bao_gia', i, 'Báo giá'), link)"></span>
                           <a href="#" @click.prevent.stop="openDirectAttachmentView(link, getExcelFileName(formData, 'link_excel_bao_gia', i, 'Báo giá'), 'bao_gia')" class="bg-file-pill-link" :title="getExcelFileName(formData, 'link_excel_bao_gia', i, 'Báo giá')">
                             {{ formatCalendarFileName(getExcelFileName(formData, 'link_excel_bao_gia', i, 'Báo giá'), 24) }}
                           </a>
@@ -3597,7 +3629,7 @@
                           class="bg-file-pill is-amber"
                         >
                           <span class="bg-studio-file-kind is-mh">DXMH/KHÁC</span>
-                          <span class="bg-file-pill-ic" v-html="getFileIconSvg(getExcelFileName(formData, 'link_excel_mua_hang', i, 'DXMH/Khác'))"></span>
+                          <span class="bg-file-pill-ic" v-html="getFileIconSvg(getExcelFileName(formData, 'link_excel_mua_hang', i, 'DXMH/Khác'), link)"></span>
                           <a href="#" @click.prevent.stop="openDirectAttachmentView(link, getExcelFileName(formData, 'link_excel_mua_hang', i, 'DXMH/Khác'), 'mua_hang')" class="bg-file-pill-link" :title="getExcelFileName(formData, 'link_excel_mua_hang', i, 'DXMH/Khác')">
                             {{ formatCalendarFileName(getExcelFileName(formData, 'link_excel_mua_hang', i, 'DXMH/Khác'), 24) }}
                           </a>
@@ -4083,7 +4115,7 @@
                   class="bg-file-pill is-emerald"
                 >
                   <span class="bg-studio-file-kind is-bg">BÁO GIÁ</span>
-                  <span class="bg-file-pill-ic" v-html="getFileIconSvg(getExcelFileName(formData, 'link_excel_bao_gia', i, 'Báo giá'))"></span>
+                  <span class="bg-file-pill-ic" v-html="getFileIconSvg(getExcelFileName(formData, 'link_excel_bao_gia', i, 'Báo giá'), link)"></span>
                   <a href="#" @click.prevent.stop="openDirectAttachmentView(link, getExcelFileName(formData, 'link_excel_bao_gia', i, 'Báo giá'), 'bao_gia')" class="bg-file-pill-link" :title="getExcelFileName(formData, 'link_excel_bao_gia', i, 'Báo giá')">
                     {{ formatCalendarFileName(getExcelFileName(formData, 'link_excel_bao_gia', i, 'Báo giá'), 24) }}
                   </a>
@@ -4107,7 +4139,7 @@
                   class="bg-file-pill is-amber"
                 >
                   <span class="bg-studio-file-kind is-mh">DXMH/KHÁC</span>
-                  <span class="bg-file-pill-ic" v-html="getFileIconSvg(getExcelFileName(formData, 'link_excel_mua_hang', i, 'DXMH/Khác'))"></span>
+                  <span class="bg-file-pill-ic" v-html="getFileIconSvg(getExcelFileName(formData, 'link_excel_mua_hang', i, 'DXMH/Khác'), link)"></span>
                   <a href="#" @click.prevent.stop="openDirectAttachmentView(link, getExcelFileName(formData, 'link_excel_mua_hang', i, 'DXMH/Khác'), 'mua_hang')" class="bg-file-pill-link" :title="getExcelFileName(formData, 'link_excel_mua_hang', i, 'DXMH/Khác')">
                     {{ formatCalendarFileName(getExcelFileName(formData, 'link_excel_mua_hang', i, 'DXMH/Khác'), 24) }}
                   </a>
@@ -5523,7 +5555,7 @@
             >
               <div class="bg-storage-preview">
                 <img v-if="f.link_file && f.link_file.match(/\.(jpeg|jpg|gif|png|webp|svg|bmp)$/i)" :src="f.link_file" alt="" />
-                <svg v-else xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                <span v-else class="bg-storage-file-svg" v-html="getFileIconSvg(f.name, f.link_file)"></span>
               </div>
               <div class="bg-storage-name">{{ f.name }}</div>
               <div v-if="f.Ten_khach_hang || f.Ten_cong_ty" class="bg-target-muted">{{ [f.Ten_cong_ty, f.Ten_khach_hang].filter(Boolean).join(' - ') }}</div>
@@ -7386,6 +7418,16 @@ const applyFilters = () => {
 }
 
 const isModalOpen = ref(false)
+const isMobileLeftRailOpen = ref(false)
+const toggleMobileLeftRail = () => {
+  if (typeof window !== 'undefined' && window.innerWidth > 1100) return
+  isMobileLeftRailOpen.value = !isMobileLeftRailOpen.value
+}
+watch(isModalOpen, (open) => {
+  if (open) {
+    isMobileLeftRailOpen.value = false
+  }
+})
 const isPendingModalOpen = ref(false)
 const isEditing = ref(false)
 const formData = ref({
@@ -8926,9 +8968,9 @@ const formatCalendarFileName = (name, maxLen = 15) => {
 
 const getCalendarAttIconSvg = (att) => {
   if (att && att.kind === 'image') {
-    return '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>';
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24" height="24"><rect x="6" y="8" width="36" height="32" rx="4" fill="#29B6F6"/><circle cx="16.5" cy="17.5" r="4" fill="#FFD54F"/><path fill="#0277BD" d="M23,25l-11,13h26c2.2,0,4-1.8,4-4v-2L31,20L23,25z"/><path fill="#4FC3F7" d="M16,24L6,36c0,2.2,1.8,4,4,4h22L16,24z"/></svg>`;
   }
-  return getFileIconSvg((att && (att.name || att.url)) || '');
+  return getFileIconSvg((att && att.name) || '', (att && att.url) || '');
 };
 
 const openCalendarAttachmentView = (att) => {
@@ -12326,26 +12368,25 @@ const getImgFileName = (dataObj, index) => {
   return `Ảnh ${index + 1}`;
 }
 
-const getFileIconSvg = (fileName) => {
-  const ext = fileName ? fileName.split('.').pop().toLowerCase() : '';
-  const isExcel = ['xls', 'xlsx', 'csv'].includes(ext) || (fileName || '').toLowerCase().includes('excel') || (fileName || '').toLowerCase().includes('báo giá') || (fileName || '').toLowerCase().includes('mua hàng');
-  const isWord = ['doc', 'docx'].includes(ext) || (fileName || '').toLowerCase().includes('word');
-  const isPdf = ['pdf'].includes(ext);
-  const isImage = ['png', 'jpg', 'jpeg', 'gif'].includes(ext);
-  const isArchive = ['zip', 'rar', '7z'].includes(ext);
+const getFileIconSvg = (fileName, fileUrl = '') => {
+  const check = `${fileName || ''} ${fileUrl || ''}`.toLowerCase();
+  const isPdf = /\.pdf(\?|#|\s|$)/i.test(check);
+  const isWord = /\.(docx?|rtf)(\?|#|\s|$)/i.test(check) || (!isPdf && check.includes('word'));
+  const isImage = /\.(png|jpe?g|webp|gif|bmp|svg|jfif|tiff?)(\?|#|\s|$)/i.test(check);
+  const isExcel =
+    /\.(xlsx?|xls|xlsm|xlsb|csv)(\?|#|\s|$)/i.test(check) ||
+    (!isPdf && !isWord && !isImage && (check.includes('excel') || check.includes('báo giá') || check.includes('mua hàng') || check.includes('dxmh')));
 
   if (isExcel) {
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" fill="#10b981"/><path d="M14 2v6h6" fill="#047857" opacity="0.3"/><path d="M9 12l2 3-2 3h2l1-1.5 1 1.5h2l-2-3 2-3h-2l-1 1.5-1-1.5H9z" fill="#ffffff"/></svg>`;
-  } else if (isWord) {
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" fill="#3b82f6"/><path d="M14 2v6h6" fill="#1d4ed8" opacity="0.3"/><path d="M8 12l1 6 1.5-4 1.5 4 1-6h-1.5l-.5 4-.5-4h-1.5l-.5 4-.5-4H8z" fill="#ffffff"/></svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24" height="24"><path fill="#4CAF50" d="M41,10H25v28h16c0.553,0,1-0.447,1-1V11C42,10.447,41.553,10,41,10z"/><path fill="#FFF" d="M32 15H39V18H32zM32 25H39V28H32zM32 30H39V33H32zM32 20H39V23H32zM25 15H30V18H25zM25 25H30V28H25zM25 30H30V33H25zM25 20H30V23H25z"/><path fill="#2E7D32" d="M27,42L6,38.746C5.416,38.655,5,38.146,5,37.555v-27.11c0-0.591,0.416-1.1,1-1.191L27,6V42z"/><path fill="#FFF" d="M19.129,31l-2.411-4.561c-0.092-0.171-0.186-0.483-0.284-0.938h-0.037c-0.046,0.215-0.154,0.541-0.324,0.979L13.652,31H9.895l4.462-7.001L10.274,17h3.837l2.001,4.196c0.156,0.331,0.296,0.725,0.42,1.179h0.04c0.078-0.271,0.224-0.68,0.439-1.22L19.237,17h3.515l-4.199,6.939l4.316,7.059h-3.74V31z"/></svg>`;
   } else if (isPdf) {
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" fill="#ef4444"/><path d="M14 2v6h6" fill="#b91c1c" opacity="0.3"/><path d="M8.5 16v-4h2a1.5 1.5 0 0 1 0 3h-1v1h-1zm1-2h1a.5.5 0 0 0 0-1h-1v1zm3 2v-4h2a1.5 1.5 0 0 1 0 3h-1v1h-1zm1-1.5h1a.5.5 0 0 0 0-1h-1v1zm2 1.5v-4h2.5v1h-1.5v.5h1v1h-1v1.5h-1z" fill="#ffffff"/></svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24" height="24"><path fill="#FF1744" d="M38,42H10c-2.2,0-4-1.8-4-4V10c0-2.2,1.8-4,4-4h19l13,13v19C42,40.2,40.2,42,38,42z"/><path fill="#B71C1C" d="M29,6v9c0,2.2,1.8,4,4,4h9L29,6z"/><path fill="#FFF" d="M13.5,27v-8h3.3c1.8,0,2.9,1,2.9,2.6c0,1.6-1.1,2.6-2.9,2.6h-1.4V27H13.5z M15.4,22.6h1.2c0.8,0,1.2-0.4,1.2-1.1c0-0.7-0.4-1.1-1.2-1.1h-1.2V22.6z M21.2,27v-8h3c2.5,0,4.1,1.5,4.1,4c0,2.5-1.6,4-4.1,4H21.2z M23.1,25.4h1c1.4,0,2.2-0.9,2.2-2.4c0-1.5-0.8-2.4-2.2-2.4h-1V25.4z M29.9,27v-8h5.4v1.6h-3.5v1.7h3.1v1.6h-3.1V27H29.9z"/><rect x="13.5" y="30" width="21" height="2" rx="1" fill="#FFF"/><rect x="13.5" y="33.5" width="16" height="2" rx="1" fill="#FFF"/><rect x="13.5" y="37" width="12" height="2" rx="1" fill="#FFF"/></svg>`;
+  } else if (isWord) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24" height="24"><path fill="#2196F3" d="M41,10H25v28h16c0.553,0,1-0.447,1-1V11C42,10.447,41.553,10,41,10z"/><path fill="#FFF" d="M25 15H39V17.5H25zM25 20H39V22.5H25zM25 25H39V27.5H25zM25 30H35V32.5H25z"/><path fill="#1565C0" d="M27,42L6,38.746C5.416,38.655,5,38.146,5,37.555v-27.11c0-0.591,0.416-1.1,1-1.191L27,6V42z"/><path fill="#FFF" d="M21.8,17h-2.7l-1.5,8.6L15.8,17h-2.5l-1.9,8.6L9.9,17H7.1l2.8,14h2.7l1.9-8.3l1.8,8.3H19l2.8-14z"/></svg>`;
   } else if (isImage) {
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" fill="#0ea5e9"/><path d="M14 2v6h6" fill="#0369a1" opacity="0.3"/><circle cx="10" cy="12" r="1.5" fill="#ffffff"/><path d="M7 18l3.5-4.5 2 2.5 3-4L17 18H7z" fill="#ffffff"/></svg>`;
-  } else if (isArchive) {
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" fill="#f59e0b"/><path d="M14 2v6h6" fill="#d97706" opacity="0.3"/><path d="M10 12h4v1h-4v-1zm0 2h4v1h-4v-1zm0 2h4v1h-4v-1z" fill="#ffffff"/></svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24" height="24"><rect x="6" y="8" width="36" height="32" rx="4" fill="#29B6F6"/><circle cx="16.5" cy="17.5" r="4" fill="#FFD54F"/><path fill="#0277BD" d="M23,25l-11,13h26c2.2,0,4-1.8,4-4v-2L31,20L23,25z"/><path fill="#4FC3F7" d="M16,24L6,36c0,2.2,1.8,4,4,4h22L16,24z"/></svg>`;
   }
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" fill="#94a3b8"/><path d="M14 2v6h6" fill="#64748b" opacity="0.3"/></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24" height="24"><path fill="#90CAF9" d="M38,42H10c-2.2,0-4-1.8-4-4V10c0-2.2,1.8-4,4-4h19l13,13v19C42,40.2,40.2,42,38,42z"/><path fill="#1976D2" d="M29,6v9c0,2.2,1.8,4,4,4h9L29,6z"/><rect x="14" y="23" width="20" height="2.5" rx="1.2" fill="#1565C0"/><rect x="14" y="29" width="20" height="2.5" rx="1.2" fill="#1565C0"/><rect x="14" y="35" width="13" height="2.5" rx="1.2" fill="#1565C0"/></svg>`;
 }
 
 const getStatusPillClass = (status) => {
@@ -13654,12 +13695,19 @@ const handleDownloadClick = async (event, fileObj, defaultName) => {
 
 const getQuanLyFileIconSvg = (fileObj) => {
   const type = getFileIconType(fileObj);
-  const imgStyle = "width: 16px; height: 16px; object-fit: contain; border-radius: 2px;";
-  if (type === 'pdf') return `<img src="https://i.ibb.co/3YdHRTFs/unnamed.webp" style="${imgStyle}" />`;
-  if (type === 'word') return `<img src="https://i.ibb.co/d0Y6v4yD/images-7.jpg" style="${imgStyle}" />`;
-  if (type === 'excel') return `<img src="https://i.ibb.co/b5yq09VP/images-8.jpg" style="${imgStyle}" />`;
-  if (type === 'image') return `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#14b8a6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>`;
+  if (type === 'excel') {
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="18" height="18"><path fill="#4CAF50" d="M41,10H25v28h16c0.553,0,1-0.447,1-1V11C42,10.447,41.553,10,41,10z"/><path fill="#FFF" d="M32 15H39V18H32zM32 25H39V28H32zM32 30H39V33H32zM32 20H39V23H32zM25 15H30V18H25zM25 25H30V28H25zM25 30H30V33H25zM25 20H30V23H25z"/><path fill="#2E7D32" d="M27,42L6,38.746C5.416,38.655,5,38.146,5,37.555v-27.11c0-0.591,0.416-1.1,1-1.191L27,6V42z"/><path fill="#FFF" d="M19.129,31l-2.411-4.561c-0.092-0.171-0.186-0.483-0.284-0.938h-0.037c-0.046,0.215-0.154,0.541-0.324,0.979L13.652,31H9.895l4.462-7.001L10.274,17h3.837l2.001,4.196c0.156,0.331,0.296,0.725,0.42,1.179h0.04c0.078-0.271,0.224-0.68,0.439-1.22L19.237,17h3.515l-4.199,6.939l4.316,7.059h-3.74V31z"/></svg>`;
+  }
+  if (type === 'pdf') {
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="18" height="18"><path fill="#FF1744" d="M38,42H10c-2.2,0-4-1.8-4-4V10c0-2.2,1.8-4,4-4h19l13,13v19C42,40.2,40.2,42,38,42z"/><path fill="#B71C1C" d="M29,6v9c0,2.2,1.8,4,4,4h9L29,6z"/><path fill="#FFF" d="M13.5,27v-8h3.3c1.8,0,2.9,1,2.9,2.6c0,1.6-1.1,2.6-2.9,2.6h-1.4V27H13.5z M15.4,22.6h1.2c0.8,0,1.2-0.4,1.2-1.1c0-0.7-0.4-1.1-1.2-1.1h-1.2V22.6z M21.2,27v-8h3c2.5,0,4.1,1.5,4.1,4c0,2.5-1.6,4-4.1,4H21.2z M23.1,25.4h1c1.4,0,2.2-0.9,2.2-2.4c0-1.5-0.8-2.4-2.2-2.4h-1V25.4z M29.9,27v-8h5.4v1.6h-3.5v1.7h3.1v1.6h-3.1V27H29.9z"/><rect x="13.5" y="30" width="21" height="2" rx="1" fill="#FFF"/><rect x="13.5" y="33.5" width="16" height="2" rx="1" fill="#FFF"/><rect x="13.5" y="37" width="12" height="2" rx="1" fill="#FFF"/></svg>`;
+  }
+  if (type === 'word') {
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="18" height="18"><path fill="#2196F3" d="M41,10H25v28h16c0.553,0,1-0.447,1-1V11C42,10.447,41.553,10,41,10z"/><path fill="#FFF" d="M25 15H39V17.5H25zM25 20H39V22.5H25zM25 25H39V27.5H25zM25 30H35V32.5H25z"/><path fill="#1565C0" d="M27,42L6,38.746C5.416,38.655,5,38.146,5,37.555v-27.11c0-0.591,0.416-1.1,1-1.191L27,6V42z"/><path fill="#FFF" d="M21.8,17h-2.7l-1.5,8.6L15.8,17h-2.5l-1.9,8.6L9.9,17H7.1l2.8,14h2.7l1.9-8.3l1.8,8.3H19l2.8-14z"/></svg>`;
+  }
+  if (type === 'image') {
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="18" height="18"><rect x="6" y="8" width="36" height="32" rx="4" fill="#29B6F6"/><circle cx="16.5" cy="17.5" r="4" fill="#FFD54F"/><path fill="#0277BD" d="M23,25l-11,13h26c2.2,0,4-1.8,4-4v-2L31,20L23,25z"/><path fill="#4FC3F7" d="M16,24L6,36c0,2.2,1.8,4,4,4h22L16,24z"/></svg>`;
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="18" height="18"><path fill="#90CAF9" d="M38,42H10c-2.2,0-4-1.8-4-4V10c0-2.2,1.8-4,4-4h19l13,13v19C42,40.2,40.2,42,38,42z"/><path fill="#1976D2" d="M29,6v9c0,2.2,1.8,4,4,4h9L29,6z"/><rect x="14" y="23" width="20" height="2.5" rx="1.2" fill="#1565C0"/><rect x="14" y="29" width="20" height="2.5" rx="1.2" fill="#1565C0"/><rect x="14" y="35" width="13" height="2.5" rx="1.2" fill="#1565C0"/></svg>`;
 };
 
 const getFileName = (fileObj, prefix, index) => {
@@ -21917,16 +21965,17 @@ span[style*="color: #334155"] {
 .bg-file-pill.is-sky { background: var(--sem-sky-bg); border-color: var(--sem-sky-bd); }
 
 .bg-file-pill-ic {
-  width: 15px;
-  height: 15px;
+  width: 17px;
+  height: 17px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 .bg-file-pill-ic svg {
-  width: 15px;
-  height: 15px;
+  width: 17px;
+  height: 17px;
+  display: block;
 }
 
 .bg-file-pill-link {
@@ -22879,6 +22928,16 @@ span[style*="color: #334155"] {
   object-fit: contain;
   border-radius: 4px;
 }
+.bg-storage-preview .bg-storage-file-svg {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.bg-storage-preview .bg-storage-file-svg svg {
+  width: 36px;
+  height: 36px;
+  display: block;
+}
 
 .bg-storage-name {
   font-size: 0.81rem;
@@ -23191,8 +23250,8 @@ span[style*="color: #334155"] {
 }
 
 .tl-att-ic {
-  width: 15px;
-  height: 15px;
+  width: 17px;
+  height: 17px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -23200,8 +23259,9 @@ span[style*="color: #334155"] {
 }
 
 .tl-att-ic svg {
-  width: 15px;
-  height: 15px;
+  width: 17px;
+  height: 17px;
+  display: block;
 }
 
 .tl-att-name {
@@ -25438,14 +25498,15 @@ span[style*="color: #334155"] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 13px;
-  height: 13px;
+  width: 15px;
+  height: 15px;
   flex-shrink: 0;
 }
 
 .bg-gcal-file-ic svg {
-  width: 13px;
-  height: 13px;
+  width: 15px;
+  height: 15px;
+  display: block;
 }
 
 .bg-gcal-file-name {
@@ -26906,6 +26967,17 @@ span[style*="color: #334155"] {
   flex-direction: column;
 }
 
+.modal-banner-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.bg-studio-mob-rail-toggle {
+  display: none;
+}
+
 .bg-studio-rail-body {
   gap: 12px;
   flex: 1;
@@ -28257,6 +28329,73 @@ span[style*="color: #334155"] {
     grid-template-columns: 1fr;
     gap: 10px;
     min-height: auto;
+  }
+
+  .modal-banner-header.is-mob-collapsible {
+    justify-content: space-between;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .bg-studio-mob-rail-toggle {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: auto !important;
+    margin: 0 !important;
+    height: 24px;
+    padding: 0 9px !important;
+    border-radius: 6px;
+    background: rgba(15, 23, 42, 0.62) !important;
+    border: 1px solid rgba(255, 255, 255, 0.45) !important;
+    color: #ffffff !important;
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: none;
+    letter-spacing: 0;
+    line-height: 1;
+    cursor: pointer;
+    flex-shrink: 0;
+    text-shadow: none !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18) !important;
+    transition: all 0.16s ease;
+  }
+
+  :global(#app .report-container.page.theme-light-blue .modal-banner-header .bg-studio-mob-rail-toggle) {
+    background: #ffffff !important;
+    color: #0369a1 !important;
+    -webkit-text-fill-color: #0369a1 !important;
+    border: 1.5px solid #e0f2fe !important;
+    box-shadow: 0 2px 6px rgba(3, 105, 161, 0.25) !important;
+    text-shadow: none !important;
+  }
+
+  :global(#app .report-container.page.theme-light-blue .modal-banner-header .bg-studio-mob-rail-toggle span) {
+    color: #0369a1 !important;
+    -webkit-text-fill-color: #0369a1 !important;
+    text-shadow: none !important;
+  }
+
+  :global(#app .report-container.page.theme-light-blue .modal-banner-header .bg-studio-mob-rail-toggle svg) {
+    color: #0369a1 !important;
+    stroke: #0369a1 !important;
+  }
+
+  .bg-studio-mob-rail-chevron {
+    transition: transform 0.2s ease;
+  }
+
+  .bg-studio-mob-rail-toggle.is-open .bg-studio-mob-rail-chevron {
+    transform: rotate(180deg);
+  }
+
+  .bg-studio-left-rail.is-mob-collapsed .bg-studio-rail-body {
+    display: none !important;
+  }
+
+  .bg-studio-left-rail.is-mob-collapsed .modal-banner-header {
+    border-radius: 15px !important;
   }
 }
 
