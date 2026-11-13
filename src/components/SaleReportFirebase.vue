@@ -1701,20 +1701,20 @@
                       </div>
                     </div>
 
-                    <!-- KHỐI 2: Net COM, Gross COM, Thuế, Net PO, Net Margin -->
+                    <!-- KHỐI 2: Gross COM, Thuế, Net COM, Net PO, Net Margin -->
                     <div class="sr-po1-block">
                       <div class="sr-po1-block-title is-green-head">COM, Thuế &amp; Margin</div>
-                      <div class="sr-po1-b-row is-primary sr-fin-row-clickable" @click.stop="openMultiEditModal(r, 'netCom')" title="Nhấp để sửa Net COM">
-                        <span class="sr-po1-b-lbl">Net COM</span>
-                        <strong class="sr-po1-b-val is-com-text">{{ fmt(netCom(r)) }}</strong>
-                      </div>
                       <div class="sr-po1-b-row sr-fin-row-clickable" @click.stop="openMultiEditModal(r, 'grossCom')" title="Nhấp để sửa Gross COM">
-                        <span class="sr-po1-b-lbl">Gross COM</span>
+                        <span class="sr-po1-b-lbl">Gross COM<template v-if="grossComPctOfRow(r) !== 0"> {{ grossComPctOfRow(r) }}%</template></span>
                         <span class="sr-po1-b-val is-com-text">{{ fmt(grossCom(r)) }}</span>
                       </div>
                       <div class="sr-po1-b-row sr-fin-row-clickable" @click.stop="openMultiEditModal(r, 'taxPct')" title="Nhấp để sửa Thuế">
                         <span class="sr-po1-b-lbl">Thuế {{ thuePct(r) }}%</span>
                         <span class="sr-po1-b-val is-debt-text">{{ fmt(thue(r)) }}</span>
+                      </div>
+                      <div class="sr-po1-b-row is-primary sr-fin-row-clickable" @click.stop="openMultiEditModal(r, 'netCom')" title="Nhấp để sửa Net COM">
+                        <span class="sr-po1-b-lbl">Net COM</span>
+                        <strong class="sr-po1-b-val is-com-text">{{ fmt(netCom(r)) }}</strong>
                       </div>
                       <div class="sr-po1-b-row">
                         <span class="sr-po1-b-lbl">Net PO</span>
@@ -1804,7 +1804,7 @@
                             class="sr-po1-round-chip"
                             :class="{ 'is-active': getPoCardActiveLicenseIdx(r) === licIdx }"
                             @click.stop="setPoCardActiveLicenseIdx(r, licIdx)"
-                            :title="`${licItem.PRODUCT_NAME || licItem.PRODUCT || 'License'} (${licItem.LICENSE_ID || licItem.SERIAL_KEY || '#' + (licIdx + 1)})`"
+                            :title="`${licItem.PRODUCT_NAME || licItem.PRODUCT || 'License'} (${licItem.LICENSE_ID || licItem.SERIAL_KEY || '#' + (licIdx + 1)})${isPoLicenseHandled(licItem) ? ' • ' + getPoLicenseHandlingStatus(licItem) : ''}`"
                           >
                             #{{ licIdx + 1 }}
                           </button>
@@ -1827,20 +1827,80 @@
                         </div>
                         <div class="sr-po1-b-row sr-fin-row-clickable">
                           <span class="sr-po1-b-lbl">Ngày hết hạn</span>
-                          <span class="sr-po1-b-val">{{ formatPoCardLicenseDate(getPoCardActiveLicense(r).EXPIRATION_TIME) }}</span>
+                          <span
+                            class="sr-po1-b-val"
+                            :class="{ 'is-handled-dimmed': isPoLicenseHandled(getPoCardActiveLicense(r)) }"
+                          >{{ formatPoCardLicenseDate(getPoCardActiveLicense(r).EXPIRATION_TIME) }}</span>
                         </div>
                         <div class="sr-po1-b-row sr-fin-row-clickable">
                           <span class="sr-po1-b-lbl">Còn lại</span>
                           <strong
                             class="sr-po1-b-val"
-                            :class="getPoLicenseRemainingDaysInfo(getPoCardActiveLicense(r).EXPIRATION_TIME).isExpired ? 'is-debt-text' : 'is-com-text'"
+                            :class="
+                              isPoLicenseHandled(getPoCardActiveLicense(r))
+                                ? 'is-handled-dimmed'
+                                : (getPoLicenseRemainingDaysInfo(getPoCardActiveLicense(r).EXPIRATION_TIME).isExpired ? 'is-debt-text' : 'is-com-text')
+                            "
                           >
                             {{ getPoLicenseRemainingDaysInfo(getPoCardActiveLicense(r).EXPIRATION_TIME).text || '—' }}
                           </strong>
                         </div>
                         <div class="sr-po1-b-row is-sub-divider sr-fin-row-clickable">
                           <span class="sr-po1-b-lbl">Hạn hiệu lực</span>
-                          <strong class="sr-po1-b-val is-com-text">{{ formatPoCardLicenseDate(getPoCardActiveLicense(r).SO_NGAY_HIEU_LUC || getPoCardActiveLicense(r).GRACE_PERIOD) }}</strong>
+                          <strong
+                            class="sr-po1-b-val"
+                            :class="isPoLicenseHandled(getPoCardActiveLicense(r)) ? 'is-handled-dimmed' : 'is-com-text'"
+                          >{{ formatPoCardLicenseDate(getPoCardActiveLicense(r).SO_NGAY_HIEU_LUC || getPoCardActiveLicense(r).GRACE_PERIOD) }}</strong>
+                        </div>
+                        <!-- Trạng thái xử lý gia hạn (đồng bộ 2 chiều với trang Quản lý Bản quyền) -->
+                        <div class="sr-po1-b-row is-handle-row" @click.stop>
+                          <span class="sr-po1-b-lbl">Trạng thái xử lý</span>
+                          <div class="lic-block-handle-cell">
+                            <div v-if="isPoLicenseHandled(getPoCardActiveLicense(r))" class="lic-handled-cluster">
+                              <span
+                                class="lic-handled-badge"
+                                :class="getPoLicenseHandlingStatus(getPoCardActiveLicense(r)) === 'Đã gia hạn' ? 'is-renewed' : 'is-stopped'"
+                              >
+                                <svg v-if="getPoLicenseHandlingStatus(getPoCardActiveLicense(r)) === 'Đã gia hạn'" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                <svg v-else width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                                <span>{{ getPoLicenseHandlingStatus(getPoCardActiveLicense(r)) }}</span>
+                              </span>
+                              <button
+                                type="button"
+                                class="lic-handled-undo-btn"
+                                :disabled="isPoLicenseToggling(r, getPoCardActiveLicense(r))"
+                                @click.stop="setPoCardLicenseGiaHan(r, getPoCardActiveLicense(r), '')"
+                                title="Hoàn tác trạng thái Đã xử lý để đưa về diện theo dõi"
+                              >
+                                Hoàn tác
+                              </button>
+                            </div>
+                            <div v-else-if="isPoLicenseOverdueOrGraceExpired(getPoCardActiveLicense(r))" class="lic-handle-btn-group">
+                              <button
+                                type="button"
+                                class="lic-handle-act-btn is-renewed"
+                                :disabled="isPoLicenseToggling(r, getPoCardActiveLicense(r))"
+                                @click.stop="setPoCardLicenseGiaHan(r, getPoCardActiveLicense(r), 'Đã gia hạn')"
+                                title="Đánh dấu Đã xử lý: Khách hàng Đã gia hạn (đồng bộ sang Quản lý Bản quyền)"
+                              >
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span>Đã gia hạn</span>
+                              </button>
+                              <button
+                                type="button"
+                                class="lic-handle-act-btn is-stopped"
+                                :disabled="isPoLicenseToggling(r, getPoCardActiveLicense(r))"
+                                @click.stop="setPoCardLicenseGiaHan(r, getPoCardActiveLicense(r), 'Không gia hạn')"
+                                title="Đánh dấu Đã xử lý: Khách hàng Không gia hạn (đồng bộ sang Quản lý Bản quyền)"
+                              >
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                <span>Không gia hạn</span>
+                              </button>
+                            </div>
+                            <span v-else class="lic-block-status-normal">
+                              {{ (getPoCardActiveLicense(r).EXPIRATION_TIME || getPoCardActiveLicense(r).SO_NGAY_HIEU_LUC || getPoCardActiveLicense(r).GRACE_PERIOD) ? 'Đang còn hạn' : 'Chưa đặt hạn' }}
+                            </span>
+                          </div>
                         </div>
                       </template>
 
@@ -3079,7 +3139,7 @@
                             class="sr-po-other-tab-pill"
                             :class="{ active: (item.activeLicenseFileIdx || 0) === licIdx }"
                             @click="item.activeLicenseFileIdx = licIdx"
-                            :title="`${lic.PRODUCT_NAME || lic.PRODUCT || lic.ten_file} (${lic.LICENSE_ID || lic.SERIAL_KEY || 'N/A'})`"
+                            :title="`${lic.PRODUCT_NAME || lic.PRODUCT || lic.ten_file} (${lic.LICENSE_ID || lic.SERIAL_KEY || 'N/A'})${isPoLicenseHandled(lic) ? ' • ' + getPoLicenseHandlingStatus(lic) : ''}`"
                           >
                             <span class="sr-po-other-tab-idx">#{{ licIdx + 1 }}</span>
                             <span class="sr-po-other-tab-name">{{ lic.PRODUCT_NAME || lic.PRODUCT || lic.ten_file || `License #${licIdx + 1}` }}</span>
@@ -3359,7 +3419,7 @@
                                       → Hạn hiệu lực: <b>{{ calcPoLicenseGraceDate(getActiveLicenseFile(item)!.EXPIRATION_TIME, getActiveLicenseFile(item)!.graceDays) }}</b>
                                     </small>
                                   </div>
-                                  <div class="sr-po-lic-field">
+                                   <div class="sr-po-lic-field">
                                     <label>Hạn hiệu lực (Ân hạn DD/MM/YYYY)</label>
                                     <LicenseDatePickerInput
                                       :modelValue="getActiveLicenseFile(item)!.SO_NGAY_HIEU_LUC"
@@ -3368,6 +3428,67 @@
                                       @update:modelValue="val => onPoLicenseDatePickerChange(getActiveLicenseFile(item), 'SO_NGAY_HIEU_LUC', val)"
                                     />
                                   </div>
+
+                                  <!-- Trạng thái xử lý License quá hạn / quá hiệu lực (3 thẻ giống trang Quản lý Bản quyền) -->
+                                  <div class="sr-po-lic-field is-wide">
+                                    <label>Trạng thái xử lý (Dành cho License quá hạn / quá hiệu lực)</label>
+                                    <div class="lic-modal-handle-seg" role="radiogroup" aria-label="Trạng thái xử lý License">
+                                      <button
+                                        type="button"
+                                        class="lic-mhs-btn is-unhandled"
+                                        :class="{ active: !getPoLicenseHandlingStatus(getActiveLicenseFile(item)) }"
+                                        @click="setModalPoLicenseHandlingStatus(getActiveLicenseFile(item), '')"
+                                      >
+                                        <div class="lic-mhs-top">
+                                          <span class="lic-mhs-ico">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                          </span>
+                                          <span class="lic-mhs-dot"></span>
+                                        </div>
+                                        <div class="lic-mhs-texts">
+                                          <strong class="lic-mhs-title">Chưa xử lý</strong>
+                                          <span class="lic-mhs-sub">Đang theo dõi</span>
+                                        </div>
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        class="lic-mhs-btn is-renewed"
+                                        :class="{ active: getPoLicenseHandlingStatus(getActiveLicenseFile(item)) === 'Đã gia hạn' }"
+                                        @click="setModalPoLicenseHandlingStatus(getActiveLicenseFile(item), 'Đã gia hạn')"
+                                      >
+                                        <div class="lic-mhs-top">
+                                          <span class="lic-mhs-ico">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                          </span>
+                                          <span class="lic-mhs-dot"></span>
+                                        </div>
+                                        <div class="lic-mhs-texts">
+                                          <strong class="lic-mhs-title">Đã gia hạn</strong>
+                                          <span class="lic-mhs-sub">Đã xử lý xong</span>
+                                        </div>
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        class="lic-mhs-btn is-stopped"
+                                        :class="{ active: getPoLicenseHandlingStatus(getActiveLicenseFile(item)) === 'Không gia hạn' }"
+                                        @click="setModalPoLicenseHandlingStatus(getActiveLicenseFile(item), 'Không gia hạn')"
+                                      >
+                                        <div class="lic-mhs-top">
+                                          <span class="lic-mhs-ico">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                          </span>
+                                          <span class="lic-mhs-dot"></span>
+                                        </div>
+                                        <div class="lic-mhs-texts">
+                                          <strong class="lic-mhs-title">Không gia hạn</strong>
+                                          <span class="lic-mhs-sub">Ngưng sử dụng</span>
+                                        </div>
+                                      </button>
+                                    </div>
+                                  </div>
+
                                   <div class="sr-po-lic-field is-wide">
                                     <label>Mô tả (Description)</label>
                                     <textarea
@@ -3853,52 +3974,81 @@
                                 </div>
                               </div>
 
-                              <!-- KHỐI 2: NET COM, GROSS COM, THUẾ, NET PO, NET MARGIN -->
+                              <!-- KHỐI 2: GROSS COM (% + SỐ), THUẾ (% + SỐ), NET COM, NET PO, NET MARGIN -->
                               <div class="sr-modal-fin-col">
-                                <div class="sr-form-group">
-                                  <label class="sr-modal-label">Net COM</label>
-                                  <FormattedInput
-                                    :id="'input-netCom-' + item.id"
-                                    :modelValue="getModalPriceMode(item) === 'khach' ? 0 : item.netCom"
-                                    @update:modelValue="val => onFinancialValueChange(item, 'netCom', val, true)"
-                                    :disabled="getModalPriceMode(item) === 'khach'"
-                                    :decimals="0"
-                                    :allowNegative="true"
-                                    placeholder="0"
-                                    class="sr-modal-input text-right is-fin-num is-emerald-highlight"
-                                    :title="getModalPriceMode(item) === 'khach' ? 'Chế độ Giá Khách thuần: Net COM = 0 (Chuyển sang HĐ để sửa COM)' : ''"
-                                  />
-                                </div>
-                                <div class="sr-form-group">
-                                  <label class="sr-modal-label">Gross COM</label>
-                                  <FormattedInput
-                                    :id="'input-grossCom-' + item.id"
-                                    :modelValue="getModalPriceMode(item) === 'khach' ? 0 : item.grossCom"
-                                    @update:modelValue="val => onFinancialValueChange(item, 'grossCom', val, true)"
-                                    :disabled="getModalPriceMode(item) === 'khach'"
-                                    :decimals="0"
-                                    :allowNegative="true"
-                                    placeholder="0"
-                                    class="sr-modal-input text-right is-fin-num"
-                                    :title="getModalPriceMode(item) === 'khach' ? 'Chế độ Giá Khách thuần: Gross COM = 0 (Chuyển sang HĐ để sửa COM)' : ''"
-                                  />
-                                </div>
-                                <div class="sr-fin-inline-row" style="margin-top: 2px;">
-                                  <div style="display: flex; align-items: center; gap: 6px;">
-                                    <span class="sr-fin-inline-lbl">Thuế</span>
-                                    <FormattedInput
-                                      :id="'input-taxPct-' + item.id"
-                                      :modelValue="item.taxPct"
-                                      @update:modelValue="val => onFinancialValueChange(item, 'taxPct', val, true)"
-                                      :decimals="2"
-                                      placeholder="0"
-                                      class="sr-modal-input text-center is-tax-mini"
-                                    />
-                                    <span style="font-size: 12px; color: #64748b;">%</span>
+                                <div class="sr-fin-com-inline-grid">
+                                  <!-- Hàng 1: Gross COM | [ô %] % | [ô số tiền] -->
+                                  <div class="sr-fin-com-grid-row">
+                                    <label class="sr-fin-inline-lbl sr-com-grid-lbl" :for="'input-grossCom-' + item.id">Gross COM</label>
+                                    <div class="sr-com-grid-pct-cell">
+                                      <FormattedInput
+                                        :id="'input-grossComPct-' + item.id"
+                                        :modelValue="getModalPriceMode(item) === 'khach' ? 0 : (item.grossComPct ?? 0)"
+                                        @update:modelValue="val => onFinancialValueChange(item, 'grossComPct', val, true)"
+                                        :disabled="getModalPriceMode(item) === 'khach'"
+                                        :decimals="2"
+                                        :allowNegative="true"
+                                        placeholder="0"
+                                        class="sr-modal-input text-center is-tax-mini"
+                                        :title="getModalPriceMode(item) === 'khach' ? 'Chế độ Giá Khách thuần: % COM = 0 (Chuyển sang HĐ để sửa % COM)' : 'Nhập % COM để tính Gross COM = Doanh số bán × (% COM / 100)'"
+                                      />
+                                      <span class="sr-com-grid-pct-unit">%</span>
+                                    </div>
+                                    <div class="sr-com-grid-val-cell">
+                                      <FormattedInput
+                                        :id="'input-grossCom-' + item.id"
+                                        :modelValue="getModalPriceMode(item) === 'khach' ? 0 : item.grossCom"
+                                        @update:modelValue="val => onFinancialValueChange(item, 'grossCom', val, true)"
+                                        :disabled="getModalPriceMode(item) === 'khach'"
+                                        :decimals="0"
+                                        :allowNegative="true"
+                                        placeholder="0"
+                                        class="sr-modal-input text-right is-fin-num is-com-grid-money"
+                                        :title="getModalPriceMode(item) === 'khach' ? 'Chế độ Giá Khách thuần: Gross COM = 0 (Chuyển sang HĐ để sửa COM)' : ''"
+                                      />
+                                    </div>
                                   </div>
-                                  <strong class="sr-fin-inline-val">{{ fmt(getModalPriceMode(item) === 'khach' ? 0 : (item.grossCom * ((item.taxPct || 0) / 100))) }}</strong>
+
+                                  <!-- Hàng 2: Thuế | [ô %] % | số tiền thuế -->
+                                  <div class="sr-fin-com-grid-row">
+                                    <label class="sr-fin-inline-lbl sr-com-grid-lbl" :for="'input-taxPct-' + item.id">Thuế</label>
+                                    <div class="sr-com-grid-pct-cell">
+                                      <FormattedInput
+                                        :id="'input-taxPct-' + item.id"
+                                        :modelValue="item.taxPct"
+                                        @update:modelValue="val => onFinancialValueChange(item, 'taxPct', val, true)"
+                                        :decimals="2"
+                                        placeholder="0"
+                                        class="sr-modal-input text-center is-tax-mini"
+                                      />
+                                      <span class="sr-com-grid-pct-unit">%</span>
+                                    </div>
+                                    <div class="sr-com-grid-val-cell is-readonly-val">
+                                      <strong class="sr-fin-inline-val">{{ fmt(getModalPriceMode(item) === 'khach' ? 0 : (item.grossCom * ((item.taxPct || 0) / 100))) }}</strong>
+                                    </div>
+                                  </div>
+
+                                  <!-- Hàng 3: Net COM | (trống cột %) | [ô số tiền] -->
+                                  <div class="sr-fin-com-grid-row">
+                                    <label class="sr-fin-inline-lbl sr-com-grid-lbl is-net-lbl" :for="'input-netCom-' + item.id">Net COM</label>
+                                    <span class="sr-com-grid-pct-spacer" aria-hidden="true"></span>
+                                    <div class="sr-com-grid-val-cell">
+                                      <FormattedInput
+                                        :id="'input-netCom-' + item.id"
+                                        :modelValue="getModalPriceMode(item) === 'khach' ? 0 : item.netCom"
+                                        @update:modelValue="val => onFinancialValueChange(item, 'netCom', val, true)"
+                                        :disabled="getModalPriceMode(item) === 'khach'"
+                                        :decimals="0"
+                                        :allowNegative="true"
+                                        placeholder="0"
+                                        class="sr-modal-input text-right is-fin-num is-emerald-highlight is-com-grid-money"
+                                        :title="getModalPriceMode(item) === 'khach' ? 'Chế độ Giá Khách thuần: Net COM = 0 (Chuyển sang HĐ để sửa COM)' : ''"
+                                      />
+                                    </div>
+                                  </div>
                                 </div>
-                                <div class="sr-fin-inline-row">
+
+                                <div class="sr-fin-inline-row is-net-po-push">
                                   <span class="sr-fin-inline-lbl">Net PO</span>
                                   <strong class="sr-fin-inline-val text-white">{{ fmt(getModalPriceMode(item) === 'khach' ? getModalItemDsb(item) : (item.doanhSoBan - item.grossCom)) }}</strong>
                                 </div>
@@ -12420,11 +12570,19 @@
                         v-if="getPoLicenseRemainingDaysInfo(cand.EXPIRATION_TIME || cand.END_DATE).text"
                         class="sr-lic-repo-days-badge"
                         :class="{
-                          'is-expired': getPoLicenseRemainingDaysInfo(cand.EXPIRATION_TIME || cand.END_DATE).isExpired,
-                          'is-warning': getPoLicenseRemainingDaysInfo(cand.EXPIRATION_TIME || cand.END_DATE).isWarning
+                          'is-expired': !isPoLicenseHandled(cand) && getPoLicenseRemainingDaysInfo(cand.EXPIRATION_TIME || cand.END_DATE).isExpired,
+                          'is-warning': !isPoLicenseHandled(cand) && getPoLicenseRemainingDaysInfo(cand.EXPIRATION_TIME || cand.END_DATE).isWarning,
+                          'is-handled-dimmed': isPoLicenseHandled(cand)
                         }"
                       >
                         {{ getPoLicenseRemainingDaysInfo(cand.EXPIRATION_TIME || cand.END_DATE).text }}
+                      </span>
+                      <span
+                        v-if="isPoLicenseHandled(cand)"
+                        class="lic-handled-badge is-mini"
+                        :class="getPoLicenseHandlingStatus(cand) === 'Đã gia hạn' ? 'is-renewed' : 'is-stopped'"
+                      >
+                        {{ getPoLicenseHandlingStatus(cand) }}
                       </span>
                     </div>
                   </div>
@@ -12544,6 +12702,7 @@ import {
   extractSmartLicenseWithAI,
   parseLicenseTextWithAI,
   formatLicenseDateStr,
+  parseLicenseDateObj,
   licenseDateToYmd,
   ymdToLicenseDate,
   syncLicenseToSaleReportPO,
@@ -15118,6 +15277,13 @@ function normalizePoLicenseEntry(raw: any, fallbackIdx = 0) {
     dbRec.LICENSE_DESCRIPTION || dbRec.NOTE || ''
   ).trim()
 
+  const hasCatalogRec = Boolean(licId && licenseOldDataMap.value && licenseOldDataMap.value[licId])
+  const rawHandlingStatus =
+    hasCatalogRec && (dbRec.IS_GIA_HAN !== undefined || dbRec.is_gia_han !== undefined)
+      ? (dbRec.IS_GIA_HAN ?? dbRec.is_gia_han)
+      : (l.IS_GIA_HAN ?? l.is_gia_han ?? dbRec.IS_GIA_HAN ?? dbRec.is_gia_han ?? '')
+  const handlingStatus = String(rawHandlingStatus || '').trim()
+
   return {
     id: licId || `lic_${fallbackIdx}`,
     licenseFirebaseId: licId,
@@ -15145,6 +15311,7 @@ function normalizePoLicenseEntry(raw: any, fallbackIdx = 0) {
         : 10),
     SO_NGAY_HIEU_LUC: soNgayHieuLuc,
     LICENSE_DESCRIPTION: description,
+    IS_GIA_HAN: handlingStatus,
     // Legacy aliases kept in sync for backward compatibility
     PRODUCT: productName,
     SERIAL_KEY: licenseId,
@@ -15262,6 +15429,200 @@ function getPoLicenseRemainingDaysInfo(expDateStr?: string): { text: string; isE
     return { text: 'Hết hạn hôm nay', isExpired: true, isWarning: true }
   }
   return { text: `Quá hạn ${Math.abs(diffDays)} ngày`, isExpired: true, isWarning: true }
+}
+
+const poLicenseTogglingMap = reactive<Record<string, boolean>>({})
+
+function getPoLicenseHandlingStatus(lic: any): string {
+  if (!lic) return ''
+  return String(lic.IS_GIA_HAN || lic.is_gia_han || '').trim()
+}
+
+function isPoLicenseHandled(lic: any): boolean {
+  return Boolean(getPoLicenseHandlingStatus(lic))
+}
+
+function isPoLicenseOverdueOrGraceExpired(lic: any): boolean {
+  if (!lic) return false
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const t = today.getTime()
+  const dExp = parseLicenseDateObj(lic.EXPIRATION_TIME || lic.END_DATE || '')
+  if (dExp && dExp.getTime() < t) return true
+  const dGrc = parseLicenseDateObj(lic.SO_NGAY_HIEU_LUC || lic.GRACE_PERIOD || '')
+  if (dGrc && dGrc.getTime() < t) return true
+  return false
+}
+
+function getPoLicenseToggleKey(poRow: any, licItem: any): string {
+  const poKey = String(poRow?._firebaseKey || poRow?.ID || poRow?.So_PO || 'po').trim()
+  const licKey = String(licItem?.licenseFirebaseId || licItem?.firebase_id || licItem?.id || licItem?.LICENSE_ID || 'lic').trim()
+  return `${poKey}__${licKey}`
+}
+
+function isPoLicenseToggling(poRow: any, licItem: any): boolean {
+  if (!licItem) return false
+  return Boolean(poLicenseTogglingMap[getPoLicenseToggleKey(poRow, licItem)])
+}
+
+async function setPoCardLicenseGiaHan(poRow: any, licItem: any, newVal: string) {
+  if (!poRow || !licItem) return
+  const cleanVal = String(newVal || '').trim()
+  const prevStatus = getPoLicenseHandlingStatus(licItem)
+  if (prevStatus === cleanVal) return
+
+  const toggleKey = getPoLicenseToggleKey(poRow, licItem)
+  if (poLicenseTogglingMap[toggleKey]) return
+  poLicenseTogglingMap[toggleKey] = true
+
+  try {
+    const poFirebaseKey = String(poRow._firebaseKey || poRow.ID || '').trim()
+    const rawLicFbId = String(licItem.licenseFirebaseId || licItem.firebase_id || '').trim()
+    const fallbackId = String(licItem.id || '').trim()
+    let catalogFbId =
+      rawLicFbId ||
+      (fallbackId && !/^(lic_\d+|LIC_TMP_|LIC_MANUAL_)/i.test(fallbackId) ? fallbackId : '')
+
+    const normTargetLicId = normalizeLicenseIdKey(licItem.LICENSE_ID || licItem.SERIAL_KEY || '')
+    if (!catalogFbId && normTargetLicId && licenseOldDataMap.value) {
+      const targetExp = formatLicenseDateStr(licItem.EXPIRATION_TIME || licItem.END_DATE || '')
+      const entries = Object.entries(licenseOldDataMap.value)
+      const matchedEntry =
+        entries.find(([_, rec]: [string, any]) =>
+          rec &&
+          normalizeLicenseIdKey(rec.LICENSE_ID || rec.SERIAL_KEY || '') === normTargetLicId &&
+          (!targetExp || formatLicenseDateStr(rec.EXPIRATION_TIME || rec.END_DATE || '') === targetExp)
+        ) ||
+        entries.find(([_, rec]: [string, any]) =>
+          rec &&
+          normalizeLicenseIdKey(rec.LICENSE_ID || rec.SERIAL_KEY || '') === normTargetLicId &&
+          poFirebaseKey &&
+          String(rec.PO_FIREBASE_KEY || '').trim() === poFirebaseKey
+        )
+      if (matchedEntry) {
+        catalogFbId = matchedEntry[0]
+      }
+    }
+
+    const dbUpdates: Record<string, any> = {}
+
+    const hasCatalogRec = Boolean(catalogFbId && licenseOldDataMap.value && licenseOldDataMap.value[catalogFbId])
+    if (hasCatalogRec || (catalogFbId && catalogFbId.startsWith('-'))) {
+      dbUpdates[`license_old_data/${catalogFbId}/IS_GIA_HAN`] = cleanVal
+      dbUpdates[`license_old_data/${catalogFbId}/is_gia_han`] = null
+    }
+
+    let nextPoLicList: any[] | null = null
+    if (poFirebaseKey) {
+      const rawPoList = Array.isArray(poRow.danh_sach_license) ? poRow.danh_sach_license : []
+      let matchedInPoList = false
+      const updatedList = rawPoList.map((entry: any) => {
+        if (!entry || typeof entry !== 'object') return entry
+        const entryFbId = String(entry.licenseFirebaseId || entry.firebase_id || entry.id || '').trim()
+        const entryNormLicId = normalizeLicenseIdKey(entry.LICENSE_ID || entry.SERIAL_KEY || '')
+        const isSame =
+          (catalogFbId && entryFbId === catalogFbId) ||
+          (licItem.id && String(entry.id || '').trim() === String(licItem.id).trim()) ||
+          (!catalogFbId && normTargetLicId && entryNormLicId === normTargetLicId)
+        if (isSame) {
+          matchedInPoList = true
+          const cloned = { ...entry, IS_GIA_HAN: cleanVal }
+          delete cloned.is_gia_han
+          return cloned
+        }
+        return entry
+      })
+
+      if (matchedInPoList) {
+        nextPoLicList = updatedList
+        dbUpdates[`sale_report/${poFirebaseKey}/danh_sach_license`] = JSON.parse(JSON.stringify(updatedList))
+      } else if (catalogFbId && licenseOldDataMap.value?.[catalogFbId]) {
+        const rec = { ...licenseOldDataMap.value[catalogFbId], IS_GIA_HAN: cleanVal }
+        const summary = {
+          id: catalogFbId,
+          firebase_id: catalogFbId,
+          licenseFirebaseId: catalogFbId,
+          ten_file: String(rec.NAME_FILE || rec.ten_file || licItem.ten_file || `License_${rec.LICENSE_ID || 'Certificate'}.pdf`),
+          link_file: String(rec.LINK_FILE || rec.link_file || ''),
+          NAME_FILE: String(rec.NAME_FILE || rec.ten_file || licItem.ten_file || ''),
+          LINK_FILE: String(rec.LINK_FILE || rec.link_file || ''),
+          ngay_tai: String(rec.ngay_tai || getFormattedNow()),
+          CUSTOMER: String(rec.CUSTOMER || ''),
+          MA_KHACH_HANG: String(rec.MA_KHACH_HANG || poRow.Ma_khach_hang || ''),
+          TEN_CONG_TY: String(rec.TEN_CONG_TY || poRow.Ten_cong_ty || ''),
+          SO_PO: String(rec.SO_PO || poRow.So_PO || ''),
+          PO_FIREBASE_KEY: poFirebaseKey,
+          LICENSE_ID: String(rec.LICENSE_ID || ''),
+          PRODUCT_CODE: String(rec.PRODUCT_CODE || ''),
+          PRODUCT_NAME: String(rec.PRODUCT_NAME || ''),
+          LICENSE_VOLUME: String(rec.LICENSE_VOLUME || ''),
+          LICENSE_TYPE: String(rec.LICENSE_TYPE || ''),
+          NHA_SAN_XUAT: String(rec.NHA_SAN_XUAT || ''),
+          LOCALIZATION: String(rec.LOCALIZATION || ''),
+          DATE_OF_LICENSE: String(rec.DATE_OF_LICENSE || ''),
+          EXPIRATION_TIME: String(rec.EXPIRATION_TIME || ''),
+          SO_NGAY_HIEU_LUC: String(rec.SO_NGAY_HIEU_LUC || ''),
+          LICENSE_DESCRIPTION: String(rec.LICENSE_DESCRIPTION || ''),
+          IS_GIA_HAN: cleanVal
+        }
+        nextPoLicList = [...updatedList, summary]
+        dbUpdates[`sale_report/${poFirebaseKey}/danh_sach_license`] = JSON.parse(JSON.stringify(nextPoLicList))
+      }
+    }
+
+    if (Object.keys(dbUpdates).length > 0) {
+      await update(dbRef(database), dbUpdates)
+    }
+
+    if (catalogFbId && licenseOldDataMap.value && licenseOldDataMap.value[catalogFbId]) {
+      const nextRec = {
+        ...licenseOldDataMap.value[catalogFbId],
+        IS_GIA_HAN: cleanVal
+      }
+      delete nextRec.is_gia_han
+      licenseOldDataMap.value = {
+        ...licenseOldDataMap.value,
+        [catalogFbId]: nextRec
+      }
+    }
+
+    if (nextPoLicList) {
+      poRow.danh_sach_license = nextPoLicList
+      const rowIdx = rows.value.findIndex((r: any) =>
+        poFirebaseKey
+          ? String(r?._firebaseKey || r?.ID || '').trim() === poFirebaseKey
+          : r === poRow
+      )
+      if (rowIdx !== -1 && rows.value[rowIdx] !== poRow) {
+        rows.value[rowIdx].danh_sach_license = nextPoLicList
+      }
+    }
+
+    if (multiEditModal.value?.show && Array.isArray(multiEditModal.value.items)) {
+      multiEditModal.value.items.forEach(it => {
+        if (!Array.isArray(it?.licenseFiles)) return
+        it.licenseFiles.forEach(lf => {
+          const lfFb = String(lf?.licenseFirebaseId || lf?.firebase_id || '').trim()
+          if ((catalogFbId && lfFb === catalogFbId) || (licItem.id && lf?.id === licItem.id)) {
+            lf.IS_GIA_HAN = cleanVal
+          }
+        })
+      })
+    }
+  } catch (err: any) {
+    console.error('[setPoCardLicenseGiaHan] Error:', err)
+    await openSrAlert({
+      variant: 'danger',
+      eyebrow: 'Lỗi đồng bộ Firebase',
+      title: 'Không thể cập nhật trạng thái xử lý',
+      highlightLabel: 'LICENSE',
+      highlightValue: String(licItem.PRODUCT_NAME || licItem.LICENSE_ID || 'Bản quyền'),
+      message: 'Không thể lưu trạng thái xử lý gia hạn. Vui lòng kiểm tra kết nối mạng và thử lại.',
+      confirmText: 'Đóng'
+    })
+  } finally {
+    delete poLicenseTogglingMap[toggleKey]
+  }
 }
 
 const allGroupedFilteredRows = computed(() => {
@@ -16522,6 +16883,16 @@ const grossCom = (r: any) => {
 }
 
 const thue = (r: any) => grossCom(r) * (thuePct(r) / 100)
+
+const grossComPctOfRow = (r: any) => {
+  if (!r) return 0
+  const saved = toNum(r.phan_tram_com ?? r.gross_com_pct ?? r.phan_tram_chiet_khau)
+  if (saved !== 0) return Math.round(saved * 100) / 100
+  const d = doanhSoBanHd(r)
+  const g = grossCom(r)
+  if (d === 0 || g === 0) return 0
+  return Math.round((g / d) * 10000) / 100
+}
 
 const netCom = (r: any) => {
   if (!r) return 0
@@ -18472,6 +18843,7 @@ interface LicenseAttachmentItem {
   graceDays?: number | string;
   SO_NGAY_HIEU_LUC?: string;
   LICENSE_DESCRIPTION?: string;
+  IS_GIA_HAN?: string;
   // Legacy aliases
   PRODUCT?: string;
   SERIAL_KEY?: string;
@@ -18493,6 +18865,8 @@ interface ImportItem {
   giaMua: number;
   tongCP: number;
   grossCom: number;
+  grossComPct?: number;
+  _comPctActive?: boolean;
   soPO: string;
   productType: string;
   customer: string;
@@ -18541,6 +18915,7 @@ interface ImportItem {
   predictPctKhach?: string;
   _origGross?: number;
   _origNet?: number;
+  _origComPct?: number;
   _origDsbKhach?: number;
   activeTab?: 'po' | 'metrics' | 'goods' | 'debt';
   previewBaoGia?: boolean;
@@ -18611,6 +18986,7 @@ function serializeModalItemsForDirtyCheck(items: ImportItem[] | undefined | null
         giaMua: Number(it.giaMua) || 0,
         tongCP: Number(it.tongCP) || 0,
         grossCom: Number(it.grossCom) || 0,
+        grossComPct: Number(it.grossComPct) || 0,
         netCom: Number(it.netCom) || 0,
         taxPct: Number(it.taxPct) || 0,
         predictPct: String(it.predictPct ?? ''),
@@ -18658,6 +19034,7 @@ function serializeModalItemsForDirtyCheck(items: ImportItem[] | undefined | null
               end: String(l?.EXPIRATION_TIME ?? l?.END_DATE ?? ''),
               grace: String(l?.SO_NGAY_HIEU_LUC ?? l?.GRACE_PERIOD ?? ''),
               desc: String(l?.LICENSE_DESCRIPTION ?? l?.NOTE ?? ''),
+              giaHan: String(l?.IS_GIA_HAN ?? ''),
               raw: l?.rawFile ? `${l.rawFile.name}:${l.rawFile.size}` : ''
             }))
           : [],
@@ -19464,12 +19841,17 @@ function applyPredictPreset(item: ImportItem | null | undefined, pct: number | n
     item.predictPct = ''
     if (item._origGross !== undefined) item.grossCom = item._origGross
     if (item._origNet !== undefined) item.netCom = item._origNet
+    if (item._origComPct !== undefined) item.grossComPct = item._origComPct
+    item._origGross = undefined
+    item._origNet = undefined
+    item._origComPct = undefined
     isModalDirty.value = true
     return
   }
   if (item._origGross === undefined) {
     item._origGross = item.grossCom
     item._origNet = item.netCom
+    item._origComPct = item.grossComPct
   }
   item.predictPct = String(pct)
   const ratio = pct / 100
@@ -19481,6 +19863,7 @@ function applyPredictPreset(item: ImportItem | null | undefined, pct: number | n
   const requiredNetCom = requiredGrossCom * (1 - tax)
   item.grossCom = Math.round(requiredGrossCom)
   item.netCom = Math.round(requiredNetCom)
+  item.grossComPct = calcComPctFromDsbAndGross(dsb, item.grossCom)
   isModalDirty.value = true
 }
 
@@ -19657,6 +20040,8 @@ function addAnotherBlankPOInModal() {
     giaMua: 0,
     tongCP: 0,
     grossCom: 0,
+    grossComPct: 0,
+    _comPctActive: false,
     soPO: nextPoStr,
     productType: '',
     customer: '',
@@ -19703,6 +20088,8 @@ function handleCreateBlankPO() {
     giaMua: 0,
     tongCP: 0,
     grossCom: 0,
+    grossComPct: 0,
+    _comPctActive: false,
     soPO: nextPoStr,
     productType: '',
     customer: '',
@@ -21329,6 +21716,32 @@ async function upsertCustomerFromModalItem(item: ImportItem) {
   }
 }
 
+function roundComPct(val: number): number {
+  if (!Number.isFinite(val) || Math.abs(val) < 1e-9) return 0;
+  return Math.round(val * 100) / 100;
+}
+
+function calcComPctFromDsbAndGross(dsb: number, gross: number): number {
+  const d = Number(dsb) || 0;
+  const g = Number(gross) || 0;
+  if (d === 0 || g === 0) return 0;
+  return roundComPct((g / d) * 100);
+}
+
+function resolveRowComPct(row: any, dsbHD: number, gCom: number): { pct: number; active: boolean } {
+  const savedPct = toNum(row?.phan_tram_com ?? row?.gross_com_pct ?? row?.phan_tram_chiet_khau);
+  if (savedPct !== 0) {
+    return {
+      pct: roundComPct(savedPct),
+      active: row?.com_pct_active !== undefined ? Boolean(row.com_pct_active) : gCom !== 0
+    };
+  }
+  return {
+    pct: calcComPctFromDsbAndGross(dsbHD, gCom),
+    active: Boolean(row?.com_pct_active)
+  };
+}
+
 function onFinancialInput(item: ImportItem, fieldChanged?: keyof ImportItem | 'taxPct') {
   ensureModalItemKhachData(item);
   const pct = (Number(item.taxPct) || 0) / 100;
@@ -21350,8 +21763,11 @@ function onFinancialInput(item: ImportItem, fieldChanged?: keyof ImportItem | 't
       item.grossCom = (Number(item.doanhSoBan) || 0) - dsbK;
     }
     item.netCom = Math.round(item.grossCom * (1 - pct));
+    item._comPctActive = false;
+    item.grossComPct = calcComPctFromDsbAndGross(item.doanhSoBan, item.grossCom);
     item._origGross = item.grossCom;
     item._origNet = item.netCom;
+    item._origComPct = item.grossComPct;
     item._origDsbKhach = dsbK;
     item.predictPctKhach = '';
     return;
@@ -21368,18 +21784,43 @@ function onFinancialInput(item: ImportItem, fieldChanged?: keyof ImportItem | 't
     };
   }
 
-  if (fieldChanged === 'netCom') {
-    if (pct < 1) {
-      item.grossCom = item.netCom / (1 - pct);
+  if (fieldChanged === 'grossComPct') {
+    const dsbVal = Number(item.doanhSoBan) || 0;
+    const comPctVal = roundComPct(Number(item.grossComPct) || 0);
+    item.grossComPct = comPctVal;
+    item._comPctActive = comPctVal !== 0;
+    item.grossCom = Math.round(dsbVal * (comPctVal / 100));
+    item.netCom = Math.round(item.grossCom * (1 - pct));
+  } else if (fieldChanged === 'doanhSoBan') {
+    if (item._comPctActive && (Number(item.grossComPct) || 0) !== 0) {
+      const dsbVal = Number(item.doanhSoBan) || 0;
+      item.grossCom = Math.round(dsbVal * ((Number(item.grossComPct) || 0) / 100));
+      item.netCom = Math.round(item.grossCom * (1 - pct));
+    } else {
+      item.netCom = item.grossCom * (1 - pct);
+      item.grossComPct = calcComPctFromDsbAndGross(item.doanhSoBan, item.grossCom);
     }
-  } else if (fieldChanged === 'grossCom' || fieldChanged === 'taxPct') {
+  } else if (fieldChanged === 'netCom') {
+    if (pct < 1) {
+      item.grossCom = Math.round(item.netCom / (1 - pct));
+    }
+    item._comPctActive = false;
+    item.grossComPct = calcComPctFromDsbAndGross(item.doanhSoBan, item.grossCom);
+  } else if (fieldChanged === 'grossCom') {
+    item.netCom = item.grossCom * (1 - pct);
+    item._comPctActive = false;
+    item.grossComPct = calcComPctFromDsbAndGross(item.doanhSoBan, item.grossCom);
+  } else if (fieldChanged === 'taxPct') {
     item.netCom = item.grossCom * (1 - pct);
   } else {
     // Mặc định tự tính netCom từ grossCom khi thay đổi trường khác
     item.netCom = item.grossCom * (1 - pct);
+    if (!item._comPctActive) {
+      item.grossComPct = calcComPctFromDsbAndGross(item.doanhSoBan, item.grossCom);
+    }
   }
 
-  if (fieldChanged === 'doanhSoBan' || fieldChanged === 'grossCom' || fieldChanged === 'netCom') {
+  if (fieldChanged === 'doanhSoBan' || fieldChanged === 'grossCom' || fieldChanged === 'grossComPct' || fieldChanged === 'netCom') {
     item.doanhSoBanKhach = Math.max(0, Math.round((Number(item.doanhSoBan) || 0) - (Number(item.grossCom) || 0)));
     if (item.goodsTotal) {
       const vatK = Number(item.goodsTotal.vatKhach ?? item.goodsTotal.vat) || 0;
@@ -21395,6 +21836,7 @@ function onFinancialInput(item: ImportItem, fieldChanged?: keyof ImportItem | 't
   // Cập nhật lại số liệu gốc sau khi chỉnh sửa tay, và reset dự đoán
   item._origGross = item.grossCom;
   item._origNet = item.netCom;
+  item._origComPct = item.grossComPct;
   item.predictPct = '';
 }
 
@@ -21557,10 +21999,26 @@ function onGoodsInput(e: Event | null, item: ImportItem, g: any, field: string) 
     item.doanhSoBan = tTruoc;
     item.doanhSoBanKhach = tTruocKhach;
 
-    if (field === 'recalc_khach' || tTruoc !== tTruocKhach) {
+    if (field === 'recalc_khach') {
       const taxPctNum = (Number(item.taxPct) || 0) / 100;
       item.grossCom = tTruoc - tTruocKhach;
       item.netCom = Math.round(item.grossCom * (1 - taxPctNum));
+      item._comPctActive = false;
+      item.grossComPct = calcComPctFromDsbAndGross(item.doanhSoBan, item.grossCom);
+    } else if (item._comPctActive && (Number(item.grossComPct) || 0) !== 0) {
+      const taxPctNum = (Number(item.taxPct) || 0) / 100;
+      item.grossCom = Math.round(tTruoc * ((Number(item.grossComPct) || 0) / 100));
+      item.netCom = Math.round(item.grossCom * (1 - taxPctNum));
+      item.doanhSoBanKhach = Math.max(0, tTruoc - item.grossCom);
+      item.goodsTotal.ttTruocKhach = item.doanhSoBanKhach;
+      item.goodsTotal.ttSauKhach = item.doanhSoBanKhach + tVatKhach;
+    } else if (tTruoc !== tTruocKhach) {
+      const taxPctNum = (Number(item.taxPct) || 0) / 100;
+      item.grossCom = tTruoc - tTruocKhach;
+      item.netCom = Math.round(item.grossCom * (1 - taxPctNum));
+      item.grossComPct = calcComPctFromDsbAndGross(item.doanhSoBan, item.grossCom);
+    } else {
+      item.grossComPct = calcComPctFromDsbAndGross(item.doanhSoBan, item.grossCom);
     }
     
     // Recompute Gross Com / Net Com if prediction is active
@@ -21570,6 +22028,7 @@ function onGoodsInput(e: Event | null, item: ImportItem, g: any, field: string) 
          item.netCom = item.doanhSoBan * (pct / 100);
          const taxPctNum = (Number(item.taxPct) || 0) / 100;
          item.grossCom = taxPctNum < 1 ? item.netCom / (1 - taxPctNum) : item.netCom;
+         item.grossComPct = calcComPctFromDsbAndGross(item.doanhSoBan, item.grossCom);
        }
     }
   } else {
@@ -22403,14 +22862,25 @@ function onSyncRowOffPctChange(r: PoGoodsDbSyncRow, val: number) {
 
 function onFinancialValueChange(
   item: ImportItem,
-  field: 'doanhSoBan' | 'doanhSoBanKhach' | 'giaMua' | 'tongCP' | 'netCom' | 'grossCom' | 'taxPct' | 'soTienDaThanhToan',
+  field: 'doanhSoBan' | 'doanhSoBanKhach' | 'giaMua' | 'tongCP' | 'netCom' | 'grossCom' | 'grossComPct' | 'taxPct' | 'soTienDaThanhToan',
   val: number,
   triggerCalc = true
 ) {
   ensureModalItemKhachData(item)
-  const nextVal = field === 'taxPct' ? Math.max(0, Number(val) || 0) : Math.round(Number(val) || 0)
+  const nextVal =
+    field === 'taxPct'
+      ? Math.max(0, Number(val) || 0)
+      : field === 'grossComPct'
+        ? roundComPct(Number(val) || 0)
+        : Math.round(Number(val) || 0)
   const prevVal = Number((item as any)[field]) || 0
-  if (Math.abs(prevVal - nextVal) < 1e-6) return
+  if (Math.abs(prevVal - nextVal) < 1e-6) {
+    if (field === 'grossComPct' && nextVal !== 0 && !item._comPctActive) {
+      item._comPctActive = true
+      isModalDirty.value = true
+    }
+    return
+  }
   ;(item as any)[field] = nextVal
   isModalDirty.value = true
   if (triggerCalc) {
@@ -22884,8 +23354,10 @@ function applyPredictPctValue(item: ImportItem, rawStr: string) {
   if (rawStr === '') {
     if (item._origGross !== undefined) item.grossCom = item._origGross
     if (item._origNet !== undefined) item.netCom = item._origNet
+    if (item._origComPct !== undefined) item.grossComPct = item._origComPct
     item._origGross = undefined
     item._origNet = undefined
+    item._origComPct = undefined
     return
   }
 
@@ -22897,6 +23369,7 @@ function applyPredictPctValue(item: ImportItem, rawStr: string) {
   if (item._origGross === undefined) {
     item._origGross = item.grossCom
     item._origNet = item.netCom
+    item._origComPct = item.grossComPct
   }
 
   const pct = desiredPct / 100
@@ -22910,6 +23383,7 @@ function applyPredictPctValue(item: ImportItem, rawStr: string) {
 
   item.grossCom = requiredGrossCom
   item.netCom = requiredNetCom
+  item.grossComPct = calcComPctFromDsbAndGross(dsb, requiredGrossCom)
   item.doanhSoBanKhach = Math.max(0, dsb - requiredGrossCom)
   isModalDirty.value = true
 }
@@ -22958,6 +23432,7 @@ function openMultiEditModalWithDocTab(row: any, docTab: 'bg' | 'mh' | 'dxmh' | '
 function createImportItemFromExistingRow(row: any, id: number): ImportItem {
   const dsbHD = doanhSoBanHd(row)
   const gCom = grossCom(row)
+  const resolvedCom = resolveRowComPct(row, dsbHD, gCom)
   const rawDsbKhach = toNum(
     row?.Tong_tien_truoc_thueVAT_khach ??
       row?.Tong_gia_thuc_te ??
@@ -22977,6 +23452,8 @@ function createImportItemFromExistingRow(row: any, id: number): ImportItem {
     giaMua: giaMua(row),
     tongCP: tongCP(row),
     grossCom: gCom,
+    grossComPct: resolvedCom.pct,
+    _comPctActive: resolvedCom.active,
     soPO: row.So_PO || '',
     productType: row.Ten_nha_cung_cap || '',
     customer: row.Ten_cong_ty || row.Ten_khach_hang || '',
@@ -23356,6 +23833,9 @@ function onRowSelectedInModal(item: ImportItem) {
       item.grossCom = grossCom(item.row)
       item.netCom = netCom(item.row)
       item.taxPct = thuePct(item.row)
+      const resolvedCom = resolveRowComPct(item.row, item.doanhSoBan, item.grossCom)
+      item.grossComPct = resolvedCom.pct
+      item._comPctActive = resolvedCom.active
     }
   } else {
     item.doanhSoBan = doanhSoBanHd(item.row)
@@ -23365,6 +23845,9 @@ function onRowSelectedInModal(item: ImportItem) {
       item.grossCom = grossCom(item.row)
       item.netCom = netCom(item.row)
       item.taxPct = thuePct(item.row)
+      const resolvedCom = resolveRowComPct(item.row, item.doanhSoBan, item.grossCom)
+      item.grossComPct = resolvedCom.pct
+      item._comPctActive = resolvedCom.active
     }
   }
   void autoRepairItemXlsOfficeLinks(item)
@@ -23800,6 +24283,11 @@ async function resolveAndSyncPoLicenses(
     const description = String(lic.LICENSE_DESCRIPTION ?? lic.NOTE ?? existingRec.LICENSE_DESCRIPTION ?? existingRec.NOTE ?? `Đồng bộ từ PO ${soPO || ''}`).trim()
     const fileName = String(lic.NAME_FILE || lic.ten_file || existingRec.NAME_FILE || existingRec.FILE_NAME || productName || `License #${i + 1}`).trim()
     const fileUrl = finalLink || String(existingRec.LINK_FILE || existingRec.FILE_URL || '').trim()
+    const handlingStatus = String(
+      lic.IS_GIA_HAN !== undefined
+        ? lic.IS_GIA_HAN
+        : (existingRec.IS_GIA_HAN ?? existingRec.is_gia_han ?? '')
+    ).trim()
 
     const licensePayload = {
       ...existingRec,
@@ -23819,6 +24307,7 @@ async function resolveAndSyncPoLicenses(
       EXPIRATION_TIME: expirationTime,
       SO_NGAY_HIEU_LUC: soNgayHieuLuc,
       LICENSE_DESCRIPTION: description,
+      IS_GIA_HAN: handlingStatus,
       NAME_FILE: fileName,
       LINK_FILE: fileUrl,
       // Legacy aliases
@@ -23832,7 +24321,6 @@ async function resolveAndSyncPoLicenses(
       FILE_URL: fileUrl,
       FILE_NAME: fileName
     }
-    delete (licensePayload as any).IS_GIA_HAN
     delete (licensePayload as any).is_gia_han
 
     licDbUpdates[`license_old_data/${fbId}`] = licensePayload
@@ -23865,6 +24353,7 @@ async function resolveAndSyncPoLicenses(
       EXPIRATION_TIME: licensePayload.EXPIRATION_TIME,
       SO_NGAY_HIEU_LUC: licensePayload.SO_NGAY_HIEU_LUC,
       LICENSE_DESCRIPTION: licensePayload.LICENSE_DESCRIPTION,
+      IS_GIA_HAN: handlingStatus,
       PRODUCT: licensePayload.PRODUCT,
       SERIAL_KEY: licensePayload.SERIAL_KEY,
       START_DATE: licensePayload.START_DATE,
@@ -24039,6 +24528,7 @@ async function saveMultiModal() {
           const savedLicenses = await resolveAndSyncPoLicenses(item, newPoFirebaseKey, maKHGen, tenCongTy, item.soPO, nowStr);
 
           const srID = 'SR_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+          const savedComPct = roundComPct(Number(item.grossComPct) || calcComPctFromDsbAndGross(tTruoc, Number(item.grossCom) || 0));
   
           bulkSaleReportItems.push({
               _targetFirebaseKey: newPoFirebaseKey,
@@ -24071,6 +24561,8 @@ async function saveMultiModal() {
               chiet_khau_tong_truoc_thue: item.grossCom,
               chenh_lech_gia: item.grossCom,
               gross_com: item.grossCom,
+              phan_tram_com: savedComPct,
+              com_pct_active: Boolean(item._comPctActive),
               phan_tram_thue_chenh_lech_gia: item.taxPct,
               thue_chenh_lech_gia: item.grossCom * (item.taxPct / 100),
               Tong_thanh_tien_chua_VAT_mua_hang: item.giaMua,
@@ -24134,7 +24626,8 @@ async function saveMultiModal() {
             gross_com: item.grossCom || 0,
             chenh_lech_gia: item.grossCom || 0,
             chiet_khau_tong_truoc_thue: item.grossCom || 0,
-            phan_tram_chiet_khau: 0,
+            phan_tram_chiet_khau: savedComPct,
+            phan_tram_com: savedComPct,
             thue_chenh_lech_gia: (item.grossCom * (item.taxPct / 100)) || 0,
             phan_tram_thue: item.taxPct || 0,
             phan_tram_thue_chenh_lech_gia: item.taxPct || 0,
@@ -24356,6 +24849,7 @@ async function saveMultiModal() {
 
         const firebaseKey = item.row._firebaseKey || item.row.ID;
         const savedLicenses = await resolveAndSyncPoLicenses(item, firebaseKey, maKHGen, tenCongTy, item.soPO, nowStr);
+        const savedComPct = roundComPct(Number(item.grossComPct) || calcComPctFromDsbAndGross(tTruoc, Number(item.grossCom) || 0));
 
         // ─── Build update payload for Firebase ───
         const updatePayload: Record<string, any> = {
@@ -24387,6 +24881,8 @@ async function saveMultiModal() {
             chiet_khau_tong_truoc_thue: Number(item.grossCom) || 0,
             chenh_lech_gia: Number(item.grossCom) || 0,
             gross_com: Number(item.grossCom) || 0,
+            phan_tram_com: savedComPct,
+            com_pct_active: Boolean(item._comPctActive),
             phan_tram_thue_chenh_lech_gia: Number(item.taxPct) || 0,
             thue_chenh_lech_gia: (Number(item.grossCom) || 0) * ((Number(item.taxPct) || 0) / 100),
             con_lai: Number(item.netCom) || 0,
@@ -24458,7 +24954,8 @@ async function saveMultiModal() {
           gross_com: item.grossCom || 0,
           chenh_lech_gia: item.grossCom || 0,
           chiet_khau_tong_truoc_thue: item.grossCom || 0,
-          phan_tram_chiet_khau: 0,
+          phan_tram_chiet_khau: savedComPct,
+          phan_tram_com: savedComPct,
           thue_chenh_lech_gia: (item.grossCom * (item.taxPct / 100)) || 0,
           phan_tram_thue: item.taxPct || 0,
           phan_tram_thue_chenh_lech_gia: item.taxPct || 0,
@@ -24628,6 +25125,8 @@ async function saveMultiModal() {
         item.row.chenh_lech_gia = Number(item.grossCom) || 0
         item.row.gross_com = Number(item.grossCom) || 0
         item.row.grossCom = Number(item.grossCom) || 0
+        item.row.phan_tram_com = savedComPct
+        item.row.com_pct_active = Boolean(item._comPctActive)
         item.row.phan_tram_thue_chenh_lech_gia = Number(item.taxPct) || 0
         item.row.thue_chenh_lech_gia = (Number(item.grossCom) || 0) * ((Number(item.taxPct) || 0) / 100)
         item.row.con_lai = Number(item.netCom) || 0
@@ -26305,6 +26804,7 @@ async function saveModalItemsToCraft(silent = false): Promise<string[]> {
       const existingCraftKey = item.row?._isCraft ? (item.row?._firebaseKey || item.row?.ID) : ''
       const targetKey = existingCraftKey || push(dbRef(database, 'sale_report_craft')).key || ('CRAFT_' + Date.now() + '_' + idx)
       const soPoLabel = String(item.soPO || item.row?.So_PO || getNextAvailableSoPO(idx + 1)[idx]).trim()
+      const savedComPct = roundComPct(Number(item.grossComPct) || calcComPctFromDsbAndGross(tTruoc, gCom))
 
       const craftPayload: Record<string, any> = {
         ID: targetKey,
@@ -26337,6 +26837,8 @@ async function saveModalItemsToCraft(silent = false): Promise<string[]> {
         chiet_khau_tong_truoc_thue: gCom,
         chenh_lech_gia: gCom,
         gross_com: gCom,
+        phan_tram_com: savedComPct,
+        com_pct_active: Boolean(item._comPctActive),
         phan_tram_thue_chenh_lech_gia: tPct,
         thue_chenh_lech_gia: tCom,
         con_lai: nCom,
@@ -26430,6 +26932,8 @@ async function saveModalItemsToCraft(silent = false): Promise<string[]> {
           gross_com: gCom,
           chenh_lech_gia: gCom,
           chiet_khau_tong_truoc_thue: gCom,
+          phan_tram_chiet_khau: savedComPct,
+          phan_tram_com: savedComPct,
           phan_tram_thue: tPct,
           phan_tram_thue_chenh_lech_gia: tPct,
           thue_chenh_lech_gia: tCom,
@@ -26764,6 +27268,7 @@ async function promoteCraftToOfficial(craftRow: any) {
     const gm = giaMua(craftRow)
     const tcp = tongCP(craftRow)
     const gCom = grossCom(craftRow)
+    const resolvedCraftCom = resolveRowComPct(craftRow, tTruoc, gCom)
     const tPct = thuePct(craftRow)
     const tCom = thueCom(craftRow)
     const nCom = netCom(craftRow)
@@ -26816,6 +27321,8 @@ async function promoteCraftToOfficial(craftRow: any) {
       chiet_khau_tong_truoc_thue: gCom,
       chenh_lech_gia: gCom,
       gross_com: gCom,
+      phan_tram_com: resolvedCraftCom.pct,
+      com_pct_active: resolvedCraftCom.active,
       phan_tram_thue_chenh_lech_gia: tPct,
       thue_chenh_lech_gia: tCom,
       Tong_thanh_tien_chua_VAT_mua_hang: gm,
@@ -26890,7 +27397,8 @@ async function promoteCraftToOfficial(craftRow: any) {
       gross_com: gCom,
       chenh_lech_gia: gCom,
       chiet_khau_tong_truoc_thue: gCom,
-      phan_tram_chiet_khau: 0,
+      phan_tram_chiet_khau: resolvedCraftCom.pct,
+      phan_tram_com: resolvedCraftCom.pct,
       thue_chenh_lech_gia: tCom,
       phan_tram_thue: tPct,
       phan_tram_thue_chenh_lech_gia: tPct,
@@ -28507,6 +29015,12 @@ function syncPoLicenseFieldAliases(lic: LicenseAttachmentItem | null | undefined
   isModalDirty.value = true
 }
 
+function setModalPoLicenseHandlingStatus(lic: LicenseAttachmentItem | null | undefined, newStatus: string) {
+  if (!lic) return
+  lic.IS_GIA_HAN = String(newStatus || '').trim()
+  syncPoLicenseFieldAliases(lic)
+}
+
 function onPoLicenseDatePickerChange(
   lic: LicenseAttachmentItem | null | undefined,
   field: 'DATE_OF_LICENSE' | 'EXPIRATION_TIME' | 'SO_NGAY_HIEU_LUC',
@@ -28798,6 +29312,7 @@ async function handleLicenseFilesUpload(filesArr: File[], item: ImportItem | nul
       graceDays: 30,
       SO_NGAY_HIEU_LUC: '',
       LICENSE_DESCRIPTION: '',
+      IS_GIA_HAN: '',
       PRODUCT: '',
       SERIAL_KEY: '',
       START_DATE: '',
@@ -28882,6 +29397,7 @@ async function handleLicenseFilesUpload(filesArr: File[], item: ImportItem | nul
               (recExp ? addDaysToLicenseDate(recExp, 30) : '')
             ).trim(),
             LICENSE_DESCRIPTION: String(rec.LICENSE_DESCRIPTION || rec.NOTE || '').trim(),
+            IS_GIA_HAN: '',
             PRODUCT: '',
             SERIAL_KEY: '',
             START_DATE: '',
@@ -29160,6 +29676,7 @@ function addManualEmptyLicenseToPo(item: ImportItem) {
     graceDays: 10,
     SO_NGAY_HIEU_LUC: '',
     LICENSE_DESCRIPTION: defaultDesc,
+    IS_GIA_HAN: '',
     PRODUCT: '',
     SERIAL_KEY: '',
     START_DATE: '',
@@ -29213,6 +29730,8 @@ async function confirmScanResult() {
     if (m.nangGia) m.item.grossCom = m.nangGia
     if (m.conLai) m.item.netCom = m.conLai
     m.item.taxPct = m.thuePct
+    m.item._comPctActive = false
+    m.item.grossComPct = calcComPctFromDsbAndGross(m.item.doanhSoBan, m.item.grossCom)
     m.item.scanned = true
     isModalDirty.value = true
   }
@@ -32125,13 +32644,14 @@ async function processImportFilesScan(
           tgt.row.grossCom = parsedItems[0].grossCom
           tgt.row.taxPct = parsedItems[0].taxPct || tgt.row.taxPct || 25
           tgt.row.netCom = parsedItems[0].netCom
+          tgt.row._comPctActive = false
           onFinancialInput(tgt.row)
         } else if (hadKhachQuote && prevDsbKhach > 0) {
           tgt.row.doanhSoBanKhach = prevDsbKhach
           tgt.row.grossCom = (Number(tgt.row.doanhSoBan) || 0) - prevDsbKhach
           onFinancialInput(tgt.row, 'grossCom')
         } else {
-          onFinancialInput(tgt.row)
+          onFinancialInput(tgt.row, 'doanhSoBan')
         }
       }
       loading.value = false
@@ -40697,6 +41217,94 @@ const isAnySaleModalOpen = computed(() => Boolean(
   background: rgba(6, 78, 59, 0.25) !important;
 }
 
+.sr-fin-com-inline-grid {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  column-gap: 7px;
+  row-gap: 7px;
+  align-items: center;
+  width: 100%;
+}
+
+.sr-fin-com-grid-row {
+  display: contents;
+}
+
+.sr-com-grid-lbl {
+  font-size: 11.5px !important;
+  font-weight: 800 !important;
+  color: #cbd5e1 !important;
+  white-space: nowrap;
+  margin: 0 !important;
+  cursor: pointer;
+}
+
+.sr-com-grid-lbl.is-net-lbl {
+  color: #34d399 !important;
+}
+
+.sr-com-grid-pct-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.sr-com-grid-pct-unit {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #64748b;
+  line-height: 1;
+}
+
+.sr-com-grid-pct-spacer {
+  display: block;
+}
+
+.sr-com-grid-val-cell {
+  min-width: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.sr-com-grid-val-cell.is-readonly-val {
+  min-height: 28px;
+  padding-right: 8px;
+}
+
+.sr-po-modal .sr-modal-input.is-com-grid-money {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 29px !important;
+  padding: 2px 8px !important;
+}
+
+.sr-po-modal .sr-modal-finance-grid.is-craft-3cols .sr-fin-com-inline-grid {
+  column-gap: 5px;
+}
+
+.sr-po-modal .sr-modal-finance-grid.is-craft-3cols .sr-com-grid-lbl {
+  font-size: 11px !important;
+}
+
+.sr-po-modal .sr-modal-finance-grid.is-craft-3cols .sr-fin-com-inline-grid .sr-modal-input.is-tax-mini {
+  width: 46px !important;
+  padding: 2px 4px !important;
+  font-size: 11.5px !important;
+}
+
+.sr-fin-inline-row.is-net-po-push {
+  margin-top: 2px;
+  padding-top: 2px;
+}
+
+.sr-po-modal .sr-modal-input.is-tax-mini:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .sr-fin-micro-btn.is-emerald {
   padding: 2px 8px;
   border-radius: 5px;
@@ -45395,6 +46003,18 @@ const isAnySaleModalOpen = computed(() => Boolean(
   background: #ecfdf5 !important;
   border-color: #10b981 !important;
   color: #047857 !important;
+}
+
+.sr-po-modal.is-light .sr-com-grid-lbl {
+  color: #1e293b !important;
+}
+
+.sr-po-modal.is-light .sr-com-grid-lbl.is-net-lbl {
+  color: #047857 !important;
+}
+
+.sr-po-modal.is-light .sr-com-grid-pct-unit {
+  color: #475569 !important;
 }
 
 .sr-po-modal.is-light .sr-modal-input.is-mono-bold {
@@ -63252,6 +63872,12 @@ const isAnySaleModalOpen = computed(() => Boolean(
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05) !important;
 }
 
+.sr-po-modal.is-light .sr-modal-finance-grid .sr-modal-fin-col .sr-modal-input.is-fin-num.is-emerald-highlight {
+  background: #ecfdf5 !important;
+  border-color: #10b981 !important;
+  color: #047857 !important;
+}
+
 .sr-po-modal.is-light .sr-po-fin-mode-tag.is-hd {
   background: #dbeafe;
   border-color: #38bdf8;
@@ -66284,6 +66910,598 @@ const isAnySaleModalOpen = computed(() => Boolean(
 
   .sr-lic-repo-footer {
     padding: 10px 12px;
+  }
+}
+
+/* ─── TRẠNG THÁI XỬ LÝ GIA HẠN LICENSE TRÊN CARD PO & MODAL PO (ĐỒNG BỘ TRANG QUẢN LÝ BẢN QUYỀN) ─── */
+.sr-po1-b-row.is-handle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 5px 8px;
+  margin-top: 3px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(148, 163, 184, 0.16);
+  min-height: 28px;
+  cursor: default;
+}
+
+.lic-block-handle-cell {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.lic-handle-btn-group,
+.lic-handled-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.lic-handle-act-btn {
+  width: auto;
+  margin: 0;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.lic-handle-act-btn.is-renewed {
+  background: rgba(16, 185, 129, 0.16);
+  border-color: rgba(52, 211, 153, 0.42);
+  color: #6ee7b7;
+}
+
+.lic-handle-act-btn.is-renewed:hover:not(:disabled) {
+  background: #059669;
+  border-color: #34d399;
+  color: #ffffff;
+}
+
+.lic-handle-act-btn.is-stopped {
+  background: rgba(245, 158, 11, 0.16);
+  border-color: rgba(251, 191, 36, 0.42);
+  color: #fcd34d;
+}
+
+.lic-handle-act-btn.is-stopped:hover:not(:disabled) {
+  background: #d97706;
+  border-color: #fbbf24;
+  color: #ffffff;
+}
+
+.lic-handle-act-btn:disabled,
+.lic-handled-undo-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.lic-handled-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 23px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.lic-handled-badge.is-mini {
+  height: 19px;
+  padding: 0 6px;
+  font-size: 10px;
+}
+
+.lic-handled-badge.is-renewed {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: rgba(52, 211, 153, 0.48);
+  color: #6ee7b7;
+}
+
+.lic-handled-badge.is-stopped {
+  background: rgba(148, 163, 184, 0.2);
+  border-color: rgba(148, 163, 184, 0.45);
+  color: #e2e8f0;
+}
+
+.lic-handled-undo-btn {
+  width: auto;
+  margin: 0;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 5px;
+  background: rgba(30, 41, 59, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  color: #cbd5e1;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.lic-handled-undo-btn:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.22);
+  border-color: #f87171;
+  color: #fecaca;
+}
+
+.lic-block-status-normal {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  color: #6ee7b7;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.is-handled-dimmed {
+  text-decoration: line-through !important;
+  text-decoration-thickness: 1.5px !important;
+  color: #64748b !important;
+  opacity: 0.65 !important;
+}
+
+/* Modal PO: 3-Card Handling Status Selector (giống trang Quản lý Bản quyền) */
+.lic-modal-handle-seg {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+
+.lic-mhs-btn {
+  width: 100%;
+  margin: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 7px;
+  min-height: 64px;
+  padding: 8px 10px;
+  border-radius: 11px;
+  border: 1.5px solid rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.72);
+  color: #cbd5e1;
+  cursor: pointer;
+  text-align: left;
+  min-width: 0;
+  box-sizing: border-box;
+  transition: all 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.lic-mhs-btn:hover {
+  border-color: rgba(148, 163, 184, 0.52);
+  background: rgba(30, 41, 59, 0.88);
+  transform: translateY(-1px);
+}
+
+.lic-mhs-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+}
+
+.lic-mhs-ico {
+  width: 25px;
+  height: 25px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.18s ease;
+}
+
+.lic-mhs-btn.is-unhandled .lic-mhs-ico {
+  background: rgba(14, 165, 233, 0.18);
+  border: 1px solid rgba(56, 189, 248, 0.36);
+  color: #38bdf8;
+}
+
+.lic-mhs-btn.is-renewed .lic-mhs-ico {
+  background: rgba(16, 185, 129, 0.18);
+  border: 1px solid rgba(52, 211, 153, 0.36);
+  color: #34d399;
+}
+
+.lic-mhs-btn.is-stopped .lic-mhs-ico {
+  background: rgba(245, 158, 11, 0.18);
+  border: 1px solid rgba(251, 191, 36, 0.38);
+  color: #fbbf24;
+}
+
+.lic-mhs-dot {
+  width: 15px;
+  height: 15px;
+  border-radius: 999px;
+  border: 2px solid rgba(148, 163, 184, 0.45);
+  background: transparent;
+  flex-shrink: 0;
+  position: relative;
+  box-sizing: border-box;
+  transition: all 0.18s ease;
+}
+
+.lic-mhs-btn.active .lic-mhs-dot::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.lic-mhs-texts {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.lic-mhs-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: #e2e8f0;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lic-mhs-sub {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #94a3b8;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lic-mhs-btn.is-unhandled.active {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.3) 0%, rgba(37, 99, 235, 0.24) 100%);
+  border-color: #38bdf8;
+  box-shadow:
+    0 8px 20px -6px rgba(14, 165, 233, 0.42),
+    0 0 0 1px rgba(56, 189, 248, 0.28) inset;
+}
+
+.lic-mhs-btn.is-unhandled.active .lic-mhs-ico {
+  background: #0284c7;
+  border-color: #7dd3fc;
+  color: #ffffff;
+}
+
+.lic-mhs-btn.is-unhandled.active .lic-mhs-dot {
+  border-color: #38bdf8;
+  color: #38bdf8;
+}
+
+.lic-mhs-btn.is-unhandled.active .lic-mhs-title {
+  color: #ffffff;
+}
+
+.lic-mhs-btn.is-unhandled.active .lic-mhs-sub {
+  color: #bae6fd;
+}
+
+.lic-mhs-btn.is-renewed.active {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.34) 0%, rgba(5, 150, 105, 0.26) 100%);
+  border-color: #34d399;
+  box-shadow:
+    0 8px 20px -6px rgba(16, 185, 129, 0.45),
+    0 0 0 1px rgba(52, 211, 153, 0.3) inset;
+}
+
+.lic-mhs-btn.is-renewed.active .lic-mhs-ico {
+  background: #059669;
+  border-color: #6ee7b7;
+  color: #ffffff;
+}
+
+.lic-mhs-btn.is-renewed.active .lic-mhs-dot {
+  border-color: #34d399;
+  color: #34d399;
+}
+
+.lic-mhs-btn.is-renewed.active .lic-mhs-title {
+  color: #ecfdf5;
+}
+
+.lic-mhs-btn.is-renewed.active .lic-mhs-sub {
+  color: #a7f3d0;
+}
+
+.lic-mhs-btn.is-stopped.active {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.34) 0%, rgba(217, 119, 6, 0.26) 100%);
+  border-color: #fbbf24;
+  box-shadow:
+    0 8px 20px -6px rgba(245, 158, 11, 0.44),
+    0 0 0 1px rgba(251, 191, 36, 0.3) inset;
+}
+
+.lic-mhs-btn.is-stopped.active .lic-mhs-ico {
+  background: #d97706;
+  border-color: #fde68a;
+  color: #ffffff;
+}
+
+.lic-mhs-btn.is-stopped.active .lic-mhs-dot {
+  border-color: #fbbf24;
+  color: #fbbf24;
+}
+
+.lic-mhs-btn.is-stopped.active .lic-mhs-title {
+  color: #fffbeb;
+}
+
+.lic-mhs-btn.is-stopped.active .lic-mhs-sub {
+  color: #fde68a;
+}
+
+/* Light Mode (.theme-light-blue) overrides cho Card PO & Modal PO */
+.sr-page.theme-light-blue .sr-po1-b-row.is-handle-row {
+  border-top-color: #e2e8f0;
+}
+
+.sr-page.theme-light-blue .lic-handle-act-btn.is-renewed {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+  color: #047857;
+}
+
+.sr-page.theme-light-blue .lic-handle-act-btn.is-renewed:hover:not(:disabled) {
+  background: #059669;
+  border-color: #059669;
+  color: #ffffff;
+}
+
+.sr-page.theme-light-blue .lic-handle-act-btn.is-stopped {
+  background: #fffbeb;
+  border-color: #fcd34d;
+  color: #b45309;
+}
+
+.sr-page.theme-light-blue .lic-handle-act-btn.is-stopped:hover:not(:disabled) {
+  background: #d97706;
+  border-color: #d97706;
+  color: #ffffff;
+}
+
+.sr-page.theme-light-blue .lic-handled-badge.is-renewed,
+.sr-modal-overlay.theme-light-blue .lic-handled-badge.is-renewed,
+.sr-lic-repo-modal.is-light .lic-handled-badge.is-renewed {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+  color: #047857;
+}
+
+.sr-page.theme-light-blue .lic-handled-badge.is-stopped,
+.sr-modal-overlay.theme-light-blue .lic-handled-badge.is-stopped,
+.sr-lic-repo-modal.is-light .lic-handled-badge.is-stopped {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.sr-page.theme-light-blue .lic-handled-undo-btn {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+.sr-page.theme-light-blue .lic-handled-undo-btn:hover:not(:disabled) {
+  background: #fef2f2;
+  border-color: #f87171;
+  color: #dc2626;
+}
+
+.sr-page.theme-light-blue .lic-block-status-normal {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+  color: #047857;
+}
+
+.sr-page.theme-light-blue .is-handled-dimmed,
+.sr-modal-overlay.theme-light-blue .is-handled-dimmed,
+.sr-lic-repo-modal.is-light .is-handled-dimmed {
+  color: #94a3b8 !important;
+  opacity: 0.72 !important;
+}
+
+.sr-modal-overlay.theme-light-blue .lic-mhs-btn {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.sr-modal-overlay.theme-light-blue .lic-mhs-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.sr-modal-overlay.theme-light-blue .lic-mhs-title {
+  color: #1e293b;
+}
+
+.sr-modal-overlay.theme-light-blue .lic-mhs-sub {
+  color: #64748b;
+}
+
+.sr-modal-overlay.theme-light-blue .lic-mhs-dot {
+  border-color: #94a3b8;
+}
+
+.sr-modal-overlay.theme-light-blue .lic-mhs-btn.is-unhandled .lic-mhs-ico {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+  color: #0284c7;
+}
+
+.sr-modal-overlay.theme-light-blue .lic-mhs-btn.is-renewed .lic-mhs-ico {
+  background: #d1fae5;
+  border-color: #6ee7b7;
+  color: #059669;
+}
+
+.sr-modal-overlay.theme-light-blue .lic-mhs-btn.is-stopped .lic-mhs-ico {
+  background: #fef3c7;
+  border-color: #fcd34d;
+  color: #d97706;
+}
+
+.sr-modal-overlay.theme-light-blue .lic-mhs-btn.is-unhandled.active {
+  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+  border-color: #0284c7;
+  box-shadow: 0 6px 16px -4px rgba(2, 132, 199, 0.25);
+}
+
+.sr-modal-overlay.theme-light-blue .lic-mhs-btn.is-unhandled.active .lic-mhs-ico {
+  background: #0284c7;
+  border-color: #0284c7;
+  color: #ffffff;
+}
+
+.sr-modal-overlay.theme-light-blue .lic-mhs-btn.is-unhandled.active .lic-mhs-dot {
+  border-color: #0284c7;
+  color: #0284c7;
+}
+
+.sr-modal-overlay.theme-light-blue .lic-mhs-btn.is-unhandled.active .lic-mhs-title {
+  color: #0c4a6e;
+}
+
+.sr-modal-overlay.theme-light-blue .lic-mhs-btn.is-unhandled.active .lic-mhs-sub {
+  color: #0369a1;
+}
+
+.sr-modal-overlay.theme-light-blue .lic-mhs-btn.is-renewed.active {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  border-color: #059669;
+  box-shadow: 0 6px 16px -4px rgba(5, 150, 105, 0.26);
+}
+
+.sr-modal-overlay.theme-light-blue .lic-mhs-btn.is-renewed.active .lic-mhs-ico {
+  background: #059669;
+  border-color: #059669;
+  color: #ffffff;
+}
+
+.sr-modal-overlay.theme-light-blue .lic-mhs-btn.is-renewed.active .lic-mhs-dot {
+  border-color: #059669;
+  color: #059669;
+}
+
+.sr-modal-overlay.theme-light-blue .lic-mhs-btn.is-renewed.active .lic-mhs-title {
+  color: #064e3b;
+}
+
+.sr-modal-overlay.theme-light-blue .lic-mhs-btn.is-renewed.active .lic-mhs-sub {
+  color: #047857;
+}
+
+.sr-modal-overlay.theme-light-blue .lic-mhs-btn.is-stopped.active {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-color: #d97706;
+  box-shadow: 0 6px 16px -4px rgba(217, 119, 6, 0.26);
+}
+
+.sr-modal-overlay.theme-light-blue .lic-mhs-btn.is-stopped.active .lic-mhs-ico {
+  background: #d97706;
+  border-color: #d97706;
+  color: #ffffff;
+}
+
+.sr-modal-overlay.theme-light-blue .lic-mhs-btn.is-stopped.active .lic-mhs-dot {
+  border-color: #d97706;
+  color: #d97706;
+}
+
+.sr-modal-overlay.theme-light-blue .lic-mhs-btn.is-stopped.active .lic-mhs-title {
+  color: #78350f;
+}
+
+.sr-modal-overlay.theme-light-blue .lic-mhs-btn.is-stopped.active .lic-mhs-sub {
+  color: #b45309;
+}
+
+@media (max-width: 768px) {
+  .sr-po1-b-row.is-handle-row {
+    margin-top: 2px !important;
+    padding-top: 5px !important;
+    min-height: 24px !important;
+  }
+
+  .lic-handle-act-btn {
+    height: 22px;
+    padding: 0 7px;
+    font-size: 10px;
+  }
+
+  .lic-handled-badge {
+    height: 21px;
+    padding: 0 7px;
+    font-size: 10px;
+  }
+
+  .lic-handled-undo-btn {
+    height: 20px;
+    padding: 0 6px;
+    font-size: 10px;
+  }
+
+  .lic-block-status-normal {
+    height: 20px;
+    padding: 0 7px;
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 520px) {
+  .lic-modal-handle-seg {
+    gap: 6px;
+  }
+
+  .lic-mhs-btn {
+    min-height: 60px;
+    padding: 7px 7px;
+  }
+
+  .lic-mhs-title {
+    font-size: 11px;
+  }
+
+  .lic-mhs-sub {
+    font-size: 9.5px;
   }
 }
 </style>

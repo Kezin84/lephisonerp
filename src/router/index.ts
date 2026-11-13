@@ -71,6 +71,7 @@ const routes = [
   },
   {
     path: '/report-firebase',
+    alias: ['/reportfirebase'],
     name: 'ReportFIREBASE',
     component: ReportFIREBASE,
     meta: { title: 'Báo cáo Firebase' }

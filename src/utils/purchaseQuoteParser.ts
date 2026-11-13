@@ -587,7 +587,7 @@ export async function parsePurchaseFileStandard(
 
     let sttLineIdx = -1
     for (let i = 0; i < allLines.length; i++) {
-      const hasSttToken = allLines[i].tokens.some(t => /^(STT|NO\.?|MSP|TT)$/i.test(t.str.trim()))
+      const hasSttToken = allLines[i].tokens.some(t => /^(STT|NO\.?|MSP|TT|#|ITEM)$/i.test(t.str.trim()))
       if (!hasSttToken) continue
       const bandText = allLines
         .slice(Math.max(0, i - 2), Math.min(allLines.length, i + 3))
@@ -600,22 +600,63 @@ export async function parsePurchaseFileStandard(
           bandText.includes('THIẾT BỊ') ||
           bandText.includes('DIỄN GIẢI') ||
           bandText.includes('MODEL') ||
-          bandText.includes('PART#') ||
+          bandText.includes('PART') ||
+          bandText.includes('SKU') ||
+          bandText.includes('MÃ HÀNG') ||
           bandText.includes('MÔ TẢ') ||
           bandText.includes('DESCRIPTION') ||
           bandText.includes('PS')) &&
         (bandText.includes('ĐƠN GIÁ') ||
+          bandText.includes('GIÁ VỐN') ||
           bandText.includes('THÀNH TIỀN') ||
           bandText.includes('TỔNG') ||
           bandText.includes('S.L') ||
           bandText.includes('SL') ||
           bandText.includes('SỐ LƯỢNG') ||
+          bandText.includes('QTY') ||
           bandText.includes('UNIT PRICE') ||
+          bandText.includes('AMOUNT') ||
           bandText.includes('PRICES LIST') ||
           bandText.includes('LIST PRICE'))
       ) {
         sttLineIdx = i
         break
+      }
+    }
+
+    // Fallback cho bảng PDF hãng / nhà phân phối không có cột STT (bắt đầu bằng SKU / Part Number / Model / Description)
+    if (sttLineIdx === -1) {
+      for (let i = 0; i < allLines.length; i++) {
+        if (allLines[i].tokens.length < 2) continue
+        const lineUpper = allLines[i].plainText.toUpperCase()
+        const hasDirectHeaderCol =
+          /\b(PART\s*NUMBER|PART#|SKU|MODEL|MÃ\s*HÀNG|P\/N|DESCRIPTION|TÊN\s*HÀNG|MÔ\s*TẢ|DIỄN\s*GIẢI)\b/i.test(lineUpper)
+        if (!hasDirectHeaderCol) continue
+        const bandText = allLines
+          .slice(Math.max(0, i - 1), Math.min(allLines.length, i + 2))
+          .map(l => l.plainText)
+          .join(' ')
+          .toUpperCase()
+        if (
+          (bandText.includes('ĐƠN GIÁ') ||
+            bandText.includes('GIÁ VỐN') ||
+            bandText.includes('UNIT PRICE') ||
+            bandText.includes('PRICES LIST') ||
+            bandText.includes('LIST PRICE') ||
+            bandText.includes('MSRP') ||
+            bandText.includes('THÀNH TIỀN') ||
+            bandText.includes('AMOUNT')) &&
+          (bandText.includes('QTY') ||
+            bandText.includes('SL') ||
+            bandText.includes('S.L') ||
+            bandText.includes('SỐ LƯỢNG') ||
+            bandText.includes('PART') ||
+            bandText.includes('SKU') ||
+            bandText.includes('MODEL'))
+        ) {
+          sttLineIdx = i
+          break
+        }
       }
     }
 
@@ -1038,6 +1079,56 @@ export async function parsePurchaseFileStandard(
   let bestItems: ParsedPurchaseItem[] = []
   let detectedVendorOverall = extractVendorNameFromLines(extraHeaderLines)
 
+  const mapPurchaseHeaderCells = (
+    targetRow: string[],
+    colMap: Record<string, number>,
+    isSubRow = false
+  ) => {
+    targetRow.forEach((cell, idx) => {
+      const header = String(cell ?? '').toUpperCase().replace(/\s+/g, ' ').trim()
+      if (!header) return
+      if ((header.includes('STT') || header === 'NO.' || header === 'NO' || header === 'TT' || header === 'MSP' || header === '#' || header === 'ITEM') && colMap['stt'] === undefined) {
+        colMap['stt'] = idx
+      } else if ((header === 'PS' || header.startsWith('PS ') || header.includes('MODEL') || header.includes('PART NUMBER') || header.includes('PART#') || header.includes('SKU') || header.includes('MÃ HÀNG') || header.includes('MÃ SP') || header === 'P/N' || header === 'PN') && colMap['ps'] === undefined) {
+        colMap['ps'] = idx
+      } else if ((header.includes('MÔ TẢ') || header.includes('TÊN HÀNG') || header.includes('DIỄN GIẢI') || header.includes('DESCRIPTION') || header.includes('SẢN PHẨM') || header.includes('THIẾT BỊ') || header.includes('HẠNG MỤC') || header.includes('NỘI DUNG') || header.includes('DỊCH VỤ')) && colMap['mota'] === undefined) {
+        colMap['mota'] = idx
+      } else if ((header.includes('TERM') || header.includes('THỜI HẠN') || header.includes('DURATION')) && colMap['license_duration'] === undefined) {
+        colMap['license_duration'] = idx
+      } else if ((header.includes('BẢO HÀNH') || header.includes('WARRANTY')) && colMap['baoHanh'] === undefined) {
+        colMap['baoHanh'] = idx
+      } else if ((header === 'ĐVT' || header === 'DVT' || header.includes('ĐƠN VỊ') || header === 'UNIT') && colMap['dvt'] === undefined) {
+        colMap['dvt'] = idx
+      } else if ((header === 'S.L' || header === 'S.L.' || header === 'SL' || header.includes('SỐ LƯỢNG') || header.includes('S.LƯỢNG') || header === 'QTY' || header === 'QUANTITY') && colMap['sl'] === undefined) {
+        colMap['sl'] = idx
+      } else if ((header.includes('PRICES LIST') || header.includes('LIST PRICE') || header.includes('PRICE LIST') || header.includes('MSRP') || header.includes('GIÁ THAM KHẢO')) && colMap['listPrice'] === undefined) {
+        colMap['listPrice'] = idx
+      } else if ((header.includes('DISCOUNT') || header.includes('OFF HÃNG') || header.includes('CHIẾT KHẤU')) && colMap['discount'] === undefined) {
+        colMap['discount'] = idx
+      } else if (header.includes('ĐƠN GIÁ') || header.includes('GIÁ VỐN') || header.includes('GIÁ NHẬP') || header.includes('UNIT PRICE') || header.includes('GIÁ MUA')) {
+        if (isSubRow && colMap['truocThue'] === idx) delete colMap['truocThue']
+        if (colMap['giaVon'] === undefined) colMap['giaVon'] = idx
+      } else if (
+        ((header.includes('THÀNH TIỀN') && !header.includes('CÓ VAT') && !header.includes('SAU VAT') && !header.includes('SAU THUẾ')) ||
+          header.includes('CHƯA VAT') ||
+          header.includes('TRƯỚC THUẾ') ||
+          header === 'TỔNG' ||
+          header.includes('TỔNG TIỀN') ||
+          header === 'AMOUNT' ||
+          header === 'TOTAL' ||
+          header.includes('ESTIMATED VALUE'))
+      ) {
+        if (colMap['truocThue'] === undefined || (isSubRow && (header.includes('TRƯỚC THUẾ') || header.includes('CHƯA VAT')))) {
+          colMap['truocThue'] = idx
+        }
+      } else if ((header.includes('SAU THUẾ') || header.includes('SAU VAT') || header.includes('CÓ VAT')) && colMap['sauThue'] === undefined) {
+        colMap['sauThue'] = idx
+      } else if ((header.startsWith('VAT') || (header.includes('THUẾ') && !header.includes('THÀNH TIỀN') && !header.includes('TRƯỚC') && !header.includes('SAU'))) && colMap['vat'] === undefined) {
+        colMap['vat'] = idx
+      }
+    })
+  }
+
   for (const sheet of sheetsToScan) {
     const rows = sheet.rows
     let headerRowIndex = -1
@@ -1058,32 +1149,83 @@ export async function parsePurchaseFileStandard(
       if (!Array.isArray(row) || row.length === 0) continue
 
       if (headerRowIndex === -1) {
-        const rowStr = row.map(c => String(c ?? '').toUpperCase().replace(/\s+/g, ' ').trim()).join('|')
-        if (
+        const nonEmptyCells = row.map(c => String(c ?? '').toUpperCase().replace(/\s+/g, ' ').trim()).filter(Boolean)
+        const rowStr = nonEmptyCells.join('|')
+        const hasIndexCol =
+          nonEmptyCells.some(c => c === 'STT' || c === 'MSP' || c === 'NO.' || c === 'NO' || c === 'TT' || c === '#' || c === 'ITEM' || c.startsWith('STT '))
+        const hasItemCol =
           rowStr.includes('MÔ TẢ') ||
+          rowStr.includes('TÊN HÀNG') ||
+          rowStr.includes('DIỄN GIẢI') ||
+          rowStr.includes('DESCRIPTION') ||
+          rowStr.includes('SẢN PHẨM') ||
+          rowStr.includes('THIẾT BỊ') ||
+          rowStr.includes('HẠNG MỤC') ||
+          rowStr.includes('DỊCH VỤ') ||
+          rowStr.includes('MODEL') ||
+          rowStr.includes('PART NUMBER') ||
+          rowStr.includes('PART#') ||
+          rowStr.includes('SKU') ||
+          rowStr.includes('MÃ HÀNG') ||
+          nonEmptyCells.some(c => c === 'PS' || c.startsWith('PS ') || c === 'P/N' || c === 'PN')
+        const hasPriceOrQtyCol =
+          rowStr.includes('ĐƠN GIÁ') ||
+          rowStr.includes('GIÁ VỐN') ||
+          rowStr.includes('GIÁ NHẬP') ||
+          rowStr.includes('UNIT PRICE') ||
           rowStr.includes('PRICES LIST') ||
           rowStr.includes('LIST PRICE') ||
+          rowStr.includes('PRICE LIST') ||
+          rowStr.includes('MSRP') ||
+          rowStr.includes('GIÁ THAM KHẢO') ||
           rowStr.includes('DISCOUNT') ||
-          ((rowStr.includes('STT') || rowStr.includes('MSP') || rowStr.includes('NO.') || rowStr.includes('TT')) &&
-            (rowStr.includes('ĐƠN GIÁ') || rowStr.includes('MODEL') || rowStr.includes('PS') || rowStr.includes('TÊN HÀNG') || rowStr.includes('SẢN PHẨM') || rowStr.includes('THIẾT BỊ') || rowStr.includes('DIỄN GIẢI') || rowStr.includes('DESCRIPTION')))
-        ) {
+          rowStr.includes('OFF HÃNG') ||
+          rowStr.includes('THÀNH TIỀN') ||
+          rowStr.includes('TRƯỚC THUẾ') ||
+          rowStr.includes('CHƯA VAT') ||
+          rowStr.includes('TỔNG TIỀN') ||
+          rowStr.includes('ESTIMATED VALUE') ||
+          rowStr.includes('SỐ LƯỢNG') ||
+          nonEmptyCells.some(c => c === 'SL' || c === 'S.L' || c === 'S.L.' || c === 'QTY' || c === 'AMOUNT' || c === 'TOTAL' || c === 'TỔNG')
+
+        if (nonEmptyCells.length >= 2 && hasItemCol && (hasIndexCol || hasPriceOrQtyCol)) {
           headerRowIndex = i
-          row.forEach((cell, idx) => {
-            const header = String(cell ?? '').toUpperCase().replace(/\s+/g, ' ').trim()
-            if (!header) return
-            if ((header.includes('STT') || header === 'NO.' || header === 'TT' || header === 'MSP') && colMap['stt'] === undefined) colMap['stt'] = idx
-            else if ((header === 'PS' || header.startsWith('PS ') || header.includes('MODEL') || header.includes('PART NUMBER') || header.includes('PART#') || header.includes('SKU') || header.includes('MÃ HÀNG') || header === 'P/N' || header === 'PN') && colMap['ps'] === undefined) colMap['ps'] = idx
-            else if ((header.includes('MÔ TẢ') || header.includes('TÊN HÀNG') || header.includes('DIỄN GIẢI') || header.includes('DESCRIPTION') || header.includes('SẢN PHẨM') || header.includes('THIẾT BỊ') || header.includes('HẠNG MỤC')) && colMap['mota'] === undefined) colMap['mota'] = idx
-            else if ((header.includes('TERM') || header.includes('THỜI HẠN') || header.includes('DURATION')) && colMap['license_duration'] === undefined) colMap['license_duration'] = idx
-            else if ((header.includes('BẢO HÀNH') || header.includes('WARRANTY')) && colMap['baoHanh'] === undefined) colMap['baoHanh'] = idx
-            else if ((header === 'ĐVT' || header === 'DVT' || header.includes('ĐƠN VỊ') || header === 'UNIT') && colMap['dvt'] === undefined) colMap['dvt'] = idx
-            else if ((header === 'S.L' || header === 'S.L.' || header === 'SL' || header.includes('SỐ LƯỢNG') || header === 'QTY') && colMap['sl'] === undefined) colMap['sl'] = idx
-            else if ((header.includes('PRICES LIST') || header.includes('LIST PRICE') || header.includes('PRICE LIST')) && colMap['listPrice'] === undefined) colMap['listPrice'] = idx
-            else if ((header.includes('DISCOUNT') || header.includes('OFF HÃNG')) && colMap['discount'] === undefined) colMap['discount'] = idx
-            else if ((header.includes('ĐƠN GIÁ') || header.includes('GIÁ VỐN') || header.includes('UNIT PRICE')) && colMap['giaVon'] === undefined) colMap['giaVon'] = idx
-            else if (((header.includes('THÀNH TIỀN') && !header.includes('CÓ VAT') && !header.includes('SAU VAT') && !header.includes('SAU THUẾ')) || header.includes('CHƯA VAT') || header.includes('TRƯỚC THUẾ') || header === 'TỔNG' || header.includes('TỔNG TIỀN') || header === 'AMOUNT') && colMap['truocThue'] === undefined) colMap['truocThue'] = idx
-            else if ((header.startsWith('VAT') || (header.includes('THUẾ') && !header.includes('THÀNH TIỀN') && !header.includes('TRƯỚC') && !header.includes('SAU'))) && colMap['vat'] === undefined) colMap['vat'] = idx
-          })
+          mapPurchaseHeaderCells(row, colMap, false)
+
+          // Hỗ trợ tiêu đề gộp 2 dòng liên tiếp (Merged 2-row Header)
+          if (i + 1 < rows.length && Array.isArray(rows[i + 1])) {
+            const nextRow = rows[i + 1]
+            const nextCells = nextRow.map(c => String(c ?? '').toUpperCase().replace(/\s+/g, ' ').trim()).filter(Boolean)
+            const sttValNext = colMap['stt'] !== undefined ? String(nextRow[colMap['stt']] ?? '').trim() : ''
+            const looksLikeDataRow =
+              /^\d+\.?$/.test(sttValNext) && nextCells.some(c => parseCleanNumber(c) > 100)
+            const hasSubHeaderKeywords =
+              nextCells.length > 0 &&
+              nextCells.every(c => c.length <= 45) &&
+              nextCells.some(
+                c =>
+                  c.includes('ĐƠN GIÁ') ||
+                  c.includes('GIÁ VỐN') ||
+                  c.includes('TRƯỚC THUẾ') ||
+                  c.includes('CHƯA VAT') ||
+                  c.includes('SAU THUẾ') ||
+                  c.includes('CÓ VAT') ||
+                  c.includes('SAU VAT') ||
+                  c === 'VAT' ||
+                  c.includes('THUẾ VAT') ||
+                  c.includes('THÀNH TIỀN') ||
+                  c.includes('UNIT PRICE') ||
+                  c.includes('LIST PRICE') ||
+                  c === 'AMOUNT' ||
+                  c.includes('SỐ LƯỢNG') ||
+                  c === 'SL' ||
+                  c === 'QTY'
+              )
+            if (!looksLikeDataRow && hasSubHeaderKeywords) {
+              mapPurchaseHeaderCells(nextRow, colMap, true)
+              i++
+            }
+          }
         }
         continue
       }
@@ -1119,22 +1261,27 @@ export async function parsePurchaseFileStandard(
       const psVal = colMap['ps'] !== undefined ? String(row[colMap['ps']] ?? '').trim() : ''
       const psClean = psVal.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim()
       const combinedText = `${psClean} ${motaPlain}`.trim()
-      if (!combinedText || combinedText.toUpperCase() === 'STT') continue
+      if (!combinedText || combinedText.toUpperCase() === 'STT' || combinedText.toUpperCase() === 'MSP') continue
 
       const sl = colMap['sl'] !== undefined ? (parseCleanNumber(row[colMap['sl']]) || 1) : 1
       const listPrice = colMap['listPrice'] !== undefined ? parseCleanNumber(row[colMap['listPrice']]) : 0
       let giaVon = colMap['giaVon'] !== undefined ? parseCleanNumber(row[colMap['giaVon']]) : 0
-      const truocThue = colMap['truocThue'] !== undefined ? parseCleanNumber(row[colMap['truocThue']]) : 0
-      if (giaVon === 0 && truocThue > 0 && sl > 0) {
-        giaVon = Math.round(truocThue / sl)
-      }
-      if (listPrice === 0 && giaVon === 0 && truocThue === 0) continue
+      let truocThue = colMap['truocThue'] !== undefined ? parseCleanNumber(row[colMap['truocThue']]) : 0
+      const sauThue = colMap['sauThue'] !== undefined ? parseCleanNumber(row[colMap['sauThue']]) : 0
 
       const vatVal = colMap['vat'] !== undefined ? parseCleanNumber(row[colMap['vat']]) : 0
       let vatPct = 0
       if (vatVal > 0 && vatVal < 1) vatPct = Math.round(vatVal * 100)
       else if (vatVal > 0 && truocThue > 0 && vatVal > 100) vatPct = Math.round((vatVal / truocThue) * 100)
       else if (vatVal > 0 && vatVal <= 100) vatPct = Math.round(vatVal)
+
+      if (giaVon === 0 && truocThue === 0 && listPrice === 0 && sauThue > 0) {
+        truocThue = vatPct > 0 ? Math.round(sauThue / (1 + vatPct / 100)) : sauThue
+      }
+      if (giaVon === 0 && truocThue > 0 && sl > 0) {
+        giaVon = Math.round(truocThue / sl)
+      }
+      if (listPrice === 0 && giaVon === 0 && truocThue === 0) continue
 
       const motaLines = motaPlain.split(/\r?\n/).map(s => s.trim()).filter(Boolean)
       const effectiveTenHang =

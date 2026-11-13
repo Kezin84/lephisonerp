@@ -1015,11 +1015,52 @@
                     @dragend="!isMobile && onDragEndReport($event)"
                     @click="openEditModal(report)"
                   >
-                    <!-- Top Meta (No STT) & Badges Row -->
-                    <div class="bg-dcard-top">
+                    <!-- Top Meta (No STT), Pipeline Hierarchy Badges & Category/Customer Badges -->
+                    <div class="bg-dcard-top" :class="{ 'has-pl-hierarchy': getLinkedPipelines(report).length > 0 }">
                       <div class="bg-dcard-meta bg-tabular">
                         <span class="bg-dcard-time">{{ formatDisplayTime(report.thoi_gian).thu }} · {{ formatDisplayTime(report.thoi_gian).date }} · {{ formatDisplayTime(report.thoi_gian).time }}</span>
                       </div>
+
+                      <div
+                        v-if="getLinkedPipelines(report).length > 0"
+                        class="bg-dcard-pl-tree"
+                        @mousedown.stop
+                        @click.stop
+                      >
+                        <div
+                          v-for="(pl, pIdx) in getLinkedPipelines(report)"
+                          :key="'m-plb-' + report.id + '-' + pIdx"
+                          class="bg-dcard-tree-group"
+                        >
+                          <div v-if="pl.ten_du_an" class="bg-dcard-tree-row is-lv-0">
+                            <span class="bg-dcard-chip is-proj-chip">
+                              <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                              <span class="bg-dcard-chip-full">{{ pl.ten_du_an }}</span>
+                            </span>
+                          </div>
+                          <div class="bg-dcard-tree-row" :class="pl.ten_du_an ? 'is-lv-1' : 'is-lv-0'">
+                            <span v-if="pl.ten_du_an" class="bg-dcard-tree-elbow" aria-hidden="true"></span>
+                            <span class="bg-dcard-chip is-wf-chip">
+                              <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+                              <span class="bg-dcard-chip-full">{{ pl.name_workflow || 'Khung Chuẩn Hệ Thống' }}</span>
+                            </span>
+                          </div>
+                          <div class="bg-dcard-tree-row" :class="pl.ten_du_an ? 'is-lv-2' : 'is-lv-1'">
+                            <span class="bg-dcard-tree-elbow" aria-hidden="true"></span>
+                            <button
+                              type="button"
+                              class="bg-dcard-chip is-pipe-task-chip"
+                              title="Nhấn để mở xem Công việc bên trang Pipeline"
+                              @click.stop="goToPipeline(pl.Id_pipeline)"
+                            >
+                              <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                              <span class="bg-dcard-chip-full">{{ getPipelineTaskDisplayLabel(pl) }}</span>
+                              <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
                       <div class="bg-dcard-badges">
                         <span class="bg-dcard-chip is-cat" :class="report.phan_loai === 'ĐỜI SỐNG' ? 'is-life' : 'is-work'">{{ report.phan_loai }}</span>
                         <span v-if="report.trang_thai !== 'Hoàn thành' && (report.isFailed === true || report.isFailed === 'TRUE')" class="bg-dcard-chip is-failed-chip">FAILED</span>
@@ -1050,19 +1091,6 @@
                     <div v-if="report.ghi_chu" class="bg-dcard-note">
                       <span class="bg-dcard-note-tag">NOTE</span>
                       <span class="bg-dcard-note-txt">{{ report.ghi_chu }}</span>
-                    </div>
-
-                    <!-- Linked Pipelines -->
-                    <div v-if="getLinkedPipelines(report).length > 0" class="bg-dcard-pipelines" @mousedown.stop @click.stop>
-                      <div v-for="(pl, idx) in getLinkedPipelines(report)" :key="'mpl-' + idx" class="bg-dcard-pl-item">
-                        <div class="bg-dcard-pl-main">
-                          <span class="bg-dcard-pl-lbl">Pipeline:</span>
-                          <span class="bg-dcard-pl-txt">{{ pl.content_of_contract_po || 'Không có nội dung' }}</span>
-                        </div>
-                        <button type="button" class="bg-dcard-pl-eye" @click.stop="goToPipeline(pl.Id_pipeline)" title="Xem chi tiết Pipeline">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                        </button>
-                      </div>
                     </div>
 
                     <!-- Attachments Toggle (Default OPEN in Detail View + Smooth Collapse/Expand) -->
@@ -1219,11 +1247,52 @@
                     @dragend="!isMobile && onDragEndReport($event)"
                     @click="openEditModal(report)"
                   >
-                    <!-- Top Meta (No STT) & Badges Row -->
-                    <div class="bg-dcard-top">
+                    <!-- Top Meta (No STT), Pipeline Hierarchy Badges & Category/Customer Badges -->
+                    <div class="bg-dcard-top" :class="{ 'has-pl-hierarchy': getLinkedPipelines(report).length > 0 }">
                       <div class="bg-dcard-meta bg-tabular">
                         <span class="bg-dcard-time">{{ formatDisplayTime(report.thoi_gian).thu }} · {{ formatDisplayTime(report.thoi_gian).date }} · {{ formatDisplayTime(report.thoi_gian).time }}</span>
                       </div>
+
+                      <div
+                        v-if="getLinkedPipelines(report).length > 0"
+                        class="bg-dcard-pl-tree"
+                        @mousedown.stop
+                        @click.stop
+                      >
+                        <div
+                          v-for="(pl, pIdx) in getLinkedPipelines(report)"
+                          :key="'a-plb-' + report.id + '-' + pIdx"
+                          class="bg-dcard-tree-group"
+                        >
+                          <div v-if="pl.ten_du_an" class="bg-dcard-tree-row is-lv-0">
+                            <span class="bg-dcard-chip is-proj-chip">
+                              <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                              <span class="bg-dcard-chip-full">{{ pl.ten_du_an }}</span>
+                            </span>
+                          </div>
+                          <div class="bg-dcard-tree-row" :class="pl.ten_du_an ? 'is-lv-1' : 'is-lv-0'">
+                            <span v-if="pl.ten_du_an" class="bg-dcard-tree-elbow" aria-hidden="true"></span>
+                            <span class="bg-dcard-chip is-wf-chip">
+                              <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+                              <span class="bg-dcard-chip-full">{{ pl.name_workflow || 'Khung Chuẩn Hệ Thống' }}</span>
+                            </span>
+                          </div>
+                          <div class="bg-dcard-tree-row" :class="pl.ten_du_an ? 'is-lv-2' : 'is-lv-1'">
+                            <span class="bg-dcard-tree-elbow" aria-hidden="true"></span>
+                            <button
+                              type="button"
+                              class="bg-dcard-chip is-pipe-task-chip"
+                              title="Nhấn để mở xem Công việc bên trang Pipeline"
+                              @click.stop="goToPipeline(pl.Id_pipeline)"
+                            >
+                              <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                              <span class="bg-dcard-chip-full">{{ getPipelineTaskDisplayLabel(pl) }}</span>
+                              <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
                       <div class="bg-dcard-badges">
                         <span class="bg-dcard-chip is-cat" :class="report.phan_loai === 'ĐỜI SỐNG' ? 'is-life' : 'is-work'">{{ report.phan_loai }}</span>
                         <span v-if="report.trang_thai !== 'Hoàn thành' && (report.isFailed === true || report.isFailed === 'TRUE')" class="bg-dcard-chip is-failed-chip">FAILED</span>
@@ -1254,19 +1323,6 @@
                     <div v-if="report.ghi_chu" class="bg-dcard-note">
                       <span class="bg-dcard-note-tag">NOTE</span>
                       <span class="bg-dcard-note-txt">{{ report.ghi_chu }}</span>
-                    </div>
-
-                    <!-- Linked Pipelines -->
-                    <div v-if="getLinkedPipelines(report).length > 0" class="bg-dcard-pipelines" @mousedown.stop @click.stop>
-                      <div v-for="(pl, idx) in getLinkedPipelines(report)" :key="'apl-' + idx" class="bg-dcard-pl-item">
-                        <div class="bg-dcard-pl-main">
-                          <span class="bg-dcard-pl-lbl">Pipeline:</span>
-                          <span class="bg-dcard-pl-txt">{{ pl.content_of_contract_po || 'Không có nội dung' }}</span>
-                        </div>
-                        <button type="button" class="bg-dcard-pl-eye" @click.stop="goToPipeline(pl.Id_pipeline)" title="Xem chi tiết Pipeline">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                        </button>
-                      </div>
                     </div>
 
                     <!-- Attachments Toggle (Default OPEN in Detail View + Smooth Collapse/Expand) -->
@@ -1395,8 +1451,8 @@
             }"
             @click="openEditModal(report)"
           >
-            <!-- Top Meta (Day · Date · Time + Sáng/Chiều Pill) & Badges Row -->
-            <div class="bg-dcard-top">
+            <!-- Top Meta (Day · Date · Time + Sáng/Chiều Pill), Pipeline Hierarchy Badges & Category/Customer Badges -->
+            <div class="bg-dcard-top" :class="{ 'has-pl-hierarchy': getLinkedPipelines(report).length > 0 }">
               <div class="bg-dcard-meta bg-tabular">
                 <span class="bg-dcard-time">{{ formatDisplayTime(report.thoi_gian).thu }} · {{ formatDisplayTime(report.thoi_gian).date }} · {{ formatDisplayTime(report.thoi_gian).time }}</span>
                 <span
@@ -1404,6 +1460,47 @@
                   :class="formatDisplayTime(report.thoi_gian).period === 'Sáng' ? 'is-am' : 'is-pm'"
                 >{{ formatDisplayTime(report.thoi_gian).period === 'Sáng' ? 'SÁNG' : 'CHIỀU' }}</span>
               </div>
+
+              <div
+                v-if="getLinkedPipelines(report).length > 0"
+                class="bg-dcard-pl-tree"
+                @mousedown.stop
+                @click.stop
+              >
+                <div
+                  v-for="(pl, pIdx) in getLinkedPipelines(report)"
+                  :key="'mu-plb-' + report.id + '-' + pIdx"
+                  class="bg-dcard-tree-group"
+                >
+                  <div v-if="pl.ten_du_an" class="bg-dcard-tree-row is-lv-0">
+                    <span class="bg-dcard-chip is-proj-chip">
+                      <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                      <span class="bg-dcard-chip-full">{{ pl.ten_du_an }}</span>
+                    </span>
+                  </div>
+                  <div class="bg-dcard-tree-row" :class="pl.ten_du_an ? 'is-lv-1' : 'is-lv-0'">
+                    <span v-if="pl.ten_du_an" class="bg-dcard-tree-elbow" aria-hidden="true"></span>
+                    <span class="bg-dcard-chip is-wf-chip">
+                      <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+                      <span class="bg-dcard-chip-full">{{ pl.name_workflow || 'Khung Chuẩn Hệ Thống' }}</span>
+                    </span>
+                  </div>
+                  <div class="bg-dcard-tree-row" :class="pl.ten_du_an ? 'is-lv-2' : 'is-lv-1'">
+                    <span class="bg-dcard-tree-elbow" aria-hidden="true"></span>
+                    <button
+                      type="button"
+                      class="bg-dcard-chip is-pipe-task-chip"
+                      title="Nhấn để mở xem Công việc bên trang Pipeline"
+                      @click.stop="goToPipeline(pl.Id_pipeline)"
+                    >
+                      <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                      <span class="bg-dcard-chip-full">{{ getPipelineTaskDisplayLabel(pl) }}</span>
+                      <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               <div class="bg-dcard-badges">
                 <span class="bg-dcard-chip is-cat" :class="report.phan_loai === 'ĐỜI SỐNG' ? 'is-life' : 'is-work'">{{ report.phan_loai }}</span>
                 <span v-if="report.trang_thai !== 'Hoàn thành' && (report.isFailed === true || report.isFailed === 'TRUE')" class="bg-dcard-chip is-failed-chip">FAILED</span>
@@ -1434,19 +1531,6 @@
             <div v-if="report.ghi_chu" class="bg-dcard-note">
               <span class="bg-dcard-note-tag">NOTE</span>
               <span class="bg-dcard-note-txt">{{ report.ghi_chu }}</span>
-            </div>
-
-            <!-- Linked Pipelines -->
-            <div v-if="getLinkedPipelines(report).length > 0" class="bg-dcard-pipelines" @mousedown.stop @click.stop>
-              <div v-for="(pl, idx) in getLinkedPipelines(report)" :key="'mupl-' + idx" class="bg-dcard-pl-item">
-                <div class="bg-dcard-pl-main">
-                  <span class="bg-dcard-pl-lbl">Pipeline:</span>
-                  <span class="bg-dcard-pl-txt">{{ pl.content_of_contract_po || 'Không có nội dung' }}</span>
-                </div>
-                <button type="button" class="bg-dcard-pl-eye" @click.stop="goToPipeline(pl.Id_pipeline)" title="Xem chi tiết Pipeline">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                </button>
-              </div>
             </div>
 
             <!-- Attachments Toggle (Default OPEN in Detail View + Smooth Collapse/Expand) -->
@@ -3243,7 +3327,6 @@
                         <span class="bg-studio-cus-icon" aria-hidden="true">
                           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                         </span>
-                        <span class="bg-tag-pill is-sky bg-tabular">{{ formData.maKH }}</span>
                         <span class="bg-studio-cus-name">{{ getSelectedCustomerDisplay() }}</span>
                         <span v-for="tag in getSelectedCustomerTags()" :key="tag" class="bg-tag-pill is-emerald">{{ tag }}</span>
                       </div>
@@ -3274,7 +3357,7 @@
                         type="text"
                         v-model="inlineCusQuery"
                         class="bg-studio-cus-input"
-                        placeholder="Gõ tên, công ty hoặc mã khách hàng..."
+                        placeholder="Gõ tên khách hàng hoặc tên công ty..."
                         autocomplete="off"
                         @focus="onInlineCusFocus"
                         @blur="onInlineCusBlur"
@@ -3326,7 +3409,6 @@
                             @mousedown.prevent="selectInlineCustomer(cus)"
                           >
                             <div class="bg-studio-dd-main">
-                              <span class="bg-tag-pill is-sky bg-tabular">{{ cus.ma_khach_hang }}</span>
                               <span class="bg-studio-dd-title">{{ cus.ten_khach_hang || 'Chưa đặt tên' }}</span>
                               <span v-if="cus.ten_cong_ty" class="bg-studio-dd-company">— {{ cus.ten_cong_ty }}</span>
                             </div>
@@ -3413,10 +3495,23 @@
                       </span>
                       <span class="bg-studio-mtrig-lbl">{{ hasFormLinkedFile ? 'Hồ sơ File ✓' : 'Hồ sơ File' }}</span>
                     </button>
+
+                    <button
+                      type="button"
+                      class="bg-studio-mtrigger is-pipeline-trigger"
+                      :class="{ 'has-data': hasFormLinkedPipeline }"
+                      @click="openStudioPipelineModal"
+                      title="Chọn 1 Công việc Pipeline liên kết cho báo cáo này"
+                    >
+                      <span class="bg-studio-mtrig-ic" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.35" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+                      </span>
+                      <span class="bg-studio-mtrig-lbl">{{ hasFormLinkedPipeline ? 'Pipeline ✓' : 'Pipeline' }}</span>
+                    </button>
                   </div>
 
                   <!-- 4. COMPACT FULL-DETAIL VERTICAL SUMMARY STACK (CHỈ HIỆN MỤC ĐÃ CÓ DỮ LIỆU) -->
-                  <div v-if="hasFormNote || hasFormReminder || hasFormLinkedFile" class="bg-studio-meta-stack">
+                  <div v-if="hasFormNote || hasFormReminder || hasFormLinkedFile || hasFormLinkedPipeline" class="bg-studio-meta-stack">
                     <!-- Ghi chú row -->
                     <div
                       v-if="hasFormNote"
@@ -3485,6 +3580,47 @@
                           class="bg-studio-meta-clear"
                           @click.stop="formData.id_quanlyfile = ''"
                           title="Gỡ liên kết hồ sơ"
+                        >✕</button>
+                      </div>
+                    </div>
+
+                    <!-- Pipeline row (1 Report -> tối đa 1 Pipeline) -->
+                    <div
+                      v-if="hasFormLinkedPipeline"
+                      class="bg-studio-meta-row is-pipeline"
+                      @click="openStudioPipelineModal"
+                      title="Nhấn để đổi Công việc Pipeline liên kết"
+                    >
+                      <span class="bg-studio-meta-tag is-emerald">PIPELINE</span>
+                      <div class="bg-studio-meta-text is-pipeline-stack">
+                        <template v-if="selectedLinkedPipeline">
+                          <div class="bg-studio-pl-top-line">
+                            <span v-if="selectedLinkedPipeline.ten_du_an" class="bg-pl-mini-chip is-proj">{{ selectedLinkedPipeline.ten_du_an }}</span>
+                            <span class="bg-pl-mini-chip is-wf">{{ selectedLinkedPipeline.name_workflow || 'Khung Chuẩn Hệ Thống' }}</span>
+                            <span class="bg-studio-pl-task-lbl">{{ getPipelineTaskDisplayLabel(selectedLinkedPipeline) }}</span>
+                          </div>
+                          <div
+                            v-if="selectedLinkedPipeline.ten_khach_hang || selectedLinkedPipeline.ten_cong_ty"
+                            class="bg-studio-pl-cus-row"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            <span>{{ [selectedLinkedPipeline.ten_khach_hang, selectedLinkedPipeline.ten_cong_ty].filter(Boolean).join(' · ') }}</span>
+                          </div>
+                        </template>
+                        <span v-else>Công việc Pipeline #{{ getSinglePipelineId(formData.id_pipeline) }}</span>
+                      </div>
+                      <div class="bg-studio-meta-acts">
+                        <button
+                          type="button"
+                          class="bg-studio-meta-open"
+                          @click.stop="goToPipeline(getSinglePipelineId(formData.id_pipeline))"
+                          title="Mở xem Pipeline trong tab mới"
+                        >↗</button>
+                        <button
+                          type="button"
+                          class="bg-studio-meta-clear"
+                          @click.stop="formData.id_pipeline = ''"
+                          title="Gỡ liên kết Pipeline"
                         >✕</button>
                       </div>
                     </div>
@@ -4479,9 +4615,9 @@
       </div>
     </div>
 
-    <!-- MODULE 4D: MODAL THÊM / SỬA KHÁCH HÀNG (2-COL THEMED BANNER GROUPS) -->
+    <!-- MODULE 4D: MODAL THÊM / SỬA KHÁCH HÀNG (2-COL THEMED BANNER GROUPS + SMART IMPORT) -->
     <div v-if="isCustomerModalOpen" class="bg-modal-overlay" style="z-index: 100065;" @click.self="isCustomerModalOpen = false">
-      <div class="bg-modal-card is-lg is-mobile-sheet" role="dialog" aria-modal="true">
+      <div class="bg-modal-card is-lg is-mobile-sheet cus-modal-with-import" role="dialog" aria-modal="true">
         <div class="bg-modal-head dt-only-head">
           <div class="bg-modal-title-row">
             <div class="bg-modal-icon is-emerald">
@@ -4494,7 +4630,7 @@
                   Cập nhật: {{ formatCustomerLastUpdated(customerFormData.last_updated) }}
                 </span>
               </div>
-              <p class="bg-modal-sub">Đồng bộ trực tiếp với danh bạ Khách Hàng hệ thống</p>
+              <p class="bg-modal-sub">Đồng bộ trực tiếp với danh bạ Khách Hàng hệ thống • Hỗ trợ quét nhanh ĐXMH, Báo Giá &amp; Thuế / ĐKKD</p>
             </div>
           </div>
           <button type="button" class="bg-modal-close" @click="isCustomerModalOpen = false">✕</button>
@@ -4505,6 +4641,62 @@
           <div class="m-grab-bar">
             <h2 class="m-grab-title">{{ customerFormData.id ? 'Cập Nhật Khách Hàng' : 'Tạo Khách Hàng Mới' }}</h2>
             <button type="button" class="bg-modal-close" @click="isCustomerModalOpen = false">✕</button>
+          </div>
+        </div>
+
+        <!-- TOP QUICK-ACTION IMPORT TOOLBAR (ĐỒNG BỘ TRANG BÁO GIÁ) -->
+        <div class="bg-modal-subbar cus-import-toolbar">
+          <div class="cus-import-status-row">
+            <span class="cus-db-status-pill" :class="customerFormData.id ? 'is-existing' : 'is-new'">
+              {{ customerFormData.id ? 'ĐÃ CÓ TRONG DB' : 'KHÁCH HÀNG MỚI' }}
+            </span>
+            <span v-if="customerFormData.ma_khach_hang" class="cus-code-meta-chip bg-tabular">
+              Mã KH: <strong class="is-sky">{{ customerFormData.ma_khach_hang }}</strong>
+            </span>
+            <span v-if="customerFormData.ma_cong_ty" class="cus-code-meta-chip bg-tabular">
+              • Mã CT: <strong class="is-emerald">{{ customerFormData.ma_cong_ty }}</strong>
+            </span>
+          </div>
+
+          <div class="cus-import-btn-row">
+            <button
+              type="button"
+              class="cus-quick-import-btn is-dxmh"
+              @click="openCusSmartImportModal('khach_dxmh')"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+              <span class="dt-lbl">Import khách hàng (File DXMH)</span>
+              <span class="mb-lbl">File DXMH</span>
+            </button>
+
+            <button
+              type="button"
+              class="cus-quick-import-btn is-baogia"
+              @click="openCusSmartImportModal('khach_baogia')"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+              <span class="dt-lbl">Import khách hàng (File Báo Giá)</span>
+              <span class="mb-lbl">File Báo Giá</span>
+            </button>
+
+            <button
+              type="button"
+              class="cus-quick-import-btn is-tax"
+              @click="openCusSmartImportModal('thue')"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+              <span class="dt-lbl">Import Thuế / ĐKKD</span>
+              <span class="mb-lbl">Thuế / ĐKKD</span>
+            </button>
+
+            <button
+              type="button"
+              class="cus-quick-import-btn is-reset"
+              title="Làm mới trắng biểu mẫu để tạo khách hàng mới"
+              @click="resetCustomerModalForm"
+            >
+              Reset
+            </button>
           </div>
         </div>
 
@@ -4593,9 +4785,15 @@
                   </div>
                 </div>
 
-                <div class="bg-field">
-                  <label class="bg-label">Mã số thuế (MST)</label>
-                  <input type="text" v-model="customerFormData.mst" class="bg-input bg-tabular" />
+                <div class="bg-grid-2">
+                  <div class="bg-field">
+                    <label class="bg-label">Mã số thuế (MST)</label>
+                    <input type="text" v-model="customerFormData.mst" class="bg-input bg-tabular" />
+                  </div>
+                  <div class="bg-field">
+                    <label class="bg-label">Ngành nghề kinh doanh</label>
+                    <input type="text" v-model="customerFormData.nganh_nghe_cong_ty" class="bg-input" placeholder="Ngành nghề chính..." />
+                  </div>
                 </div>
 
                 <div class="bg-field">
@@ -4628,12 +4826,27 @@
             </div>
           </div>
 
-          <!-- Group 3: Thông tin khác -->
+          <!-- Group 3: Đơn hàng PO (Tiếng Anh) & Thông tin bổ sung -->
           <div class="modal-group is-teal" style="margin-top: 14px;">
             <div class="modal-banner-header is-teal">
-              <span>THÔNG TIN BỔ SUNG</span>
+              <span>ĐƠN HÀNG PO (QUỐC TẾ) &amp; THÔNG TIN BỔ SUNG</span>
             </div>
             <div class="modal-group-body">
+              <div class="bg-grid-3" style="margin-bottom: 10px;">
+                <div class="bg-field">
+                  <label class="bg-label">COMPANY (Tên Tiếng Anh / PO)</label>
+                  <input type="text" v-model="customerFormData.company" class="bg-input" placeholder="International Company Name..." />
+                </div>
+                <div class="bg-field">
+                  <label class="bg-label">TEL (SĐT PO)</label>
+                  <input type="text" v-model="customerFormData.tel" class="bg-input bg-tabular" placeholder="Telephone..." />
+                </div>
+                <div class="bg-field">
+                  <label class="bg-label">ADDRESS (Địa chỉ PO / Giao hàng)</label>
+                  <input type="text" v-model="customerFormData.address" class="bg-input" placeholder="Address..." />
+                </div>
+              </div>
+
               <div class="bg-grid-3">
                 <div class="bg-field">
                   <label class="bg-label">Trạng thái</label>
@@ -4657,8 +4870,419 @@
           <div class="bg-foot-right">
             <button v-if="!customerFormData.id" type="button" class="bg-btn bg-btn-primary" @click="saveNewCustomer">Tạo Khách Hàng</button>
             <button v-else-if="isCustomerDataChanged" type="button" class="bg-btn bg-btn-emerald" @click="saveNewCustomer">Lưu Thay Đổi</button>
+            <button v-else type="button" class="bg-btn bg-btn-primary" @click="applyExistingCustomerFromModal">Chọn Khách Hàng Này</button>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- MODULE 4D-1: MODAL IMPORT ĐA ĐỊNH DẠNG THỐNG NHẤT (FILE DXMH / FILE BÁO GIÁ / THUẾ & ĐKKD) -->
+    <div
+      v-if="cusSmartImportModal.show"
+      class="bg-modal-overlay"
+      style="z-index: 100075;"
+      @click.self="closeCusSmartImportModal"
+      @dragover="onCusSmartImportDragOver"
+      @dragleave="onCusSmartImportDragLeave"
+      @drop="onCusSmartImportDrop"
+    >
+      <div class="bg-modal-card is-md is-mobile-sheet cus-smart-upload-card" role="dialog" aria-modal="true">
+        <div class="bg-modal-head dt-only-head">
+          <div class="bg-modal-title-row">
+            <div class="bg-modal-icon" :class="cusSmartImportMeta.iconTone">
+              <svg v-if="cusSmartImportModal.mode === 'thue'" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+              <svg v-else-if="cusSmartImportModal.mode === 'khach_baogia'" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+              <svg v-else xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            </div>
+            <div>
+              <div class="bg-modal-title-inline">
+                <h2 class="bg-modal-title">{{ cusSmartImportMeta.title }}</h2>
+                <span class="bg-count-pill">{{ cusSmartImportMeta.badge }}</span>
+              </div>
+              <p class="bg-modal-sub">Hỗ trợ Excel mọi định dạng, PDF, Word và Ảnh chụp chứng từ</p>
+            </div>
+          </div>
+          <button type="button" class="bg-modal-close" @click="closeCusSmartImportModal">✕</button>
+        </div>
+
+        <div class="m-grab-head-stack">
+          <div class="m-grab-pill"></div>
+          <div class="m-grab-bar">
+            <div>
+              <div class="cus-mob-eyebrow">{{ cusSmartImportMeta.badge }}</div>
+              <h2 class="m-grab-title">{{ cusSmartImportMeta.mobTitle }}</h2>
+            </div>
+            <button type="button" class="bg-modal-close" @click="closeCusSmartImportModal">✕</button>
+          </div>
+        </div>
+
+        <div class="bg-modal-body cus-smart-upload-body">
+          <input
+            ref="cusSmartFileInputRef"
+            type="file"
+            :accept="UNIVERSAL_IMPORT_ACCEPT"
+            style="display: none;"
+            @change="onCusSmartImportFileChange"
+          />
+          <input
+            ref="cusSmartImageInputRef"
+            type="file"
+            accept="image/*"
+            style="display: none;"
+            @change="onCusSmartImportFileChange"
+          />
+
+          <!-- DESKTOP DROPZONE -->
+          <div
+            class="cus-smart-dropzone"
+            :class="{
+              'is-dragging': cusSmartImportModal.isDragging,
+              'is-compact': cusSmartImportModal.files.length > 0
+            }"
+            @click="cusSmartFileInputRef?.click()"
+          >
+            <div class="cus-smart-drop-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 12 8 16"></polyline><line x1="12" y1="12" x2="12" y2="21"></line><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"></path></svg>
+            </div>
+            <div class="cus-smart-drop-title">
+              Nhấn <kbd>Ctrl + V</kbd> để dán ảnh chụp màn hình, hoặc kéo thả file / ảnh vào đây
+            </div>
+            <div class="cus-smart-drop-sub">
+              Hỗ trợ Excel (.xlsx, .xls, .xlsm, .xlsb, .ods, .csv...), PDF, Word (.docx, .doc, .rtf) và Ảnh
+            </div>
+            <div class="cus-smart-drop-actions" @click.stop>
+              <button type="button" class="bg-btn bg-btn-primary" @click="cusSmartFileInputRef?.click()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                <span>Chọn File tài liệu</span>
+              </button>
+              <button type="button" class="bg-btn bg-btn-slate" @click="cusSmartImageInputRef?.click()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                <span>Chọn Ảnh</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- MOBILE PICKER BOX -->
+          <div class="cus-smart-mob-picker">
+            <div class="cus-smart-mob-grid">
+              <button type="button" class="bg-btn bg-btn-primary cus-smart-mob-btn" @click="cusSmartFileInputRef?.click()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                <span>Chọn File tài liệu</span>
+              </button>
+              <button type="button" class="bg-btn bg-btn-slate cus-smart-mob-btn" @click="cusSmartImageInputRef?.click()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                <span>Chọn / Chụp Ảnh</span>
+              </button>
+            </div>
+            <button type="button" class="bg-btn bg-btn-slate cus-smart-mob-paste-btn" @click="pasteFromMobileClipboardToCusSmartImport">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+              <span>Dán ảnh từ bộ nhớ tạm</span>
+            </button>
+            <div v-if="cusSmartImportModal.showMobPasteBox" class="cus-smart-mob-paste-fallback">
+              <input
+                ref="cusSmartMobPasteRef"
+                type="text"
+                readonly
+                class="bg-input"
+                placeholder="Chạm giữ vào đây rồi chọn Dán (Paste)..."
+                @paste="onCusSmartImportPaste"
+              />
+            </div>
+          </div>
+
+          <!-- ẢNH MẪU HƯỚNG DẪN KHI Ở CHẾ ĐỘ QUÉT THUẾ CHƯA CHỌN FILE -->
+          <div
+            v-if="cusSmartImportModal.mode === 'thue' && cusSmartImportModal.files.length === 0"
+            class="cus-tax-sample-box"
+          >
+            <div class="cus-tax-sample-head">
+              <span>Ảnh mẫu thông tin thuế chuẩn</span>
+              <button type="button" class="cus-zoom-mini-btn" @click="selectedImage = anhMauThueUrl">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+                <span>Phóng to mẫu</span>
+              </button>
+            </div>
+            <div class="cus-tax-sample-frame" @click="selectedImage = anhMauThueUrl">
+              <img :src="anhMauThueUrl" alt="Ảnh mẫu thông tin thuế" />
+            </div>
+          </div>
+
+          <!-- FILE / ẢNH ĐÃ ĐƯA VÀO -->
+          <div v-if="cusSmartImportModal.files.length > 0" class="cus-staged-section">
+            <div class="cus-staged-head">
+              <span>Tài liệu sẵn sàng quét dữ liệu</span>
+            </div>
+            <div
+              v-for="(uItem, uIdx) in cusSmartImportModal.files"
+              :key="uItem.id"
+              class="cus-staged-card"
+            >
+              <div class="cus-staged-top">
+                <div class="cus-staged-meta">
+                  <span class="cus-staged-type-icon" :class="'is-' + uItem.category">
+                    <svg v-if="uItem.isImage" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                    <svg v-else xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                  </span>
+                  <span class="cus-staged-ext bg-tabular">{{ uItem.ext || 'FILE' }}</span>
+                  <span class="cus-staged-size bg-tabular">{{ uItem.sizeLabel }}</span>
+                  <span v-if="uItem.fromClipboard" class="cus-staged-clip">Clipboard</span>
+                </div>
+                <button
+                  type="button"
+                  class="cus-staged-remove-btn"
+                  title="Gỡ tài liệu này"
+                  @click.stop="removeCusSmartImportPendingItem(uIdx)"
+                >✕</button>
+              </div>
+              <div class="cus-staged-name-row" @click.stop>
+                <input
+                  type="text"
+                  v-model="uItem.baseName"
+                  class="bg-input cus-smart-name-input"
+                  placeholder="Tên tài liệu..."
+                />
+              </div>
+            </div>
+
+            <!-- XEM TRƯỚC NẾU LÀ ẢNH -->
+            <div
+              v-if="cusSmartImportModal.files[0]?.isImage && cusSmartImportModal.files[0]?.previewUrl"
+              class="cus-tax-sample-box"
+            >
+              <div class="cus-tax-sample-head">
+                <span>Xem trước ảnh đã chọn</span>
+                <button
+                  type="button"
+                  class="cus-zoom-mini-btn"
+                  @click="selectedImage = cusSmartImportModal.files[0].previewUrl"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+                  <span>Phóng to</span>
+                </button>
+              </div>
+              <div
+                class="cus-tax-sample-frame"
+                @click="selectedImage = cusSmartImportModal.files[0].previewUrl"
+              >
+                <img :src="cusSmartImportModal.files[0].previewUrl" alt="Xem trước ảnh tài liệu" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-modal-foot">
+          <button type="button" class="bg-btn bg-btn-slate" @click="closeCusSmartImportModal">Huỷ bỏ</button>
+          <div class="bg-foot-right">
+            <button
+              type="button"
+              class="bg-btn bg-btn-primary"
+              :disabled="!cusSmartImportModal.files.length"
+              @click="submitCusSmartImportStandardScan"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <span>{{ cusSmartImportMeta.primaryCta }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODULE 4D-2: MODAL XÁC NHẬN THÔNG TIN THUẾ / ĐKKD -->
+    <div
+      v-if="isCusTaxModalOpen"
+      class="bg-modal-overlay"
+      style="z-index: 100078;"
+      @click.self="closeCusTaxModal"
+    >
+      <div class="bg-modal-card is-lg is-mobile-sheet cus-tax-confirm-card" role="dialog" aria-modal="true">
+        <div class="bg-modal-head dt-only-head">
+          <div class="bg-modal-title-row">
+            <div class="bg-modal-icon is-sky">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="9"></line><line x1="9" y1="13" x2="15" y2="13"></line><line x1="9" y1="17" x2="13" y2="17"></line></svg>
+            </div>
+            <div>
+              <h2 class="bg-modal-title">Xác Nhận Thông Tin Thuế / ĐKKD</h2>
+              <p class="bg-modal-sub">Kiểm tra &amp; chỉnh sửa dữ liệu trích xuất trước khi điền vào hồ sơ khách hàng</p>
+            </div>
+          </div>
+          <button type="button" class="bg-modal-close" @click="closeCusTaxModal">✕</button>
+        </div>
+
+        <div class="m-grab-head-stack">
+          <div class="m-grab-pill"></div>
+          <div class="m-grab-bar">
+            <div>
+              <div class="cus-mob-eyebrow">Kiểm tra dữ liệu trích xuất</div>
+              <h2 class="m-grab-title">Xác nhận thông tin thuế</h2>
+            </div>
+            <button type="button" class="bg-modal-close" @click="closeCusTaxModal">✕</button>
+          </div>
+        </div>
+
+        <div class="bg-modal-subbar cus-tax-subbar">
+          <div class="cus-tax-subbar-left">
+            <span v-if="lastCusTaxFile" class="cus-tax-pill">
+              <span class="cus-tax-pill-lbl">Nguồn:</span>
+              <strong class="cus-tax-pill-name" :title="lastCusTaxFile.name">{{ lastCusTaxFile.name }}</strong>
+            </span>
+            <span class="cus-tax-pill">
+              <span class="cus-tax-pill-lbl">Chế độ đọc:</span>
+              <strong class="is-sky">{{ cusTaxScanSourceMode === 'ai' ? 'AI thông minh' : 'Quét chuẩn' }}</strong>
+            </span>
+          </div>
+          <button
+            type="button"
+            class="cus-zoom-mini-btn"
+            @click="closeCusTaxModal(); openCusSmartImportModal('thue')"
+          >
+            Chọn tài liệu khác
+          </button>
+        </div>
+
+        <div class="bg-modal-body">
+          <div class="cus-tax-split-grid">
+            <div class="cus-tax-form-col">
+              <div class="bg-field">
+                <label class="bg-label">Mã số thuế (MST)</label>
+                <input
+                  type="text"
+                  v-model="cusTaxInfo.mst"
+                  class="bg-input bg-tabular"
+                  placeholder="Mã số thuế doanh nghiệp..."
+                />
+              </div>
+              <div class="bg-field">
+                <label class="bg-label">Tên công ty (Tiếng Việt)</label>
+                <textarea
+                  rows="2"
+                  v-model="cusTaxInfo.tenCongTy"
+                  class="bg-input cus-tax-textarea"
+                  placeholder="Tên công ty tiếng Việt..."
+                ></textarea>
+              </div>
+              <div class="bg-field">
+                <label class="bg-label is-sky-accent">Tên công ty (Tiếng Anh / Quốc tế)</label>
+                <textarea
+                  rows="2"
+                  v-model="cusTaxInfo.tenCongTyEn"
+                  class="bg-input cus-tax-textarea is-sky-accent"
+                  placeholder="Tên quốc tế / Tiếng Anh..."
+                ></textarea>
+              </div>
+              <div class="bg-field">
+                <label class="bg-label">Địa chỉ công ty</label>
+                <textarea
+                  rows="2"
+                  v-model="cusTaxInfo.diaChi"
+                  class="bg-input cus-tax-textarea"
+                  placeholder="Địa chỉ trụ sở..."
+                ></textarea>
+              </div>
+              <div class="bg-field">
+                <label class="bg-label">Ngành nghề chính</label>
+                <textarea
+                  rows="3"
+                  v-model="cusTaxInfo.nganhNgheChinh"
+                  class="bg-input cus-tax-textarea"
+                  placeholder="Ngành nghề kinh doanh chính..."
+                ></textarea>
+              </div>
+            </div>
+
+            <div class="cus-tax-preview-col">
+              <label class="bg-label">
+                {{ cusTaxSourceIsImage ? 'Ảnh Thuế Đã Tải Lên (Nhấn để phóng to)' : 'Tài Liệu Nguồn Đã Tải Lên' }}
+              </label>
+              <div
+                v-if="cusTaxSourceIsImage && cusTaxPreviewUrl"
+                class="cus-tax-img-frame"
+                @click="selectedImage = cusTaxPreviewUrl"
+              >
+                <img :src="cusTaxPreviewUrl" alt="Ảnh thông tin thuế" />
+              </div>
+              <div v-else class="cus-tax-doc-card">
+                <div class="cus-tax-doc-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                </div>
+                <div class="cus-tax-doc-name">{{ lastCusTaxFile?.name || 'Tài liệu thông tin thuế' }}</div>
+                <div v-if="lastCusTaxFile" class="cus-tax-doc-meta bg-tabular">
+                  Dung lượng: {{ formatCusImportFileSize(lastCusTaxFile.size) }}
+                </div>
+                <button
+                  type="button"
+                  class="bg-btn bg-btn-slate"
+                  style="margin-top: 6px;"
+                  @click="closeCusTaxModal(); openCusSmartImportModal('thue')"
+                >
+                  Chọn tài liệu khác
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-modal-foot">
+          <button type="button" class="bg-btn bg-btn-slate" @click="closeCusTaxModal">Huỷ bỏ</button>
+          <div class="bg-foot-right">
+            <button type="button" class="bg-btn bg-btn-emerald" @click="confirmCusTaxModalInfo">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Đồng ý &amp; Cập nhật</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODULE 4D-3: MODAL ĐỀ XUẤT QUÉT BẰNG AI FALLBACK -->
+    <div
+      v-if="cusAiFallbackModal.show"
+      class="bg-modal-overlay"
+      style="z-index: 100080;"
+      @click.self="closeCusAiImportFallback"
+    >
+      <div class="bg-modal-card is-sm cus-ai-fallback-card" role="dialog" aria-modal="true">
+        <div class="bg-modal-head">
+          <div class="bg-modal-title-row">
+            <div class="bg-modal-icon is-sky">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            </div>
+            <div>
+              <h2 class="bg-modal-title">Chuyển Sang Quét Thông Minh Bằng AI?</h2>
+              <p class="bg-modal-sub">{{ cusAiFallbackFlowLabel }}</p>
+            </div>
+          </div>
+          <button type="button" class="bg-modal-close" @click="closeCusAiImportFallback">✕</button>
+        </div>
+
+        <div class="bg-modal-body cus-ai-fallback-body">
+          <div v-if="cusAiFallbackModal.file" class="cus-ai-file-chip">
+            <strong>Tệp nguồn:</strong>
+            <span>{{ cusAiFallbackModal.file.name }}</span>
+          </div>
+          <p class="cus-ai-reason-text">{{ cusAiFallbackModal.reason }}</p>
+          <p class="cus-ai-hint-text">
+            Bạn có muốn sử dụng <strong>AI nhận diện chứng từ</strong> để tự động trích xuất thông tin khách hàng / mã số thuế từ tài liệu này không?
+          </p>
+        </div>
+
+        <div class="bg-modal-foot">
+          <button type="button" class="bg-btn bg-btn-slate" @click="closeCusAiImportFallback">Đóng</button>
+          <div class="bg-foot-right">
+            <button type="button" class="bg-btn bg-btn-primary" @click="confirmCusAiImportFallback">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+              <span>Quét thông minh bằng AI</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODULE 4D-4: OVERLAY TIẾN TRÌNH ĐANG QUÉT TÀI LIỆU / AI -->
+    <div v-if="cusImportScanning.active" class="bg-modal-overlay" style="z-index: 100085;">
+      <div class="bg-modal-card is-sm cus-scanning-card" role="status" aria-live="polite">
+        <div class="cus-scanning-spinner"></div>
+        <h3 class="cus-scanning-title">{{ cusImportScanning.title }}</h3>
+        <p class="cus-scanning-msg">{{ cusImportScanning.message }}</p>
       </div>
     </div>
 
@@ -5426,55 +6050,252 @@
       </div>
     </div>
 
-    <!-- MODULE 4K: MODAL LIÊN KẾT PIPELINE -->
-    <div v-if="isPipelineModalOpen" class="bg-modal-overlay" style="z-index: 100060;" @click.self="isPipelineModalOpen = false">
-      <div class="bg-modal-card is-md is-mobile-sheet" style="max-width: 720px;" role="dialog" aria-modal="true">
+    <!-- MODULE 4K: MODAL LIÊN KẾT PIPELINE (SINGLE-SELECT: DỰ ÁN -> PIPELINE -> CÔNG VIỆC PIPELINE) -->
+    <div v-if="isPipelineModalOpen" class="bg-modal-overlay" style="z-index: 100060;" @click.self="isPipelineModalOpen = false; openModalPlPicker = null">
+      <div class="bg-modal-card is-md is-mobile-sheet" style="max-width: 780px;" role="dialog" aria-modal="true">
         <div class="bg-modal-head dt-only-head">
           <div class="bg-modal-title-row">
             <div class="bg-modal-icon is-sky">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
             </div>
             <div>
-              <h2 class="bg-modal-title">Liên Kết Pipeline</h2>
-              <p class="bg-modal-sub">Chọn một hoặc nhiều Pipeline để gắn vào báo cáo</p>
+              <h2 class="bg-modal-title">Chọn Công Việc Pipeline</h2>
+              <p class="bg-modal-sub">Lọc theo Dự án → Pipeline → Chọn Công việc Pipeline liên kết</p>
             </div>
           </div>
-          <button type="button" class="bg-modal-close" @click="isPipelineModalOpen = false">✕</button>
+          <button type="button" class="bg-modal-close" @click="isPipelineModalOpen = false; openModalPlPicker = null">✕</button>
         </div>
 
         <div class="m-grab-head-stack">
           <div class="m-grab-pill"></div>
           <div class="m-grab-bar">
-            <h2 class="m-grab-title">Liên Kết Pipeline</h2>
-            <button type="button" class="bg-modal-close" @click="isPipelineModalOpen = false">✕</button>
+            <h2 class="m-grab-title">Chọn Công Việc Pipeline</h2>
+            <button type="button" class="bg-modal-close" @click="isPipelineModalOpen = false; openModalPlPicker = null">✕</button>
           </div>
         </div>
 
-        <div class="bg-modal-body" style="max-height: 60vh;">
-          <div v-if="pipelineData.length === 0" class="bg-empty-box">Chưa có dữ liệu Pipeline...</div>
+        <div class="bg-modal-subbar is-pl-hierarchy-subbar">
+          <div v-if="openModalPlPicker" class="bg-pl-dd-backdrop" @click.stop="openModalPlPicker = null"></div>
+
+          <!-- Cấp 1 & Cấp 2: Chọn Dự án -> Chọn Pipeline -->
+          <div class="bg-pl-cascade-grid">
+            <!-- 1. Chọn Dự án -->
+            <div class="bg-pl-dd-anchor">
+              <span class="bg-pl-dd-lbl">1. DỰ ÁN</span>
+              <button
+                type="button"
+                class="bg-pl-dd-trigger"
+                :class="{ 'is-active': !!modalPlProjectFilter, 'is-open': openModalPlPicker === 'project' }"
+                @click.stop="toggleModalPlPicker('project')"
+              >
+                <svg class="bg-pl-dd-ic is-amber" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                <span class="bg-pl-dd-val">{{ activeModalPlProjectLabel }}</span>
+                <span
+                  v-if="modalPlProjectFilter"
+                  role="button"
+                  tabindex="0"
+                  class="bg-pl-dd-clear"
+                  @click.stop="selectModalPlProject('')"
+                  title="Bỏ lọc Dự án"
+                >✕</span>
+                <svg class="bg-pl-dd-chev" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+
+              <div v-if="openModalPlPicker === 'project'" class="bg-pl-dd-menu" @click.stop>
+                <div class="bg-pl-dd-search-wrap">
+                  <input
+                    v-model="modalPlProjectSearch"
+                    type="text"
+                    class="bg-pl-dd-search"
+                    placeholder="Tìm tên dự án, mã dự án, khách hàng..."
+                  />
+                </div>
+                <div class="bg-pl-dd-list">
+                  <button
+                    type="button"
+                    class="bg-pl-dd-item"
+                    :class="{ 'is-selected': modalPlProjectFilter === '' }"
+                    @click.stop="selectModalPlProject('')"
+                  >
+                    <span class="bg-pl-dd-item-main">Tất cả Dự án</span>
+                    <span class="bg-pl-dd-cnt bg-tabular">{{ pipelineData.length }}</span>
+                  </button>
+                  <button
+                    v-if="modalPlStandaloneTaskCount > 0"
+                    type="button"
+                    class="bg-pl-dd-item"
+                    :class="{ 'is-selected': modalPlProjectFilter === '__NO_PROJECT__' }"
+                    @click.stop="selectModalPlProject('__NO_PROJECT__')"
+                  >
+                    <span class="bg-pl-dd-item-main">Công việc lẻ (chưa gắn dự án)</span>
+                    <span class="bg-pl-dd-cnt bg-tabular">{{ modalPlStandaloneTaskCount }}</span>
+                  </button>
+                  <div v-if="filteredModalPlProjectOptions.length === 0 && modalPlProjectSearch.trim()" class="bg-pl-dd-empty">
+                    Không tìm thấy dự án phù hợp
+                  </div>
+                  <button
+                    v-for="proj in filteredModalPlProjectOptions"
+                    :key="'pl-proj-opt-' + proj.id_project"
+                    type="button"
+                    class="bg-pl-dd-item"
+                    :class="{ 'is-selected': modalPlProjectFilter === proj.id_project }"
+                    @click.stop="selectModalPlProject(proj.id_project)"
+                  >
+                    <div class="bg-pl-dd-item-stack">
+                      <span class="bg-pl-dd-item-main">{{ proj.ten_du_an }}</span>
+                      <span v-if="proj.ma_du_an || proj.customerLabel" class="bg-pl-dd-item-sub">
+                        {{ [proj.ma_du_an, proj.customerLabel].filter(Boolean).join(' · ') }}
+                      </span>
+                    </div>
+                    <span class="bg-pl-dd-cnt bg-tabular">{{ proj.taskCount }}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. Chọn Pipeline (Khung Workflow) -->
+            <div class="bg-pl-dd-anchor">
+              <span class="bg-pl-dd-lbl">2. PIPELINE</span>
+              <button
+                type="button"
+                class="bg-pl-dd-trigger"
+                :class="{ 'is-active': !!modalPlWorkflowFilter, 'is-open': openModalPlPicker === 'workflow' }"
+                @click.stop="toggleModalPlPicker('workflow')"
+              >
+                <svg class="bg-pl-dd-ic is-teal" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+                <span class="bg-pl-dd-val">{{ activeModalPlWorkflowLabel }}</span>
+                <span
+                  v-if="modalPlWorkflowFilter"
+                  role="button"
+                  tabindex="0"
+                  class="bg-pl-dd-clear"
+                  @click.stop="selectModalPlWorkflow('')"
+                  title="Bỏ lọc Pipeline"
+                >✕</span>
+                <svg class="bg-pl-dd-chev" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+
+              <div v-if="openModalPlPicker === 'workflow'" class="bg-pl-dd-menu" @click.stop>
+                <div class="bg-pl-dd-search-wrap">
+                  <input
+                    v-model="modalPlWorkflowSearch"
+                    type="text"
+                    class="bg-pl-dd-search"
+                    placeholder="Tìm tên khung Pipeline..."
+                  />
+                </div>
+                <div class="bg-pl-dd-list">
+                  <button
+                    type="button"
+                    class="bg-pl-dd-item"
+                    :class="{ 'is-selected': modalPlWorkflowFilter === '' }"
+                    @click.stop="selectModalPlWorkflow('')"
+                  >
+                    <span class="bg-pl-dd-item-main">Tất cả Pipeline</span>
+                    <span class="bg-pl-dd-cnt bg-tabular">{{ modalPlProjectScopedTaskCount }}</span>
+                  </button>
+                  <div v-if="filteredModalPlWorkflowOptions.length === 0" class="bg-pl-dd-empty">
+                    Không có Pipeline phù hợp
+                  </div>
+                  <button
+                    v-for="wf in filteredModalPlWorkflowOptions"
+                    :key="'pl-wf-opt-' + wf.id_workflow"
+                    type="button"
+                    class="bg-pl-dd-item"
+                    :class="{ 'is-selected': modalPlWorkflowFilter === wf.id_workflow }"
+                    @click.stop="selectModalPlWorkflow(wf.id_workflow)"
+                  >
+                    <span class="bg-pl-dd-item-main">{{ wf.name_workflow }}</span>
+                    <span class="bg-pl-dd-cnt bg-tabular">{{ wf.taskCount }}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Cấp 3: Tìm Công việc Pipeline -->
+          <div class="bg-pl-search-row">
+            <input
+              v-model="pipelineSearchQuery"
+              type="text"
+              class="bg-input"
+              placeholder="3. Tìm Công việc Pipeline theo nội dung, công ty, khách hàng, mã HĐ/PO..."
+              style="flex: 1; min-width: 180px;"
+            />
+            <span class="bg-pl-result-pill bg-tabular">{{ filteredModalPipelines.length }} công việc</span>
+            <button
+              v-if="modalPlProjectFilter || modalPlWorkflowFilter || pipelineSearchQuery.trim()"
+              type="button"
+              class="bg-btn-xs is-rose"
+              @click="resetModalPlHierarchyFilters"
+            >Đặt lại lọc</button>
+          </div>
+        </div>
+
+        <div class="bg-modal-body" style="max-height: 55vh;">
+          <div v-if="hasFormLinkedPipeline" class="bg-linked-current-bar" style="margin-bottom: 10px;">
+            <div class="bg-pl-linked-current-stack">
+              <div class="bg-pl-linked-current-info">
+                <strong>Đang gắn: </strong>
+                <template v-if="selectedLinkedPipeline">
+                  <span v-if="selectedLinkedPipeline.ten_du_an" class="bg-pl-mini-chip is-proj">{{ selectedLinkedPipeline.ten_du_an }}</span>
+                  <span class="bg-pl-mini-chip is-wf">{{ selectedLinkedPipeline.name_workflow || 'Khung Chuẩn Hệ Thống' }}</span>
+                  <span class="bg-pl-linked-task-name">{{ getPipelineTaskDisplayLabel(selectedLinkedPipeline) }}</span>
+                </template>
+                <span v-else>Công việc Pipeline #{{ getSinglePipelineId(formData.id_pipeline) }}</span>
+              </div>
+              <div
+                v-if="selectedLinkedPipeline && (selectedLinkedPipeline.ten_khach_hang || selectedLinkedPipeline.ten_cong_ty)"
+                class="bg-pl-cus-subrow"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                <span>{{ [selectedLinkedPipeline.ten_khach_hang, selectedLinkedPipeline.ten_cong_ty].filter(Boolean).join(' · ') }}</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              class="bg-btn-xs is-rose"
+              @click="formData.id_pipeline = ''; isPipelineModalOpen = false; openModalPlPicker = null"
+            >Gỡ liên kết</button>
+          </div>
+
+          <div v-if="filteredModalPipelines.length === 0" class="bg-empty-box">
+            {{ pipelineData.length === 0 ? 'Chưa có dữ liệu Công việc Pipeline...' : 'Không tìm thấy Công việc Pipeline phù hợp với Dự án / Pipeline đang chọn.' }}
+          </div>
           <div v-else class="bg-select-card-list">
             <div
-              v-for="p in pipelineData"
+              v-for="p in filteredModalPipelines"
               :key="'modal-pl-' + p.Id_pipeline"
               class="bg-dist-task-row"
               :class="{ 'is-selected': isPipelineSelected(p.Id_pipeline) }"
-              @click.stop="togglePipelineSelection(p.Id_pipeline)"
+              @click.stop="selectSinglePipeline(p)"
             >
               <div style="flex: 1; min-width: 0;">
-                <div class="bg-linked-file-badges" style="margin-bottom: 6px;">
-                  <span v-if="p.ten_khach_hang" class="bg-tag-pill is-emerald">{{ p.ten_khach_hang }}</span>
-                  <span v-if="p.ten_cong_ty" class="bg-tag-pill is-slate">{{ p.ten_cong_ty }}</span>
-                  <span v-if="p.name_workflow" class="bg-tag-pill is-sky">{{ p.name_workflow }}</span>
+                <div class="bg-pl-task-badges">
+                  <span v-if="p.ten_du_an" class="bg-pl-mini-chip is-proj" :title="'Dự án: ' + p.ten_du_an">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                    <span>{{ p.ten_du_an }}</span>
+                  </span>
+                  <span class="bg-pl-mini-chip is-wf" :title="'Pipeline: ' + (p.name_workflow || 'Khung Chuẩn Hệ Thống')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+                    <span>{{ p.name_workflow || 'Khung Chuẩn Hệ Thống' }}</span>
+                  </span>
                 </div>
-                <div v-if="p.content_of_contract_po" class="bg-dist-task-title">{{ p.content_of_contract_po }}</div>
-                <div v-if="p.ghi_chu_hop_dong" class="bg-dist-task-note">{{ p.ghi_chu_hop_dong }}</div>
-                <div v-if="p.finish_time" class="bg-linked-file-note bg-tabular">Hạn: {{ p.finish_time }}</div>
+                <div class="bg-dist-task-title" style="margin-bottom: 3px;">
+                  {{ getPipelineTaskDisplayLabel(p) }}
+                </div>
+                <div v-if="p.ten_khach_hang || p.ten_cong_ty" class="bg-pl-cus-subrow">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                  <span>{{ [p.ten_khach_hang, p.ten_cong_ty].filter(Boolean).join(' · ') }}</span>
+                </div>
+                <div v-if="p.ma_hop_dong || p.finish_time" class="bg-linked-file-note bg-tabular">
+                  {{ [p.ma_hop_dong ? ('HĐ/PO: ' + p.ma_hop_dong) : '', p.finish_time ? ('Hạn: ' + p.finish_time) : ''].filter(Boolean).join(' • ') }}
+                </div>
               </div>
               <div class="bg-cus-actions">
                 <button type="button" class="bg-btn-xs is-sky" @click.stop="goToPipeline(p.Id_pipeline)">Mở</button>
-                <div class="bg-check-box" :class="{ 'is-checked': isPipelineSelected(p.Id_pipeline) }">
-                  <svg v-if="isPipelineSelected(p.Id_pipeline)" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
+                <span v-if="isPipelineSelected(p.Id_pipeline)" class="bg-tag-pill is-emerald">Đang gắn ✓</span>
+                <span v-else class="bg-btn-xs">Chọn</span>
               </div>
             </div>
           </div>
@@ -5482,7 +6303,7 @@
 
         <div class="bg-modal-foot">
           <div></div>
-          <button type="button" class="bg-btn bg-btn-primary" @click="isPipelineModalOpen = false">Xác nhận liên kết</button>
+          <button type="button" class="bg-btn" @click="isPipelineModalOpen = false; openModalPlPicker = null">Đóng</button>
         </div>
       </div>
     </div>
@@ -5715,13 +6536,20 @@
 </template>
 <script setup>
 defineOptions({ name: 'Report' })
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, onActivated, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import * as XLSX from 'xlsx-js-style'
 import { downloadCardFilesAsZip } from '../../utils/cardZipHelper'
+import anhMauThueUrl from '../../assets/anh_mau_thue.png'
 import {
+  UNIVERSAL_IMPORT_ACCEPT,
+  isImageDocFile,
+  isPdfDocFile,
+  isWordDocFile,
   parseCustomerDxmhStandardFromFile,
-  parseCustomerQuoteStandardFromFile
+  parseCustomerQuoteStandardFromFile,
+  parseTaxStandardFromFile,
+  analyzeCustomerOrTaxFileWithAI
 } from '../../utils/universalDocumentReader'
 
 import CustomSelect from '../CustomSelect.vue'
@@ -5743,6 +6571,65 @@ const firebaseConfig = {
 };
 const firebaseApp = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const database = getDatabase(firebaseApp);
+
+const sanitizePipelineKey = (key) => String(key || '').replace(/[.#$/[\]]/g, '_');
+
+const normalizeSinglePipelineId = (str) => {
+  if (!str) return '';
+  return String(str).split(',').map((s) => s.trim()).filter(Boolean)[0] || '';
+};
+
+const extractReportPipelineIds = (raw) => {
+  if (!raw) return '';
+  if (Array.isArray(raw)) return String(raw[11] ?? '');
+  if (typeof raw === 'object') return String(raw.id_pipeline ?? raw.ID_PIPELINE ?? '');
+  return '';
+};
+
+const syncReportToPipelinesFirebase = async (oldPipelineIdStr, newPipelineIdStr, reportId) => {
+  if (!reportId) return;
+  const repIdStr = String(reportId).trim();
+  if (!repIdStr || repIdStr.startsWith('temp_')) return;
+
+  const oldIds = String(oldPipelineIdStr || '').split(',').map((s) => s.trim()).filter(Boolean);
+  const singleNewId = normalizeSinglePipelineId(newPipelineIdStr);
+  const newIds = singleNewId ? [singleNewId] : [];
+  const added = newIds.filter((pid) => !oldIds.includes(pid));
+  const removed = oldIds.filter((pid) => !newIds.includes(pid));
+  if (added.length === 0 && removed.length === 0) return;
+
+  const targetPipeIds = [...new Set([...added, ...removed])];
+  await Promise.all(
+    targetPipeIds.map(async (pipeId) => {
+      try {
+        const pipeRef = dbRef(database, `pipeline/${sanitizePipelineKey(pipeId)}`);
+        const snap = await get(pipeRef);
+        if (!snap.exists()) return;
+        const pipeVal = snap.val();
+        if (Array.isArray(pipeVal)) {
+          const cur = String(pipeVal[1] || '').split(',').map((s) => s.trim()).filter(Boolean);
+          let next = cur;
+          if (added.includes(pipeId) && !cur.includes(repIdStr)) next = [...cur, repIdStr];
+          if (removed.includes(pipeId)) next = cur.filter((x) => x !== repIdStr);
+          pipeVal[1] = next.join(', ');
+          await set(pipeRef, pipeVal);
+        } else if (pipeVal && typeof pipeVal === 'object') {
+          const rawRepField = pipeVal.report_id ?? pipeVal.REPORT_ID ?? '';
+          const cur = String(rawRepField).split(',').map((s) => s.trim()).filter(Boolean);
+          let next = cur;
+          if (added.includes(pipeId) && !cur.includes(repIdStr)) next = [...cur, repIdStr];
+          if (removed.includes(pipeId)) next = cur.filter((x) => x !== repIdStr);
+          const joined = next.join(', ');
+          const updates = { report_id: joined };
+          if ('REPORT_ID' in pipeVal) updates.REPORT_ID = joined;
+          await update(pipeRef, updates);
+        }
+      } catch (err) {
+        console.error('Lỗi đồng bộ ngược Report -> Pipeline:', pipeId, err);
+      }
+    })
+  );
+};
 
 // --- TÍCH HỢP INTERCEPTOR CHO CÁC API KHÁC (Firebase) ---
 const firebaseFetch = async (urlInput, options = {}) => {
@@ -5818,7 +6705,9 @@ const firebaseFetch = async (urlInput, options = {}) => {
             'maKH': 'maKH',
             'ID_QUANLYFILE': 'id_quanlyfile',
             'id_quan_ly_file': 'id_quanlyfile',
-            'id_quanlyfile': 'id_quanlyfile'
+            'id_quanlyfile': 'id_quanlyfile',
+            'ID_PIPELINE': 'id_pipeline',
+            'id_pipeline': 'id_pipeline'
           };
           
           for (const oldKey in keyMap) {
@@ -5837,7 +6726,15 @@ const firebaseFetch = async (urlInput, options = {}) => {
     // 2. DELETE
     if (action === 'delete') {
        if (id) {
+         let oldPipeIds = '';
+         try {
+           const snapOld = await get(dbRef(database, `REPORT/${id}`));
+           if (snapOld.exists()) oldPipeIds = extractReportPipelineIds(snapOld.val());
+         } catch (e) {}
          await remove(dbRef(database, `REPORT/${id}`));
+         if (oldPipeIds) {
+           await syncReportToPipelinesFirebase(oldPipeIds, '', id);
+         }
        }
        return jsonResponse({ status: 'success' });
     }
@@ -5894,6 +6791,8 @@ const firebaseFetch = async (urlInput, options = {}) => {
     // 5. OTHERS (sync_progress, sync_status, log_activity)
     if (action === 'update' || action === 'sync_progress' || action === 'sync_status') {
       if (payload.id) {
+         let oldPipeIds = '';
+         const hasPipelinePayloadField = payload.id_pipeline !== undefined || payload.ID_PIPELINE !== undefined;
          // Chỉ cập nhật bản ghi ĐÃ TỒN TẠI - tránh việc update() của Firebase tự tạo node mới (gây thêm mới khi kéo thả)
          if (action === 'update') {
            const existSnap = await get(dbRef(database, `REPORT/${payload.id}`));
@@ -5901,10 +6800,11 @@ const firebaseFetch = async (urlInput, options = {}) => {
              console.warn('Bỏ qua update: không tìm thấy REPORT/' + payload.id);
              return jsonResponse({ status: 'error', message: `Không tìm thấy báo cáo ${payload.id}` });
            }
+           oldPipeIds = extractReportPipelineIds(existSnap.val());
          }
          payload.action = null; // xoá luôn field 'action' cũ (VD: 'add') đang bị lưu trong bản ghi
          // Xoá các key cũ bị viết hoa nếu có để không đè lên dữ liệu mới khi fetch
-         const uppercaseKeys = ['GHI_CHU', 'NOI_DUNG', 'PHAN_LOAI', 'TAG', 'THOI_GIAN', 'TRANG_THAI', 'CREATED_TIME', 'reminder-time', 'reminder-content', 'reminder-visible'];
+         const uppercaseKeys = ['GHI_CHU', 'NOI_DUNG', 'PHAN_LOAI', 'TAG', 'THOI_GIAN', 'TRANG_THAI', 'CREATED_TIME', 'reminder-time', 'reminder-content', 'reminder-visible', 'ID_PIPELINE'];
          uppercaseKeys.forEach(k => {
            if (payload[k] !== undefined) {
              payload[k] = null;
@@ -5912,18 +6812,33 @@ const firebaseFetch = async (urlInput, options = {}) => {
          });
          // Khi cập nhật field chữ thường (VD: thoi_gian) thì xoá luôn field viết hoa tương ứng trong DB,
          // nếu không lúc tải lại, giá trị cũ (THOI_GIAN) sẽ đè lên giá trị mới.
-         const lowerToUpper = { ghi_chu: 'GHI_CHU', noi_dung: 'NOI_DUNG', phan_loai: 'PHAN_LOAI', tag: 'TAG', thoi_gian: 'THOI_GIAN', trang_thai: 'TRANG_THAI', created_time: 'CREATED_TIME', reminder_time: 'reminder-time', reminder_content: 'reminder-content', reminder_visible: 'reminder-visible', maKH: 'MAKH', id_quanlyfile: 'ID_QUANLYFILE' };
+         const lowerToUpper = { ghi_chu: 'GHI_CHU', noi_dung: 'NOI_DUNG', phan_loai: 'PHAN_LOAI', tag: 'TAG', thoi_gian: 'THOI_GIAN', trang_thai: 'TRANG_THAI', created_time: 'CREATED_TIME', reminder_time: 'reminder-time', reminder_content: 'reminder-content', reminder_visible: 'reminder-visible', maKH: 'MAKH', id_quanlyfile: 'ID_QUANLYFILE', id_pipeline: 'ID_PIPELINE' };
          Object.keys(lowerToUpper).forEach(lk => {
            if (payload[lk] !== undefined) payload[lowerToUpper[lk]] = null;
          });
+         if (payload.id_pipeline !== undefined) {
+           payload.id_pipeline = normalizeSinglePipelineId(payload.id_pipeline);
+         }
          await update(dbRef(database, `REPORT/${payload.id}`), payload);
+         if (action === 'update' && hasPipelinePayloadField) {
+           await syncReportToPipelinesFirebase(oldPipeIds, payload.id_pipeline || '', payload.id);
+         }
       }
       return jsonResponse({ status: 'success' });
     }
     
     if (action === 'bulk_add' && payload.items) {
-      const promises = payload.items.map(item => set(dbRef(database, `REPORT/${item.id}`), item));
+      const normalizedItems = payload.items.map(item => ({
+        ...item,
+        id_pipeline: normalizeSinglePipelineId(item.id_pipeline || item.ID_PIPELINE || '')
+      }));
+      const promises = normalizedItems.map(item => set(dbRef(database, `REPORT/${item.id}`), item));
       await Promise.all(promises);
+      await Promise.all(
+        normalizedItems
+          .filter(item => item && item.id && item.id_pipeline)
+          .map(item => syncReportToPipelinesFirebase('', item.id_pipeline, item.id))
+      );
       return jsonResponse({ status: 'success' });
     }
     
@@ -5934,7 +6849,11 @@ const firebaseFetch = async (urlInput, options = {}) => {
       payload.id = newId;
       delete payload.action;
       if (!payload.created_time) payload.created_time = d.toISOString();
+      payload.id_pipeline = normalizeSinglePipelineId(payload.id_pipeline || '');
       await set(dbRef(database, `REPORT/${newId}`), payload);
+      if (payload.id_pipeline) {
+        await syncReportToPipelinesFirebase('', payload.id_pipeline, newId);
+      }
       return jsonResponse({ status: 'success', data: payload });
     }
     
@@ -6249,7 +7168,7 @@ const filters = ref({
   tag: '',
   phan_loai: '',
   trang_thai: '',
-  filterMode: 'day',
+  filterMode: 'week',
   dateFrom: getTodayStr(),
   dateTo: getTodayStr(),
   weekFrom: getWeekString(new Date()),
@@ -7211,7 +8130,7 @@ const droppedReportId = ref(null);
 const dragOverColumn = ref(null); // track cột đang hover khi kéo
 
 const onDragStartReport = (e, report) => {
-  if (e?.target?.closest && e.target.closest('button, a, input, textarea, select, .bg-dcard-files-wrap, .bg-dcard-actions, .bg-dcard-pipelines')) {
+  if (e?.target?.closest && e.target.closest('button, a, input, textarea, select, .bg-dcard-files-wrap, .bg-dcard-actions, .bg-dcard-pipelines, .bg-dcard-pl-badges, .bg-dcard-pl-tree, .is-pipe-task-chip')) {
     e.preventDefault();
     return;
   }
@@ -7635,7 +8554,9 @@ const fetchReports = async () => {
             'maKH': 'maKH',
             'ID_QUANLYFILE': 'id_quanlyfile',
             'id_quan_ly_file': 'id_quanlyfile',
-            'id_quanlyfile': 'id_quanlyfile'
+            'id_quanlyfile': 'id_quanlyfile',
+            'ID_PIPELINE': 'id_pipeline',
+            'id_pipeline': 'id_pipeline'
           };
           
           for (const oldKey in keyMap) {
@@ -7653,38 +8574,10 @@ const fetchReports = async () => {
       reports.value = sortedData;
       loading.value = false;
       
-      if (route.query.id && !autoOpenedId) {
+      const pendingUrlReportId = getPendingDeepLinkReportId();
+      if (pendingUrlReportId) {
         autoOpenedId = true
-        const r = reports.value.find(x => String(x.id) === String(route.query.id))
-        if (r) {
-          const rd = parseDateFromReport(r.thoi_gian)
-          if (rd) {
-            filters.value.filterMode = 'day'
-            const dStr = `${rd.getFullYear()}-${String(rd.getMonth() + 1).padStart(2, '0')}-${String(rd.getDate()).padStart(2, '0')}`
-            filters.value.dateFrom = dStr
-            filters.value.dateTo = dStr
-          }
-          
-          highlightedReportId.value = r.id;
-          nextTick(() => {
-            ensureReportVisible(r.id);
-          });
-          
-          setTimeout(() => {
-            ensureReportVisible(r.id);
-            nextTick(() => {
-              const el = document.getElementById('report-card-' + r.id)
-              if (el) {
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                setTimeout(() => {
-                  if (highlightedReportId.value === r.id) {
-                    highlightedReportId.value = null;
-                  }
-                }, 3000);
-              }
-            });
-          }, 300);
-        }
+        focusReportByDeepLink(pendingUrlReportId)
       }
     }, (error) => {
       console.error("Lỗi khi tải dữ liệu realtime: ", error);
@@ -7695,6 +8588,124 @@ const fetchReports = async () => {
     loading.value = false
   }
 }
+
+const isDeepLinkDateLocked = ref(false)
+let isApplyingDeepLinkState = false
+
+const getPendingDeepLinkReportId = () => {
+  if (typeof window !== 'undefined') {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const fromSearch = params.get('openId') || params.get('id')
+      if (fromSearch && String(fromSearch).trim()) return String(fromSearch).trim()
+    } catch (_) {
+      // ignore URLSearchParams error
+    }
+    return ''
+  }
+  const fallback = route.query.openId || route.query.id
+  return fallback ? String(fallback).trim() : ''
+}
+
+const clearDeepLinkUrlQuery = () => {
+  if (typeof window === 'undefined') return
+  try {
+    const url = new URL(window.location.href)
+    const hadOpenId = url.searchParams.has('openId')
+    const hadId = url.searchParams.has('id')
+    if (!hadOpenId && !hadId) return
+    url.searchParams.delete('openId')
+    url.searchParams.delete('id')
+    const cleanSearch = url.searchParams.toString()
+    const cleanUrl = url.pathname + (cleanSearch ? `?${cleanSearch}` : '') + url.hash
+    window.history.replaceState(window.history.state, '', cleanUrl)
+  } catch (_) {
+    // ignore URL parse error
+  }
+}
+
+const releaseDeepLinkDateLock = ({ restoreDefaultWeek = false } = {}) => {
+  if (!isDeepLinkDateLocked.value) return
+  isDeepLinkDateLocked.value = false
+  highlightedReportId.value = null
+  if (restoreDefaultWeek) {
+    isApplyingDeepLinkState = true
+    const now = new Date()
+    const today = getTodayStr()
+    const curWk = getWeekString(now)
+    const curYm = getThisMonthStr()
+    calendarAnchorDate.value = now
+    mobileSelectedWeekIso.value = ''
+    mobileSelectedMonthDateStr.value = ''
+    if (desktopViewMode.value === 'calendar' && calendarSubMode.value === 'month') {
+      filters.value.filterMode = 'month'
+      filters.value.monthFrom = curYm
+      filters.value.monthTo = curYm
+    } else {
+      filters.value.filterMode = 'week'
+      filters.value.weekFrom = curWk
+      filters.value.weekTo = curWk
+    }
+    filters.value.dateFrom = today
+    filters.value.dateTo = today
+    nextTick(() => {
+      isApplyingDeepLinkState = false
+    })
+  }
+}
+
+const focusReportByDeepLink = (targetReportId) => {
+  if (!targetReportId || !reports.value.length) return
+  const r = reports.value.find(x => String(x.id) === String(targetReportId))
+  // Xóa ngay ?openId / ?id khỏi thanh URL để không bị kẹt card Report khi người dùng lọc hoặc tải lại trang
+  clearDeepLinkUrlQuery()
+  if (!r) return
+
+  isApplyingDeepLinkState = true
+  filters.value.searchQuery = ''
+  filters.value.period = ''
+  filters.value.trang_thai = ''
+  filters.value.tag = ''
+  filters.value.phan_loai = ''
+  filters.value.maKH = ''
+
+  const rd = parseDateFromReport(r.thoi_gian)
+  if (rd) {
+    filters.value.filterMode = 'day'
+    const dStr = `${rd.getFullYear()}-${String(rd.getMonth() + 1).padStart(2, '0')}-${String(rd.getDate()).padStart(2, '0')}`
+    filters.value.dateFrom = dStr
+    filters.value.dateTo = dStr
+    calendarAnchorDate.value = new Date(rd)
+    isDeepLinkDateLocked.value = true
+  }
+  nextTick(() => {
+    isApplyingDeepLinkState = false
+  })
+
+  highlightedReportId.value = r.id;
+  nextTick(() => {
+    ensureReportVisible(r.id);
+  });
+
+  setTimeout(() => {
+    ensureReportVisible(r.id);
+    nextTick(() => {
+      const el = document.getElementById('report-card-' + r.id)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+    });
+  }, 300);
+}
+
+watch(
+  () => route.query.openId || route.query.id,
+  (nextId) => {
+    if (nextId && reports.value.length > 0) {
+      focusReportByDeepLink(nextId)
+    }
+  }
+)
 
 // Mở Modal
 const deriveContextTimeInputs = () => {
@@ -8360,6 +9371,7 @@ const syncFilterToCalendarAnchor = () => {
 };
 
 const activateCalendarView = (preferredSubMode) => {
+  releaseDeepLinkDateLock({ restoreDefaultWeek: false });
   if (preferredSubMode === 'week' || preferredSubMode === 'month') {
     calendarSubMode.value = preferredSubMode;
   } else if (filters.value.filterMode === 'month') {
@@ -8372,11 +9384,13 @@ const activateCalendarView = (preferredSubMode) => {
 
 const setCalendarSubMode = (mode) => {
   if (mode !== 'week' && mode !== 'month') return;
+  releaseDeepLinkDateLock({ restoreDefaultWeek: false });
   calendarSubMode.value = mode;
   syncFilterToCalendarAnchor();
 };
 
 const shiftCalendarPeriod = (dir) => {
+  releaseDeepLinkDateLock({ restoreDefaultWeek: false });
   const d = new Date(calendarAnchorDate.value);
   if (calendarSubMode.value === 'week') {
     d.setDate(d.getDate() + dir * 7);
@@ -8388,6 +9402,7 @@ const shiftCalendarPeriod = (dir) => {
 };
 
 const goCalendarToday = () => {
+  releaseDeepLinkDateLock({ restoreDefaultWeek: false });
   calendarAnchorDate.value = new Date();
   mobileSelectedWeekIso.value = '';
   mobileSelectedMonthDateStr.value = '';
@@ -8395,6 +9410,7 @@ const goCalendarToday = () => {
 };
 
 const setFilterModeAndSync = (mode) => {
+  releaseDeepLinkDateLock({ restoreDefaultWeek: false });
   filters.value.filterMode = mode;
   if (desktopViewMode.value === 'calendar') {
     if (mode === 'week') {
@@ -8410,10 +9426,12 @@ const setFilterModeAndSync = (mode) => {
 };
 
 const onManualDateFilterChange = () => {
+  releaseDeepLinkDateLock({ restoreDefaultWeek: false });
   calendarAnchorDate.value = deriveAnchorFromCurrentFilters();
 };
 
 const shiftFilterPeriod = (dir) => {
+  releaseDeepLinkDateLock({ restoreDefaultWeek: false });
   const mode = filters.value.filterMode;
   if (mode === 'day') {
     const from = parseIsoLocal(filters.value.dateFrom);
@@ -8467,6 +9485,7 @@ const isTodayFilterActive = computed(() => {
 });
 
 const setTodayFilter = () => {
+  releaseDeepLinkDateLock({ restoreDefaultWeek: false });
   calendarAnchorDate.value = new Date();
   mobileSelectedWeekIso.value = '';
   mobileSelectedMonthDateStr.value = '';
@@ -9086,10 +10105,14 @@ const activeCustomFilterCount = computed(() => {
   if (isPickerCustomActive('phan_loai')) count++;
   if (isPickerCustomActive('maKH')) count++;
   if (isPickerCustomActive('sortOrder')) count++;
+  if (isDeepLinkDateLocked.value) count++;
   return count;
 });
 
 const resetAllFilters = () => {
+  if (isDeepLinkDateLocked.value) {
+    releaseDeepLinkDateLock({ restoreDefaultWeek: true });
+  }
   filters.value.searchQuery = '';
   filters.value.period = '';
   filters.value.trang_thai = '';
@@ -9100,6 +10123,49 @@ const resetAllFilters = () => {
   openPickerKey.value = null;
   showToast('Đã đặt lại bộ lọc tìm kiếm', 'info', 2000);
 };
+
+// Cách A: Khi điều hướng từ Pipeline sang (?openId=...), nếu người dùng thay đổi bất kỳ bộ lọc thuộc tính / tìm kiếm nào
+// thì tự động gỡ khóa ngày của Report đó và trả khung thời gian về Tuần hiện tại để lọc toàn bộ dữ liệu bình thường.
+watch(
+  () => [
+    filters.value.searchQuery,
+    filters.value.period,
+    filters.value.trang_thai,
+    filters.value.tag,
+    filters.value.phan_loai,
+    filters.value.maKH,
+    filters.value.sortOrder
+  ],
+  () => {
+    if (isApplyingDeepLinkState || !isDeepLinkDateLocked.value) return;
+    releaseDeepLinkDateLock({ restoreDefaultWeek: true });
+  }
+);
+
+watch(
+  () => [
+    filters.value.filterMode,
+    filters.value.dateFrom,
+    filters.value.dateTo,
+    filters.value.weekFrom,
+    filters.value.weekTo,
+    filters.value.monthFrom,
+    filters.value.monthTo,
+    filters.value.yearFrom,
+    filters.value.yearTo
+  ],
+  () => {
+    if (isApplyingDeepLinkState || !isDeepLinkDateLocked.value) return;
+    releaseDeepLinkDateLock({ restoreDefaultWeek: false });
+  }
+);
+
+onActivated(() => {
+  const pendingId = getPendingDeepLinkReportId();
+  if (pendingId && reports.value.length > 0) {
+    focusReportByDeepLink(pendingId);
+  }
+});
 
 // --- Upload Input Refs, V7 Studio Composer Toggles, Inline Search, Smart Drop, Auto-Draft & Unsaved Guard ---
 const imgUploadInput = ref(null);
@@ -9289,6 +10355,7 @@ const hasFormReminder = computed(() => Boolean(
   (formData.value.reminder_content && String(formData.value.reminder_content).trim())
 ));
 const hasFormLinkedFile = computed(() => Boolean(formData.value.id_quanlyfile));
+const hasFormLinkedPipeline = computed(() => Boolean(normalizeSinglePipelineId(formData.value.id_pipeline)));
 
 const formImgCount = computed(() =>
   formData.value.img_save ? formData.value.img_save.split('\n').filter(Boolean).length : 0
@@ -9435,6 +10502,16 @@ const cancelUploadFileNameModal = () => {
 const openStudioLinkedFileModal = () => {
   fileSearchQuery.value = '';
   isFileSelectModalOpen.value = true;
+};
+
+const openStudioPipelineModal = () => {
+  pipelineSearchQuery.value = '';
+  modalPlProjectFilter.value = '';
+  modalPlWorkflowFilter.value = '';
+  openModalPlPicker.value = null;
+  modalPlProjectSearch.value = '';
+  modalPlWorkflowSearch.value = '';
+  isPipelineModalOpen.value = true;
 };
 
 const toggleStudioPanel = (panelKey) => {
@@ -11341,6 +12418,10 @@ const isAnyModalOrSheetOpen = computed(() => Boolean(
   isFileSelectModalOpen.value ||
   isCustomerSelectModalOpen.value ||
   isCustomerModalOpen.value ||
+  cusSmartImportModal.value.show ||
+  isCusTaxModalOpen.value ||
+  cusAiFallbackModal.value.show ||
+  cusImportScanning.value.active ||
   isTagModalOpen.value ||
   isEmptyDaysModalOpen.value ||
   isMoveModalOpen.value ||
@@ -11431,6 +12512,7 @@ const onBaogiaGlobalKeydown = (e) => {
     !isCustomerSelectModalOpen.value &&
     !isCustomerModalOpen.value &&
     !isFileSelectModalOpen.value &&
+    !isPipelineModalOpen.value &&
     !isTagModalOpen.value &&
     !isMobileAttachSheetOpen.value &&
     !selectedImage.value &&
@@ -11466,6 +12548,19 @@ const onBaogiaGlobalKeydown = (e) => {
       openModalSelectKey.value = null;
     } else if (selectedImage.value) {
       selectedImage.value = null;
+    } else if (cusImportScanning.value.active) {
+      e.preventDefault();
+    } else if (cusAiFallbackModal.value.show) {
+      e.preventDefault();
+      closeCusAiImportFallback();
+    } else if (isCusTaxModalOpen.value) {
+      e.preventDefault();
+      closeCusTaxModal();
+    } else if (cusSmartImportModal.value.show) {
+      e.preventDefault();
+      closeCusSmartImportModal();
+    } else if (isTagModalOpen.value) {
+      isTagModalOpen.value = false;
     } else if (isMobileAttachSheetOpen.value) {
       isMobileAttachSheetOpen.value = false;
     } else if (isUploadFileNameModalOpen.value) {
@@ -11479,12 +12574,15 @@ const onBaogiaGlobalKeydown = (e) => {
       cancelStudioReminderModal();
     } else if (isCustomerModalOpen.value) {
       isCustomerModalOpen.value = false;
-    } else if (isTagModalOpen.value) {
-      isTagModalOpen.value = false;
     } else if (isCustomerSelectModalOpen.value) {
       isCustomerSelectModalOpen.value = false;
     } else if (isFileSelectModalOpen.value) {
       isFileSelectModalOpen.value = false;
+    } else if (openModalPlPicker.value) {
+      openModalPlPicker.value = null;
+    } else if (isPipelineModalOpen.value) {
+      isPipelineModalOpen.value = false;
+      openModalPlPicker.value = null;
     } else if (isModalOpen.value) {
       e.preventDefault();
       requestCloseModal();
@@ -11574,7 +12672,7 @@ const selectCustomer = (cus) => {
 };
 
 const editCustomerInfo = (cus) => {
-  customerFormData.value = { ...cus };
+  customerFormData.value = { ...defaultCustomerForm, ...cus };
   originalCustomerFormDataStr.value = JSON.stringify(customerFormData.value);
   isCustomerSelectModalOpen.value = false;
   isCustomerModalOpen.value = true;
@@ -11589,8 +12687,8 @@ const getSelectedCustomerTags = () => {
 const getSelectedCustomerDisplay = () => {
   if (!formData.value.maKH) return 'Chưa chọn khách hàng';
   const cus = customersList.value.find(c => c.ma_khach_hang === formData.value.maKH);
-  if (!cus) return formData.value.maKH;
-  return `${cus.ten_khach_hang} ${cus.ten_cong_ty ? '- ' + cus.ten_cong_ty : ''}`;
+  if (!cus) return 'Khách hàng đã chọn';
+  return [cus.ten_khach_hang, cus.ten_cong_ty].filter(Boolean).join(' - ') || 'Khách hàng đã chọn';
 };
 
 // Logic Quản lý Tag
@@ -11683,11 +12781,15 @@ const defaultCustomerForm = {
   ma_cong_ty: '',
   ten_cong_ty: '',
   mst: '',
+  nganh_nghe_cong_ty: '',
   dia_chi_cong_ty: '',
   email_cong_ty: '',
   website_cong_ty: '',
   so_dien_thoai_cong_ty: '',
   so_fax_cong_ty: '',
+  company: '',
+  address: '',
+  tel: '',
   ghi_chu: '',
   hoa_hong: '',
   trang_thai: 'Active',
@@ -11743,46 +12845,815 @@ watch(
 
 // --- LOGIC MODAL KHÁCH HÀNG MỚI ---
 const openCustomerModal = () => {
-  customerFormData.value = { 
+  const curMa = String(formData.value.maKH || '').trim()
+  const existsInDb = curMa && customersList.value.some((c) => c.ma_khach_hang === curMa)
+  customerFormData.value = {
     ...defaultCustomerForm,
-    ma_khach_hang: formData.value.maKH || ''
+    ma_khach_hang: existsInDb ? '' : curMa
   }
+  originalCustomerFormDataStr.value = ''
+  isInlineCusDropdownOpen.value = false
   isCustomerModalOpen.value = true
 }
 
+const resetCustomerModalForm = () => {
+  customerFormData.value = { ...defaultCustomerForm }
+  originalCustomerFormDataStr.value = ''
+  showToast('Đã làm mới trắng biểu mẫu khách hàng', 'info')
+}
+
+const applyExistingCustomerFromModal = () => {
+  const code = String(customerFormData.value.ma_khach_hang || '').trim()
+  if (code) {
+    formData.value.maKH = code
+    if (typeof recordRecentCustomerCode === 'function') {
+      recordRecentCustomerCode(code)
+    }
+  }
+  isCustomerModalOpen.value = false
+  showToast(
+    `Đã chọn khách hàng ${customerFormData.value.ten_khach_hang || customerFormData.value.ten_cong_ty || code}`,
+    'success'
+  )
+}
+
 const saveNewCustomer = async () => {
+  if (!customerFormData.value.ten_khach_hang && customerFormData.value.ten_cong_ty) {
+    customerFormData.value.ten_khach_hang = customerFormData.value.ten_cong_ty
+  }
+  if (!customerFormData.value.ma_khach_hang && (customerFormData.value.ten_khach_hang || customerFormData.value.ten_cong_ty)) {
+    customerFormData.value.ma_khach_hang = genMaKH(
+      customerFormData.value.ten_khach_hang,
+      customerFormData.value.ten_cong_ty
+    )
+  }
+  if (!customerFormData.value.ma_cong_ty && customerFormData.value.ten_cong_ty) {
+    customerFormData.value.ma_cong_ty = genMaCT(customerFormData.value.ten_cong_ty)
+  }
+
   if (!customerFormData.value.ma_khach_hang || !customerFormData.value.ten_khach_hang) {
     showToast('Vui lòng nhập Mã Khách Hàng và Tên Khách Hàng', 'warning')
     return
   }
   try {
-    const nowIso = new Date().toISOString();
+    const nowIso = new Date().toISOString()
+    const sdtCompat =
+      customerFormData.value.sdt ||
+      customerFormData.value.so_dien_thoai_ca_nhan ||
+      customerFormData.value.so_dien_thoai_cong_ty ||
+      ''
+    const emailCompat =
+      customerFormData.value.email ||
+      customerFormData.value.email_ca_nhan ||
+      customerFormData.value.email_cong_ty ||
+      ''
+    const diaChiCompat =
+      customerFormData.value.dia_chi ||
+      customerFormData.value.dia_chi_cong_ty ||
+      customerFormData.value.address ||
+      ''
+
     if (customerFormData.value.id) {
-      const cusRef = dbRef(database, 'khach_hang/' + customerFormData.value.id);
+      const cusRef = dbRef(database, 'khach_hang/' + customerFormData.value.id)
       const dataToSave = {
         ...customerFormData.value,
+        sdt: sdtCompat,
+        email: emailCompat,
+        dia_chi: diaChiCompat,
         last_updated: nowIso
-      };
-      delete dataToSave.id;
-      await update(cusRef, dataToSave);
-      showToast('Đã cập nhật thông tin khách hàng', 'success');
+      }
+      delete dataToSave.id
+      await update(cusRef, dataToSave)
+      showToast('Đã cập nhật thông tin khách hàng', 'success')
     } else {
-      const newCusRef = push(dbRef(database, 'khach_hang'));
-      await set(newCusRef, {
+      const newCusRef = push(dbRef(database, 'khach_hang'))
+      const payload = {
         ...customerFormData.value,
+        sdt: sdtCompat,
+        email: emailCompat,
+        dia_chi: diaChiCompat,
         created_time: Date.now(),
         last_updated: nowIso
-      });
-      showToast('Đã tạo khách hàng mới', 'success');
+      }
+      await set(newCusRef, payload)
+      if (!customersList.value.some((c) => c.id === newCusRef.key || c.ma_khach_hang === payload.ma_khach_hang)) {
+        customersList.value.unshift({ id: newCusRef.key, ...payload })
+      }
+      showToast('Đã tạo khách hàng mới', 'success')
     }
-    
-    formData.value.maKH = customerFormData.value.ma_khach_hang;
-    isCustomerModalOpen.value = false;
+
+    formData.value.maKH = customerFormData.value.ma_khach_hang
+    if (typeof recordRecentCustomerCode === 'function') {
+      recordRecentCustomerCode(customerFormData.value.ma_khach_hang)
+    }
+    isCustomerModalOpen.value = false
   } catch (error) {
-    console.error("Lỗi khi thêm/sửa KH:", error);
-    await showAlert('Lỗi: ' + error.message, 'Không thể lưu khách hàng', { variant: 'danger' });
+    console.error('Lỗi khi thêm/sửa KH:', error)
+    await showAlert('Lỗi: ' + error.message, 'Không thể lưu khách hàng', { variant: 'danger' })
   }
 }
+
+// --- HỆ THỐNG IMPORT THÔNG MINH TRONG MODAL KHÁCH HÀNG (DXMH / BÁO GIÁ / THUẾ & ĐKKD + AI FALLBACK) ---
+const cusSmartFileInputRef = ref(null)
+const cusSmartImageInputRef = ref(null)
+const cusSmartMobPasteRef = ref(null)
+
+const cusSmartImportModal = ref({
+  show: false,
+  mode: 'khach_dxmh',
+  isDragging: false,
+  showMobPasteBox: false,
+  files: [],
+  activeIdx: 0
+})
+
+const isCusTaxModalOpen = ref(false)
+const cusTaxInfo = ref({
+  mst: '',
+  tenCongTy: '',
+  tenCongTyEn: '',
+  diaChi: '',
+  nganhNgheChinh: ''
+})
+const cusTaxPreviewUrl = ref('')
+const lastCusTaxFile = ref(null)
+const cusTaxScanSourceMode = ref('standard')
+const cusTaxSourceIsImage = ref(true)
+
+const cusAiFallbackModal = ref({
+  show: false,
+  mode: 'khach_dxmh',
+  file: null,
+  reason: ''
+})
+
+const cusImportScanning = ref({
+  active: false,
+  title: 'Đang quét tài liệu...',
+  message: ''
+})
+
+const cusSmartImportMeta = computed(() => {
+  switch (cusSmartImportModal.value.mode) {
+    case 'khach_baogia':
+      return {
+        title: 'Import Khách Hàng (File Báo Giá)',
+        mobTitle: 'Import KH (File Báo Giá)',
+        badge: 'Trích xuất Kính gửi & Người nhận',
+        iconTone: 'is-violet',
+        primaryCta: 'Tải lên & Quét khách hàng'
+      }
+    case 'thue':
+      return {
+        title: 'Quét Thông Tin Thuế / ĐKKD',
+        mobTitle: 'Quét Thông Tin Thuế',
+        badge: 'MST, Tên công ty, Địa chỉ & Ngành nghề',
+        iconTone: 'is-sky',
+        primaryCta: 'Tải lên & Quét thông tin thuế'
+      }
+    case 'khach_dxmh':
+    default:
+      return {
+        title: 'Import Khách Hàng (File ĐXMH / PO)',
+        mobTitle: 'Import KH (File ĐXMH)',
+        badge: 'Trích xuất hồ sơ đối tác',
+        iconTone: 'is-emerald',
+        primaryCta: 'Tải lên & Quét khách hàng'
+      }
+  }
+})
+
+const cusAiFallbackFlowLabel = computed(() => {
+  switch (cusAiFallbackModal.value.mode) {
+    case 'khach_baogia':
+      return 'Import Khách hàng từ File Báo Giá'
+    case 'thue':
+      return 'Quét Thông tin Thuế / Đăng ký kinh doanh'
+    case 'khach_dxmh':
+    default:
+      return 'Import Khách hàng từ File ĐXMH / PO'
+  }
+})
+
+const formatCusImportFileSize = (bytes) => {
+  const n = Number(bytes || 0)
+  if (!n || n <= 0) return '0 KB'
+  if (n < 1024) return `${n} B`
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
+  return `${(n / (1024 * 1024)).toFixed(2)} MB`
+}
+
+const makeCusClipboardTimestampName = () => {
+  const d = new Date()
+  const pad = (v) => String(v).padStart(2, '0')
+  return `Anh_dan_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`
+}
+
+const splitCusFileNameAndExt = (rawName, mimeType) => {
+  const trimmed = String(rawName || '').trim()
+  if (trimmed) {
+    const dotIdx = trimmed.lastIndexOf('.')
+    if (dotIdx > 0 && dotIdx < trimmed.length - 1) {
+      return {
+        baseName: trimmed.slice(0, dotIdx),
+        ext: trimmed.slice(dotIdx).toLowerCase()
+      }
+    }
+    return { baseName: trimmed, ext: '' }
+  }
+  const m = String(mimeType || '').toLowerCase()
+  let ext = '.png'
+  if (m.includes('jpeg') || m.includes('jpg')) ext = '.jpg'
+  else if (m.includes('webp')) ext = '.webp'
+  else if (m.includes('pdf')) ext = '.pdf'
+  return { baseName: makeCusClipboardTimestampName(), ext }
+}
+
+const getCusFileCategory = (file) => {
+  if (!file) return 'doc'
+  if (isImageDocFile(file)) return 'img'
+  if (isPdfDocFile(file)) return 'pdf'
+  if (isWordDocFile(file)) return 'word'
+  return 'excel'
+}
+
+const revokeCusPendingPreviews = (list) => {
+  if (!Array.isArray(list)) return
+  list.forEach((it) => {
+    if (it && it.previewUrl) {
+      try {
+        URL.revokeObjectURL(it.previewUrl)
+      } catch (_) {}
+    }
+  })
+}
+
+const buildCusFinalFileFromPending = (item) => {
+  if (!item || !item.file) return null
+  const cleanBase = String(item.baseName || '').trim() || 'Tai_lieu'
+  const ext = String(item.ext || '').trim()
+  const finalName = ext && !cleanBase.toLowerCase().endsWith(ext.toLowerCase()) ? `${cleanBase}${ext}` : cleanBase
+  if (finalName === item.file.name) return item.file
+  try {
+    return new File([item.file], finalName, {
+      type: item.file.type,
+      lastModified: item.file.lastModified || Date.now()
+    })
+  } catch (_) {
+    return item.file
+  }
+}
+
+const openCusSmartImportModal = (mode) => {
+  revokeCusPendingPreviews(cusSmartImportModal.value.files)
+  cusSmartImportModal.value = {
+    show: true,
+    mode: mode || 'khach_dxmh',
+    isDragging: false,
+    showMobPasteBox: false,
+    files: [],
+    activeIdx: 0
+  }
+}
+
+const closeCusSmartImportModal = () => {
+  revokeCusPendingPreviews(cusSmartImportModal.value.files)
+  cusSmartImportModal.value.files = []
+  cusSmartImportModal.value.activeIdx = 0
+  cusSmartImportModal.value.isDragging = false
+  cusSmartImportModal.value.showMobPasteBox = false
+  cusSmartImportModal.value.show = false
+}
+
+const addFilesToCusSmartImportModal = (rawFiles, fromClipboard = false) => {
+  if (!Array.isArray(rawFiles) || rawFiles.length === 0) return
+  revokeCusPendingPreviews(cusSmartImportModal.value.files)
+  cusSmartImportModal.value.files = []
+
+  const firstRaw = rawFiles[0]
+  if (!firstRaw) return
+  const isGenericClipName =
+    fromClipboard ||
+    /^image\.(png|jpe?g|webp|bmp|gif)$/i.test(String(firstRaw.name || '').trim()) ||
+    !String(firstRaw.name || '').trim()
+  const parsed = splitCusFileNameAndExt(isGenericClipName ? '' : firstRaw.name, firstRaw.type)
+  const isImg = isImageDocFile(firstRaw)
+  const previewUrl = isImg ? URL.createObjectURL(firstRaw) : ''
+
+  cusSmartImportModal.value.files.push({
+    id: `cus_sm_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    file: firstRaw,
+    baseName: parsed.baseName,
+    ext: parsed.ext,
+    isImage: isImg,
+    category: getCusFileCategory(firstRaw),
+    previewUrl,
+    sizeLabel: formatCusImportFileSize(firstRaw.size),
+    fromClipboard
+  })
+  cusSmartImportModal.value.activeIdx = 0
+}
+
+const removeCusSmartImportPendingItem = (idx) => {
+  if (idx < 0 || idx >= cusSmartImportModal.value.files.length) return
+  const removed = cusSmartImportModal.value.files.splice(idx, 1)
+  revokeCusPendingPreviews(removed)
+  cusSmartImportModal.value.activeIdx = 0
+}
+
+const onCusSmartImportFileChange = (e) => {
+  const input = e?.target
+  const list = Array.from(input?.files || [])
+  if (input) input.value = ''
+  if (!list.length) return
+  addFilesToCusSmartImportModal(list, false)
+}
+
+const onCusSmartImportDragOver = (e) => {
+  e.preventDefault()
+  cusSmartImportModal.value.isDragging = true
+}
+
+const onCusSmartImportDragLeave = (e) => {
+  e.preventDefault()
+  cusSmartImportModal.value.isDragging = false
+}
+
+const onCusSmartImportDrop = (e) => {
+  e.preventDefault()
+  cusSmartImportModal.value.isDragging = false
+  const list = Array.from(e.dataTransfer?.files || [])
+  if (!list.length) return
+  addFilesToCusSmartImportModal(list, false)
+}
+
+const onCusSmartImportPaste = (e) => {
+  if (!cusSmartImportModal.value.show) return
+  const targetEl = e?.target
+  if (targetEl && targetEl.classList?.contains('cus-smart-name-input')) {
+    return
+  }
+  const items = e.clipboardData?.items
+  const pastedFiles = []
+  if (items) {
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i]
+      if (it.kind === 'file') {
+        const blob = it.getAsFile()
+        if (blob) pastedFiles.push(blob)
+      }
+    }
+  }
+  if (!pastedFiles.length && e.clipboardData?.files?.length) {
+    pastedFiles.push(...Array.from(e.clipboardData.files))
+  }
+  if (!pastedFiles.length) return
+  e.preventDefault()
+  cusSmartImportModal.value.showMobPasteBox = false
+  if (cusSmartMobPasteRef.value) cusSmartMobPasteRef.value.value = ''
+  addFilesToCusSmartImportModal(pastedFiles, true)
+  showToast('Đã dán tài liệu / ảnh từ bộ nhớ tạm', 'success')
+}
+
+const pasteFromMobileClipboardToCusSmartImport = async () => {
+  try {
+    if (navigator.clipboard && typeof navigator.clipboard.read === 'function') {
+      const clipItems = await navigator.clipboard.read()
+      const extracted = []
+      for (const cItem of clipItems) {
+        const matchedType = cItem.types.find((t) => t.startsWith('image/') || t === 'application/pdf')
+        if (matchedType) {
+          const blob = await cItem.getType(matchedType)
+          const ext = matchedType.includes('jpeg')
+            ? '.jpg'
+            : matchedType.includes('webp')
+            ? '.webp'
+            : matchedType.includes('pdf')
+            ? '.pdf'
+            : '.png'
+          const file = new File([blob], `${makeCusClipboardTimestampName()}${ext}`, {
+            type: matchedType,
+            lastModified: Date.now()
+          })
+          extracted.push(file)
+        }
+      }
+      if (extracted.length > 0) {
+        addFilesToCusSmartImportModal(extracted, true)
+        cusSmartImportModal.value.showMobPasteBox = false
+        showToast('Đã dán ảnh / file từ bộ nhớ tạm', 'success')
+        return
+      }
+    }
+  } catch (_) {}
+  cusSmartImportModal.value.showMobPasteBox = true
+  nextTick(() => {
+    cusSmartMobPasteRef.value?.focus?.()
+  })
+  showToast('Chạm giữ vào ô bên dưới rồi chọn "Dán" để dán ảnh', 'info')
+}
+
+const translateCompanyNameToEnglishSafeForCus = async (companyName) => {
+  const clean = String(companyName || '').trim()
+  if (!clean) return ''
+  try {
+    const res = await fetch(
+      `https://translate.googleapis.com/translate_a/single?client=gtx&sl=vi&tl=en&dt=t&q=${encodeURIComponent(clean)}`
+    )
+    const json = await res.json()
+    if (json && json[0] && json[0][0] && json[0][0][0]) {
+      return String(json[0][0][0]).trim()
+    }
+  } catch (err) {
+    console.warn('Không dịch được tên tiếng Anh qua Google Translate:', err)
+  }
+  return ''
+}
+
+const applyExtractedCustomerFieldsToReportModal = async (fields, toastMsg) => {
+  if (!fields) return
+  if (customersList.value.length === 0) {
+    await fetchCustomersForQuote()
+  }
+
+  const clean = (v) => String(v || '').trim()
+  const tenKH = clean(fields.Ten_khach_hang)
+  const tenCT = clean(fields.Ten_cong_ty || fields.COMPANY)
+  const mst = clean(fields.MST)
+  const diaChi = clean(fields.Dia_chi_cong_ty)
+  const sdtCaNhan = clean(fields.So_dien_thoai_ca_nhan)
+  const sdtCongTy = clean(fields.So_dien_thoai_cong_ty)
+  const faxCongTy = clean(fields.So_fax_cong_ty)
+  const emailCaNhan = clean(fields.Email_ca_nhan)
+  const emailCongTy = clean(fields.Email_cong_ty)
+  const website = clean(fields.Website_cong_ty)
+  const tenKHPhu = clean(fields.Ten_khach_hang_phu)
+  const sdtPhu = clean(fields.So_dien_thoai_ca_nhan_phu)
+  const companyEn = clean(fields.COMPANY)
+  const addressEn = clean(fields.ADDRESS)
+  const telEn = clean(fields.TEL)
+  const nganhNghe = clean(fields.Nganh_nghe_cong_ty)
+
+  const incomingMap = {
+    ten_khach_hang: tenKH,
+    ten_cong_ty: tenCT,
+    mst,
+    nganh_nghe_cong_ty: nganhNghe,
+    dia_chi_cong_ty: diaChi,
+    so_dien_thoai_ca_nhan: sdtCaNhan,
+    so_dien_thoai_cong_ty: sdtCongTy,
+    so_fax_cong_ty: faxCongTy,
+    email_ca_nhan: emailCaNhan,
+    email_cong_ty: emailCongTy,
+    website_cong_ty: website,
+    ten_khach_hang_phu: tenKHPhu,
+    so_dien_thoai_ca_nhan_phu: sdtPhu,
+    company: companyEn,
+    address: addressEn,
+    tel: telEn
+  }
+
+  const nonEmptyIncoming = Object.fromEntries(
+    Object.entries(incomingMap).filter(([_, val]) => val !== '' && val !== undefined)
+  )
+
+  // Trường hợp 1: Đang mở sửa 1 khách hàng đã xác định sẵn trong DB
+  if (customerFormData.value.id) {
+    customerFormData.value = {
+      ...customerFormData.value,
+      ...nonEmptyIncoming,
+      id: customerFormData.value.id,
+      ma_khach_hang: customerFormData.value.ma_khach_hang,
+      ma_cong_ty:
+        customerFormData.value.ma_cong_ty ||
+        genMaCT(nonEmptyIncoming.ten_cong_ty || customerFormData.value.ten_cong_ty)
+    }
+    if (toastMsg) showToast(toastMsg, 'success')
+    return
+  }
+
+  // Trường hợp 2: Đang ở chế độ tạo mới -> kiểm tra xem khách hàng này đã có trong DB chưa
+  const matchedInDb = findMatchedCustomerInDb({
+    mst: mst || customerFormData.value.mst,
+    ten_cong_ty: tenCT || customerFormData.value.ten_cong_ty,
+    ten_khach_hang: tenKH || customerFormData.value.ten_khach_hang
+  })
+
+  if (matchedInDb) {
+    const baseDbSnapshot = {
+      ...defaultCustomerForm,
+      ...JSON.parse(JSON.stringify(matchedInDb))
+    }
+    originalCustomerFormDataStr.value = JSON.stringify(baseDbSnapshot)
+    const fixedMaKH =
+      clean(matchedInDb.ma_khach_hang) || genMaKH(tenKH || matchedInDb.ten_khach_hang, tenCT || matchedInDb.ten_cong_ty)
+    const fixedMaCT =
+      clean(matchedInDb.ma_cong_ty) || genMaCT(matchedInDb.ten_cong_ty || tenCT || matchedInDb.ten_khach_hang || tenKH)
+
+    customerFormData.value = {
+      ...baseDbSnapshot,
+      ...nonEmptyIncoming,
+      id: matchedInDb.id,
+      ma_khach_hang: fixedMaKH,
+      ma_cong_ty: fixedMaCT
+    }
+    showToast(
+      `${toastMsg || 'Đã quét thông tin khách hàng'} • Đã khớp hồ sơ có sẵn trong DB (${fixedMaKH})`,
+      'success'
+    )
+    return
+  }
+
+  // Trường hợp 3: Khách hàng mới hoàn toàn
+  const mergedDraft = {
+    ...customerFormData.value,
+    ...nonEmptyIncoming
+  }
+  const effectiveTenKH = clean(mergedDraft.ten_khach_hang)
+  const effectiveTenCT = clean(mergedDraft.ten_cong_ty)
+  mergedDraft.ma_cong_ty = genMaCT(effectiveTenCT)
+  mergedDraft.ma_khach_hang = genMaKH(effectiveTenKH, effectiveTenCT)
+  customerFormData.value = mergedDraft
+
+  if (toastMsg) showToast(toastMsg, 'success')
+}
+
+const openCusAiImportFallback = (mode, file, reason) => {
+  cusAiFallbackModal.value = {
+    show: true,
+    mode: mode || 'khach_dxmh',
+    file,
+    reason: reason || 'Bộ quét tiêu chuẩn không nhận diện được cấu trúc tài liệu này.'
+  }
+}
+
+const closeCusAiImportFallback = () => {
+  cusAiFallbackModal.value.show = false
+  cusAiFallbackModal.value.file = null
+}
+
+const processReportCustomerImportStandard = async (file, mode) => {
+  if (!file) return
+  const modeLabel = mode === 'khach_dxmh' ? 'File ĐXMH / PO' : 'File Báo Giá'
+  if (isImageDocFile(file)) {
+    openCusAiImportFallback(
+      mode,
+      file,
+      `Tài liệu đang ở định dạng hình ảnh nên bộ quét ${modeLabel} tiêu chuẩn không thể đọc trực tiếp.`
+    )
+    return
+  }
+
+  cusImportScanning.value = {
+    active: true,
+    title: 'Đang quét khách hàng tiêu chuẩn...',
+    message: `Đang đọc thông tin đối tác từ ${modeLabel} "${file.name}"...`
+  }
+
+  try {
+    const stdCustomer =
+      mode === 'khach_dxmh'
+        ? await parseCustomerDxmhStandardFromFile(file)
+        : await parseCustomerQuoteStandardFromFile(file)
+
+    const hasValidCustomer = Boolean(
+      stdCustomer &&
+        (stdCustomer.Ten_cong_ty ||
+          stdCustomer.COMPANY ||
+          stdCustomer.Ten_khach_hang ||
+          stdCustomer.MST)
+    )
+
+    cusImportScanning.value.active = false
+    if (!hasValidCustomer || !stdCustomer) {
+      openCusAiImportFallback(
+        mode,
+        file,
+        `Quét tiêu chuẩn không nhận diện được Tên công ty / Người liên hệ từ ${modeLabel}.`
+      )
+      return
+    }
+
+    await applyExtractedCustomerFieldsToReportModal(
+      stdCustomer,
+      `Đã import thông tin khách hàng từ ${modeLabel} thành công`
+    )
+  } catch (err) {
+    console.error('Lỗi quét khách hàng tiêu chuẩn:', err)
+    cusImportScanning.value.active = false
+    openCusAiImportFallback(
+      mode,
+      file,
+      `Quét tiêu chuẩn gặp sự cố định dạng (${String(err?.message || err)}).`
+    )
+  }
+}
+
+const processReportTaxFileStandard = async (file) => {
+  if (!file) return
+  lastCusTaxFile.value = file
+  const isImg = isImageDocFile(file)
+  cusTaxSourceIsImage.value = isImg
+  if (cusTaxPreviewUrl.value) {
+    try {
+      URL.revokeObjectURL(cusTaxPreviewUrl.value)
+    } catch (_) {}
+    cusTaxPreviewUrl.value = ''
+  }
+  if (isImg) {
+    cusTaxPreviewUrl.value = URL.createObjectURL(file)
+  }
+
+  cusImportScanning.value = {
+    active: true,
+    title: 'Đang quét thông tin Thuế / ĐKKD...',
+    message: 'Đang đọc dữ liệu Mã số thuế & Doanh nghiệp theo chế độ tiêu chuẩn...'
+  }
+
+  try {
+    const stdRes = await parseTaxStandardFromFile(file, (msg) => {
+      cusImportScanning.value.message = msg
+    })
+    const tx = stdRes?.data
+    if (!stdRes?.isSuccess || !tx || (!tx.mst && !tx.tenCongTy)) {
+      cusImportScanning.value.active = false
+      openCusAiImportFallback(
+        'thue',
+        file,
+        'Quét tiêu chuẩn không nhận diện được Mã số thuế hoặc Tên công ty từ tài liệu này.'
+      )
+      return
+    }
+
+    let companyNameEn = String(tx.tenCongTyEn || '').trim()
+    if (!companyNameEn && tx.tenCongTy) {
+      companyNameEn = await translateCompanyNameToEnglishSafeForCus(tx.tenCongTy)
+    }
+
+    cusTaxInfo.value = {
+      mst: tx.mst || '',
+      tenCongTy: tx.tenCongTy || '',
+      tenCongTyEn: companyNameEn,
+      diaChi: tx.diaChi || '',
+      nganhNgheChinh: tx.nganhNgheChinh || ''
+    }
+    cusTaxScanSourceMode.value = 'standard'
+    cusImportScanning.value.active = false
+    isCusTaxModalOpen.value = true
+  } catch (err) {
+    console.error('Lỗi quét thuế tiêu chuẩn:', err)
+    cusImportScanning.value.active = false
+    openCusAiImportFallback(
+      'thue',
+      file,
+      `Quét tiêu chuẩn gặp lỗi định dạng (${String(err?.message || err)}).`
+    )
+  }
+}
+
+const closeCusTaxModal = () => {
+  isCusTaxModalOpen.value = false
+  if (cusTaxPreviewUrl.value) {
+    try {
+      URL.revokeObjectURL(cusTaxPreviewUrl.value)
+    } catch (_) {}
+    cusTaxPreviewUrl.value = ''
+  }
+}
+
+const confirmCusTaxModalInfo = async () => {
+  const tx = cusTaxInfo.value
+  closeCusTaxModal()
+  await applyExtractedCustomerFieldsToReportModal(
+    {
+      MST: tx.mst,
+      Ten_cong_ty: tx.tenCongTy,
+      COMPANY: tx.tenCongTyEn,
+      Dia_chi_cong_ty: tx.diaChi,
+      Nganh_nghe_cong_ty: tx.nganhNgheChinh
+    },
+    'Đã cập nhật thông tin khách hàng từ tài liệu Thuế / ĐKKD'
+  )
+}
+
+const submitCusSmartImportStandardScan = async () => {
+  const activeItem =
+    cusSmartImportModal.value.files[cusSmartImportModal.value.activeIdx] ||
+    cusSmartImportModal.value.files[0]
+  if (!activeItem) return
+  const mode = cusSmartImportModal.value.mode
+  const finalFile = buildCusFinalFileFromPending(activeItem)
+  closeCusSmartImportModal()
+  if (!finalFile) return
+
+  if (mode === 'thue') {
+    await processReportTaxFileStandard(finalFile)
+  } else {
+    await processReportCustomerImportStandard(finalFile, mode)
+  }
+}
+
+const confirmCusAiImportFallback = async () => {
+  const file = cusAiFallbackModal.value.file
+  const mode = cusAiFallbackModal.value.mode
+  closeCusAiImportFallback()
+  if (!file) return
+
+  if (mode === 'thue') {
+    lastCusTaxFile.value = file
+    const isImg = isImageDocFile(file)
+    cusTaxSourceIsImage.value = isImg
+    if (isImg && !cusTaxPreviewUrl.value) {
+      cusTaxPreviewUrl.value = URL.createObjectURL(file)
+    }
+
+    cusImportScanning.value = {
+      active: true,
+      title: 'AI đang phân tích Thuế / ĐKKD...',
+      message: `AI đang nhận diện thông tin thuế từ "${file.name}"...`
+    }
+
+    try {
+      const aiRes = await analyzeCustomerOrTaxFileWithAI(file, 'thue', (msg) => {
+        cusImportScanning.value.message = msg
+      })
+      const tx = aiRes?.tax || {}
+      if (!tx.mst && !tx.tenCongTy) {
+        cusImportScanning.value.active = false
+        await showAlert(
+          'AI không trích xuất được Mã số thuế hoặc Tên doanh nghiệp hợp lệ từ tài liệu này.',
+          'Không tìm thấy thông tin thuế',
+          { variant: 'warning' }
+        )
+        return
+      }
+      let companyNameEn = String(tx.tenCongTyEn || '').trim()
+      if (!companyNameEn && tx.tenCongTy) {
+        companyNameEn = await translateCompanyNameToEnglishSafeForCus(tx.tenCongTy)
+      }
+      cusTaxInfo.value = {
+        mst: tx.mst || '',
+        tenCongTy: tx.tenCongTy || '',
+        tenCongTyEn: companyNameEn,
+        diaChi: tx.diaChi || '',
+        nganhNgheChinh: tx.nganhNgheChinh || ''
+      }
+      cusTaxScanSourceMode.value = 'ai'
+      cusImportScanning.value.active = false
+      isCusTaxModalOpen.value = true
+      showToast('AI đã phân tích thông tin thuế thành công', 'success')
+    } catch (err) {
+      console.error('Lỗi AI quét thông tin thuế:', err)
+      cusImportScanning.value.active = false
+      await showAlert(String(err?.message || err), 'Lỗi phân tích AI', { variant: 'danger' })
+    }
+    return
+  }
+
+  // Luồng AI cho khách hàng từ File ĐXMH hoặc File Báo Giá
+  const modeLabel = mode === 'khach_dxmh' ? 'File ĐXMH / PO' : 'File Báo Giá'
+  const aiContextMode = mode === 'khach_dxmh' ? 'dxmh' : 'bao_gia'
+
+  cusImportScanning.value = {
+    active: true,
+    title: 'AI đang phân tích khách hàng...',
+    message: `AI đang trích xuất thông tin đối tác từ "${file.name}"...`
+  }
+
+  try {
+    const aiRes = await analyzeCustomerOrTaxFileWithAI(file, aiContextMode, (msg) => {
+      cusImportScanning.value.message = msg
+    })
+    const c = aiRes?.customer || {}
+    if (!c.Ten_cong_ty && !c.COMPANY && !c.Ten_khach_hang && !c.MST) {
+      cusImportScanning.value.active = false
+      await showAlert(
+        `AI không tìm thấy Tên công ty, Người liên hệ hoặc Mã số thuế trong "${file.name}".`,
+        'Không tìm thấy khách hàng',
+        { variant: 'warning' }
+      )
+      return
+    }
+
+    cusImportScanning.value.active = false
+    await applyExtractedCustomerFieldsToReportModal(
+      c,
+      `AI đã trích xuất thông tin khách hàng từ ${modeLabel} thành công`
+    )
+  } catch (err) {
+    console.error('Lỗi AI trích xuất khách hàng:', err)
+    cusImportScanning.value.active = false
+    await showAlert(String(err?.message || err), 'Lỗi phân tích AI', { variant: 'danger' })
+  }
+}
+
+watch(isCustomerModalOpen, (open) => {
+  if (!open) {
+    if (cusSmartImportModal.value.show) closeCusSmartImportModal()
+    if (isCusTaxModalOpen.value) closeCusTaxModal()
+    if (cusAiFallbackModal.value.show) closeCusAiImportFallback()
+  }
+})
 
 const tempTagKH = ref('')
 
@@ -11821,6 +13692,14 @@ const getCustomerDisplayName = (maKH) => {
 };
 
 const handlePasteImage = async (e) => {
+  if (
+    cusSmartImportModal.value.show ||
+    isCusTaxModalOpen.value ||
+    cusAiFallbackModal.value.show ||
+    isCustomerModalOpen.value
+  ) {
+    return;
+  }
   const items = e.clipboardData?.items;
   if (!items) return;
   const files = [];
@@ -12012,12 +13891,16 @@ const saveReport = async (options = {}) => {
   // Tạo độ trễ giả 500ms để hiển thị trạng thái "Đang lưu..." (UX)
   await new Promise(r => setTimeout(r, 500));
 
+  const singlePipeId = normalizeSinglePipelineId(formData.value.id_pipeline);
+  formData.value.id_pipeline = singlePipeId;
+
   const action = isEditing.value ? 'update' : 'add'
   const payload = {
     action: action,
     ...formData.value,
     maKH: formData.value.maKH || '',
-    id_quanlyfile: formData.value.id_quanlyfile || ''
+    id_quanlyfile: formData.value.id_quanlyfile || '',
+    id_pipeline: singlePipeId
   }
   
   // Đảm bảo cờ reminder_visible được set thành 'TRUE' nếu có lịch nhắc nhở
@@ -12027,6 +13910,7 @@ const saveReport = async (options = {}) => {
 
   // Cập nhật UI ngay lập tức
   const tempId = action === 'add' ? `temp_${Date.now()}` : formData.value.id;
+  let oldPipelineIdStr = '';
   
   let newCreatedTime = formData.value.created_time;
   if (action === 'add') {
@@ -12046,6 +13930,7 @@ const saveReport = async (options = {}) => {
   } else {
     const index = reports.value.findIndex(r => r.id === tempId);
     if (index !== -1) {
+      oldPipelineIdStr = extractReportPipelineIds(reports.value[index]);
       reports.value[index] = newReport;
     }
   }
@@ -12113,13 +13998,17 @@ const saveReport = async (options = {}) => {
       
       dbPayload.id = realId;
       await set(dbRef(database, `REPORT/${realId}`), dbPayload);
+      if (dbPayload.id_pipeline) {
+        await syncReportToPipelinesFirebase('', dbPayload.id_pipeline, realId);
+      }
       
       if (activeReminderForNewReport.value) {
         hideReminder(activeReminderForNewReport.value);
         activeReminderForNewReport.value = null;
       }
     } else {
-      await update(dbRef(database, `REPORT/${dbPayload.id}`), { ...dbPayload, action: null });
+      await update(dbRef(database, `REPORT/${dbPayload.id}`), { ...dbPayload, ID_PIPELINE: null, action: null });
+      await syncReportToPipelinesFirebase(oldPipelineIdStr, dbPayload.id_pipeline || '', dbPayload.id);
     }
   } catch (error) {
     console.error('Lỗi khi lưu Firebase:', error)
@@ -12294,13 +14183,22 @@ const confirmDelete = async (id) => {
 const executeDelete = async () => {
   if (!deleteTarget.value) return;
   const id = deleteTarget.value;
+  const existingTarget = reports.value.find(r => r.id === id);
+  let oldPipeIds = existingTarget ? extractReportPipelineIds(existingTarget) : '';
   
   isDeleting.value = true;
   deletingIds.value = [id];
   isDeleteModalOpen.value = false;
   
   try {
+    if (!oldPipeIds) {
+      const snapOld = await get(dbRef(database, `REPORT/${id}`));
+      if (snapOld.exists()) oldPipeIds = extractReportPipelineIds(snapOld.val());
+    }
     await remove(dbRef(database, `REPORT/${id}`));
+    if (oldPipeIds) {
+      await syncReportToPipelinesFirebase(oldPipeIds, '', id);
+    }
     await new Promise(r => setTimeout(r, 400));
     reports.value = reports.value.filter(r => r.id !== id);
   } catch (error) {
@@ -13318,78 +15216,471 @@ const doExportExcel = () => {
 
 const pipelineData = ref([]);
 const workflowsData = ref([]);
+const projectsData = ref([]);
 const isPipelineDropdownOpen = ref(false);
 const isPipelineModalOpen = ref(false);
 
-const loadPipelineData = async () => {
-  if (API_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL') return;
+let unsubscribePipelines = null;
+let unsubscribePipelineWorkflows = null;
+let unsubscribePipelineProjects = null;
+let rawPipelineItemsCache = [];
+
+const REPORT_PIPELINE_HEADERS = [
+  'Id_pipeline', 'report_id', 'ma_hop_dong', 'ma_khach_hang', 'ten_khach_hang',
+  'ma_cong_ty', 'ten_cong_ty', 'AM', 'tag', '%status', 'status_name',
+  'isSuccess', 'type', 'ghi_chu_hop_dong', 'created_time', 'finish_time',
+  'content_of_contract_po', 'quantity', 'volume', 'ten_file', 'link_file',
+  'id_pipeline_lien_ket', 'id_workflow', 'id_quanlyfile',
+  'id_status_workflow', 'id_project', 'ten_du_an'
+];
+
+const rebuildPipelineDataWithWorkflows = () => {
+  const wMap = new Map();
+  workflowsData.value.forEach((w) => {
+    if (w && w.id_workflow) wMap.set(String(w.id_workflow).trim(), w.name_workflow);
+  });
+  const projById = new Map();
+  const projByName = new Map();
+  projectsData.value.forEach((pr) => {
+    if (!pr || !pr.id_project) return;
+    projById.set(String(pr.id_project).trim(), pr);
+    if (pr.ten_du_an) projByName.set(String(pr.ten_du_an).trim().toLowerCase(), pr);
+  });
+
+  pipelineData.value = rawPipelineItemsCache.map((p) => {
+    const rawWfId = String(p.id_workflow || '').trim();
+    const resolvedWfId = rawWfId && wMap.has(rawWfId) ? rawWfId : (rawWfId || 'WF_DEFAULT');
+    const resolvedWfName = wMap.get(rawWfId) || 'Khung Chuẩn Hệ Thống';
+
+    const rawProjId = String(p.id_project || '').trim();
+    const rawProjName = String(p.ten_du_an || '').trim();
+    const matchedProj =
+      (rawProjId && projById.get(rawProjId)) ||
+      (rawProjName && projByName.get(rawProjName.toLowerCase())) ||
+      null;
+
+    return {
+      ...p,
+      id_workflow_resolved: resolvedWfId,
+      name_workflow: resolvedWfName,
+      id_project: matchedProj ? matchedProj.id_project : rawProjId,
+      ten_du_an: matchedProj && matchedProj.ten_du_an ? matchedProj.ten_du_an : rawProjName,
+      ma_du_an: matchedProj ? matchedProj.ma_du_an : String(p.ma_du_an || '').trim()
+    };
+  });
+};
+
+const loadPipelineData = () => {
   try {
-    const urlPipeline = new URL(API_URL);
-    urlPipeline.searchParams.append('sheet', 'pipeline');
-    urlPipeline.searchParams.append('action', 'get');
-    
-    const urlWorkflow = new URL(API_URL);
-    urlWorkflow.searchParams.append('sheet', 'pipeline_workflow');
-    urlWorkflow.searchParams.append('action', 'get');
-    
-    const [resPipeline, resWorkflow] = await Promise.all([
-      firebaseFetch(urlPipeline.toString()),
-      firebaseFetch(urlWorkflow.toString())
-    ]);
-    
-    const [resultPipeline, resultWorkflow] = await Promise.all([
-      resPipeline.json(),
-      resWorkflow.json()
-    ]);
-    
-    if (resultWorkflow.status === 'success') {
-       workflowsData.value = resultWorkflow.data || [];
+    if (!unsubscribePipelineProjects) {
+      unsubscribePipelineProjects = onValue(dbRef(database, 'pipeline_projects'), (snap) => {
+        if (!snap.exists()) {
+          projectsData.value = [];
+        } else {
+          const raw = snap.val();
+          const entries = Array.isArray(raw) ? raw.map((v, idx) => [String(idx), v]) : Object.entries(raw || {});
+          projectsData.value = entries
+            .map(([k, v]) => {
+              if (!v || typeof v !== 'object') return null;
+              const idProj = String(v.id_project ?? k ?? '').trim();
+              if (!idProj) return null;
+              const rawLinked = v.linked_workflow_ids;
+              const linkedWfIds = Array.isArray(rawLinked)
+                ? rawLinked.map((x) => String(x ?? '').trim()).filter(Boolean)
+                : String(rawLinked ?? '')
+                    .split(',')
+                    .map((x) => x.trim())
+                    .filter(Boolean);
+              const defWf = String(v.default_workflow_id ?? '').trim();
+              if (defWf && !linkedWfIds.includes(defWf)) linkedWfIds.unshift(defWf);
+              return {
+                ...v,
+                id_project: idProj,
+                ma_du_an: String(v.ma_du_an ?? '').trim(),
+                ten_du_an: String(v.ten_du_an ?? '').trim(),
+                ma_khach_hang: String(v.ma_khach_hang ?? '').trim(),
+                ten_khach_hang: String(v.ten_khach_hang ?? '').trim(),
+                ma_cong_ty: String(v.ma_cong_ty ?? '').trim(),
+                ten_cong_ty: String(v.ten_cong_ty ?? '').trim(),
+                default_workflow_id: defWf,
+                linked_workflow_ids_arr: linkedWfIds
+              };
+            })
+            .filter((pr) => pr && pr.id_project && pr.ten_du_an);
+        }
+        rebuildPipelineDataWithWorkflows();
+      });
     }
-    
-    if (resultPipeline.status === 'success') {
-       const wMap = new Map();
-       workflowsData.value.forEach(w => {
-         if (w.id_workflow) wMap.set(w.id_workflow, w.name_workflow);
-       });
-       
-       pipelineData.value = (resultPipeline.data || []).map(p => ({
-         ...p,
-         name_workflow: wMap.get(p.id_workflow) || 'Quy trình mặc định'
-       }));
+
+    if (!unsubscribePipelineWorkflows) {
+      unsubscribePipelineWorkflows = onValue(dbRef(database, 'pipeline_workflow'), (snap) => {
+        if (!snap.exists()) {
+          workflowsData.value = [];
+        } else {
+          const raw = snap.val();
+          const entries = Array.isArray(raw) ? raw.map((v, idx) => [String(idx), v]) : Object.entries(raw || {});
+          workflowsData.value = entries
+            .map(([k, v]) => {
+              if (!v) return null;
+              if (Array.isArray(v)) {
+                return { id_workflow: String(v[0] ?? ''), name_workflow: String(v[2] ?? ''), id: k };
+              }
+              return { ...v, id: k, id_workflow: String(v.id_workflow ?? ''), name_workflow: String(v.name_workflow ?? '') };
+            })
+            .filter((w) => w && w.id_workflow);
+        }
+        rebuildPipelineDataWithWorkflows();
+      });
     }
-  } catch(e) {
-    console.error(e);
+
+    if (!unsubscribePipelines) {
+      unsubscribePipelines = onValue(dbRef(database, 'pipeline'), (snap) => {
+        if (!snap.exists()) {
+          rawPipelineItemsCache = [];
+          rebuildPipelineDataWithWorkflows();
+          return;
+        }
+        const raw = snap.val();
+        const entries = Array.isArray(raw) ? raw.map((v, idx) => [String(idx), v]) : Object.entries(raw || {});
+        rawPipelineItemsCache = entries
+          .map(([k, v]) => {
+            if (!v) return null;
+            if (Array.isArray(v)) {
+              const obj = {};
+              REPORT_PIPELINE_HEADERS.forEach((h, i) => {
+                obj[h] = v[i] ?? '';
+              });
+              if (!obj.Id_pipeline) obj.Id_pipeline = k;
+              return obj;
+            }
+            if (typeof v === 'object') {
+              if (!v.Id_pipeline && !v.status_name && !v.content_of_contract_po && v.ten_deal) return null;
+              return {
+                ...v,
+                Id_pipeline: String(v.Id_pipeline ?? k ?? ''),
+                report_id: String(v.report_id ?? v.REPORT_ID ?? ''),
+                '%status': String(v['%status'] ?? v.percent_status ?? '')
+              };
+            }
+            return null;
+          })
+          .filter((p) => p && p.Id_pipeline);
+        rebuildPipelineDataWithWorkflows();
+      });
+    }
+  } catch (e) {
+    console.error('Lỗi lắng nghe pipeline realtime:', e);
   }
 }
 
-const getLinkedPipelines = (report) => {
-  if (!report || !report.id_pipeline || !pipelineData.value.length) return [];
-  const ids = String(report.id_pipeline).split(',').map(s => s.trim()).filter(Boolean);
-  return ids.map(id => pipelineData.value.find(p => p.Id_pipeline === id)).filter(Boolean);
-}
+const pipelineSearchQuery = ref('');
+const modalPlProjectFilter = ref('');
+const modalPlWorkflowFilter = ref('');
+const openModalPlPicker = ref(null); // 'project' | 'workflow' | null
+const modalPlProjectSearch = ref('');
+const modalPlWorkflowSearch = ref('');
+
+const normalizePlSearchStr = (val) =>
+  String(val || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .trim();
 
 const splitPipelines = (str) => {
   if (!str) return [];
   return String(str).split(',').map(s => s.trim()).filter(Boolean);
 };
 
+const getSinglePipelineId = (str) => normalizeSinglePipelineId(str);
+
+const getPipelineTaskDisplayLabel = (pl) => {
+  if (!pl) return '';
+  return (
+    String(pl.content_of_contract_po || '').trim() ||
+    String(pl.ma_hop_dong || '').trim() ||
+    String(pl.ten_cong_ty || '').trim() ||
+    String(pl.ten_khach_hang || '').trim() ||
+    ('Công việc #' + String(pl.Id_pipeline || ''))
+  );
+};
+
+const getLinkedPipelines = (report) => {
+  if (!report || !pipelineData.value.length) return [];
+  const singleId = normalizeSinglePipelineId(report.id_pipeline);
+  if (singleId) {
+    const found = pipelineData.value.find(p => String(p.Id_pipeline) === String(singleId));
+    if (found) return [found];
+  }
+  if (report.id) {
+    const repIdStr = String(report.id).trim();
+    const reverseFound = pipelineData.value.find(p => splitPipelines(p.report_id).includes(repIdStr));
+    if (reverseFound) return [reverseFound];
+  }
+  return [];
+}
+
 const getPipelineDetails = (id) => {
   return pipelineData.value.find(p => p.Id_pipeline === id) || {};
 };
 
+const selectedLinkedPipeline = computed(() => {
+  const singleId = normalizeSinglePipelineId(formData.value.id_pipeline);
+  if (!singleId) return null;
+  return pipelineData.value.find(p => p.Id_pipeline === singleId) || null;
+});
+
+const getTaskProjectFilterKey = (p) => {
+  if (!p) return '';
+  const pid = String(p.id_project || '').trim();
+  if (pid) return pid;
+  const pName = String(p.ten_du_an || '').trim();
+  if (pName) return 'NAME:' + pName.toLowerCase();
+  return '';
+};
+
+const modalPlStandaloneTaskCount = computed(() =>
+  pipelineData.value.filter((p) => !getTaskProjectFilterKey(p)).length
+);
+
+const modalPlProjectOptions = computed(() => {
+  const map = new Map();
+  projectsData.value.forEach((pr) => {
+    map.set(pr.id_project, {
+      id_project: pr.id_project,
+      ten_du_an: pr.ten_du_an,
+      ma_du_an: pr.ma_du_an || '',
+      ma_khach_hang: pr.ma_khach_hang || '',
+      customerLabel: [pr.ten_cong_ty, pr.ten_khach_hang].filter(Boolean).join(' · '),
+      linkedWorkflowIds: Array.isArray(pr.linked_workflow_ids_arr) ? [...pr.linked_workflow_ids_arr] : [],
+      taskCount: 0
+    });
+  });
+
+  pipelineData.value.forEach((p) => {
+    const key = getTaskProjectFilterKey(p);
+    if (!key) return;
+    if (!map.has(key)) {
+      map.set(key, {
+        id_project: key,
+        ten_du_an: String(p.ten_du_an || key).trim(),
+        ma_du_an: String(p.ma_du_an || '').trim(),
+        ma_khach_hang: String(p.ma_khach_hang || '').trim(),
+        customerLabel: [p.ten_cong_ty, p.ten_khach_hang].filter(Boolean).join(' · '),
+        linkedWorkflowIds: [],
+        taskCount: 0
+      });
+    }
+    const entry = map.get(key);
+    entry.taskCount += 1;
+    const wfId = String(p.id_workflow_resolved || 'WF_DEFAULT').trim();
+    if (wfId && !entry.linkedWorkflowIds.includes(wfId)) {
+      entry.linkedWorkflowIds.push(wfId);
+    }
+  });
+
+  const currentMaKH = String(formData.value.maKH || '').trim().toUpperCase();
+  return Array.from(map.values()).sort((a, b) => {
+    const aSameCus = currentMaKH && String(a.ma_khach_hang || '').toUpperCase() === currentMaKH ? 1 : 0;
+    const bSameCus = currentMaKH && String(b.ma_khach_hang || '').toUpperCase() === currentMaKH ? 1 : 0;
+    if (aSameCus !== bSameCus) return bSameCus - aSameCus;
+    if (b.taskCount !== a.taskCount) return b.taskCount - a.taskCount;
+    return String(a.ten_du_an || '').localeCompare(String(b.ten_du_an || ''), 'vi');
+  });
+});
+
+const filteredModalPlProjectOptions = computed(() => {
+  const q = normalizePlSearchStr(modalPlProjectSearch.value);
+  if (!q) return modalPlProjectOptions.value;
+  return modalPlProjectOptions.value.filter((pr) =>
+    normalizePlSearchStr([pr.ten_du_an, pr.ma_du_an, pr.customerLabel, pr.ma_khach_hang].join(' ')).includes(q)
+  );
+});
+
+const modalPlProjectScopedTasks = computed(() => {
+  const projKey = modalPlProjectFilter.value;
+  if (!projKey) return pipelineData.value;
+  if (projKey === '__NO_PROJECT__') {
+    return pipelineData.value.filter((p) => !getTaskProjectFilterKey(p));
+  }
+  return pipelineData.value.filter((p) => getTaskProjectFilterKey(p) === projKey);
+});
+
+const modalPlProjectScopedTaskCount = computed(() => modalPlProjectScopedTasks.value.length);
+
+const modalPlWorkflowOptions = computed(() => {
+  const countByWf = new Map();
+  modalPlProjectScopedTasks.value.forEach((p) => {
+    const wfId = String(p.id_workflow_resolved || 'WF_DEFAULT').trim() || 'WF_DEFAULT';
+    countByWf.set(wfId, (countByWf.get(wfId) || 0) + 1);
+  });
+
+  const allWfCatalog = new Map();
+  allWfCatalog.set('WF_DEFAULT', {
+    id_workflow: 'WF_DEFAULT',
+    name_workflow: 'Khung Chuẩn Hệ Thống'
+  });
+  workflowsData.value.forEach((w) => {
+    if (!w || !w.id_workflow) return;
+    allWfCatalog.set(String(w.id_workflow).trim(), {
+      id_workflow: String(w.id_workflow).trim(),
+      name_workflow: String(w.name_workflow || 'Khung Chuẩn Hệ Thống').trim()
+    });
+  });
+
+  const projKey = modalPlProjectFilter.value;
+  const selectedProjObj =
+    projKey && projKey !== '__NO_PROJECT__'
+      ? modalPlProjectOptions.value.find((pr) => pr.id_project === projKey) || null
+      : null;
+
+  const list = [];
+  allWfCatalog.forEach((wfMeta, wfId) => {
+    const cnt = countByWf.get(wfId) || 0;
+    if (projKey === '__NO_PROJECT__') {
+      if (cnt <= 0) return;
+    } else if (selectedProjObj) {
+      const isLinkedToProj = selectedProjObj.linkedWorkflowIds.includes(wfId);
+      if (cnt <= 0 && !isLinkedToProj) return;
+    } else {
+      if (wfId === 'WF_DEFAULT' && cnt <= 0 && workflowsData.value.length > 0) return;
+    }
+    list.push({
+      id_workflow: wfId,
+      name_workflow: wfMeta.name_workflow,
+      taskCount: cnt
+    });
+  });
+
+  return list.sort((a, b) => {
+    if (b.taskCount !== a.taskCount) return b.taskCount - a.taskCount;
+    return String(a.name_workflow || '').localeCompare(String(b.name_workflow || ''), 'vi');
+  });
+});
+
+const filteredModalPlWorkflowOptions = computed(() => {
+  const q = normalizePlSearchStr(modalPlWorkflowSearch.value);
+  if (!q) return modalPlWorkflowOptions.value;
+  return modalPlWorkflowOptions.value.filter((wf) =>
+    normalizePlSearchStr(wf.name_workflow).includes(q)
+  );
+});
+
+const activeModalPlProjectLabel = computed(() => {
+  if (!modalPlProjectFilter.value) return 'Tất cả Dự án';
+  if (modalPlProjectFilter.value === '__NO_PROJECT__') return 'Công việc lẻ (chưa gắn dự án)';
+  const found = modalPlProjectOptions.value.find((pr) => pr.id_project === modalPlProjectFilter.value);
+  return found ? found.ten_du_an : 'Dự án đã chọn';
+});
+
+const activeModalPlWorkflowLabel = computed(() => {
+  if (!modalPlWorkflowFilter.value) return 'Tất cả Pipeline';
+  const found = modalPlWorkflowOptions.value.find((wf) => wf.id_workflow === modalPlWorkflowFilter.value);
+  if (found) return found.name_workflow;
+  if (modalPlWorkflowFilter.value === 'WF_DEFAULT') return 'Khung Chuẩn Hệ Thống';
+  const rawWf = workflowsData.value.find((w) => String(w.id_workflow) === modalPlWorkflowFilter.value);
+  return rawWf ? rawWf.name_workflow : 'Pipeline đã chọn';
+});
+
+const toggleModalPlPicker = (key) => {
+  if (openModalPlPicker.value === key) {
+    openModalPlPicker.value = null;
+  } else {
+    openModalPlPicker.value = key;
+    if (key === 'project') modalPlProjectSearch.value = '';
+    if (key === 'workflow') modalPlWorkflowSearch.value = '';
+  }
+};
+
+const selectModalPlProject = (projId) => {
+  modalPlProjectFilter.value = projId || '';
+  modalPlProjectSearch.value = '';
+  openModalPlPicker.value = null;
+  if (modalPlWorkflowFilter.value) {
+    const stillValid = modalPlWorkflowOptions.value.some((wf) => wf.id_workflow === modalPlWorkflowFilter.value);
+    if (!stillValid) {
+      modalPlWorkflowFilter.value = '';
+    }
+  }
+};
+
+const selectModalPlWorkflow = (wfId) => {
+  modalPlWorkflowFilter.value = wfId || '';
+  modalPlWorkflowSearch.value = '';
+  openModalPlPicker.value = null;
+};
+
+const resetModalPlHierarchyFilters = () => {
+  modalPlProjectFilter.value = '';
+  modalPlWorkflowFilter.value = '';
+  modalPlProjectSearch.value = '';
+  modalPlWorkflowSearch.value = '';
+  pipelineSearchQuery.value = '';
+  openModalPlPicker.value = null;
+};
+
+const filteredModalPipelines = computed(() => {
+  let res = [...modalPlProjectScopedTasks.value];
+  if (modalPlWorkflowFilter.value) {
+    res = res.filter(
+      (p) => (String(p.id_workflow_resolved || 'WF_DEFAULT').trim() || 'WF_DEFAULT') === modalPlWorkflowFilter.value
+    );
+  }
+  const q = normalizePlSearchStr(pipelineSearchQuery.value);
+  if (q) {
+    res = res.filter((p) =>
+      normalizePlSearchStr(
+        [
+          p.content_of_contract_po,
+          p.ten_du_an,
+          p.ma_du_an,
+          p.name_workflow,
+          p.ten_cong_ty,
+          p.ten_khach_hang,
+          p.ma_hop_dong,
+          p.status_name,
+          p.Id_pipeline
+        ].join(' ')
+      ).includes(q)
+    );
+  }
+  const currentPipeId = normalizeSinglePipelineId(formData.value.id_pipeline);
+  const currentMaKH = String(formData.value.maKH || '').trim().toUpperCase();
+  return res.sort((a, b) => {
+    const aSel = currentPipeId && a.Id_pipeline === currentPipeId ? 1 : 0;
+    const bSel = currentPipeId && b.Id_pipeline === currentPipeId ? 1 : 0;
+    if (aSel !== bSel) return bSel - aSel;
+    const aSameCus = currentMaKH && String(a.ma_khach_hang || '').toUpperCase() === currentMaKH ? 1 : 0;
+    const bSameCus = currentMaKH && String(b.ma_khach_hang || '').toUpperCase() === currentMaKH ? 1 : 0;
+    if (aSameCus !== bSameCus) return bSameCus - aSameCus;
+    return String(b.Id_pipeline || '').localeCompare(String(a.Id_pipeline || ''));
+  });
+});
+
 const isPipelineSelected = (id) => {
-  return splitPipelines(formData.value.id_pipeline).includes(String(id));
+  return normalizeSinglePipelineId(formData.value.id_pipeline) === String(id);
+};
+
+const selectSinglePipeline = (p) => {
+  if (!p || !p.Id_pipeline) return;
+  const idStr = String(p.Id_pipeline);
+  if (normalizeSinglePipelineId(formData.value.id_pipeline) === idStr) {
+    formData.value.id_pipeline = '';
+  } else {
+    formData.value.id_pipeline = idStr;
+    if (!isEditing.value && !formData.value.maKH && p.ma_khach_hang) {
+      formData.value.maKH = p.ma_khach_hang;
+    }
+    openModalPlPicker.value = null;
+    isPipelineModalOpen.value = false;
+  }
 };
 
 const togglePipelineSelection = (id) => {
-  const current = splitPipelines(formData.value.id_pipeline);
-  const idStr = String(id);
-  if (current.includes(idStr)) {
-    formData.value.id_pipeline = current.filter(x => x !== idStr).join(', ');
-  } else {
-    current.push(idStr);
-    formData.value.id_pipeline = current.join(', ');
-  }
+  const found = pipelineData.value.find(p => String(p.Id_pipeline) === String(id)) || { Id_pipeline: String(id) };
+  selectSinglePipeline(found);
 };
 
 const goToPipeline = (id) => {
@@ -13856,6 +16147,7 @@ onMounted(() => {
   fetchReports()
   window.addEventListener('resize', onResize)
   window.addEventListener('keydown', onBaogiaGlobalKeydown)
+  window.addEventListener('paste', onCusSmartImportPaste)
   window.addEventListener('dragend', onGlobalKanbanDragCleanup)
   window.addEventListener('drop', onGlobalKanbanDragCleanup)
   document.addEventListener('mousedown', onBaogiaDocPointerDown)
@@ -13871,7 +16163,7 @@ onMounted(() => {
       autoClearHighlightTimer = setTimeout(() => {
         highlightedReportId.value = null
         autoClearHighlightTimer = null
-      }, 1700)
+      }, 4200)
     }
   })
   watch(droppedReportId, (val) => {
@@ -13894,6 +16186,7 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('resize', onResize)
   window.removeEventListener('keydown', onBaogiaGlobalKeydown)
+  window.removeEventListener('paste', onCusSmartImportPaste)
   window.removeEventListener('dragend', onGlobalKanbanDragCleanup)
   window.removeEventListener('drop', onGlobalKanbanDragCleanup)
   document.removeEventListener('mousedown', onBaogiaDocPointerDown)
@@ -13919,6 +16212,18 @@ onUnmounted(() => {
   }
   if (unsubscribeQuanLyFiles) {
     unsubscribeQuanLyFiles();
+  }
+  if (unsubscribePipelines) {
+    unsubscribePipelines();
+    unsubscribePipelines = null;
+  }
+  if (unsubscribePipelineWorkflows) {
+    unsubscribePipelineWorkflows();
+    unsubscribePipelineWorkflows = null;
+  }
+  if (unsubscribePipelineProjects) {
+    unsubscribePipelineProjects();
+    unsubscribePipelineProjects = null;
   }
 })
 </script>
@@ -24047,37 +26352,41 @@ span[style*="color: #334155"] {
   animation: bgDetailCardDropSmoothLight 0.52s cubic-bezier(0.22, 1, 0.36, 1) !important;
 }
 
-@keyframes bgDetailCardFocusPulse {
-  0% {
-    box-shadow: 0 0 0 0 var(--theme-pri-bright);
+@keyframes bgDetailCardRedPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.32), 0 12px 26px -6px rgba(220, 38, 38, 0.42);
   }
-  35% {
-    box-shadow: 0 0 0 3.5px var(--theme-pri-bright), 0 10px 24px -6px var(--theme-pri-shadow);
-  }
-  100% {
-    box-shadow: 0 0 0 0 transparent;
+  50% {
+    box-shadow: 0 0 0 5.5px rgba(239, 68, 68, 0.56), 0 16px 32px -4px rgba(220, 38, 38, 0.62);
   }
 }
 
-/* Override legacy .highlight-card red !important lock on Detail Cards so it never hangs */
+/* Deep-Link Red Highlight Focus (Dark Mode + Light Mode + Completed Solid Cards) */
 .bg-detail-card.highlight-card {
-  background: var(--bg-card) !important;
-  border-color: var(--bg-border-strong) !important;
-  box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.24) !important;
-  animation: bgDetailCardFocusPulse 1.55s cubic-bezier(0.22, 1, 0.36, 1) !important;
+  position: relative;
+  z-index: 25;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.24) 0%, rgba(185, 28, 28, 0.16) 100%) !important;
+  border: 2px solid #f87171 !important;
+  box-shadow: 0 0 0 3.5px rgba(239, 68, 68, 0.34), 0 12px 26px -6px rgba(220, 38, 38, 0.45);
+  animation: bgDetailCardRedPulse 1.25s ease-in-out 3;
 }
 .report-container.page.theme-light-blue .bg-detail-card.highlight-card {
-  background: #ffffff !important;
-  border-color: #cbd5e1 !important;
-  box-shadow: 0 3px 10px -3px rgba(15, 23, 42, 0.07) !important;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%) !important;
+  border: 2px solid #ef4444 !important;
+  box-shadow: 0 0 0 3.5px rgba(239, 68, 68, 0.28), 0 12px 26px -6px rgba(220, 38, 38, 0.36);
+  animation: bgDetailCardRedPulse 1.25s ease-in-out 3;
 }
-.bg-detail-card.is-done.highlight-card {
-  background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
-  border-color: rgba(110, 231, 183, 0.42) !important;
-}
+.bg-detail-card.is-done.highlight-card,
 .report-container.page.theme-light-blue .bg-detail-card.is-done.highlight-card {
-  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
-  border-color: rgba(125, 211, 252, 0.52) !important;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  border: 2px solid #fecaca !important;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.42), 0 14px 30px -6px rgba(220, 38, 38, 0.58);
+  animation: bgDetailCardRedPulse 1.25s ease-in-out 3;
+}
+.bg-detail-card.is-done.highlight-card .bg-dcard-done-circle,
+.report-container.page.theme-light-blue .bg-detail-card.is-done.highlight-card .bg-dcard-done-circle {
+  background: #ffffff !important;
+  color: #dc2626 !important;
 }
 
 /* Inner Elements Contrast Overrides on Solid Colored Completed Cards (.bg-detail-card.is-done) */
@@ -24106,10 +26415,28 @@ span[style*="color: #334155"] {
 
 .bg-detail-card.is-done .bg-dcard-chip.is-work,
 .bg-detail-card.is-done .bg-dcard-chip.is-life,
-.bg-detail-card.is-done .bg-dcard-chip.is-cus-chip {
+.bg-detail-card.is-done .bg-dcard-chip.is-cus-chip,
+.bg-detail-card.is-done .bg-dcard-chip.is-proj-chip,
+.bg-detail-card.is-done .bg-dcard-chip.is-wf-chip {
   background: rgba(255, 255, 255, 0.18) !important;
-  border-color: rgba(255, 255, 255, 0.34) !important;
+  border-color: rgba(255, 255, 255, 0.36) !important;
   color: #ffffff !important;
+}
+
+.bg-detail-card.is-done .bg-dcard-chip.is-pipe-task-chip {
+  background: rgba(255, 255, 255, 0.25) !important;
+  border-color: rgba(255, 255, 255, 0.52) !important;
+  color: #ffffff !important;
+}
+
+.bg-detail-card.is-done .bg-dcard-chip.is-pipe-task-chip:hover {
+  background: #ffffff !important;
+  border-color: #ffffff !important;
+  color: #047857 !important;
+}
+
+.report-container.page.theme-light-blue .bg-detail-card.is-done .bg-dcard-chip.is-pipe-task-chip:hover {
+  color: #0284c7 !important;
 }
 
 .bg-detail-card.is-done .bg-dcard-chip.is-prio-chip {
@@ -24276,13 +26603,22 @@ span[style*="color: #334155"] {
   background: var(--bg-soft-pad);
   border: 1px solid var(--bg-border-strong);
   color: var(--bg-text-sec);
-  max-width: 175px;
+  max-width: 100%;
+  white-space: normal;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.bg-dcard-chip.is-cus-chip > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
 }
 
 .bg-dcard-cus-txt {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  line-height: 1.32;
 }
 
 /* Card Main Title Row + Circular Checkmark Icon */
@@ -27484,11 +29820,11 @@ span[style*="color: #334155"] {
   border-radius: 13px;
 }
 
-/* 3. Three Popup Modal Trigger Buttons (B1: 44px + 26x26 Semantic Tinted Icon Boxes) */
+/* 3. Four Popup Modal Trigger Buttons (B1: 44px + 26x26 Semantic Tinted Icon Boxes) */
 .bg-studio-modal-triggers {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .bg-studio-mtrigger {
@@ -27600,6 +29936,32 @@ span[style*="color: #334155"] {
   color: #ffffff;
 }
 
+.bg-studio-mtrigger.is-pipeline-trigger {
+  border-color: rgba(16, 185, 129, 0.3);
+}
+.bg-studio-mtrigger.is-pipeline-trigger .bg-studio-mtrig-ic {
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.28);
+  color: #10b981;
+}
+.bg-studio-mtrigger.is-pipeline-trigger:hover {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  transform: translateY(-1px);
+}
+.bg-studio-mtrigger.is-pipeline-trigger.has-data {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-color: transparent;
+  color: #ffffff !important;
+  box-shadow: 0 4px 13px -3px rgba(5, 150, 105, 0.48);
+}
+.bg-studio-mtrigger.is-pipeline-trigger.has-data .bg-studio-mtrig-ic {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.34);
+  color: #ffffff;
+}
+
 /* 4. Compact Full-Detail Vertical Summary Stack (Option 2: hiện đủ theo hàng dọc và gọn) */
 @keyframes studioMetaRowFadeIn {
   from {
@@ -27658,6 +30020,15 @@ span[style*="color: #334155"] {
   background: var(--theme-pri-bg);
 }
 
+.bg-studio-meta-row.is-pipeline {
+  border-left: 3.5px solid #10b981;
+  background: linear-gradient(145deg, rgba(16, 185, 129, 0.08) 0%, rgba(16, 185, 129, 0.02) 100%);
+  border-color: rgba(16, 185, 129, 0.28);
+}
+.bg-studio-meta-row.is-pipeline:hover {
+  border-color: rgba(16, 185, 129, 0.48);
+}
+
 .bg-studio-meta-tag {
   padding: 2px 6px;
   border-radius: 5px;
@@ -27681,6 +30052,11 @@ span[style*="color: #334155"] {
   background: var(--theme-pri-bg);
   color: var(--theme-pri-bright);
   border: 1px solid var(--theme-pri-bd);
+}
+.bg-studio-meta-tag.is-emerald {
+  background: rgba(16, 185, 129, 0.18);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
 .bg-studio-meta-text {
@@ -28430,6 +30806,7 @@ span[style*="color: #334155"] {
   }
 
   .bg-studio-modal-triggers {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
   }
 
@@ -30105,5 +32482,1255 @@ span[style*="color: #334155"] {
 .theme-light-blue .bg-ufn-cus-badge.is-updated {
   background: rgba(2, 132, 199, 0.15);
   color: #0369a1;
+}
+
+/* ============================================================================
+   CUSTOMER MODAL SMART IMPORT TOOLBAR & SUB-MODALS (DXMH / BÁO GIÁ / THUẾ)
+   ============================================================================ */
+.bg-modal-icon.is-violet {
+  background: rgba(124, 58, 237, 0.16);
+  border: 1px solid rgba(139, 92, 246, 0.38);
+  color: #a78bfa;
+}
+
+.theme-light-blue .bg-modal-icon.is-violet {
+  background: rgba(124, 58, 237, 0.12);
+  border-color: rgba(124, 58, 237, 0.3);
+  color: #6d28d9;
+}
+
+.cus-import-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cus-import-status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.cus-db-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.cus-db-status-pill.is-existing {
+  background: rgba(16, 185, 129, 0.16);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #34d399;
+}
+
+.cus-db-status-pill.is-new {
+  background: rgba(245, 158, 11, 0.16);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+}
+
+.theme-light-blue .cus-db-status-pill.is-existing {
+  background: rgba(16, 185, 129, 0.14);
+  color: #047857;
+}
+
+.theme-light-blue .cus-db-status-pill.is-new {
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+}
+
+.cus-code-meta-chip {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--bg-text-muted);
+  white-space: nowrap;
+}
+
+.cus-code-meta-chip strong.is-sky,
+.cus-tax-pill strong.is-sky {
+  color: #38bdf8;
+}
+
+.cus-code-meta-chip strong.is-emerald {
+  color: #34d399;
+}
+
+.theme-light-blue .cus-code-meta-chip strong.is-sky,
+.theme-light-blue .cus-tax-pill strong.is-sky {
+  color: #0284c7;
+}
+
+.theme-light-blue .cus-code-meta-chip strong.is-emerald {
+  color: #059669;
+}
+
+.cus-import-btn-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.cus-quick-import-btn {
+  width: auto !important;
+  margin: 0 !important;
+  padding: 7px 12px !important;
+  border-radius: 8px;
+  border: none;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #ffffff;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  transition: transform 0.14s ease, filter 0.16s ease, box-shadow 0.16s ease;
+}
+
+.cus-quick-import-btn:hover {
+  filter: brightness(1.07);
+  transform: translateY(-1px);
+}
+
+.cus-quick-import-btn:active {
+  transform: translateY(0);
+}
+
+.cus-quick-import-btn.is-dxmh {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  box-shadow: 0 3px 10px rgba(37, 99, 235, 0.28);
+}
+
+.cus-quick-import-btn.is-baogia {
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  box-shadow: 0 3px 10px rgba(124, 58, 237, 0.28);
+}
+
+.cus-quick-import-btn.is-tax {
+  background: linear-gradient(135deg, #0ea5e9, #0284c7);
+  box-shadow: 0 3px 10px rgba(14, 165, 233, 0.28);
+}
+
+.cus-quick-import-btn.is-reset {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  box-shadow: 0 3px 10px rgba(239, 68, 68, 0.25);
+}
+
+.cus-quick-import-btn .mb-lbl {
+  display: none;
+}
+
+/* Smart Upload Modal */
+.cus-smart-upload-card {
+  max-width: 650px;
+}
+
+.cus-mob-eyebrow {
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--theme-pri-bright);
+  margin-bottom: 2px;
+}
+
+.cus-smart-upload-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cus-smart-dropzone {
+  border: 2px dashed rgba(56, 189, 248, 0.36);
+  background: rgba(14, 165, 233, 0.05);
+  border-radius: 14px;
+  padding: 24px 18px;
+  text-align: center;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.18s ease;
+}
+
+.cus-smart-dropzone.is-compact {
+  padding: 16px 14px;
+}
+
+.cus-smart-dropzone:hover,
+.cus-smart-dropzone.is-dragging {
+  border-color: #38bdf8;
+  background: rgba(14, 165, 233, 0.11);
+}
+
+.theme-light-blue .cus-smart-dropzone {
+  border-color: rgba(2, 132, 199, 0.34);
+  background: rgba(2, 132, 199, 0.04);
+}
+
+.theme-light-blue .cus-smart-dropzone:hover,
+.theme-light-blue .cus-smart-dropzone.is-dragging {
+  border-color: #0284c7;
+  background: rgba(2, 132, 199, 0.09);
+}
+
+.cus-smart-drop-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 13px;
+  background: var(--theme-pri-bg);
+  border: 1px solid var(--theme-pri-bd);
+  color: var(--theme-pri-bright);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cus-smart-drop-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--bg-text);
+  line-height: 1.4;
+}
+
+.cus-smart-drop-title kbd {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-border);
+  color: var(--theme-pri-bright);
+}
+
+.cus-smart-drop-sub {
+  font-size: 0.76rem;
+  color: var(--bg-text-muted);
+  max-width: 500px;
+  line-height: 1.4;
+}
+
+.cus-smart-drop-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.cus-smart-mob-picker {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cus-smart-mob-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.cus-smart-mob-btn,
+.cus-smart-mob-paste-btn {
+  width: 100% !important;
+  justify-content: center;
+}
+
+.cus-tax-sample-box {
+  border: 1px solid var(--bg-border);
+  background: var(--bg-soft-pad);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cus-tax-sample-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--bg-text);
+}
+
+.cus-zoom-mini-btn {
+  width: auto !important;
+  margin: 0 !important;
+  padding: 5px 10px !important;
+  border-radius: 7px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-border);
+  color: var(--theme-pri-bright);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+
+.cus-zoom-mini-btn:hover {
+  border-color: var(--theme-pri-bd);
+  background: var(--theme-pri-bg);
+}
+
+.cus-tax-sample-frame {
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--bg-border);
+  background: rgba(0, 0, 0, 0.18);
+  max-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-in;
+}
+
+.theme-light-blue .cus-tax-sample-frame {
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.cus-tax-sample-frame img {
+  max-width: 100%;
+  max-height: 216px;
+  object-fit: contain;
+  display: block;
+}
+
+.cus-staged-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cus-staged-head {
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--bg-text-muted);
+}
+
+.cus-staged-card {
+  border: 1px solid var(--theme-pri-bd);
+  background: var(--bg-soft-pad);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cus-staged-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cus-staged-meta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.cus-staged-type-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--theme-pri-bg);
+  color: var(--theme-pri-bright);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.cus-staged-ext {
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  background: var(--theme-pri-bg);
+  border: 1px solid var(--theme-pri-bd);
+  color: var(--theme-pri-bright);
+}
+
+.cus-staged-size {
+  font-size: 0.74rem;
+  color: var(--bg-text-muted);
+}
+
+.cus-staged-clip {
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  background: rgba(16, 185, 129, 0.16);
+  color: #34d399;
+}
+
+.theme-light-blue .cus-staged-clip {
+  color: #047857;
+}
+
+.cus-staged-remove-btn {
+  width: 28px !important;
+  height: 28px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 8px;
+  border: 1px solid var(--bg-border);
+  background: transparent;
+  color: var(--bg-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.cus-staged-remove-btn:hover {
+  background: var(--sem-rose-bg);
+  border-color: var(--sem-rose-bd);
+  color: var(--sem-rose-bright);
+}
+
+/* Tax Confirmation Modal */
+.cus-tax-subbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.cus-tax-subbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.cus-tax-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.74rem;
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-border);
+  color: var(--bg-text);
+  max-width: 100%;
+}
+
+.cus-tax-pill-lbl {
+  color: var(--bg-text-muted);
+}
+
+.cus-tax-pill-name {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cus-tax-split-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.cus-tax-form-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.cus-tax-textarea {
+  resize: vertical;
+  min-height: 54px;
+  line-height: 1.45;
+}
+
+.bg-label.is-sky-accent {
+  color: var(--theme-pri-bright) !important;
+}
+
+.cus-tax-textarea.is-sky-accent {
+  border-color: var(--theme-pri-bd);
+}
+
+.cus-tax-preview-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cus-tax-img-frame {
+  border-radius: 12px;
+  border: 1px solid var(--bg-border);
+  background: rgba(0, 0, 0, 0.2);
+  padding: 8px;
+  min-height: 260px;
+  max-height: 410px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: zoom-in;
+}
+
+.theme-light-blue .cus-tax-img-frame {
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.cus-tax-img-frame img {
+  max-width: 100%;
+  max-height: 390px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.cus-tax-doc-card {
+  border: 1px dashed var(--bg-border);
+  background: var(--bg-soft-pad);
+  border-radius: 12px;
+  padding: 28px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+}
+
+.cus-tax-doc-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: var(--theme-pri-bg);
+  border: 1px solid var(--theme-pri-bd);
+  color: var(--theme-pri-bright);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cus-tax-doc-name {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--bg-text);
+  word-break: break-word;
+}
+
+.cus-tax-doc-meta {
+  font-size: 0.74rem;
+  color: var(--bg-text-muted);
+}
+
+/* AI Fallback & Scanning Progress */
+.cus-ai-fallback-card {
+  max-width: 500px;
+}
+
+.cus-ai-fallback-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cus-ai-file-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 8px 11px;
+  border-radius: 9px;
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-border);
+  font-size: 0.78rem;
+  color: var(--bg-text);
+  word-break: break-word;
+}
+
+.cus-ai-reason-text {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: var(--sem-amber-bg);
+  border: 1px solid var(--sem-amber-bd);
+  color: var(--sem-amber-bright);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.cus-ai-hint-text {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--bg-text-muted);
+}
+
+.cus-scanning-card {
+  max-width: 400px;
+  padding: 26px 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+}
+
+.cus-scanning-spinner {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 3px solid var(--bg-border);
+  border-top-color: var(--theme-pri-bright);
+  animation: cusSpinAnim 0.8s linear infinite;
+}
+
+@keyframes cusSpinAnim {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.cus-scanning-title {
+  margin: 0;
+  font-size: 0.96rem;
+  font-weight: 800;
+  color: var(--bg-text);
+}
+
+.cus-scanning-msg {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--bg-text-muted);
+}
+
+@media (max-width: 768px) {
+  .cus-import-toolbar {
+    padding: 10px 14px;
+    gap: 8px;
+  }
+
+  .cus-quick-import-btn {
+    padding: 7px 10px !important;
+    font-size: 0.68rem;
+  }
+
+  .cus-quick-import-btn .dt-lbl {
+    display: none;
+  }
+
+  .cus-quick-import-btn .mb-lbl {
+    display: inline;
+  }
+
+  .cus-smart-dropzone {
+    display: none;
+  }
+
+  .cus-smart-mob-picker {
+    display: flex;
+  }
+
+  .cus-tax-split-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cus-tax-img-frame {
+    min-height: 180px;
+    max-height: 260px;
+  }
+}
+
+/* =========================================================================
+   DETAIL CARD PIPELINE HIERARCHY TREE BADGES (1A: DỰ ÁN -> PIPELINE -> CÔNG VIỆC)
+   & MODAL 4K CASCADING 3-LEVEL PICKER (DỰ ÁN -> PIPELINE -> CÔNG VIỆC PIPELINE)
+   ========================================================================= */
+.bg-dcard-top.has-pl-hierarchy {
+  align-items: flex-start;
+  gap: 6px 8px;
+}
+
+.bg-dcard-pl-tree {
+  flex: 1 1 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.bg-dcard-tree-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.bg-dcard-tree-row {
+  display: flex;
+  align-items: flex-start;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.bg-dcard-tree-row.is-lv-0 {
+  padding-left: 0;
+}
+
+.bg-dcard-tree-row.is-lv-1 {
+  padding-left: 10px;
+}
+
+.bg-dcard-tree-row.is-lv-2 {
+  padding-left: 26px;
+}
+
+.bg-dcard-tree-elbow {
+  width: 12px;
+  height: 13px;
+  margin-top: -2px;
+  margin-right: 5px;
+  border-left: 1.8px solid rgba(148, 163, 184, 0.62);
+  border-bottom: 1.8px solid rgba(148, 163, 184, 0.62);
+  border-bottom-left-radius: 5px;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.report-container.page.theme-light-blue .bg-dcard-tree-elbow {
+  border-left-color: rgba(14, 116, 144, 0.48);
+  border-bottom-color: rgba(14, 116, 144, 0.48);
+}
+
+.bg-detail-card.is-done .bg-dcard-tree-elbow,
+.report-container.page.theme-light-blue .bg-detail-card.is-done .bg-dcard-tree-elbow {
+  border-left-color: rgba(255, 255, 255, 0.72) !important;
+  border-bottom-color: rgba(255, 255, 255, 0.72) !important;
+}
+
+.bg-dcard-top.has-pl-hierarchy .bg-dcard-badges {
+  flex: 1 1 100%;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+}
+
+.bg-dcard-chip.is-proj-chip {
+  background: var(--sem-amber-bg);
+  border: 1px solid var(--sem-amber-bd);
+  color: var(--sem-amber-bright);
+  max-width: 100% !important;
+  min-width: 0;
+  white-space: normal !important;
+  align-items: flex-start;
+  text-align: left;
+  padding: 3.5px 8.5px;
+}
+
+.bg-dcard-chip.is-wf-chip {
+  background: var(--sem-teal-bg);
+  border: 1px solid var(--sem-teal-bd);
+  color: var(--sem-teal-bright);
+  max-width: 100% !important;
+  min-width: 0;
+  white-space: normal !important;
+  align-items: flex-start;
+  text-align: left;
+  padding: 3.5px 8.5px;
+}
+
+.bg-dcard-chip.is-pipe-task-chip {
+  width: auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 3.5px 8.5px !important;
+  border-radius: 6.5px !important;
+  font-size: 0.68rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.02em;
+  line-height: 1.35 !important;
+  background: var(--sem-sky-bg) !important;
+  border: 1px solid var(--sem-sky-bd) !important;
+  color: var(--sem-sky-bright) !important;
+  box-shadow: none !important;
+  max-width: 100% !important;
+  min-width: 0;
+  white-space: normal !important;
+  align-items: flex-start;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.14s ease;
+}
+
+.bg-dcard-chip.is-pipe-task-chip:hover {
+  background: #0284c7 !important;
+  border-color: #0284c7 !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+}
+
+.bg-dcard-chip-ic {
+  flex-shrink: 0;
+  margin-top: 1.5px;
+}
+
+.bg-dcard-chip-full {
+  white-space: normal !important;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+  min-width: 0;
+}
+
+.bg-dcard-chip-ext {
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1.25;
+  flex-shrink: 0;
+  margin-left: 2px;
+  opacity: 0.92;
+}
+
+/* Studio Add/Edit Modal Pipeline Row & Modal 4K Customer Subrow */
+.bg-studio-meta-text.is-pipeline-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.bg-studio-pl-top-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+}
+
+.bg-studio-pl-task-lbl {
+  font-weight: 700;
+  color: var(--bg-text);
+  word-break: break-word;
+}
+
+.bg-studio-pl-cus-row,
+.bg-pl-cus-subrow {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.77rem;
+  font-weight: 600;
+  color: var(--bg-text-sec);
+  line-height: 1.38;
+  word-break: break-word;
+  min-width: 0;
+}
+
+.bg-studio-pl-cus-row > svg,
+.bg-pl-cus-subrow > svg {
+  flex-shrink: 0;
+  color: var(--sem-sky-bright);
+}
+
+.bg-pl-cus-subrow {
+  margin-top: 2px;
+  margin-bottom: 2px;
+}
+
+.bg-pl-linked-current-stack {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Modal 4K Cascading Hierarchy Subbar & Dropdowns */
+.bg-modal-subbar.is-pl-hierarchy-subbar {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 18px;
+  overflow: visible !important;
+  z-index: 15;
+}
+
+.bg-pl-dd-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: transparent;
+}
+
+.bg-pl-cascade-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  min-width: 0;
+  position: relative;
+  z-index: 35;
+}
+
+.bg-pl-dd-anchor {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.bg-pl-dd-lbl {
+  font-size: 0.67rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--bg-text-muted);
+  padding-left: 2px;
+}
+
+.bg-pl-dd-trigger {
+  width: 100% !important;
+  height: 38px !important;
+  margin: 0 !important;
+  padding: 0 10px !important;
+  border-radius: 10px !important;
+  background: var(--bg-well) !important;
+  border: 1px solid var(--bg-border-strong) !important;
+  color: var(--bg-text) !important;
+  font-size: 0.82rem !important;
+  font-weight: 700 !important;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  cursor: pointer;
+  box-shadow: none !important;
+  transition: border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+}
+
+.bg-pl-dd-trigger:hover,
+.bg-pl-dd-trigger.is-open {
+  border-color: var(--theme-pri-bd) !important;
+  box-shadow: 0 0 0 2px var(--theme-pri-bg) !important;
+}
+
+.bg-pl-dd-trigger.is-active {
+  background: var(--theme-pri-bg) !important;
+  border-color: var(--theme-pri-bd) !important;
+  color: var(--theme-pri-bright) !important;
+}
+
+.bg-pl-dd-ic {
+  flex-shrink: 0;
+}
+.bg-pl-dd-ic.is-amber {
+  color: var(--sem-amber-bright);
+}
+.bg-pl-dd-ic.is-teal {
+  color: var(--sem-teal-bright);
+}
+
+.bg-pl-dd-val {
+  flex: 1 1 0;
+  min-width: 0;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bg-pl-dd-clear {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--bg-soft-pad);
+  color: var(--bg-text-sec);
+  font-size: 0.66rem;
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+
+.bg-pl-dd-clear:hover {
+  background: #e11d48;
+  color: #ffffff;
+}
+
+.bg-pl-dd-chev {
+  flex-shrink: 0;
+  color: var(--bg-text-muted);
+  transition: transform 0.16s ease;
+}
+
+.bg-pl-dd-trigger.is-open .bg-pl-dd-chev {
+  transform: rotate(180deg);
+}
+
+.bg-pl-dd-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: var(--bg-surface);
+  border: 1px solid var(--bg-border-strong);
+  border-radius: 12px;
+  box-shadow: 0 18px 40px -10px rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.report-container.page.theme-light-blue .bg-pl-dd-menu {
+  background: #ffffff;
+  border-color: rgba(14, 165, 233, 0.3);
+  box-shadow: 0 16px 36px -10px rgba(15, 23, 42, 0.2);
+}
+
+.bg-pl-dd-search-wrap {
+  padding: 8px;
+  border-bottom: 1px solid var(--bg-border);
+  background: var(--bg-soft-pad);
+}
+
+.bg-pl-dd-search {
+  width: 100%;
+  height: 33px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: var(--bg-well);
+  border: 1px solid var(--bg-border-strong);
+  color: var(--bg-text);
+  font-size: 0.8rem;
+  outline: none;
+}
+
+.bg-pl-dd-search:focus {
+  border-color: var(--theme-pri-bd);
+}
+
+.bg-pl-dd-list {
+  max-height: 230px;
+  overflow-y: auto;
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bg-pl-dd-item {
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 7px 10px !important;
+  border-radius: 8px !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  color: var(--bg-text) !important;
+  font-size: 0.81rem !important;
+  font-weight: 600 !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: none !important;
+  transition: background 0.14s ease, border-color 0.14s ease;
+}
+
+.bg-pl-dd-item:hover {
+  background: var(--bg-soft-pad) !important;
+}
+
+.bg-pl-dd-item.is-selected {
+  background: var(--theme-pri-bg) !important;
+  border-color: var(--theme-pri-bd) !important;
+  color: var(--theme-pri-bright) !important;
+  font-weight: 800 !important;
+}
+
+.bg-pl-dd-item-stack {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.bg-pl-dd-item-main {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bg-pl-dd-item-sub {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--bg-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bg-pl-dd-cnt {
+  padding: 1.5px 6.5px;
+  border-radius: 999px;
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-border);
+  font-size: 0.69rem;
+  font-weight: 800;
+  color: var(--bg-text-sec);
+  flex-shrink: 0;
+}
+
+.bg-pl-dd-empty {
+  padding: 12px 10px;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--bg-text-muted);
+}
+
+.bg-pl-search-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.bg-pl-result-pill {
+  padding: 4px 9px;
+  border-radius: 8px;
+  background: var(--bg-soft-pad);
+  border: 1px solid var(--bg-border);
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--bg-text-sec);
+  white-space: nowrap;
+}
+
+.bg-pl-linked-current-info {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.bg-pl-linked-task-name {
+  font-weight: 700;
+  color: var(--bg-text);
+  word-break: break-word;
+}
+
+.bg-pl-task-badges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 5px;
+  min-width: 0;
+}
+
+.bg-pl-mini-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 0.67rem;
+  font-weight: 800;
+  line-height: 1.25;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bg-pl-mini-chip > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bg-pl-mini-chip.is-proj {
+  background: var(--sem-amber-bg);
+  border: 1px solid var(--sem-amber-bd);
+  color: var(--sem-amber-bright);
+}
+
+.bg-pl-mini-chip.is-wf {
+  background: var(--sem-teal-bg);
+  border: 1px solid var(--sem-teal-bd);
+  color: var(--sem-teal-bright);
+}
+
+.bg-pl-mini-chip.is-stage {
+  background: var(--sem-sky-bg);
+  border: 1px solid var(--sem-sky-bd);
+  color: var(--sem-sky-bright);
+}
+
+@media (max-width: 768px) {
+  .bg-pl-cascade-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .bg-pl-dd-search {
+    font-size: 16px;
+  }
+
+  .bg-dcard-tree-row.is-lv-1 {
+    padding-left: 8px;
+  }
+
+  .bg-dcard-tree-row.is-lv-2 {
+    padding-left: 20px;
+  }
 }
 </style>

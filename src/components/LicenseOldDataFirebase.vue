@@ -3622,6 +3622,14 @@ const setGiaHan = async (item, newVal) => {
       rawData.value[idx].IS_GIA_HAN = cleanVal
       delete rawData.value[idx].is_gia_han
     }
+    if (item.PO_FIREBASE_KEY) {
+      await syncLicenseToSaleReportPO(
+        database,
+        item.firebase_id,
+        { ...item, IS_GIA_HAN: cleanVal },
+        item.PO_FIREBASE_KEY
+      )
+    }
   } catch (e) {
     console.error('Lỗi cập nhật trạng thái xử lý License:', e)
     asyncModal.value = {

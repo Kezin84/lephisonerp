@@ -255,7 +255,11 @@ function parseSpreadsheetXml2003(xmlText: string): UniversalTableSheet[] {
  * Đọc tất cả định dạng Excel / Bảng tính (.xlsx, .xls, .xlsm, .xlsb, .xltx, .xltm, .ods, .csv, .tsv, .xml, HTML-xls)
  * trên toàn bộ các Sheet.
  */
-export async function readUniversalSpreadsheetSheets(file: File): Promise<UniversalTableSheet[]> {
+export async function readUniversalSpreadsheetSheets(
+  file: File,
+  options?: { keepEmptyRows?: boolean }
+): Promise<UniversalTableSheet[]> {
+  const keepEmptyRows = Boolean(options?.keepEmptyRows)
   const arrayBuffer = await file.arrayBuffer()
   const lowerName = String(file.name || '').toLowerCase()
 
@@ -291,11 +295,11 @@ export async function readUniversalSpreadsheetSheets(file: File): Promise<Univer
       const ws = wb.Sheets[sName]
       if (!ws) continue
       const rawRows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }) as any[][]
-      const cleanRows = rawRows
+      const mappedRows = rawRows
         .filter(r => Array.isArray(r))
         .map(r => r.map(c => String(c ?? '').trim()))
-        .filter(r => r.some(Boolean))
-      if (cleanRows.length > 0) {
+      const cleanRows = keepEmptyRows ? mappedRows : mappedRows.filter(r => r.some(Boolean))
+      if (mappedRows.some(r => r.some(Boolean))) {
         sheets.push({ name: sName, rows: cleanRows })
       }
     }
@@ -1142,43 +1146,140 @@ function cleanCustomerAddressText(raw: string): string {
 
 export function extractCustomerFromHeaderLinesGeneric(lines: string[]): ExtractedCustomerFields {
   const out: ExtractedCustomerFields = {}
+  const isNextCellAnotherLabel = (txt: string) =>
+    /^(?:ngày|date|số\s*báo\s*giá|quote\s*no|địa\s*chỉ|dia\s*chi|address|người\s*nhận|nguoi\s*nhan|người\s*liên\s*hệ|attn|attention|contact|tel|mobile|sđt|số\s*điện\s*thoại|điện\s*thoại|phone|email|e-mail|fax|mst|mã\s*số\s*thuế|tax)(?:\s|\(\*\)|:|$)/i.test(
+      String(txt || '').trim()
+    )
+
   for (const rawLine of lines.slice(0, 45)) {
     const subLines = String(rawLine || '')
       .split(/\r?\n|\|/)
       .map(s => s.trim())
       .filter(Boolean)
+    if (subLines.length === 0) continue
+
+    const rowUpper = subLines.join('|').toUpperCase()
+    if (
+      (rowUpper.includes('STT') || rowUpper.includes('NO.')) &&
+      (rowUpper.includes('TÊN HÀNG') ||
+        rowUpper.includes('MODEL') ||
+        rowUpper.includes('PART#') ||
+        rowUpper.includes('DIỄN GIẢI') ||
+        rowUpper.includes('SẢN PHẨM') ||
+        rowUpper.includes('HÀNG HÓA'))
+    ) {
+      break
+    }
 
     for (let j = 0; j < subLines.length; j++) {
       const line = subLines[j]
-      if (!out.Ten_cong_ty && /(?:kính\s*g[ởiử]i|kinh\s*g[oiu]i|khách\s*hàng|bên\s*mua|customer|bill\s*to|client)\s*:/i.test(line)) {
-        const m = line.match(/(?:kính\s*g[ởiử]i|kinh\s*g[oiu]i|khách\s*hàng|bên\s*mua|customer|bill\s*to|client)\s*:\s*(.*)/i)
+
+      if (
+        !out.Ten_cong_ty &&
+        /(?:^|\b)(?:kính\s*g[ởiử]i|kinh\s*g[oiu]i|khách\s*hàng|bên\s*mua|customer|bill\s*to|client)(?:\s*:|$)/i.test(line)
+      ) {
+        const m = line.match(
+          /(?:kính\s*g[ởiử]i|kinh\s*g[oiu]i|khách\s*hàng|bên\s*mua|customer|bill\s*to|client)\s*:?\s*(.*)/i
+        )
         let cand = m && m[1] ? cleanCustomerCompanyText(m[1]) : ''
-        if (!cand && j + 1 < subLines.length) cand = cleanCustomerCompanyText(subLines[j + 1])
+        if (!cand && j + 1 < subLines.length && !isNextCellAnotherLabel(subLines[j + 1])) {
+          cand = cleanCustomerCompanyText(subLines[j + 1])
+        }
+        if (cand) out.Ten_cong_ty = cand
+      } else if (!out.Ten_cong_ty && /^(?:kính\s*g[ởiử]i|kinh\s*g[oiu]i)\b/i.test(line)) {
+        const m = line.match(/^(?:kính\s*g[ởiử]i|kinh\s*g[oiu]i)\s*:?\s*(.*)/i)
+        let cand = m && m[1] ? cleanCustomerCompanyText(m[1]) : ''
+        if (!cand && j + 1 < subLines.length && !isNextCellAnotherLabel(subLines[j + 1])) {
+          cand = cleanCustomerCompanyText(subLines[j + 1])
+        }
         if (cand) out.Ten_cong_ty = cand
       }
-      if (!out.Ten_khach_hang && /(?:người\s*nhận|người\s*liên\s*hệ|đại\s*diện|attn|attention|contact\s*person|contact)\s*:/i.test(line) && !/người\s*nhận\s*hàng/i.test(line)) {
-        const m = line.match(/(?:người\s*nhận|người\s*liên\s*hệ|đại\s*diện|attn|attention|contact\s*person|contact)\s*:\s*(.*)/i)
-        let cand = m && m[1] ? cleanCustomerRecipientText(m[1]) : ''
-        if (!cand && j + 1 < subLines.length) cand = cleanCustomerRecipientText(subLines[j + 1])
-        if (cand) out.Ten_khach_hang = cand
+
+      if (
+        !out.Ten_khach_hang &&
+        /(?:^|\b)(?:người\s*nhận|nguoi\s*nhan|người\s*liên\s*hệ|đại\s*diện|attn|attention|contact\s*person|contact)(?:\s*:|\s+|$)/i.test(line) &&
+        !/người\s*nhận\s*hàng/i.test(line)
+      ) {
+        const isPureOrColon =
+          /^(?:người\s*nhận|nguoi\s*nhan|người\s*liên\s*hệ|đại\s*diện|attn|attention|contact\s*person|contact)\s*:?$/i.test(
+            line
+          ) ||
+          /(?:người\s*nhận|nguoi\s*nhan|người\s*liên\s*hệ|đại\s*diện|attn|attention|contact\s*person|contact)\s*:/i.test(
+            line
+          ) ||
+          /^(?:người\s*nhận|nguoi\s*nhan|người\s*liên\s*hệ|attn)\b/i.test(line)
+        if (isPureOrColon) {
+          const m = line.match(
+            /(?:người\s*nhận|nguoi\s*nhan|người\s*liên\s*hệ|đại\s*diện|attn|attention|contact\s*person|contact)\s*:?\s*(.*)/i
+          )
+          let cand = m && m[1] ? cleanCustomerRecipientText(m[1]) : ''
+          if (!cand && j + 1 < subLines.length && !isNextCellAnotherLabel(subLines[j + 1])) {
+            cand = cleanCustomerRecipientText(subLines[j + 1])
+          }
+          if (cand) out.Ten_khach_hang = cand
+        }
       }
-      if (!out.Dia_chi_cong_ty && /(?:địa\s*chỉ|dia\s*chi|address)\s*(?:\(\*\))?\s*:/i.test(line) && !/tăng\s*bạt\s*hổ|giao\s*hàng/i.test(line)) {
-        const m = line.match(/(?:địa\s*chỉ|dia\s*chi|address)\s*(?:\(\*\))?\s*:\s*(.*)/i)
+
+      if (
+        !out.Dia_chi_cong_ty &&
+        /(?:^|\b)(?:địa\s*chỉ|dia\s*chi|address)(?:\s*\(\*\))?(?:\s*:|$)/i.test(line) &&
+        !/tăng\s*bạt\s*hổ|tang\s*bat\s*ho|giao\s*hàng/i.test(line)
+      ) {
+        const m = line.match(/(?:địa\s*chỉ|dia\s*chi|address)\s*(?:\(\*\))?\s*:?\s*(.*)/i)
         let cand = m && m[1] ? cleanCustomerAddressText(m[1]) : ''
-        if (!cand && j + 1 < subLines.length) cand = cleanCustomerAddressText(subLines[j + 1])
+        if (!cand && j + 1 < subLines.length && !isNextCellAnotherLabel(subLines[j + 1])) {
+          cand = cleanCustomerAddressText(subLines[j + 1])
+        }
+        if (cand) out.Dia_chi_cong_ty = cand
+      } else if (
+        !out.Dia_chi_cong_ty &&
+        /^(?:địa\s*chỉ|dia\s*chi|address)\b/i.test(line) &&
+        !/tăng\s*bạt\s*hổ|tang\s*bat\s*ho|giao\s*hàng/i.test(line)
+      ) {
+        const m = line.match(/^(?:địa\s*chỉ|dia\s*chi|address)\s*(?:\(\*\))?\s*:?\s*(.*)/i)
+        const cand = m && m[1] ? cleanCustomerAddressText(m[1]) : ''
         if (cand) out.Dia_chi_cong_ty = cand
       }
-      if (!out.MST && /(?:mã\s*số\s*thuế|mst|tax\s*code|tax\s*id)\s*:/i.test(line)) {
-        const m = line.match(/(?:mã\s*số\s*thuế|mst|tax\s*code|tax\s*id)\s*:\s*([0-9\-]{8,16})/i)
-        if (m && m[1] && !m[1].startsWith('0309')) out.MST = m[1].trim()
+
+      if (!out.MST && /(?:mã\s*số\s*thuế|mst|tax\s*code|tax\s*id)\s*:?(?:\s|$)/i.test(line)) {
+        const m = line.match(/(?:mã\s*số\s*thuế|mst|tax\s*code|tax\s*id)\s*:?\s*([0-9\-]{8,16})/i)
+        let cand = m && m[1] ? m[1].trim() : ''
+        if (!cand && j + 1 < subLines.length) {
+          const mNext = subLines[j + 1].match(/^([0-9\-]{8,16})$/)
+          if (mNext) cand = mNext[1].trim()
+        }
+        if (cand && !cand.startsWith('0309')) out.MST = cand
       }
+
       if (!out.Email_ca_nhan) {
         const em = line.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/)
         if (em && !/ntssi|namtruongson/i.test(em[0])) out.Email_ca_nhan = em[0].trim()
       }
-      if (!out.So_dien_thoai_ca_nhan && /(?:điện\s*thoại|sđt|tel|mobile|phone|hp)\s*:/i.test(line)) {
-        const pm = line.match(/(?:điện\s*thoại|sđt|tel|mobile|phone|hp)\s*:\s*([+0-9()\s.\-]{8,18})/i)
-        if (pm && pm[1]) out.So_dien_thoai_ca_nhan = pm[1].trim()
+
+      if (
+        !out.So_dien_thoai_ca_nhan &&
+        /(?:số\s*điện\s*thoại|điện\s*thoại|sđt|tel|mobile|phone|hp)\s*:?(?:\s|$)/i.test(line) &&
+        !/tăng\s*bạt\s*hổ|028\s*3841/i.test(line)
+      ) {
+        const pm = line.match(
+          /(?:số\s*điện\s*thoại|điện\s*thoại|sđt|tel|mobile|phone|hp)\s*:?\s*([+0-9()\s.\-]{8,18})/i
+        )
+        let cand = pm && pm[1] ? pm[1].trim() : ''
+        if (!cand && j + 1 < subLines.length) {
+          const pmNext = subLines[j + 1].match(/^([+0-9()\s.\-]{8,18})/)
+          if (pmNext) cand = pmNext[1].trim()
+        }
+        if (cand) out.So_dien_thoai_ca_nhan = cand
+      }
+
+      if (!out.So_fax_cong_ty && /\bfax\s*:?(?:\s|$)/i.test(line)) {
+        const fm = line.match(/\bfax\s*:?\s*([+0-9()\s.\-]{7,18})/i)
+        let cand = fm && fm[1] ? fm[1].trim() : ''
+        if (!cand && j + 1 < subLines.length) {
+          const fmNext = subLines[j + 1].match(/^([+0-9()\s.\-]{7,18})/)
+          if (fmNext) cand = fmNext[1].trim()
+        }
+        if (cand) out.So_fax_cong_ty = cand
       }
     }
   }
@@ -1201,6 +1302,79 @@ export function parseSalesQuoteSheetsStandard(
   let bestItems: any[] = []
   let bestTermsHtml = ''
 
+  const mapSalesHeaderCells = (
+    targetRow: string[],
+    colMap: Record<string, number>,
+    state: { modelCol?: number; tenCandidateCol?: number },
+    isSubRow = false
+  ) => {
+    targetRow.forEach((cell, idx) => {
+      const header = String(cell ?? '').toUpperCase().replace(/\s+/g, ' ').trim()
+      if (!header) return
+      if ((header.includes('STT') || header === 'NO.' || header === 'NO' || header === 'TT' || header === '#' || header === 'ITEM') && colMap['stt'] === undefined) {
+        colMap['stt'] = idx
+      } else if ((header === 'P/N' || header === 'PN' || header.includes('MÃ HÀNG') || header.includes('PART NUMBER') || header.includes('MÃ SP') || header.includes('MÃ SẢN PHẨM')) && colMap['maHang'] === undefined) {
+        colMap['maHang'] = idx
+      } else if ((header.includes('MODEL') || header.includes('PART#') || header.includes('SKU')) && state.modelCol === undefined) {
+        state.modelCol = idx
+        if (colMap['tenHang'] === undefined) colMap['tenHang'] = idx
+      } else if (header.includes('TÊN HÀNG') || header.includes('HÀNG HÓA') || header.includes('SẢN PHẨM') || header.includes('THIẾT BỊ') || header.includes('DỊCH VỤ')) {
+        if (colMap['tenHang'] === undefined) colMap['tenHang'] = idx
+        else if (colMap['tenHang'] === state.modelCol && state.tenCandidateCol === undefined) state.tenCandidateCol = idx
+      } else if ((header === 'DESCRIPTION' || header === 'PRODUCT DESCRIPTION' || header.startsWith('DESCRIPTION (')) && colMap['description'] === undefined) {
+        colMap['description'] = idx
+      } else if ((header.includes('DIỄN GIẢI') || header.includes('MÔ TẢ') || header.includes('THÔNG SỐ') || header.includes('NỘI DUNG') || header.includes('HẠNG MỤC') || header.includes('ĐẶC TÍNH') || header.includes('SPEC')) && colMap['features'] === undefined) {
+        colMap['features'] = idx
+      } else if ((header.includes('HÃNG') || header.includes('NHÀ CUNG CẤP') || header === 'BRAND' || header === 'VENDOR') && colMap['hang'] === undefined) {
+        colMap['hang'] = idx
+      } else if ((header.includes('ĐƠN VỊ') || header === 'ĐVT' || header === 'DVT' || header === 'UNIT') && colMap['dvt'] === undefined) {
+        colMap['dvt'] = idx
+      } else if ((header.includes('THỜI HẠN') || header.includes('DURATION') || header.includes('TERM')) && colMap['license_duration'] === undefined) {
+        colMap['license_duration'] = idx
+      } else if ((header.includes('BẢO HÀNH') || header.includes('WARRANTY')) && colMap['baoHanh'] === undefined) {
+        colMap['baoHanh'] = idx
+      } else if ((header === 'S.L' || header === 'S.L.' || header.includes('SỐ LƯỢNG') || header.includes('S.LƯỢNG') || header === 'SL' || header === 'QTY' || header === 'QUANTITY') && colMap['sl'] === undefined) {
+        colMap['sl'] = idx
+      } else if (
+        header.includes('ĐƠN GIÁ') ||
+        header.includes('GIÁ BÁN') ||
+        header.includes('UNIT PRICE') ||
+        header.includes('PRICES LIST') ||
+        header.includes('LIST PRICE') ||
+        header.includes('MSRP') ||
+        header.includes('GIÁ THAM KHẢO')
+      ) {
+        if (isSubRow && colMap['truocThue'] === idx) delete colMap['truocThue']
+        if (colMap['donGia'] === undefined) colMap['donGia'] = idx
+      } else if (
+        ((header.includes('THÀNH TIỀN') && !header.includes('SAU') && !header.includes('CÓ VAT')) ||
+          header.includes('TRƯỚC THUẾ') ||
+          header.includes('CHƯA VAT') ||
+          header.includes('ESTIMATED VALUE') ||
+          header === 'AMOUNT' ||
+          header === 'TOTAL' ||
+          header.includes('TỔNG TIỀN'))
+      ) {
+        if (colMap['truocThue'] === undefined || (isSubRow && (header.includes('TRƯỚC THUẾ') || header.includes('CHƯA VAT')))) {
+          colMap['truocThue'] = idx
+        }
+      } else if (
+        (header.includes('SAU THUẾ') || header.includes('CÓ VAT') || header.includes('SAU VAT')) &&
+        colMap['sauThue'] === undefined
+      ) {
+        colMap['sauThue'] = idx
+      } else if (
+        (header === 'VAT' || header.startsWith('VAT ') || header.includes('THUẾ')) &&
+        !header.includes('THÀNH TIỀN') &&
+        !header.includes('TRƯỚC') &&
+        !header.includes('SAU') &&
+        colMap['vat'] === undefined
+      ) {
+        colMap['vat'] = idx
+      }
+    })
+  }
+
   for (const sheet of sheets) {
     const rows = sheet.rows
     let headerRowIndex = -1
@@ -1220,52 +1394,85 @@ export function parseSalesQuoteSheetsStandard(
       if (!Array.isArray(row) || !row.some(Boolean)) continue
 
       if (headerRowIndex === -1) {
-        const rowStr = row.map(c => String(c ?? '').toUpperCase().replace(/\s+/g, ' ').trim()).join('|')
-        if (
-          (rowStr.includes('STT') || rowStr.includes('NO.') || rowStr.includes('TT')) &&
-          (rowStr.includes('TÊN HÀNG') ||
-            rowStr.includes('MODEL') ||
-            rowStr.includes('PART#') ||
-            rowStr.includes('SKU') ||
-            rowStr.includes('HÀNG HÓA') ||
-            rowStr.includes('SẢN PHẨM') ||
-            rowStr.includes('THIẾT BỊ') ||
-            rowStr.includes('DIỄN GIẢI') ||
-            rowStr.includes('MÔ TẢ') ||
-            rowStr.includes('DESCRIPTION'))
-        ) {
-          headerRowIndex = i
-          let modelCol: number | undefined
-          let tenCandidateCol: number | undefined
-          row.forEach((cell, idx) => {
-            const header = String(cell ?? '').toUpperCase().replace(/\s+/g, ' ').trim()
-            if (!header) return
-            if ((header.includes('STT') || header === 'NO.' || header === 'TT') && colMap['stt'] === undefined) colMap['stt'] = idx
-            else if ((header === 'P/N' || header === 'PN' || header.includes('MÃ HÀNG') || header.includes('PART NUMBER')) && colMap['maHang'] === undefined) colMap['maHang'] = idx
-            else if ((header.includes('MODEL') || header.includes('PART#') || header.includes('SKU')) && modelCol === undefined) {
-              modelCol = idx
-              if (colMap['tenHang'] === undefined) colMap['tenHang'] = idx
-            } else if (header.includes('TÊN HÀNG') || header.includes('HÀNG HÓA') || header.includes('SẢN PHẨM') || header.includes('THIẾT BỊ') || header.includes('DỊCH VỤ')) {
-              if (colMap['tenHang'] === undefined) colMap['tenHang'] = idx
-              else if (colMap['tenHang'] === modelCol && tenCandidateCol === undefined) tenCandidateCol = idx
-            } else if ((header === 'DESCRIPTION' || header === 'PRODUCT DESCRIPTION' || header.startsWith('DESCRIPTION (')) && colMap['description'] === undefined) colMap['description'] = idx
-            else if ((header.includes('DIỄN GIẢI') || header.includes('MÔ TẢ') || header.includes('THÔNG SỐ') || header.includes('NỘI DUNG') || header.includes('HẠNG MỤC') || header.includes('SPEC')) && colMap['features'] === undefined) colMap['features'] = idx
-            else if ((header.includes('HÃNG') || header.includes('NHÀ CUNG CẤP')) && colMap['hang'] === undefined) colMap['hang'] = idx
-            else if ((header.includes('ĐƠN VỊ') || header === 'ĐVT' || header === 'DVT' || header === 'UNIT') && colMap['dvt'] === undefined) colMap['dvt'] = idx
-            else if ((header.includes('THỜI HẠN') || header.includes('DURATION') || header.includes('TERM')) && colMap['license_duration'] === undefined) colMap['license_duration'] = idx
-            else if ((header.includes('BẢO HÀNH') || header.includes('WARRANTY')) && colMap['baoHanh'] === undefined) colMap['baoHanh'] = idx
-            else if ((header === 'S.L' || header === 'S.L.' || header.includes('SỐ LƯỢNG') || header === 'SL' || header === 'QTY') && colMap['sl'] === undefined) colMap['sl'] = idx
-            else if ((header.includes('ĐƠN GIÁ') || header.includes('UNIT PRICE') || header.includes('PRICES LIST') || header.includes('LIST PRICE')) && colMap['donGia'] === undefined) colMap['donGia'] = idx
-            else if (((header.includes('THÀNH TIỀN') && !header.includes('SAU')) || header.includes('TRƯỚC THUẾ') || header.includes('ESTIMATED VALUE') || header === 'AMOUNT' || header === 'TOTAL') && colMap['truocThue'] === undefined) colMap['truocThue'] = idx
-            else if ((header === 'VAT' || header.includes('THUẾ')) && !header.includes('THÀNH TIỀN') && !header.includes('TRƯỚC') && !header.includes('SAU') && colMap['vat'] === undefined) colMap['vat'] = idx
-          })
+        const nonEmptyCells = row.map(c => String(c ?? '').toUpperCase().replace(/\s+/g, ' ').trim()).filter(Boolean)
+        const rowStr = nonEmptyCells.join('|')
+        const hasIndexCol =
+          nonEmptyCells.some(c => c === 'STT' || c === 'NO.' || c === 'NO' || c === 'TT' || c === '#' || c === 'ITEM' || c.startsWith('STT '))
+        const hasItemCol =
+          rowStr.includes('TÊN HÀNG') ||
+          rowStr.includes('MODEL') ||
+          rowStr.includes('PART#') ||
+          rowStr.includes('PART NUMBER') ||
+          rowStr.includes('SKU') ||
+          rowStr.includes('MÃ HÀNG') ||
+          rowStr.includes('HÀNG HÓA') ||
+          rowStr.includes('SẢN PHẨM') ||
+          rowStr.includes('THIẾT BỊ') ||
+          rowStr.includes('DIỄN GIẢI') ||
+          rowStr.includes('MÔ TẢ') ||
+          rowStr.includes('DESCRIPTION') ||
+          rowStr.includes('HẠNG MỤC') ||
+          rowStr.includes('DỊCH VỤ')
+        const hasPriceOrQtyCol =
+          rowStr.includes('ĐƠN GIÁ') ||
+          rowStr.includes('GIÁ BÁN') ||
+          rowStr.includes('UNIT PRICE') ||
+          rowStr.includes('PRICES LIST') ||
+          rowStr.includes('LIST PRICE') ||
+          rowStr.includes('MSRP') ||
+          rowStr.includes('GIÁ THAM KHẢO') ||
+          rowStr.includes('THÀNH TIỀN') ||
+          rowStr.includes('TRƯỚC THUẾ') ||
+          rowStr.includes('ESTIMATED VALUE') ||
+          rowStr.includes('SỐ LƯỢNG') ||
+          nonEmptyCells.some(c => c === 'SL' || c === 'S.L' || c === 'S.L.' || c === 'QTY' || c === 'AMOUNT' || c === 'TOTAL')
 
-          if (tenCandidateCol !== undefined) {
+        if (nonEmptyCells.length >= 2 && hasItemCol && (hasIndexCol || hasPriceOrQtyCol)) {
+          headerRowIndex = i
+          const headerState: { modelCol?: number; tenCandidateCol?: number } = {}
+          mapSalesHeaderCells(row, colMap, headerState, false)
+
+          // Kiểm tra dòng kế tiếp xem có phải dòng tiêu đề con (Merged 2-row Header) không
+          if (i + 1 < rows.length && Array.isArray(rows[i + 1])) {
+            const nextRow = rows[i + 1]
+            const nextCells = nextRow.map(c => String(c ?? '').toUpperCase().replace(/\s+/g, ' ').trim()).filter(Boolean)
+            const sttValNext = colMap['stt'] !== undefined ? String(nextRow[colMap['stt']] ?? '').trim() : ''
+            const looksLikeDataRow =
+              /^\d+\.?$/.test(sttValNext) && nextCells.some(c => parseCleanNumber(c) > 100)
+            const hasSubHeaderKeywords =
+              nextCells.length > 0 &&
+              nextCells.every(c => c.length <= 45) &&
+              nextCells.some(
+                c =>
+                  c.includes('ĐƠN GIÁ') ||
+                  c.includes('TRƯỚC THUẾ') ||
+                  c.includes('CHƯA VAT') ||
+                  c.includes('SAU THUẾ') ||
+                  c.includes('CÓ VAT') ||
+                  c.includes('SAU VAT') ||
+                  c === 'VAT' ||
+                  c.includes('THUẾ VAT') ||
+                  c.includes('THÀNH TIỀN') ||
+                  c.includes('UNIT PRICE') ||
+                  c === 'AMOUNT' ||
+                  c.includes('SỐ LƯỢNG') ||
+                  c === 'SL' ||
+                  c === 'QTY'
+              )
+            if (!looksLikeDataRow && hasSubHeaderKeywords) {
+              mapSalesHeaderCells(nextRow, colMap, headerState, true)
+              i++
+            }
+          }
+
+          if (headerState.tenCandidateCol !== undefined) {
             if (colMap['features'] !== undefined || colMap['description'] !== undefined) {
-              if (modelCol !== undefined && colMap['maHang'] === undefined) colMap['maHang'] = modelCol
-              colMap['tenHang'] = tenCandidateCol
+              if (headerState.modelCol !== undefined && colMap['maHang'] === undefined) {
+                colMap['maHang'] = headerState.modelCol
+              }
+              colMap['tenHang'] = headerState.tenCandidateCol
             } else {
-              colMap['features'] = tenCandidateCol
+              colMap['features'] = headerState.tenCandidateCol
             }
           }
           if (colMap['features'] === undefined && colMap['description'] !== undefined) {
@@ -1321,15 +1528,27 @@ export function parseSalesQuoteSheetsStandard(
       const stt = getCol('stt')
       const rawTen = getCol('tenHang')
       const rawFeatures = getCol('features')
+      const rawMa = getCol('maHang')
       const rawDesc = colMap['description'] !== colMap['features'] ? getCol('description') : ''
 
       const effectiveTenHang =
-        rawTen || (rawFeatures ? rawFeatures.split(/\r?\n/)[0].trim() : '')
+        rawTen || (rawFeatures ? rawFeatures.split(/\r?\n/)[0].trim() : '') || rawMa
       if (!effectiveTenHang) continue
 
       const sl = Math.max(1, parseCleanNumber(getCol('sl')) || 1)
       let donGia = parseCleanNumber(getCol('donGia'))
-      const truocThue = parseCleanNumber(getCol('truocThue')) || sl * donGia
+      let truocThue = parseCleanNumber(getCol('truocThue')) || sl * donGia
+      const sauThue = parseCleanNumber(getCol('sauThue'))
+
+      const vatVal = parseCleanNumber(getCol('vat'))
+      let vatPct = 0
+      if (vatVal > 0 && vatVal < 1) vatPct = Math.round(vatVal * 100)
+      else if (vatVal > 0 && truocThue > 0 && vatVal > 100) vatPct = Math.round((vatVal / truocThue) * 100)
+      else if (vatVal > 0 && vatVal <= 100) vatPct = Math.round(vatVal)
+
+      if (!donGia && !truocThue && sauThue > 0) {
+        truocThue = vatPct > 0 ? Math.round(sauThue / (1 + vatPct / 100)) : sauThue
+      }
       if (!donGia && truocThue > 0 && sl > 0) {
         donGia = Math.round(truocThue / sl)
       }
@@ -1339,14 +1558,8 @@ export function parseSalesQuoteSheetsStandard(
         continue
       }
 
-      const vatVal = parseCleanNumber(getCol('vat'))
-      let vatPct = 0
-      if (vatVal > 0 && vatVal < 1) vatPct = Math.round(vatVal * 100)
-      else if (vatVal > 0 && truocThue > 0 && vatVal > 100) vatPct = Math.round((vatVal / truocThue) * 100)
-      else if (vatVal > 0 && vatVal <= 100) vatPct = Math.round(vatVal)
-
       const meta = extractMetadataFromBulletLines(rawFeatures || rawTen)
-      const explicitMa = getCol('maHang') || meta.partNumber
+      const explicitMa = rawMa || meta.partNumber
       const generatedMa =
         explicitMa ||
         removeDiacriticsSimple(effectiveTenHang)
@@ -1448,7 +1661,8 @@ export async function parseCustomerDxmhStandardFromFile(
     sheets = w.tables
     extraLines = w.paragraphs
   } else {
-    sheets = await readUniversalSpreadsheetSheets(file)
+    // Giữ nguyên dòng trống để chỉ số dòng (r < 13 / r > 12) khớp 100% với mẫu ĐXMH ở trang Khách hàng
+    sheets = await readUniversalSpreadsheetSheets(file, { keepEmptyRows: true })
   }
 
   // Ưu tiên sheet PO hoặc ĐƠN HÀNG trước
@@ -1467,7 +1681,7 @@ export async function parseCustomerDxmhStandardFromFile(
     if (rawData.length < 2) continue
     const record: Record<string, string> = {}
 
-    for (let r = 0; r < Math.min(rawData.length, 45); r++) {
+    for (let r = 0; r < Math.min(rawData.length, 60); r++) {
       const row = rawData[r]
       if (!row || !row.length) continue
 
@@ -1506,14 +1720,14 @@ export async function parseCustomerDxmhStandardFromFile(
       if (row[3] && row[4] && row[3] !== label2) val2 = String(row[4]).trim()
       if (!val2 && row[4] && row[3] === label2) val2 = String(row[4]).trim()
 
-      if (/người\s*nhận\s*hàng/i.test(label2)) record.DEL_NGUOI_NHAN = val2 || splitInline(label2) || ''
-      if (/số\s*điện\s*thoại/i.test(label2)) record.DEL_SDT = val2 || splitInline(label2) || ''
+      if (/người\s*nhận\s*hàng/i.test(label2)) record.DEL_NGUOI_NHAN = val2 || splitInline(label2) || record.DEL_NGUOI_NHAN || ''
+      if (/số\s*điện\s*thoại/i.test(label2)) record.DEL_SDT = val2 || splitInline(label2) || record.DEL_SDT || ''
     }
 
     const contactRaw = String(record.CUS_CONTACT || '').trim()
     const nguoiNhan = String(record.DEL_NGUOI_NHAN || '').trim()
-    const tenKH = (contactRaw || nguoiNhan).toUpperCase()
-    const tenCT = String(record.INV_CONG_TY || record.CUS_COMPANY || '').trim().toUpperCase()
+    const tenKH = (contactRaw || nguoiNhan).trim()
+    const tenCT = String(record.INV_CONG_TY || record.CUS_COMPANY || '').trim()
 
     if (tenKH || tenCT) {
       const hasSecondary = Boolean(contactRaw && nguoiNhan && contactRaw !== nguoiNhan)
@@ -1539,8 +1753,13 @@ export async function parseCustomerDxmhStandardFromFile(
     }
   }
 
-  if (extraLines.length > 0) {
-    const fallbackGeneric = extractCustomerFromHeaderLinesGeneric(extraLines)
+  // Fallback sang bộ quét header Kính gửi / Người nhận nếu người dùng đưa file Báo giá vào luồng ĐXMH
+  const allFallbackLines = [
+    ...extraLines,
+    ...orderedSheets.flatMap(sh => sh.rows.slice(0, 35).map(r => r.filter(Boolean).join(' | ')))
+  ]
+  if (allFallbackLines.length > 0) {
+    const fallbackGeneric = extractCustomerFromHeaderLinesGeneric(allFallbackLines)
     if (fallbackGeneric.Ten_cong_ty || fallbackGeneric.Ten_khach_hang) {
       return fallbackGeneric
     }
@@ -1561,25 +1780,27 @@ export async function parseCustomerQuoteStandardFromFile(
   if (isPdfDocFile(file)) {
     const pdfInfo = await extractPdfTextAndCheckScanned(file)
     if (pdfInfo.isScannedPdf) return null
-    candidateLines.push(...(pdfInfo.linesByPage[0] || []).slice(0, 40))
+    candidateLines.push(...(pdfInfo.linesByPage[0] || []).slice(0, 45))
   } else if (isWordDocFile(file)) {
     const w = await readUniversalWordDocument(file)
-    candidateLines.push(...w.paragraphs.slice(0, 40))
+    candidateLines.push(...w.paragraphs.slice(0, 45))
     for (const t of w.tables) {
-      candidateLines.push(...t.rows.slice(0, 20).map(r => r.filter(Boolean).join(' | ')))
+      candidateLines.push(...t.rows.slice(0, 25).map(r => r.filter(Boolean).join(' | ')))
     }
   } else {
     const sheets = await readUniversalSpreadsheetSheets(file)
     for (const sh of sheets) {
-      candidateLines.push(...sh.rows.slice(0, 30).map(r => r.filter(Boolean).join(' | ')))
+      candidateLines.push(...sh.rows.slice(0, 35).map(r => r.filter(Boolean).join(' | ')))
     }
   }
 
   const extracted = extractCustomerFromHeaderLinesGeneric(candidateLines)
-  if (!extracted.Ten_cong_ty && !extracted.Ten_khach_hang) {
-    return null
+  if (extracted.Ten_cong_ty || extracted.Ten_khach_hang) {
+    return extracted
   }
-  return extracted
+
+  // Fallback sang cấu trúc ĐXMH / PO nếu người dùng chọn nhầm file ĐXMH ở nút Import KH Báo Giá
+  return await parseCustomerDxmhStandardFromFile(file)
 }
 
 /**

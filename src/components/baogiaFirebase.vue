@@ -73,6 +73,7 @@ import {
   isPdfDocFile,
   isWordDocFile,
   getFileCategoryIconClass,
+  extractPdfTextAndCheckScanned,
   readUniversalSpreadsheetSheets,
   readUniversalWordDocument,
   parseSalesQuoteSheetsStandard,
@@ -1373,27 +1374,28 @@ async function processTaxFile(file: File) {
       showAsyncLoading(msg)
     })
 
-    if (!stdRes.isSuccess) {
+    const tx = stdRes?.data
+    if (!stdRes?.isSuccess || !tx || (!tx.mst && !tx.tenCongTy)) {
       asyncResultModal.value.show = false
       openAiImportFallback(
         'thue',
         file,
-        stdRes.reason || 'Quét tiêu chuẩn không nhận diện được Mã số thuế hoặc Tên công ty từ tài liệu này.'
+        'Quét tiêu chuẩn không nhận diện được Mã số thuế hoặc Tên công ty từ tài liệu này.'
       )
       return
     }
 
-    let companyNameEn = String(stdRes.tax.tenCongTyEn || '').trim()
-    if (!companyNameEn && stdRes.tax.tenCongTy) {
-      companyNameEn = await translateCompanyNameToEnglishSafe(stdRes.tax.tenCongTy)
+    let companyNameEn = String(tx.tenCongTyEn || '').trim()
+    if (!companyNameEn && tx.tenCongTy) {
+      companyNameEn = await translateCompanyNameToEnglishSafe(tx.tenCongTy)
     }
 
     taxInfo.value = {
-      mst: stdRes.tax.mst || '',
-      tenCongTy: stdRes.tax.tenCongTy || '',
+      mst: tx.mst || '',
+      tenCongTy: tx.tenCongTy || '',
       tenCongTyEn: companyNameEn,
-      diaChi: stdRes.tax.diaChi || '',
-      nganhNgheChinh: stdRes.tax.nganhNgheChinh || ''
+      diaChi: tx.diaChi || '',
+      nganhNgheChinh: tx.nganhNgheChinh || ''
     }
     taxScanSourceMode.value = 'standard'
     asyncResultModal.value.show = false
@@ -6749,6 +6751,9 @@ const formatRefVndPrice = (val: any) => {
   return Math.round(num).toLocaleString('vi-VN') + ' ₫'
 }
 
+const refComparePopoverEl = ref<HTMLElement | null>(null)
+let lastRefCompareAnchorRect: { top: number; bottom: number; left: number } | null = null
+
 const refCompareMenu = reactive<{
   open: boolean
   loading: boolean
@@ -6774,6 +6779,31 @@ const refCompareMenu = reactive<{
   options: [],
   errorMsg: ''
 })
+
+const updateRefComparePopoverPosition = () => {
+  if (typeof window === 'undefined' || !lastRefCompareAnchorRect) return
+  const rect = lastRefCompareAnchorRect
+  const popEl = refComparePopoverEl.value
+  const popW = popEl?.offsetWidth || Math.min(420, window.innerWidth - 20)
+  const popH = popEl?.offsetHeight || (refCompareMenu.loading ? 190 : 340)
+  const margin = 12
+
+  refCompareMenu.left = Math.min(
+    Math.max(10, rect.left),
+    Math.max(10, window.innerWidth - popW - margin)
+  )
+
+  if (rect.bottom + popH + margin <= window.innerHeight) {
+    refCompareMenu.top = Math.max(margin, rect.bottom + 6)
+  } else if (rect.top - popH - 6 >= margin) {
+    refCompareMenu.top = rect.top - popH - 6
+  } else {
+    refCompareMenu.top = Math.max(
+      margin,
+      Math.min(rect.bottom + 6, window.innerHeight - popH - margin)
+    )
+  }
+}
 
 const buildRefCompareOptionsForVendor = (vendor: RefVendorType, data: any): RefCompareOption[] => {
   const opts: RefCompareOption[] = []
@@ -7007,14 +7037,23 @@ const openRefCompareMenu = async (e: MouseEvent, rawItem: any) => {
   let left = 120
   if (btn && typeof window !== 'undefined') {
     const rect = btn.getBoundingClientRect()
-    const menuW = Math.min(390, window.innerWidth - 20)
-    const menuH = 260
-    left = Math.min(Math.max(10, rect.left), Math.max(10, window.innerWidth - menuW - 12))
-    if (rect.bottom + menuH + 12 > window.innerHeight && rect.top > menuH + 12) {
-      top = Math.max(12, rect.top - menuH - 8)
-    } else {
-      top = rect.bottom + 6
+    lastRefCompareAnchorRect = {
+      top: rect.top,
+      bottom: rect.bottom,
+      left: rect.left
     }
+    const menuW = Math.min(420, window.innerWidth - 20)
+    const estH = 190
+    left = Math.min(Math.max(10, rect.left), Math.max(10, window.innerWidth - menuW - 12))
+    if (rect.bottom + estH + 12 <= window.innerHeight) {
+      top = Math.max(12, rect.bottom + 6)
+    } else if (rect.top - estH - 6 >= 12) {
+      top = rect.top - estH - 6
+    } else {
+      top = Math.max(12, window.innerHeight - estH - 12)
+    }
+  } else {
+    lastRefCompareAnchorRect = null
   }
 
   const enriched = enrichItemForRefCompare(rawItem) || rawItem
@@ -7030,6 +7069,9 @@ const openRefCompareMenu = async (e: MouseEvent, rawItem: any) => {
   refCompareMenu.errorMsg = ''
   refCompareMenu.loading = true
   refCompareMenu.open = true
+
+  await nextTick()
+  updateRefComparePopoverPosition()
 
   try {
     await fetchVendorRefFilesMeta()
@@ -7053,6 +7095,8 @@ const openRefCompareMenu = async (e: MouseEvent, rawItem: any) => {
     refCompareMenu.errorMsg = 'Không thể tải dữ liệu đối chiếu: ' + (err?.message || err)
   } finally {
     refCompareMenu.loading = false
+    await nextTick()
+    updateRefComparePopoverPosition()
   }
 }
 
@@ -12126,26 +12170,43 @@ async function processCustomerImportStandard(
   lastCustomerImportMode.value = mode
 
   const modeLabel = mode === 'khach_dxmh' ? 'File ĐXMH / PO' : 'File Báo Giá'
+  if (isImageDocFile(file)) {
+    openAiImportFallback(
+      mode,
+      file,
+      `Tài liệu đang ở định dạng hình ảnh nên bộ quét ${modeLabel} tiêu chuẩn không thể đọc trực tiếp.`
+    )
+    return
+  }
+
   showAsyncLoading(`Đang quét thông tin khách hàng tiêu chuẩn từ ${modeLabel}...`)
   try {
-    const stdRes =
+    const stdCustomer =
       mode === 'khach_dxmh'
         ? await parseCustomerDxmhStandardFromFile(file)
         : await parseCustomerQuoteStandardFromFile(file)
 
-    if (!stdRes.isSuccess) {
+    const hasValidCustomer = Boolean(
+      stdCustomer &&
+        (stdCustomer.Ten_cong_ty ||
+          stdCustomer.COMPANY ||
+          stdCustomer.Ten_khach_hang ||
+          stdCustomer.MST)
+    )
+
+    if (!hasValidCustomer || !stdCustomer) {
       asyncResultModal.value.show = false
       openAiImportFallback(
         mode,
         file,
-        stdRes.reason || `Quét thường không nhận diện được Tên công ty / Người liên hệ từ ${modeLabel}.`
+        `Quét thường không nhận diện được Tên công ty / Người liên hệ từ ${modeLabel}.`
       )
       return
     }
 
     asyncResultModal.value.show = false
     await applyExtractedCustomerFieldsToForm(
-      stdRes.customer,
+      stdCustomer,
       `Đã import thông tin khách hàng từ ${modeLabel} thành công`
     )
   } catch (err: any) {
@@ -18155,10 +18216,18 @@ function identifyExcelCol(text: string): string | null {
 function excelCellText(v: any): string {
   if (v === null || v === undefined) return ''
   if (typeof v === 'string') return v
-  if (typeof v === 'number') return String(v)
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v)
+  if (v instanceof Date) return isNaN(v.getTime()) ? '' : v.toISOString().slice(0, 10)
   if (v.richText && Array.isArray(v.richText)) return v.richText.map((r: any) => r.text || '').join('')
-  if (v.text) return String(v.text)
-  if (v.result !== undefined) return String(v.result)
+  if (typeof v.text === 'string') return v.text
+  if (v.result !== undefined && v.result !== null) {
+    if (typeof v.result === 'object') {
+      if (v.result.error) return ''
+      return excelCellText(v.result)
+    }
+    return String(v.result)
+  }
+  if (typeof v === 'object') return ''
   return String(v)
 }
 
@@ -22177,38 +22246,137 @@ async function processMuaHangFileStandard(file: File) {
             if (!row || row.hidden) continue
 
             if (headerRowIndex === -1) {
-              const cellTexts: string[] = []
+              const nonEmptyCells: string[] = []
               for (let c = 1; c <= 25; c++) {
                 if (isColHidden(c)) continue
-                cellTexts.push(excelCellText(row.getCell(c).value).toUpperCase().replace(/\s+/g, ' ').trim())
+                const cell = row.getCell(c)
+                if (cell.master && cell.master.address !== cell.address) continue
+                const txt = excelCellText(cell.value).toUpperCase().replace(/\s+/g, ' ').trim()
+                if (txt) nonEmptyCells.push(txt)
               }
-              const rowStr = cellTexts.join('|')
-              if (
+              const rowStr = nonEmptyCells.join('|')
+              const hasIndexCol = nonEmptyCells.some(
+                c => c === 'STT' || c === 'MSP' || c === 'NO.' || c === 'NO' || c === 'TT' || c === '#' || c === 'ITEM' || c.startsWith('STT ')
+              )
+              const hasItemCol =
                 rowStr.includes('MÔ TẢ') ||
+                rowStr.includes('TÊN HÀNG') ||
+                rowStr.includes('DIỄN GIẢI') ||
+                rowStr.includes('DESCRIPTION') ||
+                rowStr.includes('SẢN PHẨM') ||
+                rowStr.includes('THIẾT BỊ') ||
+                rowStr.includes('HẠNG MỤC') ||
+                rowStr.includes('DỊCH VỤ') ||
+                rowStr.includes('MODEL') ||
+                rowStr.includes('PART NUMBER') ||
+                rowStr.includes('PART#') ||
+                rowStr.includes('SKU') ||
+                rowStr.includes('MÃ HÀNG') ||
+                nonEmptyCells.some(c => c === 'PS' || c.startsWith('PS ') || c === 'P/N' || c === 'PN')
+              const hasPriceOrQtyCol =
+                rowStr.includes('ĐƠN GIÁ') ||
+                rowStr.includes('GIÁ VỐN') ||
+                rowStr.includes('GIÁ NHẬP') ||
+                rowStr.includes('UNIT PRICE') ||
                 rowStr.includes('PRICES LIST') ||
                 rowStr.includes('LIST PRICE') ||
+                rowStr.includes('PRICE LIST') ||
+                rowStr.includes('MSRP') ||
+                rowStr.includes('GIÁ THAM KHẢO') ||
                 rowStr.includes('DISCOUNT') ||
-                ((rowStr.includes('STT') || rowStr.includes('MSP') || rowStr.includes('NO.') || rowStr.includes('TT')) &&
-                  (rowStr.includes('ĐƠN GIÁ') || rowStr.includes('MODEL') || rowStr.includes('PS') || rowStr.includes('TÊN HÀNG') || rowStr.includes('SẢN PHẨM') || rowStr.includes('THÀNH TIỀN') || rowStr.includes('TỔNG')))
-              ) {
-                headerRowIndex = r
+                rowStr.includes('OFF HÃNG') ||
+                rowStr.includes('THÀNH TIỀN') ||
+                rowStr.includes('TRƯỚC THUẾ') ||
+                rowStr.includes('CHƯA VAT') ||
+                rowStr.includes('TỔNG TIỀN') ||
+                rowStr.includes('ESTIMATED VALUE') ||
+                rowStr.includes('SỐ LƯỢNG') ||
+                nonEmptyCells.some(c => c === 'SL' || c === 'S.L' || c === 'S.L.' || c === 'QTY' || c === 'AMOUNT' || c === 'TOTAL' || c === 'TỔNG')
+
+              const mapExcelPurchaseHeaderRow = (targetRow: any, isSubRow = false) => {
                 for (let c = 1; c <= 25; c++) {
                   if (isColHidden(c)) continue
-                  const cell = row.getCell(c)
+                  const cell = targetRow.getCell(c)
                   if (cell.master && cell.master.address !== cell.address) continue
                   const header = excelCellText(cell.value).toUpperCase().replace(/\s+/g, ' ').trim()
                   if (!header) continue
-                  if ((header.includes('STT') || header === 'NO.' || header === 'TT' || header === 'MSP') && colMap['stt'] === undefined) colMap['stt'] = c
-                  else if ((header === 'PS' || header.startsWith('PS ') || header.includes('MODEL') || header.includes('PART NUMBER') || header.includes('PART#') || header.includes('SKU') || header.includes('MÃ HÀNG') || header === 'P/N' || header === 'PN') && colMap['ps'] === undefined) colMap['ps'] = c
-                  else if ((header.includes('MÔ TẢ') || header.includes('TÊN HÀNG') || header.includes('DIỄN GIẢI') || header.includes('DESCRIPTION') || header.includes('SẢN PHẨM') || header.includes('HẠNG MỤC') || header.includes('THIẾT BỊ')) && colMap['mota'] === undefined) colMap['mota'] = c
+                  if ((header.includes('STT') || header === 'NO.' || header === 'NO' || header === 'TT' || header === 'MSP' || header === '#' || header === 'ITEM') && colMap['stt'] === undefined) colMap['stt'] = c
+                  else if ((header === 'PS' || header.startsWith('PS ') || header.includes('MODEL') || header.includes('PART NUMBER') || header.includes('PART#') || header.includes('SKU') || header.includes('MÃ HÀNG') || header.includes('MÃ SP') || header === 'P/N' || header === 'PN') && colMap['ps'] === undefined) colMap['ps'] = c
+                  else if ((header.includes('MÔ TẢ') || header.includes('TÊN HÀNG') || header.includes('DIỄN GIẢI') || header.includes('DESCRIPTION') || header.includes('SẢN PHẨM') || header.includes('HẠNG MỤC') || header.includes('THIẾT BỊ') || header.includes('NỘI DUNG') || header.includes('DỊCH VỤ')) && colMap['mota'] === undefined) colMap['mota'] = c
                   else if ((header.includes('TERM') || header.includes('THỜI HẠN') || header.includes('DURATION')) && colMap['license_duration'] === undefined) colMap['license_duration'] = c
                   else if ((header === 'ĐVT' || header === 'DVT' || header.includes('ĐƠN VỊ') || header === 'UNIT') && colMap['dvt'] === undefined) colMap['dvt'] = c
-                  else if ((header === 'S.L' || header === 'S.L.' || header === 'SL' || header.includes('SỐ LƯỢNG') || header === 'QTY') && colMap['sl'] === undefined) colMap['sl'] = c
-                  else if ((header.includes('PRICES LIST') || header.includes('LIST PRICE') || header.includes('PRICE LIST')) && colMap['listPrice'] === undefined) colMap['listPrice'] = c
-                  else if ((header.includes('DISCOUNT') || header.includes('OFF HÃNG')) && colMap['discount'] === undefined) colMap['discount'] = c
-                  else if ((header.includes('ĐƠN GIÁ') || header.includes('GIÁ VỐN') || header.includes('UNIT PRICE')) && colMap['giaVon'] === undefined) colMap['giaVon'] = c
-                  else if (((header.includes('THÀNH TIỀN') && !header.includes('CÓ VAT') && !header.includes('SAU VAT') && !header.includes('SAU THUẾ')) || header.includes('CHƯA VAT') || header.includes('TRƯỚC THUẾ') || header === 'TỔNG' || header.includes('TỔNG TIỀN') || header === 'AMOUNT' || header === 'TOTAL') && colMap['truocThue'] === undefined) colMap['truocThue'] = c
-                  else if ((header.startsWith('VAT') || (header.includes('THUẾ') && !header.includes('THÀNH TIỀN') && !header.includes('TRƯỚC') && !header.includes('SAU'))) && colMap['vat'] === undefined) colMap['vat'] = c
+                  else if ((header === 'S.L' || header === 'S.L.' || header === 'SL' || header.includes('SỐ LƯỢNG') || header.includes('S.LƯỢNG') || header === 'QTY' || header === 'QUANTITY') && colMap['sl'] === undefined) colMap['sl'] = c
+                  else if ((header.includes('PRICES LIST') || header.includes('LIST PRICE') || header.includes('PRICE LIST') || header.includes('MSRP') || header.includes('GIÁ THAM KHẢO')) && colMap['listPrice'] === undefined) colMap['listPrice'] = c
+                  else if ((header.includes('DISCOUNT') || header.includes('OFF HÃNG') || header.includes('CHIẾT KHẤU')) && colMap['discount'] === undefined) colMap['discount'] = c
+                  else if (header.includes('ĐƠN GIÁ') || header.includes('GIÁ VỐN') || header.includes('GIÁ NHẬP') || header.includes('UNIT PRICE') || header.includes('GIÁ MUA')) {
+                    if (isSubRow && colMap['truocThue'] === c) delete colMap['truocThue']
+                    if (colMap['giaVon'] === undefined) colMap['giaVon'] = c
+                  } else if (
+                    ((header.includes('THÀNH TIỀN') && !header.includes('CÓ VAT') && !header.includes('SAU VAT') && !header.includes('SAU THUẾ')) ||
+                      header.includes('CHƯA VAT') ||
+                      header.includes('TRƯỚC THUẾ') ||
+                      header === 'TỔNG' ||
+                      header.includes('TỔNG TIỀN') ||
+                      header === 'AMOUNT' ||
+                      header === 'TOTAL' ||
+                      header.includes('ESTIMATED VALUE'))
+                  ) {
+                    if (colMap['truocThue'] === undefined || (isSubRow && (header.includes('TRƯỚC THUẾ') || header.includes('CHƯA VAT')))) {
+                      colMap['truocThue'] = c
+                    }
+                  } else if ((header.includes('SAU THUẾ') || header.includes('SAU VAT') || header.includes('CÓ VAT')) && colMap['sauThue'] === undefined) {
+                    colMap['sauThue'] = c
+                  } else if ((header.startsWith('VAT') || (header.includes('THUẾ') && !header.includes('THÀNH TIỀN') && !header.includes('TRƯỚC') && !header.includes('SAU'))) && colMap['vat'] === undefined) {
+                    colMap['vat'] = c
+                  }
+                }
+              }
+
+              if (nonEmptyCells.length >= 2 && hasItemCol && (hasIndexCol || hasPriceOrQtyCol)) {
+                headerRowIndex = r
+                mapExcelPurchaseHeaderRow(row, false)
+
+                // Hỗ trợ tiêu đề gộp 2 dòng liên tiếp (Merged 2-row Header)
+                if (r + 1 <= maxRow) {
+                  const nextRow = ws.getRow(r + 1)
+                  if (nextRow && !nextRow.hidden) {
+                    const nextCells: string[] = []
+                    for (let c = 1; c <= 25; c++) {
+                      if (isColHidden(c)) continue
+                      const nc = nextRow.getCell(c)
+                      if (nc.master && nc.master.address !== nc.address) continue
+                      const nt = excelCellText(nc.value).toUpperCase().replace(/\s+/g, ' ').trim()
+                      if (nt) nextCells.push(nt)
+                    }
+                    const sttNext = colMap['stt'] !== undefined ? excelCellText(nextRow.getCell(colMap['stt']).value).trim() : ''
+                    const looksLikeDataRow = /^\d+\.?$/.test(sttNext) && nextCells.some(x => parseCleanNumber(x) > 100)
+                    const hasSubHeaderKeywords =
+                      nextCells.length > 0 &&
+                      nextCells.every(x => x.length <= 45) &&
+                      nextCells.some(
+                        x =>
+                          x.includes('ĐƠN GIÁ') ||
+                          x.includes('GIÁ VỐN') ||
+                          x.includes('TRƯỚC THUẾ') ||
+                          x.includes('CHƯA VAT') ||
+                          x.includes('SAU THUẾ') ||
+                          x.includes('CÓ VAT') ||
+                          x.includes('SAU VAT') ||
+                          x === 'VAT' ||
+                          x.includes('THUẾ VAT') ||
+                          x.includes('THÀNH TIỀN') ||
+                          x.includes('UNIT PRICE') ||
+                          x.includes('LIST PRICE') ||
+                          x === 'AMOUNT' ||
+                          x.includes('SỐ LƯỢNG') ||
+                          x === 'SL' ||
+                          x === 'QTY'
+                      )
+                    if (!looksLikeDataRow && hasSubHeaderKeywords) {
+                      mapExcelPurchaseHeaderRow(nextRow, true)
+                      r++
+                    }
+                  }
                 }
               }
               continue
@@ -22269,17 +22437,22 @@ async function processMuaHangFileStandard(file: File) {
             const sl = parseCleanNumber(colMap['sl'] !== undefined ? excelCellText(row.getCell(colMap['sl']).value) : 1) || 1
             const listPrice = colMap['listPrice'] !== undefined ? parseCleanNumber(excelCellText(row.getCell(colMap['listPrice']).value)) : 0
             let giaVon = colMap['giaVon'] !== undefined ? parseCleanNumber(excelCellText(row.getCell(colMap['giaVon']).value)) : 0
-            const truocThue = colMap['truocThue'] !== undefined ? parseCleanNumber(excelCellText(row.getCell(colMap['truocThue']).value)) : 0
-            if (giaVon === 0 && truocThue > 0 && sl > 0) {
-              giaVon = Math.round(truocThue / sl)
-            }
-            if (listPrice === 0 && giaVon === 0 && truocThue === 0) continue
+            let truocThue = colMap['truocThue'] !== undefined ? parseCleanNumber(excelCellText(row.getCell(colMap['truocThue']).value)) : 0
+            const sauThue = colMap['sauThue'] !== undefined ? parseCleanNumber(excelCellText(row.getCell(colMap['sauThue']).value)) : 0
 
             const vatVal = colMap['vat'] !== undefined ? parseCleanNumber(excelCellText(row.getCell(colMap['vat']).value)) : 0
             let vatPct = 0
             if (vatVal > 0 && vatVal < 1) vatPct = Math.round(vatVal * 100)
             else if (vatVal > 0 && truocThue > 0 && vatVal > 100) vatPct = Math.round((vatVal / truocThue) * 100)
             else if (vatVal > 0 && vatVal <= 100) vatPct = Math.round(vatVal)
+
+            if (giaVon === 0 && truocThue === 0 && listPrice === 0 && sauThue > 0) {
+              truocThue = vatPct > 0 ? Math.round(sauThue / (1 + vatPct / 100)) : sauThue
+            }
+            if (giaVon === 0 && truocThue > 0 && sl > 0) {
+              giaVon = Math.round(truocThue / sl)
+            }
+            if (listPrice === 0 && giaVon === 0 && truocThue === 0) continue
 
             const motaLines = motaPlain.split(/\r?\n/).map(s => s.trim()).filter(Boolean)
             const effectiveTenHang =
@@ -22557,7 +22730,9 @@ function pdfTokensToFormattedHtml(lines: PdfRichToken[][]): string {
 
 async function parsePdfQuoteBuffer(arrayBuffer: ArrayBuffer, isPurchaseMode = false): Promise<{ items: any[]; termsHtml: string; extractedCustomer: Partial<KhachHang> }> {
   const extractedCustomer: Partial<KhachHang> = {};
-  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+  const getDocFn = (pdfjsLib as any)?.getDocument || (pdfjsLib as any)?.default?.getDocument;
+  if (!getDocFn) throw new Error('Không khởi tạo được trình đọc PDF.');
+  const pdf = await getDocFn({ data: new Uint8Array(arrayBuffer) }).promise;
   const allLines: PdfVisualLine[] = [];
   let pageOffsetY = 0;
 
@@ -22573,7 +22748,8 @@ async function parsePdfQuoteBuffer(arrayBuffer: ArrayBuffer, isPurchaseMode = fa
     try {
       const opList = await page.getOperatorList();
       const revOps: Record<number, string> = {};
-      for (const [k, v] of Object.entries((pdfjsLib as any).OPS || {})) {
+      const opsTable = (pdfjsLib as any)?.OPS || (pdfjsLib as any)?.default?.OPS || {};
+      for (const [k, v] of Object.entries(opsTable)) {
         revOps[Number(v)] = k;
       }
 
@@ -22715,10 +22891,10 @@ async function parsePdfQuoteBuffer(arrayBuffer: ArrayBuffer, isPurchaseMode = fa
 
   const detectedVendor = extractVendorNameFromLines(allLines.slice(0, 30).map(l => l.plainText));
 
-  // 1. Find Table Header Band anchored around the line containing STT / NO. / MSP
+  // 1. Find Table Header Band anchored around the line containing STT / NO. / MSP (or SKU/Part#/Description + Price)
   let sttLineIdx = -1;
   for (let i = 0; i < allLines.length; i++) {
-    const hasSttToken = allLines[i].tokens.some(t => /^(STT|NO\.?|MSP|TT)$/i.test(t.str.trim()));
+    const hasSttToken = allLines[i].tokens.some(t => /^(STT|NO\.?|MSP|TT|#|ITEM)$/i.test(t.str.trim()));
     if (!hasSttToken) continue;
     const bandText = allLines
       .slice(Math.max(0, i - 2), Math.min(allLines.length, i + 3))
@@ -22726,11 +22902,31 @@ async function parsePdfQuoteBuffer(arrayBuffer: ArrayBuffer, isPurchaseMode = fa
       .join(' ')
       .toUpperCase();
     if (
-      (bandText.includes('TÊN HÀNG') || bandText.includes('SẢN PHẨM') || bandText.includes('HÀNG HÓA') || bandText.includes('THIẾT BỊ') || bandText.includes('DIỄN GIẢI') || bandText.includes('MODEL') || bandText.includes('PART#') || bandText.includes('MÔ TẢ') || bandText.includes('DESCRIPTION') || bandText.includes('PS')) &&
-      (bandText.includes('ĐƠN GIÁ') || bandText.includes('THÀNH TIỀN') || bandText.includes('TỔNG') || bandText.includes('S.L') || bandText.includes('SỐ LƯỢNG') || bandText.includes('UNIT PRICE') || bandText.includes('ESTIMATED VALUE') || bandText.includes('PRICES LIST') || bandText.includes('LIST PRICE'))
+      (bandText.includes('TÊN HÀNG') || bandText.includes('SẢN PHẨM') || bandText.includes('HÀNG HÓA') || bandText.includes('THIẾT BỊ') || bandText.includes('DIỄN GIẢI') || bandText.includes('MODEL') || bandText.includes('PART') || bandText.includes('SKU') || bandText.includes('MÃ HÀNG') || bandText.includes('MÔ TẢ') || bandText.includes('DESCRIPTION') || bandText.includes('PS')) &&
+      (bandText.includes('ĐƠN GIÁ') || bandText.includes('THÀNH TIỀN') || bandText.includes('TỔNG') || bandText.includes('S.L') || bandText.includes('SL') || bandText.includes('SỐ LƯỢNG') || bandText.includes('QTY') || bandText.includes('UNIT PRICE') || bandText.includes('AMOUNT') || bandText.includes('ESTIMATED VALUE') || bandText.includes('PRICES LIST') || bandText.includes('LIST PRICE'))
     ) {
       sttLineIdx = i;
       break;
+    }
+  }
+
+  if (sttLineIdx === -1) {
+    for (let i = 0; i < allLines.length; i++) {
+      if (allLines[i].tokens.length < 2) continue;
+      const lineUpper = allLines[i].plainText.toUpperCase();
+      if (!/\b(PART\s*NUMBER|PART#|SKU|MODEL|MÃ\s*HÀNG|P\/N|DESCRIPTION|TÊN\s*HÀNG|MÔ\s*TẢ|DIỄN\s*GIẢI)\b/i.test(lineUpper)) continue;
+      const bandText = allLines
+        .slice(Math.max(0, i - 1), Math.min(allLines.length, i + 2))
+        .map(l => l.plainText)
+        .join(' ')
+        .toUpperCase();
+      if (
+        (bandText.includes('ĐƠN GIÁ') || bandText.includes('UNIT PRICE') || bandText.includes('PRICES LIST') || bandText.includes('LIST PRICE') || bandText.includes('MSRP') || bandText.includes('THÀNH TIỀN') || bandText.includes('AMOUNT')) &&
+        (bandText.includes('QTY') || bandText.includes('SL') || bandText.includes('S.L') || bandText.includes('SỐ LƯỢNG') || bandText.includes('PART') || bandText.includes('SKU') || bandText.includes('MODEL'))
+      ) {
+        sttLineIdx = i;
+        break;
+      }
     }
   }
 
@@ -24162,7 +24358,43 @@ async function processBaoGiaFileStandard(file: File) {
 
     if (isPdfFile) {
       const arrayBuffer = await file.arrayBuffer();
-      const { items: pdfItems, termsHtml: pdfTermsHtml, extractedCustomer: pdfCustomer } = await parsePdfQuoteBuffer(arrayBuffer);
+      let pdfItems: any[] = [];
+      let pdfTermsHtml = '';
+      let pdfCustomer: Partial<KhachHang> = {};
+
+      try {
+        const parsedRich = await parsePdfQuoteBuffer(arrayBuffer);
+        pdfItems = parsedRich.items || [];
+        pdfTermsHtml = parsedRich.termsHtml || '';
+        pdfCustomer = parsedRich.extractedCustomer || {};
+      } catch (pdfRichErr) {
+        console.warn('Bộ đọc PDF định dạng cao chuyển sang fallback bảng chuẩn:', pdfRichErr);
+      }
+
+      if (pdfItems.length === 0) {
+        try {
+          const pdfInfo = await extractPdfTextAndCheckScanned(file);
+          if (!pdfInfo.isScannedPdf) {
+            const allPdfLines = pdfInfo.linesByPage.flat();
+            const pdfRows = allPdfLines.map(l => l.split('|').map(c => c.trim()));
+            const stdPdf = parseSalesQuoteSheetsStandard(
+              [{ name: 'PDF', rows: pdfRows }],
+              allPdfLines,
+              quoteCurrency.value || 'VND'
+            );
+            if (stdPdf.items.length > 0) {
+              pdfItems = stdPdf.items;
+              if (!pdfTermsHtml && stdPdf.termsHtml) pdfTermsHtml = stdPdf.termsHtml;
+              if (!pdfCustomer.Ten_cong_ty && !pdfCustomer.Ten_khach_hang) {
+                pdfCustomer = stdPdf.extractedCustomer as Partial<KhachHang>;
+              }
+            }
+          }
+        } catch (pdfFallbackErr) {
+          console.warn('Fallback đọc bảng PDF chuẩn thất bại:', pdfFallbackErr);
+        }
+      }
+
       asyncResultModal.value.show = false;
       if (pdfItems.length > 0) {
         if (pdfTermsHtml) {
@@ -24199,6 +24431,8 @@ async function processBaoGiaFileStandard(file: File) {
           if (!ws || newItems.length > 0) continue;
           let headerRowIndex = -1;
           let readingTerms = false;
+          let inQuoteSummary = false;
+          const quoteSummaryLines: string[] = [];
           const colMap: Record<string, number> = {};
           const maxRow = Math.min(ws.rowCount || 500, 500);
           const isColHidden = (c: number) => Boolean(ws.getColumn(c)?.hidden);
@@ -24208,56 +24442,163 @@ async function processBaoGiaFileStandard(file: File) {
             if (!row || row.hidden) continue;
 
             if (headerRowIndex === -1) {
-              const cellTexts: string[] = [];
+              const nonEmptyUpperCells: string[] = [];
               const rawRowCells: string[] = [];
               for (let c = 1; c <= 25; c++) {
                 if (isColHidden(c)) continue;
-                const rawCellVal = excelCellText(row.getCell(c).value).trim();
-                if (rawCellVal) rawRowCells.push(rawCellVal);
-                cellTexts.push(rawCellVal.toUpperCase());
+                const cell = row.getCell(c);
+                const rawCellVal = excelCellText(cell.value).trim();
+                if (rawCellVal && !(cell.master && cell.master.address !== cell.address)) {
+                  rawRowCells.push(rawCellVal);
+                  nonEmptyUpperCells.push(rawCellVal.toUpperCase().replace(/\s+/g, ' ').trim());
+                }
               }
               if (rawRowCells.length > 0) {
                 extractCustomerInfoFromHeaderStrings(rawRowCells, extractedCustomer);
               }
-              const rowStr = cellTexts.join('|');
-              if (
-                (rowStr.includes('STT') || rowStr.includes('NO.') || rowStr.includes('TT')) &&
-                (rowStr.includes('TÊN HÀNG') || rowStr.includes('MODEL') || rowStr.includes('PART#') || rowStr.includes('HÀNG HÓA') || rowStr.includes('SẢN PHẨM') || rowStr.includes('DIỄN GIẢI') || rowStr.includes('DESCRIPTION'))
-              ) {
+              const rowStr = nonEmptyUpperCells.join('|');
+              const hasIndexCol = nonEmptyUpperCells.some(
+                c => c === 'STT' || c === 'NO.' || c === 'NO' || c === 'TT' || c === '#' || c === 'ITEM' || c.startsWith('STT ')
+              );
+              const hasItemCol =
+                rowStr.includes('TÊN HÀNG') ||
+                rowStr.includes('MODEL') ||
+                rowStr.includes('PART#') ||
+                rowStr.includes('PART NUMBER') ||
+                rowStr.includes('SKU') ||
+                rowStr.includes('MÃ HÀNG') ||
+                rowStr.includes('HÀNG HÓA') ||
+                rowStr.includes('SẢN PHẨM') ||
+                rowStr.includes('THIẾT BỊ') ||
+                rowStr.includes('DIỄN GIẢI') ||
+                rowStr.includes('MÔ TẢ') ||
+                rowStr.includes('DESCRIPTION') ||
+                rowStr.includes('HẠNG MỤC') ||
+                rowStr.includes('DỊCH VỤ');
+              const hasPriceOrQtyCol =
+                rowStr.includes('ĐƠN GIÁ') ||
+                rowStr.includes('DON GIA') ||
+                rowStr.includes('GIÁ BÁN') ||
+                rowStr.includes('UNIT PRICE') ||
+                rowStr.includes('PRICES LIST') ||
+                rowStr.includes('LIST PRICE') ||
+                rowStr.includes('MSRP') ||
+                rowStr.includes('GIÁ THAM KHẢO') ||
+                rowStr.includes('THÀNH TIỀN') ||
+                rowStr.includes('TRƯỚC THUẾ') ||
+                rowStr.includes('ESTIMATED VALUE') ||
+                rowStr.includes('SỐ LƯỢNG') ||
+                nonEmptyUpperCells.some(c => c === 'SL' || c === 'S.L' || c === 'S.L.' || c === 'QTY' || c === 'AMOUNT' || c === 'TOTAL');
+
+              if (nonEmptyUpperCells.length >= 2 && hasItemCol && (hasIndexCol || hasPriceOrQtyCol)) {
                 headerRowIndex = r;
-                let modelCol: number | undefined;
-                let tenHangCandidateCol: number | undefined;
-                for (let c = 1; c <= 25; c++) {
-                  if (isColHidden(c)) continue;
-                  const cell = row.getCell(c);
-                  if (cell.master && cell.master.address !== cell.address) continue;
-                  const header = excelCellText(cell.value).toUpperCase().replace(/\s+/g, ' ').trim();
-                  if (!header) continue;
-                  if ((header.includes('STT') || header === 'NO.' || header === 'TT') && colMap['stt'] === undefined) colMap['stt'] = c;
-                  else if ((header === 'P/N' || header === 'PN' || header.includes('MÃ HÀNG') || header.includes('PART NUMBER')) && colMap['maHang'] === undefined) colMap['maHang'] = c;
-                  else if ((header.includes('MODEL') || header.includes('PART#') || header.includes('SKU')) && modelCol === undefined) {
-                    modelCol = c;
-                    if (colMap['tenHang'] === undefined) colMap['tenHang'] = c;
-                  } else if (header.includes('TÊN HÀNG') || header.includes('HÀNG HÓA') || header.includes('SẢN PHẨM') || header.includes('DỊCH VỤ')) {
-                    if (colMap['tenHang'] === undefined) colMap['tenHang'] = c;
-                    else if (colMap['tenHang'] === modelCol && tenHangCandidateCol === undefined) tenHangCandidateCol = c;
-                  } else if ((header === 'DESCRIPTION' || header === 'PRODUCT DESCRIPTION' || header.startsWith('DESCRIPTION (')) && colMap['description'] === undefined) colMap['description'] = c;
-                  else if ((header.includes('DIỄN GIẢI') || header.includes('DIEN GIAI') || header.includes('MÔ TẢ') || header.includes('THÔNG SỐ') || header.includes('ĐẶC TÍNH') || header.includes('NỘI DUNG') || header.includes('HẠNG MỤC') || header.includes('SPEC')) && colMap['features'] === undefined) colMap['features'] = c;
-                  else if ((header.includes('HÃNG') || header.includes('NHÀ CUNG CẤP')) && colMap['hang'] === undefined) colMap['hang'] = c;
-                  else if ((header.includes('ĐƠN VỊ') || header.includes('DON VI') || header === 'ĐVT' || header === 'DVT' || header === 'UNIT') && colMap['dvt'] === undefined) colMap['dvt'] = c;
-                  else if ((header.includes('THỜI HẠN') || header.includes('THOI HAN') || header.includes('DURATION')) && colMap['license_duration'] === undefined) colMap['license_duration'] = c;
-                  else if ((header.includes('BẢO HÀNH') || header.includes('BAO HANH') || header.includes('WARRANTY')) && colMap['baoHanh'] === undefined) colMap['baoHanh'] = c;
-                  else if ((header === 'S.L' || header === 'S.L.' || header.includes('SỐ LƯỢNG') || header.includes('S.LƯỢNG') || header === 'SL' || header === 'QTY') && colMap['sl'] === undefined) colMap['sl'] = c;
-                  else if ((header.includes('ĐƠN GIÁ') || header.includes('DON GIA') || header.includes('UNIT PRICE')) && colMap['donGia'] === undefined) colMap['donGia'] = c;
-                  else if (((header.includes('THÀNH TIỀN') && !header.includes('VAT') && !header.includes('SAU THUẾ') && !header.includes('SAU VAT')) || header.includes('TRƯỚC THUẾ') || header.includes('TRUOC THUE') || header.includes('ESTIMATED VALUE') || header.includes('AMOUNT')) && colMap['truocThue'] === undefined) colMap['truocThue'] = c;
-                  else if ((header === 'VAT' || header === 'THUẾ VAT' || (header.includes('THUẾ') && !header.includes('TRƯỚC') && !header.includes('SAU') && !header.includes('THÀNH TIỀN'))) && colMap['vat'] === undefined) colMap['vat'] = c;
+                const headerState: { modelCol?: number; tenHangCandidateCol?: number } = {};
+                const mapExcelSalesHeaderRow = (targetRow: any, isSubRow = false) => {
+                  for (let c = 1; c <= 25; c++) {
+                    if (isColHidden(c)) continue;
+                    const cell = targetRow.getCell(c);
+                    if (cell.master && cell.master.address !== cell.address) continue;
+                    const header = excelCellText(cell.value).toUpperCase().replace(/\s+/g, ' ').trim();
+                    if (!header) continue;
+                    if ((header.includes('STT') || header === 'NO.' || header === 'NO' || header === 'TT' || header === '#' || header === 'ITEM') && colMap['stt'] === undefined) colMap['stt'] = c;
+                    else if ((header === 'P/N' || header === 'PN' || header.includes('MÃ HÀNG') || header.includes('PART NUMBER') || header.includes('MÃ SP') || header.includes('MÃ SẢN PHẨM')) && colMap['maHang'] === undefined) colMap['maHang'] = c;
+                    else if ((header.includes('MODEL') || header.includes('PART#') || header.includes('SKU')) && headerState.modelCol === undefined) {
+                      headerState.modelCol = c;
+                      if (colMap['tenHang'] === undefined) colMap['tenHang'] = c;
+                    } else if (header.includes('TÊN HÀNG') || header.includes('HÀNG HÓA') || header.includes('SẢN PHẨM') || header.includes('THIẾT BỊ') || header.includes('DỊCH VỤ')) {
+                      if (colMap['tenHang'] === undefined) colMap['tenHang'] = c;
+                      else if (colMap['tenHang'] === headerState.modelCol && headerState.tenHangCandidateCol === undefined) headerState.tenHangCandidateCol = c;
+                    } else if ((header === 'DESCRIPTION' || header === 'PRODUCT DESCRIPTION' || header.startsWith('DESCRIPTION (')) && colMap['description'] === undefined) colMap['description'] = c;
+                    else if ((header.includes('DIỄN GIẢI') || header.includes('DIEN GIAI') || header.includes('MÔ TẢ') || header.includes('THÔNG SỐ') || header.includes('ĐẶC TÍNH') || header.includes('NỘI DUNG') || header.includes('HẠNG MỤC') || header.includes('SPEC')) && colMap['features'] === undefined) colMap['features'] = c;
+                    else if ((header.includes('HÃNG') || header.includes('NHÀ CUNG CẤP') || header === 'BRAND' || header === 'VENDOR') && colMap['hang'] === undefined) colMap['hang'] = c;
+                    else if ((header.includes('ĐƠN VỊ') || header.includes('DON VI') || header === 'ĐVT' || header === 'DVT' || header === 'UNIT') && colMap['dvt'] === undefined) colMap['dvt'] = c;
+                    else if ((header.includes('THỜI HẠN') || header.includes('THOI HAN') || header.includes('DURATION') || header.includes('TERM')) && colMap['license_duration'] === undefined) colMap['license_duration'] = c;
+                    else if ((header.includes('BẢO HÀNH') || header.includes('BAO HANH') || header.includes('WARRANTY')) && colMap['baoHanh'] === undefined) colMap['baoHanh'] = c;
+                    else if ((header === 'S.L' || header === 'S.L.' || header.includes('SỐ LƯỢNG') || header.includes('S.LƯỢNG') || header === 'SL' || header === 'QTY' || header === 'QUANTITY') && colMap['sl'] === undefined) colMap['sl'] = c;
+                    else if (
+                      header.includes('ĐƠN GIÁ') ||
+                      header.includes('DON GIA') ||
+                      header.includes('GIÁ BÁN') ||
+                      header.includes('UNIT PRICE') ||
+                      header.includes('PRICES LIST') ||
+                      header.includes('LIST PRICE') ||
+                      header.includes('MSRP') ||
+                      header.includes('GIÁ THAM KHẢO')
+                    ) {
+                      if (isSubRow && colMap['truocThue'] === c) delete colMap['truocThue'];
+                      if (colMap['donGia'] === undefined) colMap['donGia'] = c;
+                    } else if (
+                      ((header.includes('THÀNH TIỀN') && !header.includes('SAU THUẾ') && !header.includes('SAU VAT') && !header.includes('CÓ VAT')) ||
+                        header.includes('TRƯỚC THUẾ') ||
+                        header.includes('TRUOC THUE') ||
+                        header.includes('CHƯA VAT') ||
+                        header.includes('ESTIMATED VALUE') ||
+                        header === 'AMOUNT' ||
+                        header === 'TOTAL' ||
+                        header.includes('TỔNG TIỀN'))
+                    ) {
+                      if (colMap['truocThue'] === undefined || (isSubRow && (header.includes('TRƯỚC THUẾ') || header.includes('TRUOC THUE') || header.includes('CHƯA VAT')))) {
+                        colMap['truocThue'] = c;
+                      }
+                    } else if ((header.includes('SAU THUẾ') || header.includes('SAU VAT') || header.includes('CÓ VAT')) && colMap['sauThue'] === undefined) {
+                      colMap['sauThue'] = c;
+                    } else if ((header === 'VAT' || header.startsWith('VAT ') || header === 'THUẾ VAT' || (header.includes('THUẾ') && !header.includes('TRƯỚC') && !header.includes('SAU') && !header.includes('THÀNH TIỀN'))) && colMap['vat'] === undefined) {
+                      colMap['vat'] = c;
+                    }
+                  }
+                };
+
+                mapExcelSalesHeaderRow(row, false);
+
+                // Hỗ trợ tiêu đề gộp 2 dòng liên tiếp (Merged 2-row Header)
+                if (r + 1 <= maxRow) {
+                  const nextRow = ws.getRow(r + 1);
+                  if (nextRow && !nextRow.hidden) {
+                    const nextCells: string[] = [];
+                    for (let c = 1; c <= 25; c++) {
+                      if (isColHidden(c)) continue;
+                      const nc = nextRow.getCell(c);
+                      if (nc.master && nc.master.address !== nc.address) continue;
+                      const nt = excelCellText(nc.value).toUpperCase().replace(/\s+/g, ' ').trim();
+                      if (nt) nextCells.push(nt);
+                    }
+                    const sttNext = colMap['stt'] !== undefined ? excelCellText(nextRow.getCell(colMap['stt']).value).trim() : '';
+                    const looksLikeDataRow = /^\d+\.?$/.test(sttNext) && nextCells.some(x => parseCleanNumber(x) > 100);
+                    const hasSubHeaderKeywords =
+                      nextCells.length > 0 &&
+                      nextCells.every(x => x.length <= 45) &&
+                      nextCells.some(
+                        x =>
+                          x.includes('ĐƠN GIÁ') ||
+                          x.includes('DON GIA') ||
+                          x.includes('TRƯỚC THUẾ') ||
+                          x.includes('TRUOC THUE') ||
+                          x.includes('CHƯA VAT') ||
+                          x.includes('SAU THUẾ') ||
+                          x.includes('CÓ VAT') ||
+                          x.includes('SAU VAT') ||
+                          x === 'VAT' ||
+                          x.includes('THUẾ VAT') ||
+                          x.includes('THÀNH TIỀN') ||
+                          x.includes('UNIT PRICE') ||
+                          x === 'AMOUNT' ||
+                          x.includes('SỐ LƯỢNG') ||
+                          x === 'SL' ||
+                          x === 'QTY'
+                      );
+                    if (!looksLikeDataRow && hasSubHeaderKeywords) {
+                      mapExcelSalesHeaderRow(nextRow, true);
+                      r++;
+                    }
+                  }
                 }
-                if (tenHangCandidateCol !== undefined) {
+
+                if (headerState.tenHangCandidateCol !== undefined) {
                   if (colMap['features'] !== undefined || colMap['description'] !== undefined) {
-                    if (modelCol !== undefined && colMap['maHang'] === undefined) colMap['maHang'] = modelCol;
-                    colMap['tenHang'] = tenHangCandidateCol;
+                    if (headerState.modelCol !== undefined && colMap['maHang'] === undefined) colMap['maHang'] = headerState.modelCol;
+                    colMap['tenHang'] = headerState.tenHangCandidateCol;
                   } else {
-                    colMap['features'] = tenHangCandidateCol;
+                    colMap['features'] = headerState.tenHangCandidateCol;
                   }
                 }
                 if (colMap['features'] === undefined && colMap['description'] !== undefined) {
@@ -24284,21 +24625,38 @@ async function processBaoGiaFileStandard(file: File) {
             const descriptionHtml = descCell ? excelCellToFormattedHtml(descCell) : '';
 
             let rowAllUpper = `${stt}|${tenHang.toUpperCase()}|${featuresPlain.toUpperCase()}`;
+            const rowPlainSummaryParts: string[] = [];
             for (let c = 1; c <= 14; c++) {
               if (isColHidden(c)) continue;
               const cell = row.getCell(c);
               if (cell.master && cell.master.address !== cell.address) continue;
-              const t = excelCellText(cell.value).trim().toUpperCase();
-              if (t) rowAllUpper += `|${t}`;
+              const rawT = excelCellText(cell.value).trim();
+              if (rawT) {
+                rowPlainSummaryParts.push(rawT);
+                rowAllUpper += `|${rawT.toUpperCase()}`;
+              }
             }
 
             if (
               !readingTerms &&
-              (rowAllUpper.includes('TỔNG CỘNG') ||
-                rowAllUpper.includes('ĐIỀU KHOẢN') ||
-                rowAllUpper.includes('ĐIỀU KIỆN THƯƠNG MẠI'))
+              (rowAllUpper.includes('ĐIỀU KHOẢN') || rowAllUpper.includes('ĐIỀU KIỆN THƯƠNG MẠI'))
             ) {
               readingTerms = true;
+            }
+
+            if (
+              !inQuoteSummary &&
+              !readingTerms &&
+              (rowAllUpper.includes('TỔNG CỘNG') ||
+                rowAllUpper.includes('TỔNG CHƯA VAT') ||
+                rowAllUpper.includes('TỔNG TRƯỚC THUẾ') ||
+                rowAllUpper.includes('TỔNG GIÁ TRỊ') ||
+                rowAllUpper.includes('TỔNG THANH TOÁN') ||
+                rowAllUpper.includes('CỘNG TIỀN HÀNG') ||
+                rowAllUpper.includes('PHẦN MỀM KHÔNG CHỊU THUẾ') ||
+                /^VAT\s*\d+/i.test(rowPlainSummaryParts.join(' ')))
+            ) {
+              inQuoteSummary = true;
             }
 
             if (readingTerms) {
@@ -24330,8 +24688,10 @@ async function processBaoGiaFileStandard(file: File) {
               continue;
             }
 
-            const effectiveTenHang = tenHang || (featuresPlain ? featuresPlain.split(/\r?\n/)[0].trim() : '');
-            if (!effectiveTenHang) {
+            if (inQuoteSummary) {
+              if (rowPlainSummaryParts.length > 0) {
+                quoteSummaryLines.push(rowPlainSummaryParts.join(' '));
+              }
               continue;
             }
 
@@ -24341,9 +24701,32 @@ async function processBaoGiaFileStandard(file: File) {
             const hangFromCol = getCellPlain('hang');
             const baoHanhFromCol = getCellPlain('baoHanh');
 
+            const effectiveTenHang =
+              tenHang ||
+              (featuresPlain ? featuresPlain.split(/\r?\n/)[0].trim() : '') ||
+              maHangFromCol;
+            if (!effectiveTenHang) {
+              continue;
+            }
+
             const sl = Math.max(1, parseCleanNumber(getCellPlain('sl')) || 1);
             let donGia = parseCleanNumber(getCellPlain('donGia'));
-            const truocThue = parseCleanNumber(getCellPlain('truocThue')) || (sl * donGia);
+            let truocThue = parseCleanNumber(getCellPlain('truocThue')) || (sl * donGia);
+            const sauThue = parseCleanNumber(getCellPlain('sauThue'));
+
+            const vatVal = parseCleanNumber(getCellPlain('vat'));
+            let vatPct = 0;
+            if (vatVal > 0 && vatVal < 1) {
+              vatPct = Math.round(vatVal * 100);
+            } else if (vatVal > 0 && truocThue > 0 && vatVal > 100) {
+              vatPct = Math.round((vatVal / truocThue) * 100);
+            } else if (vatVal > 0 && vatVal <= 100) {
+              vatPct = Math.round(vatVal);
+            }
+
+            if (!donGia && !truocThue && sauThue > 0) {
+              truocThue = vatPct > 0 ? Math.round(sauThue / (1 + vatPct / 100)) : sauThue;
+            }
             if (!donGia && truocThue > 0 && sl > 0) {
               donGia = Math.round(truocThue / sl);
             }
@@ -24360,16 +24743,6 @@ async function processBaoGiaFileStandard(file: File) {
             const isRomanSection = /^(I|II|III|IV|V|VI|VII|VIII|IX|X)\.?$/i.test(stt);
             if (donGia === 0 && truocThue === 0 && (isMergedBanner || isRomanSection || !featuresPlain)) {
               continue;
-            }
-
-            const vatVal = parseCleanNumber(getCellPlain('vat'));
-            let vatPct = 0;
-            if (vatVal > 0 && vatVal < 1) {
-              vatPct = Math.round(vatVal * 100);
-            } else if (vatVal > 0 && truocThue > 0 && vatVal > 100) {
-              vatPct = Math.round((vatVal / truocThue) * 100);
-            } else if (vatVal > 0 && vatVal <= 100) {
-              vatPct = Math.round(vatVal);
             }
 
             const generatedMaHang = maHangFromCol || removeDiacritics(effectiveTenHang).toUpperCase().replace(/\s+/g, '').replace(/[^A-Z0-9]/g, '');
@@ -24406,19 +24779,24 @@ async function processBaoGiaFileStandard(file: File) {
               Description: descriptionHtml || ''
             });
           }
+
+          if (newItems.length > 0 && quoteSummaryLines.length > 0) {
+            applySummaryVatAndComputeAfterTaxCost(newItems, quoteSummaryLines, false);
+          }
         }
       } catch (excelJsErr) {
         console.warn('Chuyển sang bộ đọc đa định dạng cho file báo giá:', excelJsErr);
       }
     }
 
-    // Fallback sang bộ đọc chuẩn đa định dạng (mọi đuôi Excel .xls/.xlsm/.xlsb/.ods/.csv/.xml & Word .docx/.doc/.rtf)
-    if (newItems.length === 0) {
+    // Fallback sang bộ đọc chuẩn đa định dạng (mọi đuôi Excel .xls/.xlsm/.xlsb/.ods/.csv/.xml, Word .docx/.doc/.rtf, hoặc khi ExcelJS không có kết quả công thức)
+    const excelJsHasPricedItems = newItems.some(it => toNum(it.Don_gia, 0) > 0);
+    if (newItems.length === 0 || (!isWordFile && !excelJsHasPricedItems)) {
       if (isWordFile) {
         const wordDoc = await readUniversalWordDocument(file);
         const stdWord = parseSalesQuoteSheetsStandard(wordDoc.tables, wordDoc.paragraphs, quoteCurrency.value || 'VND');
         if (stdWord.items.length > 0) {
-          newItems.push(...stdWord.items);
+          newItems.splice(0, newItems.length, ...stdWord.items);
           if (!termsHtml && stdWord.termsHtml) termsHtml = stdWord.termsHtml;
           if (!extractedCustomer.Ten_cong_ty && !extractedCustomer.Ten_khach_hang) {
             extractedCustomer = stdWord.extractedCustomer as Partial<KhachHang>;
@@ -24427,8 +24805,9 @@ async function processBaoGiaFileStandard(file: File) {
       } else {
         const sheets = await readUniversalSpreadsheetSheets(file);
         const stdExcel = parseSalesQuoteSheetsStandard(sheets, [], quoteCurrency.value || 'VND');
-        if (stdExcel.items.length > 0) {
-          newItems.push(...stdExcel.items);
+        const stdHasPriced = stdExcel.items.some(it => toNum(it.Don_gia, 0) > 0);
+        if (stdExcel.items.length > 0 && (newItems.length === 0 || stdHasPriced)) {
+          newItems.splice(0, newItems.length, ...stdExcel.items);
           if (!termsHtml && stdExcel.termsHtml) termsHtml = stdExcel.termsHtml;
           if (!extractedCustomer.Ten_cong_ty && !extractedCustomer.Ten_khach_hang) {
             extractedCustomer = stdExcel.extractedCustomer as Partial<KhachHang>;
@@ -25519,6 +25898,51 @@ const visibleLeadingFooterColSpan = computed(() => {
     }
   }
   return count
+})
+
+const desktopQuoteTableMinWidthPx = computed(() => {
+  const isCompare = quotePriceViewMode.value === 'compare'
+  const leadingWidths: Record<string, number> = {
+    stt: 52,
+    pn: isCompare ? 88 : 82,
+    sku_code: isCompare ? 90 : 84,
+    ten_hang: isCompare ? 155 : 140,
+    description: 220,
+    dien_giai: 220,
+    hang: isCompare ? 76 : 70,
+    dvt: isCompare ? 58 : 55,
+    sl: isCompare ? 46 : 40
+  }
+  let total = 0
+  for (const [k, w] of Object.entries(leadingWidths)) {
+    if (quoteColVisible[k as QuoteColKey]) total += w
+  }
+  if (quoteCurrency.value === 'USD' && quoteColVisible.ti_gia) {
+    total += 88
+  }
+  if (isCompare) {
+    // 4 cột Đơn giá/Giá vốn (136px) + 4 cột Thành tiền/Net Margin (154px) = 1160px
+    total += 4 * 136 + 4 * 154
+  } else {
+    const normalPriceWidths: Partial<Record<QuoteColKey, number>> = {
+      gia_off_hang: 116,
+      list_price: 114,
+      gia_nhap: 114,
+      muc_off: 114,
+      don_gia_kh: 118,
+      tt_truoc_thue: 126,
+      vat: 94,
+      tt_sau_thue: 128,
+      net_margin: 128
+    }
+    for (const [k, w] of Object.entries(normalPriceWidths)) {
+      if (quoteColVisible[k as QuoteColKey] && w) total += w
+    }
+  }
+  if (quoteColVisible.xoa) {
+    total += quoteActionColWidthPx.value
+  }
+  return Math.max(860, total)
 })
 
 const showGuideModal = ref(false)
@@ -27370,6 +27794,7 @@ onUnmounted(() => {
                         cursor: 'pointer',
                         display: 'flex',
                         flexDirection: 'column',
+                        alignItems: 'stretch',
                         gap: '3px',
                         transition: 'all 0.15s ease',
                         background: quotePriceViewMode === opt.value
@@ -28157,7 +28582,10 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <table :class="{ 'is-compare-3price-table': quotePriceViewMode === 'compare', 'is-bulk-select-table': isBulkSelectMode }">
+            <table
+              :class="{ 'is-compare-3price-table': quotePriceViewMode === 'compare', 'is-bulk-select-table': isBulkSelectMode }"
+              :style="!isMobileQuoteViewport ? { minWidth: desktopQuoteTableMinWidthPx + 'px' } : undefined"
+            >
               <thead>
                 <tr style="color: #ffffff !important; font-weight: 800 !important;">
                   <th v-if="quoteColVisible.stt" class="col-stt" style="border-top-left-radius: 6px;">
@@ -28742,20 +29170,16 @@ onUnmounted(() => {
                     <td v-if="visibleLeadingFooterColSpan > 0" :colspan="visibleLeadingFooterColSpan" class="right compare-footer-label">
                       TỔNG CỘNG TRƯỚC THUẾ ({{ quoteCurrency }})
                     </td>
-                    <td class="td-compare-foot-empty td-compare-list-dg"></td>
-                    <td class="right td-compare-foot-val td-compare-list-tt">
+                    <td colspan="2" class="right td-compare-foot-val td-compare-list-dg td-compare-list-tt">
                       {{ quoteCurrency === 'USD' ? formatUSD(totalsOriginUSD.truoc) : formatVND(totalsOrigin.truoc) }}
                     </td>
-                    <td class="td-compare-foot-empty td-compare-cust-dg"></td>
-                    <td class="right td-compare-foot-val td-compare-cust-tt">
+                    <td colspan="2" class="right td-compare-foot-val td-compare-cust-dg td-compare-cust-tt">
                       {{ quoteCurrency === 'USD' ? formatUSD(totalsContractUSD.truoc) : formatVND(totalsContract.truoc) }}
                     </td>
-                    <td class="td-compare-foot-empty td-compare-cont-dg"></td>
-                    <td class="right td-compare-foot-val td-compare-cont-tt">
+                    <td colspan="2" class="right td-compare-foot-val td-compare-cont-dg td-compare-cont-tt">
                       {{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.truoc) : formatVND(totals.truoc) }}
                     </td>
-                    <td class="td-compare-foot-empty"></td>
-                    <td class="right td-compare-foot-val">
+                    <td colspan="2" class="right td-compare-foot-val td-compare-foot-margin">
                       <div class="fast-tooltip-container net-margin-footer-pill" :class="totalsContract.loi >= 0 ? 'is-margin-pos' : 'is-margin-neg'" data-tooltip="Tổng Net Margin (Khách - Off hãng)" :style="{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px', padding: '2px 8px', borderRadius: '999px', background: totalsContract.loi >= 0 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)', border: totalsContract.loi >= 0 ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(239, 68, 68, 0.4)', color: totalsContract.loi >= 0 ? '#34d399' : '#f87171', fontSize: '12px', fontWeight: 800, whiteSpace: 'nowrap' }">
                         <span v-if="totalsContract.loi >= 0" style="font-size: 10px;">▲</span>
                         <span v-else style="font-size: 10px;">▼</span>
@@ -28768,40 +29192,32 @@ onUnmounted(() => {
                     <td v-if="visibleLeadingFooterColSpan > 0" :colspan="visibleLeadingFooterColSpan" class="right compare-footer-label">
                       THUẾ VAT ({{ quoteCurrency }})
                     </td>
-                    <td class="td-compare-foot-empty td-compare-list-dg"></td>
-                    <td class="right td-compare-foot-val td-compare-list-tt">
+                    <td colspan="2" class="right td-compare-foot-val td-compare-list-dg td-compare-list-tt">
                       {{ quoteCurrency === 'USD' ? formatUSD(totalsOriginUSD.vat) : formatVND(totalsOrigin.vat) }}
                     </td>
-                    <td class="td-compare-foot-empty td-compare-cust-dg"></td>
-                    <td class="right td-compare-foot-val td-compare-cust-tt">
+                    <td colspan="2" class="right td-compare-foot-val td-compare-cust-dg td-compare-cust-tt">
                       {{ quoteCurrency === 'USD' ? formatUSD(totalsContractUSD.vat) : formatVND(totalsContract.vat) }}
                     </td>
-                    <td class="td-compare-foot-empty td-compare-cont-dg"></td>
-                    <td class="right td-compare-foot-val td-compare-cont-tt">
+                    <td colspan="2" class="right td-compare-foot-val td-compare-cont-dg td-compare-cont-tt">
                       {{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.vat) : formatVND(totals.vat) }}
                     </td>
-                    <td class="td-compare-foot-empty"></td>
-                    <td class="td-compare-foot-empty"></td>
+                    <td colspan="2" class="td-compare-foot-empty"></td>
                     <td v-if="quoteColVisible.xoa" class="td-compare-foot-empty"></td>
                   </tr>
                   <tr class="compare-footer-row compare-footer-grandtotal">
                     <td v-if="visibleLeadingFooterColSpan > 0" :colspan="visibleLeadingFooterColSpan" class="right compare-footer-label is-grand">
                       TỔNG CỘNG SAU THUẾ ({{ quoteCurrency }})
                     </td>
-                    <td class="td-compare-foot-empty td-compare-list-dg is-grand"></td>
-                    <td class="right td-compare-foot-val td-compare-list-tt is-grand">
+                    <td colspan="2" class="right td-compare-foot-val td-compare-list-dg td-compare-list-tt is-grand">
                       {{ quoteCurrency === 'USD' ? formatUSD(totalsOriginUSD.sau) : formatVND(totalsOrigin.sau) }}
                     </td>
-                    <td class="td-compare-foot-empty td-compare-cust-dg is-grand"></td>
-                    <td class="right td-compare-foot-val td-compare-cust-tt is-grand">
+                    <td colspan="2" class="right td-compare-foot-val td-compare-cust-dg td-compare-cust-tt is-grand">
                       {{ quoteCurrency === 'USD' ? formatUSD(totalsContractUSD.sau) : formatVND(totalsContract.sau) }}
                     </td>
-                    <td class="td-compare-foot-empty td-compare-cont-dg is-grand"></td>
-                    <td class="right td-compare-foot-val td-compare-cont-tt is-grand">
+                    <td colspan="2" class="right td-compare-foot-val td-compare-cont-dg td-compare-cont-tt is-grand">
                       {{ quoteCurrency === 'USD' ? formatUSD(totalsUSD.sau) : formatVND(totals.sau) }}
                     </td>
-                    <td class="td-compare-foot-empty is-grand"></td>
-                    <td class="td-compare-foot-empty is-grand"></td>
+                    <td colspan="2" class="td-compare-foot-empty is-grand"></td>
                     <td v-if="quoteColVisible.xoa" class="td-compare-foot-empty is-grand"></td>
                   </tr>
                 </template>
@@ -30013,7 +30429,7 @@ onUnmounted(() => {
                 <div class="tpl-upload-staged-top-row">
                   <div class="tpl-upload-staged-meta-left">
                     <div class="tpl-upload-staged-icon">
-                      <i :class="getFileCategoryIconClass(uItem.file)"></i>
+                      <i :class="getFileCategoryIconClass(uItem.file?.name || '', uItem.isImage)"></i>
                     </div>
                     <span class="tpl-upload-ext-badge">{{ uItem.ext }}</span>
                     <span class="tpl-upload-size-text">Dung lượng: {{ uItem.sizeLabel }}</span>
@@ -33015,7 +33431,7 @@ onUnmounted(() => {
                 <div class="tpl-upload-staged-top-row">
                   <div class="tpl-upload-staged-meta-left">
                     <div class="tpl-upload-staged-icon">
-                      <i :class="getFileCategoryIconClass(uItem.file)"></i>
+                      <i :class="getFileCategoryIconClass(uItem.file?.name || '', uItem.isImage)"></i>
                     </div>
                     <span class="tpl-upload-ext-badge">{{ uItem.ext }}</span>
                     <span class="tpl-upload-size-text">Dung lượng: {{ uItem.sizeLabel }}</span>
@@ -34673,6 +35089,7 @@ onUnmounted(() => {
         @click="refCompareMenu.open = false"
       >
         <div
+          ref="refComparePopoverEl"
           class="ref-compare-popover"
           :class="refCompareMenu.vendor ? 'is-' + refCompareMenu.vendor : ''"
           :style="{ top: refCompareMenu.top + 'px', left: refCompareMenu.left + 'px' }"
@@ -34711,13 +35128,16 @@ onUnmounted(() => {
           </div>
 
           <div v-else class="ref-compare-popover-list">
-            <button
+            <div
               v-for="opt in refCompareMenu.options"
               :key="opt.id"
-              type="button"
+              role="button"
+              tabindex="0"
               class="ref-compare-opt"
               :class="'role-' + opt.role"
               @click="selectRefCompareOption(opt)"
+              @keydown.enter.prevent="selectRefCompareOption(opt)"
+              @keydown.space.prevent="selectRefCompareOption(opt)"
             >
               <span class="ref-compare-opt-icon" :class="'role-' + opt.role">
                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -34727,19 +35147,19 @@ onUnmounted(() => {
                   <line x1="8" y1="17" x2="16" y2="17"></line>
                 </svg>
               </span>
-              <span class="ref-compare-opt-body">
-                <span class="ref-compare-opt-top">
+              <div class="ref-compare-opt-body">
+                <div class="ref-compare-opt-top">
                   <span class="ref-compare-role-tag" :class="'role-' + opt.role">{{ opt.roleBadge }}</span>
                   <span v-if="opt.priceText" class="ref-compare-price-badge">{{ opt.priceText }}</span>
-                </span>
+                </div>
                 <strong class="ref-compare-file-name" :title="opt.fileName">{{ opt.fileName }}</strong>
-                <span class="ref-compare-cell-meta">
+                <div class="ref-compare-cell-meta">
                   <span>Sheet: <b>{{ opt.sheet }}</b></span>
                   <span class="ref-compare-dot">•</span>
                   <span>Ô <b>{{ opt.cellRef }}</b></span>
-                </span>
-                <small v-if="opt.subNote" class="ref-compare-subnote">{{ opt.subNote }}</small>
-              </span>
+                </div>
+                <div v-if="opt.subNote" class="ref-compare-subnote">{{ opt.subNote }}</div>
+              </div>
               <span class="ref-compare-opt-arrow" aria-hidden="true">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
@@ -34747,7 +35167,7 @@ onUnmounted(() => {
                   <line x1="10" y1="14" x2="21" y2="3"></line>
                 </svg>
               </span>
-            </button>
+            </div>
           </div>
         </div>
       </div>
@@ -35446,7 +35866,8 @@ onUnmounted(() => {
     <!-- ===== TỔNG HÓA ĐƠN ===== -->
    <h4>🔹 So sánh tổng hóa đơn (theo mã hợp đồng)</h4>
 
-<table>
+<div style="overflow-x: auto; max-width: 100%; border-radius: 8px;">
+<table style="min-width: 620px; table-layout: auto;">
   <thead>
     <tr>
       <th>Mã hợp đồng</th>
@@ -35461,20 +35882,22 @@ onUnmounted(() => {
     <tr v-for="r in compareByContract" :key="r.Ma_hop_dong">
       <td>{{ r.Ma_hop_dong }}</td>
 
-      <td class="right">{{ formatVND(r.truoc) }}</td>
-      <td class="right">{{ formatVND(r.tieuChuan) }}</td>
+      <td class="right" style="font-variant-numeric: tabular-nums; white-space: nowrap;">{{ formatVND(r.truoc) }}</td>
+      <td class="right" style="font-variant-numeric: tabular-nums; white-space: nowrap;">{{ formatVND(r.tieuChuan) }}</td>
 
       <td
         class="right"
+        style="font-variant-numeric: tabular-nums; white-space: nowrap;"
         :style="{ color: r.diff >= 0 ? 'green' : 'red' }"
       >
         {{ formatVND(r.diff) }}
       </td>
 
-      <td class="right">{{ r.pct.toFixed(2) }}%</td>
+      <td class="right" style="font-variant-numeric: tabular-nums; white-space: nowrap;">{{ r.pct.toFixed(2) }}%</td>
     </tr>
   </tbody>
 </table>
+</div>
 
 
 
@@ -35485,12 +35908,13 @@ onUnmounted(() => {
    
    <h4>🔹 So sánh mã hàng </h4>
 
-<table>
+<div style="overflow-x: auto; max-width: 100%; border-radius: 8px;">
+<table style="min-width: 620px; table-layout: auto;">
   <thead>
     <tr>
       <th>Mã hàng</th>
       <th>Tên hàng</th>
-      <th v-for="maHD in compareMaHopDongs" :key="maHD">
+      <th v-for="maHD in compareMaHopDongs" :key="maHD" class="right">
         {{ maHD }}
       </th>
     </tr>
@@ -35505,6 +35929,7 @@ onUnmounted(() => {
         v-for="maHD in compareMaHopDongs"
         :key="maHD"
         class="right"
+        style="font-variant-numeric: tabular-nums; white-space: nowrap;"
         :style="{
           color: r.byHD[maHD]?.diff >= 0 ? 'green' : 'red'
         }"
@@ -35520,6 +35945,7 @@ onUnmounted(() => {
     </tr>
   </tbody>
 </table>
+</div>
 
 
     <div class="modal-actions">
@@ -42635,6 +43061,7 @@ td.dvt { font-family: inherit; white-space: normal; }
 .pc-right-finance-dock {
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
   gap: 8px;
   margin-top: auto;
   padding: 11px 12px 12px 12px;
@@ -45789,6 +46216,9 @@ td.dvt { font-family: inherit; white-space: normal; }
     display: flex !important;
     flex-direction: column !important;
     gap: 7px !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
 
   .m-qcard-top {
@@ -48437,6 +48867,43 @@ td.dvt { font-family: inherit; white-space: normal; }
 }
 
 /* ===== CHẾ ĐỘ ĐỐI CHIẾU 3 GIÁ (LIST - KHÁCH - HỢP ĐỒNG) GIỐNG EXCEL ===== */
+table.is-compare-3price-table th.col-pn {
+  width: 88px;
+}
+table.is-compare-3price-table td.col-pn-cell {
+  max-width: 88px;
+}
+table.is-compare-3price-table th.col-name {
+  width: 155px;
+}
+table.is-compare-3price-table th.col-hang {
+  width: 76px;
+}
+table.is-compare-3price-table td.col-hang-cell {
+  max-width: 76px;
+}
+table.is-compare-3price-table th.col-dvt {
+  width: 58px;
+}
+table.is-compare-3price-table td.col-dvt-cell {
+  max-width: 58px;
+}
+table.is-compare-3price-table th.col-sl {
+  width: 46px;
+}
+table.is-compare-3price-table thead th.th-compare-list-dg,
+table.is-compare-3price-table thead th.th-compare-cust-dg,
+table.is-compare-3price-table thead th.th-compare-cont-dg,
+table.is-compare-3price-table thead th.th-compare-off-hang {
+  width: 136px !important;
+}
+table.is-compare-3price-table thead th.th-compare-list-tt,
+table.is-compare-3price-table thead th.th-compare-cust-tt,
+table.is-compare-3price-table thead th.th-compare-cont-tt,
+table.is-compare-3price-table thead th.th-compare-net-margin {
+  width: 154px !important;
+}
+
 thead th.th-compare-col,
 .page.theme-light-blue thead th.th-compare-col {
   font-weight: 800 !important;
@@ -48444,6 +48911,9 @@ thead th.th-compare-col,
   text-align: center !important;
   letter-spacing: 0.3px;
   padding: 8px 6px !important;
+  word-break: normal !important;
+  overflow-wrap: break-word;
+  box-sizing: border-box;
 }
 
 thead th.th-compare-list-dg,
@@ -48493,6 +48963,16 @@ thead th.th-compare-cont-tt,
 tbody tr.quote-item-row td.td-compare-cell {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  box-sizing: border-box;
+  padding-left: 6px !important;
+  padding-right: 6px !important;
+}
+tbody tr.quote-item-row td.td-compare-cell > div {
+  max-width: 100%;
+}
+.page.theme-light-blue tbody tr.quote-item-row td.td-compare-off-hang,
+.page.theme-light-blue tbody tr.quote-item-row td.td-compare-off-hang .muted {
+  color: #059669 !important;
 }
 tbody tr.quote-item-row td.td-compare-list-dg,
 tbody tr.quote-item-row td.td-compare-list-tt {
@@ -48561,6 +49041,13 @@ tbody tr.quote-item-row td.td-compare-cont-tt {
   border-right: 1px solid #fcd34d !important;
 }
 
+tfoot tr.table-footer-sticky td {
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Footer 3 hàng tổng cộng giống mẫu in Excel */
 tfoot.compare-tfoot {
   position: sticky;
@@ -48571,11 +49058,18 @@ tfoot.compare-tfoot {
 tfoot.compare-tfoot td {
   position: static !important;
   box-shadow: none !important;
-  padding: 6px 8px !important;
+  padding: 6px 10px !important;
   font-size: 12px !important;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
   border-top: 1px solid rgba(148, 163, 184, 0.2) !important;
+}
+tfoot.compare-tfoot td.compare-footer-label {
+  white-space: normal;
+  line-height: 1.25;
 }
 tfoot.compare-tfoot tr.compare-footer-subtotal td {
   border-top: 2px solid #38bdf8 !important;
@@ -48843,7 +49337,8 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 4px 8px;
   min-width: 0;
 }
 .m-qcard-cmp-k {
@@ -48857,12 +49352,14 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
   font-weight: 700;
   color: #e2e8f0;
   white-space: nowrap;
+  margin-left: auto;
 }
 .m-qcard-cmp-tt {
   font-size: 12px;
   font-weight: 800;
   color: #ffffff;
   white-space: nowrap;
+  margin-left: auto;
 }
 
 .m-qcard-cmp-bottom-metrics {
@@ -48875,6 +49372,8 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
   padding: 6px 9px;
   border-radius: 7px;
   background: rgba(15, 23, 42, 0.65);
@@ -49028,7 +49527,8 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    flex-wrap: wrap;
+    gap: 6px 8px;
     padding: 7px 10px;
     border-radius: 8px;
     font-variant-numeric: tabular-nums;
@@ -49071,6 +49571,8 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
     align-items: flex-end;
     gap: 2px;
     text-align: right;
+    margin-left: auto;
+    min-width: 0;
   }
   .m-compare-tot-sub {
     font-size: 10.5px;
@@ -49245,9 +49747,9 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
 }
 
 .cmp-sr-finance-wrap {
-  width: 316px;
-  min-width: 316px;
-  max-width: 316px;
+  width: 336px;
+  min-width: 336px;
+  max-width: 336px;
   flex-shrink: 0;
   height: 100%;
   box-sizing: border-box;
@@ -49422,13 +49924,14 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
   flex-direction: column;
   gap: 10px;
   width: 100%;
-  flex: 1;
+  flex: 1 0 auto;
 }
 
 .cmp-sr-source-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-shrink: 0;
   gap: 6px;
   padding: 5px 6px;
   border-radius: 10px;
@@ -49542,6 +50045,7 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.04);
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
   gap: 6px;
   min-width: 0;
 }
@@ -49667,7 +50171,8 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 4px 8px;
   min-height: 24px;
 }
 
@@ -49687,14 +50192,16 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
   font-weight: 400;
   color: #94a3b8;
   line-height: 1.35;
-  white-space: nowrap;
-  flex-shrink: 0;
+  white-space: normal;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .cmp-sr-tax-lbl-wrap {
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  flex: 0 0 auto;
 }
 
 .cmp-sr-b-val {
@@ -49703,6 +50210,8 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
   color: #e2e8f0;
   text-align: right;
   white-space: nowrap;
+  flex-shrink: 0;
+  margin-left: auto;
   font-variant-numeric: tabular-nums;
 }
 
@@ -49722,11 +50231,12 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
 }
 
 .cmp-sr-b-input {
-  width: 132px !important;
-  max-width: 55%;
+  width: 142px !important;
+  max-width: 60%;
+  margin-left: auto !important;
+  flex-shrink: 0;
   height: 25px !important;
   padding: 2px 7px !important;
-  margin: 0 !important;
   box-sizing: border-box;
   border-radius: 5px !important;
   border: 1px solid rgba(148, 163, 184, 0.22) !important;
@@ -49797,7 +50307,8 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
+  flex-wrap: wrap;
+  gap: 4px 6px;
 }
 
 .cmp-sr-predict-lbl {
@@ -49810,6 +50321,10 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
   margin: 0 !important;
   letter-spacing: 0.03em;
   text-transform: uppercase;
+  white-space: normal;
+  line-height: 1.3;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .cmp-sr-predict-card.is-active .cmp-sr-predict-lbl {
@@ -52517,7 +53032,7 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
 
 .read-price-compare-head {
   display: grid;
-  grid-template-columns: 1.1fr 1fr 1fr;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr);
   gap: 8px;
   padding: 8px 12px;
   background: rgba(255, 255, 255, 0.04);
@@ -52528,9 +53043,14 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
   color: #94a3b8;
 }
 
+.read-price-compare-head > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .read-price-compare-row {
   display: grid;
-  grid-template-columns: 1.1fr 1fr 1fr;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr);
   gap: 8px;
   padding: 8px 12px;
   border-bottom: 1px dashed rgba(148, 163, 184, 0.14);
@@ -52544,15 +53064,23 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
 .read-price-compare-label {
   color: #cbd5e1;
   font-weight: 600;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .read-price-compare-old {
   color: #94a3b8;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
 }
 
 .read-price-compare-new {
   color: #f8fafc;
   font-weight: 700;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
 }
 
 .read-price-compare-new.is-primary {
@@ -56692,7 +57220,8 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
   font-size: 10.5px;
   font-weight: 700;
   color: #94a3b8;
-  white-space: nowrap;
+  white-space: normal;
+  line-height: 1.25;
 }
 
 #app .page .adjust-price-modal-card .adj-cs-label i {
@@ -63896,7 +64425,7 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
 
   #app .page .modal-card.read-price-fullscreen-card .read-price-compare-head,
   #app .page .modal-card.read-price-fullscreen-card .read-price-compare-row {
-    grid-template-columns: 1fr 1fr 1.05fr !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.05fr) !important;
     padding: 7px 9px !important;
     font-size: 11px !important;
     gap: 6px !important;
@@ -66358,7 +66887,12 @@ button.ref-compare-chip-btn.is-acronis:hover {
 
 .ref-compare-popover {
   position: fixed !important;
-  width: min(384px, calc(100vw - 20px)) !important;
+  width: min(420px, calc(100vw - 20px)) !important;
+  max-height: calc(100vh - 24px) !important;
+  max-height: calc(100dvh - 24px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
   background: #0f172a !important;
   border: 1px solid rgba(56, 189, 248, 0.45) !important;
   border-radius: 14px !important;
@@ -66382,6 +66916,7 @@ button.ref-compare-chip-btn.is-acronis:hover {
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
+  flex-shrink: 0 !important;
   gap: 8px !important;
   padding: 0 2px 6px !important;
 }
@@ -66457,6 +66992,7 @@ button.ref-compare-popover-close:hover {
   margin-bottom: 8px !important;
   display: flex !important;
   flex-direction: column !important;
+  flex-shrink: 0 !important;
   gap: 5px !important;
 }
 
@@ -66532,37 +67068,57 @@ button.ref-compare-popover-close:hover {
 .ref-compare-popover-list {
   display: flex !important;
   flex-direction: column !important;
-  gap: 6px !important;
-  max-height: 290px !important;
+  gap: 8px !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  max-height: min(360px, calc(100vh - 150px)) !important;
+  max-height: min(360px, calc(100dvh - 150px)) !important;
   overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding-right: 2px !important;
 }
 
+.ref-compare-opt,
 button.ref-compare-opt {
   display: flex !important;
   align-items: flex-start !important;
   justify-content: space-between !important;
   gap: 10px !important;
+  flex: 0 0 auto !important;
+  flex-shrink: 0 !important;
   width: 100% !important;
-  min-height: 0 !important;
+  min-height: fit-content !important;
   height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  box-sizing: border-box !important;
+  white-space: normal !important;
   text-align: left !important;
-  padding: 9px 10px !important;
+  padding: 10px 11px !important;
   margin: 0 !important;
   border-radius: 10px !important;
   border: 1px solid rgba(148, 163, 184, 0.18) !important;
-  background: rgba(30, 41, 59, 0.68) !important;
+  background: rgba(30, 41, 59, 0.78) !important;
   color: #e2e8f0 !important;
   cursor: pointer !important;
   box-shadow: none !important;
   transition: all 0.15s ease !important;
 }
 
+.ref-compare-opt:hover,
 button.ref-compare-opt:hover {
   background: rgba(30, 58, 138, 0.35) !important;
   border-color: rgba(56, 189, 248, 0.55) !important;
   transform: translateY(-1px);
 }
 
+.ref-compare-opt:focus-visible,
+button.ref-compare-opt:focus-visible {
+  outline: 2px solid #38bdf8 !important;
+  outline-offset: 1px !important;
+}
+
+.ref-compare-opt.role-goc:hover,
 button.ref-compare-opt.role-goc:hover {
   background: rgba(6, 78, 59, 0.35) !important;
   border-color: rgba(16, 185, 129, 0.55) !important;
@@ -66589,16 +67145,19 @@ button.ref-compare-opt.role-goc:hover {
 .ref-compare-opt-body {
   display: flex !important;
   flex-direction: column !important;
-  gap: 3px !important;
+  gap: 4px !important;
   min-width: 0 !important;
-  flex: 1 !important;
+  flex: 1 1 auto !important;
+  overflow: visible !important;
+  white-space: normal !important;
 }
 
 .ref-compare-opt-top {
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
-  gap: 6px !important;
+  flex-wrap: wrap !important;
+  gap: 4px 6px !important;
 }
 
 .ref-compare-role-tag {
@@ -66609,6 +67168,7 @@ button.ref-compare-opt.role-goc:hover {
   border-radius: 4px !important;
   background: rgba(56, 189, 248, 0.16) !important;
   color: #38bdf8 !important;
+  white-space: nowrap !important;
 }
 
 .ref-compare-role-tag.role-goc {
@@ -66620,14 +67180,20 @@ button.ref-compare-opt.role-goc:hover {
   font-size: 11px !important;
   font-weight: 800 !important;
   color: #fbbf24 !important;
+  white-space: nowrap !important;
+  font-variant-numeric: tabular-nums !important;
 }
 
 .ref-compare-file-name {
+  display: block !important;
   font-size: 12px !important;
   font-weight: 700 !important;
   color: #f8fafc !important;
-  line-height: 1.3 !important;
-  word-break: break-all !important;
+  line-height: 1.35 !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+  overflow: visible !important;
 }
 
 .ref-compare-cell-meta {
@@ -66636,7 +67202,12 @@ button.ref-compare-opt.role-goc:hover {
   flex-wrap: wrap !important;
   gap: 4px !important;
   font-size: 11px !important;
+  line-height: 1.35 !important;
   color: #94a3b8 !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+  overflow: visible !important;
 }
 
 .ref-compare-cell-meta b {
@@ -66649,9 +67220,14 @@ button.ref-compare-opt.role-goc:hover {
 }
 
 .ref-compare-subnote {
-  font-size: 10px !important;
-  color: #64748b !important;
-  line-height: 1.25 !important;
+  display: block !important;
+  font-size: 10.5px !important;
+  color: #94a3b8 !important;
+  line-height: 1.35 !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+  overflow: visible !important;
 }
 
 .ref-compare-opt-arrow {
@@ -66664,6 +67240,7 @@ button.ref-compare-opt.role-goc:hover {
   transition: color 0.15s ease, transform 0.15s ease !important;
 }
 
+.ref-compare-opt:hover .ref-compare-opt-arrow,
 button.ref-compare-opt:hover .ref-compare-opt-arrow {
   color: #38bdf8 !important;
   transform: translate(1px, -1px);
@@ -66733,17 +67310,20 @@ button.ref-compare-opt:hover .ref-compare-opt-arrow {
   color: #334155 !important;
 }
 
+.ref-compare-backdrop.is-light .ref-compare-opt,
 .ref-compare-backdrop.is-light button.ref-compare-opt {
   background: #f8fafc !important;
   border-color: #e2e8f0 !important;
   color: #0f172a !important;
 }
 
+.ref-compare-backdrop.is-light .ref-compare-opt:hover,
 .ref-compare-backdrop.is-light button.ref-compare-opt:hover {
   background: #eff6ff !important;
   border-color: #60a5fa !important;
 }
 
+.ref-compare-backdrop.is-light .ref-compare-opt.role-goc:hover,
 .ref-compare-backdrop.is-light button.ref-compare-opt.role-goc:hover {
   background: #ecfdf5 !important;
   border-color: #34d399 !important;

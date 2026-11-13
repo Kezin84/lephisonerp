@@ -445,6 +445,7 @@ export function buildLicenseSummaryForPO(licenseFirebaseId, licenseData = {}) {
     DATE_OF_LICENSE: String(licenseData.DATE_OF_LICENSE || ''),
     EXPIRATION_TIME: String(licenseData.EXPIRATION_TIME || ''),
     SO_NGAY_HIEU_LUC: String(licenseData.SO_NGAY_HIEU_LUC || ''),
+    IS_GIA_HAN: String(licenseData.IS_GIA_HAN ?? licenseData.is_gia_han ?? '').trim(),
     CUSTOMER: String(licenseData.CUSTOMER || ''),
     MA_KHACH_HANG: String(licenseData.MA_KHACH_HANG || ''),
     TEN_CONG_TY: String(licenseData.TEN_CONG_TY || ''),
